@@ -1,15 +1,35 @@
 {
   "data": [
     {
-      "id": "1a726a82-6817-4811-a3a7-281151c2da9d",
-      "type": "NOTE",
-      "content": "Besok minggu summary apa yang sudah aku pelajari di kantor karena mungkin ada quick quizz",
+      "id": "d60e3e6e-9792-4a06-ad2d-146ff87edb5f",
       "status": "pending",
-      "created_at": "2026-01-24T05:38:28.094Z",
+      "created_at": "2026-01-24T05:38:29.674Z",
+      "type": "TODO",
+      "content": "Summary apa yang sudah aku pelajari di kantor",
       "meta": {
-        "tags": []
+        "date": "2026-01-25T00:00:00.000Z",
+        "tags": [
+          "work",
+          "productivity",
+          "review"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "d3c0e903-f536-4c26-bd25-fba92094b71e",
+      "status": "pending",
+      "created_at": "2026-01-24T05:38:29.674Z",
+      "type": "NOTE",
+      "content": "Persiapan untuk quick quiz kemungkinan akan ada",
+      "meta": {
+        "date": "2026-01-25T00:00:00.000Z",
+        "tags": [
+          "observation",
+          "work"
+        ]
+      },
+      "isOptimistic": false
     },
     {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
