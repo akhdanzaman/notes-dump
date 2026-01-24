@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "ebeef688-17a4-46aa-91fb-8998059c5783",
+      "type": "NOTE",
+      "content": "Besok ambil uang di atm",
+      "status": "pending",
+      "created_at": "2026-01-24T14:56:58.507Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "243eb27c-ceff-4c03-a4a0-278b69445ef7",
       "status": "pending",
       "created_at": "2026-01-24T11:30:47.977Z",
