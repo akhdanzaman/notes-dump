@@ -16,7 +16,7 @@
     },
     {
       "id": "42c83273-8031-4892-a6ef-396e6af3894c",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-24T05:25:42.094Z",
       "type": "TODO",
       "content": "baca peraturan sertifikasi mengenai kaca, velg, dan audio",
@@ -26,7 +26,8 @@
           "observation"
         ]
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-01-24T05:25:59.063Z"
     },
     {
       "id": "55ce039b-abd6-42e2-99b8-dc153e037dbf",
