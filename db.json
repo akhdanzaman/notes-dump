@@ -286,7 +286,8 @@
         "tags": [
           "electronics",
           "errand"
-        ]
+        ],
+        "amount": 65000
       },
       "isOptimistic": false
     },
