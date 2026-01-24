@@ -358,7 +358,7 @@
       "id": "c1e4542c-2cde-46af-bd15-deb32a203caa",
       "type": "SHOPPING",
       "content": "Beli headset",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-24T04:40:27.481Z",
       "meta": {
         "date": "2026-01-26T00:00:00.000Z",
@@ -369,7 +369,8 @@
         ],
         "amount": 15000
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-01-24T14:57:40.720Z"
     }
   ]
 }
