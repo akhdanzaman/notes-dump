@@ -1,6 +1,22 @@
 {
   "data": [
     {
+      "id": "fe47f26c-1845-4381-8f5b-98f37f499013",
+      "type": "SHOPPING",
+      "content": "Ambil laundry",
+      "status": "pending",
+      "created_at": "2026-01-24T04:41:52.242Z",
+      "meta": {
+        "date": "2026-01-25T00:00:00.000Z",
+        "shoppingCategory": "routine",
+        "tags": [
+          "errand",
+          "laundry"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "c1e4542c-2cde-46af-bd15-deb32a203caa",
       "type": "SHOPPING",
       "content": "Beli headset",
