@@ -1,6 +1,23 @@
 {
   "data": [
     {
+      "id": "247a3b64-9a57-46c7-8e11-4edc3401cfec",
+      "type": "SHOPPING",
+      "content": "Beli air",
+      "status": "pending",
+      "created_at": "2026-01-24T04:51:10.857Z",
+      "meta": {
+        "recurrenceDays": 3,
+        "shoppingCategory": "routine",
+        "tags": [
+          "purchase",
+          "errand",
+          "food"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "bde51ae6-9c12-497a-b334-467de19adbac",
       "type": "SHOPPING",
       "content": "Buy umbrella",
