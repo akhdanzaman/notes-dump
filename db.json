@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "5204175e-dee0-4735-aa77-7c5eb438a112",
+      "type": "NOTE",
+      "content": "Kirim laundry setiap hari jumat\n",
+      "status": "pending",
+      "created_at": "2026-01-24T05:30:39.621Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "pending",
       "created_at": "2026-01-24T05:26:25.590Z",
