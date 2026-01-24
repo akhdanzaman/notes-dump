@@ -1,5 +1,0 @@
-{
-  "name": "BrainDump AI",
-  "description": "A personal productivity tool that transforms unstructured chat messages into organized dashboard cards using Google Gemini and GitHub as a backend.",
-  "requestFramePermissions": []
-}
