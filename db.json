@@ -1,6 +1,32 @@
 {
   "data": [
     {
+      "id": "7fed57d2-e1e4-409d-9b5e-c0d0a12a98b3",
+      "type": "NOTE",
+      "content": "Beli payung",
+      "status": "pending",
+      "created_at": "2026-01-24T04:49:53.765Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
+      "id": "1fcbd815-30a9-4765-b17d-6336ee94caef",
+      "type": "SHOPPING",
+      "content": "Beli stop kontak",
+      "status": "pending",
+      "created_at": "2026-01-24T04:49:51.269Z",
+      "meta": {
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "electronics",
+          "errand"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "ced554e8-fccc-4379-b606-4661df4ab6c0",
       "type": "NOTE",
       "content": "Honuma san orang jepang yang suka senyum",
