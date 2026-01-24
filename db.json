@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "8045aabf-d76a-4f69-a7a1-c3ce42d17884",
-      "type": "NOTE",
-      "content": "bayar tagihan gopay later tanggal 29",
+      "id": "23e3968b-5e44-4842-8f5d-a927361b6b39",
       "status": "pending",
-      "created_at": "2026-01-24T08:17:45.339Z",
+      "created_at": "2026-01-24T08:17:50.839Z",
+      "type": "TODO",
+      "content": "Pay Gopay Later bill",
       "meta": {
-        "tags": []
+        "date": "2026-01-29",
+        "tags": [
+          "bill",
+          "gopay",
+          "finance"
+        ],
+        "targetDay": "Thursday"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "50774428-6d25-49c9-9303-0e2505420992",
