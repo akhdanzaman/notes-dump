@@ -1,17 +1,6 @@
 {
   "data": [
     {
-      "id": "d6ec53c5-0778-41d3-a832-95d6d283839f",
-      "type": "NOTE",
-      "content": "Beli payung",
-      "status": "pending",
-      "created_at": "2026-01-24T06:29:47.367Z",
-      "meta": {
-        "tags": []
-      },
-      "isOptimistic": true
-    },
-    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "pending",
       "created_at": "2026-01-24T05:26:25.590Z",
