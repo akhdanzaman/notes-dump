@@ -1,15 +1,34 @@
 {
   "data": [
     {
-      "id": "b399f566-e4b2-4618-a59a-63d32411169d",
-      "type": "NOTE",
-      "content": "beli hanger dan beli gantungan baju\n",
+      "id": "55ce039b-abd6-42e2-99b8-dc153e037dbf",
       "status": "pending",
-      "created_at": "2026-01-24T05:24:38.731Z",
+      "created_at": "2026-01-24T05:24:40.221Z",
+      "type": "SHOPPING",
+      "content": "beli hanger",
       "meta": {
-        "tags": []
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "purchase",
+          "errand"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "e6d37160-78e2-4de9-ba10-cef55c0f917e",
+      "status": "pending",
+      "created_at": "2026-01-24T05:24:40.221Z",
+      "type": "SHOPPING",
+      "content": "beli gantungan baju",
+      "meta": {
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "purchase",
+          "errand"
+        ]
+      },
+      "isOptimistic": false
     },
     {
       "id": "bde51ae6-9c12-497a-b334-467de19adbac",
