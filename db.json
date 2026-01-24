@@ -206,7 +206,8 @@
       "meta": {
         "tags": [
           "purchase",
-          "observation"
+          "observation",
+          "SNI"
         ]
       },
       "isOptimistic": false
