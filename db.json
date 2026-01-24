@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "e16225b2-ed35-407d-9fd0-d8d2e61a347e",
+      "type": "NOTE",
+      "content": "besok summary kegiatan belajar di kantor untuk antisiapsi quiz\n",
+      "status": "pending",
+      "created_at": "2026-01-24T06:28:43.406Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "pending",
       "created_at": "2026-01-24T05:26:25.590Z",
