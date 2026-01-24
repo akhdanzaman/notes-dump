@@ -18,7 +18,7 @@
     },
     {
       "id": "e6d37160-78e2-4de9-ba10-cef55c0f917e",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-24T05:24:40.221Z",
       "type": "SHOPPING",
       "content": "beli gantungan baju",
@@ -29,7 +29,8 @@
           "errand"
         ]
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-01-24T05:24:46.211Z"
     },
     {
       "id": "bde51ae6-9c12-497a-b334-467de19adbac",
