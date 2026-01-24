@@ -1,15 +1,20 @@
 {
   "data": [
     {
-      "id": "ebeef688-17a4-46aa-91fb-8998059c5783",
-      "type": "NOTE",
-      "content": "Besok ambil uang di atm",
+      "id": "baa36d2a-7362-4153-bcc7-56f03209abce",
       "status": "pending",
-      "created_at": "2026-01-24T14:56:58.507Z",
+      "created_at": "2026-01-24T14:57:02.622Z",
+      "type": "SHOPPING",
+      "content": "ambil uang di atm",
       "meta": {
-        "tags": []
+        "date": "2026-01-25",
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "errand"
+        ],
+        "targetDay": "Sunday"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "243eb27c-ceff-4c03-a4a0-278b69445ef7",
