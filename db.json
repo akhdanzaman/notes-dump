@@ -1,6 +1,21 @@
 {
   "data": [
     {
+      "id": "7b1a93c4-c464-41a0-921a-848848b6787c",
+      "type": "NOTE",
+      "content": "Ulang tahun Bu Chris setiap tanggal 18 Januari.",
+      "status": "pending",
+      "created_at": "2026-01-24T04:46:06.874Z",
+      "meta": {
+        "date": "01-18",
+        "tags": [
+          "people",
+          "name_note"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "0d565722-d98d-4101-989d-3adceee80a85",
       "type": "NOTE",
       "content": "Orang jepang yang suka senyum namanya Honuma san",
