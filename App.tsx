@@ -134,7 +134,7 @@ const App: React.FC = () => {
     setError(null);
     const tempId = uuidv4();
 
-    // 1. Optimistic Update
+    // 1. Optimistic Update (Show one "Processing..." item initially)
     const optimisticItem: BrainDumpItem = {
       id: tempId,
       type: ItemType.NOTE, // Default until AI classifies
@@ -162,17 +162,28 @@ const App: React.FC = () => {
         const currentTags = new Set<string>();
         itemsRef.current.forEach(i => i.meta?.tags?.forEach(t => currentTags.add(t)));
         
-        const classification = await classifyText(text, Array.from(currentTags));
+        // classifyText now returns an ARRAY of partial items
+        const classifiedItems = await classifyText(text, Array.from(currentTags));
   
-        const finalItem: BrainDumpItem = {
-          ...optimisticItem,
-          ...classification,
-          isOptimistic: false,
-        };
+        // Create full objects for each split item
+        const newItems: BrainDumpItem[] = classifiedItems.map(partial => ({
+            id: uuidv4(), // Generate new unique ID for each split item
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            // Spread defaults first, then overwrite with AI data
+            type: ItemType.NOTE,
+            content: text,
+            meta: { tags: [] },
+            ...partial, 
+            isOptimistic: false,
+        }));
   
         setItems((prev) => {
-             // Replace optimistic item with real one
-             const updated = prev.map(i => i.id === tempId ? finalItem : i);
+             // Remove the single optimistic item
+             const prevWithoutOptimistic = prev.filter(i => i.id !== tempId);
+             // Add all the new items (usually 1, but could be multiple)
+             const updated = [...newItems, ...prevWithoutOptimistic];
+             
              saveAndSync(updated); 
              return updated;
         });
@@ -180,7 +191,10 @@ const App: React.FC = () => {
     } catch (err) {
         console.error("Processing failed", err);
         setItems(prev => {
-            const updated = prev.filter(i => i.id !== tempId);
+            // On failure, remove the optimistic item? 
+            // Better to keep it but mark it as failed or just leave it as NOTE?
+            // Current behavior: Leave it, but mark optimistic as false so it stays.
+            const updated = prev.map(i => i.id === tempId ? { ...i, isOptimistic: false } : i);
             saveAndSync(updated);
             return updated;
         });
