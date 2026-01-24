@@ -17,21 +17,6 @@
       "isOptimistic": false
     },
     {
-      "id": "d3c0e903-f536-4c26-bd25-fba92094b71e",
-      "status": "pending",
-      "created_at": "2026-01-24T05:38:29.674Z",
-      "type": "NOTE",
-      "content": "Persiapan untuk quick quiz kemungkinan akan ada",
-      "meta": {
-        "date": "2026-01-25T00:00:00.000Z",
-        "tags": [
-          "observation",
-          "work"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "pending",
       "created_at": "2026-01-24T05:26:25.590Z",
