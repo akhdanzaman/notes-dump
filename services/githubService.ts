@@ -10,8 +10,8 @@ const getEnv = (key: string) => {
     return undefined;
   }
 };
-//testt
-const SETTINGS_KEY = "braindump_github_config";
+
+const SETTINGS_KEY = 'braindump_github_config';
 
 export interface GithubConfig {
   token: string;
@@ -24,40 +24,40 @@ export interface GithubConfig {
 export const getGithubConfig = (): GithubConfig | null => {
   // 1. Try LocalStorage
   try {
-    const local = localStorage.getItem(SETTINGS_KEY);
-    if (local) {
-      const parsed = JSON.parse(local);
-      if (parsed.token && parsed.owner && parsed.repo) {
-        return parsed;
+      const local = localStorage.getItem(SETTINGS_KEY);
+      if (local) {
+          const parsed = JSON.parse(local);
+          if (parsed.token && parsed.owner && parsed.repo) {
+              return parsed;
+          }
       }
-    }
-  } catch (e) {
-    console.warn("Error reading settings from local storage", e);
+  } catch(e) {
+      console.warn("Error reading settings from local storage", e);
   }
 
   // 2. Try Environment Variables
-  const t = getEnv("GITHUB_TOKEN");
-  const o = getEnv("GITHUB_OWNER");
-  const r = getEnv("GITHUB_REPO");
-
+  const t = getEnv('GITHUB_TOKEN');
+  const o = getEnv('GITHUB_OWNER');
+  const r = getEnv('GITHUB_REPO');
+  
   if (t && o && r) {
-    return {
-      token: t,
-      owner: o,
-      repo: r,
-      path: getEnv("GITHUB_FILE_PATH") || "db.json",
-    };
+      return { 
+          token: t, 
+          owner: o, 
+          repo: r, 
+          path: getEnv('GITHUB_FILE_PATH') || 'db.json' 
+      };
   }
-
+  
   return null;
 };
 
 export const saveGithubConfig = (config: GithubConfig) => {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(config));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(config));
 };
 
 export const clearGithubConfig = () => {
-  localStorage.removeItem(SETTINGS_KEY);
+    localStorage.removeItem(SETTINGS_KEY);
 };
 
 // Helper to handle Base64 encoding/decoding for Unicode/UTF-8
@@ -65,7 +65,7 @@ const toBase64 = (str: string) => {
   return btoa(
     encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
       return String.fromCharCode(parseInt(p1, 16));
-    }),
+    })
   );
 };
 
@@ -75,11 +75,11 @@ const fromBase64 = (str: string) => {
       .call(atob(str), (c: string) => {
         return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
       })
-      .join(""),
+      .join("")
   );
 };
 
-const LOCAL_STORAGE_KEY = "braindump_db";
+const LOCAL_STORAGE_KEY = 'braindump_db';
 
 export const isUsingLocalStorage = () => !getGithubConfig();
 
@@ -89,8 +89,8 @@ export const fetchDb = async (): Promise<{ data: DbSchema; sha: string }> => {
   // 1. If GitHub is not configured, use LocalStorage immediately
   if (!config) {
     const local = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (local) return { data: JSON.parse(local), sha: "local-sha" };
-    return { data: { data: [] }, sha: "local-sha" };
+    if (local) return { data: JSON.parse(local), sha: 'local-sha' };
+    return { data: { data: [] }, sha: 'local-sha' };
   }
 
   const octokit = new Octokit({ auth: config.token });
@@ -111,7 +111,7 @@ export const fetchDb = async (): Promise<{ data: DbSchema; sha: string }> => {
 
     const jsonString = fromBase64(content);
     const data: DbSchema = JSON.parse(jsonString);
-
+    
     // Backup to local storage
     localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
 
@@ -121,7 +121,7 @@ export const fetchDb = async (): Promise<{ data: DbSchema; sha: string }> => {
     // We check this FIRST before logging warnings to avoid scaring the user on fresh installs
     if (error.status === 404) {
       console.log("Database file not found on GitHub, initialized empty DB.");
-      return { data: { data: [] }, sha: "" };
+      return { data: { data: [] }, sha: '' };
     }
 
     console.warn("Failed to fetch DB from GitHub:", error);
@@ -129,30 +129,28 @@ export const fetchDb = async (): Promise<{ data: DbSchema; sha: string }> => {
     // For other errors (auth, network), fallback to LocalStorage if available
     const local = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (local) {
-      return { data: JSON.parse(local), sha: "local-sha" };
+      return { data: JSON.parse(local), sha: 'local-sha' };
     }
-
+    
     throw error;
   }
 };
 
 // Generic function to save the entire list (used for add, update, delete)
-export const syncItemsToDb = async (
-  items: BrainDumpItem[],
-): Promise<boolean> => {
+export const syncItemsToDb = async (items: BrainDumpItem[]): Promise<boolean> => {
   const config = getGithubConfig();
-  let currentSha = "";
+  let currentSha = '';
 
   try {
     if (config) {
-      // Fetch latest SHA to avoid conflicts
-      try {
-        const res = await fetchDb();
-        currentSha = res.sha;
-      } catch (e) {
-        // If fetch fails (e.g. 404 handled inside fetchDb returns sha=''), ignore specific errors here
-        // logging handled in fetchDb
-      }
+        // Fetch latest SHA to avoid conflicts
+        try {
+            const res = await fetchDb();
+            currentSha = res.sha;
+        } catch (e) {
+            // If fetch fails (e.g. 404 handled inside fetchDb returns sha=''), ignore specific errors here
+            // logging handled in fetchDb
+        }
     }
   } catch (e) {
     console.warn("Could not fetch current DB SHA, proceeding with caution.");
@@ -178,7 +176,7 @@ export const syncItemsToDb = async (
         path: config.path,
         message: `Update via BrainDump`,
         content: contentEncoded,
-        sha: currentSha && currentSha !== "local-sha" ? currentSha : undefined,
+        sha: currentSha && currentSha !== 'local-sha' ? currentSha : undefined,
       });
       return true;
     } catch (error) {
@@ -191,9 +189,7 @@ export const syncItemsToDb = async (
 };
 
 // Deprecated wrapper for backward compatibility
-export const saveItemToDb = async (
-  newItem: BrainDumpItem,
-): Promise<boolean> => {
+export const saveItemToDb = async (newItem: BrainDumpItem): Promise<boolean> => {
   const { data } = await fetchDb();
   const newItems = [...data.data, newItem];
   return syncItemsToDb(newItems);

@@ -1,14 +1,40 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ItemType, BrainDumpItem } from '../types';
 
-// Use the API Key from environment variables
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
 
-const modelName = 'gemini-3-flash-preview';
+export const getGeminiKey = (): string => {
+  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.API_KEY || '';
+};
+
+export const saveGeminiKey = (key: string) => {
+  if (key) {
+      localStorage.setItem(GEMINI_SETTINGS_KEY, key);
+  } else {
+      localStorage.removeItem(GEMINI_SETTINGS_KEY);
+  }
+};
+
+// Updated to Gemini 2.5 Flash Lite as requested
+const modelName = 'gemini-flash-lite-latest';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const classifyText = async (text: string, existingTags: string[] = [], retryCount = 0): Promise<Partial<BrainDumpItem>> => {
+  const apiKey = getGeminiKey();
+  
+  if (!apiKey) {
+      console.warn("No Gemini API Key found.");
+      return {
+        type: ItemType.NOTE,
+        content: text,
+        meta: { tags: ['missing-api-key'] }
+      };
+  }
+
+  // Initialize client dynamically to support key changes at runtime
+  const ai = new GoogleGenAI({ apiKey });
+
   const currentDate = new Date().toISOString();
   const tagsContext = existingTags.length > 0 ? `Existing tags you should try to reuse if relevant: ${existingTags.join(', ')}` : '';
 
