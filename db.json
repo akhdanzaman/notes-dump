@@ -231,7 +231,8 @@
         "tags": [
           "errand",
           "laundry"
-        ]
+        ],
+        "amount": 31500
       },
       "isOptimistic": false
     },
