@@ -1,15 +1,19 @@
 {
   "data": [
     {
-      "id": "135d4ee1-fa23-4797-baa0-01854ecd5d13",
-      "type": "NOTE",
-      "content": "note: harga nasi sayur 8000 di kharisma bahari",
+      "id": "0e40fb4b-4813-498a-8ad6-a49cd39507cc",
       "status": "pending",
-      "created_at": "2026-01-24T07:57:49.414Z",
+      "created_at": "2026-01-24T07:57:54.502Z",
+      "type": "NOTE",
+      "content": "harga nasi sayur 8000 di kharisma bahari",
       "meta": {
-        "tags": []
+        "amount": 8000,
+        "tags": [
+          "food",
+          "observation"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "67d2447a-457c-40ca-b8a5-6a8d72c4c0e6",
