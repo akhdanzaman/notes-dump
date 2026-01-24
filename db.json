@@ -1,20 +1,6 @@
 {
   "data": [
     {
-      "id": "d0de8783-f1d5-4420-a97c-3f7344f33ef3",
-      "status": "pending",
-      "created_at": "2026-01-24T08:18:24.071Z",
-      "type": "TODO",
-      "content": "bayar gopaylater",
-      "meta": {
-        "date": "2026-01-29",
-        "tags": [
-          "finance"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "50774428-6d25-49c9-9303-0e2505420992",
       "status": "pending",
       "created_at": "2026-01-24T08:04:19.718Z",
