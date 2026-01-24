@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "id": "aaa07066-8f45-470f-9614-657fef21e9c7",
+      "type": "NOTE",
+      "content": "ambil laundry besok minggu",
+      "status": "pending",
+      "created_at": "2026-01-24T04:34:39.724Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": false
+    }
+  ]
+}
