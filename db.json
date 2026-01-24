@@ -2,7 +2,7 @@
   "data": [
     {
       "id": "55ce039b-abd6-42e2-99b8-dc153e037dbf",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-24T05:24:40.221Z",
       "type": "SHOPPING",
       "content": "beli hanger",
@@ -13,7 +13,8 @@
           "errand"
         ]
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-01-24T05:24:44.879Z"
     },
     {
       "id": "e6d37160-78e2-4de9-ba10-cef55c0f917e",
