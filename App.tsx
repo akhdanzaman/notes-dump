@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BrainDumpItem, ItemType } from './types';
-import { fetchDb, syncItemsToDb, isUsingLocalStorage } from './services/githubService';
+import { fetchDb, syncItemsToDb, isUsingLocalStorage, SyncResult } from './services/githubService';
 import { classifyText } from './services/geminiService';
 
 import Card from './components/Card';
@@ -13,6 +13,7 @@ import EditModal from './components/EditModal';
 import SettingsModal from './components/SettingsModal';
 
 type Tab = 'focus' | 'shopping' | 'notes' | 'history';
+type SyncStatus = 'synced' | 'syncing' | 'error' | 'local';
 
 const App: React.FC = () => {
   const [items, setItems] = useState<BrainDumpItem[]>([]);
@@ -21,6 +22,9 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('focus');
+  
+  // Sync Status
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
   
   // Settings UI
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -62,6 +66,24 @@ const App: React.FC = () => {
       });
   };
 
+  // Wrapper for syncing to update status
+  const saveAndSync = async (newItems: BrainDumpItem[]) => {
+      setSyncStatus('syncing');
+      try {
+          const result: SyncResult = await syncItemsToDb(newItems);
+          if (result.method === 'error') {
+              setSyncStatus('error');
+          } else if (result.method === 'local') {
+              setSyncStatus('local');
+          } else {
+              setSyncStatus('synced');
+          }
+      } catch (e) {
+          console.error(e);
+          setSyncStatus('error');
+      }
+  };
+
   const loadData = useCallback(async () => {
       try {
         setLoading(true);
@@ -74,12 +96,16 @@ const App: React.FC = () => {
           const checkedData = checkRoutineResets(data.data);
           setItems(checkedData);
           if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-             await syncItemsToDb(checkedData);
+             await saveAndSync(checkedData);
+          } else {
+             // If no changes, just set status based on mode
+             setSyncStatus(isUsingLocalStorage() ? 'local' : 'synced');
           }
         }
       } catch (err) {
         console.error(err);
         setError("Failed to load data. Please check connection.");
+        setSyncStatus('error');
       } finally {
         setLoading(false);
       }
@@ -119,7 +145,12 @@ const App: React.FC = () => {
       isOptimistic: true,
     };
 
-    setItems((prev) => [optimisticItem, ...prev]);
+    setItems((prev) => {
+        const updated = [optimisticItem, ...prev];
+        // We sync optimistically too to save the raw input
+        saveAndSync(updated);
+        return updated;
+    });
 
     // Fire and forget (background process)
     processItemInBackground(text, tempId, optimisticItem);
@@ -142,13 +173,17 @@ const App: React.FC = () => {
         setItems((prev) => {
              // Replace optimistic item with real one
              const updated = prev.map(i => i.id === tempId ? finalItem : i);
-             syncItemsToDb(updated).catch(console.error); // Sync in background
+             saveAndSync(updated); 
              return updated;
         });
 
     } catch (err) {
         console.error("Processing failed", err);
-        setItems(prev => prev.filter(i => i.id !== tempId));
+        setItems(prev => {
+            const updated = prev.filter(i => i.id !== tempId);
+            saveAndSync(updated);
+            return updated;
+        });
     } finally {
         setPendingCount(prev => Math.max(0, prev - 1));
     }
@@ -166,7 +201,7 @@ const App: React.FC = () => {
           item.id === id ? { ...item, status: newStatus, completed_at: completedAt } : item
         );
         
-        syncItemsToDb(updatedItems);
+        saveAndSync(updatedItems);
         return updatedItems;
     });
   };
@@ -177,7 +212,7 @@ const App: React.FC = () => {
     
     setItems(prev => {
         const updatedItems = prev.filter(i => i.id !== id);
-        syncItemsToDb(updatedItems);
+        saveAndSync(updatedItems);
         return updatedItems;
     });
   };
@@ -189,7 +224,7 @@ const App: React.FC = () => {
                 ? { ...item, content: newContent, meta: { ...item.meta, tags: newTags } } 
                 : item
           );
-          syncItemsToDb(updatedItems);
+          saveAndSync(updatedItems);
           return updatedItems;
       });
   };
@@ -336,6 +371,49 @@ const App: React.FC = () => {
   };
 
   // --- Render Helpers ---
+  
+  const renderSyncIndicator = () => {
+    let icon, text, color;
+    
+    switch(syncStatus) {
+        case 'synced':
+            icon = <CloudCheck className="w-4 h-4" />;
+            text = "Saved";
+            color = "text-emerald-400 bg-emerald-400/10 border-emerald-400/20";
+            break;
+        case 'syncing':
+            icon = <RefreshCw className="w-4 h-4 animate-spin" />;
+            text = "Saving...";
+            color = "text-blue-400 bg-blue-400/10 border-blue-400/20";
+            break;
+        case 'error':
+            icon = <CloudOff className="w-4 h-4" />;
+            text = "Sync Failed";
+            color = "text-red-400 bg-red-400/10 border-red-400/20";
+            break;
+        case 'local':
+            icon = <Save className="w-4 h-4" />;
+            text = "Local";
+            color = "text-amber-400 bg-amber-400/10 border-amber-400/20";
+            break;
+    }
+
+    return (
+        <button 
+            onClick={() => {
+                if (syncStatus === 'error' || syncStatus === 'local') {
+                    // Force retry sync
+                    saveAndSync(items);
+                }
+            }}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${color}`}
+            title={syncStatus === 'error' ? "Click to retry sync" : "Sync Status"}
+        >
+            {icon}
+            <span className="hidden sm:inline">{text}</span>
+        </button>
+    );
+  };
 
   const renderTabs = () => (
     <div className="flex justify-center mb-6 overflow-x-auto no-scrollbar pb-2">
@@ -387,21 +465,23 @@ const App: React.FC = () => {
                <Brain className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-xl font-bold tracking-tight hidden sm:block">BrainDump <span className="text-muted font-normal text-sm ml-1">AI</span></h1>
-            {isLocalMode && (
-              <span className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-amber-500 bg-amber-900/20 px-2 py-0.5 rounded border border-amber-900/50">
-                <WifiOff className="w-3 h-3" /> Local
-              </span>
-            )}
+            
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+             {/* Pending Processing Indicator (AI) */}
              {pendingCount > 0 && (
-                <div className="flex items-center gap-2 text-xs text-acc-todo bg-acc-todo/10 px-2 py-1 rounded-full animate-pulse mr-2">
+                <div className="flex items-center gap-2 text-xs text-acc-todo bg-acc-todo/10 px-3 py-1.5 rounded-full animate-pulse mr-1">
                     <RefreshCw className="w-3 h-3 animate-spin" />
-                    <span>Processing...</span>
+                    <span className="hidden sm:inline">Processing...</span>
                 </div>
              )}
              
+             {/* Cloud Sync Status */}
+             {renderSyncIndicator()}
+
+             <div className="w-px h-6 bg-border mx-1"></div>
+
              <button 
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2 text-muted hover:text-white hover:bg-surface rounded-full transition-colors"

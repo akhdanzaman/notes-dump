@@ -136,40 +136,40 @@ export const fetchDb = async (): Promise<{ data: DbSchema; sha: string }> => {
   }
 };
 
+export type SyncResult = { success: boolean; method: 'cloud' | 'local' | 'error' };
+
 // Generic function to save the entire list (used for add, update, delete)
-export const syncItemsToDb = async (items: BrainDumpItem[]): Promise<boolean> => {
+export const syncItemsToDb = async (items: BrainDumpItem[]): Promise<SyncResult> => {
   const config = getGithubConfig();
   let currentSha = '';
 
-  try {
-    if (config) {
-        // Fetch latest SHA to avoid conflicts
-        try {
-            const res = await fetchDb();
-            currentSha = res.sha;
-        } catch (e) {
-            // If fetch fails (e.g. 404 handled inside fetchDb returns sha=''), ignore specific errors here
-            // logging handled in fetchDb
-        }
-    }
-  } catch (e) {
-    console.warn("Could not fetch current DB SHA, proceeding with caution.");
-  }
-
+  // Always save to LocalStorage first (Optimistic)
   const updatedDb: DbSchema = { data: items };
   const jsonString = JSON.stringify(updatedDb, null, 2);
 
-  // Always save to LocalStorage
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
   } catch (e) {
     console.error("Local storage error", e);
   }
 
-  if (config) {
-    const octokit = new Octokit({ auth: config.token });
-    try {
+  if (!config) {
+      return { success: true, method: 'local' };
+  }
+
+  // GitHub Sync
+  try {
+      // 1. Try to get SHA to prevent conflicts (optional optimization: cache this)
+      try {
+          const res = await fetchDb();
+          currentSha = res.sha;
+      } catch (e) {
+          // Proceeding might overwrite if we don't have SHA, but usually fetchDb handles fallback
+      }
+
+      const octokit = new Octokit({ auth: config.token });
       const contentEncoded = toBase64(jsonString);
+      
       await octokit.repos.createOrUpdateFileContents({
         owner: config.owner,
         repo: config.repo,
@@ -178,19 +178,21 @@ export const syncItemsToDb = async (items: BrainDumpItem[]): Promise<boolean> =>
         content: contentEncoded,
         sha: currentSha && currentSha !== 'local-sha' ? currentSha : undefined,
       });
-      return true;
-    } catch (error) {
-      console.error("Failed to sync to GitHub:", error);
-      return true; // Return true as local save worked
-    }
-  }
 
-  return true;
+      return { success: true, method: 'cloud' };
+
+  } catch (error) {
+    console.error("Failed to sync to GitHub:", error);
+    // Return success: true because local save worked, but method is local (indicating cloud failed)
+    // Or we can return error to let UI show a warning
+    return { success: true, method: 'error' }; 
+  }
 };
 
 // Deprecated wrapper for backward compatibility
 export const saveItemToDb = async (newItem: BrainDumpItem): Promise<boolean> => {
   const { data } = await fetchDb();
   const newItems = [...data.data, newItem];
-  return syncItemsToDb(newItems);
+  const result = await syncItemsToDb(newItems);
+  return result.success;
 };
