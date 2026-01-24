@@ -118,7 +118,8 @@
         "tags": [
           "purchase",
           "errand"
-        ]
+        ],
+        "amount": 45000
       },
       "isOptimistic": false,
       "completed_at": "2026-01-24T05:24:46.211Z"
