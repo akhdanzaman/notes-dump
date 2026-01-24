@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "b29999ed-9957-4178-840d-8c3cce9bae6c",
+      "type": "NOTE",
+      "content": "beli telur tiap hari sabtu",
+      "status": "pending",
+      "created_at": "2026-01-24T04:35:03.112Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "aaa07066-8f45-470f-9614-657fef21e9c7",
       "type": "NOTE",
       "content": "ambil laundry besok minggu",
