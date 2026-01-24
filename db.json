@@ -1,6 +1,21 @@
 {
   "data": [
     {
+      "id": "957b74d9-922d-41b1-af29-f60235242e64",
+      "type": "SHOPPING",
+      "content": "Beli stop kontak, payung, keset",
+      "status": "pending",
+      "created_at": "2026-01-24T04:48:59.260Z",
+      "meta": {
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "errand",
+          "electronics"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "ced554e8-fccc-4379-b606-4661df4ab6c0",
       "type": "NOTE",
       "content": "Honuma san orang jepang yang suka senyum",
