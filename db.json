@@ -1,24 +1,21 @@
 {
   "data": [
     {
-      "id": "b29999ed-9957-4178-840d-8c3cce9bae6c",
-      "type": "NOTE",
-      "content": "beli telur tiap hari sabtu",
+      "id": "08e0c1d6-0f23-4a44-9318-2afa76d503e1",
+      "type": "SHOPPING",
+      "content": "ambil laundry",
       "status": "pending",
-      "created_at": "2026-01-24T04:35:03.112Z",
+      "created_at": "2026-01-24T04:35:21.465Z",
       "meta": {
-        "tags": []
-      },
-      "isOptimistic": false
-    },
-    {
-      "id": "aaa07066-8f45-470f-9614-657fef21e9c7",
-      "type": "NOTE",
-      "content": "ambil laundry besok minggu",
-      "status": "pending",
-      "created_at": "2026-01-24T04:34:39.724Z",
-      "meta": {
-        "tags": []
+        "date": "2026-01-25T00:00:00.000Z",
+        "shoppingCategory": "routine",
+        "tags": [
+          "chores",
+          "laundry",
+          "errand",
+          "housekeeping",
+          "weekly-task"
+        ]
       },
       "isOptimistic": false
     }
