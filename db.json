@@ -1,15 +1,17 @@
 {
   "data": [
     {
-      "id": "7a78ceb4-dcaf-4d44-a9f4-e1c15dfef0ab",
-      "type": "NOTE",
-      "content": "note: Github : M@********6",
+      "id": "7fb9cb9a-ab08-4009-b361-8492a89a29f9",
       "status": "pending",
-      "created_at": "2026-01-24T10:08:32.068Z",
+      "created_at": "2026-01-24T10:08:34.516Z",
+      "type": "NOTE",
+      "content": "Github : M@********6",
       "meta": {
-        "tags": []
+        "tags": [
+          "business"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "f5692ca6-f1c5-4fa5-8d51-a28995d8c406",
