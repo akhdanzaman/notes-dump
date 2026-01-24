@@ -1,20 +1,92 @@
 {
   "data": [
     {
-      "id": "08e0c1d6-0f23-4a44-9318-2afa76d503e1",
+      "id": "bde51ae6-9c12-497a-b334-467de19adbac",
       "type": "SHOPPING",
-      "content": "ambil laundry",
+      "content": "Buy umbrella",
       "status": "pending",
-      "created_at": "2026-01-24T04:35:21.465Z",
+      "created_at": "2026-01-24T04:50:40.824Z",
+      "meta": {
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "errand",
+          "purchase"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "1fcbd815-30a9-4765-b17d-6336ee94caef",
+      "type": "SHOPPING",
+      "content": "Beli stop kontak",
+      "status": "pending",
+      "created_at": "2026-01-24T04:49:51.269Z",
+      "meta": {
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "electronics",
+          "errand"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "ced554e8-fccc-4379-b606-4661df4ab6c0",
+      "type": "NOTE",
+      "content": "Honuma san orang jepang yang suka senyum",
+      "status": "pending",
+      "created_at": "2026-01-24T04:48:26.067Z",
+      "meta": {
+        "tags": [
+          "observation",
+          "people"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "9fafd682-8cc6-42cf-8c5c-8f76761f0d3f",
+      "type": "NOTE",
+      "content": "Daftar referensi tempat makan: mie ayam mahkota, juragan dimsum, pecel lele deket pos, tenda tenda soto deket pecel lele, bubur ayam al azhar kelapa gading, alfamidi kekiri ada PSB.",
+      "status": "pending",
+      "created_at": "2026-01-24T04:47:51.673Z",
+      "meta": {
+        "tags": [
+          "food",
+          "recommendations",
+          "errand"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "fe47f26c-1845-4381-8f5b-98f37f499013",
+      "type": "SHOPPING",
+      "content": "Ambil laundry",
+      "status": "pending",
+      "created_at": "2026-01-24T04:41:52.242Z",
       "meta": {
         "date": "2026-01-25T00:00:00.000Z",
         "shoppingCategory": "routine",
         "tags": [
-          "chores",
-          "laundry",
           "errand",
-          "housekeeping",
-          "weekly-task"
+          "laundry"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c1e4542c-2cde-46af-bd15-deb32a203caa",
+      "type": "SHOPPING",
+      "content": "Beli headset",
+      "status": "pending",
+      "created_at": "2026-01-24T04:40:27.481Z",
+      "meta": {
+        "date": "2026-01-26T00:00:00.000Z",
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "errand",
+          "electronics"
         ]
       },
       "isOptimistic": false
