@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "f1f04831-c7d2-461a-9e84-5830c8914c37",
-      "type": "NOTE",
-      "content": "aku abis beli cilok 5000",
-      "status": "pending",
-      "created_at": "2026-01-24T07:04:45.580Z",
+      "id": "5a7edf36-2b62-42f7-8141-a5df0fa5df0d",
+      "status": "done",
+      "created_at": "2026-01-24T07:04:48.716Z",
+      "completed_at": "2026-01-24T07:04:48.716Z",
+      "type": "FINANCE",
+      "content": "beli cilok",
       "meta": {
-        "tags": []
+        "amount": 5000,
+        "date": "2026-01-24",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
