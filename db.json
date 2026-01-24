@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "1a726a82-6817-4811-a3a7-281151c2da9d",
+      "type": "NOTE",
+      "content": "Besok minggu summary apa yang sudah aku pelajari di kantor karena mungkin ada quick quizz",
+      "status": "pending",
+      "created_at": "2026-01-24T05:38:28.094Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "pending",
       "created_at": "2026-01-24T05:26:25.590Z",
