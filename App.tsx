@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BrainDumpItem, ItemType } from './types';
@@ -10,6 +10,7 @@ import Card from './components/Card';
 import ShoppingItem from './components/ShoppingItem';
 import InputBar from './components/InputBar';
 import EditModal from './components/EditModal';
+import SettingsModal from './components/SettingsModal';
 
 type Tab = 'focus' | 'shopping' | 'notes' | 'history';
 
@@ -21,6 +22,9 @@ const App: React.FC = () => {
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('focus');
   
+  // Settings UI
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
   // Filters
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,38 +35,6 @@ const App: React.FC = () => {
   // Refs for accessing latest state in async callbacks
   const itemsRef = useRef(items);
   itemsRef.current = items;
-
-  // Initial Data Fetch
-  useEffect(() => {
-    const init = async () => {
-      try {
-        setLoading(true);
-        setIsLocalMode(isUsingLocalStorage());
-
-        const { data } = await fetchDb();
-        if (data && Array.isArray(data.data)) {
-          // Check for routine items that need resetting on load
-          const checkedData = checkRoutineResets(data.data);
-          setItems(checkedData);
-          if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-             await syncItemsToDb(checkedData);
-          }
-        }
-      } catch (err) {
-        setError("Failed to load data. Please check connection.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
-
-  // Compute all unique tags for AI context
-  const uniqueTags = useMemo(() => {
-    const tags = new Set<string>();
-    items.forEach(i => i.meta?.tags?.forEach(t => tags.add(t)));
-    return Array.from(tags);
-  }, [items]);
 
   // Routine Reset Logic: Checks if a done routine item should be reset to pending
   const checkRoutineResets = (currentItems: BrainDumpItem[]) => {
@@ -89,6 +61,47 @@ const App: React.FC = () => {
           return item;
       });
   };
+
+  const loadData = useCallback(async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        setIsLocalMode(isUsingLocalStorage());
+
+        const { data } = await fetchDb();
+        if (data && Array.isArray(data.data)) {
+          // Check for routine items that need resetting on load
+          const checkedData = checkRoutineResets(data.data);
+          setItems(checkedData);
+          if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
+             await syncItemsToDb(checkedData);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load data. Please check connection.");
+      } finally {
+        setLoading(false);
+      }
+  }, []);
+
+  // Initial Data Fetch
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Handle settings update
+  const handleSettingsSaved = () => {
+      setIsSettingsOpen(false);
+      loadData();
+  };
+
+  // Compute all unique tags for AI context
+  const uniqueTags = useMemo(() => {
+    const tags = new Set<string>();
+    items.forEach(i => i.meta?.tags?.forEach(t => tags.add(t)));
+    return Array.from(tags);
+  }, [items]);
 
   const handleSend = async (text: string) => {
     setPendingCount(prev => prev + 1);
@@ -152,9 +165,6 @@ const App: React.FC = () => {
         const updatedItems = prevItems.map(item => 
           item.id === id ? { ...item, status: newStatus, completed_at: completedAt } : item
         );
-
-        // We do NOT create duplicates for routine items anymore. 
-        // We just mark them done. They will be reset by checkRoutineResets later.
         
         syncItemsToDb(updatedItems);
         return updatedItems;
@@ -318,9 +328,6 @@ const App: React.FC = () => {
   };
 
   const getHistoryItems = () => {
-      // Show all done items, EXCEPT routine items that are currently "active" in the Life tab (just waiting)
-      // Actually, standard behavior is history shows everything done. 
-      // But user might want to see the log. Let's show them.
       return items.filter(i => i.status === 'done').sort((a, b) => {
           const ta = a.completed_at ? new Date(a.completed_at).getTime() : 0;
           const tb = b.completed_at ? new Date(b.completed_at).getTime() : 0;
@@ -387,13 +394,21 @@ const App: React.FC = () => {
             )}
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
              {pendingCount > 0 && (
-                <div className="flex items-center gap-2 text-xs text-acc-todo bg-acc-todo/10 px-2 py-1 rounded-full animate-pulse">
+                <div className="flex items-center gap-2 text-xs text-acc-todo bg-acc-todo/10 px-2 py-1 rounded-full animate-pulse mr-2">
                     <RefreshCw className="w-3 h-3 animate-spin" />
-                    <span>Processing {pendingCount}...</span>
+                    <span>Processing...</span>
                 </div>
              )}
+             
+             <button 
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-2 text-muted hover:text-white hover:bg-surface rounded-full transition-colors"
+                title="Settings"
+             >
+                 <Settings className="w-5 h-5" />
+             </button>
           </div>
         </div>
       </header>
@@ -613,6 +628,13 @@ const App: React.FC = () => {
             onSave={handleUpdateItem} 
         />
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSave={handleSettingsSaved}
+      />
     </div>
   );
 };

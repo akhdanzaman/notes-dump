@@ -1,25 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { ItemType, BrainDumpItem } from "../types";
+import { ItemType, BrainDumpItem } from '../types';
 
 // Use the API Key from environment variables
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const modelName = "gemini-2.5-flash-lite";
+const modelName = 'gemini-3-flash-preview';
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const classifyText = async (
-  text: string,
-  existingTags: string[] = [],
-  retryCount = 0
-): Promise<Partial<BrainDumpItem>> => {
+export const classifyText = async (text: string, existingTags: string[] = [], retryCount = 0): Promise<Partial<BrainDumpItem>> => {
   const currentDate = new Date().toISOString();
-  const tagsContext =
-    existingTags.length > 0
-      ? `Existing tags you should try to reuse if relevant: ${existingTags.join(
-          ", "
-        )}`
-      : "";
+  const tagsContext = existingTags.length > 0 ? `Existing tags you should try to reuse if relevant: ${existingTags.join(', ')}` : '';
 
   try {
     const response = await ai.models.generateContent({
@@ -65,16 +56,10 @@ export const classifyText = async (
                 date: { type: Type.STRING, description: "ISO date string" },
                 tags: { type: Type.ARRAY, items: { type: Type.STRING } },
                 quantity: { type: Type.STRING },
-                shoppingCategory: {
-                  type: Type.STRING,
-                  description: "urgent, not_urgent, or routine",
-                },
-                recurrenceDays: {
-                  type: Type.NUMBER,
-                  description: "Number of days for routine items",
-                },
-              },
-            },
+                shoppingCategory: { type: Type.STRING, description: "urgent, not_urgent, or routine" },
+                recurrenceDays: { type: Type.NUMBER, description: "Number of days for routine items" }
+              }
+            }
           },
           required: ["type", "content"],
         },
@@ -82,7 +67,7 @@ export const classifyText = async (
     });
 
     const result = JSON.parse(response.text || "{}");
-
+    
     // Validate type matches our Enum
     let matchedType = ItemType.NOTE;
     const typeStr = result.type?.toUpperCase();
@@ -92,52 +77,50 @@ export const classifyText = async (
 
     // Default shopping category if missing
     if (matchedType === ItemType.SHOPPING && !result.meta?.shoppingCategory) {
-      if (!result.meta) result.meta = {};
-      result.meta.shoppingCategory = "not_urgent";
+        if (!result.meta) result.meta = {};
+        result.meta.shoppingCategory = 'not_urgent';
     }
 
     return {
       type: matchedType,
       content: result.content || text,
-      meta: result.meta || { tags: [] },
+      meta: result.meta || { tags: [] }
     };
+
   } catch (error: any) {
     // Basic Error Handling with Retry for transient 429s (not quota) or 5xx
     const status = error?.status || error?.response?.status;
-    const msg = error?.message || "";
+    const msg = error?.message || '';
     const code = error?.code;
-
+    
     // Check specifically for Resource Exhausted (Quota limit)
     // Google GenAI usually returns 'RESOURCE_EXHAUSTED' in the status string or message
-    const isQuota =
-      msg.includes("RESOURCE_EXHAUSTED") ||
-      (status === 429 && msg.includes("quota")) ||
-      code === 429;
-
+    const isQuota = msg.includes('RESOURCE_EXHAUSTED') || (status === 429 && msg.includes('quota')) || code === 429;
+    
     if (isQuota) {
-      console.warn("Gemini Quota Exceeded. Falling back to basic Note.");
-      return {
-        type: ItemType.NOTE,
-        content: text,
-        meta: { tags: ["quota-limit"] },
-      };
+         console.warn("Gemini Quota Exceeded. Falling back to basic Note.");
+         return {
+            type: ItemType.NOTE,
+            content: text,
+            meta: { tags: ['quota-limit'] }
+         };
     }
 
     // Retry logic for other transient errors (server errors or simple rate limits)
     if (retryCount < 2 && (status === 429 || status >= 500)) {
-      const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s
-      console.warn(`Gemini API Error (${status}), retrying in ${delay}ms...`);
-      await wait(delay);
-      return classifyText(text, existingTags, retryCount + 1);
+        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s
+        console.warn(`Gemini API Error (${status}), retrying in ${delay}ms...`);
+        await wait(delay);
+        return classifyText(text, existingTags, retryCount + 1);
     }
 
     console.error("Gemini classification failed:", error);
-
+    
     // Fallback if AI fails completely (network, unknown error)
     return {
       type: ItemType.NOTE,
       content: text,
-      meta: { tags: ["uncategorized"] },
+      meta: { tags: ['uncategorized'] }
     };
   }
 };
