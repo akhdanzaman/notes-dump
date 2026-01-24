@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "2390846a-4f9d-4616-8fc4-0db99dff1ace",
+      "type": "NOTE",
+      "content": "besok hari minggu bikin summary tentang hal yang dipelajari di kantor",
+      "status": "pending",
+      "created_at": "2026-01-24T07:05:22.668Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "5a7edf36-2b62-42f7-8141-a5df0fa5df0d",
       "status": "done",
       "created_at": "2026-01-24T07:04:48.716Z",
