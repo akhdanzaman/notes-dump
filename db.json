@@ -126,7 +126,8 @@
         "tags": [
           "purchase",
           "errand"
-        ]
+        ],
+        "amount": 25000
       },
       "isOptimistic": false
     },
