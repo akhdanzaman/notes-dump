@@ -1,0 +1,173 @@
+import React from 'react';
+import { ItemType, BrainDumpItem } from '../types';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2 } from 'lucide-react';
+
+interface CardProps {
+  item: BrainDumpItem;
+  onToggleStatus?: (id: string) => void;
+  onEdit?: (item: BrainDumpItem) => void;
+  onDelete?: (id: string) => void;
+  readonly?: boolean;
+}
+
+const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, readonly = false }) => {
+  const { type, content, meta, isOptimistic, status, created_at, completed_at } = item;
+  const isDone = status === 'done';
+  const isNote = type === ItemType.NOTE;
+
+  // Visual variants based on Type
+  const getStyles = () => {
+    switch (type) {
+      case ItemType.TODO:
+        return {
+          border: 'border-l-4 border-l-acc-todo',
+          icon: <CheckCircle2 className="w-4 h-4 text-acc-todo" />,
+          bg: 'bg-surface'
+        };
+      case ItemType.SHOPPING:
+        return {
+          border: 'border-l-4 border-l-acc-shopping',
+          icon: <ShoppingCart className="w-4 h-4 text-acc-shopping" />,
+          bg: 'bg-surface'
+        };
+      case ItemType.EVENT:
+        return {
+          border: 'border-l-4 border-l-acc-event',
+          icon: <Calendar className="w-4 h-4 text-acc-event" />,
+          bg: 'bg-surface'
+        };
+      case ItemType.NOTE:
+      default:
+        return {
+          border: 'border-l-4 border-l-acc-note',
+          icon: <StickyNote className="w-4 h-4 text-acc-note" />,
+          bg: 'bg-surface'
+        };
+    }
+  };
+
+  const style = getStyles();
+
+  // Smart Date Formatting
+  let displayDate = null;
+  let showTime = false;
+
+  const rawDate = readonly && completed_at ? completed_at : (meta?.date && meta.date !== 'null' ? meta.date : created_at);
+  const isCreatedDate = !meta?.date || meta.date === 'null';
+
+  if (rawDate) {
+    const dateObj = new Date(rawDate);
+    if (!isNaN(dateObj.getTime())) {
+      const hasTimeComponent = rawDate.includes('T') && !rawDate.endsWith('00:00:00.000Z');
+      const datePart = dateObj.toLocaleDateString(undefined, { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+
+      if (hasTimeComponent || isCreatedDate) {
+        const timePart = dateObj.toLocaleTimeString(undefined, { 
+          hour: '2-digit', 
+          minute:'2-digit' 
+        });
+        displayDate = `${datePart} • ${timePart}`;
+        showTime = true;
+      } else {
+        displayDate = datePart;
+      }
+    }
+  }
+
+  const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
+  const quantity = meta?.quantity && meta.quantity !== 'null' ? meta.quantity : null;
+
+  return (
+    <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone ? 'opacity-60 grayscale' : ''}`}>
+      
+      {/* Header Row */}
+      <div className={`flex items-start justify-between ${isNote ? 'mb-1' : 'mb-2'} pr-12`}>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Action Checkbox for TODO/EVENT */}
+          {!readonly && (type === ItemType.TODO || type === ItemType.EVENT) && onToggleStatus ? (
+            <button onClick={() => onToggleStatus(item.id)} className="transition-colors hover:text-white text-muted">
+               {isDone ? <CheckCircle2 className="w-5 h-5 text-acc-todo" /> : <Circle className="w-5 h-5" />}
+            </button>
+          ) : (
+             style.icon
+          )}
+          
+          <span className="text-xs font-semibold tracking-wider text-muted opacity-80">{type}</span>
+          
+          {/* For NOTES: Display Date and Tags in Header */}
+          {isNote && (
+             <>
+                {displayDate && (
+                  <span className="text-[10px] text-muted flex items-center gap-1 border-l border-border pl-2 ml-1">
+                     {displayDate}
+                  </span>
+                )}
+                {validTags.map((tag, i) => (
+                  <span key={i} className="text-[10px] text-acc-note/80 bg-acc-note/10 px-1.5 py-0.5 rounded">
+                    #{tag}
+                  </span>
+                ))}
+             </>
+          )}
+        </div>
+        
+        {quantity && (
+           <span className="text-xs bg-border px-2 py-1 rounded-full text-white">{quantity}</span>
+        )}
+      </div>
+
+      {/* Action Buttons (Top Right) */}
+      {!readonly && (
+        <div className="absolute top-3 right-3 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+           {onEdit && (
+            <button 
+              onClick={() => onEdit(item)}
+              className="p-1.5 hover:bg-white/10 rounded-md text-muted hover:text-white transition-colors"
+              title="Edit"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+           )}
+           {onDelete && (
+            <button 
+              onClick={() => onDelete(item.id)}
+              className="p-1.5 hover:bg-red-900/30 rounded-md text-muted hover:text-red-400 transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+           )}
+        </div>
+      )}
+
+      <p className={`text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-medium ${isDone ? 'line-through text-muted' : ''}`}>
+        {content}
+      </p>
+
+      {/* Metadata Footer - For TODO/EVENT if they have tags or dates (previously only showed dates/time) */}
+      {!isNote && (displayDate || validTags.length > 0) && (
+        <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-2 items-center">
+          {displayDate && (
+             <div className={`flex items-center gap-1 text-xs ${readonly ? 'text-acc-todo' : (type === ItemType.EVENT ? 'text-acc-event' : 'text-muted')}`}>
+               {readonly ? <CheckCircle2 className="w-3 h-3" /> : (showTime ? <Clock className="w-3 h-3" /> : <Calendar className="w-3 h-3" />)}
+               <span>{readonly ? `Done: ${displayDate}` : (isCreatedDate ? `Added: ${displayDate}` : displayDate)}</span>
+             </div>
+          )}
+          
+          {validTags.map((tag, i) => (
+             <div key={i} className="flex items-center gap-1 text-xs text-muted bg-black/20 px-2 py-0.5 rounded">
+               <Tag className="w-3 h-3" />
+               <span>{tag}</span>
+             </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Card;
