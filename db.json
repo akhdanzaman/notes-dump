@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "b399f566-e4b2-4618-a59a-63d32411169d",
+      "type": "NOTE",
+      "content": "beli hanger dan beli gantungan baju\n",
+      "status": "pending",
+      "created_at": "2026-01-24T05:24:38.731Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "bde51ae6-9c12-497a-b334-467de19adbac",
       "type": "SHOPPING",
       "content": "Buy umbrella",
