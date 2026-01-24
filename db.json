@@ -1,6 +1,32 @@
 {
   "data": [
     {
+      "id": "eb037315-84ec-49ff-b4bb-dac686e52027",
+      "type": "NOTE",
+      "content": "Beli stop kontak",
+      "status": "pending",
+      "created_at": "2026-01-24T04:46:43.545Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
+      "id": "a443894f-02b2-4ba1-a2e7-151fd12a1853",
+      "type": "SHOPPING",
+      "content": "Beli payung",
+      "status": "pending",
+      "created_at": "2026-01-24T04:46:40.276Z",
+      "meta": {
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "errand",
+          "purchase"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "e7ed64b8-b42a-4d3e-9e63-f7b682c31d68",
       "type": "SHOPPING",
       "content": "Beli keset",
