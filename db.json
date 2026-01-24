@@ -1,15 +1,32 @@
 {
   "data": [
     {
-      "id": "f8ad8051-774b-4bac-84ff-b08c676b84ff",
-      "type": "NOTE",
-      "content": "Baca peraturan tentang importasi seperti aturan PI atau LS\nbaca peraturan sertifikasi mengenai kaca, velg, dan audio\n",
+      "id": "8147925f-57a4-49b2-a14f-d830471d5a4a",
       "status": "pending",
-      "created_at": "2026-01-24T05:25:40.948Z",
+      "created_at": "2026-01-24T05:25:42.094Z",
+      "type": "TODO",
+      "content": "Baca peraturan tentang importasi seperti aturan PI atau LS",
       "meta": {
-        "tags": []
+        "tags": [
+          "purchase",
+          "observation"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "42c83273-8031-4892-a6ef-396e6af3894c",
+      "status": "pending",
+      "created_at": "2026-01-24T05:25:42.094Z",
+      "type": "TODO",
+      "content": "baca peraturan sertifikasi mengenai kaca, velg, dan audio",
+      "meta": {
+        "tags": [
+          "electronics",
+          "observation"
+        ]
+      },
+      "isOptimistic": false
     },
     {
       "id": "55ce039b-abd6-42e2-99b8-dc153e037dbf",
