@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "bd8672da-5cf1-464d-98e8-ce26271fccb3",
+      "type": "NOTE",
+      "content": "besok senin ingetin mba taza buat ke hrga ngomongin reimburse",
+      "status": "pending",
+      "created_at": "2026-01-24T08:22:03.912Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "25f4bf6a-3e61-4aa0-be84-f2c9ffa01998",
       "status": "pending",
       "created_at": "2026-01-24T08:18:52.875Z",
