@@ -1,22 +1,6 @@
 {
   "data": [
     {
-      "id": "d60e3e6e-9792-4a06-ad2d-146ff87edb5f",
-      "status": "pending",
-      "created_at": "2026-01-24T05:38:29.674Z",
-      "type": "TODO",
-      "content": "Summary apa yang sudah aku pelajari di kantor karena mungkin ada quizz\n",
-      "meta": {
-        "date": "2026-01-25T00:00:00.000Z",
-        "tags": [
-          "work",
-          "productivity",
-          "review"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "pending",
       "created_at": "2026-01-24T05:26:25.590Z",
@@ -59,22 +43,6 @@
         ]
       },
       "isOptimistic": false
-    },
-    {
-      "id": "55ce039b-abd6-42e2-99b8-dc153e037dbf",
-      "status": "done",
-      "created_at": "2026-01-24T05:24:40.221Z",
-      "type": "SHOPPING",
-      "content": "beli hanger",
-      "meta": {
-        "shoppingCategory": "not_urgent",
-        "tags": [
-          "purchase",
-          "errand"
-        ]
-      },
-      "isOptimistic": false,
-      "completed_at": "2026-01-24T05:24:44.879Z"
     },
     {
       "id": "e6d37160-78e2-4de9-ba10-cef55c0f917e",
