@@ -2,10 +2,12 @@ export enum ItemType {
   TODO = 'TODO',
   SHOPPING = 'SHOPPING',
   NOTE = 'NOTE',
-  EVENT = 'EVENT'
+  EVENT = 'EVENT',
+  FINANCE = 'FINANCE'
 }
 
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine';
+export type FinanceType = 'expense' | 'income' | 'lending' | 'reimbursement';
 
 export interface ItemMeta {
   date?: string;
@@ -13,6 +15,13 @@ export interface ItemMeta {
   quantity?: string; // specific for shopping
   shoppingCategory?: ShoppingCategory;
   recurrenceDays?: number; // Number of days for routine items
+  targetDay?: string; // e.g. "Monday", "Sunday"
+  
+  // Finance specific
+  amount?: number;
+  currency?: string;
+  financeType?: FinanceType;
+  paymentMethod?: string; // e.g., 'cash', 'paylater', 'transfer'
 }
 
 export interface BrainDumpItem {

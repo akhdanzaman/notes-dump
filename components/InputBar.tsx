@@ -29,15 +29,14 @@ const InputBar: React.FC<InputBarProps> = ({ onSend }) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // If desktop users want Ctrl+Enter to send, we can add that.
-    // But the request specifically asked for "New line" behavior on keys.
-    if (e.key === 'Enter' && e.ctrlKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
         handleSubmit();
     }
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent pb-6 pt-10 z-50">
+    <div className="w-full pt-2 pb-4 px-4 bg-background z-50">
       <div className="max-w-3xl mx-auto">
         <div className="relative group">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-acc-todo via-acc-note to-acc-event rounded-3xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>

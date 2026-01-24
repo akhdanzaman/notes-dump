@@ -1,6 +1,6 @@
 import React from 'react';
 import { ItemType, BrainDumpItem } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2 } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft } from 'lucide-react';
 
 interface CardProps {
   item: BrainDumpItem;
@@ -14,6 +14,7 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
   const { type, content, meta, isOptimistic, status, created_at, completed_at } = item;
   const isDone = status === 'done';
   const isNote = type === ItemType.NOTE;
+  const isFinance = type === ItemType.FINANCE;
 
   // Visual variants based on Type
   const getStyles = () => {
@@ -35,6 +36,18 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
           border: 'border-l-4 border-l-acc-event',
           icon: <Calendar className="w-4 h-4 text-acc-event" />,
           bg: 'bg-surface'
+        };
+      case ItemType.FINANCE:
+        // Color depends on subtype
+        const isIncome = meta?.financeType === 'income' || meta?.financeType === 'reimbursement';
+        const colorClass = isIncome ? 'border-l-emerald-500' : 'border-l-red-500';
+        const Icon = meta?.financeType === 'lending' ? ArrowRightLeft : (isIncome ? TrendingUp : TrendingDown);
+        const iconColor = isIncome ? 'text-emerald-500' : 'text-red-500';
+        
+        return {
+            border: `border-l-4 ${colorClass}`,
+            icon: <Icon className={`w-4 h-4 ${iconColor}`} />,
+            bg: 'bg-surface'
         };
       case ItemType.NOTE:
       default:
@@ -81,14 +94,22 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
   const quantity = meta?.quantity && meta.quantity !== 'null' ? meta.quantity : null;
 
+  // Finance formatting
+  const formattedAmount = meta?.amount 
+    ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(meta.amount)
+    : null;
+    
+  const financeTypeLabel = meta?.financeType === 'lending' ? 'Lending' : 
+                           meta?.financeType === 'reimbursement' ? 'Reimbursed' : null;
+
   return (
-    <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone ? 'opacity-60 grayscale' : ''}`}>
+    <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone && !isFinance ? 'opacity-60 grayscale' : ''}`}>
       
       {/* Header Row */}
       <div className={`flex items-start justify-between ${isNote ? 'mb-1' : 'mb-2'} pr-12`}>
         <div className="flex flex-wrap items-center gap-2">
           {/* Action Checkbox for TODO/EVENT */}
-          {!readonly && (type === ItemType.TODO || type === ItemType.EVENT) && onToggleStatus ? (
+          {!readonly && !isFinance && (type === ItemType.TODO || type === ItemType.EVENT) && onToggleStatus ? (
             <button onClick={() => onToggleStatus(item.id)} className="transition-colors hover:text-white text-muted">
                {isDone ? <CheckCircle2 className="w-5 h-5 text-acc-todo" /> : <Circle className="w-5 h-5" />}
             </button>
@@ -96,8 +117,17 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
              style.icon
           )}
           
-          <span className="text-xs font-semibold tracking-wider text-muted opacity-80">{type}</span>
+          <span className="text-xs font-semibold tracking-wider text-muted opacity-80">
+              {financeTypeLabel || (type === ItemType.FINANCE ? meta?.financeType?.toUpperCase() : type)}
+          </span>
           
+          {/* Payment Method Badge for Finance */}
+          {isFinance && meta?.paymentMethod && (
+              <span className="text-[10px] text-muted bg-border px-1.5 py-0.5 rounded uppercase">
+                  {meta.paymentMethod}
+              </span>
+          )}
+
           {/* For NOTES: Display Date and Tags in Header */}
           {isNote && (
              <>
@@ -115,8 +145,16 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
           )}
         </div>
         
-        {quantity && (
+        {/* HIDE Quantity for Notes */}
+        {!isNote && quantity && (
            <span className="text-xs bg-border px-2 py-1 rounded-full text-white">{quantity}</span>
+        )}
+        
+        {/* HIDE Amount for Notes */}
+        {!isNote && formattedAmount && (
+            <span className={`text-sm font-bold ${meta?.financeType === 'income' || meta?.financeType === 'reimbursement' ? 'text-emerald-400' : 'text-white'}`}>
+                {formattedAmount}
+            </span>
         )}
       </div>
 
@@ -144,11 +182,11 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
         </div>
       )}
 
-      <p className={`text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-medium ${isDone ? 'line-through text-muted' : ''}`}>
+      <p className={`text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-medium ${isDone && !isFinance ? 'line-through text-muted' : ''}`}>
         {content}
       </p>
 
-      {/* Metadata Footer - For TODO/EVENT if they have tags or dates (previously only showed dates/time) */}
+      {/* Metadata Footer */}
       {!isNote && (displayDate || validTags.length > 0) && (
         <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-2 items-center">
           {displayDate && (

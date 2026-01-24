@@ -1,15 +1,16 @@
 import React from 'react';
 import { BrainDumpItem } from '../types';
-import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock } from 'lucide-react';
+import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2 } from 'lucide-react';
 
 interface ShoppingItemProps {
   item: BrainDumpItem;
   onToggleStatus: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit?: (item: BrainDumpItem) => void;
   readonly?: boolean;
 }
 
-const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, readonly = false }) => {
+const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onEdit, readonly = false }) => {
   const { content, meta, status, completed_at } = item;
   const isDone = status === 'done';
   const isRoutine = meta?.shoppingCategory === 'routine';
@@ -58,14 +59,24 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   const targetDateLabel = !isWaitingForNextCycle ? getFriendlyDate(meta?.date) : null;
 
-  // Display Quantity
+  // Display Quantity & Amount
   const quantity = meta?.quantity && meta.quantity !== 'null' ? meta.quantity : null;
+  const formattedAmount = meta?.amount 
+    ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(meta.amount)
+    : null;
   
   // Display Recurrence Text (if not waiting)
-  const recurrenceText = isRoutine ? `Every ${meta.recurrenceDays || 7} days` : null;
+  // Combine "Every X days" with specific day name if available (e.g. "Every 7 days • Monday")
+  const recurrenceText = isRoutine 
+    ? `Every ${meta.recurrenceDays || 7} days${meta.targetDay ? ` • ${meta.targetDay}` : ''}` 
+    : null;
+
+  // Urgent label with Day name
+  const urgentText = isUrgent 
+    ? `Urgent${meta.targetDay ? ` • ${meta.targetDay}` : ''}`
+    : 'Urgent';
 
   // Determine styles
-  // If waiting for next cycle: Dimmed, checked, but shows "Next: ..."
   const isDisabled = !readonly && isWaitingForNextCycle;
 
   return (
@@ -76,7 +87,6 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
         <button 
             onClick={(e) => {
                 e.stopPropagation();
-                // Disable unchecking if it's in the waiting period (enforce the "disabled" feel requested)
                 if (!readonly && !isWaitingForNextCycle) onToggleStatus(item.id);
             }}
             disabled={isDisabled}
@@ -89,13 +99,13 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           )}
         </button>
         
-        <div className="flex flex-col overflow-hidden">
+        <div className="flex flex-col overflow-hidden min-w-0">
             <div className="flex items-center gap-2">
                 <span className={`text-sm truncate ${isDone ? 'line-through text-muted' : 'text-gray-200'}`}>
                     {content}
                 </span>
                 {quantity && (
-                    <span className="text-[10px] font-mono text-acc-shopping bg-acc-shopping/10 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-mono text-acc-shopping bg-acc-shopping/10 px-1.5 py-0.5 rounded shrink-0">
                     {quantity}
                     </span>
                 )}
@@ -113,16 +123,23 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                 {isUrgent && !isDone && (
                     <div className="flex items-center gap-1 text-[10px] text-red-400">
                         <AlertCircle className="w-3 h-3" />
-                        <span>Urgent</span>
+                        <span>{urgentText}</span>
                     </div>
                 )}
                 
-                {/* Time-Bound Indicator: Show date if exists, regardless of Urgent/Routine status */}
+                {/* Time-Bound Indicator */}
                 {targetDateLabel && (
-                     <div className={`flex items-center gap-1 text-[10px] ${targetDateLabel === 'Today' || targetDateLabel === 'Yesterday' ? 'text-acc-todo font-medium' : 'text-muted'}`}>
+                     <div className={`flex items-center gap-1 text-[10px] ${targetDateLabel === 'Today' || targetDateLabel === 'Tomorrow' ? 'text-acc-todo font-medium' : 'text-muted'}`}>
                         <Calendar className="w-3 h-3" />
                         <span>{targetDateLabel}</span>
                      </div>
+                )}
+
+                {/* Amount Indicator for Plans */}
+                {formattedAmount && (
+                    <div className="flex items-center gap-1 text-[10px] text-amber-400">
+                        <span>{formattedAmount}</span>
+                    </div>
                 )}
             </div>
         </div>
@@ -130,17 +147,30 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
       {/* Actions */}
       {!readonly && (
-          <button 
-            onClick={(e) => {
-                e.stopPropagation();
-                onDelete(item.id);
-            }}
-            // Delete is ALWAYS enabled, even if routine is waiting
-            className="ml-2 p-2 text-muted hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors pointer-events-auto cursor-pointer"
-            title="Delete"
-          >
-              <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1 ml-2">
+             {onEdit && (
+                <button 
+                  onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(item);
+                  }}
+                  className="p-2 text-muted hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  title="Edit"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+             )}
+             <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(item.id);
+                }}
+                className="p-2 text-muted hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+                title="Delete"
+              >
+                  <Trash2 className="w-4 h-4" />
+              </button>
+          </div>
       )}
     </div>
   );
