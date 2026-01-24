@@ -1,17 +1,6 @@
 {
   "data": [
     {
-      "id": "cb6dae03-ab21-4408-a619-4f59230a911b",
-      "type": "NOTE",
-      "content": "besok bikin summary kegiatan belajar di kantor untuk antisiapsi quiz",
-      "status": "pending",
-      "created_at": "2026-01-24T06:28:58.626Z",
-      "meta": {
-        "tags": []
-      },
-      "isOptimistic": true
-    },
-    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "pending",
       "created_at": "2026-01-24T05:26:25.590Z",
