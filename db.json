@@ -174,7 +174,7 @@
     },
     {
       "id": "81532d12-c5c5-43f4-986b-8408893f862f",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-24T11:23:23.359Z",
       "type": "TODO",
       "content": "selesaiin kode master incinerator",
@@ -185,7 +185,8 @@
           "business"
         ]
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-01-25T14:21:22.355Z"
     },
     {
       "id": "b71d4199-b100-4434-b9a7-30861d3fda9d",
