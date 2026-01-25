@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "eca71824-1f61-4edb-b01a-4808e52d0c0b",
+      "type": "NOTE",
+      "content": "pengen beli hp baru",
+      "status": "pending",
+      "created_at": "2026-01-25T14:31:47.347Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "4f8559d3-4655-4e43-a60d-94ad3adb6017",
       "status": "pending",
       "created_at": "2026-01-25T12:43:34.032Z",
