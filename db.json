@@ -260,24 +260,6 @@
       "isOptimistic": false
     },
     {
-      "id": "5a7edf36-2b62-42f7-8141-a5df0fa5df0d",
-      "status": "done",
-      "created_at": "2026-01-24T07:04:48.716Z",
-      "completed_at": "2026-01-24T07:04:48.716Z",
-      "type": "FINANCE",
-      "content": "beli cilok",
-      "meta": {
-        "amount": 5000,
-        "date": "2026-01-24",
-        "financeType": "expense",
-        "tags": [
-          "food",
-          "purchase"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "done",
       "created_at": "2026-01-24T05:26:25.590Z",
