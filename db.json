@@ -25,7 +25,8 @@
         "shoppingCategory": "urgent",
         "tags": [
           "purchase"
-        ]
+        ],
+        "amount": 100000
       },
       "isOptimistic": false
     },
