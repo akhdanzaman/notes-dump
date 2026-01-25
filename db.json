@@ -1,15 +1,19 @@
 {
   "data": [
     {
-      "id": "b2c14684-1b4b-4bd7-89ea-f8a4002eaf23",
-      "type": "NOTE",
-      "content": "pengen beli speaker jbl bluetooth",
+      "id": "e228014d-7149-4120-a2f4-c24460c03cd0",
       "status": "pending",
-      "created_at": "2026-01-25T04:22:02.850Z",
+      "created_at": "2026-01-25T04:22:04.947Z",
+      "type": "SHOPPING",
+      "content": "beli speaker jbl bluetooth",
       "meta": {
-        "tags": []
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "electronics",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "7fb9cb9a-ab08-4009-b361-8492a89a29f9",
