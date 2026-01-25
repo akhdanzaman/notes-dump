@@ -1,15 +1,20 @@
 {
   "data": [
     {
-      "id": "a2ff9710-683e-4521-a4a0-69f4d53659da",
-      "type": "NOTE",
-      "content": "bayar kosan tiap 30 hari tanggal 19",
+      "id": "13aa8124-19f4-4df5-afb8-8321e93687c0",
       "status": "pending",
-      "created_at": "2026-01-25T15:02:35.694Z",
+      "created_at": "2026-01-25T15:02:41.591Z",
+      "type": "SHOPPING",
+      "content": "bayar kosan",
       "meta": {
-        "tags": []
+        "date": "2026-02-19",
+        "recurrenceDays": 30,
+        "shoppingCategory": "routine",
+        "tags": [
+          "bills"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
