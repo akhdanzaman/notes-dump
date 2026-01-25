@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "11adb5d6-3ddb-422a-89e9-13e1b94c7a2b",
-      "type": "NOTE",
-      "content": "Aku abis beli 3 roti 25 ribu",
-      "status": "pending",
-      "created_at": "2026-01-25T02:16:20.920Z",
+      "id": "0131b0a5-063b-41ab-a75e-2edb262ce98d",
+      "status": "done",
+      "created_at": "2026-01-25T02:16:33.103Z",
+      "completed_at": "2026-01-25T02:16:33.103Z",
+      "type": "FINANCE",
+      "content": "Beli 3 roti",
       "meta": {
-        "tags": []
+        "amount": 25000,
+        "date": "2026-01-25",
+        "financeType": "expense",
+        "quantity": "3 roti",
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "baa36d2a-7362-4153-bcc7-56f03209abce",
