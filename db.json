@@ -1,20 +1,15 @@
 {
   "data": [
     {
-      "id": "43d4b7b5-67af-456f-82a9-e27ec2dbb662",
+      "id": "c31c946d-ee11-4f6a-922b-cc6d3fc1dcb5",
+      "type": "NOTE",
+      "content": "bayar kosan tiap bulan tanggal 19",
       "status": "pending",
-      "created_at": "2026-01-25T15:01:49.707Z",
-      "type": "SHOPPING",
-      "content": "beli paket data",
+      "created_at": "2026-01-25T15:02:09.854Z",
       "meta": {
-        "date": "2026-02-16",
-        "shoppingCategory": "routine",
-        "tags": [
-          "purchase",
-          "bills"
-        ]
+        "tags": []
       },
-      "isOptimistic": false
+      "isOptimistic": true
     },
     {
       "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
