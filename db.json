@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "5e10f09c-132b-4e33-bcbd-bd6963caec7b",
+      "type": "NOTE",
+      "content": "urgent: beli sempak indomaret dan beli kaos polos ",
+      "status": "pending",
+      "created_at": "2026-01-25T14:33:35.439Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "c7d82a87-bf0b-4714-8bdf-256e7812f462",
       "status": "pending",
       "created_at": "2026-01-25T14:31:49.412Z",
