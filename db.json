@@ -24,12 +24,13 @@
       "type": "SHOPPING",
       "content": "bayar kosan",
       "meta": {
-        "date": "2026-02-19",
+        "date": "2026-02-19T00:00:00.000Z",
         "recurrenceDays": 30,
         "shoppingCategory": "routine",
         "tags": [
           "bills"
-        ]
+        ],
+        "amount": 1300000
       },
       "isOptimistic": false
     },
