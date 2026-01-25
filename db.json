@@ -7,13 +7,14 @@
       "type": "SHOPPING",
       "content": "beli paket data",
       "meta": {
-        "date": "2026-02-16",
+        "date": "2026-02-16T00:00:00.000Z",
         "recurrenceDays": 28,
         "shoppingCategory": "routine",
         "tags": [
           "bills",
           "purchase"
-        ]
+        ],
+        "amount": 150000
       },
       "isOptimistic": false
     },
@@ -116,7 +117,7 @@
       "status": "pending",
       "created_at": "2026-01-25T05:28:47.026Z",
       "type": "NOTE",
-      "content": "1. Update app so expenses and income can be seen from which wallet\n2. disable routine task yang belum jadwalnya",
+      "content": "1. Update app so expenses and income can be seen from which wallet\n2. disable routine task yang belum jadwalnya\n3. bikin dashboard budgeting untuk monitor limit per komoditi",
       "meta": {
         "tags": [
           "observation"
