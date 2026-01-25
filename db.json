@@ -77,7 +77,8 @@
         "tags": [
           "purchase",
           "electronics"
-        ]
+        ],
+        "amount": 9000000
       },
       "isOptimistic": false
     },
