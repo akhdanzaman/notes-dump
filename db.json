@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "636b1826-e5a8-49e0-919a-bef4aed03d87",
+      "type": "NOTE",
+      "content": "Notes: update apps ini biar expenses dan income bisa liat dari wallet mana",
+      "status": "pending",
+      "created_at": "2026-01-25T05:28:42.359Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "08f8cd0b-c137-4876-8330-0629423238e6",
       "status": "pending",
       "created_at": "2026-01-25T04:39:13.784Z",
