@@ -115,7 +115,7 @@
       "status": "pending",
       "created_at": "2026-01-25T05:28:47.026Z",
       "type": "NOTE",
-      "content": "Update app so expenses and income can be seen from which wallet",
+      "content": "1. Update app so expenses and income can be seen from which wallet\n2. disable routine task yang belum jadwalnya",
       "meta": {
         "tags": [
           "observation"
