@@ -1,15 +1,19 @@
 {
   "data": [
     {
-      "id": "eca71824-1f61-4edb-b01a-4808e52d0c0b",
-      "type": "NOTE",
-      "content": "pengen beli hp baru",
+      "id": "c7d82a87-bf0b-4714-8bdf-256e7812f462",
       "status": "pending",
-      "created_at": "2026-01-25T14:31:47.347Z",
+      "created_at": "2026-01-25T14:31:49.412Z",
+      "type": "SHOPPING",
+      "content": "beli hp baru",
       "meta": {
-        "tags": []
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "purchase",
+          "electronics"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "4f8559d3-4655-4e43-a60d-94ad3adb6017",
