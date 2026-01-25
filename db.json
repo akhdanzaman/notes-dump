@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "1ba4c082-f653-469f-9e9d-87c7adb30945",
-      "type": "NOTE",
-      "content": "abis beli mie ayam 19000",
-      "status": "pending",
-      "created_at": "2026-01-25T12:14:50.866Z",
+      "id": "4c7546d7-962d-4489-9e6f-62037054b447",
+      "status": "done",
+      "created_at": "2026-01-25T12:14:53.241Z",
+      "completed_at": "2026-01-25T12:14:53.241Z",
+      "type": "FINANCE",
+      "content": "mie ayam",
       "meta": {
-        "tags": []
+        "amount": 19000,
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "fd7f04f5-e1b9-47e1-b992-ab9c5dc3bbe1",
