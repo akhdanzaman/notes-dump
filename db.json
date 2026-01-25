@@ -1,15 +1,19 @@
 {
   "data": [
     {
-      "id": "059c0401-7330-44a3-a2da-ed44ea98e9b8",
-      "type": "NOTE",
-      "content": "Pengen beli sepatu 400000",
+      "id": "c66908b0-662a-4b84-9f90-870bb1694f1f",
       "status": "pending",
-      "created_at": "2026-01-25T02:21:25.479Z",
+      "created_at": "2026-01-25T02:21:37.310Z",
+      "type": "SHOPPING",
+      "content": "beli sepatu",
       "meta": {
-        "tags": []
+        "amount": 400000,
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "f9849057-20f8-4e9f-835a-dbbfc95d3387",
