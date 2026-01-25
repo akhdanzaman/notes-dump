@@ -39,7 +39,7 @@
     },
     {
       "id": "baa36d2a-7362-4153-bcc7-56f03209abce",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-24T14:57:02.622Z",
       "type": "SHOPPING",
       "content": "ambil uang di atm",
@@ -51,7 +51,8 @@
         ],
         "targetDay": "Sunday"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-01-25T02:17:06.290Z"
     },
     {
       "id": "243eb27c-ceff-4c03-a4a0-278b69445ef7",
