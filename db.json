@@ -1,15 +1,33 @@
 {
   "data": [
     {
-      "id": "5e10f09c-132b-4e33-bcbd-bd6963caec7b",
-      "type": "NOTE",
-      "content": "urgent: beli sempak indomaret dan beli kaos polos ",
+      "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
       "status": "pending",
-      "created_at": "2026-01-25T14:33:35.439Z",
+      "created_at": "2026-01-25T14:33:38.478Z",
+      "type": "SHOPPING",
+      "content": "beli sempak indomaret",
       "meta": {
-        "tags": []
+        "shoppingCategory": "urgent",
+        "tags": [
+          "purchase",
+          "errand"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "6fc3d6e9-dc30-4aaa-a0f3-5799b23d7830",
+      "status": "pending",
+      "created_at": "2026-01-25T14:33:38.479Z",
+      "type": "SHOPPING",
+      "content": "beli kaos polos",
+      "meta": {
+        "shoppingCategory": "urgent",
+        "tags": [
+          "purchase"
+        ]
+      },
+      "isOptimistic": false
     },
     {
       "id": "c7d82a87-bf0b-4714-8bdf-256e7812f462",
