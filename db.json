@@ -1,15 +1,18 @@
 {
   "data": [
     {
-      "id": "0c7735d1-0440-42e2-b4b9-a1386841a052",
-      "type": "NOTE",
-      "content": "Beli selimut",
+      "id": "fd7f04f5-e1b9-47e1-b992-ab9c5dc3bbe1",
       "status": "pending",
-      "created_at": "2026-01-25T06:30:28.833Z",
+      "created_at": "2026-01-25T06:30:31.288Z",
+      "type": "SHOPPING",
+      "content": "Buy blanket",
       "meta": {
-        "tags": []
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "de2ffe57-094a-4822-93a9-77c22ff61e0e",
