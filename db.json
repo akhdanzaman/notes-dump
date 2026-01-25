@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "ce478437-1042-480e-9283-b97b64efdab6",
+      "type": "NOTE",
+      "content": "bayar kosan tiap tanggal 19",
+      "status": "pending",
+      "created_at": "2026-01-25T15:01:35.443Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
       "status": "pending",
       "created_at": "2026-01-25T14:33:38.478Z",
