@@ -1,120 +1,15 @@
 {
   "data": [
     {
-      "id": "c66908b0-662a-4b84-9f90-870bb1694f1f",
+      "id": "b2c14684-1b4b-4bd7-89ea-f8a4002eaf23",
+      "type": "NOTE",
+      "content": "pengen beli speaker jbl bluetooth",
       "status": "pending",
-      "created_at": "2026-01-25T02:21:37.310Z",
-      "type": "SHOPPING",
-      "content": "beli sepatu",
+      "created_at": "2026-01-25T04:22:02.850Z",
       "meta": {
-        "amount": 400000,
-        "shoppingCategory": "not_urgent",
-        "tags": [
-          "purchase"
-        ]
+        "tags": []
       },
-      "isOptimistic": false
-    },
-    {
-      "id": "f9849057-20f8-4e9f-835a-dbbfc95d3387",
-      "status": "done",
-      "created_at": "2026-01-25T02:16:37.012Z",
-      "completed_at": "2026-01-25T02:16:37.012Z",
-      "type": "FINANCE",
-      "content": "beli sarapan dan makan siang",
-      "meta": {
-        "amount": 16000,
-        "date": "2026-01-25",
-        "financeType": "expense",
-        "tags": [
-          "food",
-          "purchase"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
-      "id": "0131b0a5-063b-41ab-a75e-2edb262ce98d",
-      "status": "done",
-      "created_at": "2026-01-25T02:16:33.103Z",
-      "completed_at": "2026-01-25T02:16:33.103Z",
-      "type": "FINANCE",
-      "content": "Beli 3 roti",
-      "meta": {
-        "amount": 25000,
-        "date": "2026-01-25",
-        "financeType": "expense",
-        "quantity": "3 roti",
-        "tags": [
-          "food",
-          "purchase"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
-      "id": "baa36d2a-7362-4153-bcc7-56f03209abce",
-      "status": "done",
-      "created_at": "2026-01-24T14:57:02.622Z",
-      "type": "SHOPPING",
-      "content": "ambil uang di atm",
-      "meta": {
-        "date": "2026-01-25",
-        "shoppingCategory": "not_urgent",
-        "tags": [
-          "errand"
-        ],
-        "targetDay": "Sunday"
-      },
-      "isOptimistic": false,
-      "completed_at": "2026-01-25T02:17:06.290Z"
-    },
-    {
-      "id": "243eb27c-ceff-4c03-a4a0-278b69445ef7",
-      "status": "pending",
-      "created_at": "2026-01-24T11:30:47.977Z",
-      "type": "SHOPPING",
-      "content": "beli kursi lesehan",
-      "meta": {
-        "shoppingCategory": "not_urgent",
-        "tags": [
-          "purchase"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
-      "id": "81532d12-c5c5-43f4-986b-8408893f862f",
-      "status": "pending",
-      "created_at": "2026-01-24T11:23:23.359Z",
-      "type": "TODO",
-      "content": "selesaiin kode master incinerator",
-      "meta": {
-        "date": "2026-01-24",
-        "tags": [
-          "electronics",
-          "business"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
-      "id": "b71d4199-b100-4434-b9a7-30861d3fda9d",
-      "status": "done",
-      "created_at": "2026-01-24T11:21:45.963Z",
-      "completed_at": "2026-01-24T11:21:45.963Z",
-      "type": "FINANCE",
-      "content": "Breakfast",
-      "meta": {
-        "amount": 16000,
-        "date": "2026-01-24",
-        "financeType": "expense",
-        "tags": [
-          "food",
-          "purchase"
-        ]
-      },
-      "isOptimistic": false
+      "isOptimistic": true
     },
     {
       "id": "7fb9cb9a-ab08-4009-b361-8492a89a29f9",
@@ -260,6 +155,24 @@
       "isOptimistic": false
     },
     {
+      "id": "5a7edf36-2b62-42f7-8141-a5df0fa5df0d",
+      "status": "done",
+      "created_at": "2026-01-24T07:04:48.716Z",
+      "completed_at": "2026-01-24T07:04:48.716Z",
+      "type": "FINANCE",
+      "content": "beli cilok",
+      "meta": {
+        "amount": 5000,
+        "date": "2026-01-24",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "6474d04a-ea14-4bc7-86b0-eafd69c5cfa1",
       "status": "done",
       "created_at": "2026-01-24T05:26:25.590Z",
@@ -286,10 +199,8 @@
       "meta": {
         "tags": [
           "purchase",
-          "observation",
-          "SNI"
-        ],
-        "date": "2026-01-25T11:22:00.000Z"
+          "observation"
+        ]
       },
       "isOptimistic": false
     },
@@ -302,10 +213,8 @@
       "meta": {
         "tags": [
           "electronics",
-          "observation",
-          "SNI"
-        ],
-        "date": "2026-01-25T11:22:00.000Z"
+          "observation"
+        ]
       },
       "isOptimistic": false
     },
@@ -330,18 +239,16 @@
       "id": "1fcbd815-30a9-4765-b17d-6336ee94caef",
       "type": "SHOPPING",
       "content": "Beli stop kontak",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-24T04:49:51.269Z",
       "meta": {
         "shoppingCategory": "not_urgent",
         "tags": [
           "electronics",
           "errand"
-        ],
-        "amount": 65000
+        ]
       },
-      "isOptimistic": false,
-      "completed_at": "2026-01-24T13:15:43.293Z"
+      "isOptimistic": false
     },
     {
       "id": "ced554e8-fccc-4379-b606-4661df4ab6c0",
@@ -393,7 +300,7 @@
       "id": "c1e4542c-2cde-46af-bd15-deb32a203caa",
       "type": "SHOPPING",
       "content": "Beli headset",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-24T04:40:27.481Z",
       "meta": {
         "date": "2026-01-26T00:00:00.000Z",
@@ -401,11 +308,9 @@
         "tags": [
           "errand",
           "electronics"
-        ],
-        "amount": 15000
+        ]
       },
-      "isOptimistic": false,
-      "completed_at": "2026-01-24T14:57:40.720Z"
+      "isOptimistic": false
     }
   ]
 }
