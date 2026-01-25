@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "aa2c88dc-fd0d-40b2-be6c-598922b00cb0",
-      "type": "NOTE",
-      "content": "beli paket data tiap 28 hari tanggal 16",
+      "id": "9b7e6c2e-2eb2-40e9-8624-b97efdaee4de",
       "status": "pending",
-      "created_at": "2026-01-25T15:02:59.615Z",
+      "created_at": "2026-01-25T15:03:02.796Z",
+      "type": "SHOPPING",
+      "content": "beli paket data",
       "meta": {
-        "tags": []
+        "date": "2026-02-16",
+        "recurrenceDays": 28,
+        "shoppingCategory": "routine",
+        "tags": [
+          "bills",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "13aa8124-19f4-4df5-afb8-8321e93687c0",
