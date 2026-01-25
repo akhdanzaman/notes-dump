@@ -1,6 +1,24 @@
 {
   "data": [
     {
+      "id": "f9849057-20f8-4e9f-835a-dbbfc95d3387",
+      "status": "done",
+      "created_at": "2026-01-25T02:16:37.012Z",
+      "completed_at": "2026-01-25T02:16:37.012Z",
+      "type": "FINANCE",
+      "content": "beli sarapan dan makan siang",
+      "meta": {
+        "amount": 16000,
+        "date": "2026-01-25",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "0131b0a5-063b-41ab-a75e-2edb262ce98d",
       "status": "done",
       "created_at": "2026-01-25T02:16:33.103Z",
