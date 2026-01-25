@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "0c7735d1-0440-42e2-b4b9-a1386841a052",
+      "type": "NOTE",
+      "content": "Beli selimut",
+      "status": "pending",
+      "created_at": "2026-01-25T06:30:28.833Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "de2ffe57-094a-4822-93a9-77c22ff61e0e",
       "status": "pending",
       "created_at": "2026-01-25T05:28:47.026Z",
