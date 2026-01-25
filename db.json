@@ -1,15 +1,20 @@
 {
   "data": [
     {
-      "id": "ce478437-1042-480e-9283-b97b64efdab6",
-      "type": "NOTE",
-      "content": "bayar kosan tiap tanggal 19",
+      "id": "be31241a-3118-47ac-99a7-f8e54ebb3267",
       "status": "pending",
-      "created_at": "2026-01-25T15:01:35.443Z",
+      "created_at": "2026-01-25T15:01:42.907Z",
+      "type": "SHOPPING",
+      "content": "Pay rent",
       "meta": {
-        "tags": []
+        "date": "2026-02-19",
+        "shoppingCategory": "routine",
+        "tags": [
+          "bills",
+          "rent"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
