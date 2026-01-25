@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "aa2c88dc-fd0d-40b2-be6c-598922b00cb0",
+      "type": "NOTE",
+      "content": "beli paket data tiap 28 hari tanggal 16",
+      "status": "pending",
+      "created_at": "2026-01-25T15:02:59.615Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "13aa8124-19f4-4df5-afb8-8321e93687c0",
       "status": "pending",
       "created_at": "2026-01-25T15:02:41.591Z",
