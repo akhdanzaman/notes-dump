@@ -1,15 +1,19 @@
 {
   "data": [
     {
-      "id": "d3027992-a160-400e-b8ff-e77b5ff5fd0d",
-      "type": "NOTE",
-      "content": "pengen beli speaker jbl",
+      "id": "08f8cd0b-c137-4876-8330-0629423238e6",
       "status": "pending",
-      "created_at": "2026-01-25T04:39:12.196Z",
+      "created_at": "2026-01-25T04:39:13.784Z",
+      "type": "SHOPPING",
+      "content": "speaker jbl",
       "meta": {
-        "tags": []
+        "shoppingCategory": "not_urgent",
+        "tags": [
+          "purchase",
+          "electronics"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "c66908b0-662a-4b84-9f90-870bb1694f1f",
