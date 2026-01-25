@@ -45,19 +45,6 @@
       "isOptimistic": false
     },
     {
-      "id": "705c6ca0-6839-45f9-a949-969b71e50317",
-      "status": "pending",
-      "created_at": "2026-01-25T12:39:21.104Z",
-      "type": "SHOPPING",
-      "content": "beli sempak indomaret",
-      "meta": {
-        "date": "2026-01-30",
-        "targetDay": "Friday",
-        "shoppingCategory": "not_urgent"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "4c7546d7-962d-4489-9e6f-62037054b447",
       "status": "done",
       "created_at": "2026-01-25T12:14:53.241Z",
