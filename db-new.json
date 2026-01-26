@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "ac8968ee-f5dc-4997-94a6-d312382f71fe",
-      "type": "NOTE",
-      "content": "aku abis beli cilok 5000",
-      "status": "pending",
-      "created_at": "2026-01-26T12:52:48.195Z",
+      "id": "54a3bb01-7286-4d3d-9c4b-71bf6dc1758f",
+      "status": "done",
+      "created_at": "2026-01-26T12:52:52.497Z",
+      "completed_at": "2026-01-26T12:52:52.497Z",
+      "type": "FINANCE",
+      "content": "cilok",
       "meta": {
-        "tags": []
+        "amount": 5000,
+        "budgetCategory": "wants",
+        "date": "2026-01-26",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "snack"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     }
   ],
   "budgetConfig": {
