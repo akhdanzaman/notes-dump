@@ -67,7 +67,8 @@
           "business"
         ],
         "amount": 450000,
-        "financeType": "reimbursement"
+        "financeType": "reimbursement",
+        "paymentMethod": "Bca"
       },
       "isOptimistic": false
     },
