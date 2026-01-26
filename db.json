@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "1ff1c58e-7478-4487-b2ca-516e76720276",
+      "type": "NOTE",
+      "content": "beli bensin 7 hari sekali tiap hari jumat 25000",
+      "status": "pending",
+      "created_at": "2026-01-26T14:25:56.268Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "d68b9e72-4653-43de-8723-5c6c1c9b39a1",
       "status": "done",
       "created_at": "2026-01-26T14:12:49.930Z",
