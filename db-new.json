@@ -1,0 +1,26 @@
+{
+  "data": [],
+  "budgetConfig": {
+    "monthlyIncome": 7000000,
+    "rules": [
+      {
+        "id": "needs",
+        "name": "Needs",
+        "percentage": 50,
+        "color": "bg-blue-500"
+      },
+      {
+        "id": "wants",
+        "name": "Wants",
+        "percentage": 30,
+        "color": "bg-pink-500"
+      },
+      {
+        "id": "savings",
+        "name": "Savings",
+        "percentage": 20,
+        "color": "bg-emerald-500"
+      }
+    ]
+  }
+}
