@@ -1,15 +1,20 @@
 {
   "data": [
     {
-      "id": "6b073aed-4bc0-4a12-b126-a3e28e731e49",
-      "type": "NOTE",
-      "content": "uangku di reimburse 450000",
-      "status": "pending",
-      "created_at": "2026-01-26T08:43:33.644Z",
+      "id": "f016e928-0cef-4256-b64c-6c5b3075c96b",
+      "status": "done",
+      "created_at": "2026-01-26T08:43:36.327Z",
+      "completed_at": "2026-01-26T08:43:36.327Z",
+      "type": "FINANCE",
+      "content": "uangku di reimburse",
       "meta": {
-        "tags": []
+        "amount": 450000,
+        "financeType": "reimbursement",
+        "tags": [
+          "business"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "f5f84518-302f-4542-8a0c-f57acc0eab8c",
