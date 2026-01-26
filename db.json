@@ -670,14 +670,8 @@
       {
         "id": "savings",
         "name": "Savings",
-        "percentage": 10,
+        "percentage": 20,
         "color": "bg-emerald-500"
-      },
-      {
-        "id": "cat-1769435073977",
-        "name": "Phone",
-        "percentage": 10,
-        "color": "bg-gray-500"
       }
     ]
   },
