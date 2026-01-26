@@ -12,7 +12,9 @@
         "budgetCategory": "needs",
         "date": "2026-01-26",
         "financeType": "expense",
-        "tags": ["purchase"],
+        "tags": [
+          "purchase"
+        ],
         "paymentMethod": ""
       },
       "isOptimistic": false
@@ -29,7 +31,10 @@
         "budgetCategory": "needs",
         "date": "2026-01-26",
         "financeType": "expense",
-        "tags": ["purchase", "laundry"],
+        "tags": [
+          "purchase",
+          "laundry"
+        ],
         "quantity": "725ml"
       },
       "isOptimistic": false
@@ -42,7 +47,10 @@
       "content": "belajar xlookup",
       "meta": {
         "date": "2026-01-26",
-        "tags": ["business", "kaizen"]
+        "tags": [
+          "business",
+          "kaizen"
+        ]
       },
       "isOptimistic": false
     },
@@ -56,7 +64,9 @@
       "meta": {
         "amount": 450000,
         "financeType": "reimbursement",
-        "tags": ["business"]
+        "tags": [
+          "business"
+        ]
       },
       "isOptimistic": false
     },
@@ -70,7 +80,10 @@
         "amount": 5000,
         "recurrenceDays": 1,
         "shoppingCategory": "routine",
-        "tags": ["bills", "errand"]
+        "tags": [
+          "bills",
+          "errand"
+        ]
       },
       "isOptimistic": false,
       "completed_at": "2026-01-26T10:37:52.007Z"
@@ -85,14 +98,17 @@
         "date": "2026-02-16T00:00:00.000Z",
         "recurrenceDays": 28,
         "shoppingCategory": "routine",
-        "tags": ["bills", "purchase"],
+        "tags": [
+          "bills",
+          "purchase"
+        ],
         "amount": 150000
       },
       "isOptimistic": false
     },
     {
       "id": "13aa8124-19f4-4df5-afb8-8321e93687c0",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-25T15:02:41.591Z",
       "type": "SHOPPING",
       "content": "bayar kosan",
@@ -100,11 +116,13 @@
         "date": "2026-02-19T00:00:00.000Z",
         "recurrenceDays": 30,
         "shoppingCategory": "routine",
-        "tags": ["bills"],
+        "tags": [
+          "bills"
+        ],
         "amount": 1300000
       },
       "isOptimistic": false,
-      "completed_at": "2026-01-26T12:41:20.205Z"
+      "completed_at": "2026-01-26T13:26:59.999Z"
     },
     {
       "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
@@ -114,7 +132,10 @@
       "content": "beli sempak indomaret",
       "meta": {
         "shoppingCategory": "urgent",
-        "tags": ["purchase", "errand"]
+        "tags": [
+          "purchase",
+          "errand"
+        ]
       },
       "isOptimistic": false
     },
@@ -127,7 +148,9 @@
       "content": "beli kaos polos",
       "meta": {
         "shoppingCategory": "urgent",
-        "tags": ["purchase"],
+        "tags": [
+          "purchase"
+        ],
         "amount": 100000
       },
       "isOptimistic": false
@@ -140,7 +163,10 @@
       "content": "beli hp baru",
       "meta": {
         "shoppingCategory": "not_urgent",
-        "tags": ["purchase", "electronics"],
+        "tags": [
+          "purchase",
+          "electronics"
+        ],
         "amount": 9000000
       },
       "isOptimistic": false
@@ -157,7 +183,10 @@
         "budgetCategory": "needs",
         "date": "2026-01-25",
         "financeType": "expense",
-        "tags": ["food", "purchase"]
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
       "isOptimistic": false
     },
@@ -169,7 +198,9 @@
       "content": "Buy blanket",
       "meta": {
         "shoppingCategory": "not_urgent",
-        "tags": ["purchase"]
+        "tags": [
+          "purchase"
+        ]
       },
       "isOptimistic": false
     },
@@ -180,7 +211,9 @@
       "type": "NOTE",
       "content": "1. Update app so expenses and income can be seen from which wallet\n2. disable routine task yang belum jadwalnya\n3. bikin dashboard budgeting untuk monitor limit per komoditi",
       "meta": {
-        "tags": ["kaizen"]
+        "tags": [
+          "kaizen"
+        ]
       },
       "isOptimistic": false
     },
@@ -192,7 +225,10 @@
       "content": "speaker jbl",
       "meta": {
         "shoppingCategory": "not_urgent",
-        "tags": ["purchase", "electronics"]
+        "tags": [
+          "purchase",
+          "electronics"
+        ]
       },
       "isOptimistic": false
     },
@@ -205,7 +241,9 @@
       "meta": {
         "amount": 400000,
         "shoppingCategory": "not_urgent",
-        "tags": ["purchase"]
+        "tags": [
+          "purchase"
+        ]
       },
       "isOptimistic": false
     },
@@ -221,7 +259,10 @@
         "budgetCategory": "needs",
         "date": "2026-01-25",
         "financeType": "expense",
-        "tags": ["food", "purchase"]
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
       "isOptimistic": false
     },
@@ -237,7 +278,10 @@
         "budgetCategory": "needs",
         "date": "2026-01-25",
         "financeType": "expense",
-        "tags": ["food", "purchase"],
+        "tags": [
+          "food",
+          "purchase"
+        ],
         "quantity": "3 roti"
       },
       "isOptimistic": false
@@ -251,7 +295,9 @@
       "meta": {
         "date": "2026-01-25",
         "shoppingCategory": "not_urgent",
-        "tags": ["errand"],
+        "tags": [
+          "errand"
+        ],
         "targetDay": "Sunday"
       },
       "isOptimistic": false,
@@ -265,7 +311,9 @@
       "content": "beli kursi lesehan",
       "meta": {
         "shoppingCategory": "not_urgent",
-        "tags": ["purchase"]
+        "tags": [
+          "purchase"
+        ]
       },
       "isOptimistic": false
     },
@@ -277,7 +325,10 @@
       "content": "selesaiin kode master incinerator",
       "meta": {
         "date": "2026-01-24",
-        "tags": ["electronics", "business"]
+        "tags": [
+          "electronics",
+          "business"
+        ]
       },
       "isOptimistic": false,
       "completed_at": "2026-01-25T14:21:22.355Z"
@@ -294,7 +345,10 @@
         "budgetCategory": "needs",
         "date": "2026-01-24",
         "financeType": "expense",
-        "tags": ["food", "purchase"]
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
       "isOptimistic": false
     },
@@ -305,7 +359,9 @@
       "type": "NOTE",
       "content": "Github : M@********6",
       "meta": {
-        "tags": ["business"]
+        "tags": [
+          "business"
+        ]
       },
       "isOptimistic": false
     },
@@ -317,7 +373,11 @@
       "content": "Ingatkan Mba Taza untuk ke HRGA membicarakan reimbursement",
       "meta": {
         "date": "2026-01-26",
-        "tags": ["business", "people", "errand"],
+        "tags": [
+          "business",
+          "people",
+          "errand"
+        ],
         "targetDay": "Monday"
       },
       "isOptimistic": false,
@@ -333,7 +393,9 @@
         "date": "2026-01-29T00:00:00.000Z",
         "paymentMethod": "gopay later",
         "shoppingCategory": "urgent",
-        "tags": ["purchase"],
+        "tags": [
+          "purchase"
+        ],
         "amount": 180000
       },
       "isOptimistic": false,
@@ -349,7 +411,10 @@
         "date": "2026-01-30",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
-        "tags": ["laundry", "errand"],
+        "tags": [
+          "laundry",
+          "errand"
+        ],
         "targetDay": "Friday"
       },
       "isOptimistic": false
@@ -366,7 +431,10 @@
         "budgetCategory": "needs",
         "date": "2026-01-23",
         "financeType": "expense",
-        "tags": ["business", "travel"]
+        "tags": [
+          "business",
+          "travel"
+        ]
       },
       "isOptimistic": false
     },
@@ -378,7 +446,10 @@
       "content": "kharisma bahari:\nnasi sayur 8000\nnasi ayam 17000\n\nnasi uduk:\nnasi tempe kering cumi 16000",
       "meta": {
         "amount": 8000,
-        "tags": ["food", "observation"]
+        "tags": [
+          "food",
+          "observation"
+        ]
       },
       "isOptimistic": false
     },
@@ -394,7 +465,10 @@
         "budgetCategory": "needs",
         "date": "2026-01-24",
         "financeType": "expense",
-        "tags": ["purchase", "food"]
+        "tags": [
+          "purchase",
+          "food"
+        ]
       },
       "isOptimistic": false
     },
@@ -407,7 +481,9 @@
       "meta": {
         "amount": 50000,
         "shoppingCategory": "not_urgent",
-        "tags": ["purchase"]
+        "tags": [
+          "purchase"
+        ]
       },
       "isOptimistic": false
     },
@@ -433,7 +509,10 @@
       "meta": {
         "date": "2026-01-25T00:00:00.000Z",
         "shoppingCategory": "urgent",
-        "tags": ["purchase", "errand"],
+        "tags": [
+          "purchase",
+          "errand"
+        ],
         "amount": 25000
       },
       "isOptimistic": false,
@@ -446,7 +525,11 @@
       "type": "TODO",
       "content": "Baca peraturan tentang importasi seperti aturan PI atau LS",
       "meta": {
-        "tags": ["purchase", "observation", "SNI"],
+        "tags": [
+          "purchase",
+          "observation",
+          "SNI"
+        ],
         "date": "2026-01-25T11:22:00.000Z"
       },
       "isOptimistic": false
@@ -458,7 +541,11 @@
       "type": "TODO",
       "content": "baca peraturan sertifikasi mengenai kaca, velg, dan audio",
       "meta": {
-        "tags": ["electronics", "observation", "SNI"],
+        "tags": [
+          "electronics",
+          "observation",
+          "SNI"
+        ],
         "date": "2026-01-25T11:22:00.000Z"
       },
       "isOptimistic": false,
@@ -472,7 +559,10 @@
       "content": "beli gantungan baju",
       "meta": {
         "shoppingCategory": "not_urgent",
-        "tags": ["purchase", "errand"],
+        "tags": [
+          "purchase",
+          "errand"
+        ],
         "amount": 150000
       },
       "isOptimistic": false,
@@ -486,7 +576,10 @@
       "created_at": "2026-01-24T04:49:51.269Z",
       "meta": {
         "shoppingCategory": "not_urgent",
-        "tags": ["electronics", "errand"],
+        "tags": [
+          "electronics",
+          "errand"
+        ],
         "amount": 65000
       },
       "isOptimistic": false,
@@ -499,7 +592,10 @@
       "status": "pending",
       "created_at": "2026-01-24T04:48:26.067Z",
       "meta": {
-        "tags": ["observation", "people"]
+        "tags": [
+          "observation",
+          "people"
+        ]
       },
       "isOptimistic": false
     },
@@ -510,7 +606,11 @@
       "status": "pending",
       "created_at": "2026-01-24T04:47:51.673Z",
       "meta": {
-        "tags": ["food", "recommendations", "errand"]
+        "tags": [
+          "food",
+          "recommendations",
+          "errand"
+        ]
       },
       "isOptimistic": false
     },
@@ -523,7 +623,10 @@
       "meta": {
         "date": "2026-01-25T00:00:00.000Z",
         "shoppingCategory": "routine",
-        "tags": ["errand", "laundry"],
+        "tags": [
+          "errand",
+          "laundry"
+        ],
         "amount": 31500
       },
       "isOptimistic": false,
@@ -538,7 +641,10 @@
       "meta": {
         "date": "2026-01-26T00:00:00.000Z",
         "shoppingCategory": "not_urgent",
-        "tags": ["errand", "electronics"],
+        "tags": [
+          "errand",
+          "electronics"
+        ],
         "amount": 15000
       },
       "isOptimistic": false,
