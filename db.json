@@ -157,7 +157,8 @@
           "purchase"
         ],
         "shoppingCategory": "urgent",
-        "amount": 100000
+        "amount": 100000,
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
