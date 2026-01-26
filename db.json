@@ -394,7 +394,7 @@
           "purchase"
         ],
         "date": "2026-01-29T00:00:00.000Z",
-        "paymentMethod": "gopay later",
+        "paymentMethod": "BNI",
         "shoppingCategory": "urgent",
         "amount": 180000
       },
