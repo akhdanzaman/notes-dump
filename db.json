@@ -141,7 +141,10 @@
           "purchase",
           "errand"
         ],
-        "shoppingCategory": "urgent"
+        "shoppingCategory": "urgent",
+        "amount": 50000,
+        "paymentMethod": "",
+        "budgetCategory": "needs"
       },
       "isOptimistic": false
     },
