@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "7297eec4-efb7-4a08-a339-56958a8d6bc9",
+      "type": "NOTE",
+      "content": "Tadi pagi beli air mineral 4000",
+      "status": "pending",
+      "created_at": "2026-01-26T14:12:44.953Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "9831d8d7-a222-4030-a88c-e1b19f5d3a14",
       "status": "done",
       "created_at": "2026-01-26T10:38:43.438Z",
