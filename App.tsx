@@ -407,48 +407,120 @@ const App: React.FC = () => {
 
       // Custom Budget Calculations
       const budgetMap = new Map<string, number>();
+      const plannedBudgetMap = new Map<string, number>();
       let uncategorized = 0;
+      let projectedUncategorized = 0;
       
       // Initialize map from config rules
-      budgetConfig.rules.forEach(rule => budgetMap.set(rule.id, 0));
+      budgetConfig.rules.forEach(rule => {
+          budgetMap.set(rule.id, 0);
+          plannedBudgetMap.set(rule.id, 0);
+      });
+
+      // Helper to resolve category ID
+      const resolveCategory = (cat?: string) => {
+          if (!cat) return null;
+          if (budgetMap.has(cat)) return cat; // Direct ID match
+          const foundRule = budgetConfig.rules.find(r => r.name.toLowerCase() === cat.toLowerCase());
+          return foundRule ? foundRule.id : null;
+      };
 
       allTransactions.forEach(item => {
            // Skip income
            if (item.meta?.financeType === 'income' || item.meta?.financeType === 'reimbursement') return;
            
            const amt = item.meta?.amount || 0;
-           const cat = item.meta?.budgetCategory;
+           const catId = resolveCategory(item.meta?.budgetCategory);
 
-           if (cat) {
-               // Try to match by ID first, then Case-Insensitive Name
-               if (budgetMap.has(cat)) {
-                   budgetMap.set(cat, (budgetMap.get(cat) || 0) + amt);
-               } else {
-                   // Try find by name
-                   const foundRule = budgetConfig.rules.find(r => r.name.toLowerCase() === cat.toLowerCase());
-                   if (foundRule) {
-                       budgetMap.set(foundRule.id, (budgetMap.get(foundRule.id) || 0) + amt);
-                   } else {
-                       uncategorized += amt;
-                   }
-               }
+           if (catId) {
+               budgetMap.set(catId, (budgetMap.get(catId) || 0) + amt);
            } else {
                uncategorized += amt;
            }
       });
 
-      // --- Projected / Planned Expenses (Pending items with cost) ---
-      const pendingWithCost = items.filter(i => 
-        (i.type === ItemType.SHOPPING || i.type === ItemType.TODO) &&
-        i.status === 'pending' &&
-        (i.meta.amount || 0) > 0 &&
-        // EXCLUDE 'not_urgent' shopping items (To Buy list) from Planned Spending
-        !(i.type === ItemType.SHOPPING && (!i.meta.shoppingCategory || i.meta.shoppingCategory === 'not_urgent'))
-      );
-      
-      const projectedExpense = pendingWithCost.reduce((acc, curr) => acc + (curr.meta.amount || 0), 0);
+      // --- Projected / Planned Expenses ---
+      let projectedExpense = 0;
+      const startOfMonth = new Date(financeDate.getFullYear(), financeDate.getMonth(), 1);
+      const endOfMonth = new Date(financeDate.getFullYear(), financeDate.getMonth() + 1, 0, 23, 59, 59);
+      const now = new Date();
 
-      return { list: allTransactions, totalIncome, totalExpense, balance: totalIncome - totalExpense, projectedExpense, pendingWithCost, budgetMap, uncategorized };
+      items.forEach(item => {
+           // Filter: Shopping/Todo, Amount > 0, Not To-Buy
+           if ((item.type !== ItemType.SHOPPING && item.type !== ItemType.TODO) || (item.meta.amount || 0) <= 0) return;
+           if (item.type === ItemType.SHOPPING && (!item.meta.shoppingCategory || item.meta.shoppingCategory === 'not_urgent')) return;
+
+           const amount = item.meta.amount || 0;
+           const catId = resolveCategory(item.meta.budgetCategory);
+           
+           const addToPlanned = (amt: number) => {
+               if (catId) {
+                   plannedBudgetMap.set(catId, (plannedBudgetMap.get(catId) || 0) + amt);
+               } else {
+                   projectedUncategorized += amt;
+               }
+           };
+
+           if (item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine') {
+               // ROUTINE: Calculate frequency in selected month
+               const recurrence = item.meta.recurrenceDays || 7;
+               
+               // Start counting from next due date
+               let nextDue: Date;
+               if (item.status === 'done' && item.completed_at) {
+                   nextDue = new Date(new Date(item.completed_at).getTime() + (recurrence * 86400000));
+               } else if (item.meta.date) {
+                   nextDue = new Date(item.meta.date);
+               } else {
+                   nextDue = new Date(); // Pending no date = due now
+               }
+               
+               // Fast forward if Next Due is before Start of Month
+               const cursor = new Date(nextDue);
+               while (cursor < startOfMonth) {
+                   cursor.setDate(cursor.getDate() + recurrence);
+               }
+               
+               // Count occurrences in the month
+               while (cursor <= endOfMonth) {
+                   projectedExpense += amount;
+                   addToPlanned(amount);
+                   cursor.setDate(cursor.getDate() + recurrence);
+               }
+
+           } else {
+               // ONE-TIME: Only if Pending
+               if (item.status === 'pending') {
+                   const targetDate = item.meta.date ? new Date(item.meta.date) : null;
+                   
+                   // If undated, assume it belongs to Current Month only
+                   if (!targetDate) {
+                       if (financeDate.getMonth() === now.getMonth() && financeDate.getFullYear() === now.getFullYear()) {
+                           projectedExpense += amount;
+                           addToPlanned(amount);
+                       }
+                   } else {
+                       // Match selected month
+                       if (targetDate.getMonth() === financeDate.getMonth() && targetDate.getFullYear() === financeDate.getFullYear()) {
+                           projectedExpense += amount;
+                           addToPlanned(amount);
+                       }
+                   }
+               }
+           }
+      });
+
+      return { 
+          list: allTransactions, 
+          totalIncome, 
+          totalExpense, 
+          balance: totalIncome - totalExpense, 
+          projectedExpense, 
+          budgetMap, 
+          plannedBudgetMap,
+          uncategorized,
+          projectedUncategorized 
+      };
   };
 
   const getFocusItems = () => {
@@ -736,7 +808,18 @@ const App: React.FC = () => {
 
             {/* MONEY (FINANCE) TAB */}
             {activeTab === 'money' && (() => {
-               const { list, totalIncome, totalExpense, balance, projectedExpense, budgetMap, uncategorized } = getFinanceItems();
+               const { 
+                   list, 
+                   totalIncome, 
+                   totalExpense, 
+                   balance, 
+                   projectedExpense, 
+                   budgetMap, 
+                   plannedBudgetMap,
+                   uncategorized, 
+                   projectedUncategorized 
+               } = getFinanceItems();
+
                const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
                
                // Use manual income from config if available and non-zero, otherwise use recorded income
@@ -831,25 +914,47 @@ const App: React.FC = () => {
                                         {/* Dynamic Budget Categories */}
                                         {budgetConfig.rules.map(rule => {
                                             const spent = budgetMap.get(rule.id) || 0;
+                                            const planned = plannedBudgetMap.get(rule.id) || 0;
                                             const limit = effectiveIncome * (rule.percentage / 100);
-                                            const percentageUsed = pct(spent, limit);
+                                            
                                             // Ensure rule.color is safe, fallback if class is weird
                                             const barColor = rule.color || 'bg-gray-500';
 
                                             return (
                                                 <div key={rule.id}>
                                                     <div className="flex justify-between items-end mb-1">
-                                                        <span className={`text-sm font-semibold text-white`}>{rule.name} <span className="text-xs font-normal text-muted opacity-70">({rule.percentage}%)</span></span>
-                                                        <span className="text-xs text-muted">{fmt(spent)} / {fmt(limit)}</span>
+                                                        <div className="flex flex-col">
+                                                            <span className={`text-sm font-semibold text-white`}>{rule.name} <span className="text-xs font-normal text-muted opacity-70">({rule.percentage}%)</span></span>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="text-xs text-white font-medium">
+                                                                {fmt(spent)} <span className="text-muted/60">/ {fmt(limit)}</span>
+                                                            </div>
+                                                            {planned > 0 && (
+                                                                <div className="text-[10px] text-amber-400">
+                                                                    +{fmt(planned)} planned
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div className="h-2 w-full bg-surface rounded-full overflow-hidden border border-white/5 relative">
+                                                    
+                                                    {/* Stacked Bar Chart */}
+                                                    <div className="h-3 w-full bg-surface rounded-full overflow-hidden border border-white/5 relative flex">
+                                                        {/* Actual Spending */}
                                                         <div 
-                                                            className={`h-full transition-all duration-700 ${barColor}`} 
+                                                            className={`h-full ${barColor}`} 
                                                             style={{ width: `${Math.min(100, (spent / effectiveIncome) * 100)}%` }}
                                                         ></div>
-                                                        {/* Marker for the limit */}
+                                                        
+                                                        {/* Planned Spending (Stacked) */}
                                                         <div 
-                                                            className="h-full w-0.5 bg-white/50 absolute top-0"
+                                                            className={`h-full ${barColor} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`} 
+                                                            style={{ width: `${Math.min(100 - ((spent / effectiveIncome) * 100), (planned / effectiveIncome) * 100)}%` }}
+                                                        ></div>
+                                                        
+                                                        {/* Limit Marker */}
+                                                        <div 
+                                                            className="h-full w-0.5 bg-white/50 absolute top-0 z-10"
                                                             style={{ left: `${rule.percentage}%` }}
                                                         ></div>
                                                     </div>
@@ -858,14 +963,19 @@ const App: React.FC = () => {
                                         })}
 
                                         {/* Uncategorized */}
-                                        {uncategorized > 0 && (
+                                        {(uncategorized > 0 || projectedUncategorized > 0) && (
                                             <div className="pt-4 border-t border-border mt-4">
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-xs text-muted">Uncategorized / Others</span>
-                                                    <span className="text-xs text-white">{fmt(uncategorized)}</span>
+                                                    <div className="text-right">
+                                                        <span className="text-xs text-white">{fmt(uncategorized)}</span>
+                                                        {projectedUncategorized > 0 && (
+                                                            <span className="text-[10px] text-amber-400 ml-1">+{fmt(projectedUncategorized)}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden">
-                                                     <div className="h-full bg-gray-500 w-full opacity-50"></div>
+                                                <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden flex">
+                                                     <div className="h-full bg-gray-500 opacity-50 flex-1"></div>
                                                 </div>
                                             </div>
                                         )}
