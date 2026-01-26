@@ -121,8 +121,7 @@
         ],
         "amount": 1300000
       },
-      "isOptimistic": false,
-      "completed_at": "2026-01-26T12:41:20.205Z"
+      "isOptimistic": false
     },
     {
       "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
