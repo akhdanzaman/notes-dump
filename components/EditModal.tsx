@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
-import { BrainDumpItem, ItemType } from '../types';
-import { X, Save, DollarSign, Calendar } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { BrainDumpItem, ItemType, BudgetRule } from '../types';
+import { X, Save, DollarSign, Calendar, Wallet, PieChart } from 'lucide-react';
 
 interface EditModalProps {
   item: BrainDumpItem;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string, newContent: string, newTags: string[], amount?: number, date?: string) => void;
+  onSave: (id: string, newContent: string, newTags: string[], amount?: number, date?: string, paymentMethod?: string, budgetCategory?: string) => void;
+  existingPaymentMethods?: string[]; // To populate datalist
+  budgetRules?: BudgetRule[]; // To populate budget category selector
 }
 
-const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave }) => {
+const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, existingPaymentMethods = [], budgetRules = [] }) => {
   const [content, setContent] = useState(item.content);
   const [tags, setTags] = useState(item.meta.tags?.join(', ') || '');
   const [amount, setAmount] = useState<string>(item.meta.amount ? item.meta.amount.toString() : '');
+  const [paymentMethod, setPaymentMethod] = useState(item.meta.paymentMethod || '');
+  const [budgetCategory, setBudgetCategory] = useState<string>(item.meta.budgetCategory || '');
   
   // Helper to convert UTC ISO string to Local datetime-local format (YYYY-MM-DDTHH:mm)
   const getInitialDate = (isoDate?: string) => {
@@ -38,16 +42,26 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave }) 
         finalDate = new Date(date).toISOString();
     }
 
-    onSave(item.id, content, tagArray, numAmount, finalDate);
+    const finalBudgetCategory = budgetCategory === '' ? undefined : budgetCategory;
+
+    onSave(item.id, content, tagArray, numAmount, finalDate, paymentMethod, finalBudgetCategory);
     onClose();
   };
 
   const showAmountField = item.type === ItemType.FINANCE || item.type === ItemType.SHOPPING || item.type === ItemType.TODO;
   const showDateField = item.type === ItemType.TODO || item.type === ItemType.EVENT || item.type === ItemType.SHOPPING;
+  const showFinanceExtras = item.type === ItemType.FINANCE || (item.type === ItemType.SHOPPING && showAmountField);
+
+  // If no custom rules, fallback to default 50-30-20 for display safety
+  const displayRules = budgetRules.length > 0 ? budgetRules : [
+      { id: 'needs', name: 'Needs', percentage: 50, color: 'bg-blue-500' },
+      { id: 'wants', name: 'Wants', percentage: 30, color: 'bg-pink-500' },
+      { id: 'savings', name: 'Savings', percentage: 20, color: 'bg-emerald-500' }
+  ];
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl p-6">
+      <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl p-6 max-h-[90vh] overflow-y-auto no-scrollbar">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-white">Edit Item</h3>
           <button onClick={onClose} className="text-muted hover:text-white">
@@ -83,7 +97,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave }) 
 
             {showAmountField && (
               <div className={!showDateField ? "col-span-2" : ""}>
-                <label className="block text-xs font-medium text-muted mb-1">Cost / Price (IDR)</label>
+                <label className="block text-xs font-medium text-muted mb-1">Amount (IDR)</label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <input
@@ -97,6 +111,55 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave }) 
               </div>
             )}
           </div>
+
+          {showFinanceExtras && (
+             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
+                 <div className="col-span-2">
+                    <label className="block text-xs font-medium text-muted mb-1">Payment Method / Wallet</label>
+                    <div className="relative">
+                        <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                        <input
+                            type="text"
+                            list="payment-methods"
+                            className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-acc-todo"
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                            placeholder="e.g. Cash, Gopay Later, BCA"
+                        />
+                        <datalist id="payment-methods">
+                            {existingPaymentMethods.map((pm, i) => (
+                                <option key={i} value={pm} />
+                            ))}
+                        </datalist>
+                    </div>
+                 </div>
+
+                 <div className="col-span-2">
+                     <label className="block text-xs font-medium text-muted mb-2">Budget Category</label>
+                     <div className="flex flex-wrap gap-2">
+                        {displayRules.map((rule) => {
+                             // Extract base color name for border logic if needed, or just use white border when selected
+                             const isSelected = budgetCategory ? (budgetCategory === rule.id || budgetCategory.toLowerCase() === rule.name.toLowerCase()) : false;
+                             
+                             return (
+                                <button
+                                    key={rule.id}
+                                    onClick={() => setBudgetCategory(isSelected ? '' : rule.id)}
+                                    className={`py-1.5 px-3 rounded-lg text-xs font-medium capitalize border transition-all flex items-center gap-2 ${
+                                        isSelected
+                                        ? `border-white/50 text-white ${rule.color}`
+                                        : 'bg-background border-border text-muted hover:bg-surface'
+                                    }`}
+                                >
+                                    <div className={`w-2 h-2 rounded-full ${rule.color} ${isSelected ? 'ring-2 ring-white' : ''}`}></div>
+                                    {rule.name}
+                                </button>
+                             );
+                        })}
+                     </div>
+                 </div>
+             </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Tags (comma separated)</label>

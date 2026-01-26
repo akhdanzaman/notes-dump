@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BrainDumpItem, ItemType } from './types';
-import { fetchDb, syncItemsToDb, isUsingLocalStorage, SyncResult } from './services/githubService';
-import { classifyText } from './services/geminiService';
+import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule } from './types';
+import { fetchDb, syncData, isUsingLocalStorage, SyncResult } from './services/githubService';
+import { classifyText, DEFAULT_PROMPT } from './services/geminiService';
 
 import Card from './components/Card';
 import ShoppingItem from './components/ShoppingItem';
@@ -14,9 +14,21 @@ import SettingsModal from './components/SettingsModal';
 
 type Tab = 'focus' | 'shopping' | 'notes' | 'money' | 'history';
 type SyncStatus = 'synced' | 'syncing' | 'error' | 'local';
+type MoneyView = 'transactions' | 'budget';
 
 const App: React.FC = () => {
   const [items, setItems] = useState<BrainDumpItem[]>([]);
+  // Budget Config State
+  const [budgetConfig, setBudgetConfig] = useState<BudgetConfig>({
+      monthlyIncome: 0,
+      rules: [
+        { id: 'needs', name: 'Needs', percentage: 50, color: 'bg-blue-500' },
+        { id: 'wants', name: 'Wants', percentage: 30, color: 'bg-pink-500' },
+        { id: 'savings', name: 'Savings', percentage: 20, color: 'bg-emerald-500' },
+      ]
+  });
+  const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
+
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0); 
   const [error, setError] = useState<string | null>(null);
@@ -31,10 +43,20 @@ const App: React.FC = () => {
 
   // Finance Date Filter
   const [financeDate, setFinanceDate] = useState(new Date());
+  const [moneyView, setMoneyView] = useState<MoneyView>('transactions');
 
   const [editingItem, setEditingItem] = useState<BrainDumpItem | null>(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
+
+  // Extract unique payment methods for autocomplete
+  const uniquePaymentMethods = useMemo(() => {
+    const methods = new Set<string>();
+    items.forEach(i => {
+        if (i.meta.paymentMethod) methods.add(i.meta.paymentMethod);
+    });
+    return Array.from(methods);
+  }, [items]);
 
   const checkRoutineResets = (currentItems: BrainDumpItem[]) => {
       const now = new Date();
@@ -60,10 +82,15 @@ const App: React.FC = () => {
       });
   };
 
-  const saveAndSync = async (newItems: BrainDumpItem[]) => {
+  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string) => {
       setSyncStatus('syncing');
       try {
-          const result: SyncResult = await syncItemsToDb(newItems);
+          // Use syncData to save everything
+          const configToSave = newConfig || budgetConfig;
+          const promptToSave = newPrompt !== undefined ? newPrompt : customPrompt;
+          
+          const result: SyncResult = await syncData(newItems, configToSave, promptToSave);
+          
           if (result.method === 'error') {
               setSyncStatus('error');
           } else if (result.method === 'local') {
@@ -84,13 +111,41 @@ const App: React.FC = () => {
         setIsLocalMode(isUsingLocalStorage());
 
         const { data } = await fetchDb();
-        if (data && Array.isArray(data.data)) {
-          const checkedData = checkRoutineResets(data.data);
-          setItems(checkedData);
-          if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-             await saveAndSync(checkedData);
-          } else {
-             setSyncStatus(isUsingLocalStorage() ? 'local' : 'synced');
+        if (data) {
+          if (Array.isArray(data.data)) {
+            // Migration: Ensure all items have valid meta structure
+            // This prevents data loss or crashes if loading an older DB version
+            const migratedData = data.data.map(item => ({
+                ...item,
+                meta: {
+                    tags: [],
+                    // Preserve existing meta
+                    ...item.meta,
+                    // Default shopping category if missing for SHOPPING type
+                    shoppingCategory: (item.type === ItemType.SHOPPING && !item.meta?.shoppingCategory) 
+                        ? 'not_urgent' 
+                        : item.meta?.shoppingCategory
+                }
+            }));
+
+            const checkedData = checkRoutineResets(migratedData);
+            setItems(checkedData);
+            
+            // Check for changes in routine resets to sync
+            if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
+               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt);
+            } else {
+               setSyncStatus(isUsingLocalStorage() ? 'local' : 'synced');
+            }
+          }
+          
+          // Load Budget Config if exists
+          if (data.budgetConfig) {
+              setBudgetConfig(data.budgetConfig);
+          }
+          // Load Prompt if exists
+          if (data.customPrompt) {
+              setCustomPrompt(data.customPrompt);
           }
         }
       } catch (err) {
@@ -106,9 +161,24 @@ const App: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const handleSettingsSaved = () => {
+  const handleSettingsSaved = (newBudgetConfig?: BudgetConfig, newPrompt?: string) => {
       setIsSettingsOpen(false);
-      loadData();
+      
+      let shouldSync = false;
+      if (newBudgetConfig) {
+          setBudgetConfig(newBudgetConfig);
+          shouldSync = true;
+      }
+      if (newPrompt !== undefined) {
+          setCustomPrompt(newPrompt);
+          shouldSync = true;
+      }
+
+      if (shouldSync) {
+          saveAndSync(items, newBudgetConfig, newPrompt);
+      } else {
+          loadData();
+      }
   };
 
   const uniqueTags = useMemo(() => {
@@ -134,7 +204,7 @@ const App: React.FC = () => {
 
     setItems((prev) => {
         const updated = [optimisticItem, ...prev];
-        saveAndSync(updated);
+        saveAndSync(updated); // Syncing items only, keeps existing config
         return updated;
     });
 
@@ -146,7 +216,8 @@ const App: React.FC = () => {
         const currentTags = new Set<string>();
         itemsRef.current.forEach(i => i.meta?.tags?.forEach(t => currentTags.add(t)));
         
-        const classifiedItems = await classifyText(text, Array.from(currentTags));
+        // Pass the current custom prompt to the classifier
+        const classifiedItems = await classifyText(text, Array.from(currentTags), 0, customPrompt);
   
         const newItems: BrainDumpItem[] = classifiedItems.map(partial => {
             const isFinance = partial.type === ItemType.FINANCE;
@@ -209,7 +280,7 @@ const App: React.FC = () => {
     });
   };
 
-  const handleUpdateItem = async (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string) => {
+  const handleUpdateItem = async (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string) => {
       setItems(prev => {
           const updatedItems = prev.map(item => 
               item.id === id 
@@ -219,8 +290,10 @@ const App: React.FC = () => {
                     meta: { 
                         ...item.meta, 
                         tags: newTags,
-                        amount: newAmount, // Update amount
-                        date: newDate // Update date
+                        amount: newAmount, 
+                        date: newDate,
+                        paymentMethod: newPaymentMethod,
+                        budgetCategory: newBudgetCategory
                     } 
                   } 
                 : item
@@ -332,17 +405,50 @@ const App: React.FC = () => {
         return acc;
       }, 0);
 
+      // Custom Budget Calculations
+      const budgetMap = new Map<string, number>();
+      let uncategorized = 0;
+      
+      // Initialize map from config rules
+      budgetConfig.rules.forEach(rule => budgetMap.set(rule.id, 0));
+
+      allTransactions.forEach(item => {
+           // Skip income
+           if (item.meta?.financeType === 'income' || item.meta?.financeType === 'reimbursement') return;
+           
+           const amt = item.meta?.amount || 0;
+           const cat = item.meta?.budgetCategory;
+
+           if (cat) {
+               // Try to match by ID first, then Case-Insensitive Name
+               if (budgetMap.has(cat)) {
+                   budgetMap.set(cat, (budgetMap.get(cat) || 0) + amt);
+               } else {
+                   // Try find by name
+                   const foundRule = budgetConfig.rules.find(r => r.name.toLowerCase() === cat.toLowerCase());
+                   if (foundRule) {
+                       budgetMap.set(foundRule.id, (budgetMap.get(foundRule.id) || 0) + amt);
+                   } else {
+                       uncategorized += amt;
+                   }
+               }
+           } else {
+               uncategorized += amt;
+           }
+      });
+
       // --- Projected / Planned Expenses (Pending items with cost) ---
       const pendingWithCost = items.filter(i => 
         (i.type === ItemType.SHOPPING || i.type === ItemType.TODO) &&
         i.status === 'pending' &&
-        (i.meta.amount || 0) > 0
+        (i.meta.amount || 0) > 0 &&
+        // EXCLUDE 'not_urgent' shopping items (To Buy list) from Planned Spending
+        !(i.type === ItemType.SHOPPING && (!i.meta.shoppingCategory || i.meta.shoppingCategory === 'not_urgent'))
       );
       
       const projectedExpense = pendingWithCost.reduce((acc, curr) => acc + (curr.meta.amount || 0), 0);
 
-
-      return { list: allTransactions, totalIncome, totalExpense, balance: totalIncome - totalExpense, projectedExpense, pendingWithCost };
+      return { list: allTransactions, totalIncome, totalExpense, balance: totalIncome - totalExpense, projectedExpense, pendingWithCost, budgetMap, uncategorized };
   };
 
   const getFocusItems = () => {
@@ -630,8 +736,14 @@ const App: React.FC = () => {
 
             {/* MONEY (FINANCE) TAB */}
             {activeTab === 'money' && (() => {
-               const { list, totalIncome, totalExpense, balance, projectedExpense } = getFinanceItems();
+               const { list, totalIncome, totalExpense, balance, projectedExpense, budgetMap, uncategorized } = getFinanceItems();
                const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+               
+               // Use manual income from config if available and non-zero, otherwise use recorded income
+               const effectiveIncome = budgetConfig.monthlyIncome > 0 ? budgetConfig.monthlyIncome : totalIncome;
+               const incomeLabel = budgetConfig.monthlyIncome > 0 ? 'Fixed Income' : 'Recorded Income';
+
+               const pct = (n: number, total: number) => total === 0 ? 0 : Math.min(100, Math.round((n / total) * 100));
 
                return (
                    <div>
@@ -660,20 +772,105 @@ const App: React.FC = () => {
                            </div>
                        </div>
                        
-                       {/* Projected/Planned Card */}
-                       {projectedExpense > 0 && (
-                           <div className="bg-surface/50 border border-dashed border-border rounded-xl p-3 mb-6 flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-muted">
-                                    <Calculator className="w-4 h-4" />
-                                    <span className="text-xs font-medium">Planned Spending (Pending)</span>
-                                </div>
-                                <span className="text-sm font-bold text-amber-400">{fmt(projectedExpense)}</span>
-                           </div>
+                       {/* Submenu Toggle */}
+                       <div className="flex bg-surface rounded-lg p-1 mb-4 border border-border">
+                            <button 
+                                onClick={() => setMoneyView('transactions')}
+                                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${moneyView === 'transactions' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                            >
+                                <List className="w-3.5 h-3.5" /> Transactions
+                            </button>
+                            <button 
+                                onClick={() => setMoneyView('budget')}
+                                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${moneyView === 'budget' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                            >
+                                <PieChart className="w-3.5 h-3.5" /> Budget
+                            </button>
+                       </div>
+
+                       {/* VIEW: Transactions */}
+                       {moneyView === 'transactions' && (
+                           <>
+                               {/* Projected/Planned Card */}
+                               {projectedExpense > 0 && (
+                                   <div className="bg-surface/50 border border-dashed border-border rounded-xl p-3 mb-6 flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-muted">
+                                            <Calculator className="w-4 h-4" />
+                                            <span className="text-xs font-medium">Planned Spending (Pending)</span>
+                                        </div>
+                                        <span className="text-sm font-bold text-amber-400">{fmt(projectedExpense)}</span>
+                                   </div>
+                               )}
+
+                               {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
+                                   <div className="space-y-3">
+                                       {list.map(item => <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} />)}
+                                   </div>
+                               )}
+                           </>
                        )}
 
-                       {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
-                           <div className="space-y-3">
-                               {list.map(item => <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} />)}
+                       {/* VIEW: Budget Dashboard */}
+                       {moneyView === 'budget' && (
+                           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                               {effectiveIncome === 0 ? (
+                                   <div className="text-center p-6 bg-surface border border-border rounded-xl">
+                                       <PiggyBank className="w-8 h-8 text-muted mx-auto mb-2" />
+                                       <p className="text-sm text-muted">Set a <strong>Monthly Income</strong> in Settings <br/>or record Income to see your budget breakdown.</p>
+                                       <button onClick={() => setIsSettingsOpen(true)} className="mt-4 px-4 py-2 bg-primary text-background rounded-lg text-sm font-semibold">
+                                           Set Income
+                                       </button>
+                                   </div>
+                               ) : (
+                                   <>
+                                        <div className="flex justify-between items-center mb-2 px-1">
+                                            <span className="text-xs font-medium text-muted">Basis: {incomeLabel}</span>
+                                            <span className="text-sm font-bold text-white">{fmt(effectiveIncome)}</span>
+                                        </div>
+
+                                        {/* Dynamic Budget Categories */}
+                                        {budgetConfig.rules.map(rule => {
+                                            const spent = budgetMap.get(rule.id) || 0;
+                                            const limit = effectiveIncome * (rule.percentage / 100);
+                                            const percentageUsed = pct(spent, limit);
+                                            // Ensure rule.color is safe, fallback if class is weird
+                                            const barColor = rule.color || 'bg-gray-500';
+
+                                            return (
+                                                <div key={rule.id}>
+                                                    <div className="flex justify-between items-end mb-1">
+                                                        <span className={`text-sm font-semibold text-white`}>{rule.name} <span className="text-xs font-normal text-muted opacity-70">({rule.percentage}%)</span></span>
+                                                        <span className="text-xs text-muted">{fmt(spent)} / {fmt(limit)}</span>
+                                                    </div>
+                                                    <div className="h-2 w-full bg-surface rounded-full overflow-hidden border border-white/5 relative">
+                                                        <div 
+                                                            className={`h-full transition-all duration-700 ${barColor}`} 
+                                                            style={{ width: `${Math.min(100, (spent / effectiveIncome) * 100)}%` }}
+                                                        ></div>
+                                                        {/* Marker for the limit */}
+                                                        <div 
+                                                            className="h-full w-0.5 bg-white/50 absolute top-0"
+                                                            style={{ left: `${rule.percentage}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Uncategorized */}
+                                        {uncategorized > 0 && (
+                                            <div className="pt-4 border-t border-border mt-4">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-xs text-muted">Uncategorized / Others</span>
+                                                    <span className="text-xs text-white">{fmt(uncategorized)}</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden">
+                                                     <div className="h-full bg-gray-500 w-full opacity-50"></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                   </>
+                               )}
                            </div>
                        )}
                    </div>
@@ -730,6 +927,7 @@ const App: React.FC = () => {
                                          <span className="mr-3">{item.type === ItemType.FINANCE ? (isIncome ? '💰' : '💸') : '✅'}</span>
                                          <div className="flex-1 min-w-0 mr-2">
                                              <div className="truncate text-gray-200">{item.content}</div>
+                                             {item.meta.paymentMethod && <div className="text-[9px] text-muted uppercase tracking-tight">{item.meta.paymentMethod}</div>}
                                          </div>
                                          <div className="text-right shrink-0">
                                             {amount ? (
@@ -762,8 +960,8 @@ const App: React.FC = () => {
       </div>
 
       {/* Modals */}
-      {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} />}
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSettingsSaved} />
+      {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} existingPaymentMethods={uniquePaymentMethods} budgetRules={budgetConfig.rules} />}
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSettingsSaved} currentBudgetConfig={budgetConfig} currentPrompt={customPrompt} />
     </div>
   );
 };

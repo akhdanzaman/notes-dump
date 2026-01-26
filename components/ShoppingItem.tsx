@@ -77,20 +77,25 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
     : 'Urgent';
 
   // Determine styles
-  const isDisabled = !readonly && isWaitingForNextCycle;
+  // CHANGED: Removed disable logic for waiting cycles to allow cancelling (unchecking)
+  const isDisabled = readonly;
 
   return (
     <div 
-      className={`group flex items-center justify-between p-3 rounded-lg bg-surface border border-border hover:border-acc-shopping/50 transition-all ${isDone && !isRoutine ? 'opacity-60' : ''} ${isWaitingForNextCycle ? 'opacity-50 bg-surface/30 border-dashed' : ''}`}
+      className={`group flex items-center justify-between p-3 rounded-lg border transition-all 
+        ${isWaitingForNextCycle 
+            ? 'bg-black/20 border-border/30 opacity-75' 
+            : `bg-surface border-border hover:border-acc-shopping/50 ${isDone && !isRoutine ? 'opacity-60' : ''}`
+        }`}
     >
       <div className="flex items-center gap-3 flex-1 overflow-hidden">
         <button 
             onClick={(e) => {
                 e.stopPropagation();
-                if (!readonly && !isWaitingForNextCycle) onToggleStatus(item.id);
+                if (!readonly) onToggleStatus(item.id);
             }}
             disabled={isDisabled}
-            className={`text-muted transition-colors shrink-0 ${isDisabled ? 'cursor-not-allowed opacity-50' : 'hover:text-acc-shopping'}`}
+            className={`text-muted transition-colors shrink-0 ${isDisabled ? 'cursor-not-allowed' : 'hover:text-acc-shopping'}`}
         >
           {isDone ? (
             <CheckCircle2 className="w-5 h-5 text-acc-shopping" />

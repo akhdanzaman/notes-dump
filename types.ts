@@ -9,6 +9,18 @@ export enum ItemType {
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine';
 export type FinanceType = 'expense' | 'income' | 'lending' | 'reimbursement';
 
+export interface BudgetRule {
+  id: string;
+  name: string;
+  percentage: number;
+  color: string; // tailwind color class e.g. 'bg-blue-500'
+}
+
+export interface BudgetConfig {
+  monthlyIncome: number;
+  rules: BudgetRule[];
+}
+
 export interface ItemMeta {
   date?: string;
   tags?: string[];
@@ -21,7 +33,8 @@ export interface ItemMeta {
   amount?: number;
   currency?: string;
   financeType?: FinanceType;
-  paymentMethod?: string; // e.g., 'cash', 'paylater', 'transfer'
+  paymentMethod?: string; // e.g., 'cash', 'paylater', 'transfer', 'QRIS BNI'
+  budgetCategory?: string; // Custom category ID or Name
 }
 
 export interface BrainDumpItem {
@@ -37,6 +50,8 @@ export interface BrainDumpItem {
 
 export interface DbSchema {
   data: BrainDumpItem[];
+  budgetConfig?: BudgetConfig;
+  customPrompt?: string;
 }
 
 // For Github API responses

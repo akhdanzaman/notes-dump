@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import { DbSchema, BrainDumpItem } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig } from "../types";
 
 // Safe access to env vars with fallback
 const getEnv = (key: string) => {
@@ -83,7 +83,7 @@ const LOCAL_STORAGE_KEY = 'braindump_db';
 
 export const isUsingLocalStorage = () => !getGithubConfig();
 
-export const fetchDb = async (): Promise<{ data: DbSchema; sha: string }> => {
+export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string }> => {
   const config = getGithubConfig();
 
   // 1. If GitHub is not configured, use LocalStorage immediately
@@ -112,41 +112,56 @@ export const fetchDb = async (): Promise<{ data: DbSchema; sha: string }> => {
     const jsonString = fromBase64(content);
     const data: DbSchema = JSON.parse(jsonString);
     
-    // Backup to local storage
-    localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+    // Backup to local storage only if not skipped
+    if (!skipLocalStorage) {
+        localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+    }
 
     return { data, sha };
   } catch (error: any) {
-    // If file not found (404), return empty to allow creation
-    // We check this FIRST before logging warnings to avoid scaring the user on fresh installs
+    console.warn("GitHub fetch failed:", error.status, error.message);
+
+    // Robust Fallback: Try LocalStorage first on ANY error (404, 500, Offline)
+    // This handles cases where Repo is missing (404) but User has local data they don't want to lose.
+    if (!skipLocalStorage) {
+        const local = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (local) {
+            // If error is 404 (Repo/File missing), we return empty SHA so next sync tries to create it.
+            // Otherwise (Network/Auth error), we return 'local-sha' to indicate sync is pending/impossible but data is available.
+            const sha = error.status === 404 ? '' : 'local-sha';
+            return { data: JSON.parse(local), sha };
+        }
+    }
+
+    // If no local data exists and error is 404, we can safely initialize empty
     if (error.status === 404) {
       console.log("Database file not found on GitHub, initialized empty DB.");
       return { data: { data: [] }, sha: '' };
     }
 
-    console.warn("Failed to fetch DB from GitHub:", error);
-
-    // For other errors (auth, network), fallback to LocalStorage if available
-    const local = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (local) {
-      return { data: JSON.parse(local), sha: 'local-sha' };
-    }
-    
+    // If no local data and other error, rethrow
     throw error;
   }
 };
 
 export type SyncResult = { success: boolean; method: 'cloud' | 'local' | 'error' };
 
-// Generic function to save the entire list (used for add, update, delete)
-export const syncItemsToDb = async (items: BrainDumpItem[]): Promise<SyncResult> => {
-  const config = getGithubConfig();
-  let currentSha = '';
+// Queue to serialize sync operations
+let syncQueue: Promise<any> = Promise.resolve();
 
-  // Always save to LocalStorage first (Optimistic)
-  const updatedDb: DbSchema = { data: items };
+const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, customPrompt?: string): Promise<SyncResult> => {
+  const config = getGithubConfig();
+  
+  // Construct the full DB object
+  const updatedDb: DbSchema = { 
+    data: items,
+    budgetConfig: budgetConfig,
+    customPrompt: customPrompt
+  };
+  
   const jsonString = JSON.stringify(updatedDb, null, 2);
 
+  // Always save to LocalStorage first (Optimistic)
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
   } catch (e) {
@@ -157,42 +172,80 @@ export const syncItemsToDb = async (items: BrainDumpItem[]): Promise<SyncResult>
       return { success: true, method: 'local' };
   }
 
-  // GitHub Sync
-  try {
-      // 1. Try to get SHA to prevent conflicts (optional optimization: cache this)
-      try {
-          const res = await fetchDb();
-          currentSha = res.sha;
-      } catch (e) {
-          // Proceeding might overwrite if we don't have SHA, but usually fetchDb handles fallback
-      }
+  const octokit = new Octokit({ auth: config.token });
 
-      const octokit = new Octokit({ auth: config.token });
+  // Helper function to attempt write
+  const executeWrite = async (sha?: string) => {
       const contentEncoded = toBase64(jsonString);
-      
       await octokit.repos.createOrUpdateFileContents({
         owner: config.owner,
         repo: config.repo,
         path: config.path,
         message: `Update via BrainDump`,
         content: contentEncoded,
-        sha: currentSha && currentSha !== 'local-sha' ? currentSha : undefined,
+        sha: sha && sha !== 'local-sha' ? sha : undefined,
       });
+  };
+
+  try {
+      let currentSha: string | undefined = undefined;
+      
+      // Initial SHA fetch
+      try {
+          // Skip local storage update during SHA fetch to avoid race condition with UI state
+          const res = await fetchDb(true); 
+          currentSha = res.sha;
+      } catch (e) {
+          // Proceed; might be creating a new file or repo doesn't exist
+      }
+
+      try {
+          await executeWrite(currentSha);
+      } catch (writeError: any) {
+          // Handle Conflict (409) - Retry logic
+          if (writeError.status === 409) {
+              console.warn("Sync conflict (409) detected. Retrying with fresh SHA...");
+              // Fetch latest SHA again
+              const res = await fetchDb(true);
+              // Retry write
+              await executeWrite(res.sha);
+          } else if (writeError.status === 404) {
+             console.error("Sync failed: Repository not found or missing permissions (404). Check settings.");
+             throw new Error("Repository not found (404)");
+          } else {
+              throw writeError;
+          }
+      }
 
       return { success: true, method: 'cloud' };
 
   } catch (error) {
     console.error("Failed to sync to GitHub:", error);
-    // Return success: true because local save worked, but method is local (indicating cloud failed)
-    // Or we can return error to let UI show a warning
     return { success: true, method: 'error' }; 
   }
 };
 
-// Deprecated wrapper for backward compatibility
-export const saveItemToDb = async (newItem: BrainDumpItem): Promise<boolean> => {
-  const { data } = await fetchDb();
-  const newItems = [...data.data, newItem];
-  const result = await syncItemsToDb(newItems);
-  return result.success;
+// Updated to save the entire DbSchema including BudgetConfig and customPrompt
+// Uses a queue to prevent race conditions
+export const syncData = (items: BrainDumpItem[], budgetConfig?: BudgetConfig, customPrompt?: string): Promise<SyncResult> => {
+  // Wrap performSync in a task
+  const task = () => performSync(items, budgetConfig, customPrompt);
+
+  // Chain to the queue
+  const queuedTask = syncQueue.then(
+      () => task(), // run if previous succeeded
+      () => task()  // run even if previous failed
+  );
+
+  // Update the queue pointer
+  syncQueue = queuedTask;
+
+  return queuedTask;
+};
+
+// Kept for compatibility if needed, but App.tsx should use syncData
+export const syncItemsToDb = async (items: BrainDumpItem[]): Promise<SyncResult> => {
+    // Fetch existing config to avoid overwriting it with undefined
+    const { data } = await fetchDb();
+    return syncData(items, data.budgetConfig, data.customPrompt);
 };
