@@ -596,7 +596,9 @@
           "errand"
         ],
         "shoppingCategory": "not_urgent",
-        "amount": 65000
+        "amount": 65000,
+        "paymentMethod": "",
+        "budgetCategory": "needs"
       },
       "isOptimistic": false,
       "completed_at": "2026-01-24T13:15:43.293Z"
