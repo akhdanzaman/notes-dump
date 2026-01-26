@@ -630,7 +630,9 @@
         ],
         "date": "2026-01-25T00:00:00.000Z",
         "shoppingCategory": "routine",
-        "amount": 31500
+        "amount": 31500,
+        "paymentMethod": "",
+        "budgetCategory": "needs"
       },
       "isOptimistic": false,
       "completed_at": "2026-01-25T12:14:10.163Z"
