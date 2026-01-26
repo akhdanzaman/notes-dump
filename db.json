@@ -33,9 +33,10 @@
         ],
         "amount": 30000,
         "budgetCategory": "needs",
-        "date": "2026-01-26",
+        "date": "2026-01-26T00:00:00.000Z",
         "financeType": "expense",
-        "quantity": "725ml"
+        "quantity": "725ml",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
