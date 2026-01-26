@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "bd35fd85-26b3-4e49-9cc5-39e987df2fcf",
+      "type": "NOTE",
+      "content": "abis beli sabun 725ml 30000 rupiah",
+      "status": "pending",
+      "created_at": "2026-01-26T10:38:17.298Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "32e02f7c-a1ad-4e43-97e3-26f8de9d09ac",
       "status": "pending",
       "created_at": "2026-01-26T10:37:41.817Z",
