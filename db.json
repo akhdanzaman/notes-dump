@@ -242,11 +242,12 @@
       "status": "pending",
       "created_at": "2026-01-25T05:28:47.026Z",
       "type": "NOTE",
-      "content": "1. Update app so expenses and income can be seen from which wallet\n2. disable routine task yang belum jadwalnya\n3. bikin dashboard budgeting untuk monitor limit per komoditi",
+      "content": "1. to do nya masih belum fungsional banget",
       "meta": {
         "tags": [
           "kaizen"
-        ]
+        ],
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
