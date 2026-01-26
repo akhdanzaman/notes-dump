@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "7297eec4-efb7-4a08-a339-56958a8d6bc9",
-      "type": "NOTE",
-      "content": "Tadi pagi beli air mineral 4000",
-      "status": "pending",
-      "created_at": "2026-01-26T14:12:44.953Z",
+      "id": "d68b9e72-4653-43de-8723-5c6c1c9b39a1",
+      "status": "done",
+      "created_at": "2026-01-26T14:12:49.930Z",
+      "completed_at": "2026-01-26T14:12:49.930Z",
+      "type": "FINANCE",
+      "content": "Beli air mineral",
       "meta": {
-        "tags": []
+        "amount": 4000,
+        "budgetCategory": "needs",
+        "date": "2026-01-26",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "9831d8d7-a222-4030-a88c-e1b19f5d3a14",
