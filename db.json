@@ -1,7 +1,7 @@
 {
   "data": [],
   "budgetConfig": {
-    "monthlyIncome": 0,
+    "monthlyIncome": 7000000,
     "rules": [
       {
         "id": "needs",
