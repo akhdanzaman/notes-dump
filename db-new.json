@@ -1,5 +1,17 @@
 {
-  "data": [],
+  "data": [
+    {
+      "id": "ac8968ee-f5dc-4997-94a6-d312382f71fe",
+      "type": "NOTE",
+      "content": "aku abis beli cilok 5000",
+      "status": "pending",
+      "created_at": "2026-01-26T12:52:48.195Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    }
+  ],
   "budgetConfig": {
     "monthlyIncome": 7000000,
     "rules": [
