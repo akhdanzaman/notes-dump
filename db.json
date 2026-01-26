@@ -293,10 +293,11 @@
           "purchase"
         ],
         "amount": 25000,
-        "budgetCategory": "needs",
-        "date": "2026-01-25",
+        "budgetCategory": "wants",
+        "date": "2026-01-25T00:00:00.000Z",
         "financeType": "expense",
-        "quantity": "3 roti"
+        "quantity": "3 roti",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
