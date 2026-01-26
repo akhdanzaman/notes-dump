@@ -163,7 +163,8 @@
         ],
         "shoppingCategory": "urgent",
         "amount": 100000,
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "budgetCategory": "needs"
       },
       "isOptimistic": false
     },
