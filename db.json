@@ -12,7 +12,9 @@
         "financeType": "expense",
         "tags": [
           "purchase"
-        ]
+        ],
+        "paymentMethod": "",
+        "budgetCategory": "needs"
       },
       "isOptimistic": false
     },
