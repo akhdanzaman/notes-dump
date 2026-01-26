@@ -121,7 +121,9 @@
         "date": "2026-02-19T00:00:00.000Z",
         "recurrenceDays": 30,
         "shoppingCategory": "routine",
-        "amount": 1300000
+        "amount": 1300000,
+        "paymentMethod": "",
+        "budgetCategory": "needs"
       },
       "isOptimistic": false,
       "completed_at": "2026-01-26T12:41:20.205Z"
