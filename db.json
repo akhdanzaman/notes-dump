@@ -81,7 +81,7 @@
           "bills",
           "errand"
         ],
-        "amount": 5000,
+        "amount": 50000,
         "recurrenceDays": 1,
         "shoppingCategory": "routine",
         "paymentMethod": "",
