@@ -663,7 +663,9 @@
         ],
         "date": "2026-01-26T00:00:00.000Z",
         "shoppingCategory": "not_urgent",
-        "amount": 15000
+        "amount": 15000,
+        "paymentMethod": "",
+        "budgetCategory": "wants"
       },
       "isOptimistic": false,
       "completed_at": "2026-01-24T14:57:40.720Z"
