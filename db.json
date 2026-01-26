@@ -8,14 +8,14 @@
       "type": "FINANCE",
       "content": "Beli air mineral",
       "meta": {
-        "amount": 4000,
-        "budgetCategory": "needs",
-        "date": "2026-01-26",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 4000,
+        "budgetCategory": "needs",
+        "date": "2026-01-26",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
