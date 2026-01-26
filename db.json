@@ -108,7 +108,7 @@
     },
     {
       "id": "13aa8124-19f4-4df5-afb8-8321e93687c0",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-25T15:02:41.591Z",
       "type": "SHOPPING",
       "content": "bayar kosan",
@@ -121,8 +121,7 @@
         ],
         "amount": 1300000
       },
-      "isOptimistic": false,
-      "completed_at": "2026-01-26T13:26:59.999Z"
+      "isOptimistic": false
     },
     {
       "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
