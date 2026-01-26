@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "2fd38010-4f55-41e6-bfe3-c53cf502830a",
+      "type": "NOTE",
+      "content": "abis beli cotton bud 7000",
+      "status": "pending",
+      "created_at": "2026-01-26T10:38:38.301Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "0d6ee217-0fa8-447e-ad19-905148473a64",
       "status": "done",
       "created_at": "2026-01-26T10:38:22.852Z",
