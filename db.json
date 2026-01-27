@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "e976317a-4375-40d6-a8c5-2680f35b3b07",
-      "type": "NOTE",
-      "content": "tanggal 18 kemarin aku bayar kosan 1300000",
-      "status": "pending",
-      "created_at": "2026-01-27T10:57:35.637Z",
+      "id": "7b0c59f6-46e6-46f0-a0e9-c863eb072196",
+      "status": "done",
+      "created_at": "2026-01-27T10:57:40.322Z",
+      "completed_at": "2026-01-27T10:57:40.323Z",
+      "type": "FINANCE",
+      "content": "bayar kosan",
       "meta": {
-        "tags": []
+        "amount": 1300000,
+        "budgetCategory": "needs",
+        "date": "2026-01-18",
+        "financeType": "expense",
+        "tags": [
+          "bills"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "e43ec248-b413-4310-a8df-e1db247c4083",
