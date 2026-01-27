@@ -7,15 +7,15 @@
       "type": "SHOPPING",
       "content": "beli bensin",
       "meta": {
+        "tags": [
+          "errand",
+          "purchase"
+        ],
         "amount": 25000,
         "budgetCategory": "needs",
         "date": "2026-01-30",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
-        "tags": [
-          "errand",
-          "purchase"
-        ],
         "targetDay": "Friday"
       },
       "isOptimistic": false
