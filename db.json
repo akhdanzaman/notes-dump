@@ -1,15 +1,46 @@
 {
   "data": [
     {
-      "id": "06c937d1-d77d-44ad-9d63-3432ab74cd82",
-      "type": "NOTE",
-      "content": "hari ini aku perlu selesaiin summary sdppi, harus belajar discontinou parts, dan harus lanjut summary regulasi",
+      "id": "c0154606-9f04-4c8f-bbcb-7e9a3d8cacfb",
       "status": "pending",
-      "created_at": "2026-01-27T23:40:53.567Z",
+      "created_at": "2026-01-27T23:40:58.238Z",
+      "type": "TODO",
+      "content": "Selesaiin summary sdppi",
       "meta": {
-        "tags": []
+        "date": "2026-01-27",
+        "tags": [
+          "business"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "6a38b909-c8c8-46d4-bbe6-585437532fd2",
+      "status": "pending",
+      "created_at": "2026-01-27T23:40:58.238Z",
+      "type": "TODO",
+      "content": "Belajar discontinou parts",
+      "meta": {
+        "date": "2026-01-27",
+        "tags": [
+          "kaizen"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "38fa7d91-ca00-4f63-a96e-ad732095c7fb",
+      "status": "pending",
+      "created_at": "2026-01-27T23:40:58.238Z",
+      "type": "TODO",
+      "content": "Lanjut summary regulasi",
+      "meta": {
+        "date": "2026-01-27",
+        "tags": [
+          "business"
+        ]
+      },
+      "isOptimistic": false
     },
     {
       "id": "20bb37a1-94f2-43f7-8c9d-dff6176967ca",
