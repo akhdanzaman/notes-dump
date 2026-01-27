@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "02028b7f-f2d4-4130-b5da-8627610e8b8d",
+      "type": "NOTE",
+      "content": "abis beli air minum 3000",
+      "status": "pending",
+      "created_at": "2026-01-27T10:58:29.325Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "7b0c59f6-46e6-46f0-a0e9-c863eb072196",
       "status": "done",
       "created_at": "2026-01-27T10:57:40.322Z",
