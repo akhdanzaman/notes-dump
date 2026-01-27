@@ -8,14 +8,14 @@
       "type": "FINANCE",
       "content": "Beli air minum",
       "meta": {
-        "amount": 3000,
-        "budgetCategory": "needs",
-        "date": "2026-01-27",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 3000,
+        "budgetCategory": "needs",
+        "date": "2026-01-27",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
@@ -27,13 +27,13 @@
       "type": "FINANCE",
       "content": "bayar kosan",
       "meta": {
+        "tags": [
+          "bills"
+        ],
         "amount": 1300000,
         "budgetCategory": "needs",
         "date": "2026-01-18",
-        "financeType": "expense",
-        "tags": [
-          "bills"
-        ]
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
@@ -45,14 +45,14 @@
       "type": "FINANCE",
       "content": "Beli lauk ayam",
       "meta": {
-        "amount": 9000,
-        "budgetCategory": "needs",
-        "date": "2026-01-27",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 9000,
+        "budgetCategory": "needs",
+        "date": "2026-01-27",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
