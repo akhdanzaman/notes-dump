@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "b456d09b-b1f2-4a10-b8e6-c835c9b9ffba",
-      "type": "NOTE",
-      "content": "jajan kulit ayam 15000",
-      "status": "pending",
-      "created_at": "2026-01-28T10:34:11.528Z",
+      "id": "4601afc3-cd8c-4543-a368-31c8c8270533",
+      "status": "done",
+      "created_at": "2026-01-28T10:34:14.841Z",
+      "completed_at": "2026-01-28T10:34:14.841Z",
+      "type": "FINANCE",
+      "content": "jajan kulit ayam",
       "meta": {
-        "tags": []
+        "amount": 15000,
+        "budgetCategory": "wants",
+        "date": "2026-01-28",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "9a3c10b9-83dd-40eb-a4a2-7f99ad7de948",
