@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "cb2e78d5-1fa1-41fa-b033-11d0b02421db",
-      "type": "NOTE",
-      "content": "abis beli lauk ayam 9000",
-      "status": "pending",
-      "created_at": "2026-01-28T10:34:37.166Z",
+      "id": "a21a373f-0239-46ef-81e0-5c4c68d1561e",
+      "status": "done",
+      "created_at": "2026-01-28T10:34:40.421Z",
+      "completed_at": "2026-01-28T10:34:40.421Z",
+      "type": "FINANCE",
+      "content": "beli lauk ayam",
       "meta": {
-        "tags": []
+        "amount": 9000,
+        "budgetCategory": "needs",
+        "date": "2026-01-28",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "4601afc3-cd8c-4543-a368-31c8c8270533",
