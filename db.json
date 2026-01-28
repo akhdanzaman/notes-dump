@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "e464ed90-c097-4309-9b86-acac7e124d38",
-      "type": "NOTE",
-      "content": "bayar parkiran 25000 setiap 7 hari",
+      "id": "53f3517f-f6d5-4d8c-9682-270691774224",
       "status": "pending",
-      "created_at": "2026-01-28T10:35:43.906Z",
+      "created_at": "2026-01-28T10:35:50.776Z",
+      "type": "SHOPPING",
+      "content": "Bayar parkiran",
       "meta": {
-        "tags": []
+        "amount": 25000,
+        "budgetCategory": "needs",
+        "recurrenceDays": 7,
+        "shoppingCategory": "routine",
+        "tags": [
+          "bills",
+          "errand"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "a21a373f-0239-46ef-81e0-5c4c68d1561e",
