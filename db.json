@@ -1,15 +1,18 @@
 {
   "data": [
     {
-      "id": "4f2cff44-2cc6-4656-aa9d-e67a2446a7b7",
+      "id": "1893b9c2-a112-4ef8-860b-47c408137ff5",
+      "status": "pending",
+      "created_at": "2026-01-28T09:33:38.102Z",
       "type": "NOTE",
       "content": "summary kepmen komdigi no 569 tahun 2025",
-      "status": "pending",
-      "created_at": "2026-01-28T09:33:34.433Z",
       "meta": {
-        "tags": []
+        "tags": [
+          "business",
+          "observation"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "c0154606-9f04-4c8f-bbcb-7e9a3d8cacfb",
