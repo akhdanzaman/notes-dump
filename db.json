@@ -7,14 +7,14 @@
       "type": "SHOPPING",
       "content": "Bayar parkiran",
       "meta": {
-        "amount": 25000,
-        "budgetCategory": "needs",
-        "recurrenceDays": 7,
-        "shoppingCategory": "routine",
         "tags": [
           "bills",
           "errand"
-        ]
+        ],
+        "amount": 25000,
+        "budgetCategory": "needs",
+        "recurrenceDays": 7,
+        "shoppingCategory": "routine"
       },
       "isOptimistic": false
     },
@@ -26,14 +26,14 @@
       "type": "FINANCE",
       "content": "beli lauk ayam",
       "meta": {
-        "amount": 9000,
-        "budgetCategory": "needs",
-        "date": "2026-01-28",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 9000,
+        "budgetCategory": "needs",
+        "date": "2026-01-28",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
@@ -45,14 +45,14 @@
       "type": "FINANCE",
       "content": "jajan kulit ayam",
       "meta": {
-        "amount": 15000,
-        "budgetCategory": "wants",
-        "date": "2026-01-28",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 15000,
+        "budgetCategory": "wants",
+        "date": "2026-01-28",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
