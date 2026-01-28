@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "24a50aad-5d4a-4ea4-b6dd-dfac5c32123d",
+      "type": "NOTE",
+      "content": "beli lauk ayam 9000",
+      "status": "pending",
+      "created_at": "2026-01-28T10:34:16.671Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "4601afc3-cd8c-4543-a368-31c8c8270533",
       "status": "done",
       "created_at": "2026-01-28T10:34:14.841Z",
