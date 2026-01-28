@@ -1,23 +1,6 @@
 {
   "data": [
     {
-      "id": "df43d6e1-f1fa-43aa-a5eb-87e87a9381ff",
-      "status": "pending",
-      "created_at": "2026-01-28T10:34:18.819Z",
-      "type": "SHOPPING",
-      "content": "beli lauk ayam",
-      "meta": {
-        "amount": 9000,
-        "budgetCategory": "needs",
-        "shoppingCategory": "routine",
-        "tags": [
-          "food",
-          "purchase"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "4601afc3-cd8c-4543-a368-31c8c8270533",
       "status": "done",
       "created_at": "2026-01-28T10:34:14.841Z",
