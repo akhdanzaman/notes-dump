@@ -7,10 +7,10 @@
       "type": "TODO",
       "content": "Selesaiin summary sdppi",
       "meta": {
-        "date": "2026-01-27",
         "tags": [
           "business"
-        ]
+        ],
+        "date": "2026-01-27"
       },
       "isOptimistic": false
     },
@@ -21,10 +21,10 @@
       "type": "TODO",
       "content": "Belajar discontinou parts",
       "meta": {
-        "date": "2026-01-27",
         "tags": [
           "kaizen"
-        ]
+        ],
+        "date": "2026-01-27"
       },
       "isOptimistic": false
     },
@@ -35,10 +35,10 @@
       "type": "TODO",
       "content": "Lanjut summary regulasi",
       "meta": {
-        "date": "2026-01-27",
         "tags": [
           "business"
-        ]
+        ],
+        "date": "2026-01-27"
       },
       "isOptimistic": false
     },
