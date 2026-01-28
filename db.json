@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "b456d09b-b1f2-4a10-b8e6-c835c9b9ffba",
+      "type": "NOTE",
+      "content": "jajan kulit ayam 15000",
+      "status": "pending",
+      "created_at": "2026-01-28T10:34:11.528Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "9a3c10b9-83dd-40eb-a4a2-7f99ad7de948",
       "status": "pending",
       "created_at": "2026-01-28T09:34:15.459Z",
