@@ -57,7 +57,7 @@
     },
     {
       "id": "5fc4cf72-1134-4a54-abe2-a9db3dc2222a",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-29T10:41:26.265Z",
       "type": "TODO",
       "content": "cari tau gimana dapet update regulasi",
@@ -67,7 +67,8 @@
         ],
         "date": "2026-01-29"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-01-29T23:32:02.259Z"
     },
     {
       "id": "c5db031f-c81e-405f-82d9-c89d7c039c82",
