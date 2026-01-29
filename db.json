@@ -8,14 +8,14 @@
       "type": "FINANCE",
       "content": "McFlurry",
       "meta": {
-        "amount": 11000,
-        "budgetCategory": "wants",
-        "date": "2026-01-29",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 11000,
+        "budgetCategory": "wants",
+        "date": "2026-01-29",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
@@ -27,14 +27,14 @@
       "type": "FINANCE",
       "content": "beli lauk",
       "meta": {
-        "amount": 5000,
-        "budgetCategory": "needs",
-        "date": "2026-01-29",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-01-29",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
@@ -45,10 +45,10 @@
       "type": "TODO",
       "content": "cari tau gimana dapet update regulasi",
       "meta": {
-        "date": "2026-01-29",
         "tags": [
           "business"
-        ]
+        ],
+        "date": "2026-01-29"
       },
       "isOptimistic": false
     },
