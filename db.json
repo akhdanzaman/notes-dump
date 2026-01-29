@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "19ab2cd5-de1a-413b-9f20-00f9f6a81543",
-      "type": "NOTE",
-      "content": "abis beli mcfulrry 11000",
-      "status": "pending",
-      "created_at": "2026-01-29T10:42:00.050Z",
+      "id": "d478ce21-03c6-4ce5-8673-b828302c29a4",
+      "status": "done",
+      "created_at": "2026-01-29T10:42:02.910Z",
+      "completed_at": "2026-01-29T10:42:02.910Z",
+      "type": "FINANCE",
+      "content": "McFlurry",
       "meta": {
-        "tags": []
+        "amount": 11000,
+        "budgetCategory": "wants",
+        "date": "2026-01-29",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "21371360-10fa-4674-8cdc-db198a77aa95",
