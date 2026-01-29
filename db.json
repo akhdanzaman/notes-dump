@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "c4882a97-8148-408c-8cc8-ad8bad5c585a",
+      "type": "NOTE",
+      "content": "malem ini cari tau gimana dapet update regulasi",
+      "status": "pending",
+      "created_at": "2026-01-29T10:41:21.043Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "c5db031f-c81e-405f-82d9-c89d7c039c82",
       "type": "NOTE",
       "content": "notes: kosan tuku pulo asem, kayu putih",
