@@ -504,7 +504,7 @@
     },
     {
       "id": "c66908b0-662a-4b84-9f90-870bb1694f1f",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-25T02:21:37.310Z",
       "type": "SHOPPING",
       "content": "beli sepatu",
@@ -515,8 +515,7 @@
         "amount": 400000,
         "shoppingCategory": "not_urgent"
       },
-      "isOptimistic": false,
-      "completed_at": "2026-01-29T12:27:15.187Z"
+      "isOptimistic": false
     },
     {
       "id": "f9849057-20f8-4e9f-835a-dbbfc95d3387",
