@@ -7,13 +7,13 @@
       "type": "SHOPPING",
       "content": "sepatu",
       "meta": {
+        "tags": [
+          "purchase"
+        ],
         "amount": 380000,
         "budgetCategory": "wants",
         "date": "2026-02-01",
-        "shoppingCategory": "urgent",
-        "tags": [
-          "purchase"
-        ]
+        "shoppingCategory": "urgent"
       },
       "isOptimistic": false
     },
