@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "d87136dc-974d-4a3f-974f-f003d8c5b761",
-      "type": "NOTE",
-      "content": "beli sepatu 380000 1 februari besok. urgent",
+      "id": "ab50f402-9dbc-468d-9ebf-0b32a314908f",
       "status": "pending",
-      "created_at": "2026-01-29T12:27:36.451Z",
+      "created_at": "2026-01-29T12:27:43.080Z",
+      "type": "SHOPPING",
+      "content": "sepatu",
       "meta": {
-        "tags": []
+        "amount": 380000,
+        "budgetCategory": "wants",
+        "date": "2026-02-01",
+        "shoppingCategory": "urgent",
+        "tags": [
+          "purchase"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "d478ce21-03c6-4ce5-8673-b828302c29a4",
