@@ -940,7 +940,7 @@
     }
   ],
   "budgetConfig": {
-    "monthlyIncome": 2400000,
+    "monthlyIncome": 7000000,
     "rules": [
       {
         "id": "needs",
