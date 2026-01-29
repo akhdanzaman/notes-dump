@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "e1bc8ba8-ef07-4192-9edd-8fc0e27d9158",
+      "type": "NOTE",
+      "content": "abis beli lauk 5000",
+      "status": "pending",
+      "created_at": "2026-01-29T10:41:51.058Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "5fc4cf72-1134-4a54-abe2-a9db3dc2222a",
       "status": "pending",
       "created_at": "2026-01-29T10:41:26.265Z",
