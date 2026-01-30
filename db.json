@@ -127,10 +127,11 @@
           "bills",
           "errand"
         ],
-        "amount": 25000,
+        "amount": 25005,
         "budgetCategory": "needs",
         "recurrenceDays": 7,
-        "shoppingCategory": "routine"
+        "shoppingCategory": "routine",
+        "paymentMethod": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-29T12:28:12.542Z"
