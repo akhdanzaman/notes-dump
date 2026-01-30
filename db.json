@@ -127,7 +127,7 @@
           "bills",
           "errand"
         ],
-        "amount": 25005,
+        "amount": 25000,
         "budgetCategory": "needs",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
