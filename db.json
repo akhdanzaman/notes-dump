@@ -717,7 +717,7 @@
     },
     {
       "id": "50774428-6d25-49c9-9303-0e2505420992",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-24T08:04:19.718Z",
       "type": "SHOPPING",
       "content": "Send laundry",
@@ -731,7 +731,8 @@
         "shoppingCategory": "routine",
         "targetDay": "Friday"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-01-30T11:26:34.886Z"
     },
     {
       "id": "2242a9a4-40c4-4766-b0f9-102767df20eb",
