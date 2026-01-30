@@ -8,14 +8,14 @@
       "type": "FINANCE",
       "content": "beli sarapan",
       "meta": {
-        "amount": 16000,
-        "budgetCategory": "needs",
-        "date": "2026-01-30",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 16000,
+        "budgetCategory": "needs",
+        "date": "2026-01-30",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
