@@ -112,7 +112,10 @@
       "status": "pending",
       "created_at": "2026-01-29T05:40:13.434Z",
       "meta": {
-        "tags": []
+        "tags": [
+          "kos"
+        ],
+        "paymentMethod": ""
       },
       "isOptimistic": true
     },
