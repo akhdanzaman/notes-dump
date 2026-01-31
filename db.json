@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "dc497483-e014-4c59-84e5-a5e1a05ac6cf",
+      "type": "NOTE",
+      "content": "Beli makan tiap hari 20000",
+      "status": "pending",
+      "created_at": "2026-01-31T20:20:49.570Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "ec8ab5d3-c480-4d30-9d8c-9b775c7dbc67",
       "status": "pending",
       "created_at": "2026-01-31T20:20:04.585Z",
