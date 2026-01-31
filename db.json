@@ -8,14 +8,14 @@
       "type": "FINANCE",
       "content": "Buy coffee",
       "meta": {
-        "amount": 13000,
-        "budgetCategory": "wants",
-        "date": "2026-01-31",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 13000,
+        "budgetCategory": "wants",
+        "date": "2026-01-31",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
@@ -27,14 +27,14 @@
       "type": "FINANCE",
       "content": "beli cimol",
       "meta": {
-        "amount": 12000,
-        "budgetCategory": "wants",
-        "date": "2026-01-31",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 12000,
+        "budgetCategory": "wants",
+        "date": "2026-01-31",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
