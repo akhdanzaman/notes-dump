@@ -7,14 +7,14 @@
       "type": "SHOPPING",
       "content": "Buy food",
       "meta": {
-        "amount": 20000,
-        "budgetCategory": "needs",
-        "recurrenceDays": 1,
-        "shoppingCategory": "routine",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 20000,
+        "budgetCategory": "needs",
+        "recurrenceDays": 1,
+        "shoppingCategory": "routine"
       },
       "isOptimistic": false
     },
@@ -25,14 +25,14 @@
       "type": "SHOPPING",
       "content": "Bayar tagihan gopay later",
       "meta": {
+        "tags": [
+          "bills"
+        ],
         "amount": 350000,
         "budgetCategory": "needs",
         "date": "2026-02-20",
         "paymentMethod": "Gopay Later",
-        "shoppingCategory": "urgent",
-        "tags": [
-          "bills"
-        ]
+        "shoppingCategory": "urgent"
       },
       "isOptimistic": false
     },
