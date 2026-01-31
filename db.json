@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "5a37a5ec-0f1f-40ac-839a-8a0d7b2031e1",
+      "type": "NOTE",
+      "content": "Jajan ayam pak gembus 26000",
+      "status": "pending",
+      "created_at": "2026-01-31T15:22:45.152Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "a104b043-af8b-427e-b714-d39b182fbd6a",
       "status": "done",
       "created_at": "2026-01-31T11:07:24.619Z",
