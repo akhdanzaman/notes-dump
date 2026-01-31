@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "12030070-e462-4d76-aa4e-d8ddc5ecd90c",
+      "type": "NOTE",
+      "content": "Jajan es teh 6000",
+      "status": "pending",
+      "created_at": "2026-01-31T15:22:50.807Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "907bafa2-0971-4307-b3a1-504a8b976998",
       "status": "done",
       "created_at": "2026-01-31T15:22:48.164Z",
