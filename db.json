@@ -1,6 +1,25 @@
 {
   "data": [
     {
+      "id": "a104b043-af8b-427e-b714-d39b182fbd6a",
+      "status": "done",
+      "created_at": "2026-01-31T11:07:24.619Z",
+      "completed_at": "2026-01-31T11:07:24.619Z",
+      "type": "FINANCE",
+      "content": "Buy coffee",
+      "meta": {
+        "amount": 13000,
+        "budgetCategory": "wants",
+        "date": "2026-01-31",
+        "financeType": "expense",
+        "tags": [
+          "food",
+          "purchase"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "d6d10c77-6c74-458f-97ff-30cf1f555489",
       "status": "done",
       "created_at": "2026-01-31T11:07:16.136Z",
@@ -18,17 +37,6 @@
         ]
       },
       "isOptimistic": false
-    },
-    {
-      "id": "9dd544b7-fc7a-43e1-acab-3a435e8b8403",
-      "type": "NOTE",
-      "content": "Abis beli kopi 13000",
-      "status": "pending",
-      "created_at": "2026-01-31T11:07:14.719Z",
-      "meta": {
-        "tags": []
-      },
-      "isOptimistic": true
     },
     {
       "id": "bf197cc9-e95e-4859-89c8-e5bf123b01c8",
