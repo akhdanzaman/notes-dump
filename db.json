@@ -477,10 +477,11 @@
         ],
         "amount": 25000,
         "budgetCategory": "needs",
-        "date": "2026-01-30",
+        "date": "2026-01-30T00:00:00.000Z",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
-        "targetDay": "Friday"
+        "targetDay": "Friday",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
