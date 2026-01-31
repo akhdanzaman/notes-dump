@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "9dd544b7-fc7a-43e1-acab-3a435e8b8403",
+      "type": "NOTE",
+      "content": "Abis beli kopi 13000",
+      "status": "pending",
+      "created_at": "2026-01-31T11:07:14.719Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "b9df3758-53bd-455e-8a76-4a3881d87f14",
       "type": "NOTE",
       "content": "Abis beli cimol 12000",
