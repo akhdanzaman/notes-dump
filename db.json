@@ -2,9 +2,8 @@
   "data": [
     {
       "id": "7927a03e-c1f7-4dc9-b361-595027ff1525",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-31T20:20:52.042Z",
-      "completed_at": "2026-01-31T20:21:29.605Z",
       "type": "SHOPPING",
       "content": "Buy food",
       "meta": {
