@@ -8,14 +8,14 @@
       "type": "FINANCE",
       "content": "Sarapan",
       "meta": {
-        "amount": 16000,
-        "budgetCategory": "wants",
-        "date": "2026-01-31",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 16000,
+        "budgetCategory": "wants",
+        "date": "2026-01-31",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
@@ -27,13 +27,13 @@
       "type": "FINANCE",
       "content": "Air",
       "meta": {
+        "tags": [
+          "purchase"
+        ],
         "amount": 6000,
         "budgetCategory": "needs",
         "date": "2026-01-31T00:00:00.000Z",
         "financeType": "expense",
-        "tags": [
-          "purchase"
-        ],
         "paymentMethod": ""
       },
       "isOptimistic": false
@@ -46,14 +46,14 @@
       "type": "FINANCE",
       "content": "Jajan roti",
       "meta": {
-        "amount": 14000,
-        "budgetCategory": "wants",
-        "date": "2026-01-31",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 14000,
+        "budgetCategory": "wants",
+        "date": "2026-01-31",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
