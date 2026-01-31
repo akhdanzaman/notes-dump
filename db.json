@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "49a26de3-b32f-4fd0-935d-1bfed5b9fa1b",
-      "type": "NOTE",
-      "content": "Bayar tagihan gopay later besok tanggal 20 februari 350000",
+      "id": "ec8ab5d3-c480-4d30-9d8c-9b775c7dbc67",
       "status": "pending",
-      "created_at": "2026-01-31T20:19:50.942Z",
+      "created_at": "2026-01-31T20:20:04.585Z",
+      "type": "SHOPPING",
+      "content": "Bayar tagihan gopay later",
       "meta": {
-        "tags": []
+        "amount": 350000,
+        "budgetCategory": "needs",
+        "date": "2026-02-20",
+        "paymentMethod": "Gopay Later",
+        "shoppingCategory": "urgent",
+        "tags": [
+          "bills"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "2e5b094c-14e3-4f65-98ad-08078fd77659",
