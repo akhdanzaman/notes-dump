@@ -8,12 +8,12 @@
       "type": "FINANCE",
       "content": "Kirim dompet",
       "meta": {
-        "amount": 50000,
-        "budgetCategory": "wants",
-        "financeType": "expense",
         "tags": [
           "people"
-        ]
+        ],
+        "amount": 50000,
+        "budgetCategory": "wants",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
