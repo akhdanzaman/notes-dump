@@ -1,5 +1,17 @@
 {
-  "data": [],
+  "data": [
+    {
+      "id": "2e2bb2d1-19f9-4e70-84cb-39b25179578a",
+      "type": "NOTE",
+      "content": "notes: bakmi jawa pinggir sawah enak",
+      "status": "pending",
+      "created_at": "2026-02-01T06:49:50.183Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    }
+  ],
   "budgetConfig": {
     "monthlyIncome": 0,
     "rules": [
@@ -23,5 +35,6 @@
       }
     ]
   },
-  "customPrompt": "Task: Break down the input into distinct items. If the user lists multiple things, split them.\n\nClassify each item into one of these categories:\n1. TODO: Professional Work, Career, Productivity.\n2. SHOPPING: Life Admin, Chores, Errands. **IMPORTANT**: If user says \"Buy X for 50k\", it is SHOPPING (Future/Plan), NOT Finance yet.\n3. NOTE: Knowledge, ideas, thoughts.\n4. EVENT: Specific dates/times.\n5. FINANCE: ONLY for recorded transactions that ALREADY happened (e.g. \"Just bought coffee 20k\", \"Paid rent\", \"Received salary\").\n\nInstructions:\n- Extract dates into ISO format if present.\n- Generate relevant 'tags'.\n- Extract 'amount' as a NUMBER (remove currency symbols) for SHOPPING (Estimated Cost) or FINANCE (Actual Amount).\n- Extract specific day names mentioned (e.g. \"Senin\", \"Monday\", \"Minggu\") into 'targetDay'.\n\nFor SHOPPING:\n- 'shoppingCategory': 'urgent', 'routine', 'not_urgent'.\n- If 'routine' (e.g., \"Laundry every 3 days on Monday\"), extract 'recurrenceDays' AND 'targetDay'.\n- If 'urgent' (e.g., \"Buy headset on Sunday\"), extract 'targetDay'.\n\nFor FINANCE and SHOPPING (if it involves money):\n- Extract 'paymentMethod' EXACTLY as described (e.g., \"QRIS BNI\", \"Cash\", \"Gopay Later\", \"CC BCA\"). If not specified, leave empty.\n- Determine 'budgetCategory' based on the 50-30-20 rule:\n  - 'needs': Essentials (Rent, Groceries, Electricity, Transport, Health).\n  - 'wants': Non-essentials (Dining out, Movies, Hobbies, Subscription services).\n  - 'savings': Investments, Emergency fund, Debt repayment.\n\nFor FINANCE:\n- Determine 'financeType': 'expense', 'income', 'lending', 'reimbursement'.\n\nDATE RESOLUTION (STRICT):\n- You MUST normalize relative time words to an ISO date in meta.dateISO (YYYY-MM-DD).\n- Use Current Date context as the reference.\n- \"today/hari ini\" => meta.when=\"today\", meta.dateISO = Current Date (YYYY-MM-DD)\n- \"tomorrow/besok\" => meta.when=\"tomorrow\", meta.dateISO = Current Date + 1 day\n- If a weekday is mentioned (Senin/Monday, Minggu/Sunday, etc), resolve it to the NEXT occurrence of that weekday after Current Date.\n- If a specific calendar date is mentioned, use it.\n\nOutput a JSON ARRAY of objects."
+  "customPrompt": "Task: Break down the input into distinct items. If the user lists multiple things, split them.\n\nClassify each item into one of these categories:\n1. TODO: Professional Work, Career, Productivity.\n2. SHOPPING: Life Admin, Chores, Errands. **IMPORTANT**: If user says \"Buy X for 50k\", it is SHOPPING (Future/Plan), NOT Finance yet.\n3. NOTE: Knowledge, ideas, thoughts.\n4. EVENT: Specific dates/times.\n5. FINANCE: ONLY for recorded transactions that ALREADY happened (e.g. \"Just bought coffee 20k\", \"Paid rent\", \"Received salary\").\n\nInstructions:\n- Extract dates into ISO format if present.\n- Generate relevant 'tags'.\n- Extract 'amount' as a NUMBER (remove currency symbols) for SHOPPING (Estimated Cost) or FINANCE (Actual Amount).\n- Extract specific day names mentioned (e.g. \"Senin\", \"Monday\", \"Minggu\") into 'targetDay'.\n\nFor SHOPPING:\n- 'shoppingCategory': 'urgent', 'routine', 'not_urgent'.\n- If 'routine' (e.g., \"Laundry every 3 days on Monday\"), extract 'recurrenceDays' AND 'targetDay'.\n- If 'urgent' (e.g., \"Buy headset on Sunday\"), extract 'targetDay'.\n\nFor FINANCE and SHOPPING (if it involves money):\n- Extract 'paymentMethod' EXACTLY as described (e.g., \"QRIS BNI\", \"Cash\", \"Gopay Later\", \"CC BCA\"). If not specified, leave empty.\n- Determine 'budgetCategory' based on the 50-30-20 rule:\n  - 'needs': Essentials (Rent, Groceries, Electricity, Transport, Health).\n  - 'wants': Non-essentials (Dining out, Movies, Hobbies, Subscription services).\n  - 'savings': Investments, Emergency fund, Debt repayment.\n\nFor FINANCE:\n- Determine 'financeType': 'expense', 'income', 'lending', 'reimbursement'.\n\nDATE RESOLUTION (STRICT):\n- You MUST normalize relative time words to an ISO date in meta.dateISO (YYYY-MM-DD).\n- Use Current Date context as the reference.\n- \"today/hari ini\" => meta.when=\"today\", meta.dateISO = Current Date (YYYY-MM-DD)\n- \"tomorrow/besok\" => meta.when=\"tomorrow\", meta.dateISO = Current Date + 1 day\n- If a weekday is mentioned (Senin/Monday, Minggu/Sunday, etc), resolve it to the NEXT occurrence of that weekday after Current Date.\n- If a specific calendar date is mentioned, use it.\n\nOutput a JSON ARRAY of objects.",
+  "skills": []
 }
