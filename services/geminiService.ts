@@ -20,36 +20,68 @@ const modelName = 'gemini-2.5-flash';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const DEFAULT_PROMPT = `Task: Break down the input into distinct items. If the user lists multiple things, split them.
+export const DEFAULT_PROMPT = `Task: Split input into distinct items. Output MUST be a JSON ARRAY of objects.
 
-Classify each item into one of these categories:
-1. TODO: Professional Work, Career, Productivity.
-2. SHOPPING: Life Admin, Chores, Errands.
-3. NOTE: Knowledge, ideas, thoughts.
-4. EVENT: Specific dates/times.
-5. FINANCE: ONLY for recorded transactions (e.g. "Just bought coffee 20k").
-6. SKILL_LOG: User explicitly mentions spending time studying, practicing, or working on a skill. (e.g., "Belajar react 30 menit", "Bedah regulasi 1 jam").
+TYPE (pick one):
+- TODO: work/career/productivity actions.
+- SHOPPING: planned purchases/errands (future/plan). IMPORTANT: “Buy X 50k” => SHOPPING, not FINANCE.
+- NOTE: ideas/knowledge.
+- EVENT: scheduled dates/times.
+- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received).
+- SKILL_LOG: time spent learning/practicing a skill.
 
-Instructions:
-- Extract dates into ISO format if present.
-- Generate relevant 'tags'.
-- Extract 'amount' as a NUMBER for SHOPPING/FINANCE.
-- Extract 'targetDay' for routine/shopping items.
+COMMON EXTRACTION:
+- amount: NUMBER only (strip currency symbols + thousand separators).
+- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc).
+- tags: max 3, see TAG RULES below.
 
-For SKILL_LOG:
-- **CRITICAL**: The 'content' MUST be the SUMMARY/KEY TAKEAWAYS of what was learned. If user says "Belajar React 1 jam tentang Hooks", content is "Belajar React tentang Hooks".
-- Extract 'durationMinutes' as a number (convert hours to minutes).
-- Extract 'skillName' based on the context (e.g. "React", "English", "Excel").
+DATE (STRICT):
+- Always resolve meta.dateISO = YYYY-MM-DD when any time reference exists.
+- Set meta.when if relative/weekday-based:
+  - today/hari ini => when="today"
+  - tomorrow/besok => when="tomorrow"
+  - weekday mentioned => NEXT occurrence after current date, when="next_weekday"
+  - explicit calendar date => when="specific_date"
 
-For FINANCE/SHOPPING:
-- Extract 'paymentMethod' and 'budgetCategory' (needs/wants/savings).
+SHOPPING META:
+- shoppingCategory ∈ {urgent, routine, not_urgent}
+- routine ONLY if repetition is explicit: "setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan" OR recurrenceDays given.
+- If weekday/date mentioned WITHOUT repetition words => NOT routine, set urgent (one-time scheduled).
+- routine => include recurrenceDays (if stated) + targetDay (if stated).
+- urgent => include targetDay (if stated).
+- default => not_urgent.
 
-DATE RESOLUTION (STRICT):
-- "today/hari ini" => meta.when="today", meta.dateISO = Current Date (YYYY-MM-DD)
-- "tomorrow/besok" => meta.when="tomorrow", meta.dateISO = Current Date + 1 day
-- If a weekday is mentioned, resolve to NEXT occurrence.
+MONEY META (FINANCE + money-related SHOPPING):
+- paymentMethod: EXACT text from user, else "".
+- budgetCategory ∈ {needs, wants, savings, sedekah}
+  - needs: rent/groceries/electricity/transport/health
+  - wants: dining/hobby/entertainment/subscription entertainment
+  - savings: investment/emergency/debt repayment
+  - sedekah: charity/giving/donation
 
-Output a JSON ARRAY of objects.`;
+FINANCE META:
+- financeType ∈ {expense, income, lending, reimbursement}
+
+SKILL_LOG META:
+- content MUST be summary/key takeaways (not raw duration sentence)
+  Example: "Belajar React 1 jam tentang Hooks" => content "Belajar React tentang Hooks"
+- durationMinutes: NUMBER (convert hours→minutes)
+- skillName: infer from context; match known skills if provided
+
+TAG RULES (STRICT):
+- Priority: intent > context > object.
+- Avoid generic tags: "people", "purchase" unless no better option.
+- Prefer semantic tags like: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.
+- Max 3 tags.
+
+Examples:
+- "Gave money to street musician 5000" => tags ["charity","donation"], budgetCategory "sedekah"
+- "tip driver gojek 10000" => tags ["tip","transport"]
+- "Breakfast 14000" => tags ["food"]
+- "Kirim dompet" => tags ["assistance","delivery"]
+- "beli susu besok hari senin 12000" => SHOPPING urgent + targetDay Monday + amount 12000
+- "beli susu setiap senin 12000" => SHOPPING routine + targetDay Monday + amount 12000
+`;
 
 // CHANGED: Added availableSkills to prompt context
 export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string): Promise<Partial<BrainDumpItem>[]> => {
