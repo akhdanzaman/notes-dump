@@ -1,19 +1,6 @@
 {
   "data": [
     {
-      "id": "65871406-d81a-4176-8d61-29aef5c62c35",
-      "status": "pending",
-      "created_at": "2026-02-01T06:47:52.000Z",
-      "type": "NOTE",
-      "content": "beli bensin 15000",
-      "meta": {
-        "tags": [
-          "uncategorized"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "29083cef-042d-4aef-b205-ca30b89a95a2",
       "status": "pending",
       "created_at": "2026-02-01T06:47:42.363Z",
