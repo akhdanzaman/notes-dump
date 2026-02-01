@@ -7,14 +7,14 @@
       "type": "SHOPPING",
       "content": "tiket mudik",
       "meta": {
-        "amount": 500000,
-        "budgetCategory": "needs",
-        "date": "2026-02-02",
-        "shoppingCategory": "urgent",
         "tags": [
           "travel",
           "purchase"
         ],
+        "amount": 500000,
+        "budgetCategory": "needs",
+        "date": "2026-02-02",
+        "shoppingCategory": "urgent",
         "targetDay": "Monday"
       },
       "isOptimistic": false
