@@ -69,6 +69,23 @@ DATE RESOLUTION (STRICT):
 - If a weekday is mentioned (Senin/Monday, Minggu/Sunday, etc), resolve it to the NEXT occurrence of that weekday after Current Date; set meta.when="next_weekday".
 - If a specific calendar date is mentioned, use it directly in meta.dateISO; set meta.when="specific_date".
 
+Generate tags with the following priority:
+1. Intent-based tags (WHY the action happened)
+2. Context-based tags (WHAT situation/domain)
+3. Object-based tags (WHO/WHAT involved)
+
+Rules:
+- Avoid generic tags like "people", "purchase", unless no better tag exists.
+- Prefer semantic tags such as: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.
+- Maximum 3 tags per item.
+
+Examples:
+- "Gave money to street musician" → tags: ["charity", "donation"]
+- "tip driver gojek" → tags: ["tip", "transport"]
+- "Breakfast" → tags: ["food"]
+- "Kirim dompet" (sending wallet back to owner) → tags: ["assistance", "delivery"]
+- "Beli sepatu" → tags: ["shopping"]
+
 Output a JSON ARRAY of objects.`;
 
 // classifyText(text, existingTags, availableSkills, retryCount, customPrompt)
