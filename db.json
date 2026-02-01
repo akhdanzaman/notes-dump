@@ -1,15 +1,25 @@
 {
   "data": [
     {
-      "id": "254ecc05-37ff-4f77-a200-7472a0eccf8a",
-      "type": "NOTE",
-      "content": "45 minutes of reading. aku baca tentang mindfullness, dari medium, chatgpt, dan wherever you are there you go",
-      "status": "pending",
-      "created_at": "2026-02-01T23:05:20.448Z",
+      "id": "b43731f7-32aa-4faf-9d82-d25713691010",
+      "status": "done",
+      "created_at": "2026-02-01T23:05:24.244Z",
+      "completed_at": "2026-02-01T23:05:24.244Z",
+      "type": "SKILL_LOG",
+      "content": "Reading about mindfulness from Medium, ChatGPT, and 'Wherever You Are, There You Go'",
       "meta": {
-        "tags": []
+        "tags": [
+          "mindfulness",
+          "medium",
+          "chatgpt"
+        ],
+        "dateISO": "2026-02-01",
+        "durationMinutes": 45,
+        "skillName": "Focus reading",
+        "when": "today",
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "8e5b001b-3843-4f93-bc4b-5ba877346133",
