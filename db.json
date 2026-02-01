@@ -19,24 +19,6 @@
       "isOptimistic": false
     },
     {
-      "id": "87e49f31-2acf-497a-b7b1-a87184724086",
-      "status": "done",
-      "created_at": "2026-02-01T06:24:30.389Z",
-      "completed_at": "2026-02-01T06:24:30.389Z",
-      "type": "FINANCE",
-      "content": "Gave money to street musician",
-      "meta": {
-        "tags": [
-          "people"
-        ],
-        "amount": 5000,
-        "budgetCategory": "wants",
-        "date": "2026-02-01",
-        "financeType": "expense"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "ee44eacd-0a77-4bb6-97f0-baf16f03fb47",
       "status": "pending",
       "created_at": "2026-02-01T06:19:45.009Z",
