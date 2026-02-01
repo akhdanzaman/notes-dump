@@ -1,15 +1,17 @@
 {
   "data": [
     {
-      "id": "7624b0ed-d13e-4b0e-a6da-46aa235f2a05",
+      "id": "ebf59617-f3f4-4cdc-bf88-b9d8ad87e401",
+      "status": "pending",
+      "created_at": "2026-02-01T06:52:18.289Z",
       "type": "NOTE",
       "content": "beli selimut besok senin harga 12000",
-      "status": "pending",
-      "created_at": "2026-02-01T06:52:14.192Z",
       "meta": {
-        "tags": []
+        "tags": [
+          "uncategorized"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "65871406-d81a-4176-8d61-29aef5c62c35",
