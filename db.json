@@ -8,13 +8,13 @@
       "type": "FINANCE",
       "content": "Terima gaji",
       "meta": {
+        "tags": [
+          "income"
+        ],
         "amount": 2240000,
         "budgetCategory": "needs",
         "date": "2026-01-31",
-        "financeType": "income",
-        "tags": [
-          "income"
-        ]
+        "financeType": "income"
       },
       "isOptimistic": false
     },
