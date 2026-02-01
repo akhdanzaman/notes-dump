@@ -15,148 +15,82 @@ export const saveGeminiKey = (key: string) => {
   }
 };
 
-// Model
+// Updated to Gemini 2.5 Flash Lite as requested
 const modelName = "gemini-2.5-flash";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Tag policy: keep it small and consistent
-const CANONICAL_TAGS = [
-  "charity",
-  "donation",
-  "tip",
-  "assistance",
-  "food",
-  "groceries",
-  "transport",
-  "travel",
-  "delivery",
-  "courier",
-  "loss",
-  "subscription",
-  "education",
-  "skill",
-  "work",
-  "health",
-  "utilities",
-  "rent",
-  "entertainment",
-  "shopping",
-] as const;
-
-const BAD_GENERIC_TAGS = new Set(["people", "purchase", "misc", "other"]);
-
-const hasRepeatCue = (raw: string): boolean =>
-  /(\bsetiap\b|\btiap\b|\bper\s*(hari|minggu|bulan)\b|\bweekly\b|\bevery\b|\brutin\b|\bberkala\b|\blangganan\b)/i.test(
-    raw,
-  );
-
-const normalizeTags = (
-  tags: unknown,
-  existingTags: string[] = [],
-): string[] => {
-  const arr = Array.isArray(tags) ? tags : [];
-
-  // 1) sanitize
-  let cleaned = arr
-    .filter((t) => typeof t === "string")
-    .map((t) => t.trim().toLowerCase())
-    .filter((t) => t.length > 0)
-    .filter((t) => !BAD_GENERIC_TAGS.has(t));
-
-  // 2) prefer canonical tags; allow a new tag only if it's concise
-  const canonicalSet = new Set(CANONICAL_TAGS);
-  cleaned = cleaned.map((t) => {
-    // simple alias mapping
-    if (t === "donasi") return "donation";
-    if (t === "sedekah") return "charity";
-    if (t === "makanan") return "food";
-    if (t === "antar" || t === "pengiriman") return "delivery";
-    if (t === "ojek" || t === "gojek" || t === "grab") return "transport";
-    return t;
-  });
-
-  const canonicalFirst: string[] = [];
-  const custom: string[] = [];
-
-  for (const t of cleaned) {
-    if (canonicalSet.has(t as any)) canonicalFirst.push(t);
-    else if (/^[a-z0-9_]{2,18}$/.test(t)) custom.push(t); // keep it short
-  }
-
-  // 3) reuse existing tags if relevant (intersection-ish)
-  const existingSet = new Set(existingTags.map((t) => t.toLowerCase()));
-  const reused = canonicalFirst.filter((t) => existingSet.has(t));
-
-  const merged = [...new Set([...reused, ...canonicalFirst, ...custom])];
-
-  // max 3 tags
-  return merged.slice(0, 3);
-};
 
 export const DEFAULT_PROMPT = `Task: Break down the input into distinct items. If the user lists multiple things, split them.
 
 Classify each item into one of these categories:
 1. TODO: Professional Work, Career, Productivity.
-2. SHOPPING: Life Admin, Chores, Errands. IMPORTANT: If user says "Buy X for 50k", it is SHOPPING (Future/Plan), NOT FINANCE.
+2. SHOPPING: Life Admin, Chores, Errands. **IMPORTANT**: If user says "Buy X for 50k", it is SHOPPING (Future/Plan), NOT FINANCE yet.
 3. NOTE: Knowledge, ideas, thoughts.
 4. EVENT: Specific dates/times.
-5. FINANCE: ONLY for transactions that ALREADY happened (e.g. "Just bought coffee 20k", "Paid rent", "Received salary").
-6. SKILL_LOG: User explicitly mentions spending time studying/practicing a skill.
+5. FINANCE: ONLY for recorded transactions that ALREADY happened (e.g. "Just bought coffee 20k", "Paid rent", "Received salary").
+6. SKILL_LOG: User explicitly mentions spending time studying, practicing, or working on a skill (e.g., "Belajar react 30 menit", "Bedah regulasi 1 jam").
 
-GENERAL RULES:
-- Output MUST be a JSON ARRAY.
-- Extract amount as NUMBER (strip currency symbols and thousand separators).
-- Extract targetDay from day names mentioned (Monday/Senin, Sunday/Minggu, etc).
+Instructions (GENERAL):
+- Extract dates into ISO format if present.
+- Generate relevant 'tags'.
+- Extract 'amount' as a NUMBER (remove currency symbols, dots/commas as thousand separators) for SHOPPING (Estimated Cost) or FINANCE (Actual Amount).
+- Extract specific day names mentioned (e.g. "Senin", "Monday", "Minggu") into 'targetDay'.
+
+For SHOPPING:
+- 'shoppingCategory': 'urgent', 'routine', 'not_urgent'.
+- If 'routine' (e.g., "Laundry every 3 days on Monday"), extract 'recurrenceDays' AND 'targetDay'.
+- If 'urgent' (e.g., "Buy headset on Sunday"), extract 'targetDay'.
+- If category not clear, default to 'not_urgent'.
+SHOPPING CATEGORY RULES (STRICT):
+- Set shoppingCategory="routine" ONLY IF the text explicitly indicates repetition (e.g. "setiap", "tiap", "per minggu", "weekly", "every", "rutin", "berkala", "langganan", or recurrenceDays is explicitly mentioned).
+- If a weekday/date is mentioned without repetition words, it is NOT routine. Treat it as "urgent" (scheduled one-time purchase).
+- Default: if it's a one-time planned purchase with a specific day/date, use "urgent".
+
+For FINANCE and SHOPPING (if it involves money):
+- Extract 'paymentMethod' EXACTLY as described (e.g., "QRIS BNI", "Cash", "Gopay Later", "CC BCA"). If not specified, leave empty.
+- Determine 'budgetCategory' based on the 50-30-20 rule:
+  - 'needs': Essentials (Rent, Groceries, Electricity, Transport, Health).
+  - 'wants': Non-essentials (Dining out, Movies, Hobbies, Subscription services).
+  - 'savings': Investments, Emergency fund, Debt repayment.
+  - 'sedekah': giving, voluntary charity, or benevolent acts.
+
+For FINANCE:
+- Determine 'financeType': 'expense', 'income', 'lending', 'reimbursement'.
+
+For SKILL_LOG:
+- **CRITICAL**: The 'content' MUST be the SUMMARY/KEY TAKEAWAYS of what was learned (not the raw duration sentence).
+  - If user says "Belajar React 1 jam tentang Hooks", content is "Belajar React tentang Hooks".
+- Extract 'durationMinutes' as a NUMBER (convert hours to minutes).
+- Extract 'skillName' based on the context (e.g. "React", "English", "Excel").
+- If possible, match skillName to one of the known user skills provided in context.
 
 DATE RESOLUTION (STRICT):
-- Always resolve to meta.dateISO in YYYY-MM-DD.
+- You MUST normalize relative time words to an ISO date in meta.dateISO (YYYY-MM-DD).
 - Always set meta.when when time is relative or weekday-based.
-- Use Current Date context as reference.
-- today/hari ini => when="today", dateISO = Current Date
-- tomorrow/besok => when="tomorrow", dateISO = Current Date + 1 day
-- If a weekday is mentioned => resolve to NEXT occurrence after Current Date; when="next_weekday"
-- If a specific calendar date is mentioned => use it directly; when="specific_date"
+- Use Current Date context as the reference.
+- "today/hari ini" => meta.when="today", meta.dateISO = Current Date (YYYY-MM-DD)
+- "tomorrow/besok" => meta.when="tomorrow", meta.dateISO = Current Date + 1 day
+- If a weekday is mentioned (Senin/Monday, Minggu/Sunday, etc), resolve it to the NEXT occurrence of that weekday after Current Date; set meta.when="next_weekday".
+- If a specific calendar date is mentioned, use it directly in meta.dateISO; set meta.when="specific_date".
 
-SHOPPING RULES:
-- shoppingCategory must be one of: urgent, routine, not_urgent.
-- Set shoppingCategory="routine" ONLY IF repetition is explicitly indicated ("setiap", "tiap", "per minggu", "weekly", "every", "rutin", "berkala", "langganan") OR recurrenceDays is explicitly given.
-- If a weekday/date is mentioned WITHOUT repetition words, it is NOT routine. Treat it as urgent (one-time scheduled purchase).
-- If routine => fill recurrenceDays (if stated) AND targetDay (if stated).
-- If urgent => fill targetDay (if stated).
-- If unclear => not_urgent.
+Generate tags with the following priority:
+1. Intent-based tags (WHY the action happened)
+2. Context-based tags (WHAT situation/domain)
+3. Object-based tags (WHO/WHAT involved)
 
-FINANCE RULES:
-- financeType must be: expense, income, lending, reimbursement.
-- paymentMethod must be EXACTLY as written by user (if missing, empty).
-- budgetCategory must be: needs, wants, savings, sedekah.
-
-BUDGET CATEGORY HINTS:
-- needs: essentials (rent, groceries, electricity, transport, health)
-- wants: non-essentials (dining out, hobbies, subscription entertainment)
-- savings: investments, emergency fund, debt repayment
-- sedekah: charity, giving, donation, tip that is clearly a donation
-
-SKILL_LOG RULES:
-- content MUST be a summary of what was learned (not the raw duration sentence).
-- durationMinutes: convert hours to minutes.
-- skillName: infer from context; if possible match to known skills provided.
-
-TAGGING (STRICT):
-- Generate at most 3 tags.
-- Avoid generic tags like "people" and "purchase".
-- Prefer intent-based tags first, then context, then objects.
-- Use tags from this canonical list when possible:
-  ${CANONICAL_TAGS.join(", ")}
+Rules:
+- Avoid generic tags like "people", "purchase", unless no better tag exists.
+- Prefer semantic tags such as: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.
+- Maximum 3 tags per item.
 
 Examples:
-- "Gave money to street musician 5000" => tags ["charity","donation"], budgetCategory "sedekah"
-- "tip driver gojek 10000" => tags ["tip","transport"]
-- "Breakfast 14000" => tags ["food"]
-- "beli susu besok hari senin 12000" => SHOPPING + shoppingCategory "urgent" + targetDay "Monday" + amount 12000
-- "beli susu setiap senin 12000" => SHOPPING + shoppingCategory "routine" + targetDay "Monday" + amount 12000
+- "Gave money to street musician" → tags: ["charity", "donation"]
+- "tip driver gojek" → tags: ["tip", "transport"]
+- "Breakfast" → tags: ["food"]
+- "Kirim dompet" (sending wallet back to owner) → tags: ["assistance", "delivery"]
+- "Beli sepatu" → tags: ["shopping"]
 
-Return ONLY the JSON array.`;
+Output a JSON ARRAY of objects.`;
 
 // classifyText(text, existingTags, availableSkills, retryCount, customPrompt)
 export const classifyText = async (
@@ -181,10 +115,10 @@ export const classifyText = async (
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // Use local date context. If you want strict WIB handling, pass a fixed timezone string from your app.
-  const now = new Date();
-  const currentDateISO = now.toISOString();
-  const currentDayName = now.toLocaleDateString("en-US", { weekday: "long" });
+  const currentDate = new Date().toISOString();
+  const currentDayName = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+  });
 
   const tagsContext =
     existingTags.length > 0
@@ -202,7 +136,7 @@ export const classifyText = async (
     const response = await ai.models.generateContent({
       model: modelName,
       contents: `Analyze this user input: "${text}".
-Current Date context: ${currentDateISO} (${currentDayName}).
+Current Date context: ${currentDate} (${currentDayName}).
 ${tagsContext}
 ${skillsContext}
 
@@ -221,15 +155,15 @@ ${promptToUse}`,
               },
               content: {
                 type: Type.STRING,
-                description: "Cleaned content text or summary",
+                description: "The cleaned up content text or summary",
               },
               meta: {
                 type: Type.OBJECT,
                 properties: {
-                  // legacy
+                  // Keep legacy 'date' if you still use it somewhere:
                   date: { type: Type.STRING },
 
-                  // strict date
+                  // Restored and enforced ISO date fields:
                   when: {
                     type: Type.STRING,
                     description:
@@ -241,30 +175,47 @@ ${promptToUse}`,
                   },
 
                   tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  quantity: { type: Type.STRING },
 
-                  // shopping
+                  // Shopping fields (restored strictness)
                   shoppingCategory: {
                     type: Type.STRING,
                     description: "urgent, routine, not_urgent",
                   },
                   recurrenceDays: { type: Type.NUMBER },
-                  targetDay: { type: Type.STRING },
+                  targetDay: {
+                    type: Type.STRING,
+                    description: "Specific day name e.g. Monday, Sunday",
+                  },
 
-                  // money
-                  amount: { type: Type.NUMBER },
+                  // Money fields (restored strictness)
+                  amount: {
+                    type: Type.NUMBER,
+                    description: "Numeric amount (cost/price/value)",
+                  },
                   financeType: {
                     type: Type.STRING,
                     description: "expense, income, lending, reimbursement",
                   },
-                  paymentMethod: { type: Type.STRING },
+                  paymentMethod: {
+                    type: Type.STRING,
+                    description:
+                      "Detailed payment source e.g. QRIS BNI, GOPAY LATER",
+                  },
                   budgetCategory: {
                     type: Type.STRING,
                     description: "needs, wants, savings, sedekah",
                   },
 
-                  // skill
-                  durationMinutes: { type: Type.NUMBER },
-                  skillName: { type: Type.STRING },
+                  // Skill log fields
+                  durationMinutes: {
+                    type: Type.NUMBER,
+                    description: "Duration in minutes for SKILL_LOG",
+                  },
+                  skillName: {
+                    type: Type.STRING,
+                    description: "Name of the skill practiced",
+                  },
                 },
               },
             },
@@ -278,50 +229,28 @@ ${promptToUse}`,
     const resultsArray = Array.isArray(parsed) ? parsed : [parsed];
 
     return resultsArray.map((result: any) => {
-      // 1) Validate type matches our Enum
       let matchedType = ItemType.NOTE;
       const typeStr = result.type?.toUpperCase();
+
       if (Object.values(ItemType).includes(typeStr as ItemType)) {
         matchedType = typeStr as ItemType;
       }
 
-      // 2) Ensure meta exists
-      if (!result.meta) result.meta = {};
-
-      // 3) Default shopping category
-      if (matchedType === ItemType.SHOPPING && !result.meta.shoppingCategory) {
+      // Default shopping category if missing
+      if (matchedType === ItemType.SHOPPING && !result.meta?.shoppingCategory) {
+        if (!result.meta) result.meta = {};
         result.meta.shoppingCategory = "not_urgent";
       }
 
-      // 4) Guardrail: routine requires repetition cue or explicit recurrenceDays
-      if (matchedType === ItemType.SHOPPING) {
-        const repeatCue = hasRepeatCue(text);
-        const hasRec = typeof result.meta.recurrenceDays === "number";
-        if (
-          result.meta.shoppingCategory === "routine" &&
-          !repeatCue &&
-          !hasRec
-        ) {
-          result.meta.shoppingCategory = "urgent";
-        }
-      }
-
-      // 5) Normalize tags with canonical preference
-      result.meta.tags = normalizeTags(result.meta.tags, existingTags);
-
-      // 6) If budgetCategory is sedekah, nudge tags (optional, but helps consistency)
-      if (result.meta.budgetCategory === "sedekah") {
-        const tset = new Set(result.meta.tags);
-        if (!tset.has("charity") && !tset.has("donation")) {
-          result.meta.tags = ["charity", ...result.meta.tags].slice(0, 3);
-        }
-      }
+      // Defensive: ensure tags array exists
+      if (!result.meta) result.meta = {};
+      if (!Array.isArray(result.meta.tags)) result.meta.tags = [];
 
       return {
         type: matchedType,
         content: result.content || text,
         meta: result.meta,
-      } as Partial<BrainDumpItem>;
+      };
     });
   } catch (error: any) {
     const status = error?.status || error?.response?.status;
