@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "af920a54-1a1d-4875-b658-92d421fd7096",
+      "type": "NOTE",
+      "content": "beli sempak besok senin harga 12000",
+      "status": "pending",
+      "created_at": "2026-02-01T06:50:20.481Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "ba5dc147-8a7f-4791-a969-848e1e2c9fe7",
       "status": "pending",
       "created_at": "2026-02-01T06:50:04.615Z",
