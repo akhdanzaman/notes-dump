@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "5a638f4f-c801-4ad5-be83-97557586b6fd",
-      "type": "NOTE",
-      "content": "Minggu 25 januari 2025 sudah ambil laundry 31500",
-      "status": "pending",
-      "created_at": "2026-02-01T23:30:02.094Z",
+      "id": "992d2a40-6ecd-46e0-b64e-763397009150",
+      "status": "done",
+      "created_at": "2026-02-01T23:30:07.507Z",
+      "completed_at": "2026-02-01T23:30:07.507Z",
+      "type": "FINANCE",
+      "content": "Laundry pick-up",
       "meta": {
-        "tags": []
+        "tags": [
+          "laundry"
+        ],
+        "amount": 31500,
+        "budgetCategory": "needs",
+        "dateISO": "2025-01-25",
+        "financeType": "expense",
+        "targetDay": "Minggu"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "76f79b1b-9547-470a-a3ef-316c7027e379",
