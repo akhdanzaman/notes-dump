@@ -1,15 +1,46 @@
 {
   "data": [
     {
-      "id": "f4295e40-e5f6-42bd-9b11-b388e1a291aa",
-      "type": "NOTE",
-      "content": "notes: kosan tuku pulo asem, kayu putih\n\n",
+      "id": "f3f5b703-3d30-4f3a-9365-55ef212a94dd",
       "status": "pending",
-      "created_at": "2026-02-01T23:05:56.046Z",
+      "created_at": "2026-02-01T23:06:02.801Z",
+      "type": "NOTE",
+      "content": "kosan",
       "meta": {
-        "tags": []
+        "tags": [
+          "kos"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "7103bd73-e5cc-4577-b678-45d36217372a",
+      "status": "pending",
+      "created_at": "2026-02-01T23:06:02.801Z",
+      "type": "SHOPPING",
+      "content": "pulo asem",
+      "meta": {
+        "tags": [
+          "purchase",
+          "food"
+        ],
+        "shoppingCategory": "not_urgent"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "9a3f5d76-dfc4-4669-b097-37a20aa488a9",
+      "status": "pending",
+      "created_at": "2026-02-01T23:06:02.801Z",
+      "type": "SHOPPING",
+      "content": "kayu putih",
+      "meta": {
+        "tags": [
+          "purchase"
+        ],
+        "shoppingCategory": "not_urgent"
+      },
+      "isOptimistic": false
     },
     {
       "id": "b43731f7-32aa-4faf-9d82-d25713691010",
