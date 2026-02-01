@@ -1,6 +1,19 @@
 {
   "data": [
     {
+      "id": "d6b2d3cd-9afb-443e-b45a-ee2c13ad09c8",
+      "status": "pending",
+      "created_at": "2026-02-01T07:00:51.228Z",
+      "type": "NOTE",
+      "content": "abis belajar bahasa inggris 30 menit\n",
+      "meta": {
+        "tags": [
+          "uncategorized"
+        ]
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "674dfdc6-32be-458e-bf3c-1189a474a108",
       "status": "pending",
       "created_at": "2026-02-01T06:59:47.605Z",
