@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "a9f034e7-948e-4149-a959-2ff68be399a7",
+      "type": "NOTE",
+      "content": "Beli sempak besok di indomaret 23000",
+      "status": "pending",
+      "created_at": "2026-02-01T06:40:29.324Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "7a3e87a2-4859-45b3-83d2-15c7f35be8b6",
       "status": "done",
       "created_at": "2026-02-01T06:28:57.767Z",
