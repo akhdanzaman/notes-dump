@@ -92,7 +92,7 @@ Examples:
 
 Output a JSON ARRAY of objects.`;
 
-// classifyText(text, existingTags, availableSkills, retryCount, customPrompt)
+// CHANGED: Added availableSkills to prompt context
 export const classifyText = async (
   text: string,
   existingTags: string[] = [],
@@ -119,12 +119,10 @@ export const classifyText = async (
   const currentDayName = new Date().toLocaleDateString("en-US", {
     weekday: "long",
   });
-
   const tagsContext =
     existingTags.length > 0
-      ? `Existing tags you should try to reuse if relevant: ${existingTags.join(", ")}`
+      ? `Existing tags context: ${existingTags.join(", ")}`
       : "";
-
   const skillsContext =
     availableSkills.length > 0
       ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(", ")}`
@@ -135,12 +133,12 @@ export const classifyText = async (
   try {
     const response = await ai.models.generateContent({
       model: modelName,
-      contents: `Analyze this user input: "${text}".
-Current Date context: ${currentDate} (${currentDayName}).
-${tagsContext}
-${skillsContext}
-
-${promptToUse}`,
+      contents: `Analyze this user input: "${text}". 
+      Current Date context: ${currentDate} (${currentDayName}).
+      ${tagsContext}
+      ${skillsContext}
+      
+      ${promptToUse}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -160,54 +158,16 @@ ${promptToUse}`,
               meta: {
                 type: Type.OBJECT,
                 properties: {
-                  // Keep legacy 'date' if you still use it somewhere:
                   date: { type: Type.STRING },
-
-                  // Restored and enforced ISO date fields:
-                  when: {
-                    type: Type.STRING,
-                    description:
-                      "today, tomorrow, next_weekday, specific_date, or empty",
-                  },
-                  dateISO: {
-                    type: Type.STRING,
-                    description: "Resolved date in YYYY-MM-DD",
-                  },
-
                   tags: { type: Type.ARRAY, items: { type: Type.STRING } },
                   quantity: { type: Type.STRING },
-
-                  // Shopping fields (restored strictness)
-                  shoppingCategory: {
-                    type: Type.STRING,
-                    description: "urgent, routine, not_urgent",
-                  },
+                  shoppingCategory: { type: Type.STRING },
                   recurrenceDays: { type: Type.NUMBER },
-                  targetDay: {
-                    type: Type.STRING,
-                    description: "Specific day name e.g. Monday, Sunday",
-                  },
-
-                  // Money fields (restored strictness)
-                  amount: {
-                    type: Type.NUMBER,
-                    description: "Numeric amount (cost/price/value)",
-                  },
-                  financeType: {
-                    type: Type.STRING,
-                    description: "expense, income, lending, reimbursement",
-                  },
-                  paymentMethod: {
-                    type: Type.STRING,
-                    description:
-                      "Detailed payment source e.g. QRIS BNI, GOPAY LATER",
-                  },
-                  budgetCategory: {
-                    type: Type.STRING,
-                    description: "needs, wants, savings, sedekah",
-                  },
-
-                  // Skill log fields
+                  targetDay: { type: Type.STRING },
+                  amount: { type: Type.NUMBER },
+                  financeType: { type: Type.STRING },
+                  paymentMethod: { type: Type.STRING },
+                  budgetCategory: { type: Type.STRING },
                   durationMinutes: {
                     type: Type.NUMBER,
                     description: "Duration in minutes for SKILL_LOG",
@@ -226,12 +186,14 @@ ${promptToUse}`,
     });
 
     const parsed = JSON.parse(response.text || "[]");
+
+    // Ensure result is an array
     const resultsArray = Array.isArray(parsed) ? parsed : [parsed];
 
     return resultsArray.map((result: any) => {
+      // Validate type matches our Enum
       let matchedType = ItemType.NOTE;
       const typeStr = result.type?.toUpperCase();
-
       if (Object.values(ItemType).includes(typeStr as ItemType)) {
         matchedType = typeStr as ItemType;
       }
@@ -242,14 +204,10 @@ ${promptToUse}`,
         result.meta.shoppingCategory = "not_urgent";
       }
 
-      // Defensive: ensure tags array exists
-      if (!result.meta) result.meta = {};
-      if (!Array.isArray(result.meta.tags)) result.meta.tags = [];
-
       return {
         type: matchedType,
         content: result.content || text,
-        meta: result.meta,
+        meta: result.meta || { tags: [] },
       };
     });
   } catch (error: any) {
