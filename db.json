@@ -9,13 +9,14 @@
       "content": "tip driver gojek",
       "meta": {
         "amount": 10000,
-        "budgetCategory": "wants",
-        "date": "2026-02-01",
+        "budgetCategory": "cat-1769922349475",
+        "date": "2026-02-01T00:00:00.000Z",
         "financeType": "expense",
         "tags": [
           "travel",
           "people"
-        ]
+        ],
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
