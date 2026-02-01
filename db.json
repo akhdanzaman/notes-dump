@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "4546f970-b9a5-4980-b680-c8e98f5a98c4",
-      "type": "NOTE",
-      "content": "Beli skincare dan haircare",
+      "id": "58df31d6-a72c-4e0e-a6db-9e112d187b9a",
       "status": "pending",
-      "created_at": "2026-02-01T23:21:30.520Z",
+      "created_at": "2026-02-01T23:21:32.757Z",
+      "type": "SHOPPING",
+      "content": "skincare dan haircare",
       "meta": {
-        "tags": []
+        "tags": [
+          "skincare",
+          "haircare",
+          "purchase"
+        ],
+        "budgetCategory": "wants",
+        "shoppingCategory": "not_urgent"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "f3f5b703-3d30-4f3a-9365-55ef212a94dd",
