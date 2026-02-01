@@ -1,15 +1,17 @@
 {
   "data": [
     {
-      "id": "7b477a4a-bf0f-4aba-ab19-cae865edc618",
+      "id": "d1b9e0a6-f090-4f8c-b204-65b36f97f7a9",
+      "status": "pending",
+      "created_at": "2026-02-01T07:10:40.360Z",
       "type": "NOTE",
       "content": "beli odol 20000",
-      "status": "pending",
-      "created_at": "2026-02-01T07:10:35.898Z",
       "meta": {
-        "tags": []
+        "tags": [
+          "uncategorized"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "a0e2628d-b6fa-492e-ae05-31beac5605db",
