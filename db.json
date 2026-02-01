@@ -858,6 +858,7 @@
       "meta": {
         "tags": [],
         "shoppingCategory": "not_urgent",
+        "amount": 100000,
         "paymentMethod": "BNI",
         "budgetCategory": "wants"
       },
