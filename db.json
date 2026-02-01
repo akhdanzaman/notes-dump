@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "150073e2-abbe-4749-b610-c4c56a3b5001",
-      "type": "NOTE",
-      "content": "besok senin beli tiket mudik 500000",
+      "id": "959f7b3e-70bd-4af8-a21e-5665844799a6",
       "status": "pending",
-      "created_at": "2026-02-01T04:36:55.569Z",
+      "created_at": "2026-02-01T04:37:00.301Z",
+      "type": "SHOPPING",
+      "content": "tiket mudik",
       "meta": {
-        "tags": []
+        "amount": 500000,
+        "budgetCategory": "needs",
+        "date": "2026-02-02",
+        "shoppingCategory": "urgent",
+        "tags": [
+          "travel",
+          "purchase"
+        ],
+        "targetDay": "Monday"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "a20f6554-996c-49f0-a356-1301b407feb8",
