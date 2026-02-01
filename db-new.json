@@ -1,15 +1,20 @@
 {
   "data": [
     {
-      "id": "5e18fd09-9d5e-4813-9cb3-7248d9e8fe6f",
-      "type": "NOTE",
-      "content": "beli bensin besok senin 25000\n\n",
+      "id": "61119d1d-6432-42ab-a397-8115ae741754",
       "status": "pending",
-      "created_at": "2026-02-01T07:02:09.305Z",
+      "created_at": "2026-02-01T07:02:11.349Z",
+      "type": "SHOPPING",
+      "content": "beli bensin",
       "meta": {
-        "tags": []
+        "tags": [],
+        "amount": 25000,
+        "budgetCategory": "needs",
+        "date": "2026-02-02",
+        "shoppingCategory": "routine",
+        "targetDay": "Senin"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "2746cf78-9b28-40f5-8807-a09918cf922f",
