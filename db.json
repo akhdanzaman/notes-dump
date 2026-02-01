@@ -8,14 +8,14 @@
       "type": "FINANCE",
       "content": "Breakfast",
       "meta": {
-        "amount": 14000,
-        "budgetCategory": "needs",
-        "date": "2026-02-01",
-        "financeType": "expense",
         "tags": [
           "food",
           "purchase"
-        ]
+        ],
+        "amount": 14000,
+        "budgetCategory": "needs",
+        "date": "2026-02-01",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
