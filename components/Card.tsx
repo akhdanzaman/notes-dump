@@ -1,6 +1,6 @@
 import React from 'react';
 import { ItemType, BrainDumpItem } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, BookOpen, Hourglass } from 'lucide-react';
 
 interface CardProps {
   item: BrainDumpItem;
@@ -8,13 +8,15 @@ interface CardProps {
   onEdit?: (item: BrainDumpItem) => void;
   onDelete?: (id: string) => void;
   readonly?: boolean;
+  skillName?: string; // Optional: Pass resolved skill name
 }
 
-const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, readonly = false }) => {
+const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, readonly = false, skillName }) => {
   const { type, content, meta, isOptimistic, status, created_at, completed_at } = item;
   const isDone = status === 'done';
   const isNote = type === ItemType.NOTE;
   const isFinance = type === ItemType.FINANCE;
+  const isSkill = type === ItemType.SKILL_LOG;
 
   // Visual variants based on Type
   const getStyles = () => {
@@ -35,6 +37,12 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
         return {
           border: 'border-l-4 border-l-acc-event',
           icon: <Calendar className="w-4 h-4 text-acc-event" />,
+          bg: 'bg-surface'
+        };
+      case ItemType.SKILL_LOG:
+        return {
+          border: 'border-l-4 border-l-indigo-500',
+          icon: <BookOpen className="w-4 h-4 text-indigo-500" />,
           bg: 'bg-surface'
         };
       case ItemType.FINANCE:
@@ -102,14 +110,17 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
   const financeTypeLabel = meta?.financeType === 'lending' ? 'Lending' : 
                            meta?.financeType === 'reimbursement' ? 'Reimbursed' : null;
 
+  // Skill formatting
+  const durationLabel = meta?.durationMinutes ? `${meta.durationMinutes}m` : null;
+
   return (
-    <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone && !isFinance ? 'opacity-60 grayscale' : ''}`}>
+    <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone && !isFinance && !isSkill ? 'opacity-60 grayscale' : ''}`}>
       
       {/* Header Row */}
-      <div className={`flex items-start justify-between ${isNote ? 'mb-1' : 'mb-2'} pr-12`}>
+      <div className={`flex items-start justify-between ${isNote || isSkill ? 'mb-1' : 'mb-2'} pr-12`}>
         <div className="flex flex-wrap items-center gap-2">
           {/* Action Checkbox for TODO/EVENT */}
-          {!readonly && !isFinance && (type === ItemType.TODO || type === ItemType.EVENT) && onToggleStatus ? (
+          {!readonly && !isFinance && !isSkill && (type === ItemType.TODO || type === ItemType.EVENT) && onToggleStatus ? (
             <button onClick={() => onToggleStatus(item.id)} className="transition-colors hover:text-white text-muted">
                {isDone ? <CheckCircle2 className="w-5 h-5 text-acc-todo" /> : <Circle className="w-5 h-5" />}
             </button>
@@ -118,7 +129,7 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
           )}
           
           <span className="text-xs font-semibold tracking-wider text-muted opacity-80">
-              {financeTypeLabel || (type === ItemType.FINANCE ? meta?.financeType?.toUpperCase() : type)}
+              {skillName ? skillName.toUpperCase() : (financeTypeLabel || (type === ItemType.FINANCE ? meta?.financeType?.toUpperCase() : type))}
           </span>
           
           {/* Payment Method Badge for Finance */}
@@ -126,6 +137,17 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
               <span className="text-[10px] text-muted bg-border px-1.5 py-0.5 rounded uppercase">
                   {meta.paymentMethod}
               </span>
+          )}
+
+           {/* For SKILL: Display Date in Header */}
+           {isSkill && (
+             <>
+                {displayDate && (
+                  <span className="text-[10px] text-muted flex items-center gap-1 border-l border-border pl-2 ml-1">
+                     {displayDate}
+                  </span>
+                )}
+             </>
           )}
 
           {/* For NOTES: Display Date and Tags in Header */}
@@ -145,16 +167,24 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
           )}
         </div>
         
-        {/* HIDE Quantity for Notes */}
-        {!isNote && quantity && (
+        {/* Quantity for Shopping */}
+        {!isNote && !isSkill && quantity && (
            <span className="text-xs bg-border px-2 py-1 rounded-full text-white">{quantity}</span>
         )}
         
-        {/* HIDE Amount for Notes */}
+        {/* Amount for Finance */}
         {!isNote && formattedAmount && (
             <span className={`text-sm font-bold ${meta?.financeType === 'income' || meta?.financeType === 'reimbursement' ? 'text-emerald-400' : 'text-white'}`}>
                 {formattedAmount}
             </span>
+        )}
+
+        {/* Duration for Skill */}
+        {isSkill && durationLabel && (
+             <div className="flex items-center gap-1 text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-full">
+                <Hourglass className="w-3 h-3" />
+                {durationLabel}
+             </div>
         )}
       </div>
 
@@ -182,12 +212,12 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
         </div>
       )}
 
-      <p className={`text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-medium ${isDone && !isFinance ? 'line-through text-muted' : ''}`}>
+      <p className={`text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-medium ${isDone && !isFinance && !isSkill ? 'line-through text-muted' : ''}`}>
         {content}
       </p>
 
       {/* Metadata Footer */}
-      {!isNote && (displayDate || validTags.length > 0) && (
+      {!isNote && !isSkill && (displayDate || validTags.length > 0) && (
         <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-2 items-center">
           {displayDate && (
              <div className={`flex items-center gap-1 text-xs ${readonly ? 'text-acc-todo' : (type === ItemType.EVENT ? 'text-acc-event' : 'text-muted')}`}>

@@ -1,23 +1,28 @@
 import React, { useState, useMemo } from 'react';
-import { BrainDumpItem, ItemType, BudgetRule } from '../types';
-import { X, Save, DollarSign, Calendar, Wallet, PieChart } from 'lucide-react';
+import { BrainDumpItem, ItemType, BudgetRule, Skill } from '../types';
+import { X, Save, DollarSign, Calendar, Wallet, PieChart, Hourglass, BookOpen } from 'lucide-react';
 
 interface EditModalProps {
   item: BrainDumpItem;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string, newContent: string, newTags: string[], amount?: number, date?: string, paymentMethod?: string, budgetCategory?: string) => void;
+  onSave: (id: string, newContent: string, newTags: string[], amount?: number, date?: string, paymentMethod?: string, budgetCategory?: string, durationMinutes?: number, skillId?: string) => void;
   existingPaymentMethods?: string[]; // To populate datalist
   budgetRules?: BudgetRule[]; // To populate budget category selector
+  skills?: Skill[]; // To populate skill selector
 }
 
-const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, existingPaymentMethods = [], budgetRules = [] }) => {
+const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, existingPaymentMethods = [], budgetRules = [], skills = [] }) => {
   const [content, setContent] = useState(item.content);
   const [tags, setTags] = useState(item.meta.tags?.join(', ') || '');
   const [amount, setAmount] = useState<string>(item.meta.amount ? item.meta.amount.toString() : '');
   const [paymentMethod, setPaymentMethod] = useState(item.meta.paymentMethod || '');
   const [budgetCategory, setBudgetCategory] = useState<string>(item.meta.budgetCategory || '');
   
+  // Skill specific
+  const [duration, setDuration] = useState<string>(item.meta.durationMinutes ? item.meta.durationMinutes.toString() : '');
+  const [skillId, setSkillId] = useState<string>(item.meta.skillId || '');
+
   // Helper to convert UTC ISO string to Local datetime-local format (YYYY-MM-DDTHH:mm)
   const getInitialDate = (isoDate?: string) => {
       if (!isoDate || isoDate === 'null') return '';
@@ -35,7 +40,8 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
   const handleSave = () => {
     const tagArray = tags.split(',').map(t => t.trim()).filter(t => t);
     const numAmount = amount ? parseFloat(amount) : undefined;
-    
+    const numDuration = duration ? parseFloat(duration) : undefined;
+
     // Convert local datetime back to ISO UTC
     let finalDate: string | undefined = undefined;
     if (date) {
@@ -43,14 +49,16 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
     }
 
     const finalBudgetCategory = budgetCategory === '' ? undefined : budgetCategory;
+    const finalSkillId = skillId === '' ? undefined : skillId;
 
-    onSave(item.id, content, tagArray, numAmount, finalDate, paymentMethod, finalBudgetCategory);
+    onSave(item.id, content, tagArray, numAmount, finalDate, paymentMethod, finalBudgetCategory, numDuration, finalSkillId);
     onClose();
   };
 
   const showAmountField = item.type === ItemType.FINANCE || item.type === ItemType.SHOPPING || item.type === ItemType.TODO;
   const showDateField = item.type === ItemType.TODO || item.type === ItemType.EVENT || item.type === ItemType.SHOPPING;
   const showFinanceExtras = item.type === ItemType.FINANCE || (item.type === ItemType.SHOPPING && showAmountField);
+  const showSkillExtras = item.type === ItemType.SKILL_LOG;
 
   // If no custom rules, fallback to default 50-30-20 for display safety
   const displayRules = budgetRules.length > 0 ? budgetRules : [
@@ -138,9 +146,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                      <label className="block text-xs font-medium text-muted mb-2">Budget Category</label>
                      <div className="flex flex-wrap gap-2">
                         {displayRules.map((rule) => {
-                             // Extract base color name for border logic if needed, or just use white border when selected
                              const isSelected = budgetCategory ? (budgetCategory === rule.id || budgetCategory.toLowerCase() === rule.name.toLowerCase()) : false;
-                             
                              return (
                                 <button
                                     key={rule.id}
@@ -159,6 +165,45 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                      </div>
                  </div>
              </div>
+          )}
+
+          {showSkillExtras && (
+              <div className="space-y-4 pt-2 border-t border-border/50">
+                  <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Duration (Minutes)</label>
+                      <div className="relative">
+                        <Hourglass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                        <input
+                            type="number"
+                            className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-indigo-500"
+                            value={duration}
+                            onChange={(e) => setDuration(e.target.value)}
+                            placeholder="e.g. 45"
+                        />
+                      </div>
+                  </div>
+                  <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Assigned Skill</label>
+                      <div className="grid grid-cols-2 gap-2">
+                          {skills.map(skill => {
+                              const isSelected = skillId === skill.id;
+                              return (
+                                <button
+                                    key={skill.id}
+                                    onClick={() => setSkillId(isSelected ? '' : skill.id)}
+                                    className={`py-2 px-3 rounded-lg text-xs font-medium border transition-all text-left ${
+                                        isSelected
+                                        ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                                        : 'bg-background border-border text-muted hover:bg-surface'
+                                    }`}
+                                >
+                                    {skill.name}
+                                </button>
+                              );
+                          })}
+                      </div>
+                  </div>
+              </div>
           )}
 
           <div>

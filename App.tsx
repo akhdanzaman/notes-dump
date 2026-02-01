@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule } from './types';
+import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill } from './types';
 import { fetchDb, syncData, isUsingLocalStorage, SyncResult } from './services/githubService';
 import { classifyText, DEFAULT_PROMPT } from './services/geminiService';
 
@@ -11,8 +11,12 @@ import ShoppingItem from './components/ShoppingItem';
 import InputBar from './components/InputBar';
 import EditModal from './components/EditModal';
 import SettingsModal from './components/SettingsModal';
+import SkillModal from './components/SkillModal';
+import ConfirmDialog from './components/ConfirmDialog';
 
 type Tab = 'focus' | 'shopping' | 'notes' | 'money' | 'history';
+type FocusSubTab = 'tasks' | 'skills';
+type NotesSubTab = 'general' | 'skills';
 type SyncStatus = 'synced' | 'syncing' | 'error' | 'local';
 type MoneyView = 'transactions' | 'budget';
 
@@ -27,6 +31,8 @@ const App: React.FC = () => {
         { id: 'savings', name: 'Savings', percentage: 20, color: 'bg-emerald-500' },
       ]
   });
+  // Skills State
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
 
   const [loading, setLoading] = useState(true);
@@ -34,10 +40,16 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('focus');
+  const [focusSubTab, setFocusSubTab] = useState<FocusSubTab>('tasks');
+  const [notesSubTab, setNotesSubTab] = useState<NotesSubTab>('general');
   
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
+  // Modal States for Skills
+  const [skillModal, setSkillModal] = useState<{ isOpen: boolean; mode: 'add' | 'edit'; skillId?: string; initialName?: string; initialTarget?: number }>({ isOpen: false, mode: 'add' });
+  const [deleteSkillId, setDeleteSkillId] = useState<string | null>(null);
+
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -82,14 +94,15 @@ const App: React.FC = () => {
       });
   };
 
-  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string) => {
+  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string, newSkills?: Skill[]) => {
       setSyncStatus('syncing');
       try {
           // Use syncData to save everything
           const configToSave = newConfig || budgetConfig;
           const promptToSave = newPrompt !== undefined ? newPrompt : customPrompt;
+          const skillsToSave = newSkills || skills;
           
-          const result: SyncResult = await syncData(newItems, configToSave, promptToSave);
+          const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave);
           
           if (result.method === 'error') {
               setSyncStatus('error');
@@ -114,7 +127,6 @@ const App: React.FC = () => {
         if (data) {
           if (Array.isArray(data.data)) {
             // Migration: Ensure all items have valid meta structure
-            // This prevents data loss or crashes if loading an older DB version
             const migratedData = data.data.map(item => ({
                 ...item,
                 meta: {
@@ -133,7 +145,7 @@ const App: React.FC = () => {
             
             // Check for changes in routine resets to sync
             if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt);
+               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills);
             } else {
                setSyncStatus(isUsingLocalStorage() ? 'local' : 'synced');
             }
@@ -146,6 +158,17 @@ const App: React.FC = () => {
           // Load Prompt if exists
           if (data.customPrompt) {
               setCustomPrompt(data.customPrompt);
+          }
+          // Load Skills
+          if (data.skills) {
+              setSkills(data.skills);
+          } else {
+              // Default Skills if empty
+              const defaults: Skill[] = [
+                  { id: 'skill-1', name: 'General Learning', color: 'indigo-500', created_at: new Date().toISOString() }
+              ];
+              setSkills(defaults);
+              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults);
           }
         }
       } catch (err) {
@@ -175,7 +198,7 @@ const App: React.FC = () => {
       }
 
       if (shouldSync) {
-          saveAndSync(items, newBudgetConfig, newPrompt);
+          saveAndSync(items, newBudgetConfig, newPrompt, skills);
       } else {
           loadData();
       }
@@ -216,21 +239,40 @@ const App: React.FC = () => {
         const currentTags = new Set<string>();
         itemsRef.current.forEach(i => i.meta?.tags?.forEach(t => currentTags.add(t)));
         
-        // Pass the current custom prompt to the classifier
-        const classifiedItems = await classifyText(text, Array.from(currentTags), 0, customPrompt);
+        // Pass known skills to classifier
+        const skillNames = skills.map(s => s.name);
+
+        const classifiedItems = await classifyText(text, Array.from(currentTags), skillNames, 0, customPrompt);
   
         const newItems: BrainDumpItem[] = classifiedItems.map(partial => {
             const isFinance = partial.type === ItemType.FINANCE;
-            // Finance items are historical records, so we mark them as done immediately
+            // Finance and Skill Logs are records, so mark as done
+            const isRecord = isFinance || partial.type === ItemType.SKILL_LOG;
+            
+            // Resolve Skill ID if it's a SKILL_LOG
+            let finalMeta = { tags: [], ...partial.meta };
+            if (partial.type === ItemType.SKILL_LOG && partial.meta?.skillName) {
+                // Try exact match (case insensitive)
+                const matchedSkill = skills.find(s => s.name.toLowerCase() === partial.meta?.skillName?.toLowerCase());
+                
+                if (matchedSkill) {
+                    finalMeta = { ...finalMeta, skillId: matchedSkill.id };
+                } else {
+                    if (skills.length > 0) {
+                        finalMeta = { ...finalMeta, skillId: skills[0].id }; // Default assignment
+                    }
+                }
+            }
+
             return {
                 id: uuidv4(),
-                status: isFinance ? 'done' : 'pending',
+                status: isRecord ? 'done' : 'pending',
                 created_at: new Date().toISOString(),
-                completed_at: isFinance ? new Date().toISOString() : undefined,
+                completed_at: isRecord ? new Date().toISOString() : undefined,
                 type: ItemType.NOTE,
-                content: text,
-                meta: { tags: [] },
+                content: text, // Fallback content
                 ...partial, 
+                meta: finalMeta, // Use resolved meta
                 isOptimistic: false,
             };
         });
@@ -280,7 +322,7 @@ const App: React.FC = () => {
     });
   };
 
-  const handleUpdateItem = async (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string) => {
+  const handleUpdateItem = async (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string) => {
       setItems(prev => {
           const updatedItems = prev.map(item => 
               item.id === id 
@@ -293,7 +335,9 @@ const App: React.FC = () => {
                         amount: newAmount, 
                         date: newDate,
                         paymentMethod: newPaymentMethod,
-                        budgetCategory: newBudgetCategory
+                        budgetCategory: newBudgetCategory,
+                        durationMinutes: newDuration,
+                        skillId: newSkillId
                     } 
                   } 
                 : item
@@ -303,7 +347,164 @@ const App: React.FC = () => {
       });
   };
 
+  // --- Skill Management Handlers (Updated to use Modals) ---
+  const handleOpenAddSkill = () => {
+      setSkillModal({ isOpen: true, mode: 'add' });
+  };
+  
+  const handleOpenEditSkill = (id: string, name: string, target?: number) => {
+      setSkillModal({ isOpen: true, mode: 'edit', skillId: id, initialName: name, initialTarget: target });
+  };
+
+  const handleSaveSkill = (name: string, weeklyTargetMinutes?: number) => {
+      if (!name.trim()) return;
+      
+      if (skillModal.mode === 'add') {
+          const newSkill: Skill = {
+              id: uuidv4(),
+              name,
+              color: 'indigo-500',
+              created_at: new Date().toISOString(),
+              weeklyTargetMinutes
+          };
+          const updated = [...skills, newSkill];
+          setSkills(updated);
+          saveAndSync(items, undefined, undefined, updated);
+      } else if (skillModal.mode === 'edit' && skillModal.skillId) {
+          const updated = skills.map(s => s.id === skillModal.skillId ? { ...s, name, weeklyTargetMinutes } : s);
+          setSkills(updated);
+          saveAndSync(items, undefined, undefined, updated);
+      }
+      setSkillModal({ ...skillModal, isOpen: false });
+  };
+
+  const handleDeleteSkillConfirm = () => {
+      if (deleteSkillId) {
+          const updated = skills.filter(s => s.id !== deleteSkillId);
+          setSkills(updated);
+          saveAndSync(items, undefined, undefined, updated);
+          setDeleteSkillId(null);
+      }
+  };
+
   // --- Filtering Logic ---
+  
+  const getFocusItems = () => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const tomorrowStart = todayStart + 86400000;
+    const afterTomorrowStart = tomorrowStart + 86400000;
+
+    const relevantItems = items.filter(i => 
+        (i.type === ItemType.TODO || i.type === ItemType.EVENT) && 
+        i.status === 'pending'
+    );
+    
+    const today: BrainDumpItem[] = [];
+    const tomorrow: BrainDumpItem[] = [];
+    const later: BrainDumpItem[] = [];
+
+    relevantItems.forEach(item => {
+        if (!item.meta.date) {
+            later.push(item);
+            return;
+        }
+
+        const d = new Date(item.meta.date);
+        const itemTime = d.getTime();
+        
+        if (isNaN(itemTime)) {
+            later.push(item);
+            return;
+        }
+        
+        if (itemTime < tomorrowStart) {
+            today.push(item);
+        } else if (itemTime >= tomorrowStart && itemTime < afterTomorrowStart) {
+            tomorrow.push(item);
+        } else {
+            later.push(item);
+        }
+    });
+
+    const sortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
+         const da = a.meta.date ? new Date(a.meta.date).getTime() : Infinity;
+         const db = b.meta.date ? new Date(b.meta.date).getTime() : Infinity;
+         return da - db;
+    };
+
+    return { 
+        today: today.sort(sortFn), 
+        tomorrow: tomorrow.sort(sortFn), 
+        later: later.sort(sortFn) 
+    };
+  };
+
+  // Calculate start of current week (Monday)
+  const getStartOfWeek = (date: Date) => {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+      d.setHours(0, 0, 0, 0);
+      return new Date(d.setDate(diff));
+  };
+
+  const getSkillItems = () => {
+      const logs = items.filter(i => i.type === ItemType.SKILL_LOG).sort((a, b) => {
+          const da = new Date(a.meta.date || a.created_at).getTime();
+          const db = new Date(b.meta.date || b.created_at).getTime();
+          return db - da; 
+      });
+
+      const skillStats = new Map<string, number>(); // All time
+      const weeklyStats = new Map<string, number>(); // Current Week
+
+      const startOfWeek = getStartOfWeek(new Date());
+
+      skills.forEach(s => {
+          skillStats.set(s.id, 0);
+          weeklyStats.set(s.id, 0);
+      });
+
+      items.filter(i => i.type === ItemType.SKILL_LOG).forEach(log => {
+          const duration = log.meta.durationMinutes || 0;
+          const sId = log.meta.skillId;
+          const logDate = new Date(log.meta.date || log.created_at);
+
+          if (sId) {
+             // Total
+             skillStats.set(sId, (skillStats.get(sId) || 0) + duration);
+             
+             // Weekly
+             if (logDate >= startOfWeek) {
+                 weeklyStats.set(sId, (weeklyStats.get(sId) || 0) + duration);
+             }
+          }
+      });
+
+      const stats = skills.map(skill => ({
+          ...skill,
+          totalHours: Math.round(((skillStats.get(skill.id) || 0) / 60) * 10) / 10,
+          weeklyHours: Math.round(((weeklyStats.get(skill.id) || 0) / 60) * 10) / 10,
+          weeklyProgress: skill.weeklyTargetMinutes 
+            ? Math.min(100, ( (weeklyStats.get(skill.id) || 0) / skill.weeklyTargetMinutes ) * 100)
+            : 0
+      })).sort((a,b) => b.totalHours - a.totalHours);
+
+      return { stats, logs: logs.slice(0, 10) };
+  };
+
+  const getHistoryItems = () => {
+      // Includes done tasks, and all records (Finance/Skills)
+      return items
+        .filter(i => i.status === 'done' || i.type === ItemType.FINANCE || i.type === ItemType.SKILL_LOG)
+        .sort((a, b) => {
+            const da = new Date(a.completed_at || a.created_at).getTime();
+            const db = new Date(b.completed_at || b.created_at).getTime();
+            return db - da;
+        })
+        .slice(0, 50);
+  };
 
   const getShoppingItems = () => {
     const visibleItems = items.filter(i => {
@@ -338,22 +539,30 @@ const App: React.FC = () => {
   };
 
   const getNoteItems = () => {
-    let notes = items.filter(i => i.type === ItemType.NOTE && i.status !== 'done');
+    // Separation logic: "General" is only NOTE, "Skills" is only SKILL_LOG
+    let relevantItems: BrainDumpItem[] = [];
+    
+    if (notesSubTab === 'general') {
+        relevantItems = items.filter(i => i.type === ItemType.NOTE && i.status !== 'done');
+    } else {
+        relevantItems = items.filter(i => i.type === ItemType.SKILL_LOG);
+    }
+    
     if (selectedTag) {
-        notes = notes.filter(i => i.meta?.tags?.includes(selectedTag));
+        relevantItems = relevantItems.filter(i => i.meta?.tags?.includes(selectedTag));
     }
     if (searchQuery) {
         const lowerQ = searchQuery.toLowerCase();
-        notes = notes.filter(i => i.content.toLowerCase().includes(lowerQ) || i.meta.tags?.some(t => t.toLowerCase().includes(lowerQ)));
+        relevantItems = relevantItems.filter(i => i.content.toLowerCase().includes(lowerQ) || i.meta.tags?.some(t => t.toLowerCase().includes(lowerQ)));
     }
-    return notes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return relevantItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   };
 
   const getFinanceItems = () => {
       // 1. Explicit Finance Items
       let finance = items.filter(i => i.type === ItemType.FINANCE);
       
-      // 2. Implicit Expenses: Tasks (Shopping/Todo) that are DONE and have an AMOUNT
+      // 2. Implicit Expenses
       const implicitExpenses = items.filter(i => 
           (i.type === ItemType.SHOPPING || i.type === ItemType.TODO) && 
           i.status === 'done' && 
@@ -365,7 +574,6 @@ const App: React.FC = () => {
       
       // Filter by Month
       allTransactions = allTransactions.filter(i => {
-          // For explicit finance, use created_at (or completed_at which is set for FINANCE). For tasks, use completed_at.
           const dateStr = i.completed_at || i.created_at;
           if (!dateStr) return false;
           
@@ -396,9 +604,6 @@ const App: React.FC = () => {
       }, 0);
 
       const totalExpense = allTransactions.reduce((acc, curr) => {
-        // Count as expense if:
-        // 1. It is Explicit Finance type 'expense' or 'lending'
-        // 2. OR It is an Implicit Task (Shopping/Todo) - these are always expenses by default logic
         if (curr.type !== ItemType.FINANCE || curr.meta?.financeType === 'expense' || curr.meta?.financeType === 'lending') {
             return acc + (curr.meta.amount || 0);
         }
@@ -411,22 +616,19 @@ const App: React.FC = () => {
       let uncategorized = 0;
       let projectedUncategorized = 0;
       
-      // Initialize map from config rules
       budgetConfig.rules.forEach(rule => {
           budgetMap.set(rule.id, 0);
           plannedBudgetMap.set(rule.id, 0);
       });
 
-      // Helper to resolve category ID
       const resolveCategory = (cat?: string) => {
           if (!cat) return null;
-          if (budgetMap.has(cat)) return cat; // Direct ID match
+          if (budgetMap.has(cat)) return cat; 
           const foundRule = budgetConfig.rules.find(r => r.name.toLowerCase() === cat.toLowerCase());
           return foundRule ? foundRule.id : null;
       };
 
       allTransactions.forEach(item => {
-           // Skip income
            if (item.meta?.financeType === 'income' || item.meta?.financeType === 'reimbursement') return;
            
            const amt = item.meta?.amount || 0;
@@ -446,7 +648,6 @@ const App: React.FC = () => {
       const now = new Date();
 
       items.forEach(item => {
-           // Filter: Shopping/Todo, Amount > 0, Not To-Buy
            if ((item.type !== ItemType.SHOPPING && item.type !== ItemType.TODO) || (item.meta.amount || 0) <= 0) return;
            if (item.type === ItemType.SHOPPING && (!item.meta.shoppingCategory || item.meta.shoppingCategory === 'not_urgent')) return;
 
@@ -462,45 +663,34 @@ const App: React.FC = () => {
            };
 
            if (item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine') {
-               // ROUTINE: Calculate frequency in selected month
                const recurrence = item.meta.recurrenceDays || 7;
-               
-               // Start counting from next due date
                let nextDue: Date;
                if (item.status === 'done' && item.completed_at) {
                    nextDue = new Date(new Date(item.completed_at).getTime() + (recurrence * 86400000));
                } else if (item.meta.date) {
                    nextDue = new Date(item.meta.date);
                } else {
-                   nextDue = new Date(); // Pending no date = due now
+                   nextDue = new Date();
                }
                
-               // Fast forward if Next Due is before Start of Month
                const cursor = new Date(nextDue);
                while (cursor < startOfMonth) {
                    cursor.setDate(cursor.getDate() + recurrence);
                }
-               
-               // Count occurrences in the month
                while (cursor <= endOfMonth) {
                    projectedExpense += amount;
                    addToPlanned(amount);
                    cursor.setDate(cursor.getDate() + recurrence);
                }
-
            } else {
-               // ONE-TIME: Only if Pending
                if (item.status === 'pending') {
                    const targetDate = item.meta.date ? new Date(item.meta.date) : null;
-                   
-                   // If undated, assume it belongs to Current Month only
                    if (!targetDate) {
                        if (financeDate.getMonth() === now.getMonth() && financeDate.getFullYear() === now.getFullYear()) {
                            projectedExpense += amount;
                            addToPlanned(amount);
                        }
                    } else {
-                       // Match selected month
                        if (targetDate.getMonth() === financeDate.getMonth() && targetDate.getFullYear() === financeDate.getFullYear()) {
                            projectedExpense += amount;
                            addToPlanned(amount);
@@ -518,78 +708,9 @@ const App: React.FC = () => {
           projectedExpense, 
           budgetMap, 
           plannedBudgetMap,
-          uncategorized,
+          uncategorized, 
           projectedUncategorized 
       };
-  };
-
-  const getFocusItems = () => {
-    const relevant = items.filter(i => {
-        const isFocusType = i.type === ItemType.TODO || i.type === ItemType.EVENT;
-        if (!isFocusType) return false;
-        if (i.status === 'pending') return true;
-        if (i.status === 'done' && i.completed_at) {
-            const completedTime = new Date(i.completed_at).getTime();
-            const now = new Date().getTime();
-            const oneDayMs = 24 * 60 * 60 * 1000;
-            return (now - completedTime) < oneDayMs;
-        }
-        return false;
-    });
-    
-    const normalize = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const today = normalize(new Date());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const groups = {
-      today: [] as BrainDumpItem[],
-      tomorrow: [] as BrainDumpItem[],
-      later: [] as BrainDumpItem[]
-    };
-
-    relevant.forEach(item => {
-      let targetDate = new Date(); 
-      if (item.meta?.date && item.meta.date !== 'null') {
-         targetDate = new Date(item.meta.date);
-      } else if (item.completed_at) {
-         targetDate = new Date(item.completed_at);
-      }
-
-      if (isNaN(targetDate.getTime())) {
-          groups.later.push(item);
-          return;
-      }
-      const normalizedTarget = normalize(targetDate);
-      if (normalizedTarget.getTime() === today.getTime()) groups.today.push(item);
-      else if (normalizedTarget.getTime() === tomorrow.getTime()) groups.tomorrow.push(item);
-      else {
-        if (normalizedTarget < today && item.status === 'pending') groups.today.push(item);
-        else groups.later.push(item);
-      }
-    });
-
-    const dateSort = (a: BrainDumpItem, b: BrainDumpItem) => {
-        if (a.status !== b.status) return a.status === 'done' ? 1 : -1;
-        const da = a.meta?.date ? new Date(a.meta.date).getTime() : 0;
-        const db = b.meta?.date ? new Date(b.meta.date).getTime() : 0;
-        return da - db;
-    };
-    
-    groups.today.sort(dateSort);
-    groups.tomorrow.sort(dateSort);
-    groups.later.sort(dateSort);
-
-    return groups;
-  };
-
-  const getHistoryItems = () => {
-      // Include "Done" items AND "Finance" items (records)
-      return items.filter(i => i.status === 'done' || i.type === ItemType.FINANCE).sort((a, b) => {
-          const ta = a.completed_at ? new Date(a.completed_at).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
-          const tb = b.completed_at ? new Date(b.completed_at).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
-          return tb - ta;
-      });
   };
 
   const renderSyncIndicator = () => {
@@ -735,31 +856,155 @@ const App: React.FC = () => {
             
             {/* FOCUS TAB */}
             {activeTab === 'focus' && (() => {
-              const { today, tomorrow, later } = getFocusItems();
-              if (today.length === 0 && tomorrow.length === 0 && later.length === 0) return <div className="text-center text-muted py-10">No tasks or events.</div>;
-
-              return (
-                <div className="space-y-8">
-                  {today.length > 0 && (
-                    <section>
-                      <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider mb-3 pl-1">Today</h3>
-                      <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
-                    </section>
-                  )}
-                  {tomorrow.length > 0 && (
-                    <section>
-                      <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider mb-3 pl-1">Tomorrow</h3>
-                      <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
-                    </section>
-                  )}
-                  {later.length > 0 && (
-                    <section>
-                      <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1">Later</h3>
-                      <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
-                    </section>
-                  )}
-                </div>
+              
+              // Render Sub-tab Switcher
+              const renderSubTab = () => (
+                  <div className="flex bg-surface rounded-lg p-1 mb-6 border border-border">
+                    <button 
+                        onClick={() => setFocusSubTab('tasks')}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'tasks' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                    >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Tasks
+                    </button>
+                    <button 
+                        onClick={() => setFocusSubTab('skills')}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'skills' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                    >
+                        <GrowthIcon className="w-3.5 h-3.5" /> Skill Growth
+                    </button>
+                  </div>
               );
+
+              // Sub-tab: TASKS
+              if (focusSubTab === 'tasks') {
+                  const { today, tomorrow, later } = getFocusItems();
+                  if (today.length === 0 && tomorrow.length === 0 && later.length === 0) 
+                      return (
+                        <>
+                           {renderSubTab()}
+                           <div className="text-center text-muted py-10">No tasks or events.</div>
+                        </>
+                      );
+    
+                  return (
+                    <div className="space-y-8">
+                      {renderSubTab()}
+                      {today.length > 0 && (
+                        <section>
+                          <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider mb-3 pl-1">Today</h3>
+                          <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
+                        </section>
+                      )}
+                      {tomorrow.length > 0 && (
+                        <section>
+                          <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider mb-3 pl-1">Tomorrow</h3>
+                          <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
+                        </section>
+                      )}
+                      {later.length > 0 && (
+                        <section>
+                          <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1">Later</h3>
+                          <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
+                        </section>
+                      )}
+                    </div>
+                  );
+              }
+
+              // Sub-tab: SKILL GROWTH
+              if (focusSubTab === 'skills') {
+                  const { stats, logs } = getSkillItems();
+                  
+                  return (
+                      <div>
+                          {renderSubTab()}
+                          
+                          {/* Skill Dashboard Cards */}
+                          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 mb-6">
+                              {stats.map(skill => (
+                                  <div key={skill.id} className="bg-surface border border-border p-4 rounded-xl relative group hover:border-indigo-500/50 transition-colors">
+                                      <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                          <button 
+                                            onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
+                                            className="p-1.5 hover:bg-white/10 rounded-md text-muted hover:text-white transition-colors"
+                                            title="Edit Skill"
+                                          >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button 
+                                            onClick={() => setDeleteSkillId(skill.id)}
+                                            className="p-1.5 hover:bg-red-900/30 rounded-md text-muted hover:text-red-400 transition-colors"
+                                            title="Delete"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                      </div>
+                                      <h4 className="text-sm font-medium text-muted mb-1 truncate pr-16">{skill.name}</h4>
+                                      <div className="flex items-end justify-between mb-2">
+                                         <div className="text-2xl font-bold text-white flex items-baseline gap-1">
+                                             {skill.weeklyHours} <span className="text-xs font-normal text-muted">hrs this week</span>
+                                         </div>
+                                         <div className="text-xs text-muted font-mono">
+                                             Total: {skill.totalHours}h
+                                         </div>
+                                      </div>
+                                      
+                                      {/* Progress Bar */}
+                                      <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden flex relative">
+                                          {skill.weeklyTargetMinutes ? (
+                                              <>
+                                                 <div 
+                                                    className={`h-full ${skill.weeklyProgress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'} transition-all duration-500`} 
+                                                    style={{ width: `${Math.min(100, skill.weeklyProgress)}%` }}
+                                                 ></div>
+                                              </>
+                                          ) : (
+                                             <div className="h-full bg-indigo-500/30 w-full"></div>
+                                          )}
+                                      </div>
+                                      {skill.weeklyTargetMinutes && (
+                                          <div className="text-[10px] text-right mt-1 text-muted">
+                                              Target: {(skill.weeklyTargetMinutes / 60).toFixed(1)}h / week
+                                          </div>
+                                      )}
+                                  </div>
+                              ))}
+                              
+                              {/* Add Skill Button */}
+                              <button onClick={handleOpenAddSkill} className="border border-dashed border-border rounded-xl flex flex-col items-center justify-center p-4 hover:border-indigo-500/50 hover:bg-surface/50 transition-all text-muted hover:text-white min-h-[106px]">
+                                  <Plus className="w-6 h-6 mb-1" />
+                                  <span className="text-xs font-medium">Add Skill</span>
+                              </button>
+                          </div>
+
+                          {/* Log List */}
+                          <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1 flex items-center gap-2">
+                             <History className="w-4 h-4" /> Recent Logs (Proof of Output)
+                          </h3>
+                          {logs.length === 0 ? (
+                              <div className="text-center text-muted py-10 bg-surface/30 rounded-xl border border-dashed border-border">
+                                  <p>No study sessions logged yet.</p>
+                                  <p className="text-xs mt-2 opacity-70">Try typing: "Belajar Python 45 menit tentang loops"</p>
+                              </div>
+                          ) : (
+                              <div className="space-y-3">
+                                  {logs.map(log => {
+                                      const skill = skills.find(s => s.id === log.meta.skillId);
+                                      return (
+                                          <Card 
+                                            key={log.id} 
+                                            item={log} 
+                                            skillName={skill?.name || log.meta.skillName || 'Unknown'} 
+                                            onEdit={setEditingItem} 
+                                            onDelete={handleDelete}
+                                          />
+                                      );
+                                  })}
+                              </div>
+                          )}
+                      </div>
+                  );
+              }
             })()}
 
             {/* SHOPPING TAB */}
@@ -799,10 +1044,38 @@ const App: React.FC = () => {
             {/* NOTES TAB */}
             {activeTab === 'notes' && (() => {
               const notes = getNoteItems();
-              return notes.length === 0 ? <div className="text-center text-muted py-10">{searchQuery ? "No matching notes." : "No notes found."}</div> : (
-                  <div className="columns-1 sm:columns-2 gap-4 space-y-4">
-                  {notes.map(item => <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} />)}
-                  </div>
+              
+              return (
+                  <>
+                      {/* Notes Sub-Tab Switcher */}
+                      <div className="flex bg-surface rounded-lg p-1 mb-6 border border-border">
+                        <button 
+                            onClick={() => setNotesSubTab('general')}
+                            className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'general' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                        >
+                            <NotebookPen className="w-3.5 h-3.5" /> General Notes
+                        </button>
+                        <button 
+                            onClick={() => setNotesSubTab('skills')}
+                            className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'skills' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                        >
+                            <Library className="w-3.5 h-3.5" /> Skill Logs
+                        </button>
+                      </div>
+
+                      {notes.length === 0 ? <div className="text-center text-muted py-10">{searchQuery ? "No matching notes." : (notesSubTab === 'general' ? "No notes found." : "No skill logs found.")}</div> : (
+                          <div className="columns-1 sm:columns-2 gap-4 space-y-4">
+                          {notes.map(item => {
+                              // Resolve skill name for display if it's a log
+                              const skillName = item.type === ItemType.SKILL_LOG 
+                                ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName)
+                                : undefined;
+
+                              return <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} skillName={skillName} />;
+                          })}
+                          </div>
+                      )}
+                  </>
               );
             })()}
 
@@ -1021,6 +1294,7 @@ const App: React.FC = () => {
                              
                              // Compact List Item Logic
                              const isFinance = item.type === ItemType.FINANCE;
+                             const isSkill = item.type === ItemType.SKILL_LOG;
                              // Check explicitly for 'income' finance type
                              const isIncome = item.meta.financeType === 'income' || item.meta.financeType === 'reimbursement';
                              
@@ -1028,22 +1302,29 @@ const App: React.FC = () => {
                                 ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.meta.amount)
                                 : null;
 
+                             const skillName = isSkill ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName) : null;
+
                              return (
                                  <React.Fragment key={item.id}>
                                      {showHeader && <h3 className="text-xs font-bold text-muted/70 uppercase tracking-wider mt-6 mb-2 pl-1">{label}</h3>}
                                      
                                      <div className="flex items-center text-sm py-2 border-b border-border/40 hover:bg-surface/50 rounded px-1 transition-colors">
                                          <span className="text-muted text-xs font-mono w-10 shrink-0">{timeStr}</span>
-                                         <span className="mr-3">{item.type === ItemType.FINANCE ? (isIncome ? '💰' : '💸') : '✅'}</span>
+                                         <span className="mr-3">
+                                            {isFinance ? (isIncome ? '💰' : '💸') : (isSkill ? '📚' : '✅')}
+                                         </span>
                                          <div className="flex-1 min-w-0 mr-2">
                                              <div className="truncate text-gray-200">{item.content}</div>
                                              {item.meta.paymentMethod && <div className="text-[9px] text-muted uppercase tracking-tight">{item.meta.paymentMethod}</div>}
+                                             {isSkill && skillName && <div className="text-[9px] text-indigo-400 uppercase tracking-tight">{skillName}</div>}
                                          </div>
                                          <div className="text-right shrink-0">
                                             {amount ? (
                                                 <span className={`text-xs font-semibold ${isIncome ? 'text-emerald-400' : 'text-red-400'}`}>
                                                     {isIncome ? '+' : '-'}{amount}
                                                 </span>
+                                            ) : isSkill ? (
+                                                <span className="text-xs font-semibold text-indigo-400">{item.meta.durationMinutes}m</span>
                                             ) : (
                                                 <span className="text-[10px] text-muted">{item.type}</span>
                                             )}
@@ -1070,8 +1351,10 @@ const App: React.FC = () => {
       </div>
 
       {/* Modals */}
-      {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} existingPaymentMethods={uniquePaymentMethods} budgetRules={budgetConfig.rules} />}
+      {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} existingPaymentMethods={uniquePaymentMethods} budgetRules={budgetConfig.rules} skills={skills} />}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSettingsSaved} currentBudgetConfig={budgetConfig} currentPrompt={customPrompt} />
+      <SkillModal isOpen={skillModal.isOpen} mode={skillModal.mode} initialName={skillModal.initialName} initialTarget={skillModal.initialTarget} onClose={() => setSkillModal({ ...skillModal, isOpen: false })} onSave={handleSaveSkill} />
+      <ConfirmDialog isOpen={!!deleteSkillId} title="Delete Skill?" message="Deleting this skill will prevent new logs from being auto-assigned, but existing logs will remain." onConfirm={handleDeleteSkillConfirm} onCancel={() => setDeleteSkillId(null)} />
     </div>
   );
 };

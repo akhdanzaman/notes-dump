@@ -24,44 +24,35 @@ export const DEFAULT_PROMPT = `Task: Break down the input into distinct items. I
 
 Classify each item into one of these categories:
 1. TODO: Professional Work, Career, Productivity.
-2. SHOPPING: Life Admin, Chores, Errands. **IMPORTANT**: If user says "Buy X for 50k", it is SHOPPING (Future/Plan), NOT Finance yet.
+2. SHOPPING: Life Admin, Chores, Errands.
 3. NOTE: Knowledge, ideas, thoughts.
 4. EVENT: Specific dates/times.
-5. FINANCE: ONLY for recorded transactions that ALREADY happened (e.g. "Just bought coffee 20k", "Paid rent", "Received salary").
+5. FINANCE: ONLY for recorded transactions (e.g. "Just bought coffee 20k").
+6. SKILL_LOG: User explicitly mentions spending time studying, practicing, or working on a skill. (e.g., "Belajar react 30 menit", "Bedah regulasi 1 jam").
 
 Instructions:
 - Extract dates into ISO format if present.
 - Generate relevant 'tags'.
-- Extract 'amount' as a NUMBER (remove currency symbols) for SHOPPING (Estimated Cost) or FINANCE (Actual Amount).
-- Extract specific day names mentioned (e.g. "Senin", "Monday", "Minggu") into 'targetDay'.
+- Extract 'amount' as a NUMBER for SHOPPING/FINANCE.
+- Extract 'targetDay' for routine/shopping items.
 
-For SHOPPING:
-- 'shoppingCategory': 'urgent', 'routine', 'not_urgent'.
-- If 'routine' (e.g., "Laundry every 3 days on Monday"), extract 'recurrenceDays' AND 'targetDay'.
-- If 'urgent' (e.g., "Buy headset on Sunday"), extract 'targetDay'.
+For SKILL_LOG:
+- **CRITICAL**: The 'content' MUST be the SUMMARY/KEY TAKEAWAYS of what was learned. If user says "Belajar React 1 jam tentang Hooks", content is "Belajar React tentang Hooks".
+- Extract 'durationMinutes' as a number (convert hours to minutes).
+- Extract 'skillName' based on the context (e.g. "React", "English", "Excel").
 
-For FINANCE and SHOPPING (if it involves money):
-- Extract 'paymentMethod' EXACTLY as described (e.g., "QRIS BNI", "Cash", "Gopay Later", "CC BCA"). If not specified, leave empty.
-- Determine 'budgetCategory' based on the 50-30-20 rule:
-  - 'needs': Essentials (Rent, Groceries, Electricity, Transport, Health).
-  - 'wants': Non-essentials (Dining out, Movies, Hobbies, Subscription services).
-  - 'savings': Investments, Emergency fund, Debt repayment.
-
-For FINANCE:
-- Determine 'financeType': 'expense', 'income', 'lending', 'reimbursement'.
+For FINANCE/SHOPPING:
+- Extract 'paymentMethod' and 'budgetCategory' (needs/wants/savings).
 
 DATE RESOLUTION (STRICT):
-- You MUST normalize relative time words to an ISO date in meta.dateISO (YYYY-MM-DD).
-- Use Current Date context as the reference.
 - "today/hari ini" => meta.when="today", meta.dateISO = Current Date (YYYY-MM-DD)
 - "tomorrow/besok" => meta.when="tomorrow", meta.dateISO = Current Date + 1 day
-- If a weekday is mentioned (Senin/Monday, Minggu/Sunday, etc), resolve it to the NEXT occurrence of that weekday after Current Date.
-- If a specific calendar date is mentioned, use it.
+- If a weekday is mentioned, resolve to NEXT occurrence.
 
 Output a JSON ARRAY of objects.`;
 
-// CHANGED: Added customPrompt argument
-export const classifyText = async (text: string, existingTags: string[] = [], retryCount = 0, customPrompt?: string): Promise<Partial<BrainDumpItem>[]> => {
+// CHANGED: Added availableSkills to prompt context
+export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string): Promise<Partial<BrainDumpItem>[]> => {
   const apiKey = getGeminiKey();
   
   if (!apiKey) {
@@ -77,7 +68,8 @@ export const classifyText = async (text: string, existingTags: string[] = [], re
 
   const currentDate = new Date().toISOString();
   const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const tagsContext = existingTags.length > 0 ? `Existing tags you should try to reuse if relevant: ${existingTags.join(', ')}` : '';
+  const tagsContext = existingTags.length > 0 ? `Existing tags context: ${existingTags.join(', ')}` : '';
+  const skillsContext = availableSkills.length > 0 ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(', ')}` : '';
 
   const promptToUse = customPrompt || DEFAULT_PROMPT;
 
@@ -87,6 +79,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], re
       contents: `Analyze this user input: "${text}". 
       Current Date context: ${currentDate} (${currentDayName}).
       ${tagsContext}
+      ${skillsContext}
       
       ${promptToUse}`,
       config: {
@@ -98,11 +91,11 @@ export const classifyText = async (text: string, existingTags: string[] = [], re
             properties: {
               type: {
                 type: Type.STRING,
-                description: "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE",
+                description: "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG",
               },
               content: {
                 type: Type.STRING,
-                description: "The cleaned up content text",
+                description: "The cleaned up content text or summary",
               },
               meta: {
                 type: Type.OBJECT,
@@ -112,11 +105,13 @@ export const classifyText = async (text: string, existingTags: string[] = [], re
                   quantity: { type: Type.STRING },
                   shoppingCategory: { type: Type.STRING },
                   recurrenceDays: { type: Type.NUMBER },
-                  targetDay: { type: Type.STRING, description: "Specific day name e.g. Monday, Sunday" },
-                  amount: { type: Type.NUMBER, description: "Numeric amount (cost/price/value)" },
-                  financeType: { type: Type.STRING, description: "expense, income, lending, reimbursement" },
-                  paymentMethod: { type: Type.STRING, description: "Detailed payment source e.g. QRIS BNI, GOPAY LATER" },
-                  budgetCategory: { type: Type.STRING, description: "needs, wants, or savings" }
+                  targetDay: { type: Type.STRING },
+                  amount: { type: Type.NUMBER },
+                  financeType: { type: Type.STRING },
+                  paymentMethod: { type: Type.STRING },
+                  budgetCategory: { type: Type.STRING },
+                  durationMinutes: { type: Type.NUMBER, description: "Duration in minutes for SKILL_LOG" },
+                  skillName: { type: Type.STRING, description: "Name of the skill practiced" }
                 }
               }
             },
@@ -154,12 +149,11 @@ export const classifyText = async (text: string, existingTags: string[] = [], re
 
   } catch (error: any) {
     const status = error?.status || error?.response?.status;
-    const msg = error?.message || '';
     
     if (retryCount < 2 && (status === 429 || status >= 500)) {
         const delay = Math.pow(2, retryCount) * 1000;
         await wait(delay);
-        return classifyText(text, existingTags, retryCount + 1, customPrompt);
+        return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt);
     }
 
     console.error("Gemini classification failed:", error);

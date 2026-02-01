@@ -3,7 +3,8 @@ export enum ItemType {
   SHOPPING = 'SHOPPING',
   NOTE = 'NOTE',
   EVENT = 'EVENT',
-  FINANCE = 'FINANCE'
+  FINANCE = 'FINANCE',
+  SKILL_LOG = 'SKILL_LOG'
 }
 
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine';
@@ -21,6 +22,14 @@ export interface BudgetConfig {
   rules: BudgetRule[];
 }
 
+export interface Skill {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+  weeklyTargetMinutes?: number; // Target in minutes per week
+}
+
 export interface ItemMeta {
   date?: string;
   tags?: string[];
@@ -35,6 +44,11 @@ export interface ItemMeta {
   financeType?: FinanceType;
   paymentMethod?: string; // e.g., 'cash', 'paylater', 'transfer', 'QRIS BNI'
   budgetCategory?: string; // Custom category ID or Name
+
+  // Skill Growth specific
+  durationMinutes?: number;
+  skillId?: string; // ID of the Skill
+  skillName?: string; // Temporary field for AI matching
 }
 
 export interface BrainDumpItem {
@@ -52,6 +66,7 @@ export interface DbSchema {
   data: BrainDumpItem[];
   budgetConfig?: BudgetConfig;
   customPrompt?: string;
+  skills?: Skill[];
 }
 
 // For Github API responses
