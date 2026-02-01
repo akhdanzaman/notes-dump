@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "5702cb9b-4301-488a-a660-f93bf5e54f76",
+      "type": "NOTE",
+      "content": "beli susu besok senin harga 12000",
+      "status": "pending",
+      "created_at": "2026-02-01T06:50:01.492Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "84393a1f-a763-4848-bfba-12cf65273e7c",
       "status": "pending",
       "created_at": "2026-02-01T06:49:53.109Z",
