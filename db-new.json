@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "fd6cf1c6-48d0-44d2-99b5-7d6b62323ab0",
+      "type": "NOTE",
+      "content": "beli bensin besok senin 25000",
+      "status": "pending",
+      "created_at": "2026-02-01T07:01:50.613Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "57dc100d-4f39-457c-9e19-b8c551444396",
       "status": "pending",
       "created_at": "2026-02-01T06:51:18.390Z",
