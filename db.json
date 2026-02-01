@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "42e2e214-b2e8-4324-80cc-829cc85c54f3",
+      "type": "NOTE",
+      "content": "Beli selimut 100000 hari ini",
+      "status": "pending",
+      "created_at": "2026-02-01T06:40:07.674Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "7a3e87a2-4859-45b3-83d2-15c7f35be8b6",
       "status": "done",
       "created_at": "2026-02-01T06:28:57.767Z",
