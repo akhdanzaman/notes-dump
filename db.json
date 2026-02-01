@@ -1238,7 +1238,7 @@
       {
         "id": "wants",
         "name": "Wants",
-        "percentage": 30,
+        "percentage": 20,
         "color": "bg-pink-500"
       },
       {
@@ -1246,6 +1246,12 @@
         "name": "Savings",
         "percentage": 20,
         "color": "bg-emerald-500"
+      },
+      {
+        "id": "cat-1769922349475",
+        "name": "Sedekah",
+        "percentage": 10,
+        "color": "bg-gray-500"
       }
     ]
   },
