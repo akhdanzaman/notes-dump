@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "9ab59aae-e38e-48ff-9979-9465c21da9f3",
+      "type": "NOTE",
+      "content": "Kirim dompet 50000",
+      "status": "pending",
+      "created_at": "2026-02-01T04:20:49.607Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "42ecf59e-b02e-4f7f-a8c9-8b6524af0ee8",
       "status": "done",
       "created_at": "2026-02-01T03:12:10.229Z",
