@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "9ab59aae-e38e-48ff-9979-9465c21da9f3",
-      "type": "NOTE",
-      "content": "Kirim dompet 50000",
-      "status": "pending",
-      "created_at": "2026-02-01T04:20:49.607Z",
+      "id": "a20f6554-996c-49f0-a356-1301b407feb8",
+      "status": "done",
+      "created_at": "2026-02-01T04:20:55.260Z",
+      "completed_at": "2026-02-01T04:20:55.260Z",
+      "type": "FINANCE",
+      "content": "Kirim dompet",
       "meta": {
-        "tags": []
+        "amount": 50000,
+        "budgetCategory": "wants",
+        "financeType": "expense",
+        "tags": [
+          "people"
+        ]
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "42ecf59e-b02e-4f7f-a8c9-8b6524af0ee8",
