@@ -41,6 +41,10 @@ For SHOPPING:
 - If 'routine' (e.g., "Laundry every 3 days on Monday"), extract 'recurrenceDays' AND 'targetDay'.
 - If 'urgent' (e.g., "Buy headset on Sunday"), extract 'targetDay'.
 - If category not clear, default to 'not_urgent'.
+SHOPPING CATEGORY RULES (STRICT):
+- Set shoppingCategory="routine" ONLY IF the text explicitly indicates repetition (e.g. "setiap", "tiap", "per minggu", "weekly", "every", "rutin", "berkala", "langganan", or recurrenceDays is explicitly mentioned).
+- If a weekday/date is mentioned without repetition words, it is NOT routine. Treat it as "urgent" (scheduled one-time purchase).
+- Default: if it's a one-time planned purchase with a specific day/date, use "urgent".
 
 For FINANCE and SHOPPING (if it involves money):
 - Extract 'paymentMethod' EXACTLY as described (e.g., "QRIS BNI", "Cash", "Gopay Later", "CC BCA"). If not specified, leave empty.
