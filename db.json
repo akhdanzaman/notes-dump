@@ -1,25 +1,6 @@
 {
   "data": [
     {
-      "id": "e6050c7a-9162-4608-871b-8891e02f7ed6",
-      "status": "done",
-      "created_at": "2026-02-01T23:29:12.604Z",
-      "completed_at": "2026-02-01T23:29:12.604Z",
-      "type": "FINANCE",
-      "content": "Laundry pickup",
-      "meta": {
-        "tags": [
-          "laundry",
-          "errand"
-        ],
-        "amount": 31500,
-        "budgetCategory": "needs",
-        "dateISO": "2026-01-24",
-        "financeType": "expense"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "76f79b1b-9547-470a-a3ef-316c7027e379",
       "status": "pending",
       "created_at": "2026-02-01T23:27:11.586Z",
