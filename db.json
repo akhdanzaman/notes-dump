@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "89540ec9-dc2d-4619-ba92-caf9c28130e9",
+      "type": "NOTE",
+      "content": "Hari ini nanti malam deploy vercel",
+      "status": "pending",
+      "created_at": "2026-02-01T07:45:12.107Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "14c65483-e1d6-4ded-a8ec-33c06d8fc835",
       "status": "pending",
       "created_at": "2026-02-01T07:35:53.609Z",
