@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "b0e3b5bc-1684-4351-9ffb-9b6e524b9107",
-      "type": "NOTE",
-      "content": "Beli tiket mudik 50000 hari ini",
+      "id": "e9c8f08c-d296-43d5-abdb-39d4444aaafe",
       "status": "pending",
-      "created_at": "2026-02-01T06:41:37.139Z",
+      "created_at": "2026-02-01T06:41:43.525Z",
+      "type": "SHOPPING",
+      "content": "Beli tiket mudik",
       "meta": {
-        "tags": []
+        "tags": [
+          "travel",
+          "purchase"
+        ],
+        "amount": 50000,
+        "budgetCategory": "needs",
+        "date": "hari ini",
+        "dateISO": "2026-02-01",
+        "shoppingCategory": "urgent",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "7a3e87a2-4859-45b3-83d2-15c7f35be8b6",
