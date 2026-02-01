@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ItemType, BrainDumpItem } from "../types";
-
+//a
 const GEMINI_SETTINGS_KEY = "braindump_gemini_key";
 const GEMINI_LAST_RATE_LIMIT_KEY = "gemini_last_rate_limit_ts";
 const GEMINI_LAST_ERROR_CODE_KEY = "gemini_last_error_code";
