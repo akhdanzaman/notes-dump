@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "17b1b127-8b48-42fa-88fb-7cdf7feba22d",
-      "type": "NOTE",
-      "content": "Beli mouse buat di kantor",
+      "id": "76f79b1b-9547-470a-a3ef-316c7027e379",
       "status": "pending",
-      "created_at": "2026-02-01T23:27:08.137Z",
+      "created_at": "2026-02-01T23:27:11.586Z",
+      "type": "SHOPPING",
+      "content": "Mouse for office",
       "meta": {
-        "tags": []
+        "tags": [
+          "purchase",
+          "electronics",
+          "office"
+        ],
+        "budgetCategory": "needs",
+        "shoppingCategory": "not_urgent"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "58df31d6-a72c-4e0e-a6db-9e112d187b9a",
