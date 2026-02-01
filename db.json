@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "e496c797-e471-4786-8056-b82f54d8d527",
-      "type": "NOTE",
-      "content": "sedekah 5000 ke pengemis",
-      "status": "pending",
-      "created_at": "2026-02-01T06:28:54.610Z",
+      "id": "7a3e87a2-4859-45b3-83d2-15c7f35be8b6",
+      "status": "done",
+      "created_at": "2026-02-01T06:28:57.767Z",
+      "completed_at": "2026-02-01T06:28:57.767Z",
+      "type": "FINANCE",
+      "content": "Sedekah ke pengemis",
       "meta": {
-        "tags": []
+        "tags": [
+          "people"
+        ],
+        "amount": 5000,
+        "budgetCategory": "sedekah",
+        "dateISO": "2026-02-01",
+        "financeType": "expense",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "cfb25d0d-be9c-4632-81d6-ac6bba7a3f56",
