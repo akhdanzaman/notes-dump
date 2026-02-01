@@ -885,8 +885,7 @@
       "meta": {
         "tags": [],
         "shoppingCategory": "not_urgent",
-        "amount": 100000,
-        "paymentMethod": "BNI",
+        "paymentMethod": "Gopay later",
         "budgetCategory": "wants"
       },
       "isOptimistic": false,
