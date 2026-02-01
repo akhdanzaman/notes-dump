@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "ff6f44b9-e2d6-44d4-b631-d02e07808a7a",
+      "type": "NOTE",
+      "content": "abis belajar bahasa inggris satu jam",
+      "status": "pending",
+      "created_at": "2026-02-01T06:02:29.025Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "83422ce5-6c4e-4a45-8c21-3fff0caeb96d",
       "status": "done",
       "created_at": "2026-02-01T05:07:24.450Z",
