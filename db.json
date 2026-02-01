@@ -856,10 +856,10 @@
       "type": "SHOPPING",
       "content": "Buy blanket",
       "meta": {
-        "tags": [
-          "purchase"
-        ],
-        "shoppingCategory": "not_urgent"
+        "tags": [],
+        "shoppingCategory": "not_urgent",
+        "paymentMethod": "BNI",
+        "budgetCategory": "wants"
       },
       "isOptimistic": false
     },
