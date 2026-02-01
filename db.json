@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "4546f970-b9a5-4980-b680-c8e98f5a98c4",
+      "type": "NOTE",
+      "content": "Beli skincare dan haircare",
+      "status": "pending",
+      "created_at": "2026-02-01T23:21:30.520Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "f3f5b703-3d30-4f3a-9365-55ef212a94dd",
       "status": "pending",
       "created_at": "2026-02-01T23:06:02.801Z",
