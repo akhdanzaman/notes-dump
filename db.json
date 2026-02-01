@@ -1,26 +1,6 @@
 {
   "data": [
     {
-      "id": "51f512d0-ae08-4462-b622-91d474169294",
-      "status": "pending",
-      "created_at": "2026-02-01T06:40:32.459Z",
-      "type": "SHOPPING",
-      "content": "Beli sempak di Indomaret",
-      "meta": {
-        "tags": [
-          "purchase",
-          "errand"
-        ],
-        "amount": 23000,
-        "budgetCategory": "needs",
-        "dateISO": "2026-02-02",
-        "shoppingCategory": "routine",
-        "targetDay": "Monday",
-        "when": "tomorrow"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "7a3e87a2-4859-45b3-83d2-15c7f35be8b6",
       "status": "done",
       "created_at": "2026-02-01T06:28:57.767Z",
