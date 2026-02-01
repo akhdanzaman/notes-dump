@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "5702cb9b-4301-488a-a660-f93bf5e54f76",
-      "type": "NOTE",
-      "content": "beli susu besok senin harga 12000",
+      "id": "ba5dc147-8a7f-4791-a969-848e1e2c9fe7",
       "status": "pending",
-      "created_at": "2026-02-01T06:50:01.492Z",
+      "created_at": "2026-02-01T06:50:04.615Z",
+      "type": "SHOPPING",
+      "content": "susu",
       "meta": {
-        "tags": []
+        "tags": [
+          "susu"
+        ],
+        "amount": 12000,
+        "budgetCategory": "needs",
+        "date": "2026-02-02",
+        "shoppingCategory": "routine",
+        "targetDay": "senin"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "84393a1f-a763-4848-bfba-12cf65273e7c",
