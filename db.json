@@ -5,11 +5,12 @@
       "status": "pending",
       "created_at": "2026-02-01T23:06:02.801Z",
       "type": "NOTE",
-      "content": "kosan",
+      "content": "notes: kosan tuku pulo asem, kayu putih\n\n",
       "meta": {
         "tags": [
           "kos"
-        ]
+        ],
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
