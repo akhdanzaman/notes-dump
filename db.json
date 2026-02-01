@@ -1398,6 +1398,13 @@
       "color": "indigo-500",
       "created_at": "2026-02-01T06:01:15.911Z",
       "weeklyTargetMinutes": 300
+    },
+    {
+      "id": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1",
+      "name": "Focus reading",
+      "color": "indigo-500",
+      "created_at": "2026-02-01T13:42:16.281Z",
+      "weeklyTargetMinutes": 420
     }
   ]
 }
