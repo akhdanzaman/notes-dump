@@ -15,21 +15,6 @@
       "isOptimistic": false
     },
     {
-      "id": "7103bd73-e5cc-4577-b678-45d36217372a",
-      "status": "pending",
-      "created_at": "2026-02-01T23:06:02.801Z",
-      "type": "SHOPPING",
-      "content": "pulo asem",
-      "meta": {
-        "tags": [
-          "purchase",
-          "food"
-        ],
-        "shoppingCategory": "not_urgent"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "b43731f7-32aa-4faf-9d82-d25713691010",
       "status": "done",
       "created_at": "2026-02-01T23:05:24.244Z",
