@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "5a638f4f-c801-4ad5-be83-97557586b6fd",
+      "type": "NOTE",
+      "content": "Minggu 25 januari 2025 sudah ambil laundry 31500",
+      "status": "pending",
+      "created_at": "2026-02-01T23:30:02.094Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "76f79b1b-9547-470a-a3ef-316c7027e379",
       "status": "pending",
       "created_at": "2026-02-01T23:27:11.586Z",
