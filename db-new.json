@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "229e963b-0283-4d9e-bf3f-461349464f97",
+      "type": "NOTE",
+      "content": "beli selimut besok senin harga 100000",
+      "status": "pending",
+      "created_at": "2026-02-01T06:51:14.289Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "01fa31c2-1ac4-490e-b33c-5527f4e9b9df",
       "status": "pending",
       "created_at": "2026-02-01T06:50:23.770Z",
