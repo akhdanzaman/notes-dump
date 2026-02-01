@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "af920a54-1a1d-4875-b658-92d421fd7096",
-      "type": "NOTE",
-      "content": "beli sempak besok senin harga 12000",
+      "id": "01fa31c2-1ac4-490e-b33c-5527f4e9b9df",
       "status": "pending",
-      "created_at": "2026-02-01T06:50:20.481Z",
+      "created_at": "2026-02-01T06:50:23.770Z",
+      "type": "SHOPPING",
+      "content": "sempak",
       "meta": {
-        "tags": []
+        "tags": [
+          "pakaian"
+        ],
+        "amount": 12000,
+        "budgetCategory": "needs",
+        "date": "2026-02-02",
+        "shoppingCategory": "urgent",
+        "targetDay": "Monday"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "ba5dc147-8a7f-4791-a969-848e1e2c9fe7",
