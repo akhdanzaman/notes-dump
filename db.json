@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "17b1b127-8b48-42fa-88fb-7cdf7feba22d",
+      "type": "NOTE",
+      "content": "Beli mouse buat di kantor",
+      "status": "pending",
+      "created_at": "2026-02-01T23:27:08.137Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "58df31d6-a72c-4e0e-a6db-9e112d187b9a",
       "status": "pending",
       "created_at": "2026-02-01T23:21:32.757Z",
