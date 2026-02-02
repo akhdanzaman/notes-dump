@@ -1,15 +1,39 @@
 {
   "data": [
     {
-      "id": "15b259d7-b25e-4940-b645-3d324b704013",
-      "type": "NOTE",
-      "content": "reading chatgpt about daily routine, and book wherever you are there you go for 60 minutes",
+      "id": "a6e07f54-e8b7-47a4-91e6-ca8034a110a4",
       "status": "pending",
-      "created_at": "2026-02-02T21:59:54.386Z",
+      "created_at": "2026-02-02T22:00:02.831Z",
+      "type": "TODO",
+      "content": "Read about daily routine on ChatGPT",
       "meta": {
-        "tags": []
+        "tags": [
+          "chatgpt",
+          "productivity"
+        ],
+        "dateISO": "2026-02-02",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "6dd56385-56f0-41d4-826c-b503bdae34f4",
+      "status": "done",
+      "created_at": "2026-02-02T22:00:02.831Z",
+      "completed_at": "2026-02-02T22:00:02.831Z",
+      "type": "SKILL_LOG",
+      "content": "Read a book",
+      "meta": {
+        "tags": [
+          "reading"
+        ],
+        "dateISO": "2026-02-02",
+        "durationMinutes": 60,
+        "skillName": "Focus reading",
+        "when": "today",
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
+      },
+      "isOptimistic": false
     },
     {
       "id": "95ea6acd-409f-4374-ba7e-03ad459c5422",
