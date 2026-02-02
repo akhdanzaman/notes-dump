@@ -1,15 +1,19 @@
 {
   "data": [
     {
-      "id": "f5bb7a4f-48f9-4538-b3da-4ca21e87ac38",
-      "type": "NOTE",
-      "content": "Pengen beli coach jacket",
+      "id": "e107b375-228a-4686-92f5-a1c15d585717",
       "status": "pending",
-      "created_at": "2026-02-02T20:33:19.231Z",
+      "created_at": "2026-02-02T20:33:21.739Z",
+      "type": "SHOPPING",
+      "content": "buy coach jacket",
       "meta": {
-        "tags": []
+        "tags": [
+          "purchase"
+        ],
+        "budgetCategory": "wants",
+        "shoppingCategory": "not_urgent"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "ffa9a5c5-1ffd-4fdf-98fe-3a23a2cf6ae8",
