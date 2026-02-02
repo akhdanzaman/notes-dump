@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "870a5574-3496-485e-9107-7aa4d26bbbf9",
-      "type": "NOTE",
-      "content": "abis beli air mineral 3000",
-      "status": "pending",
-      "created_at": "2026-02-02T21:16:39.614Z",
+      "id": "95ea6acd-409f-4374-ba7e-03ad459c5422",
+      "status": "done",
+      "created_at": "2026-02-02T21:16:42.077Z",
+      "completed_at": "2026-02-02T21:16:42.077Z",
+      "type": "FINANCE",
+      "content": "Bought mineral water",
       "meta": {
-        "tags": []
+        "tags": [
+          "purchase",
+          "food"
+        ],
+        "amount": 3000,
+        "budgetCategory": "needs",
+        "dateISO": "2026-02-02",
+        "financeType": "expense",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "8f69cf72-246e-4b22-94bc-0c145c1357f3",
