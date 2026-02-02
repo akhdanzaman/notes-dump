@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "f5bb7a4f-48f9-4538-b3da-4ca21e87ac38",
+      "type": "NOTE",
+      "content": "Pengen beli coach jacket",
+      "status": "pending",
+      "created_at": "2026-02-02T20:33:19.231Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "ffa9a5c5-1ffd-4fdf-98fe-3a23a2cf6ae8",
       "status": "done",
       "created_at": "2026-02-02T12:53:07.363Z",
