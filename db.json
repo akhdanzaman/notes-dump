@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "5e2d381d-dfea-4fd9-a009-1800afb2d981",
-      "type": "NOTE",
-      "content": "Abis belo kopi 2 biji 13000",
-      "status": "pending",
-      "created_at": "2026-02-02T12:53:02.916Z",
+      "id": "ffa9a5c5-1ffd-4fdf-98fe-3a23a2cf6ae8",
+      "status": "done",
+      "created_at": "2026-02-02T12:53:07.363Z",
+      "completed_at": "2026-02-02T12:53:07.363Z",
+      "type": "FINANCE",
+      "content": "Coffee (2 items)",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "purchase"
+        ],
+        "amount": 13000,
+        "budgetCategory": "wants",
+        "dateISO": "2026-02-02",
+        "financeType": "expense",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "aaffbb0f-c861-4a5f-a492-8d11060259c8",
