@@ -1,15 +1,19 @@
 {
   "data": [
     {
-      "id": "39d2eb8c-a8dc-4a8a-a2ba-a45614de5ab3",
-      "type": "NOTE",
-      "content": "beli tas legacy",
+      "id": "4ad4c02f-7b66-4dfb-a0e2-e95ad590f670",
       "status": "pending",
-      "created_at": "2026-02-02T20:57:15.337Z",
+      "created_at": "2026-02-02T20:57:17.709Z",
+      "type": "SHOPPING",
+      "content": "tas legacy",
       "meta": {
-        "tags": []
+        "tags": [
+          "purchase"
+        ],
+        "budgetCategory": "wants",
+        "shoppingCategory": "not_urgent"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "ed0b60b4-842b-49d9-96a2-874a7e02c884",
