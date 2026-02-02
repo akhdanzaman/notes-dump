@@ -1097,20 +1097,6 @@
       "completed_at": "2026-02-01T06:41:22.665Z"
     },
     {
-      "id": "de2ffe57-094a-4822-93a9-77c22ff61e0e",
-      "status": "pending",
-      "created_at": "2026-01-25T05:28:47.026Z",
-      "type": "NOTE",
-      "content": "1. to do nya masih belum fungsional banget",
-      "meta": {
-        "tags": [
-          "kaizen"
-        ],
-        "paymentMethod": ""
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "08f8cd0b-c137-4876-8330-0629423238e6",
       "status": "pending",
       "created_at": "2026-01-25T04:39:13.784Z",
