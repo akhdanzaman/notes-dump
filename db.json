@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "6aed88fe-17c1-47dd-874f-241dc72458dc",
+      "type": "NOTE",
+      "content": "hari ini aku harus mulai progress discontinue gwf, selesaiin pps, dan kumpulin data yang dikasih mba putri",
+      "status": "pending",
+      "created_at": "2026-02-02T20:55:58.939Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "e107b375-228a-4686-92f5-a1c15d585717",
       "status": "pending",
       "created_at": "2026-02-02T20:33:21.739Z",
