@@ -97,7 +97,7 @@
       "status": "pending",
       "created_at": "2026-02-01T23:21:32.757Z",
       "type": "SHOPPING",
-      "content": "skincare dan haircare",
+      "content": "skincare dan haircare , usmile",
       "meta": {
         "tags": [
           "skincare",
@@ -105,7 +105,8 @@
           "purchase"
         ],
         "budgetCategory": "wants",
-        "shoppingCategory": "not_urgent"
+        "shoppingCategory": "not_urgent",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
