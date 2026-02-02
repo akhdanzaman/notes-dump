@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "39d2eb8c-a8dc-4a8a-a2ba-a45614de5ab3",
+      "type": "NOTE",
+      "content": "beli tas legacy",
+      "status": "pending",
+      "created_at": "2026-02-02T20:57:15.337Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "ed0b60b4-842b-49d9-96a2-874a7e02c884",
       "status": "pending",
       "created_at": "2026-02-02T20:56:04.848Z",
