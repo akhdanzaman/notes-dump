@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "2e194974-fef0-4eac-8bc0-3062266276ff",
-      "type": "NOTE",
-      "content": "Makan malam 8000",
-      "status": "pending",
-      "created_at": "2026-02-02T10:41:26.257Z",
+      "id": "aaffbb0f-c861-4a5f-a492-8d11060259c8",
+      "status": "done",
+      "created_at": "2026-02-02T10:41:29.528Z",
+      "completed_at": "2026-02-02T10:41:29.528Z",
+      "type": "FINANCE",
+      "content": "Makan malam",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "purchase"
+        ],
+        "amount": 8000,
+        "budgetCategory": "wants",
+        "dateISO": "2026-02-02",
+        "financeType": "expense",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "3ce425ea-9aa8-4e81-bd36-20caa8f82f92",
