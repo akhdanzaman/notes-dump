@@ -443,24 +443,6 @@
       "isOptimistic": false
     },
     {
-      "id": "7927a03e-c1f7-4dc9-b361-595027ff1525",
-      "status": "pending",
-      "created_at": "2026-01-31T20:20:52.042Z",
-      "type": "SHOPPING",
-      "content": "Buy food",
-      "meta": {
-        "tags": [
-          "food",
-          "purchase"
-        ],
-        "amount": 20000,
-        "budgetCategory": "needs",
-        "recurrenceDays": 1,
-        "shoppingCategory": "routine"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "ec8ab5d3-c480-4d30-9d8c-9b775c7dbc67",
       "status": "pending",
       "created_at": "2026-01-31T20:20:04.585Z",
