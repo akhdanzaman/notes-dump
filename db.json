@@ -1,15 +1,20 @@
 {
   "data": [
     {
-      "id": "a21defea-5a72-41ed-b9f0-7cebe788b548",
-      "type": "NOTE",
-      "content": "notes: sebenarnya hari ini aku merasa kelupaan akan sesuatu, suatu to do yang harusnya aku tulis tapi lupa. nanti coba kalau ingat",
+      "id": "8f69cf72-246e-4b22-94bc-0c145c1357f3",
       "status": "pending",
-      "created_at": "2026-02-02T20:58:27.842Z",
+      "created_at": "2026-02-02T20:58:31.571Z",
+      "type": "NOTE",
+      "content": "Felt like I forgot to write down a to-do item today; will try to remember it later.",
       "meta": {
-        "tags": []
+        "tags": [
+          "observation",
+          "productivity"
+        ],
+        "dateISO": "2026-02-02",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "4ad4c02f-7b66-4dfb-a0e2-e95ad590f670",
