@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "870a5574-3496-485e-9107-7aa4d26bbbf9",
+      "type": "NOTE",
+      "content": "abis beli air mineral 3000",
+      "status": "pending",
+      "created_at": "2026-02-02T21:16:39.614Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "8f69cf72-246e-4b22-94bc-0c145c1357f3",
       "status": "pending",
       "created_at": "2026-02-02T20:58:31.571Z",
