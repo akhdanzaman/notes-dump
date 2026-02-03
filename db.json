@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "54ffb2d5-fd34-4607-b1c3-49db93fd9463",
-      "type": "NOTE",
-      "content": "Beli makan malam 8000",
+      "id": "ac9d02c6-6cd1-4389-95ff-79e2f93ead0a",
       "status": "pending",
-      "created_at": "2026-02-03T10:52:31.863Z",
+      "created_at": "2026-02-03T10:52:40.564Z",
+      "type": "SHOPPING",
+      "content": "Buy dinner",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "purchase"
+        ],
+        "amount": 8000,
+        "budgetCategory": "wants",
+        "shoppingCategory": "not_urgent"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "a6e07f54-e8b7-47a4-91e6-ca8034a110a4",
