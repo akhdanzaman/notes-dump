@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "d6a77d79-9971-4342-bbb0-c7b24f3a3986",
+      "type": "NOTE",
+      "content": "Abis beli sarapan 10000 dan makan malam 8000",
+      "status": "pending",
+      "created_at": "2026-02-03T10:52:53.299Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "a6e07f54-e8b7-47a4-91e6-ca8034a110a4",
       "status": "pending",
       "created_at": "2026-02-02T22:00:02.831Z",
