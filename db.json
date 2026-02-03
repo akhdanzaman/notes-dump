@@ -129,7 +129,7 @@
     },
     {
       "id": "ed0b60b4-842b-49d9-96a2-874a7e02c884",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-02T20:56:04.848Z",
       "type": "TODO",
       "content": "Mulai progress discontinue GWF",
@@ -142,7 +142,8 @@
         "dateISO": "2026-02-02",
         "when": "today"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-03T11:39:43.617Z"
     },
     {
       "id": "41a2843f-d1c1-4777-ba2e-d9d70a7d0e38",
