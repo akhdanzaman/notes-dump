@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "54ffb2d5-fd34-4607-b1c3-49db93fd9463",
+      "type": "NOTE",
+      "content": "Beli makan malam 8000",
+      "status": "pending",
+      "created_at": "2026-02-03T10:52:31.863Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "fd3415d0-59d4-4676-8338-bf1830706c46",
       "type": "NOTE",
       "content": "Beli sarapan 10000",
