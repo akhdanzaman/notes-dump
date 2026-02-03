@@ -165,7 +165,7 @@
     },
     {
       "id": "53f0b041-80dd-4735-9a95-bef1ecfbb821",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-02T20:56:04.848Z",
       "type": "TODO",
       "content": "Kumpulkan data yang dikasih Mba Putri",
@@ -178,7 +178,8 @@
         "dateISO": "2026-02-02",
         "when": "today"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-03T11:39:45.699Z"
     },
     {
       "id": "e107b375-228a-4686-92f5-a1c15d585717",
