@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "1d1d6eb5-d837-4f8e-8288-ee78d8b8a7d3",
+      "type": "NOTE",
+      "content": "bawa tisu ke kantor besok hari rabu",
+      "status": "pending",
+      "created_at": "2026-02-03T11:40:21.915Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "bee9f35a-7995-4aaa-b89d-1cee86ac5d0f",
       "status": "done",
       "created_at": "2026-02-03T10:52:59.918Z",
