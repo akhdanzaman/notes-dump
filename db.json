@@ -42,7 +42,7 @@
     },
     {
       "id": "a6e07f54-e8b7-47a4-91e6-ca8034a110a4",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-02T22:00:02.831Z",
       "type": "TODO",
       "content": "Read about daily routine on ChatGPT",
@@ -54,7 +54,8 @@
         "dateISO": "2026-02-02",
         "when": "today"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-03T11:39:39.019Z"
     },
     {
       "id": "6dd56385-56f0-41d4-826c-b503bdae34f4",
