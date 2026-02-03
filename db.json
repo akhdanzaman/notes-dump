@@ -1,15 +1,44 @@
 {
   "data": [
     {
-      "id": "d6a77d79-9971-4342-bbb0-c7b24f3a3986",
-      "type": "NOTE",
-      "content": "Abis beli sarapan 10000 dan makan malam 8000",
-      "status": "pending",
-      "created_at": "2026-02-03T10:52:53.299Z",
+      "id": "bee9f35a-7995-4aaa-b89d-1cee86ac5d0f",
+      "status": "done",
+      "created_at": "2026-02-03T10:52:59.918Z",
+      "completed_at": "2026-02-03T10:52:59.918Z",
+      "type": "FINANCE",
+      "content": "beli sarapan",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "purchase"
+        ],
+        "amount": 10000,
+        "budgetCategory": "wants",
+        "dateISO": "2026-02-03",
+        "financeType": "expense",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "fdfe44c0-1581-4794-b42b-2e85a4be4693",
+      "status": "done",
+      "created_at": "2026-02-03T10:52:59.918Z",
+      "completed_at": "2026-02-03T10:52:59.918Z",
+      "type": "FINANCE",
+      "content": "beli makan malam",
+      "meta": {
+        "tags": [
+          "food",
+          "purchase"
+        ],
+        "amount": 8000,
+        "budgetCategory": "wants",
+        "dateISO": "2026-02-03",
+        "financeType": "expense",
+        "when": "today"
+      },
+      "isOptimistic": false
     },
     {
       "id": "a6e07f54-e8b7-47a4-91e6-ca8034a110a4",
