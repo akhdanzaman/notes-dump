@@ -1204,24 +1204,6 @@
       "completed_at": "2026-01-26T12:41:20.205Z"
     },
     {
-      "id": "dd0bc0f0-10c3-4363-9d6c-54427b5f4bf2",
-      "status": "pending",
-      "created_at": "2026-01-25T14:33:38.478Z",
-      "type": "SHOPPING",
-      "content": "beli sempak indomaret",
-      "meta": {
-        "tags": [
-          "purchase",
-          "errand"
-        ],
-        "shoppingCategory": "urgent",
-        "amount": 50000,
-        "paymentMethod": "",
-        "budgetCategory": "needs"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "6fc3d6e9-dc30-4aaa-a0f3-5799b23d7830",
       "status": "done",
       "created_at": "2026-01-25T14:33:38.479Z",
