@@ -62,7 +62,7 @@
     },
     {
       "id": "495fa09f-e001-46c2-83c3-d08460a52b32",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-03T11:40:25.298Z",
       "type": "TODO",
       "content": "Bawa tisu ke kantor",
@@ -72,7 +72,8 @@
         "targetDay": "Rabu",
         "when": "tomorrow"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-04T12:03:21.652Z"
     },
     {
       "id": "bee9f35a-7995-4aaa-b89d-1cee86ac5d0f",
@@ -1706,7 +1707,7 @@
     }
   ],
   "budgetConfig": {
-    "monthlyIncome": 0,
+    "monthlyIncome": 3600000,
     "rules": [
       {
         "id": "needs",
@@ -1717,7 +1718,7 @@
       {
         "id": "wants",
         "name": "Wants",
-        "percentage": 30,
+        "percentage": 20,
         "color": "bg-pink-500"
       },
       {
@@ -1725,9 +1726,30 @@
         "name": "Savings",
         "percentage": 20,
         "color": "bg-emerald-500"
+      },
+      {
+        "id": "cat-1769922349475",
+        "name": "Sedekah",
+        "percentage": 10,
+        "color": "bg-gray-500"
       }
     ]
   },
-  "customPrompt": "Task: Break down the input into distinct items. If the user lists multiple things, split them.\n\nClassify each item into one of these categories:\n1. TODO: Professional Work, Career, Productivity.\n2. SHOPPING: Life Admin, Chores, Errands. **IMPORTANT**: If user says \"Buy X for 50k\", it is SHOPPING (Future/Plan), NOT FINANCE yet.\n3. NOTE: Knowledge, ideas, thoughts.\n4. EVENT: Specific dates/times.\n5. FINANCE: ONLY for recorded transactions that ALREADY happened (e.g. \"Just bought coffee 20k\", \"Paid rent\", \"Received salary\").\n6. SKILL_LOG: User explicitly mentions spending time studying, practicing, or working on a skill (e.g., \"Belajar react 30 menit\", \"Bedah regulasi 1 jam\").\n\nInstructions (GENERAL):\n- Extract dates into ISO format if present.\n- Generate relevant 'tags'.\n- Extract 'amount' as a NUMBER (remove currency symbols, dots/commas as thousand separators) for SHOPPING (Estimated Cost) or FINANCE (Actual Amount).\n- Extract specific day names mentioned (e.g. \"Senin\", \"Monday\", \"Minggu\") into 'targetDay'.\n\nFor SHOPPING:\n- 'shoppingCategory': 'urgent', 'routine', 'not_urgent'.\n- If 'routine' (e.g., \"Laundry every 3 days on Monday\"), extract 'recurrenceDays' AND 'targetDay'.\n- If 'urgent' (e.g., \"Buy headset on Sunday\"), extract 'targetDay'.\n- If category not clear, default to 'not_urgent'.\n- Set shoppingCategory=\"routine\" ONLY IF the text explicitly indicates repetition (e.g. \"setiap\", \"tiap\", \"per minggu\", \"weekly\", \"every\", \"rutin\", \"berkala\", \"langganan\", or recurrenceDays is explicitly mentioned).\n- If a weekday/date is mentioned without repetition words, it is NOT routine. Treat it as \"urgent\" (scheduled one-time purchase).\n- Default: if it's a one-time planned purchase with a specific day/date, use \"urgent\".\n\nFor FINANCE and SHOPPING (if it involves money):\n- Extract 'paymentMethod' EXACTLY as described (e.g., \"QRIS BNI\", \"Cash\", \"Gopay Later\", \"CC BCA\"). If not specified, leave empty.\n- Determine 'budgetCategory' based on the 50-30-20 rule:\n  - 'needs': Essentials (Rent, Groceries, Electricity, Transport, Health).\n  - 'wants': Non-essentials (Dining out, Movies, Hobbies, Subscription services).\n  - 'savings': Investments, Emergency fund, Debt repayment.\n  - 'sedekah': giving, voluntary charity, or benevolent acts.\n\nFor FINANCE:\n- Determine 'financeType': 'expense', 'income', 'lending', 'reimbursement'.\n\nFor SKILL_LOG:\n- **CRITICAL**: The 'content' MUST be the SUMMARY/KEY TAKEAWAYS of what was learned (not the raw duration sentence).\n  - If user says \"Belajar React 1 jam tentang Hooks\", content is \"Belajar React tentang Hooks\".\n- Extract 'durationMinutes' as a NUMBER (convert hours to minutes).\n- Extract 'skillName' based on the context (e.g. \"React\", \"English\", \"Excel\").\n- If possible, match skillName to one of the known user skills provided in context.\n\nDATE RESOLUTION (STRICT):\n- You MUST normalize relative time words to an ISO date in meta.dateISO (YYYY-MM-DD).\n- Always set meta.when when time is relative or weekday-based.\n- Use Current Date context as the reference.\n- \"today/hari ini\" => meta.when=\"today\", meta.dateISO = Current Date (YYYY-MM-DD)\n- \"tomorrow/besok\" => meta.when=\"tomorrow\", meta.dateISO = Current Date + 1 day\n- If a weekday is mentioned (Senin/Monday, Minggu/Sunday, etc), resolve it to the NEXT occurrence of that weekday after Current Date; set meta.when=\"next_weekday\".\n- If a specific calendar date is mentioned, use it directly in meta.dateISO; set meta.when=\"specific_date\".\n\nGenerate tags with the following priority:\n1. Intent-based tags (WHY the action happened)\n2. Context-based tags (WHAT situation/domain)\n3. Object-based tags (WHO/WHAT involved)\n\nRules:\n- Avoid generic tags like \"people\", \"purchase\", unless no better tag exists.\n- Prefer semantic tags such as: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.\n- Maximum 3 tags per item.\n\nExamples:\n- \"Gave money to street musician\" → tags: [\"charity\", \"donation\"]\n- \"tip driver gojek\" → tags: [\"tip\", \"transport\"]\n- \"Breakfast\" → tags: [\"food\"]\n- \"Kirim dompet\" (sending wallet back to owner) → tags: [\"assistance\", \"delivery\"]\n- \"Beli sepatu\" → tags: [\"shopping\"]\n\nOutput a JSON ARRAY of objects.",
-  "skills": []
+  "customPrompt": "Task: Break down the input into distinct items. If the user lists multiple things, split them.\n\nClassify each item into one of these categories:\n1. TODO: Professional Work, Career, Productivity.\n2. SHOPPING: Life Admin, Chores, Errands. **IMPORTANT**: If user says \"Buy X for 50k\", it is SHOPPING (Future/Plan), NOT Finance yet.\n3. NOTE: Knowledge, ideas, thoughts.\n4. EVENT: Specific dates/times.\n5. FINANCE: ONLY for recorded transactions that ALREADY happened (e.g. \"Just bought coffee 20k\", \"Paid rent\", \"Received salary\").\n\nInstructions:\n- Extract dates into ISO format if present.\n- Generate relevant 'tags'.\n- Extract 'amount' as a NUMBER (remove currency symbols) for SHOPPING (Estimated Cost) or FINANCE (Actual Amount).\n- Extract specific day names mentioned (e.g. \"Senin\", \"Monday\", \"Minggu\") into 'targetDay'.\n\nFor SHOPPING:\n- 'shoppingCategory': 'urgent', 'routine', 'not_urgent'.\n- If 'routine' (e.g., \"Laundry every 3 days on Monday\"), extract 'recurrenceDays' AND 'targetDay'.\n- If 'urgent' (e.g., \"Buy headset on Sunday\"), extract 'targetDay'.\n\nFor FINANCE and SHOPPING (if it involves money):\n- Extract 'paymentMethod' EXACTLY as described (e.g., \"QRIS BNI\", \"Cash\", \"Gopay Later\", \"CC BCA\"). If not specified, leave empty.\n- Determine 'budgetCategory' based on the 50-30-20 rule:\n  - 'needs': Essentials (Rent, Groceries, Electricity, Transport, Health).\n  - 'wants': Non-essentials (Dining out, Movies, Hobbies, Subscription services).\n  - 'savings': Investments, Emergency fund, Debt repayment.\n\nFor FINANCE:\n- Determine 'financeType': 'expense', 'income', 'lending', 'reimbursement'.\n\nDATE RESOLUTION (STRICT):\n- You MUST normalize relative time words to an ISO date in meta.dateISO (YYYY-MM-DD).\n- Use Current Date context as the reference.\n- \"today/hari ini\" => meta.when=\"today\", meta.dateISO = Current Date (YYYY-MM-DD)\n- \"tomorrow/besok\" => meta.when=\"tomorrow\", meta.dateISO = Current Date + 1 day\n- If a weekday is mentioned (Senin/Monday, Minggu/Sunday, etc), resolve it to the NEXT occurrence of that weekday after Current Date.\n- If a specific calendar date is mentioned, use it.\n\nOutput a JSON ARRAY of objects.",
+  "skills": [
+    {
+      "id": "df27b0c1-e59c-4274-b4fe-8ff0a481bf57",
+      "name": "Belajar bahasa inggris",
+      "color": "indigo-500",
+      "created_at": "2026-02-01T06:01:15.911Z",
+      "weeklyTargetMinutes": 300
+    },
+    {
+      "id": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1",
+      "name": "Focus reading",
+      "color": "indigo-500",
+      "created_at": "2026-02-01T13:42:16.281Z",
+      "weeklyTargetMinutes": 420
+    }
+  ]
 }
