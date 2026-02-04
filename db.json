@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "d4ac8209-c3fb-49b9-b01f-d195ab2b5319",
+      "type": "NOTE",
+      "content": "Tadi pagi Beli air minum 2 botol 6000",
+      "status": "pending",
+      "created_at": "2026-02-04T10:58:18.945Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "495fa09f-e001-46c2-83c3-d08460a52b32",
       "status": "pending",
       "created_at": "2026-02-03T11:40:25.298Z",
