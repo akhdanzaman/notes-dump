@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "849595b9-1c57-4c00-99aa-466e750ed001",
+      "type": "NOTE",
+      "content": "Aku abis beli sarapan 10000",
+      "status": "pending",
+      "created_at": "2026-02-04T10:58:28.612Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "a5aa8b4d-d55b-447a-9fbc-f3a9b2574f33",
       "status": "done",
       "created_at": "2026-02-04T10:58:24.153Z",
