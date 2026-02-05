@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "21dcb8e9-b530-4954-b93b-35e717dacc89",
-      "type": "NOTE",
-      "content": "Abis sarapan 10000",
-      "status": "pending",
-      "created_at": "2026-02-05T04:16:38.582Z",
+      "id": "7c154243-0867-4113-8c50-1045e76fe0c9",
+      "status": "done",
+      "created_at": "2026-02-05T04:16:42.336Z",
+      "completed_at": "2026-02-05T04:16:42.336Z",
+      "type": "FINANCE",
+      "content": "Breakfast",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "purchase"
+        ],
+        "amount": 10000,
+        "budgetCategory": "wants",
+        "dateISO": "2026-02-05",
+        "financeType": "expense",
+        "when": "today"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "85500dbd-6807-45d6-a1fd-7e3ec8da4f4b",
