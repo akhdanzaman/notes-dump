@@ -10,9 +10,10 @@
       "meta": {
         "tags": [],
         "amount": 100000,
-        "date": "2026-02-06",
+        "date": "2026-02-06T00:00:00.000Z",
         "paymentMethod": "BNI",
-        "toWallet": "cash"
+        "toWallet": "cash",
+        "financeType": "transfer"
       },
       "isOptimistic": false
     },
