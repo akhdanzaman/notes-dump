@@ -1,23 +1,6 @@
 {
   "data": [
     {
-      "id": "45a5d527-9232-4d85-824d-8ad709b4670a",
-      "status": "pending",
-      "created_at": "2026-02-06T11:25:23.078Z",
-      "type": "SHOPPING",
-      "content": "Donate to charity",
-      "meta": {
-        "tags": [
-          "charity",
-          "purchase"
-        ],
-        "amount": 13000,
-        "budgetCategory": "wants",
-        "shoppingCategory": "not_urgent"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "9523545b-a813-4480-be94-fc793429a96a",
       "status": "done",
       "created_at": "2026-02-05T12:26:32.748Z",
