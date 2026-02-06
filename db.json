@@ -1236,7 +1236,7 @@
         ],
         "amount": 450000,
         "financeType": "reimbursement",
-        "paymentMethod": "Bca"
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
