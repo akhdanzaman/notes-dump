@@ -1,15 +1,38 @@
 {
   "data": [
     {
-      "id": "ccd7bfa3-2c1c-46f5-91c6-36f6a0428826",
-      "type": "NOTE",
-      "content": "Beli sarapan 10000 dan sedekah 13000",
+      "id": "f076c332-b02f-4e22-b8d7-c24b052e18ec",
       "status": "pending",
-      "created_at": "2026-02-06T11:25:16.712Z",
+      "created_at": "2026-02-06T11:25:23.078Z",
+      "type": "SHOPPING",
+      "content": "Buy breakfast",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "purchase"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "shoppingCategory": "routine"
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "45a5d527-9232-4d85-824d-8ad709b4670a",
+      "status": "pending",
+      "created_at": "2026-02-06T11:25:23.078Z",
+      "type": "SHOPPING",
+      "content": "Donate to charity",
+      "meta": {
+        "tags": [
+          "charity",
+          "purchase"
+        ],
+        "amount": 13000,
+        "budgetCategory": "wants",
+        "shoppingCategory": "not_urgent"
+      },
+      "isOptimistic": false
     },
     {
       "id": "9523545b-a813-4480-be94-fc793429a96a",
