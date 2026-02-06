@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "6ae9e03e-bd66-475c-8708-a8e1867c088b",
+      "type": "NOTE",
+      "content": "aku beli sepatu 300000 dengan gopaylater",
+      "status": "pending",
+      "created_at": "2026-02-06T14:13:17.246Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "904f6f2f-8be4-466e-9730-46a0db1b7c14",
       "status": "done",
       "created_at": "2026-02-06T14:10:29.358Z",
