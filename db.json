@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "69f7c1ee-9781-41ae-ad2e-bba5c20976a5",
-      "type": "NOTE",
-      "content": "Beli makan tiap hari 25000",
+      "id": "c107deee-0404-444e-9a4c-f221df583d0b",
       "status": "pending",
-      "created_at": "2026-02-06T14:18:33.654Z",
+      "created_at": "2026-02-06T14:18:39.048Z",
+      "type": "SHOPPING",
+      "content": "Food",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "purchase"
+        ],
+        "amount": 25000,
+        "budgetCategory": "needs",
+        "recurrenceDays": 1,
+        "shoppingCategory": "routine"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "904f6f2f-8be4-466e-9730-46a0db1b7c14",
