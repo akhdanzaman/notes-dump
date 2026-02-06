@@ -1895,13 +1895,6 @@
       "color": "bg-blue-500"
     },
     {
-      "id": "5af0cf6e-e928-4d2c-a892-43952543be35",
-      "name": "Gopaylater",
-      "type": "cc",
-      "initialBalance": 0,
-      "color": "bg-blue-500"
-    },
-    {
       "id": "7474b330-c25e-47a4-9633-7217b2a82e03",
       "name": "BNI",
       "type": "bank",
