@@ -1837,7 +1837,7 @@
       "id": "w-1",
       "name": "Cash",
       "type": "cash",
-      "initialBalance": 150000,
+      "initialBalance": 143000,
       "color": "bg-emerald-500"
     },
     {
