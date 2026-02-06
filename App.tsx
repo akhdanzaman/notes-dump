@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill } from './types';
+import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill, Wallet, FinanceType } from './types';
 import { fetchDb, syncData, isUsingLocalStorage, SyncResult } from './services/githubService';
 import { classifyText, DEFAULT_PROMPT } from './services/geminiService';
 
@@ -12,13 +12,14 @@ import InputBar from './components/InputBar';
 import EditModal from './components/EditModal';
 import SettingsModal from './components/SettingsModal';
 import SkillModal from './components/SkillModal';
+import WalletModal from './components/WalletModal';
 import ConfirmDialog from './components/ConfirmDialog';
 
-type Tab = 'focus' | 'shopping' | 'notes' | 'money' | 'history';
+type Tab = 'summary' | 'focus' | 'shopping' | 'notes' | 'money' | 'history';
 type FocusSubTab = 'tasks' | 'skills';
 type NotesSubTab = 'general' | 'skills';
 type SyncStatus = 'synced' | 'syncing' | 'error' | 'local';
-type MoneyView = 'transactions' | 'budget';
+type MoneyView = 'transactions' | 'budget' | 'wallets';
 
 const App: React.FC = () => {
   const [items, setItems] = useState<BrainDumpItem[]>([]);
@@ -33,22 +34,28 @@ const App: React.FC = () => {
   });
   // Skills State
   const [skills, setSkills] = useState<Skill[]>([]);
+  // Wallet State
+  const [wallets, setWallets] = useState<Wallet[]>([]);
   const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
 
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0); 
   const [error, setError] = useState<string | null>(null);
   const [isLocalMode, setIsLocalMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('focus');
+  const [activeTab, setActiveTab] = useState<Tab>('summary');
   const [focusSubTab, setFocusSubTab] = useState<FocusSubTab>('tasks');
   const [notesSubTab, setNotesSubTab] = useState<NotesSubTab>('general');
+  const [showBalance, setShowBalance] = useState(true);
   
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
-  // Modal States for Skills
+  // Modal States
   const [skillModal, setSkillModal] = useState<{ isOpen: boolean; mode: 'add' | 'edit'; skillId?: string; initialName?: string; initialTarget?: number }>({ isOpen: false, mode: 'add' });
-  const [deleteSkillId, setDeleteSkillId] = useState<string | null>(null);
+  const [walletModal, setWalletModal] = useState<{ isOpen: boolean; mode: 'add' | 'edit'; walletId?: string; initialData?: Wallet }>({ isOpen: false, mode: 'add' });
+  
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteType, setDeleteType] = useState<'skill' | 'wallet' | null>(null);
 
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,15 +117,16 @@ const App: React.FC = () => {
       return [...updatedItems, ...newHistoryItems];
   };
 
-  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string, newSkills?: Skill[]) => {
+  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string, newSkills?: Skill[], newWallets?: Wallet[]) => {
       setSyncStatus('syncing');
       try {
           // Use syncData to save everything
           const configToSave = newConfig || budgetConfig;
           const promptToSave = newPrompt !== undefined ? newPrompt : customPrompt;
           const skillsToSave = newSkills || skills;
+          const walletsToSave = newWallets || wallets;
           
-          const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave);
+          const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave);
           
           if (result.method === 'error') {
               setSyncStatus('error');
@@ -161,7 +169,7 @@ const App: React.FC = () => {
             
             // Check for changes in routine resets to sync
             if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills);
+               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets);
             } else {
                setSyncStatus(isUsingLocalStorage() ? 'local' : 'synced');
             }
@@ -184,7 +192,18 @@ const App: React.FC = () => {
                   { id: 'skill-1', name: 'General Learning', color: 'indigo-500', created_at: new Date().toISOString() }
               ];
               setSkills(defaults);
-              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults);
+              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets);
+          }
+
+          // Load Wallets
+          if (data.wallets && data.wallets.length > 0) {
+              setWallets(data.wallets);
+          } else {
+              // Create default Cash wallet if none exist
+              const defaultWallet: Wallet = { id: 'w-1', name: 'Cash', type: 'cash', initialBalance: 0, color: 'bg-emerald-500' };
+              setWallets([defaultWallet]);
+              // Trigger save with default wallet
+              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, data.skills, [defaultWallet]);
           }
         }
       } catch (err) {
@@ -214,7 +233,7 @@ const App: React.FC = () => {
       }
 
       if (shouldSync) {
-          saveAndSync(items, newBudgetConfig, newPrompt, skills);
+          saveAndSync(items, newBudgetConfig, newPrompt, skills, wallets);
       } else {
           loadData();
       }
@@ -338,7 +357,7 @@ const App: React.FC = () => {
     });
   };
 
-  const handleUpdateItem = async (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string) => {
+  const handleUpdateItem = async (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType) => {
       setItems(prev => {
           const updatedItems = prev.map(item => 
               item.id === id 
@@ -353,7 +372,9 @@ const App: React.FC = () => {
                         paymentMethod: newPaymentMethod,
                         budgetCategory: newBudgetCategory,
                         durationMinutes: newDuration,
-                        skillId: newSkillId
+                        skillId: newSkillId,
+                        toWallet: newToWallet,
+                        financeType: newFinanceType || item.meta.financeType
                     } 
                   } 
                 : item
@@ -363,44 +384,55 @@ const App: React.FC = () => {
       });
   };
 
-  // --- Skill Management Handlers (Updated to use Modals) ---
-  const handleOpenAddSkill = () => {
-      setSkillModal({ isOpen: true, mode: 'add' });
-  };
+  // --- Skill & Wallet Management Handlers ---
+  const handleOpenAddSkill = () => setSkillModal({ isOpen: true, mode: 'add' });
+  const handleOpenEditSkill = (id: string, name: string, target?: number) => setSkillModal({ isOpen: true, mode: 'edit', skillId: id, initialName: name, initialTarget: target });
   
-  const handleOpenEditSkill = (id: string, name: string, target?: number) => {
-      setSkillModal({ isOpen: true, mode: 'edit', skillId: id, initialName: name, initialTarget: target });
-  };
+  const handleOpenAddWallet = () => setWalletModal({ isOpen: true, mode: 'add' });
+  const handleOpenEditWallet = (wallet: Wallet) => setWalletModal({ isOpen: true, mode: 'edit', walletId: wallet.id, initialData: wallet });
 
   const handleSaveSkill = (name: string, weeklyTargetMinutes?: number) => {
       if (!name.trim()) return;
-      
       if (skillModal.mode === 'add') {
-          const newSkill: Skill = {
-              id: uuidv4(),
-              name,
-              color: 'indigo-500',
-              created_at: new Date().toISOString(),
-              weeklyTargetMinutes
-          };
+          const newSkill: Skill = { id: uuidv4(), name, color: 'indigo-500', created_at: new Date().toISOString(), weeklyTargetMinutes };
           const updated = [...skills, newSkill];
           setSkills(updated);
-          saveAndSync(items, undefined, undefined, updated);
+          saveAndSync(items, undefined, undefined, updated, wallets);
       } else if (skillModal.mode === 'edit' && skillModal.skillId) {
           const updated = skills.map(s => s.id === skillModal.skillId ? { ...s, name, weeklyTargetMinutes } : s);
           setSkills(updated);
-          saveAndSync(items, undefined, undefined, updated);
+          saveAndSync(items, undefined, undefined, updated, wallets);
       }
       setSkillModal({ ...skillModal, isOpen: false });
   };
 
-  const handleDeleteSkillConfirm = () => {
-      if (deleteSkillId) {
-          const updated = skills.filter(s => s.id !== deleteSkillId);
-          setSkills(updated);
-          saveAndSync(items, undefined, undefined, updated);
-          setDeleteSkillId(null);
+  const handleSaveWallet = (name: string, type: Wallet['type'], initialBalance: number, color: string) => {
+      if (!name.trim()) return;
+      if (walletModal.mode === 'add') {
+          const newWallet: Wallet = { id: uuidv4(), name, type, initialBalance, color };
+          const updated = [...wallets, newWallet];
+          setWallets(updated);
+          saveAndSync(items, undefined, undefined, skills, updated);
+      } else if (walletModal.mode === 'edit' && walletModal.walletId) {
+          const updated = wallets.map(w => w.id === walletModal.walletId ? { ...w, name, type, initialBalance, color } : w);
+          setWallets(updated);
+          saveAndSync(items, undefined, undefined, skills, updated);
       }
+      setWalletModal({ ...walletModal, isOpen: false });
+  };
+
+  const handleConfirmDelete = () => {
+      if (deleteType === 'skill' && deleteId) {
+          const updated = skills.filter(s => s.id !== deleteId);
+          setSkills(updated);
+          saveAndSync(items, undefined, undefined, updated, wallets);
+      } else if (deleteType === 'wallet' && deleteId) {
+          const updated = wallets.filter(w => w.id !== deleteId);
+          setWallets(updated);
+          saveAndSync(items, undefined, undefined, skills, updated);
+      }
+      setDeleteId(null);
+      setDeleteType(null);
   };
 
   // --- Filtering Logic ---
@@ -574,6 +606,54 @@ const App: React.FC = () => {
     return relevantItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   };
 
+  const getWalletStats = () => {
+      // Create a map to track balances
+      const balanceMap = new Map<string, number>();
+      
+      wallets.forEach(w => balanceMap.set(w.name.toLowerCase(), w.initialBalance));
+
+      // Go through ALL finished items that involve money
+      items.forEach(item => {
+          if (item.status !== 'done' && item.type !== ItemType.FINANCE) return;
+          if (!item.meta.amount) return;
+          
+          const amount = item.meta.amount;
+          const walletName = item.meta.paymentMethod?.toLowerCase();
+          
+          if (walletName && balanceMap.has(walletName)) {
+              const current = balanceMap.get(walletName) || 0;
+              const isIncome = item.meta.financeType === 'income' || item.meta.financeType === 'reimbursement';
+              const isTransfer = item.meta.financeType === 'transfer';
+              
+              if (isIncome) {
+                  balanceMap.set(walletName, current + amount);
+              } else if (isTransfer) {
+                  // Source (paymentMethod) -> Subtract
+                  balanceMap.set(walletName, current - amount);
+                  
+                  // Dest (toWallet) -> Add
+                  const destName = item.meta.toWallet?.toLowerCase();
+                  if (destName && balanceMap.has(destName)) {
+                      balanceMap.set(destName, (balanceMap.get(destName) || 0) + amount);
+                  }
+              } else {
+                  // Expense or Lending
+                  balanceMap.set(walletName, current - amount);
+              }
+          }
+      });
+
+      // Map back to wallet objects
+      const walletStats = wallets.map(w => ({
+          ...w,
+          currentBalance: balanceMap.get(w.name.toLowerCase()) || w.initialBalance
+      }));
+
+      const totalNetWorth = walletStats.reduce((acc, w) => acc + w.currentBalance, 0);
+
+      return { walletStats, totalNetWorth };
+  };
+
   const getFinanceItems = () => {
       // 1. Explicit Finance Items
       let finance = items.filter(i => i.type === ItemType.FINANCE);
@@ -619,7 +699,10 @@ const App: React.FC = () => {
           return acc;
       }, 0);
 
+      // Transfers don't count as expense in Monthly Flow (Net zero for user)
       const totalExpense = allTransactions.reduce((acc, curr) => {
+        if (curr.meta?.financeType === 'transfer') return acc;
+        
         if (curr.type !== ItemType.FINANCE || curr.meta?.financeType === 'expense' || curr.meta?.financeType === 'lending') {
             return acc + (curr.meta.amount || 0);
         }
@@ -645,7 +728,8 @@ const App: React.FC = () => {
       };
 
       allTransactions.forEach(item => {
-           if (item.meta?.financeType === 'income' || item.meta?.financeType === 'reimbursement') return;
+           // Skip transfers, income, reimbursement from Budget calculations
+           if (item.meta?.financeType === 'income' || item.meta?.financeType === 'reimbursement' || item.meta?.financeType === 'transfer') return;
            
            const amt = item.meta?.amount || 0;
            const catId = resolveCategory(item.meta?.budgetCategory);
@@ -729,6 +813,13 @@ const App: React.FC = () => {
       };
   };
 
+  const getGreeting = () => {
+    const hours = new Date().getHours();
+    if (hours < 12) return 'Good Morning';
+    if (hours < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   const renderSyncIndicator = () => {
     let icon, text, color;
     switch(syncStatus) {
@@ -758,6 +849,10 @@ const App: React.FC = () => {
   const renderTabs = () => (
     <div className="flex justify-center overflow-x-auto no-scrollbar pb-2 pt-2 px-4 bg-background/95 backdrop-blur-sm border-t border-border">
       <div className="flex gap-4 sm:gap-6 min-w-max">
+        <button onClick={() => setActiveTab('summary')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'summary' ? 'text-primary' : 'text-muted hover:text-white'}`}>
+          <div className={`p-2 rounded-full ${activeTab === 'summary' ? 'bg-primary/10' : ''}`}><LayoutDashboard className="w-5 h-5" /></div>
+          Summary
+        </button>
         <button onClick={() => setActiveTab('focus')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'focus' ? 'text-primary' : 'text-muted hover:text-white'}`}>
           <div className={`p-2 rounded-full ${activeTab === 'focus' ? 'bg-primary/10' : ''}`}><Target className="w-5 h-5" /></div>
           Focus
@@ -771,7 +866,7 @@ const App: React.FC = () => {
           Notes
         </button>
         <button onClick={() => setActiveTab('money')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'money' ? 'text-primary' : 'text-muted hover:text-white'}`}>
-           <div className={`p-2 rounded-full ${activeTab === 'money' ? 'bg-primary/10' : ''}`}><Wallet className="w-5 h-5" /></div>
+           <div className={`p-2 rounded-full ${activeTab === 'money' ? 'bg-primary/10' : ''}`}><WalletIcon className="w-5 h-5" /></div>
           Money
         </button>
         <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'history' ? 'text-primary' : 'text-muted hover:text-white'}`}>
@@ -870,6 +965,103 @@ const App: React.FC = () => {
         ) : (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             
+            {/* SUMMARY DASHBOARD TAB */}
+            {activeTab === 'summary' && (() => {
+               // Calculate metrics on fly
+               const { today, tomorrow, later } = getFocusItems();
+               const overdueCount = later.filter(i => i.meta.date && new Date(i.meta.date) < new Date()).length;
+               
+               const { stats } = getSkillItems();
+               const totalWeeklyHours = stats.reduce((acc, s) => acc + s.weeklyHours, 0);
+               const avgProgress = stats.length > 0 
+                  ? stats.reduce((acc, s) => acc + s.weeklyProgress, 0) / stats.length 
+                  : 0;
+
+               const { urgent, routine } = getShoppingItems();
+               
+               const { totalNetWorth } = getWalletStats();
+               const { totalExpense } = getFinanceItems();
+               const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+
+               return (
+                   <div className="space-y-6">
+                        <div className="mb-4">
+                            <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">{getGreeting()}</h2>
+                            <p className="text-sm text-muted">Here is your daily snapshot.</p>
+                        </div>
+
+                        {/* Money Card (Total Net Worth) */}
+                        <div className="bg-gradient-to-br from-surface to-surface/50 border border-border p-5 rounded-xl transition-all group relative">
+                             <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-2 text-emerald-400">
+                                    <WalletIcon className="w-5 h-5" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Total Net Worth</span>
+                                </div>
+                                <button onClick={() => setShowBalance(!showBalance)} className="text-muted hover:text-white transition-colors">
+                                    {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                             </div>
+                             <div 
+                                onClick={() => setActiveTab('money')}
+                                className="text-2xl font-bold text-white mb-1 cursor-pointer hover:text-emerald-400 transition-colors"
+                             >
+                                 {showBalance ? fmt(totalNetWorth) : '••••••••'}
+                             </div>
+                             <p className="text-xs text-muted">
+                                 Spent this month: <span className="text-red-400">{showBalance ? fmt(totalExpense) : '••••••'}</span>
+                             </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                             {/* Focus Card */}
+                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('tasks'); }} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-todo/30 transition-all group">
+                                  <div className="flex justify-between items-start mb-3">
+                                      <div className="p-2 bg-acc-todo/10 rounded-lg text-acc-todo">
+                                          <CheckCircle2 className="w-5 h-5" />
+                                      </div>
+                                      <span className="text-xs text-muted group-hover:text-white font-medium">{today.length} Today</span>
+                                  </div>
+                                  <h3 className="font-semibold text-white">Focus</h3>
+                                  <p className="text-xs text-muted mt-1">{tomorrow.length} tomorrow</p>
+                                  {overdueCount > 0 && <p className="text-[10px] text-red-400 mt-1">{overdueCount} overdue</p>}
+                             </div>
+
+                             {/* Skill Card */}
+                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('skills'); }} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-indigo-500/30 transition-all group">
+                                  <div className="flex justify-between items-start mb-3">
+                                      <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
+                                          <GrowthIcon className="w-5 h-5" />
+                                      </div>
+                                      <span className="text-xs text-muted group-hover:text-white font-medium">{Math.round(avgProgress)}% Goal</span>
+                                  </div>
+                                  <h3 className="font-semibold text-white">Growth</h3>
+                                  <p className="text-xs text-muted mt-1">{totalWeeklyHours}h this week</p>
+                             </div>
+
+                             {/* Life Card */}
+                             <div onClick={() => setActiveTab('shopping')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-shopping/30 transition-all group">
+                                  <div className="flex justify-between items-start mb-3">
+                                      <div className="p-2 bg-acc-shopping/10 rounded-lg text-acc-shopping">
+                                          <ShoppingCart className="w-5 h-5" />
+                                      </div>
+                                      <span className="text-xs text-muted group-hover:text-white font-medium">{urgent.length} Urgent</span>
+                                  </div>
+                                  <h3 className="font-semibold text-white">Life</h3>
+                                  <p className="text-xs text-muted mt-1">{routine.length} routine items</p>
+                             </div>
+                             
+                             {/* Notes Shortcut */}
+                             <div onClick={() => setActiveTab('notes')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-note/30 transition-all group flex flex-col justify-center items-center text-center">
+                                  <div className="p-2 bg-acc-note/10 rounded-lg text-acc-note mb-2">
+                                      <StickyNote className="w-5 h-5" />
+                                  </div>
+                                  <h3 className="text-sm font-semibold text-white">Notes</h3>
+                             </div>
+                        </div>
+                   </div>
+               );
+            })()}
+
             {/* FOCUS TAB */}
             {activeTab === 'focus' && (() => {
               
@@ -948,7 +1140,7 @@ const App: React.FC = () => {
                                             <Pencil className="w-3.5 h-3.5" />
                                           </button>
                                           <button 
-                                            onClick={() => setDeleteSkillId(skill.id)}
+                                            onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
                                             className="p-1.5 hover:bg-red-900/30 rounded-md text-muted hover:text-red-400 transition-colors"
                                             title="Delete"
                                           >
@@ -1101,13 +1293,14 @@ const App: React.FC = () => {
                    list, 
                    totalIncome, 
                    totalExpense, 
-                   balance, 
                    projectedExpense, 
                    budgetMap, 
                    plannedBudgetMap,
                    uncategorized, 
                    projectedUncategorized 
                } = getFinanceItems();
+               
+               const { walletStats, totalNetWorth } = getWalletStats();
 
                const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
                
@@ -1119,27 +1312,23 @@ const App: React.FC = () => {
 
                return (
                    <div>
-                       {/* Month Selector */}
-                       <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
-                            <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-white/10 rounded-full text-muted hover:text-white"><ChevronLeft className="w-5 h-5" /></button>
-                            <span className="font-semibold text-white">
-                                {financeDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                            </span>
-                            <button onClick={() => changeMonth(1)} className="p-1 hover:bg-white/10 rounded-full text-muted hover:text-white"><ChevronRight className="w-5 h-5" /></button>
-                       </div>
-
-                       {/* Balance Header */}
+                       {/* Total Net Worth Header */}
                        <div className="bg-surface border border-border rounded-xl p-4 mb-4 shadow-lg">
-                           <div className="text-sm text-muted mb-1">Monthly Flow</div>
-                           <div className={`text-2xl font-bold mb-4 ${balance >= 0 ? 'text-white' : 'text-red-400'}`}>{fmt(balance)}</div>
+                           <div className="flex justify-between items-start">
+                                <div className="text-sm text-muted mb-1">Total Net Worth</div>
+                                <button onClick={() => setShowBalance(!showBalance)} className="text-muted hover:text-white transition-colors">
+                                    {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                           </div>
+                           <div className={`text-2xl font-bold mb-4 text-white`}>{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
                            <div className="grid grid-cols-2 gap-4">
                                <div className="bg-black/20 rounded-lg p-2 px-3">
-                                   <div className="flex items-center gap-1 text-xs text-muted mb-1"><TrendingUp className="w-3 h-3 text-emerald-500" /> Income</div>
-                                   <div className="font-semibold text-emerald-400">{fmt(totalIncome)}</div>
+                                   <div className="flex items-center gap-1 text-xs text-muted mb-1"><TrendingUp className="w-3 h-3 text-emerald-500" /> Income (Mo)</div>
+                                   <div className="font-semibold text-emerald-400">{showBalance ? fmt(totalIncome) : '••••'}</div>
                                </div>
                                <div className="bg-black/20 rounded-lg p-2 px-3">
-                                   <div className="flex items-center gap-1 text-xs text-muted mb-1"><TrendingDown className="w-3 h-3 text-red-500" /> Expense</div>
-                                   <div className="font-semibold text-red-400">{fmt(totalExpense)}</div>
+                                   <div className="flex items-center gap-1 text-xs text-muted mb-1"><TrendingDown className="w-3 h-3 text-red-500" /> Expense (Mo)</div>
+                                   <div className="font-semibold text-red-400">{showBalance ? fmt(totalExpense) : '••••'}</div>
                                </div>
                            </div>
                        </div>
@@ -1147,10 +1336,16 @@ const App: React.FC = () => {
                        {/* Submenu Toggle */}
                        <div className="flex bg-surface rounded-lg p-1 mb-4 border border-border">
                             <button 
+                                onClick={() => setMoneyView('wallets')}
+                                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${moneyView === 'wallets' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                            >
+                                <WalletIcon className="w-3.5 h-3.5" /> Wallets
+                            </button>
+                            <button 
                                 onClick={() => setMoneyView('transactions')}
                                 className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${moneyView === 'transactions' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
                             >
-                                <List className="w-3.5 h-3.5" /> Transactions
+                                <List className="w-3.5 h-3.5" /> Trans.
                             </button>
                             <button 
                                 onClick={() => setMoneyView('budget')}
@@ -1160,9 +1355,62 @@ const App: React.FC = () => {
                             </button>
                        </div>
 
+                       {/* VIEW: Wallets */}
+                       {moneyView === 'wallets' && (
+                           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                               {walletStats.map(wallet => (
+                                   <div key={wallet.id} className="bg-surface border border-border p-4 rounded-xl relative group hover:border-white/20 transition-colors">
+                                        <div className="absolute top-3 right-3 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                onClick={() => handleOpenEditWallet(wallet)}
+                                                className="p-1.5 hover:bg-white/10 rounded-md text-muted hover:text-white transition-colors"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button 
+                                                onClick={() => { setDeleteId(wallet.id); setDeleteType('wallet'); }}
+                                                className="p-1.5 hover:bg-red-900/30 rounded-md text-muted hover:text-red-400 transition-colors"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className={`w-10 h-10 rounded-full ${wallet.color} flex items-center justify-center text-white`}>
+                                                {wallet.type === 'bank' ? <PiggyBank className="w-5 h-5" /> : 
+                                                 wallet.type === 'cc' ? <CreditCard className="w-5 h-5" /> : 
+                                                 wallet.type === 'ewallet' ? <WalletIcon className="w-5 h-5" /> :
+                                                 <WalletIcon className="w-5 h-5" />}
+                                            </div>
+                                            <div>
+                                                <div className="font-semibold text-white">{wallet.name}</div>
+                                                <div className="text-[10px] text-muted uppercase tracking-wider">{wallet.type}</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-xl font-bold text-white tracking-tight">
+                                            {showBalance ? fmt(wallet.currentBalance) : '••••••••'}
+                                        </div>
+                                   </div>
+                               ))}
+
+                               <button onClick={handleOpenAddWallet} className="w-full border border-dashed border-border rounded-xl flex items-center justify-center p-4 hover:border-white/30 hover:bg-surface/50 transition-all text-muted hover:text-white gap-2">
+                                  <Plus className="w-5 h-5" />
+                                  <span className="text-sm font-medium">Add Wallet</span>
+                               </button>
+                           </div>
+                       )}
+
                        {/* VIEW: Transactions */}
                        {moneyView === 'transactions' && (
                            <>
+                               <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
+                                    <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-white/10 rounded-full text-muted hover:text-white"><ChevronLeft className="w-5 h-5" /></button>
+                                    <span className="font-semibold text-white">
+                                        {financeDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                                    </span>
+                                    <button onClick={() => changeMonth(1)} className="p-1 hover:bg-white/10 rounded-full text-muted hover:text-white"><ChevronRight className="w-5 h-5" /></button>
+                               </div>
+
                                {/* Projected/Planned Card */}
                                {projectedExpense > 0 && (
                                    <div className="bg-surface/50 border border-dashed border-border rounded-xl p-3 mb-6 flex items-center justify-between">
@@ -1170,7 +1418,7 @@ const App: React.FC = () => {
                                             <Calculator className="w-4 h-4" />
                                             <span className="text-xs font-medium">Planned Spending (Pending)</span>
                                         </div>
-                                        <span className="text-sm font-bold text-amber-400">{fmt(projectedExpense)}</span>
+                                        <span className="text-sm font-bold text-amber-400">{showBalance ? fmt(projectedExpense) : '••••'}</span>
                                    </div>
                                )}
 
@@ -1185,6 +1433,14 @@ const App: React.FC = () => {
                        {/* VIEW: Budget Dashboard */}
                        {moneyView === 'budget' && (
                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                               <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
+                                    <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-white/10 rounded-full text-muted hover:text-white"><ChevronLeft className="w-5 h-5" /></button>
+                                    <span className="font-semibold text-white">
+                                        {financeDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                                    </span>
+                                    <button onClick={() => changeMonth(1)} className="p-1 hover:bg-white/10 rounded-full text-muted hover:text-white"><ChevronRight className="w-5 h-5" /></button>
+                               </div>
+
                                {effectiveIncome === 0 ? (
                                    <div className="text-center p-6 bg-surface border border-border rounded-xl">
                                        <PiggyBank className="w-8 h-8 text-muted mx-auto mb-2" />
@@ -1197,7 +1453,7 @@ const App: React.FC = () => {
                                    <>
                                         <div className="flex justify-between items-center mb-2 px-1">
                                             <span className="text-xs font-medium text-muted">Basis: {incomeLabel}</span>
-                                            <span className="text-sm font-bold text-white">{fmt(effectiveIncome)}</span>
+                                            <span className="text-sm font-bold text-white">{showBalance ? fmt(effectiveIncome) : '••••'}</span>
                                         </div>
 
                                         {/* Dynamic Budget Categories */}
@@ -1217,11 +1473,11 @@ const App: React.FC = () => {
                                                         </div>
                                                         <div className="text-right">
                                                             <div className="text-xs text-white font-medium">
-                                                                {fmt(spent)} <span className="text-muted/60">/ {fmt(limit)}</span>
+                                                                {showBalance ? fmt(spent) : '•••'} <span className="text-muted/60">/ {showBalance ? fmt(limit) : '•••'}</span>
                                                             </div>
                                                             {planned > 0 && (
                                                                 <div className="text-[10px] text-amber-400">
-                                                                    +{fmt(planned)} planned
+                                                                    +{showBalance ? fmt(planned) : '•••'} planned
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1257,9 +1513,9 @@ const App: React.FC = () => {
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-xs text-muted">Uncategorized / Others</span>
                                                     <div className="text-right">
-                                                        <span className="text-xs text-white">{fmt(uncategorized)}</span>
+                                                        <span className="text-xs text-white">{showBalance ? fmt(uncategorized) : '•••'}</span>
                                                         {projectedUncategorized > 0 && (
-                                                            <span className="text-[10px] text-amber-400 ml-1">+{fmt(projectedUncategorized)}</span>
+                                                            <span className="text-[10px] text-amber-400 ml-1">+{showBalance ? fmt(projectedUncategorized) : '•••'}</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -1367,10 +1623,11 @@ const App: React.FC = () => {
       </div>
 
       {/* Modals */}
-      {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} existingPaymentMethods={uniquePaymentMethods} budgetRules={budgetConfig.rules} skills={skills} />}
+      {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} existingPaymentMethods={uniquePaymentMethods} budgetRules={budgetConfig.rules} skills={skills} wallets={wallets} />}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSettingsSaved} currentBudgetConfig={budgetConfig} currentPrompt={customPrompt} />
       <SkillModal isOpen={skillModal.isOpen} mode={skillModal.mode} initialName={skillModal.initialName} initialTarget={skillModal.initialTarget} onClose={() => setSkillModal({ ...skillModal, isOpen: false })} onSave={handleSaveSkill} />
-      <ConfirmDialog isOpen={!!deleteSkillId} title="Delete Skill?" message="Deleting this skill will prevent new logs from being auto-assigned, but existing logs will remain." onConfirm={handleDeleteSkillConfirm} onCancel={() => setDeleteSkillId(null)} />
+      <WalletModal isOpen={walletModal.isOpen} mode={walletModal.mode} initialData={walletModal.initialData} onClose={() => setWalletModal({ ...walletModal, isOpen: false })} onSave={handleSaveWallet} />
+      <ConfirmDialog isOpen={!!deleteId} title={deleteType === 'skill' ? "Delete Skill?" : "Delete Wallet?"} message={deleteType === 'skill' ? "Deleting this skill will prevent new logs from being auto-assigned, but existing logs will remain." : "Deleting this wallet will not remove transaction history, but they will no longer be linked to this wallet."} onConfirm={handleConfirmDelete} onCancel={() => { setDeleteId(null); setDeleteType(null); }} />
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ItemType, BrainDumpItem } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, BookOpen, Hourglass } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, BookOpen, Hourglass, ArrowRight } from 'lucide-react';
 
 interface CardProps {
   item: BrainDumpItem;
@@ -48,9 +48,10 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
       case ItemType.FINANCE:
         // Color depends on subtype
         const isIncome = meta?.financeType === 'income' || meta?.financeType === 'reimbursement';
-        const colorClass = isIncome ? 'border-l-emerald-500' : 'border-l-red-500';
-        const Icon = meta?.financeType === 'lending' ? ArrowRightLeft : (isIncome ? TrendingUp : TrendingDown);
-        const iconColor = isIncome ? 'text-emerald-500' : 'text-red-500';
+        const isTransfer = meta?.financeType === 'transfer';
+        const colorClass = isTransfer ? 'border-l-blue-400' : (isIncome ? 'border-l-emerald-500' : 'border-l-red-500');
+        const Icon = isTransfer ? ArrowRightLeft : (meta?.financeType === 'lending' ? ArrowRightLeft : (isIncome ? TrendingUp : TrendingDown));
+        const iconColor = isTransfer ? 'text-blue-400' : (isIncome ? 'text-emerald-500' : 'text-red-500');
         
         return {
             border: `border-l-4 ${colorClass}`,
@@ -108,7 +109,8 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
     : null;
     
   const financeTypeLabel = meta?.financeType === 'lending' ? 'Lending' : 
-                           meta?.financeType === 'reimbursement' ? 'Reimbursed' : null;
+                           meta?.financeType === 'reimbursement' ? 'Reimbursed' : 
+                           meta?.financeType === 'transfer' ? 'Transfer' : null;
 
   // Skill formatting
   const durationLabel = meta?.durationMinutes ? `${meta.durationMinutes}m` : null;
@@ -134,9 +136,15 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
           
           {/* Payment Method Badge for Finance */}
           {isFinance && meta?.paymentMethod && (
-              <span className="text-[10px] text-muted bg-border px-1.5 py-0.5 rounded uppercase">
-                  {meta.paymentMethod}
-              </span>
+              <div className="flex items-center gap-1 text-[10px] text-muted bg-border px-1.5 py-0.5 rounded uppercase">
+                  <span>{meta.paymentMethod}</span>
+                  {meta.financeType === 'transfer' && meta.toWallet && (
+                      <>
+                        <ArrowRight className="w-3 h-3" />
+                        <span>{meta.toWallet}</span>
+                      </>
+                  )}
+              </div>
           )}
 
            {/* For SKILL: Display Date in Header */}

@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import { DbSchema, BrainDumpItem, BudgetConfig, Skill } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet } from "../types";
 
 // --- Configuration & Constants ---
 
@@ -128,7 +128,8 @@ const validateSchema = (data: any): DbSchema => {
         data: Array.isArray(data.data) ? data.data : [],
         budgetConfig: data.budgetConfig,
         customPrompt: data.customPrompt,
-        skills: Array.isArray(data.skills) ? data.skills : []
+        skills: Array.isArray(data.skills) ? data.skills : [],
+        wallets: Array.isArray(data.wallets) ? data.wallets : []
     };
 };
 
@@ -223,7 +224,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
  * Internal worker for synchronization.
  * Contains the logic for dirty checks, hydration guards, and atomic writes.
  */
-const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, customPrompt?: string, skills?: Skill[]): Promise<SyncResult> => {
+const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, customPrompt?: string, skills?: Skill[], wallets?: Wallet[]): Promise<SyncResult> => {
   // 1. HYDRATION GUARD
   // Critical: Never save if we haven't successfully loaded yet. 
   // This prevents the "empty state overwrite" bug on startup.
@@ -236,7 +237,8 @@ const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, 
     data: items,
     budgetConfig: budgetConfig,
     customPrompt: customPrompt,
-    skills: skills
+    skills: skills,
+    wallets: wallets
   };
   
   const jsonString = JSON.stringify(updatedDb, null, 2);
@@ -328,9 +330,9 @@ const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, 
  * Public Sync Function
  * Serializes requests into a queue to prevent race conditions.
  */
-export const syncData = (items: BrainDumpItem[], budgetConfig?: BudgetConfig, customPrompt?: string, skills?: Skill[]): Promise<SyncResult> => {
+export const syncData = (items: BrainDumpItem[], budgetConfig?: BudgetConfig, customPrompt?: string, skills?: Skill[], wallets?: Wallet[]): Promise<SyncResult> => {
   // Chain to the queue to ensure sequential execution
-  const task = () => performSync(items, budgetConfig, customPrompt, skills);
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets);
 
   const queuedTask = syncQueue.then(
       () => task(), // run after previous finishes

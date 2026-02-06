@@ -8,7 +8,7 @@ export enum ItemType {
 }
 
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine';
-export type FinanceType = 'expense' | 'income' | 'lending' | 'reimbursement';
+export type FinanceType = 'expense' | 'income' | 'lending' | 'reimbursement' | 'transfer';
 
 export interface BudgetRule {
   id: string;
@@ -30,6 +30,14 @@ export interface Skill {
   weeklyTargetMinutes?: number; // Target in minutes per week
 }
 
+export interface Wallet {
+  id: string;
+  name: string;
+  type: 'cash' | 'bank' | 'ewallet' | 'cc';
+  initialBalance: number;
+  color: string;
+}
+
 export interface ItemMeta {
   date?: string;
   tags?: string[];
@@ -43,6 +51,7 @@ export interface ItemMeta {
   currency?: string;
   financeType?: FinanceType;
   paymentMethod?: string; // e.g., 'cash', 'paylater', 'transfer', 'QRIS BNI'
+  toWallet?: string; // Destination wallet for transfers
   budgetCategory?: string; // Custom category ID or Name
 
   // Skill Growth specific
@@ -67,6 +76,7 @@ export interface DbSchema {
   budgetConfig?: BudgetConfig;
   customPrompt?: string;
   skills?: Skill[];
+  wallets?: Wallet[];
 }
 
 // For Github API responses

@@ -1,22 +1,26 @@
 import React, { useState, useMemo } from 'react';
-import { BrainDumpItem, ItemType, BudgetRule, Skill } from '../types';
-import { X, Save, DollarSign, Calendar, Wallet, PieChart, Hourglass, BookOpen } from 'lucide-react';
+import { BrainDumpItem, ItemType, BudgetRule, Skill, Wallet, FinanceType } from '../types';
+import { X, Save, DollarSign, Calendar, Wallet as WalletIcon, PieChart, Hourglass, BookOpen, ArrowRight } from 'lucide-react';
 
 interface EditModalProps {
   item: BrainDumpItem;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string, newContent: string, newTags: string[], amount?: number, date?: string, paymentMethod?: string, budgetCategory?: string, durationMinutes?: number, skillId?: string) => void;
-  existingPaymentMethods?: string[]; // To populate datalist
+  onSave: (id: string, newContent: string, newTags: string[], amount?: number, date?: string, paymentMethod?: string, budgetCategory?: string, durationMinutes?: number, skillId?: string, toWallet?: string, financeType?: FinanceType) => void;
+  existingPaymentMethods?: string[]; // To populate datalist for backward compatibility
   budgetRules?: BudgetRule[]; // To populate budget category selector
   skills?: Skill[]; // To populate skill selector
+  wallets?: Wallet[]; // To populate payment method selector
 }
 
-const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, existingPaymentMethods = [], budgetRules = [], skills = [] }) => {
+const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, existingPaymentMethods = [], budgetRules = [], skills = [], wallets = [] }) => {
   const [content, setContent] = useState(item.content);
   const [tags, setTags] = useState(item.meta.tags?.join(', ') || '');
   const [amount, setAmount] = useState<string>(item.meta.amount ? item.meta.amount.toString() : '');
+  
+  const [financeType, setFinanceType] = useState<FinanceType>(item.meta.financeType || 'expense');
   const [paymentMethod, setPaymentMethod] = useState(item.meta.paymentMethod || '');
+  const [toWallet, setToWallet] = useState(item.meta.toWallet || '');
   const [budgetCategory, setBudgetCategory] = useState<string>(item.meta.budgetCategory || '');
   
   // Skill specific
@@ -50,8 +54,9 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
 
     const finalBudgetCategory = budgetCategory === '' ? undefined : budgetCategory;
     const finalSkillId = skillId === '' ? undefined : skillId;
+    const finalToWallet = financeType === 'transfer' && toWallet ? toWallet : undefined;
 
-    onSave(item.id, content, tagArray, numAmount, finalDate, paymentMethod, finalBudgetCategory, numDuration, finalSkillId);
+    onSave(item.id, content, tagArray, numAmount, finalDate, paymentMethod, finalBudgetCategory, numDuration, finalSkillId, finalToWallet, financeType);
     onClose();
   };
 
@@ -67,6 +72,19 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
       { id: 'savings', name: 'Savings', percentage: 20, color: 'bg-emerald-500' }
   ];
 
+  const walletOptions = (
+      <>
+        {/* Prioritize Configured Wallets */}
+        {wallets.map(w => (
+            <option key={w.id} value={w.name} />
+        ))}
+        {/* Fallback to legacy payment methods */}
+        {existingPaymentMethods.filter(pm => !wallets.some(w => w.name === pm)).map((pm, i) => (
+            <option key={`legacy-${i}`} value={pm} />
+        ))}
+      </>
+  );
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl p-6 max-h-[90vh] overflow-y-auto no-scrollbar">
@@ -78,6 +96,21 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
         </div>
 
         <div className="space-y-4">
+          {/* Finance Type Selector (Only for Finance) */}
+          {item.type === ItemType.FINANCE && (
+              <div className="flex bg-background border border-border rounded-lg p-1">
+                  {(['expense', 'income', 'transfer', 'lending', 'reimbursement'] as FinanceType[]).map(ft => (
+                      <button
+                        key={ft}
+                        onClick={() => setFinanceType(ft)}
+                        className={`flex-1 py-1.5 text-[10px] font-medium rounded capitalize ${financeType === ft ? 'bg-indigo-600 text-white' : 'text-muted hover:text-white'}`}
+                      >
+                          {ft}
+                      </button>
+                  ))}
+              </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Content</label>
             <textarea
@@ -122,48 +155,69 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
 
           {showFinanceExtras && (
              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
-                 <div className="col-span-2">
-                    <label className="block text-xs font-medium text-muted mb-1">Payment Method / Wallet</label>
+                 {/* Source Wallet / Payment Method */}
+                 <div className={financeType === 'transfer' ? '' : 'col-span-2'}>
+                    <label className="block text-xs font-medium text-muted mb-1">
+                        {financeType === 'transfer' ? 'From (Source)' : 'Payment Method / Wallet'}
+                    </label>
                     <div className="relative">
-                        <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                        <WalletIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                         <input
                             type="text"
                             list="payment-methods"
                             className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-acc-todo"
                             value={paymentMethod}
                             onChange={(e) => setPaymentMethod(e.target.value)}
-                            placeholder="e.g. Cash, Gopay Later, BCA"
+                            placeholder="e.g. Cash"
                         />
-                        <datalist id="payment-methods">
-                            {existingPaymentMethods.map((pm, i) => (
-                                <option key={i} value={pm} />
-                            ))}
-                        </datalist>
+                        <datalist id="payment-methods">{walletOptions}</datalist>
                     </div>
                  </div>
 
-                 <div className="col-span-2">
-                     <label className="block text-xs font-medium text-muted mb-2">Budget Category</label>
-                     <div className="flex flex-wrap gap-2">
-                        {displayRules.map((rule) => {
-                             const isSelected = budgetCategory ? (budgetCategory === rule.id || budgetCategory.toLowerCase() === rule.name.toLowerCase()) : false;
-                             return (
-                                <button
-                                    key={rule.id}
-                                    onClick={() => setBudgetCategory(isSelected ? '' : rule.id)}
-                                    className={`py-1.5 px-3 rounded-lg text-xs font-medium capitalize border transition-all flex items-center gap-2 ${
-                                        isSelected
-                                        ? `border-white/50 text-white ${rule.color}`
-                                        : 'bg-background border-border text-muted hover:bg-surface'
-                                    }`}
-                                >
-                                    <div className={`w-2 h-2 rounded-full ${rule.color} ${isSelected ? 'ring-2 ring-white' : ''}`}></div>
-                                    {rule.name}
-                                </button>
-                             );
-                        })}
+                 {/* Destination Wallet (Transfer Only) */}
+                 {financeType === 'transfer' && (
+                     <div>
+                        <label className="block text-xs font-medium text-muted mb-1">To (Destination)</label>
+                        <div className="relative">
+                            <ArrowRight className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                            <input
+                                type="text"
+                                list="to-wallets"
+                                className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-acc-todo"
+                                value={toWallet}
+                                onChange={(e) => setToWallet(e.target.value)}
+                                placeholder="e.g. Bank"
+                            />
+                            <datalist id="to-wallets">{walletOptions}</datalist>
+                        </div>
                      </div>
-                 </div>
+                 )}
+
+                 {/* Budget Category (Hidden for transfers) */}
+                 {financeType !== 'transfer' && (
+                     <div className="col-span-2">
+                         <label className="block text-xs font-medium text-muted mb-2">Budget Category</label>
+                         <div className="flex flex-wrap gap-2">
+                            {displayRules.map((rule) => {
+                                 const isSelected = budgetCategory ? (budgetCategory === rule.id || budgetCategory.toLowerCase() === rule.name.toLowerCase()) : false;
+                                 return (
+                                    <button
+                                        key={rule.id}
+                                        onClick={() => setBudgetCategory(isSelected ? '' : rule.id)}
+                                        className={`py-1.5 px-3 rounded-lg text-xs font-medium capitalize border transition-all flex items-center gap-2 ${
+                                            isSelected
+                                            ? `border-white/50 text-white ${rule.color}`
+                                            : 'bg-background border-border text-muted hover:bg-surface'
+                                        }`}
+                                    >
+                                        <div className={`w-2 h-2 rounded-full ${rule.color} ${isSelected ? 'ring-2 ring-white' : ''}`}></div>
+                                        {rule.name}
+                                    </button>
+                                 );
+                            })}
+                         </div>
+                     </div>
+                 )}
              </div>
           )}
 
