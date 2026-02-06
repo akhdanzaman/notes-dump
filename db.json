@@ -1839,6 +1839,13 @@
       "type": "cash",
       "initialBalance": 150000,
       "color": "bg-emerald-500"
+    },
+    {
+      "id": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
+      "name": "BCA",
+      "type": "bank",
+      "initialBalance": 2500000,
+      "color": "bg-blue-500"
     }
   ]
 }
