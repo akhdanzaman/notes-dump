@@ -1896,5 +1896,8 @@
       "initialBalance": 438000,
       "color": "bg-blue-500"
     }
-  ]
+  ],
+  "monthlyThemes": {
+    "2026-02": "Bangun pagi"
+  }
 }
