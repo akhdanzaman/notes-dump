@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "cc06d926-e8e0-4058-b1c8-3a4f36730526",
-      "type": "NOTE",
-      "content": "abis baca buku 30 menit hari ini",
-      "status": "pending",
-      "created_at": "2026-02-06T14:10:26.447Z",
+      "id": "904f6f2f-8be4-466e-9730-46a0db1b7c14",
+      "status": "done",
+      "created_at": "2026-02-06T14:10:29.358Z",
+      "completed_at": "2026-02-06T14:10:29.358Z",
+      "type": "SKILL_LOG",
+      "content": "Baca buku",
       "meta": {
-        "tags": []
+        "tags": [
+          "reading",
+          "productivity"
+        ],
+        "date": "2026-02-06",
+        "durationMinutes": 30,
+        "skillName": "Focus reading",
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "bcf1c08f-5df5-4f5e-be13-5ce823d1c6e1",
