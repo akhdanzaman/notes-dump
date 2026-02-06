@@ -1,23 +1,6 @@
 {
   "data": [
     {
-      "id": "c16546b7-26d1-49e1-b25f-d47020b8c4ed",
-      "status": "done",
-      "created_at": "2026-02-06T15:05:33.192Z",
-      "completed_at": "2026-02-06T15:05:33.192Z",
-      "type": "FINANCE",
-      "content": "Transfer from BNI to Cash",
-      "meta": {
-        "tags": [
-          "finance"
-        ],
-        "amount": 100000,
-        "paymentMethod": "BNI",
-        "toWallet": "Cash"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "c107deee-0404-444e-9a4c-f221df583d0b",
       "status": "pending",
       "created_at": "2026-02-06T14:18:39.048Z",
