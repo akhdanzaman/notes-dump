@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill, Wallet, FinanceType } from './types';
@@ -37,6 +37,9 @@ const App: React.FC = () => {
   // Wallet State
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
+  // Monthly Themes State
+  const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
+  const [themeNavDate, setThemeNavDate] = useState(new Date());
 
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0); 
@@ -53,6 +56,8 @@ const App: React.FC = () => {
   // Modal States
   const [skillModal, setSkillModal] = useState<{ isOpen: boolean; mode: 'add' | 'edit'; skillId?: string; initialName?: string; initialTarget?: number }>({ isOpen: false, mode: 'add' });
   const [walletModal, setWalletModal] = useState<{ isOpen: boolean; mode: 'add' | 'edit'; walletId?: string; initialData?: Wallet }>({ isOpen: false, mode: 'add' });
+  const [themeEditMode, setThemeEditMode] = useState(false);
+  const [tempThemeContent, setTempThemeContent] = useState('');
   
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteType, setDeleteType] = useState<'skill' | 'wallet' | null>(null);
@@ -117,7 +122,7 @@ const App: React.FC = () => {
       return [...updatedItems, ...newHistoryItems];
   };
 
-  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string, newSkills?: Skill[], newWallets?: Wallet[]) => {
+  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string, newSkills?: Skill[], newWallets?: Wallet[], newThemes?: Record<string, string>) => {
       setSyncStatus('syncing');
       try {
           // Use syncData to save everything
@@ -125,11 +130,15 @@ const App: React.FC = () => {
           const promptToSave = newPrompt !== undefined ? newPrompt : customPrompt;
           const skillsToSave = newSkills || skills;
           const walletsToSave = newWallets || wallets;
+          const themesToSave = newThemes || monthlyThemes;
           
-          const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave);
+          const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave);
           
-          if (result.method === 'error') {
+          if (result.method === 'error' || result.method === 'skipped_not_hydrated') {
               setSyncStatus('error');
+              if (result.method === 'skipped_not_hydrated') {
+                  setError("Cloud sync inactive. Please reload the page to reconnect.");
+              }
           } else if (result.method === 'local') {
               setSyncStatus('local');
           } else {
@@ -169,7 +178,7 @@ const App: React.FC = () => {
             
             // Check for changes in routine resets to sync
             if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets);
+               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes);
             } else {
                setSyncStatus(isUsingLocalStorage() ? 'local' : 'synced');
             }
@@ -192,7 +201,7 @@ const App: React.FC = () => {
                   { id: 'skill-1', name: 'General Learning', color: 'indigo-500', created_at: new Date().toISOString() }
               ];
               setSkills(defaults);
-              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets);
+              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes);
           }
 
           // Load Wallets
@@ -203,7 +212,12 @@ const App: React.FC = () => {
               const defaultWallet: Wallet = { id: 'w-1', name: 'Cash', type: 'cash', initialBalance: 0, color: 'bg-emerald-500' };
               setWallets([defaultWallet]);
               // Trigger save with default wallet
-              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, data.skills, [defaultWallet]);
+              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, data.skills, [defaultWallet], data.monthlyThemes);
+          }
+
+          // Load Themes
+          if (data.monthlyThemes) {
+              setMonthlyThemes(data.monthlyThemes);
           }
         }
       } catch (err) {
@@ -233,10 +247,21 @@ const App: React.FC = () => {
       }
 
       if (shouldSync) {
-          saveAndSync(items, newBudgetConfig, newPrompt, skills, wallets);
+          saveAndSync(items, newBudgetConfig, newPrompt, skills, wallets, monthlyThemes);
       } else {
           loadData();
       }
+  };
+
+  const handleSaveTheme = () => {
+      const year = themeNavDate.getFullYear();
+      const month = String(themeNavDate.getMonth() + 1).padStart(2, '0');
+      const key = `${year}-${month}`;
+      
+      const newThemes = { ...monthlyThemes, [key]: tempThemeContent };
+      setMonthlyThemes(newThemes);
+      saveAndSync(items, undefined, undefined, undefined, undefined, newThemes);
+      setThemeEditMode(false);
   };
 
   const uniqueTags = useMemo(() => {
@@ -397,11 +422,11 @@ const App: React.FC = () => {
           const newSkill: Skill = { id: uuidv4(), name, color: 'indigo-500', created_at: new Date().toISOString(), weeklyTargetMinutes };
           const updated = [...skills, newSkill];
           setSkills(updated);
-          saveAndSync(items, undefined, undefined, updated, wallets);
+          saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
       } else if (skillModal.mode === 'edit' && skillModal.skillId) {
           const updated = skills.map(s => s.id === skillModal.skillId ? { ...s, name, weeklyTargetMinutes } : s);
           setSkills(updated);
-          saveAndSync(items, undefined, undefined, updated, wallets);
+          saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
       }
       setSkillModal({ ...skillModal, isOpen: false });
   };
@@ -412,11 +437,11 @@ const App: React.FC = () => {
           const newWallet: Wallet = { id: uuidv4(), name, type, initialBalance, color };
           const updated = [...wallets, newWallet];
           setWallets(updated);
-          saveAndSync(items, undefined, undefined, skills, updated);
+          saveAndSync(items, undefined, undefined, skills, updated, monthlyThemes);
       } else if (walletModal.mode === 'edit' && walletModal.walletId) {
           const updated = wallets.map(w => w.id === walletModal.walletId ? { ...w, name, type, initialBalance, color } : w);
           setWallets(updated);
-          saveAndSync(items, undefined, undefined, skills, updated);
+          saveAndSync(items, undefined, undefined, skills, updated, monthlyThemes);
       }
       setWalletModal({ ...walletModal, isOpen: false });
   };
@@ -425,14 +450,28 @@ const App: React.FC = () => {
       if (deleteType === 'skill' && deleteId) {
           const updated = skills.filter(s => s.id !== deleteId);
           setSkills(updated);
-          saveAndSync(items, undefined, undefined, updated, wallets);
+          saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
       } else if (deleteType === 'wallet' && deleteId) {
           const updated = wallets.filter(w => w.id !== deleteId);
           setWallets(updated);
-          saveAndSync(items, undefined, undefined, skills, updated);
+          saveAndSync(items, undefined, undefined, skills, updated, monthlyThemes);
       }
       setDeleteId(null);
       setDeleteType(null);
+  };
+
+  // --- Theme Navigation ---
+  const changeThemeMonth = (offset: number) => {
+      const newDate = new Date(themeNavDate);
+      newDate.setMonth(newDate.getMonth() + offset);
+      setThemeNavDate(newDate);
+  };
+
+  const getThemeForDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const key = `${year}-${month}`;
+      return { key, content: monthlyThemes[key] || '' };
   };
 
   // --- Filtering Logic ---
@@ -972,6 +1011,7 @@ const App: React.FC = () => {
                const overdueCount = later.filter(i => i.meta.date && new Date(i.meta.date) < new Date()).length;
                
                const { stats } = getSkillItems();
+               const topSkill = stats[0];
                const totalWeeklyHours = stats.reduce((acc, s) => acc + s.weeklyHours, 0);
                const avgProgress = stats.length > 0 
                   ? stats.reduce((acc, s) => acc + s.weeklyProgress, 0) / stats.length 
@@ -983,11 +1023,44 @@ const App: React.FC = () => {
                const { totalExpense } = getFinanceItems();
                const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
+               // Theme Data
+               const { key: themeKey, content: themeContent } = getThemeForDate(themeNavDate);
+
                return (
                    <div className="space-y-6">
                         <div className="mb-4">
                             <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">{getGreeting()}</h2>
                             <p className="text-sm text-muted">Here is your daily snapshot.</p>
+                        </div>
+
+                        {/* NEW: Monthly Theme Card */}
+                        <div className="bg-surface border border-border p-4 rounded-xl transition-all relative">
+                            <div className="flex justify-between items-center mb-3">
+                                <button onClick={() => changeThemeMonth(-1)} className="p-1 text-muted hover:text-white hover:bg-white/10 rounded"><ChevronLeft className="w-4 h-4" /></button>
+                                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3" /> {themeNavDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })} Theme
+                                </span>
+                                <button onClick={() => changeThemeMonth(1)} className="p-1 text-muted hover:text-white hover:bg-white/10 rounded"><ChevronRight className="w-4 h-4" /></button>
+                            </div>
+                            
+                            <div className="text-center py-2 px-1">
+                                {themeContent ? (
+                                    <p onClick={() => { setTempThemeContent(themeContent); setThemeEditMode(true); }} className="text-lg font-medium text-white cursor-pointer hover:opacity-80 transition-opacity">
+                                        "{themeContent}"
+                                    </p>
+                                ) : (
+                                    <p onClick={() => { setTempThemeContent(''); setThemeEditMode(true); }} className="text-sm text-muted italic cursor-pointer hover:text-white transition-colors border-b border-dashed border-border inline-block pb-1">
+                                        Set a theme for this month...
+                                    </p>
+                                )}
+                            </div>
+                            
+                            <button 
+                                onClick={() => { setTempThemeContent(themeContent); setThemeEditMode(true); }}
+                                className="absolute top-3 right-10 p-1.5 text-muted hover:text-white rounded-md opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity"
+                            >
+                                <Pencil className="w-3.5 h-3.5" />
+                            </button>
                         </div>
 
                         {/* Money Card (Total Net Worth) */}
@@ -1013,41 +1086,87 @@ const App: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                             {/* Focus Card */}
-                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('tasks'); }} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-todo/30 transition-all group">
+                             {/* Focus Card - Enhanced */}
+                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('tasks'); }} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-todo/30 transition-all group flex flex-col">
                                   <div className="flex justify-between items-start mb-3">
                                       <div className="p-2 bg-acc-todo/10 rounded-lg text-acc-todo">
                                           <CheckCircle2 className="w-5 h-5" />
                                       </div>
                                       <span className="text-xs text-muted group-hover:text-white font-medium">{today.length} Today</span>
                                   </div>
-                                  <h3 className="font-semibold text-white">Focus</h3>
-                                  <p className="text-xs text-muted mt-1">{tomorrow.length} tomorrow</p>
-                                  {overdueCount > 0 && <p className="text-[10px] text-red-400 mt-1">{overdueCount} overdue</p>}
+                                  <h3 className="font-semibold text-white mb-2">Focus</h3>
+                                  
+                                  {/* Quick Preview */}
+                                  <div className="flex-1 space-y-1 mb-2">
+                                      {today.slice(0, 3).map(i => (
+                                          <div key={i.id} className="text-[10px] text-gray-400 truncate flex items-center gap-1">
+                                              <div className="w-1 h-1 bg-acc-todo rounded-full shrink-0"></div>
+                                              {i.content}
+                                          </div>
+                                      ))}
+                                      {today.length === 0 && <span className="text-[10px] text-muted italic">All clear!</span>}
+                                  </div>
+
+                                  <div className="flex justify-between items-end text-[10px] text-muted border-t border-border pt-2 mt-auto">
+                                      <span>{tomorrow.length} tmrw</span>
+                                      {overdueCount > 0 && <span className="text-red-400">{overdueCount} overdue</span>}
+                                  </div>
                              </div>
 
-                             {/* Skill Card */}
-                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('skills'); }} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-indigo-500/30 transition-all group">
+                             {/* Skill Card - Enhanced */}
+                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('skills'); }} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-indigo-500/30 transition-all group flex flex-col">
                                   <div className="flex justify-between items-start mb-3">
                                       <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
                                           <GrowthIcon className="w-5 h-5" />
                                       </div>
                                       <span className="text-xs text-muted group-hover:text-white font-medium">{Math.round(avgProgress)}% Goal</span>
                                   </div>
-                                  <h3 className="font-semibold text-white">Growth</h3>
-                                  <p className="text-xs text-muted mt-1">{totalWeeklyHours}h this week</p>
+                                  <h3 className="font-semibold text-white mb-2">Growth</h3>
+                                  
+                                   {/* Quick Preview */}
+                                   <div className="flex-1 space-y-1 mb-2">
+                                      {topSkill ? (
+                                         <>
+                                            <div className="text-[10px] text-white truncate font-medium">{topSkill.name}</div>
+                                            <div className="w-full h-1 bg-black/30 rounded-full overflow-hidden">
+                                                <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, topSkill.weeklyProgress)}%` }}></div>
+                                            </div>
+                                         </>
+                                      ) : <span className="text-[10px] text-muted italic">No active skills</span>}
+                                  </div>
+
+                                  <p className="text-[10px] text-muted mt-auto pt-2 border-t border-border">{totalWeeklyHours}h total this week</p>
                              </div>
 
-                             {/* Life Card */}
-                             <div onClick={() => setActiveTab('shopping')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-shopping/30 transition-all group">
+                             {/* Life Card - Enhanced */}
+                             <div onClick={() => setActiveTab('shopping')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-shopping/30 transition-all group flex flex-col">
                                   <div className="flex justify-between items-start mb-3">
                                       <div className="p-2 bg-acc-shopping/10 rounded-lg text-acc-shopping">
                                           <ShoppingCart className="w-5 h-5" />
                                       </div>
                                       <span className="text-xs text-muted group-hover:text-white font-medium">{urgent.length} Urgent</span>
                                   </div>
-                                  <h3 className="font-semibold text-white">Life</h3>
-                                  <p className="text-xs text-muted mt-1">{routine.length} routine items</p>
+                                  <h3 className="font-semibold text-white mb-2">Life</h3>
+
+                                  {/* Quick Preview */}
+                                  <div className="flex-1 space-y-1 mb-2">
+                                      {urgent.length > 0 ? urgent.slice(0, 2).map(i => (
+                                          <div key={i.id} className="text-[10px] text-red-400 truncate flex items-center gap-1">
+                                              <AlertTriangle className="w-2 h-2 shrink-0" />
+                                              {i.content}
+                                          </div>
+                                      )) : (
+                                          routine.slice(0, 2).map(i => (
+                                            <div key={i.id} className="text-[10px] text-gray-400 truncate flex items-center gap-1">
+                                                <div className="w-1 h-1 bg-acc-shopping rounded-full shrink-0"></div>
+                                                {i.content}
+                                            </div>
+                                          ))
+                                      )}
+                                      {urgent.length === 0 && routine.length === 0 && <span className="text-[10px] text-muted italic">No tasks</span>}
+                                  </div>
+
+                                  <p className="text-[10px] text-muted mt-auto pt-2 border-t border-border">{routine.length} routine items</p>
                              </div>
                              
                              {/* Notes Shortcut */}
@@ -1623,6 +1742,32 @@ const App: React.FC = () => {
       </div>
 
       {/* Modals */}
+      {/* Theme Edit Modal (Inline/Simple) */}
+      {themeEditMode && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+             <div className="bg-surface border border-border rounded-xl w-full max-w-sm shadow-2xl p-6">
+                 <h3 className="text-lg font-bold text-white mb-4">Set Theme</h3>
+                 <textarea
+                    autoFocus
+                    className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 mb-4 h-24 resize-none"
+                    placeholder="e.g. Month of Discipline, Focus on Health..."
+                    value={tempThemeContent}
+                    onChange={(e) => setTempThemeContent(e.target.value)}
+                    onKeyDown={(e) => {
+                         if (e.key === 'Enter' && !e.shiftKey) {
+                             e.preventDefault();
+                             handleSaveTheme();
+                         }
+                    }}
+                 />
+                 <div className="flex justify-end gap-2">
+                     <button onClick={() => setThemeEditMode(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white">Cancel</button>
+                     <button onClick={handleSaveTheme} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500">Save</button>
+                 </div>
+             </div>
+          </div>
+      )}
+
       {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} existingPaymentMethods={uniquePaymentMethods} budgetRules={budgetConfig.rules} skills={skills} wallets={wallets} />}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSettingsSaved} currentBudgetConfig={budgetConfig} currentPrompt={customPrompt} />
       <SkillModal isOpen={skillModal.isOpen} mode={skillModal.mode} initialName={skillModal.initialName} initialTarget={skillModal.initialTarget} onClose={() => setSkillModal({ ...skillModal, isOpen: false })} onSave={handleSaveSkill} />

@@ -11,7 +11,7 @@ export interface GithubConfig {
   owner: string;
   repo: string;
   path: string;
-  branch?: string; // Added branch support
+  branch?: string; 
 }
 
 export type SyncResult = { 
@@ -21,18 +21,9 @@ export type SyncResult = {
 
 // --- Module State (Singleton) ---
 
-// Tracks if the application has successfully loaded data at least once.
-// Critical for preventing overwrites of cloud data with empty default state on startup.
 let isHydrated = false;
-
-// Stores the SHA of the file on GitHub to handle concurrency/updates.
 let currentCloudSha: string | undefined = undefined;
-
-// Stores the stringified version of the last successfully saved/loaded data.
-// Used for "dirty" checking to prevent unnecessary API calls.
 let lastSnapshot: string | null = null;
-
-// Promise chain to serialize all sync operations (Mutex-like).
 let syncQueue: Promise<SyncResult> = Promise.resolve({ success: true, method: 'local' });
 
 // --- Helpers ---
@@ -67,7 +58,6 @@ const fromBase64 = (str: string) => {
 // --- Configuration Management ---
 
 export const getGithubConfig = (): GithubConfig | null => {
-  // 1. Try LocalStorage
   try {
       const local = localStorage.getItem(SETTINGS_KEY);
       if (local) {
@@ -80,7 +70,6 @@ export const getGithubConfig = (): GithubConfig | null => {
       console.warn("Error reading settings from local storage", e);
   }
 
-  // 2. Try Environment Variables
   const t = getEnv('GITHUB_TOKEN');
   const o = getEnv('GITHUB_OWNER');
   const r = getEnv('GITHUB_REPO');
@@ -99,8 +88,14 @@ export const getGithubConfig = (): GithubConfig | null => {
 };
 
 export const saveGithubConfig = (config: GithubConfig) => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(config));
-    // Reset hydration state if config changes to force re-fetch
+    const existing = localStorage.getItem(SETTINGS_KEY);
+    const next = JSON.stringify(config);
+    
+    // Prevent resetting hydration if connection details haven't changed.
+    // This allows updating other settings (Budget, Prompt) without breaking the DB connection.
+    if (existing === next) return;
+
+    localStorage.setItem(SETTINGS_KEY, next);
     isHydrated = false; 
     currentCloudSha = undefined;
     lastSnapshot = null;
@@ -117,10 +112,6 @@ export const isUsingLocalStorage = () => !getGithubConfig();
 
 // --- Core Logic ---
 
-/**
- * Validates integrity of DB Schema.
- * Ensures we don't crash the app with malformed data.
- */
 const validateSchema = (data: any): DbSchema => {
     if (!data || typeof data !== 'object') return { data: [] };
     
@@ -129,30 +120,24 @@ const validateSchema = (data: any): DbSchema => {
         budgetConfig: data.budgetConfig,
         customPrompt: data.customPrompt,
         skills: Array.isArray(data.skills) ? data.skills : [],
-        wallets: Array.isArray(data.wallets) ? data.wallets : []
+        wallets: Array.isArray(data.wallets) ? data.wallets : [],
+        monthlyThemes: data.monthlyThemes || {}
     };
 };
 
-/**
- * Fetches the database.
- * Lifecycle: This MUST be called and succeed before any syncData operations are allowed to persist to Cloud.
- */
 export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string }> => {
   const config = getGithubConfig();
 
-  // Mode: Local Only
   if (!config) {
     const local = localStorage.getItem(LOCAL_STORAGE_KEY);
     const data = local ? validateSchema(JSON.parse(local)) : { data: [] };
     
-    // Mark as hydrated
     isHydrated = true;
     lastSnapshot = JSON.stringify(data);
     
     return { data, sha: 'local-sha' };
   }
 
-  // Mode: Cloud
   const octokit = new Octokit({ auth: config.token });
 
   try {
@@ -160,7 +145,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
       owner: config.owner,
       repo: config.repo,
       path: config.path,
-      ref: config.branch, // Support custom branch
+      ref: config.branch, 
     });
 
     // @ts-ignore
@@ -174,37 +159,31 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
     const rawData = JSON.parse(jsonString);
     const data = validateSchema(rawData);
     
-    // Backup to local storage (Cache)
     if (!skipLocalStorage) {
         localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
     }
 
-    // UPDATE STATE
     isHydrated = true;
     currentCloudSha = sha;
-    lastSnapshot = jsonString; // Store exact string for dirty check
+    lastSnapshot = jsonString; 
 
     return { data, sha };
 
   } catch (error: any) {
     console.warn("GitHub fetch failed:", error.status, error.message);
 
-    // Fallback: LocalStorage (Cache)
     if (!skipLocalStorage) {
         const local = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (local) {
             const data = validateSchema(JSON.parse(local));
             
-            // We are hydrated from cache, but SHA is unknown or stale
             isHydrated = true; 
             lastSnapshot = local;
-            // currentCloudSha remains undefined or stale, performSync will handle 409 if needed
             
             return { data, sha: error.status === 404 ? '' : 'local-sha' };
         }
     }
 
-    // 404 Not Found means new repo/file -> Initialize Empty
     if (error.status === 404) {
       console.log("Database file not found on GitHub, initialized empty DB.");
       const emptyDb: DbSchema = { data: [] };
@@ -220,38 +199,35 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
   }
 };
 
-/**
- * Internal worker for synchronization.
- * Contains the logic for dirty checks, hydration guards, and atomic writes.
- */
-const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, customPrompt?: string, skills?: Skill[], wallets?: Wallet[]): Promise<SyncResult> => {
-  // 1. HYDRATION GUARD
-  // Critical: Never save if we haven't successfully loaded yet. 
-  // This prevents the "empty state overwrite" bug on startup.
+const performSync = async (
+    items: BrainDumpItem[], 
+    budgetConfig?: BudgetConfig, 
+    customPrompt?: string, 
+    skills?: Skill[], 
+    wallets?: Wallet[],
+    monthlyThemes?: Record<string, string>
+): Promise<SyncResult> => {
   if (!isHydrated) {
       console.warn("Blocked Sync: Database is not hydrated. This prevents overwriting cloud data with initial empty state.");
       return { success: false, method: 'skipped_not_hydrated' };
   }
 
+  // Ensure we persist ALL fields
   const updatedDb: DbSchema = { 
     data: items,
     budgetConfig: budgetConfig,
     customPrompt: customPrompt,
     skills: skills,
-    wallets: wallets
+    wallets: wallets,
+    monthlyThemes: monthlyThemes
   };
   
   const jsonString = JSON.stringify(updatedDb, null, 2);
 
-  // 2. DIRTY CHECK
-  // If data hasn't changed since last load/save, skip network request.
   if (lastSnapshot === jsonString) {
-      // Data matches exactly what we have in memory as "synced"
       return { success: true, method: 'skipped_no_changes' };
   }
 
-  // 3. OPTIMISTIC LOCAL SAVE
-  // Always save to LocalStorage immediately as a backup/cache
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
   } catch (e) {
@@ -260,13 +236,11 @@ const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, 
 
   const config = getGithubConfig();
 
-  // Local Mode -> Done
   if (!config) {
       lastSnapshot = jsonString;
       return { success: true, method: 'local' };
   }
 
-  // Cloud Mode -> GitHub Push
   const octokit = new Octokit({ auth: config.token });
 
   const executeWrite = async (sha?: string) => {
@@ -275,7 +249,7 @@ const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, 
         owner: config.owner,
         repo: config.repo,
         path: config.path,
-        branch: config.branch, // Support custom branch
+        branch: config.branch, 
         message: `Update via BrainDump`,
         content: contentEncoded,
         sha: sha && sha !== 'local-sha' ? sha : undefined,
@@ -285,25 +259,18 @@ const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, 
 
   try {
       try {
-          // Attempt write with known SHA
           const newSha = await executeWrite(currentCloudSha);
           
-          // Success: Update state
           currentCloudSha = newSha;
           lastSnapshot = jsonString;
           
           return { success: true, method: 'cloud' };
 
       } catch (writeError: any) {
-          // 4. CONFLICT RESOLUTION (409)
           if (writeError.status === 409) {
               console.warn("Sync conflict (409). Fetching latest SHA and retrying...");
               
-              // Re-fetch only the SHA (and content ideally, but we overwrite here based on "last write wins" for this user app model)
-              // To be safer, we should merge, but for now we just get the valid SHA to force push.
-              const { sha } = await fetchDb(true); // skip local storage update to avoid UI flickering
-              
-              // Retry write with fresh SHA
+              const { sha } = await fetchDb(true); 
               const newSha = await executeWrite(sha);
               
               currentCloudSha = newSha;
@@ -321,22 +288,23 @@ const performSync = async (items: BrainDumpItem[], budgetConfig?: BudgetConfig, 
 
   } catch (error) {
     console.error("Failed to sync to GitHub:", error);
-    // Even if cloud fails, we saved to local. Return error status so UI can show "Cloud Offline".
     return { success: false, method: 'error' }; 
   }
 };
 
-/**
- * Public Sync Function
- * Serializes requests into a queue to prevent race conditions.
- */
-export const syncData = (items: BrainDumpItem[], budgetConfig?: BudgetConfig, customPrompt?: string, skills?: Skill[], wallets?: Wallet[]): Promise<SyncResult> => {
-  // Chain to the queue to ensure sequential execution
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets);
+export const syncData = (
+    items: BrainDumpItem[], 
+    budgetConfig?: BudgetConfig, 
+    customPrompt?: string, 
+    skills?: Skill[], 
+    wallets?: Wallet[],
+    monthlyThemes?: Record<string, string>
+): Promise<SyncResult> => {
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes);
 
   const queuedTask = syncQueue.then(
-      () => task(), // run after previous finishes
-      () => task()  // run even if previous failed
+      () => task(),
+      () => task() 
   );
 
   syncQueue = queuedTask;

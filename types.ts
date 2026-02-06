@@ -77,6 +77,7 @@ export interface DbSchema {
   customPrompt?: string;
   skills?: Skill[];
   wallets?: Wallet[];
+  monthlyThemes?: Record<string, string>; // Key: "YYYY-MM", Value: "Theme Content"
 }
 
 // For Github API responses
