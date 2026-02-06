@@ -1853,6 +1853,13 @@
       "type": "ewallet",
       "initialBalance": 20000,
       "color": "bg-blue-500"
+    },
+    {
+      "id": "5af0cf6e-e928-4d2c-a892-43952543be35",
+      "name": "Gopaylater",
+      "type": "cc",
+      "initialBalance": 0,
+      "color": "bg-blue-500"
     }
   ]
 }
