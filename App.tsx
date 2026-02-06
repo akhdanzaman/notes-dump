@@ -48,7 +48,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('summary');
   const [focusSubTab, setFocusSubTab] = useState<FocusSubTab>('tasks');
   const [notesSubTab, setNotesSubTab] = useState<NotesSubTab>('general');
-  const [showBalance, setShowBalance] = useState(true);
+  const [showBalance, setShowBalance] = useState(false);
   
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -391,7 +391,7 @@ const App: React.FC = () => {
                     content: newContent, 
                     meta: { 
                         ...item.meta, 
-                        tags: newTags,
+                        tags: newTags, 
                         amount: newAmount, 
                         date: newDate,
                         paymentMethod: newPaymentMethod,
@@ -1013,6 +1013,7 @@ const App: React.FC = () => {
                const { stats } = getSkillItems();
                const topSkill = stats[0];
                const totalWeeklyHours = stats.reduce((acc, s) => acc + s.weeklyHours, 0);
+               const totalAllTimeHours = stats.reduce((acc, s) => acc + s.totalHours, 0);
                const avgProgress = stats.length > 0 
                   ? stats.reduce((acc, s) => acc + s.weeklyProgress, 0) / stats.length 
                   : 0;
@@ -1022,6 +1023,12 @@ const App: React.FC = () => {
                const { totalNetWorth } = getWalletStats();
                const { totalExpense } = getFinanceItems();
                const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+
+               // Notes Metrics
+               const allNotes = items.filter(i => i.type === ItemType.NOTE);
+               const randomNotes = allNotes.length > 0 
+                    ? [...allNotes].sort(() => 0.5 - Math.random()).slice(0, 3) 
+                    : [];
 
                // Theme Data
                const { key: themeKey, content: themeContent } = getThemeForDate(themeNavDate);
@@ -1119,7 +1126,7 @@ const App: React.FC = () => {
                                       <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
                                           <GrowthIcon className="w-5 h-5" />
                                       </div>
-                                      <span className="text-xs text-muted group-hover:text-white font-medium">{Math.round(avgProgress)}% Goal</span>
+                                      <span className="text-xs text-muted group-hover:text-white font-medium">{totalAllTimeHours}h Total</span>
                                   </div>
                                   <h3 className="font-semibold text-white mb-2">Growth</h3>
                                   
@@ -1169,12 +1176,28 @@ const App: React.FC = () => {
                                   <p className="text-[10px] text-muted mt-auto pt-2 border-t border-border">{routine.length} routine items</p>
                              </div>
                              
-                             {/* Notes Shortcut */}
-                             <div onClick={() => setActiveTab('notes')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-note/30 transition-all group flex flex-col justify-center items-center text-center">
-                                  <div className="p-2 bg-acc-note/10 rounded-lg text-acc-note mb-2">
-                                      <StickyNote className="w-5 h-5" />
+                             {/* Notes Card - Enhanced */}
+                             <div onClick={() => setActiveTab('notes')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-note/30 transition-all group flex flex-col">
+                                  <div className="flex justify-between items-start mb-3">
+                                      <div className="p-2 bg-acc-note/10 rounded-lg text-acc-note">
+                                          <StickyNote className="w-5 h-5" />
+                                      </div>
+                                      <span className="text-xs text-muted group-hover:text-white font-medium">{allNotes.length} Notes</span>
                                   </div>
-                                  <h3 className="text-sm font-semibold text-white">Notes</h3>
+                                  <h3 className="font-semibold text-white mb-2">Brain Bank</h3>
+                                  
+                                  <div className="flex-1 space-y-1 mb-2">
+                                      {randomNotes.length > 0 ? randomNotes.map(note => (
+                                          <div key={note.id} className="text-[10px] text-gray-400 truncate flex items-center gap-1">
+                                              <div className="w-1 h-1 bg-acc-note rounded-full shrink-0"></div>
+                                              {note.content}
+                                          </div>
+                                      )) : <span className="text-[10px] text-muted italic">Empty mind...</span>}
+                                  </div>
+
+                                  <p className="text-[10px] text-muted mt-auto pt-2 border-t border-border flex items-center gap-1">
+                                     <Sparkles className="w-3 h-3 text-acc-note" /> Random Rediscovery
+                                  </p>
                              </div>
                         </div>
                    </div>
