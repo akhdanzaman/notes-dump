@@ -1831,5 +1831,14 @@
       "created_at": "2026-02-01T13:42:16.281Z",
       "weeklyTargetMinutes": 420
     }
+  ],
+  "wallets": [
+    {
+      "id": "w-1",
+      "name": "Cash",
+      "type": "cash",
+      "initialBalance": 0,
+      "color": "bg-emerald-500"
+    }
   ]
 }
