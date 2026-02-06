@@ -895,7 +895,8 @@
         "budgetCategory": "wants",
         "date": "2026-02-01T00:00:00.000Z",
         "shoppingCategory": "urgent",
-        "paymentMethod": "BNI"
+        "paymentMethod": "",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-02-01T05:06:10.129Z"
