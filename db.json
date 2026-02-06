@@ -1851,7 +1851,7 @@
       "id": "706600d1-164c-4f14-b23d-e738add0f1f2",
       "name": "Gopay",
       "type": "ewallet",
-      "initialBalance": 0,
+      "initialBalance": 20000,
       "color": "bg-blue-500"
     }
   ]
