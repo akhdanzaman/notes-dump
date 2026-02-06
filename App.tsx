@@ -72,7 +72,9 @@ const App: React.FC = () => {
 
   const checkRoutineResets = (currentItems: BrainDumpItem[]) => {
       const now = new Date();
-      return currentItems.map(item => {
+      const newHistoryItems: BrainDumpItem[] = [];
+
+      const updatedItems = currentItems.map(item => {
           if (item.type === ItemType.SHOPPING && 
               item.meta.shoppingCategory === 'routine' && 
               item.status === 'done' && 
@@ -83,6 +85,18 @@ const App: React.FC = () => {
               const nextDueTime = completedTime + (recurrenceDays * 24 * 60 * 60 * 1000);
               
               if (now.getTime() >= nextDueTime) {
+                  // Create a history record of the completed instance
+                  const historyItem: BrainDumpItem = {
+                      ...item,
+                      id: uuidv4(), // New ID for the history log
+                      meta: {
+                          ...item.meta,
+                          shoppingCategory: 'not_urgent', // Downgrade to normal completed item so it doesn't trigger recursion
+                      }
+                  };
+                  newHistoryItems.push(historyItem);
+
+                  // Reset the main item to pending for the new cycle
                   return {
                       ...item,
                       status: 'pending' as const,
@@ -92,6 +106,8 @@ const App: React.FC = () => {
           }
           return item;
       });
+
+      return [...updatedItems, ...newHistoryItems];
   };
 
   const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string, newSkills?: Skill[]) => {
