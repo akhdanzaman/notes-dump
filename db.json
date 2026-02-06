@@ -1844,7 +1844,7 @@
       "id": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
       "name": "BCA",
       "type": "bank",
-      "initialBalance": 2500000,
+      "initialBalance": 2521000,
       "color": "bg-blue-500"
     },
     {
