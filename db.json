@@ -955,7 +955,7 @@
     },
     {
       "id": "53f3517f-f6d5-4d8c-9682-270691774224",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-28T10:35:50.776Z",
       "type": "SHOPPING",
       "content": "Bayar parkiran",
@@ -970,7 +970,8 @@
         "shoppingCategory": "routine",
         "paymentMethod": ""
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-06T13:36:48.867Z"
     },
     {
       "id": "a21a373f-0239-46ef-81e0-5c4c68d1561e",
