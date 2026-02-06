@@ -1860,6 +1860,13 @@
       "type": "cc",
       "initialBalance": 0,
       "color": "bg-blue-500"
+    },
+    {
+      "id": "7474b330-c25e-47a4-9633-7217b2a82e03",
+      "name": "BNI",
+      "type": "bank",
+      "initialBalance": 438000,
+      "color": "bg-blue-500"
     }
   ]
 }
