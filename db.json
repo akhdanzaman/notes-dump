@@ -13,7 +13,7 @@
         ],
         "amount": 300000,
         "budgetCategory": "wants",
-        "date": "2026-02-06",
+        "date": "2026-02-06T00:00:00.000Z",
         "financeType": "expense",
         "paymentMethod": "Gopay Later"
       },
