@@ -1516,10 +1516,11 @@
           "purchase"
         ],
         "date": "2026-01-29T00:00:00.000Z",
-        "paymentMethod": "BNI",
+        "paymentMethod": "",
         "shoppingCategory": "urgent",
         "amount": 180000,
-        "budgetCategory": "wants"
+        "budgetCategory": "wants",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-01-25T14:32:54.951Z"
