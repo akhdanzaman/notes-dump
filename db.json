@@ -1,23 +1,6 @@
 {
   "data": [
     {
-      "id": "f076c332-b02f-4e22-b8d7-c24b052e18ec",
-      "status": "pending",
-      "created_at": "2026-02-06T11:25:23.078Z",
-      "type": "SHOPPING",
-      "content": "Buy breakfast",
-      "meta": {
-        "tags": [
-          "food",
-          "purchase"
-        ],
-        "amount": 10000,
-        "budgetCategory": "needs",
-        "shoppingCategory": "routine"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "45a5d527-9232-4d85-824d-8ad709b4670a",
       "status": "pending",
       "created_at": "2026-02-06T11:25:23.078Z",
