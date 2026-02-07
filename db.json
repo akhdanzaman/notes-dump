@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "d12e96d2-27d0-48cb-80ea-792d8b648298",
+      "type": "NOTE",
+      "content": "Tadi beli makan buat siang dan malam 16000",
+      "status": "pending",
+      "created_at": "2026-02-07T08:04:27.824Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "54a53fe8-e5ac-44f1-aad5-a275f5801182",
       "status": "done",
       "created_at": "2026-02-07T07:17:26.210Z",
