@@ -1,15 +1,26 @@
 {
   "data": [
     {
-      "id": "d12e96d2-27d0-48cb-80ea-792d8b648298",
-      "type": "NOTE",
-      "content": "Tadi beli makan buat siang dan malam 16000",
-      "status": "pending",
-      "created_at": "2026-02-07T08:04:27.824Z",
+      "id": "2b4ac291-779e-4fbd-93b0-b7f8f70fdb6d",
+      "status": "done",
+      "created_at": "2026-02-07T08:04:31.754Z",
+      "completed_at": "2026-02-07T08:04:31.754Z",
+      "type": "FINANCE",
+      "content": "Beli makan buat siang dan malam",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "dinner",
+          "lunch"
+        ],
+        "amount": 16000,
+        "budgetCategory": "needs",
+        "date": "2026-02-07",
+        "financeType": "expense",
+        "targetDay": "Saturday",
+        "toWallet": "Cash"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "54a53fe8-e5ac-44f1-aad5-a275f5801182",
