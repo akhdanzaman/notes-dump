@@ -1249,8 +1249,9 @@
         ],
         "amount": 4000,
         "budgetCategory": "needs",
-        "date": "2026-01-26",
-        "financeType": "expense"
+        "date": "2026-01-26T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
