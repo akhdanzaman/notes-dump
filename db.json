@@ -14,7 +14,7 @@
         "amount": 161000,
         "budgetCategory": "wants",
         "date": "2026-02-07T00:00:00.000Z",
-        "financeType": "lending",
+        "financeType": "reimbursement",
         "paymentMethod": "Gopay Later"
       },
       "isOptimistic": false
