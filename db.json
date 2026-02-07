@@ -598,10 +598,11 @@
           "purchase"
         ],
         "amount": 13000,
-        "budgetCategory": "wants",
+        "budgetCategory": "needs",
         "dateISO": "2026-02-01",
         "financeType": "expense",
-        "when": "today"
+        "when": "today",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
