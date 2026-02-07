@@ -1894,6 +1894,12 @@
         "name": "Fixed",
         "percentage": 20,
         "color": "bg-cyan-500"
+      },
+      {
+        "id": "cat-1770451205002",
+        "name": "Unintend",
+        "percentage": 0,
+        "color": "bg-red-500"
       }
     ]
   },
