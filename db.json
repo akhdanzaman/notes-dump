@@ -1187,9 +1187,10 @@
           "bills"
         ],
         "amount": 1300000,
-        "budgetCategory": "needs",
-        "date": "2026-01-18",
-        "financeType": "expense"
+        "budgetCategory": "cat-1770450517162",
+        "date": "2026-01-18T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
