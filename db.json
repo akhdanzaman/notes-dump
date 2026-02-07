@@ -48,7 +48,9 @@
         "amount": 25000,
         "budgetCategory": "needs",
         "recurrenceDays": 1,
-        "shoppingCategory": "routine"
+        "shoppingCategory": "routine",
+        "paymentMethod": "",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
