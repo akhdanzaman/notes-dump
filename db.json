@@ -1845,8 +1845,8 @@
     "rules": [
       {
         "id": "needs",
-        "name": "Needs",
-        "percentage": 50,
+        "name": "Needs (fixed expenses)",
+        "percentage": 30,
         "color": "bg-blue-500"
       },
       {
@@ -1866,6 +1866,12 @@
         "name": "Sedekah",
         "percentage": 10,
         "color": "bg-gray-500"
+      },
+      {
+        "id": "cat-1770450517162",
+        "name": "Needs (variable expenses)",
+        "percentage": 20,
+        "color": "bg-cyan-500"
       }
     ]
   },
