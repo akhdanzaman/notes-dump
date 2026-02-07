@@ -657,27 +657,39 @@ const App: React.FC = () => {
           if (!item.meta.amount) return;
           
           const amount = item.meta.amount;
-          const walletName = item.meta.paymentMethod?.toLowerCase();
+          const walletName = item.meta.paymentMethod?.toLowerCase(); // Source Wallet
           
           if (walletName && balanceMap.has(walletName)) {
               const current = balanceMap.get(walletName) || 0;
+              const wallet = wallets.find(w => w.name.toLowerCase() === walletName);
+              const isCC = wallet?.type === 'cc';
+
               const isIncome = item.meta.financeType === 'income' || item.meta.financeType === 'reimbursement';
               const isTransfer = item.meta.financeType === 'transfer';
               
               if (isIncome) {
-                  balanceMap.set(walletName, current + amount);
+                   // Income adds to Asset. If CC, it reduces debt (by subtracting from the 'positive' debt balance).
+                   if (isCC) balanceMap.set(walletName, Math.max(0, current - amount)); 
+                   else balanceMap.set(walletName, current + amount);
               } else if (isTransfer) {
-                  // Source (paymentMethod) -> Subtract
-                  balanceMap.set(walletName, current - amount);
+                  // Source of Transfer
+                  if (isCC) balanceMap.set(walletName, current + amount); // Cash Advance from CC -> Increases Debt
+                  else balanceMap.set(walletName, current - amount); // Transfer from Asset -> Decreases Asset
                   
-                  // Dest (toWallet) -> Add
+                  // Destination of Transfer
                   const destName = item.meta.toWallet?.toLowerCase();
                   if (destName && balanceMap.has(destName)) {
-                      balanceMap.set(destName, (balanceMap.get(destName) || 0) + amount);
+                      const destCurrent = balanceMap.get(destName) || 0;
+                      const destWallet = wallets.find(w => w.name.toLowerCase() === destName);
+                      const isDestCC = destWallet?.type === 'cc';
+                      
+                      if (isDestCC) balanceMap.set(destName, Math.max(0, destCurrent - amount)); // Paying CC bill -> Decreases Debt
+                      else balanceMap.set(destName, destCurrent + amount); // Transfer to Asset -> Increases Asset
                   }
               } else {
                   // Expense or Lending
-                  balanceMap.set(walletName, current - amount);
+                  if (isCC) balanceMap.set(walletName, current + amount); // Spending on CC -> Increases Debt
+                  else balanceMap.set(walletName, current - amount); // Spending from Asset -> Decreases Asset
               }
           }
       });
@@ -688,9 +700,15 @@ const App: React.FC = () => {
           currentBalance: balanceMap.get(w.name.toLowerCase()) || w.initialBalance
       }));
 
-      const totalNetWorth = walletStats.reduce((acc, w) => acc + w.currentBalance, 0);
+      // Calculate Total Net Worth: (Total Assets) - (Total CC Debt)
+      const assets = walletStats.filter(w => w.type !== 'cc');
+      const liabilities = walletStats.filter(w => w.type === 'cc');
 
-      return { walletStats, totalNetWorth };
+      const totalAssets = assets.reduce((acc, w) => acc + w.currentBalance, 0);
+      const totalDebt = liabilities.reduce((acc, w) => acc + w.currentBalance, 0);
+      const totalNetWorth = totalAssets - totalDebt;
+
+      return { walletStats, totalNetWorth, totalAssets, totalDebt };
   };
 
   const getFinanceItems = () => {
@@ -1020,7 +1038,7 @@ const App: React.FC = () => {
 
                const { urgent, routine } = getShoppingItems();
                
-               const { totalNetWorth } = getWalletStats();
+               const { walletStats, totalNetWorth, totalAssets, totalDebt } = getWalletStats();
                const { totalExpense } = getFinanceItems();
                const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
@@ -1087,9 +1105,14 @@ const App: React.FC = () => {
                              >
                                  {showBalance ? fmt(totalNetWorth) : '••••••••'}
                              </div>
-                             <p className="text-xs text-muted">
-                                 Spent this month: <span className="text-red-400">{showBalance ? fmt(totalExpense) : '••••••'}</span>
-                             </p>
+                             <div className="flex gap-4 mt-2 pt-2 border-t border-white/5">
+                                 <div className="text-xs text-muted">
+                                    Assets: <span className="text-emerald-400 font-medium">{showBalance ? fmt(totalAssets) : '••'}</span>
+                                 </div>
+                                 <div className="text-xs text-muted">
+                                    Debt: <span className="text-red-400 font-medium">{showBalance ? fmt(totalDebt) : '••'}</span>
+                                 </div>
+                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -1442,7 +1465,7 @@ const App: React.FC = () => {
                    projectedUncategorized 
                } = getFinanceItems();
                
-               const { walletStats, totalNetWorth } = getWalletStats();
+               const { walletStats, totalNetWorth, totalAssets, totalDebt } = getWalletStats();
 
                const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
                
@@ -1472,6 +1495,14 @@ const App: React.FC = () => {
                                    <div className="flex items-center gap-1 text-xs text-muted mb-1"><TrendingDown className="w-3 h-3 text-red-500" /> Expense (Mo)</div>
                                    <div className="font-semibold text-red-400">{showBalance ? fmt(totalExpense) : '••••'}</div>
                                </div>
+                           </div>
+                           <div className="flex gap-4 mt-2 pt-2 border-t border-white/5">
+                                 <div className="text-xs text-muted">
+                                    Assets: <span className="text-emerald-400 font-medium">{showBalance ? fmt(totalAssets) : '••'}</span>
+                                 </div>
+                                 <div className="text-xs text-muted">
+                                    Debt: <span className="text-red-400 font-medium">{showBalance ? fmt(totalDebt) : '••'}</span>
+                                 </div>
                            </div>
                        </div>
                        
@@ -1529,8 +1560,9 @@ const App: React.FC = () => {
                                                 <div className="text-[10px] text-muted uppercase tracking-wider">{wallet.type}</div>
                                             </div>
                                         </div>
-                                        <div className="text-xl font-bold text-white tracking-tight">
+                                        <div className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
                                             {showBalance ? fmt(wallet.currentBalance) : '••••••••'}
+                                            {wallet.type === 'cc' && <span className="text-xs font-normal text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">Debt</span>}
                                         </div>
                                    </div>
                                ))}
@@ -1793,8 +1825,8 @@ const App: React.FC = () => {
 
       {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} existingPaymentMethods={uniquePaymentMethods} budgetRules={budgetConfig.rules} skills={skills} wallets={wallets} />}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSettingsSaved} currentBudgetConfig={budgetConfig} currentPrompt={customPrompt} />
-      <SkillModal isOpen={skillModal.isOpen} mode={skillModal.mode} initialName={skillModal.initialName} initialTarget={skillModal.initialTarget} onClose={() => setSkillModal({ ...skillModal, isOpen: false })} onSave={handleSaveSkill} />
-      <WalletModal isOpen={walletModal.isOpen} mode={walletModal.mode} initialData={walletModal.initialData} onClose={() => setWalletModal({ ...walletModal, isOpen: false })} onSave={handleSaveWallet} />
+      <SkillModal isOpen={skillModal.isOpen} mode={skillModal.isOpen && skillModal.mode ? skillModal.mode : 'add'} initialName={skillModal.initialName} initialTarget={skillModal.initialTarget} onClose={() => setSkillModal({ ...skillModal, isOpen: false })} onSave={handleSaveSkill} />
+      <WalletModal isOpen={walletModal.isOpen} mode={walletModal.isOpen && walletModal.mode ? walletModal.mode : 'add'} initialData={walletModal.initialData} onClose={() => setWalletModal({ ...walletModal, isOpen: false })} onSave={handleSaveWallet} />
       <ConfirmDialog isOpen={!!deleteId} title={deleteType === 'skill' ? "Delete Skill?" : "Delete Wallet?"} message={deleteType === 'skill' ? "Deleting this skill will prevent new logs from being auto-assigned, but existing logs will remain." : "Deleting this wallet will not remove transaction history, but they will no longer be linked to this wallet."} onConfirm={handleConfirmDelete} onCancel={() => { setDeleteId(null); setDeleteType(null); }} />
     </div>
   );

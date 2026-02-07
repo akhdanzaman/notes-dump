@@ -108,7 +108,9 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                     value={initialBalance}
                     onChange={(e) => setInitialBalance(e.target.value)}
                 />
-                <p className="text-[10px] text-muted mt-1">Starting amount before any recorded transactions.</p>
+                <p className="text-[10px] text-muted mt-1">
+                    {type === 'cc' ? 'Current outstanding debt amount (how much you owe).' : 'Starting amount before any recorded transactions.'}
+                </p>
             </div>
         </div>
 
