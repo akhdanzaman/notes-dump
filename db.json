@@ -188,10 +188,11 @@
           "dinner"
         ],
         "amount": 8000,
-        "budgetCategory": "wants",
+        "budgetCategory": "needs",
         "dateISO": "2026-02-04",
         "financeType": "expense",
-        "when": "today"
+        "when": "today",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
