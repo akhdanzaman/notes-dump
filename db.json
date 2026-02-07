@@ -266,10 +266,11 @@
           "purchase"
         ],
         "amount": 10000,
-        "budgetCategory": "wants",
+        "budgetCategory": "needs",
         "dateISO": "2026-02-03",
         "financeType": "expense",
-        "when": "today"
+        "when": "today",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
