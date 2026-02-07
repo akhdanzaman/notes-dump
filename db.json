@@ -87,7 +87,8 @@
         "budgetCategory": "needs",
         "dateISO": "2026-02-06",
         "financeType": "expense",
-        "when": "today"
+        "when": "today",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
