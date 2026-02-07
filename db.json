@@ -721,7 +721,7 @@
           "people"
         ],
         "amount": 50000,
-        "budgetCategory": "needs",
+        "budgetCategory": "cat-1770451205002",
         "financeType": "expense",
         "paymentMethod": ""
       },
