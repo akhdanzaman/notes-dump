@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "5de057e7-b4b0-4267-95ee-46883adf8225",
+      "type": "NOTE",
+      "content": "transfer bca ke gopay later 100000",
+      "status": "pending",
+      "created_at": "2026-02-07T08:06:26.302Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "2b4ac291-779e-4fbd-93b0-b7f8f70fdb6d",
       "status": "done",
       "created_at": "2026-02-07T08:04:31.754Z",
