@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "7e0fb7d6-fe89-44f3-9377-5bfc2b9dab19",
+      "type": "NOTE",
+      "content": "besok minggu jalan pagi",
+      "status": "pending",
+      "created_at": "2026-02-07T13:24:54.213Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "a3d4295b-d9ac-47be-bf11-b7191905a4ed",
       "status": "pending",
       "created_at": "2026-02-07T13:24:34.681Z",
