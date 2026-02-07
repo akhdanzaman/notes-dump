@@ -1021,7 +1021,8 @@
         "budgetCategory": "needs",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-02-06T13:36:48.867Z"
