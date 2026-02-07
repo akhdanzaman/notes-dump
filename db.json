@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "0d4670cc-c6e2-4a5f-9119-6651665bf059",
+      "type": "NOTE",
+      "content": "baca artikel 30 menit",
+      "status": "pending",
+      "created_at": "2026-02-07T13:20:59.295Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "2b4ac291-779e-4fbd-93b0-b7f8f70fdb6d",
       "status": "done",
       "created_at": "2026-02-07T08:04:31.754Z",
