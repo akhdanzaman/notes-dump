@@ -1384,7 +1384,8 @@
         "shoppingCategory": "urgent",
         "amount": 100000,
         "paymentMethod": "",
-        "budgetCategory": "needs"
+        "budgetCategory": "needs",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
