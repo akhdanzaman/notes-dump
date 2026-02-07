@@ -1208,8 +1208,9 @@
         ],
         "amount": 9000,
         "budgetCategory": "needs",
-        "date": "2026-01-27",
-        "financeType": "expense"
+        "date": "2026-01-27T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
