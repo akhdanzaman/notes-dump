@@ -1,24 +1,6 @@
 {
   "data": [
     {
-      "id": "15d69999-be95-4e3f-a008-5b3692539919",
-      "status": "done",
-      "created_at": "2026-02-07T08:06:29.234Z",
-      "completed_at": "2026-02-07T08:06:29.234Z",
-      "type": "FINANCE",
-      "content": "transfer bca ke gopay later",
-      "meta": {
-        "tags": [
-          "transfer"
-        ],
-        "amount": 100000,
-        "financeType": "transfer",
-        "paymentMethod": "bca",
-        "toWallet": "gopay later"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "2b4ac291-779e-4fbd-93b0-b7f8f70fdb6d",
       "status": "done",
       "created_at": "2026-02-07T08:04:31.754Z",
