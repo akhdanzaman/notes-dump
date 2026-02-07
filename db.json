@@ -1914,6 +1914,13 @@
       "type": "bank",
       "initialBalance": 438000,
       "color": "bg-blue-500"
+    },
+    {
+      "id": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
+      "name": "gopay later",
+      "type": "cc",
+      "initialBalance": 0,
+      "color": "bg-blue-500"
     }
   ],
   "monthlyThemes": {
