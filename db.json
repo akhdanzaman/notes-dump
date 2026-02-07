@@ -1233,7 +1233,8 @@
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
         "targetDay": "Friday",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
