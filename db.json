@@ -1368,7 +1368,8 @@
         "shoppingCategory": "routine",
         "amount": 1300000,
         "paymentMethod": "",
-        "budgetCategory": "needs"
+        "budgetCategory": "cat-1770450517162",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-01-26T12:41:20.205Z"
