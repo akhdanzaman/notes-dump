@@ -1802,7 +1802,8 @@
         "shoppingCategory": "not_urgent",
         "amount": 65000,
         "paymentMethod": "",
-        "budgetCategory": "needs"
+        "budgetCategory": "needs",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-01-24T13:15:43.293Z"
