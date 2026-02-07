@@ -721,8 +721,9 @@
           "people"
         ],
         "amount": 50000,
-        "budgetCategory": "wants",
-        "financeType": "expense"
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
