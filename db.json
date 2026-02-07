@@ -1919,7 +1919,7 @@
       "id": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
       "name": "gopay later",
       "type": "cc",
-      "initialBalance": -530000,
+      "initialBalance": 530000,
       "color": "bg-blue-500"
     }
   ],
