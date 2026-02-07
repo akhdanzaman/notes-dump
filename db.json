@@ -102,10 +102,11 @@
       "meta": {
         "tags": [],
         "amount": 13000,
-        "budgetCategory": "wants",
+        "budgetCategory": "cat-1769922349475",
         "dateISO": "2026-02-06",
         "financeType": "expense",
-        "when": "today"
+        "when": "today",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
