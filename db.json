@@ -100,7 +100,10 @@
       "type": "FINANCE",
       "content": "Donated",
       "meta": {
-        "tags": [],
+        "tags": [
+          "Donation",
+          "charity"
+        ],
         "amount": 13000,
         "budgetCategory": "cat-1769922349475",
         "dateISO": "2026-02-06",
