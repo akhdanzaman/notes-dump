@@ -876,9 +876,10 @@
           "purchase"
         ],
         "amount": 16000,
-        "budgetCategory": "wants",
-        "date": "2026-01-31",
-        "financeType": "expense"
+        "budgetCategory": "needs",
+        "date": "2026-01-31T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
