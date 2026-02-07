@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "0d4670cc-c6e2-4a5f-9119-6651665bf059",
-      "type": "NOTE",
-      "content": "baca artikel 30 menit",
-      "status": "pending",
-      "created_at": "2026-02-07T13:20:59.295Z",
+      "id": "d4ec05d4-28d0-4fe6-84be-b279cf792166",
+      "status": "done",
+      "created_at": "2026-02-07T13:21:02.923Z",
+      "completed_at": "2026-02-07T13:21:02.923Z",
+      "type": "SKILL_LOG",
+      "content": "Membaca artikel",
       "meta": {
-        "tags": []
+        "tags": [
+          "reading",
+          "productivity"
+        ],
+        "durationMinutes": 30,
+        "skillName": "Focus reading",
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "2b4ac291-779e-4fbd-93b0-b7f8f70fdb6d",
