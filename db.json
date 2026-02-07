@@ -797,8 +797,9 @@
         ],
         "amount": 6000,
         "budgetCategory": "wants",
-        "date": "2026-01-31",
-        "financeType": "expense"
+        "date": "2026-01-31T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
