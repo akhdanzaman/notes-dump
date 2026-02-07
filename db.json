@@ -1845,7 +1845,7 @@
     "rules": [
       {
         "id": "needs",
-        "name": "Fixed",
+        "name": "Needs",
         "percentage": 30,
         "color": "bg-blue-500"
       },
@@ -1869,15 +1869,9 @@
       },
       {
         "id": "cat-1770450517162",
-        "name": "Needs",
+        "name": "Fixed",
         "percentage": 20,
         "color": "bg-cyan-500"
-      },
-      {
-        "id": "cat-1770451014684",
-        "name": "New Category",
-        "percentage": 0,
-        "color": "bg-gray-500"
       }
     ]
   },
