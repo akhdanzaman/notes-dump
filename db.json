@@ -1832,7 +1832,8 @@
         "shoppingCategory": "routine",
         "amount": 36000,
         "paymentMethod": "",
-        "budgetCategory": "needs"
+        "budgetCategory": "needs",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-02-01T13:12:53.462Z"
