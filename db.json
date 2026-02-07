@@ -1048,7 +1048,7 @@
           "errand"
         ],
         "amount": 25000,
-        "budgetCategory": "needs",
+        "budgetCategory": "cat-1770450517162",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
         "paymentMethod": "",
