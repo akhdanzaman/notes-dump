@@ -1730,7 +1730,8 @@
         "shoppingCategory": "urgent",
         "amount": 25000,
         "paymentMethod": "",
-        "budgetCategory": "wants"
+        "budgetCategory": "wants",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-01-24T08:16:41.965Z"
