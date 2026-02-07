@@ -15,10 +15,10 @@
         ],
         "amount": 16000,
         "budgetCategory": "needs",
-        "date": "2026-02-07",
+        "date": "2026-02-07T00:00:00.000Z",
         "financeType": "expense",
         "targetDay": "Saturday",
-        "toWallet": "Cash"
+        "paymentMethod": "Cash"
       },
       "isOptimistic": false
     },
