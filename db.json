@@ -1317,7 +1317,8 @@
         "shoppingCategory": "routine",
         "amount": 150000,
         "paymentMethod": "",
-        "budgetCategory": "needs"
+        "budgetCategory": "needs",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-02-04T12:05:44.224Z"
