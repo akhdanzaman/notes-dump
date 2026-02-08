@@ -12,10 +12,12 @@
           "reading",
           "productivity"
         ],
-        "date": "2026-02-08",
+        "date": "2026-02-08T00:00:00.000Z",
         "durationMinutes": 45,
         "skillName": "Focus reading",
-        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1",
+        "paymentMethod": "",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
