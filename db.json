@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "16a75cee-fe63-4809-b94a-8a12696ff648",
+      "type": "NOTE",
+      "content": "kemarin aku belajar bahasa inggris untuk prononciation 15 menit",
+      "status": "pending",
+      "created_at": "2026-02-08T14:24:00.442Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "1ffd9cf3-6ee4-45bc-a5a1-775bd1c9016f",
       "status": "done",
       "created_at": "2026-02-08T14:23:27.382Z",
