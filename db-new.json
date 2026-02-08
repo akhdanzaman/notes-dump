@@ -1,6 +1,22 @@
 {
   "data": [
     {
+      "id": "de78e713-c304-4a93-830d-dcfaed94cc95",
+      "status": "done",
+      "created_at": "2026-02-08T13:56:44.583Z",
+      "type": "JOURNAL",
+      "content": "Mengerjakan pekerjaan desain grafis dengan senang",
+      "meta": {
+        "tags": [
+          "desain grafis",
+          "pekerjaan",
+          "profesional"
+        ],
+        "date": "2026-02-08T13:56:44.583Z"
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "4be53190-76f2-4126-8035-e50e01a9f179",
       "status": "done",
       "created_at": "2026-02-08T13:55:45.262Z",
