@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "f1855f6d-e16a-4b29-818a-fd9754a7101c",
+      "type": "NOTE",
+      "content": "todo: jalan kaki 5km hari ini",
+      "status": "pending",
+      "created_at": "2026-02-08T14:05:43.921Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "c60967ad-0b70-460a-a222-81edc890f0ba",
       "status": "done",
       "created_at": "2026-02-08T14:05:12.874Z",
