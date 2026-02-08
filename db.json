@@ -2,8 +2,9 @@
   "data": [
     {
       "id": "2d8e97c0-1035-46cb-87fa-98acde53ad29",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-08T14:05:47.191Z",
+      "completed_at": "2026-02-08T14:05:49.146Z",
       "type": "TODO",
       "content": "Jalan kaki 5km",
       "meta": {
