@@ -12,9 +12,9 @@
           "food"
         ],
         "amount": 15000,
-        "paymentMethod": "BNI",
+        "paymentMethod": "Cash",
         "targetDay": "Sunday",
-        "toWallet": ""
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
