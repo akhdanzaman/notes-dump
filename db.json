@@ -107,18 +107,6 @@
       "isOptimistic": false
     },
     {
-      "id": "b0d89d5f-8bb9-453b-b672-8fc03ded47c4",
-      "status": "pending",
-      "created_at": "2026-02-07T13:24:29.086Z",
-      "type": "SHOPPING",
-      "content": "beli kemeja",
-      "meta": {
-        "tags": [],
-        "shoppingCategory": "not_urgent"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "d4ec05d4-28d0-4fe6-84be-b279cf792166",
       "status": "done",
       "created_at": "2026-02-07T13:21:02.923Z",
