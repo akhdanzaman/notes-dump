@@ -2051,7 +2051,7 @@
         "date": "2026-01-25T00:00:00.000Z",
         "shoppingCategory": "routine",
         "amount": 36000,
-        "paymentMethod": "",
+        "paymentMethod": "Cash",
         "budgetCategory": "needs",
         "financeType": "expense"
       },
