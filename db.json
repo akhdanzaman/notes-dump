@@ -909,7 +909,7 @@
           "bills"
         ],
         "amount": 412000,
-        "budgetCategory": "needs",
+        "budgetCategory": "wants",
         "date": "2026-02-20T00:00:00.000Z",
         "paymentMethod": "Gopay Later",
         "shoppingCategory": "urgent",
