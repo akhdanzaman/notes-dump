@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "e1e9529e-6996-4cbb-8d24-9430bd6d15a4",
+      "type": "NOTE",
+      "content": "journal: hari ini aku jalan kaki 3km buat exercise ringan",
+      "status": "pending",
+      "created_at": "2026-02-08T14:04:45.260Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "5d1924a6-59e5-4fe1-a153-4b92b4b57df4",
       "status": "done",
       "created_at": "2026-02-08T09:56:22.079Z",
