@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "f27d088b-45e1-41c9-9a1e-08f846ec7c6c",
-      "type": "NOTE",
-      "content": "hari ini aku fokus baca artikel dan berita 45 menit",
-      "status": "pending",
-      "created_at": "2026-02-08T14:23:20.795Z",
+      "id": "1ffd9cf3-6ee4-45bc-a5a1-775bd1c9016f",
+      "status": "done",
+      "created_at": "2026-02-08T14:23:27.382Z",
+      "completed_at": "2026-02-08T14:23:27.382Z",
+      "type": "SKILL_LOG",
+      "content": "Fokus baca artikel dan berita",
       "meta": {
-        "tags": []
+        "tags": [
+          "reading",
+          "productivity"
+        ],
+        "date": "2026-02-08",
+        "durationMinutes": 45,
+        "skillName": "Focus reading",
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "2d8e97c0-1035-46cb-87fa-98acde53ad29",
