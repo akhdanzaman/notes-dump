@@ -1,6 +1,51 @@
 {
   "data": [
     {
+      "id": "2d8e97c0-1035-46cb-87fa-98acde53ad29",
+      "status": "done",
+      "created_at": "2026-02-08T14:05:47.191Z",
+      "completed_at": "2026-02-08T14:05:49.146Z",
+      "type": "TODO",
+      "content": "Jalan kaki 5km",
+      "meta": {
+        "tags": [],
+        "date": "2026-02-08",
+        "targetDay": "hari ini",
+        "toWallet": "today"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c60967ad-0b70-460a-a222-81edc890f0ba",
+      "status": "done",
+      "created_at": "2026-02-08T14:05:12.874Z",
+      "completed_at": "2026-02-08T14:05:12.874Z",
+      "type": "JOURNAL",
+      "content": "Walked",
+      "meta": {
+        "tags": [
+          "exercise"
+        ],
+        "date": "2026-02-08"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "4709aee5-b79b-44a8-8a75-9ea5f687ad0b",
+      "status": "done",
+      "created_at": "2026-02-08T14:04:49.567Z",
+      "completed_at": "2026-02-08T14:04:49.567Z",
+      "type": "JOURNAL",
+      "content": "Jalan kaki 3km buat exercise ringan",
+      "meta": {
+        "tags": [
+          "exercise"
+        ],
+        "date": "2026-02-08"
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "5d1924a6-59e5-4fe1-a153-4b92b4b57df4",
       "status": "done",
       "created_at": "2026-02-08T09:56:22.079Z",
@@ -112,7 +157,7 @@
     },
     {
       "id": "c45a4a3d-c455-4812-98ba-43be714e6686",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-07T13:27:09.624Z",
       "type": "TODO",
       "content": "Tulis rekapan minggu kemarin",
@@ -122,7 +167,8 @@
         "targetDay": "Minggu",
         "toWallet": "tomorrow"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-08T13:53:24.027Z"
     },
     {
       "id": "0dad44b9-9f1f-4752-9a6d-ba93da428b05",
@@ -154,7 +200,7 @@
     },
     {
       "id": "fb341557-d2f3-475b-a94a-3cf7235290de",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-07T13:24:57.723Z",
       "type": "EVENT",
       "content": "Morning walk",
@@ -164,7 +210,8 @@
         "targetDay": "Sunday",
         "toWallet": "tomorrow"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-08T13:53:26.689Z"
     },
     {
       "id": "a3d4295b-d9ac-47be-bf11-b7191905a4ed",
