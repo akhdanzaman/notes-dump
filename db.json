@@ -1835,10 +1835,12 @@
           "laundry",
           "errand"
         ],
-        "date": "2026-01-30",
+        "date": "2026-01-30T00:00:00.000Z",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
-        "targetDay": "Friday"
+        "targetDay": "Friday",
+        "paymentMethod": "Cash",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-02-06T13:22:58.949Z"
