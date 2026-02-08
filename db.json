@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "d042ee2a-afdb-4bd2-b301-07534ad0d077",
+      "type": "NOTE",
+      "content": "jalan kaki hari ini",
+      "status": "pending",
+      "created_at": "2026-02-08T14:05:08.278Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "4709aee5-b79b-44a8-8a75-9ea5f687ad0b",
       "status": "done",
       "created_at": "2026-02-08T14:04:49.567Z",
