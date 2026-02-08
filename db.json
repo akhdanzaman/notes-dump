@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "11e23c16-7136-4cda-b97e-9453b1ceb54c",
-      "type": "NOTE",
-      "content": "Abjs Beli sarapan 15000 BNI",
-      "status": "pending",
-      "created_at": "2026-02-08T03:06:15.892Z",
+      "id": "d8d8c013-7067-4667-81c1-1e49e5833144",
+      "status": "done",
+      "created_at": "2026-02-08T03:06:22.160Z",
+      "completed_at": "2026-02-08T03:06:22.160Z",
+      "type": "FINANCE",
+      "content": "Beli sarapan",
       "meta": {
-        "tags": []
+        "tags": [
+          "food"
+        ],
+        "amount": 15000,
+        "paymentMethod": "BNI",
+        "targetDay": "Sunday",
+        "toWallet": ""
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "c45a4a3d-c455-4812-98ba-43be714e6686",
