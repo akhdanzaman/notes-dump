@@ -29,9 +29,10 @@
         "tags": [
           "food"
         ],
-        "amount": 5900,
+        "amount": 4800,
         "budgetCategory": "needs",
-        "financeType": "expense"
+        "financeType": "expense",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
