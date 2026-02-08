@@ -4,7 +4,8 @@ export enum ItemType {
   NOTE = 'NOTE',
   EVENT = 'EVENT',
   FINANCE = 'FINANCE',
-  SKILL_LOG = 'SKILL_LOG'
+  SKILL_LOG = 'SKILL_LOG',
+  JOURNAL = 'JOURNAL'
 }
 
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles, BookText } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill, Wallet, FinanceType } from './types';
@@ -15,9 +15,9 @@ import SkillModal from './components/SkillModal';
 import WalletModal from './components/WalletModal';
 import ConfirmDialog from './components/ConfirmDialog';
 
-type Tab = 'summary' | 'focus' | 'shopping' | 'notes' | 'money' | 'history';
+type Tab = 'summary' | 'focus' | 'shopping' | 'notes' | 'money';
 type FocusSubTab = 'tasks' | 'skills';
-type NotesSubTab = 'general' | 'skills';
+type NotesSubTab = 'general' | 'skills' | 'journal';
 type SyncStatus = 'synced' | 'syncing' | 'error' | 'local';
 type MoneyView = 'transactions' | 'budget' | 'wallets';
 
@@ -306,8 +306,8 @@ const App: React.FC = () => {
   
         const newItems: BrainDumpItem[] = classifiedItems.map(partial => {
             const isFinance = partial.type === ItemType.FINANCE;
-            // Finance and Skill Logs are records, so mark as done
-            const isRecord = isFinance || partial.type === ItemType.SKILL_LOG;
+            // Finance and Skill Logs are records, so mark as done. Journal is also a record.
+            const isRecord = isFinance || partial.type === ItemType.SKILL_LOG || partial.type === ItemType.JOURNAL;
             
             // Resolve Skill ID if it's a SKILL_LOG
             let finalMeta = { tags: [], ...partial.meta };
@@ -581,18 +581,6 @@ const App: React.FC = () => {
       return { stats, logs: logs.slice(0, 10) };
   };
 
-  const getHistoryItems = () => {
-      // Includes done tasks, and all records (Finance/Skills)
-      return items
-        .filter(i => i.status === 'done' || i.type === ItemType.FINANCE || i.type === ItemType.SKILL_LOG)
-        .sort((a, b) => {
-            const da = new Date(a.completed_at || a.created_at).getTime();
-            const db = new Date(b.completed_at || b.created_at).getTime();
-            return db - da;
-        })
-        .slice(0, 50);
-  };
-
   const getShoppingItems = () => {
     const visibleItems = items.filter(i => {
         if (i.type !== ItemType.SHOPPING) return false;
@@ -626,13 +614,19 @@ const App: React.FC = () => {
   };
 
   const getNoteItems = () => {
-    // Separation logic: "General" is only NOTE, "Skills" is only SKILL_LOG
+    // Separation logic
     let relevantItems: BrainDumpItem[] = [];
     
     if (notesSubTab === 'general') {
         relevantItems = items.filter(i => i.type === ItemType.NOTE && i.status !== 'done');
-    } else {
+    } else if (notesSubTab === 'skills') {
         relevantItems = items.filter(i => i.type === ItemType.SKILL_LOG);
+    } else {
+        // JOURNAL: Include explicit journals AND done TODO items
+        relevantItems = items.filter(i => 
+            i.type === ItemType.JOURNAL || 
+            (i.type === ItemType.TODO && i.status === 'done')
+        );
     }
     
     if (selectedTag) {
@@ -642,7 +636,42 @@ const App: React.FC = () => {
         const lowerQ = searchQuery.toLowerCase();
         relevantItems = relevantItems.filter(i => i.content.toLowerCase().includes(lowerQ) || i.meta.tags?.some(t => t.toLowerCase().includes(lowerQ)));
     }
-    return relevantItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return relevantItems.sort((a, b) => {
+        // Sort by actual date for Journals
+        const da = a.meta.date ? new Date(a.meta.date).getTime() : new Date(a.created_at).getTime();
+        const db = b.meta.date ? new Date(b.meta.date).getTime() : new Date(b.created_at).getTime();
+        return db - da;
+    });
+  };
+
+  const getJournalGroups = (journalItems: BrainDumpItem[]) => {
+      const groups: Record<string, BrainDumpItem[]> = {};
+      
+      journalItems.forEach(item => {
+          // For TODOs, use completed_at if available to place them on the day they were done.
+          // For Journals, use meta.date or created_at.
+          const dateStr = (item.type === ItemType.TODO && item.completed_at) 
+            ? item.completed_at 
+            : (item.meta.date || item.created_at);
+            
+          const dateObj = new Date(dateStr);
+          // Key by YYYY-MM-DD
+          const key = dateObj.toLocaleDateString('en-CA'); // YYYY-MM-DD
+          
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(item);
+      });
+
+      // Sort items within day by time (creation or completion)
+      Object.keys(groups).forEach(key => {
+          groups[key].sort((a, b) => {
+              const ta = (a.type === ItemType.TODO && a.completed_at) ? new Date(a.completed_at).getTime() : new Date(a.created_at).getTime();
+              const tb = (b.type === ItemType.TODO && b.completed_at) ? new Date(b.completed_at).getTime() : new Date(b.created_at).getTime();
+              return ta - tb;
+          });
+      });
+
+      return groups;
   };
 
   const getWalletStats = () => {
@@ -926,10 +955,6 @@ const App: React.FC = () => {
            <div className={`p-2 rounded-full ${activeTab === 'money' ? 'bg-primary/10' : ''}`}><WalletIcon className="w-5 h-5" /></div>
           Money
         </button>
-        <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'history' ? 'text-primary' : 'text-muted hover:text-white'}`}>
-           <div className={`p-2 rounded-full ${activeTab === 'history' ? 'bg-primary/10' : ''}`}><History className="w-5 h-5" /></div>
-          History
-        </button>
       </div>
     </div>
   );
@@ -937,6 +962,8 @@ const App: React.FC = () => {
   const renderFilters = () => {
     // Show filters only for tabs that need them
     if (activeTab !== 'notes' && activeTab !== 'money') return null;
+    // Don't show filters for Journal subtab
+    if (activeTab === 'notes' && notesSubTab === 'journal') return null;
 
     return (
         <div className="px-4 py-2 bg-background border-t border-border">
@@ -1416,7 +1443,7 @@ const App: React.FC = () => {
 
             {/* NOTES TAB */}
             {activeTab === 'notes' && (() => {
-              const notes = getNoteItems();
+              const itemsToShow = getNoteItems();
               
               return (
                   <>
@@ -1426,7 +1453,13 @@ const App: React.FC = () => {
                             onClick={() => setNotesSubTab('general')}
                             className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'general' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
                         >
-                            <NotebookPen className="w-3.5 h-3.5" /> General Notes
+                            <NotebookPen className="w-3.5 h-3.5" /> General
+                        </button>
+                        <button 
+                            onClick={() => setNotesSubTab('journal')}
+                            className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'journal' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                        >
+                            <BookText className="w-3.5 h-3.5" /> Journal
                         </button>
                         <button 
                             onClick={() => setNotesSubTab('skills')}
@@ -1436,17 +1469,50 @@ const App: React.FC = () => {
                         </button>
                       </div>
 
-                      {notes.length === 0 ? <div className="text-center text-muted py-10">{searchQuery ? "No matching notes." : (notesSubTab === 'general' ? "No notes found." : "No skill logs found.")}</div> : (
-                          <div className="columns-1 sm:columns-2 gap-4 space-y-4">
-                          {notes.map(item => {
-                              // Resolve skill name for display if it's a log
-                              const skillName = item.type === ItemType.SKILL_LOG 
-                                ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName)
-                                : undefined;
+                      {/* Content Render */}
+                      {itemsToShow.length === 0 ? (
+                        <div className="text-center text-muted py-10">
+                            {searchQuery 
+                                ? "No matching notes." 
+                                : (notesSubTab === 'general' 
+                                    ? "No notes found." 
+                                    : (notesSubTab === 'journal' ? "Write your first entry: \"Journal: Today was...\"" : "No skill logs found."))}
+                        </div>
+                      ) : (
+                          // Different Layout for Journal vs Others
+                          notesSubTab === 'journal' ? (
+                            <div className="space-y-8">
+                                {Object.entries(getJournalGroups(itemsToShow)).map(([dateKey, entries]) => {
+                                    const date = new Date(dateKey);
+                                    const friendlyDate = date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+                                    
+                                    return (
+                                        <div key={dateKey} className="relative pl-6 border-l border-border/50">
+                                            {/* Date Header */}
+                                            <div className="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-fuchsia-400/50 border border-fuchsia-400"></div>
+                                            <h3 className="text-sm font-serif font-bold text-fuchsia-200 mb-4">{friendlyDate}</h3>
+                                            
+                                            <div className="space-y-4">
+                                                {entries.map(item => (
+                                                    <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                          ) : (
+                            <div className="columns-1 sm:columns-2 gap-4 space-y-4">
+                            {itemsToShow.map(item => {
+                                // Resolve skill name for display if it's a log
+                                const skillName = item.type === ItemType.SKILL_LOG 
+                                    ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName)
+                                    : undefined;
 
-                              return <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} skillName={skillName} />;
-                          })}
-                          </div>
+                                return <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} skillName={skillName} />;
+                            })}
+                            </div>
+                          )
                       )}
                   </>
               );
@@ -1704,83 +1770,6 @@ const App: React.FC = () => {
                        )}
                    </div>
                );
-            })()}
-
-            {/* HISTORY TAB */}
-            {activeTab === 'history' && (() => {
-                const history = getHistoryItems();
-                if (history.length === 0) return <div className="text-center text-muted py-10">Nothing completed yet.</div>;
-                
-                let lastLabel = '';
-                
-                return (
-                    <div className="space-y-1 pb-10">
-                        {history.map(item => {
-                             const dateStr = item.completed_at || item.created_at;
-                             let label = "Unknown";
-                             let timeStr = "";
-
-                             if (dateStr) {
-                                 const date = new Date(dateStr);
-                                 if (!isNaN(date.getTime())) {
-                                     const now = new Date();
-                                     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                                     const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                                     const diffDays = Math.floor((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
-                                     if (diffDays === 0) label = 'Today';
-                                     else if (diffDays === 1) label = 'Yesterday';
-                                     else label = date.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric' });
-                                     
-                                     timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute:'2-digit', hour12: false });
-                                 }
-                             }
-                             
-                             const showHeader = label !== lastLabel;
-                             lastLabel = label;
-                             
-                             // Compact List Item Logic
-                             const isFinance = item.type === ItemType.FINANCE;
-                             const isSkill = item.type === ItemType.SKILL_LOG;
-                             // Check explicitly for 'income' finance type
-                             const isIncome = item.meta.financeType === 'income' || item.meta.financeType === 'reimbursement';
-                             
-                             const amount = item.meta.amount 
-                                ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.meta.amount)
-                                : null;
-
-                             const skillName = isSkill ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName) : null;
-
-                             return (
-                                 <React.Fragment key={item.id}>
-                                     {showHeader && <h3 className="text-xs font-bold text-muted/70 uppercase tracking-wider mt-6 mb-2 pl-1">{label}</h3>}
-                                     
-                                     <div className="flex items-center text-sm py-2 border-b border-border/40 hover:bg-surface/50 rounded px-1 transition-colors">
-                                         <span className="text-muted text-xs font-mono w-10 shrink-0">{timeStr}</span>
-                                         <span className="mr-3">
-                                            {isFinance ? (isIncome ? '💰' : '💸') : (isSkill ? '📚' : '✅')}
-                                         </span>
-                                         <div className="flex-1 min-w-0 mr-2">
-                                             <div className="truncate text-gray-200">{item.content}</div>
-                                             {item.meta.paymentMethod && <div className="text-[9px] text-muted uppercase tracking-tight">{item.meta.paymentMethod}</div>}
-                                             {isSkill && skillName && <div className="text-[9px] text-indigo-400 uppercase tracking-tight">{skillName}</div>}
-                                         </div>
-                                         <div className="text-right shrink-0">
-                                            {amount ? (
-                                                <span className={`text-xs font-semibold ${isIncome ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                    {isIncome ? '+' : '-'}{amount}
-                                                </span>
-                                            ) : isSkill ? (
-                                                <span className="text-xs font-semibold text-indigo-400">{item.meta.durationMinutes}m</span>
-                                            ) : (
-                                                <span className="text-[10px] text-muted">{item.type}</span>
-                                            )}
-                                         </div>
-                                     </div>
-                                 </React.Fragment>
-                             );
-                        })}
-                    </div>
-                );
             })()}
 
           </div>

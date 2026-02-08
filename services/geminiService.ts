@@ -24,44 +24,60 @@ export const DEFAULT_PROMPT = `Task: Split the input into distinct items. If the
 Output MUST be a JSON ARRAY of objects.
 
 TYPE (pick one):
-1) TODO: work/career/productivity actions.
-2) SHOPPING: planned purchases / life admin / chores / errands (future/plan).
-   IMPORTANT: “Buy X 50k” => SHOPPING (plan), NOT FINANCE.
-3) NOTE: ideas/knowledge/thoughts.
-4) EVENT: scheduled dates/times.
-5) FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement (transfer/topup/withdraw).
-6) SKILL_LOG: user explicitly mentions time spent learning/practicing a skill.
+- TODO: work/career/productivity actions.
+- SHOPPING: planned purchases / life admin / chores / errands (future/plan).
+  IMPORTANT: “Buy X 50k” => SHOPPING (plan), NOT FINANCE.
+- NOTE: ideas/knowledge/random thoughts.
+- EVENT: scheduled dates/times.
+- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement (transfer/topup/withdraw).
+- SKILL_LOG: time spent learning/practicing a skill.
+- JOURNAL: personal diary entries, feelings, daily recaps, “Dear Diary”, or explicit “Log to journal”.
+
+OUTPUT FORMAT (STRICT):
+Return ONLY a JSON ARRAY of objects.
+Each object must have:
+- type: TODO | SHOPPING | NOTE | EVENT | FINANCE | SKILL_LOG | JOURNAL
+- content: string
+- meta: object (optional fields as needed)
 
 COMMON EXTRACTION (apply to all items):
-- content: clean, concise item text (for SKILL_LOG: summary/key takeaways, see SKILL_LOG rules).
-- tags: generate max 3 tags (see TAG RULES).
-- amount: NUMBER only when money is present (strip currency symbols + thousand separators like dots/commas).
-- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc).
+- content: clean, concise item text
+  - for SKILL_LOG: content MUST be summary/key takeaways (see SKILL_LOG RULES)
+  - for JOURNAL: content is the diary text cleaned up (remove “journal:” prefix etc)
+- tags: max 3 (see TAG RULES)
+- amount: NUMBER only when money is present (strip currency symbols + thousand separators)
+- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc)
 
 DATE RESOLUTION (STRICT):
-- If ANY time reference exists (today/tomorrow/weekday/date/time), you MUST set meta.dateISO in YYYY-MM-DD.
-- Always set meta.when when time is relative/weekday-based:
-  - today/hari ini => meta.when="today", meta.dateISO = current date
-  - tomorrow/besok => meta.when="tomorrow", meta.dateISO = current date + 1 day
-  - weekday mentioned (Senin/Monday, etc) => resolve to the NEXT occurrence after current date, meta.when="next_weekday"
-  - explicit calendar date => meta.when="specific_date", meta.dateISO = that date (YYYY-MM-DD)
+- If ANY time reference exists (today/tomorrow/yesterday/weekday/date/time), you MUST set meta.date in YYYY-MM-DD.
+- Also set meta.when for relative/weekday-based references:
+  - today/hari ini => meta.when="today", meta.date = current date (YYYY-MM-DD)
+  - tomorrow/besok => meta.when="tomorrow", meta.date = current date + 1 day
+  - yesterday/kemarin => meta.when="yesterday", meta.date = current date - 1 day
+  - weekday mentioned => resolve to NEXT occurrence after current date, meta.when="next_weekday"
+  - explicit calendar date => meta.when="specific_date", meta.date = that date (YYYY-MM-DD)
+- If NO time reference exists:
+  - For JOURNAL: default meta.date = TODAY (YYYY-MM-DD)
+  - For others: omit meta.date entirely
 
 SHOPPING RULES:
 - meta.shoppingCategory ∈ {"urgent","routine","not_urgent"}
 - Set shoppingCategory="routine" ONLY IF repetition is explicit:
   repetition keywords: "setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan"
-  OR recurrenceDays is explicitly mentioned.
-- If weekday/date is mentioned WITHOUT repetition words => NOT routine.
-  Treat it as one-time scheduled purchase: shoppingCategory="urgent" and include targetDay/dateISO as applicable.
-- routine => include recurrenceDays (if stated) + targetDay (if stated).
-- urgent => include targetDay (if stated).
-- default => not_urgent.
+  OR meta.recurrenceDays is explicitly mentioned.
+- If weekday/date mentioned WITHOUT repetition words => NOT routine.
+  Treat it as one-time scheduled purchase: shoppingCategory="urgent" and include targetDay/date as applicable.
+- routine => include recurrenceDays (if stated) + targetDay (if stated)
+- urgent => include targetDay (if stated)
+- default => not_urgent
+- IMPORTANT: “Buy X 50k” is SHOPPING. FINANCE only if it already happened (“barusan beli”, “tadi bayar”, “sudah transfer”, etc).
 
 MONEY META (FINANCE + money-related SHOPPING):
-- meta.paymentMethod: EXACT text from user as Source Wallet/Method (e.g., "QRIS BNI", "Cash", "Gopay Later", "CC BCA", "BCA"). If not specified, "".
+- meta.paymentMethod: EXACT text from user as Source Wallet/Method (e.g. "QRIS BNI", "Cash", "Gopay Later", "CC BCA", "BCA"). If not specified, "".
 - meta.budgetCategory ∈ {"needs","wants","savings","sedekah"}
-  - needs: rent/groceries/electricity/transport/health
-  - wants: dining/hobby/entertainment/subscription entertainment
+  - fixed: rent/electricity/internet/insurance/tuition
+  - needs: foods/transportation/groceries/health/stationary/breakfast/dinner
+  - wants: fancy dining/hobby/entertainment/subscription entertainment
   - savings: investment/emergency/debt repayment
   - sedekah: charity/giving/donation/tips/helping others
 
@@ -69,7 +85,7 @@ FINANCE RULES:
 - meta.financeType ∈ {"expense","income","lending","reimbursement","transfer"}
   - expense: money spent
   - income: money received (salary, refund received, etc)
-  - lending: money given as loan
+  - lending: money given as a loan
   - reimbursement: paid by you but will be repaid / reimbursed
   - transfer: moving money between your own accounts/wallets (withdraw, deposit, topup, pindah buku, tarik tunai)
 - IF financeType="transfer":
@@ -78,33 +94,37 @@ FINANCE RULES:
   - amount must be extracted as NUMBER
 
 SKILL_LOG RULES:
-- CRITICAL: content MUST be summary/key takeaways (not the raw duration sentence)
+- CRITICAL: content MUST be summary/key takeaways, not the raw duration sentence
   Example: "Belajar React 1 jam tentang Hooks" => content "Belajar React tentang Hooks"
-- meta.durationMinutes: NUMBER (convert hours → minutes)
-- meta.skillName: infer from context; if a list of known skills is provided, match to one of them when possible.
+- meta.durationMinutes: NUMBER (convert hours→minutes)
+- meta.skillName: infer from context; if known skills list is provided, match skillName to one of them when possible
+
+JOURNAL RULES:
+- JOURNAL is for feelings, daily recap, reflections, “Dear Diary”, or explicit logging.
+- Default meta.date = TODAY if not specified.
+- If “Journal kemarin …” or “yesterday …” => meta.when="yesterday" and meta.date resolved accordingly.
+- If the text includes both “I feel …” and action items, SPLIT:
+  - feelings/recap => JOURNAL
+  - action tasks => TODO/SHOPPING/EVENT etc
 
 TAG RULES (STRICT):
-- Priority: intent > context > object.
-- Avoid generic tags like "people", "purchase" unless no better option exists.
-- Prefer semantic tags like: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.
-- Max 3 tags per item.
+- Priority: intent > context > object
+- Avoid generic tags like "people", "purchase" unless no better option exists
+- Prefer semantic tags: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education
+- Max 3 tags per item
 
 Examples:
 - "Gave money to street musician 5000" => FINANCE expense, tags ["charity","donation"], budgetCategory "sedekah", amount 5000
 - "tip driver gojek 10000" => FINANCE expense, tags ["tip","transport"], amount 10000
 - "Breakfast 14000" => FINANCE expense, tags ["food"], amount 14000
 - "Kirim dompet" => TODO or NOTE depending on phrasing, tags ["assistance","delivery"]
-- "beli susu besok hari senin 12000" => SHOPPING urgent + targetDay Monday + amount 12000 + dateISO for next Monday
+- "beli susu besok hari senin 12000" => SHOPPING urgent + targetDay Monday + amount 12000 + meta.date resolved
 - "beli susu setiap senin 12000" => SHOPPING routine + targetDay Monday + amount 12000 (+ recurrenceDays if stated)
 - "Tarik tunai BCA 500rb" => FINANCE transfer, paymentMethod "BCA", toWallet "Cash", amount 500000
 - "Topup Gopay dari Mandiri 100k" => FINANCE transfer, paymentMethod "Mandiri", toWallet "Gopay", amount 100000
+- "I felt really productive today because I finished the project" => JOURNAL, meta.when="today", meta.date=TODAY
+- "Journal kemarin: pergi ke pantai sama keluarga" => JOURNAL, content="Pergi ke pantai sama keluarga", meta.when="yesterday", meta.date=YESTERDAY
 
-OUTPUT FORMAT:
-Return ONLY a JSON ARRAY of objects.
-Each object must have:
-- type: one of TODO | SHOPPING | NOTE | EVENT | FINANCE | SKILL_LOG
-- content: string
-- meta: object (optional fields as needed: dateISO, when, tags, quantity, shoppingCategory, recurrenceDays, targetDay, amount, financeType, paymentMethod, toWallet, budgetCategory, durationMinutes, skillName)
 `;
 
 // CHANGED: Added availableSkills to prompt context
@@ -164,7 +184,7 @@ export const classifyText = async (
               type: {
                 type: Type.STRING,
                 description:
-                  "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG",
+                  "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG, JOURNAL",
               },
               content: {
                 type: Type.STRING,
@@ -224,6 +244,12 @@ export const classifyText = async (
       if (matchedType === ItemType.SHOPPING && !result.meta?.shoppingCategory) {
         if (!result.meta) result.meta = {};
         result.meta.shoppingCategory = "not_urgent";
+      }
+
+      // Default date for JOURNAL if missing is TODAY (created_at handles it mostly, but strict date helps sorting)
+      if (matchedType === ItemType.JOURNAL && !result.meta?.date) {
+        if (!result.meta) result.meta = {};
+        result.meta.date = new Date().toISOString();
       }
 
       return {
