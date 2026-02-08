@@ -14,7 +14,7 @@
         "amount": 16000,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "cash"
       },
       "isOptimistic": false
     },
