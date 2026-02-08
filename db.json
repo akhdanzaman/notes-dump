@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "db70cb8b-4984-4dc1-aa1c-3bbd565f7e2f",
-      "type": "NOTE",
-      "content": "abis beli roti 16000",
-      "status": "pending",
-      "created_at": "2026-02-08T06:36:14.776Z",
+      "id": "6ac47316-ba75-4cce-b25e-7f86ebfd8b33",
+      "status": "done",
+      "created_at": "2026-02-08T06:36:18.634Z",
+      "completed_at": "2026-02-08T06:36:18.634Z",
+      "type": "FINANCE",
+      "content": "Roti",
       "meta": {
-        "tags": []
+        "tags": [
+          "food"
+        ],
+        "amount": 16000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": ""
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "274d59f5-37e3-4cfe-89d1-ba6845b6d667",
