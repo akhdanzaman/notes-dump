@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "d888d6e2-9832-4e28-9e4c-cc1f2215629a",
+      "type": "NOTE",
+      "content": "Aku abis beli kemeja 165000 pake gopay later",
+      "status": "pending",
+      "created_at": "2026-02-08T05:57:58.475Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "d8d8c013-7067-4667-81c1-1e49e5833144",
       "status": "done",
       "created_at": "2026-02-08T03:06:22.160Z",
