@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "451effcd-593c-4f38-b603-4ee62c551eac",
-      "type": "NOTE",
-      "content": "transfer dari bni ke gopay 50000",
-      "status": "pending",
-      "created_at": "2026-02-08T09:56:18.522Z",
+      "id": "5d1924a6-59e5-4fe1-a153-4b92b4b57df4",
+      "status": "done",
+      "created_at": "2026-02-08T09:56:22.079Z",
+      "completed_at": "2026-02-08T09:56:22.079Z",
+      "type": "FINANCE",
+      "content": "Transfer from BNI to Gopay",
       "meta": {
-        "tags": []
+        "tags": [
+          "transfer",
+          "bank",
+          "ewallet"
+        ],
+        "amount": 50000,
+        "financeType": "transfer",
+        "paymentMethod": "bni",
+        "toWallet": "gopay"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "6ac47316-ba75-4cce-b25e-7f86ebfd8b33",
