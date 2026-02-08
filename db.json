@@ -920,11 +920,12 @@
         "tags": [
           "bills"
         ],
-        "amount": 350000,
+        "amount": 412000,
         "budgetCategory": "needs",
-        "date": "2026-02-20",
+        "date": "2026-02-20T00:00:00.000Z",
         "paymentMethod": "Gopay Later",
-        "shoppingCategory": "urgent"
+        "shoppingCategory": "urgent",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
