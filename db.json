@@ -32,7 +32,7 @@
         "amount": 4800,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "cash"
       },
       "isOptimistic": false
     },
