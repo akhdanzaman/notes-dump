@@ -1,15 +1,19 @@
 {
   "data": [
     {
-      "id": "d042ee2a-afdb-4bd2-b301-07534ad0d077",
-      "type": "NOTE",
-      "content": "jalan kaki hari ini",
-      "status": "pending",
-      "created_at": "2026-02-08T14:05:08.278Z",
+      "id": "c60967ad-0b70-460a-a222-81edc890f0ba",
+      "status": "done",
+      "created_at": "2026-02-08T14:05:12.874Z",
+      "completed_at": "2026-02-08T14:05:12.874Z",
+      "type": "JOURNAL",
+      "content": "Walked",
       "meta": {
-        "tags": []
+        "tags": [
+          "exercise"
+        ],
+        "date": "2026-02-08"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "4709aee5-b79b-44a8-8a75-9ea5f687ad0b",
