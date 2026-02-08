@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "30d09318-6b54-4db8-aad7-100c6bc516bf",
-      "type": "NOTE",
-      "content": "abis beli makan siang 13000",
-      "status": "pending",
-      "created_at": "2026-02-08T06:35:56.512Z",
+      "id": "dba55632-1ba9-498a-86ec-dcba79401dd7",
+      "status": "done",
+      "created_at": "2026-02-08T06:36:03.151Z",
+      "completed_at": "2026-02-08T06:36:03.151Z",
+      "type": "FINANCE",
+      "content": "beli makan siang",
       "meta": {
-        "tags": []
+        "tags": [
+          "food"
+        ],
+        "amount": 13000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": ""
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "cf5d0060-1a73-481e-b2d4-6a4b7e62171b",
