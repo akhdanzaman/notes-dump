@@ -1,6 +1,22 @@
 {
   "data": [
     {
+      "id": "37a37a96-59af-47db-b653-2525f2b24b75",
+      "status": "pending",
+      "created_at": "2026-02-08T13:55:03.126Z",
+      "type": "TODO",
+      "content": "mengerjakan pekerjaan desain grafis",
+      "meta": {
+        "tags": [
+          "desain grafis",
+          "pekerjaan",
+          "profesional"
+        ],
+        "date": "2026-02-08"
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "54831104-2753-46bd-99cf-c598c0439ce2",
       "status": "pending",
       "created_at": "2026-02-01T08:24:11.745Z",
@@ -169,5 +185,6 @@
       "initialBalance": 0,
       "color": "bg-emerald-500"
     }
-  ]
+  ],
+  "monthlyThemes": {}
 }
