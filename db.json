@@ -229,7 +229,8 @@
         "amount": 15000,
         "paymentMethod": "BNI",
         "targetDay": "Sunday",
-        "financeType": "expense"
+        "financeType": "expense",
+        "budgetCategory": "needs"
       },
       "isOptimistic": false
     },
