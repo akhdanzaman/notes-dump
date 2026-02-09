@@ -246,7 +246,7 @@
     },
     {
       "id": "17a8eb8e-a630-4348-9bd4-a023b026fa9e",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-07T13:25:42.825Z",
       "type": "TODO",
       "content": "Buat RFQ untuk parts kampas rem",
@@ -256,7 +256,8 @@
         "targetDay": "Senin",
         "toWallet": "Cash (Default fallback)"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-09T11:47:57.598Z"
     },
     {
       "id": "fb341557-d2f3-475b-a94a-3cf7235290de",
