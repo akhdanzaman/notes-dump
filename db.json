@@ -32,7 +32,7 @@
         ],
         "amount": 10000,
         "budgetCategory": "needs",
-        "date": "2026-02-10",
+        "date": "2026-02-10T00:00:00.000Z",
         "financeType": "expense",
         "paymentMethod": "Cash",
         "targetDay": "Tuesday"
