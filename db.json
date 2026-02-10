@@ -13,7 +13,8 @@
         ],
         "amount": 305000,
         "budgetCategory": "needs",
-        "financeType": "expense"
+        "financeType": "expense",
+        "paymentMethod": "NCA"
       },
       "isOptimistic": false
     },
