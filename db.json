@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "fa8f57b9-aad5-40d1-9db8-6819336f5763",
+      "type": "NOTE",
+      "content": "abis beli sarapan 10000",
+      "status": "pending",
+      "created_at": "2026-02-10T23:48:20.535Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "153e5527-d809-4a63-9013-22a352f4cec3",
       "status": "done",
       "created_at": "2026-02-10T23:24:40.620Z",
