@@ -15,7 +15,7 @@
         "financeType": "expense",
         "paymentMethod": "Cash",
         "targetDay": "Tuesday",
-        "toWallet": ""
+        "budgetCategory": "needs"
       },
       "isOptimistic": false
     },
