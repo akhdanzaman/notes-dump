@@ -1,15 +1,21 @@
 {
   "data": [
     {
-      "id": "8e2a8bcb-dbf8-426b-bda5-919944b15165",
-      "type": "NOTE",
-      "content": "abis belii tiket arus balik 305000",
-      "status": "pending",
-      "created_at": "2026-02-10T23:24:36.253Z",
+      "id": "153e5527-d809-4a63-9013-22a352f4cec3",
+      "status": "done",
+      "created_at": "2026-02-10T23:24:40.620Z",
+      "completed_at": "2026-02-10T23:24:40.620Z",
+      "type": "FINANCE",
+      "content": "Beli tiket arus balik",
       "meta": {
-        "tags": []
+        "tags": [
+          "travel"
+        ],
+        "amount": 305000,
+        "budgetCategory": "needs",
+        "financeType": "expense"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "81d28d6e-2b59-4370-85d7-51a2126cd325",
