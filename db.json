@@ -14,7 +14,7 @@
         "amount": 305000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "NCA"
+        "paymentMethod": "BCA"
       },
       "isOptimistic": false
     },
