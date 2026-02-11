@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "b2d66166-8b61-4ee4-8038-6e7f4dd782a0",
-      "type": "NOTE",
-      "content": "Bayar parkir 5000 cash",
-      "status": "pending",
-      "created_at": "2026-02-11T11:55:12.696Z",
+      "id": "cfd9c7cf-e3cd-46cc-887e-8d9f7a616dd6",
+      "status": "done",
+      "created_at": "2026-02-11T11:55:16.871Z",
+      "completed_at": "2026-02-11T11:55:16.871Z",
+      "type": "FINANCE",
+      "content": "Bayar parkir",
       "meta": {
-        "tags": []
+        "tags": [
+          "travel",
+          "errand"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "Cash"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "a51f2308-652f-41cb-9e92-0af87697c88b",
