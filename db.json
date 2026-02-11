@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "50b410f6-cc74-4f73-8ee4-dadda1a57df3",
+      "type": "NOTE",
+      "content": "Abis beli sarapan 10000 gopay",
+      "status": "pending",
+      "created_at": "2026-02-11T11:55:40.133Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "805245ac-3d8e-4014-938e-458728479d1d",
       "status": "pending",
       "created_at": "2026-02-11T11:55:27.775Z",
