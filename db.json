@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "58bf43d3-cfa5-481a-a7f2-eb8e38d1bf93",
+      "type": "NOTE",
+      "content": "Beli sarapan 10000 gopay",
+      "status": "pending",
+      "created_at": "2026-02-11T11:55:24.628Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "cfd9c7cf-e3cd-46cc-887e-8d9f7a616dd6",
       "status": "done",
       "created_at": "2026-02-11T11:55:16.871Z",
