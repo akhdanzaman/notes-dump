@@ -1,15 +1,25 @@
 {
   "data": [
     {
-      "id": "50b410f6-cc74-4f73-8ee4-dadda1a57df3",
-      "type": "NOTE",
-      "content": "Abis beli sarapan 10000 gopay",
-      "status": "pending",
-      "created_at": "2026-02-11T11:55:40.133Z",
+      "id": "24abbfe8-6efc-410f-8312-6b056b20739d",
+      "status": "done",
+      "created_at": "2026-02-11T11:55:45.041Z",
+      "completed_at": "2026-02-11T11:55:45.042Z",
+      "type": "FINANCE",
+      "content": "Sarapan",
       "meta": {
-        "tags": []
+        "tags": [
+          "food"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "date": "2026-02-11",
+        "financeType": "expense",
+        "paymentMethod": "gopay",
+        "targetDay": "",
+        "toWallet": ""
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "805245ac-3d8e-4014-938e-458728479d1d",
