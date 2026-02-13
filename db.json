@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "e5cec4cc-82de-414c-babc-b7d781ce579d",
+      "type": "NOTE",
+      "content": "Hari ini abis beli sarapan 10000",
+      "status": "pending",
+      "created_at": "2026-02-13T00:09:32.545Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "935df67b-62ea-4b54-aab6-f06ec4e94834",
       "type": "NOTE",
       "content": "Kemarin tgl 11 beli bensin 30000 cash",
