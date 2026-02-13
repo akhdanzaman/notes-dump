@@ -12,11 +12,10 @@
           "food"
         ],
         "amount": 10000,
-        "date": "2026-02-13",
+        "date": "2026-02-13T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": "",
-        "targetDay": "",
-        "toWallet": ""
+        "paymentMethod": "Cash",
+        "targetDay": ""
       },
       "isOptimistic": false
     },
