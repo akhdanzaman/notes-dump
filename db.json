@@ -1,6 +1,26 @@
 {
   "data": [
     {
+      "id": "c46e5a77-4830-4f5d-bf16-f4f012be4859",
+      "status": "done",
+      "created_at": "2026-02-13T00:09:38.590Z",
+      "completed_at": "2026-02-13T00:09:38.590Z",
+      "type": "FINANCE",
+      "content": "Sarapan",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 10000,
+        "date": "2026-02-13",
+        "financeType": "expense",
+        "paymentMethod": "",
+        "targetDay": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "ac48a05b-6829-45ca-8e85-a091be21c106",
       "status": "done",
       "created_at": "2026-02-13T00:09:34.149Z",
@@ -19,17 +39,6 @@
         "targetDay": "Wednesday"
       },
       "isOptimistic": false
-    },
-    {
-      "id": "e5cec4cc-82de-414c-babc-b7d781ce579d",
-      "type": "NOTE",
-      "content": "Hari ini abis beli sarapan 10000",
-      "status": "pending",
-      "created_at": "2026-02-13T00:09:32.545Z",
-      "meta": {
-        "tags": []
-      },
-      "isOptimistic": true
     },
     {
       "id": "af544baa-f00b-4219-9d17-e891f74c089e",
