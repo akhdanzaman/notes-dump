@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "a98bc8a7-b981-4785-950a-ac9e66c046d0",
+      "type": "NOTE",
+      "content": "Hari ini selesaiin summary iims 2026",
+      "status": "pending",
+      "created_at": "2026-02-14T21:07:53.539Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "63fd3053-bbd7-4924-98f1-80a94028cc45",
       "status": "pending",
       "created_at": "2026-02-14T20:19:06.348Z",
