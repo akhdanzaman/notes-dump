@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "c4799488-32e5-4c77-8871-baf5f9cc24dd",
+      "type": "NOTE",
+      "content": "beli tiket sumber alam hari ini nanti 440000 bni",
+      "status": "pending",
+      "created_at": "2026-02-14T20:19:00.933Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "5751293d-aabe-4b88-9d6e-1e1947894308",
       "status": "pending",
       "created_at": "2026-02-14T17:31:54.661Z",
