@@ -1,19 +1,6 @@
 {
   "data": [
     {
-      "id": "7b5a3d50-8f81-43eb-87c2-0685c842553d",
-      "status": "pending",
-      "created_at": "2026-02-14T17:18:46.522Z",
-      "type": "NOTE",
-      "content": "Transfer gopay ke bni 37500 ",
-      "meta": {
-        "tags": [
-          "uncategorized"
-        ]
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "3c55e846-fda2-473a-b0cd-854d43bac3ad",
       "status": "done",
       "created_at": "2026-02-14T17:10:53.161Z",
