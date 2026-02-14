@@ -397,25 +397,6 @@
       "isOptimistic": false
     },
     {
-      "id": "a51f2308-652f-41cb-9e92-0af87697c88b",
-      "status": "done",
-      "created_at": "2026-02-10T23:48:23.506Z",
-      "completed_at": "2026-02-10T23:48:23.506Z",
-      "type": "FINANCE",
-      "content": "Beli sarapan",
-      "meta": {
-        "tags": [
-          "food"
-        ],
-        "amount": 10000,
-        "budgetCategory": "needs",
-        "date": "2026-02-10T00:00:00.000Z",
-        "financeType": "expense",
-        "paymentMethod": "Gopay"
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "153e5527-d809-4a63-9013-22a352f4cec3",
       "status": "done",
       "created_at": "2026-02-10T23:24:40.620Z",
