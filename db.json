@@ -2908,6 +2908,6 @@
   },
   "appSettings": {
     "defaultCollapsed": true,
-    "hideMoney": true
+    "hideMoney": false
   }
 }
