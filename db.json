@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "bd457971-8956-4295-b2fa-45ef02f6f3ec",
+      "type": "NOTE",
+      "content": "transfer from cash to gopay 150000; expense beli burger 52000 gopay; ",
+      "status": "pending",
+      "created_at": "2026-02-14T16:44:31.978Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "c46e5a77-4830-4f5d-bf16-f4f012be4859",
       "status": "done",
       "created_at": "2026-02-13T00:09:38.590Z",
