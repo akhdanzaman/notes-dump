@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "8866e62f-6629-4620-86ca-3d700be93f30",
-      "type": "NOTE",
-      "content": "10 februari beli lauk ayam 13000 cash",
-      "status": "pending",
-      "created_at": "2026-02-14T17:04:03.850Z",
+      "id": "7fe09955-38dd-4312-a238-59b3c7d5b880",
+      "status": "done",
+      "created_at": "2026-02-14T17:04:07.479Z",
+      "completed_at": "2026-02-14T17:04:07.479Z",
+      "type": "FINANCE",
+      "content": "Beli lauk ayam",
       "meta": {
-        "tags": []
+        "tags": [
+          "food"
+        ],
+        "amount": 13000,
+        "budgetCategory": "needs",
+        "date": "2026-02-10",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "targetDay": "Tuesday"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "d2e618ea-07ef-4a20-9e35-e23c9388199c",
