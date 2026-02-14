@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "298fed5c-1d64-4793-9b78-791f27615456",
-      "type": "NOTE",
-      "content": "Dikasih uang jajan dari bapak 2000000 bni",
-      "status": "pending",
-      "created_at": "2026-02-14T16:00:58.552Z",
+      "id": "e110af59-9141-4bab-9301-f405ad712a98",
+      "status": "done",
+      "created_at": "2026-02-14T16:01:08.101Z",
+      "completed_at": "2026-02-14T16:01:08.101Z",
+      "type": "FINANCE",
+      "content": "Uang jajan dari bapak",
       "meta": {
-        "tags": []
+        "tags": [
+          "income",
+          "bank"
+        ],
+        "amount": 2000000,
+        "financeType": "income",
+        "paymentMethod": "BNI",
+        "targetDay": "Saturday",
+        "toWallet": "BNI"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "db3cd310-b4bb-43de-acea-05d2cf470912",
