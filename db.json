@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "6fb29255-fd8e-4073-95c1-5732a637e9d8",
-      "type": "NOTE",
-      "content": "expense sarapan 8000 cash",
-      "status": "pending",
-      "created_at": "2026-02-14T16:46:41.658Z",
+      "id": "3e679af3-6cc5-43c9-8de7-2442d9566bbd",
+      "status": "done",
+      "created_at": "2026-02-14T16:46:45.046Z",
+      "completed_at": "2026-02-14T16:46:45.046Z",
+      "type": "FINANCE",
+      "content": "Sarapan",
       "meta": {
-        "tags": []
+        "tags": [
+          "food"
+        ],
+        "amount": 8000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "Cash"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "e46a00d8-ddab-4248-bea0-ded26b2aeab4",
