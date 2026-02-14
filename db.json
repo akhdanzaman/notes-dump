@@ -2679,5 +2679,7 @@
       "color": "bg-emerald-500"
     }
   ],
-  "monthlyThemes": {}
+  "monthlyThemes": {
+    "2026-04": "kafkw"
+  }
 }
