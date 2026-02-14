@@ -1,15 +1,20 @@
 {
   "data": [
     {
-      "id": "894818b7-9ef0-485e-97a9-af1a5fbc4e7e",
-      "type": "NOTE",
-      "content": "Arda balikin uang iims 37500 bni",
+      "id": "5075faa8-0fa5-4c6f-9655-c386237b565b",
       "status": "pending",
-      "created_at": "2026-02-14T16:02:53.888Z",
+      "created_at": "2026-02-14T16:03:08.459Z",
+      "type": "TODO",
+      "content": "Follow up with Arda for IIMS money return",
       "meta": {
-        "tags": []
+        "tags": [
+          "people",
+          "bank"
+        ],
+        "amount": 37500,
+        "paymentMethod": "BNI"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "c24f1b60-139a-4908-aead-aece89bc8fbd",
