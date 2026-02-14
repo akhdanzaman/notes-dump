@@ -1,15 +1,24 @@
 {
   "data": [
     {
-      "id": "eefe4213-5fe8-4922-bcb1-8c663b53d368",
-      "type": "NOTE",
-      "content": "13 februari bayar parkir 5000 cash",
-      "status": "pending",
-      "created_at": "2026-02-14T17:06:44.994Z",
+      "id": "33ee40f0-1345-41dd-8b49-ba0813f4ec9c",
+      "status": "done",
+      "created_at": "2026-02-14T17:06:48.377Z",
+      "completed_at": "2026-02-14T17:06:48.378Z",
+      "type": "FINANCE",
+      "content": "Paid parking",
       "meta": {
-        "tags": []
+        "tags": [
+          "travel"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-02-13",
+        "financeType": "expense",
+        "paymentMethod": "Cash",
+        "targetDay": "Friday"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "7fe09955-38dd-4312-a238-59b3c7d5b880",
