@@ -1,6 +1,191 @@
 {
   "data": [
     {
+<<<<<<< HEAD
+      "id": "47849ed5-5c07-43cd-b19f-f78ec8117cae",
+      "status": "done",
+      "created_at": "2026-02-14T16:09:45.098Z",
+      "completed_at": "2026-02-14T16:09:45.098Z",
+      "type": "FINANCE",
+      "content": "Balikin uang Rafi",
+      "meta": {
+        "tags": [
+          "people",
+          "ewallet",
+          "transfer"
+        ],
+        "amount": 52500,
+        "financeType": "expense",
+        "paymentMethod": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "54449a55-82d1-4681-93ff-64eba910888c",
+      "status": "done",
+      "created_at": "2026-02-14T16:04:53.504Z",
+      "completed_at": "2026-02-14T16:04:53.504Z",
+      "type": "FINANCE",
+      "content": "Arda balikin uang iims",
+      "meta": {
+        "tags": [
+          "people",
+          "event",
+          "bank"
+        ],
+        "amount": 37500,
+        "financeType": "reimbursement",
+        "toWallet": "BNI"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "3622ad13-1b37-484c-9e55-fd77c7a6af0f",
+      "status": "done",
+      "created_at": "2026-02-14T16:03:22.180Z",
+      "completed_at": "2026-02-14T16:03:22.180Z",
+      "type": "FINANCE",
+      "content": "Tiket IIMS",
+      "meta": {
+        "tags": [
+          "event",
+          "entertainment"
+        ],
+        "amount": 60000,
+        "budgetCategory": "wants",
+        "financeType": "lending",
+        "paymentMethod": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c24f1b60-139a-4908-aead-aece89bc8fbd",
+      "status": "done",
+      "created_at": "2026-02-14T16:02:42.849Z",
+      "completed_at": "2026-02-14T16:02:42.849Z",
+      "type": "FINANCE",
+      "content": "Makan ayam bakar",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 33000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "f87864e1-4e6c-4b30-9da3-9009674abb22",
+      "status": "done",
+      "created_at": "2026-02-14T16:02:22.892Z",
+      "completed_at": "2026-02-14T16:02:22.893Z",
+      "type": "FINANCE",
+      "content": "Iuran nonton IIMS",
+      "meta": {
+        "tags": [
+          "event",
+          "entertainment"
+        ],
+        "amount": 37500,
+        "financeType": "expense",
+        "paymentMethod": "gopay",
+        "toWallet": "Gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "fd0f50bf-65c3-43c0-9dcc-b350e3dc9038",
+      "status": "done",
+      "created_at": "2026-02-14T16:01:44.039Z",
+      "completed_at": "2026-02-14T16:01:44.039Z",
+      "type": "FINANCE",
+      "content": "beli mie ayam",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 28000,
+        "financeType": "expense",
+        "paymentMethod": "gopay",
+        "targetDay": "Saturday",
+        "toWallet": "Gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "9bfbb96b-3286-4b14-908a-4d8e0a35fd5a",
+      "status": "done",
+      "created_at": "2026-02-14T16:01:23.852Z",
+      "completed_at": "2026-02-14T16:01:23.852Z",
+      "type": "FINANCE",
+      "content": "Burger",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 52000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "e110af59-9141-4bab-9301-f405ad712a98",
+      "status": "done",
+      "created_at": "2026-02-14T16:01:08.101Z",
+      "completed_at": "2026-02-14T16:01:08.101Z",
+      "type": "FINANCE",
+      "content": "Uang jajan dari bapak",
+      "meta": {
+        "tags": [
+          "income",
+          "bank"
+        ],
+        "amount": 2000000,
+        "financeType": "income",
+        "paymentMethod": "BNI",
+        "targetDay": "Saturday",
+        "toWallet": "BNI"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "db3cd310-b4bb-43de-acea-05d2cf470912",
+      "status": "done",
+      "created_at": "2026-02-14T16:00:48.535Z",
+      "completed_at": "2026-02-14T16:00:48.535Z",
+      "type": "FINANCE",
+      "content": "Transfer dari bni ke gopay",
+      "meta": {
+        "tags": [
+          "transfer",
+          "bank",
+          "ewallet"
+        ],
+        "amount": 150000,
+        "financeType": "transfer",
+        "paymentMethod": "bni",
+        "toWallet": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "81c27226-d225-4076-8642-72aee541a343",
+      "type": "NOTE",
+      "content": "abis beli air minum 10000",
+      "status": "pending",
+      "created_at": "2026-02-13T14:32:19.590Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
+=======
+>>>>>>> parent of 6e27aa7 (Update via BrainDump)
       "id": "c46e5a77-4830-4f5d-bf16-f4f012be4859",
       "status": "done",
       "created_at": "2026-02-13T00:09:38.590Z",
@@ -702,7 +887,7 @@
     },
     {
       "id": "85500dbd-6807-45d6-a1fd-7e3ec8da4f4b",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-04T12:03:55.738Z",
       "type": "SHOPPING",
       "content": "shoe cleaning",
@@ -717,7 +902,8 @@
         "dateISO": "2026-02-11",
         "shoppingCategory": "urgent"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-14T16:01:46.362Z"
     },
     {
       "id": "88dc50fc-1a35-46cf-bd3a-b61a3ba3c532",
@@ -2464,6 +2650,9 @@
     ]
   },
   "customPrompt": "Task: Split the input into distinct items. If the user lists multiple things, split them.\nOutput MUST be a JSON ARRAY of objects.\n\nTYPE (pick one):\n- TODO: work/career/productivity actions.\n- SHOPPING: planned purchases / life admin / chores / errands (future/plan).\n  IMPORTANT: “Buy X 50k” => SHOPPING (plan), NOT FINANCE.\n- NOTE: ideas/knowledge/random thoughts.\n- EVENT: scheduled dates/times.\n- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement (transfer/topup/withdraw).\n- SKILL_LOG: time spent learning/practicing a skill.\n- JOURNAL: personal diary entries, feelings, daily recaps, “Dear Diary”, or explicit “Log to journal”.\n\nOUTPUT FORMAT (STRICT):\nReturn ONLY a JSON ARRAY of objects.\nEach object must have:\n- type: TODO | SHOPPING | NOTE | EVENT | FINANCE | SKILL_LOG | JOURNAL\n- content: string\n- meta: object (optional fields as needed)\n\nCOMMON EXTRACTION (apply to all items):\n- content: clean, concise item text\n  - for SKILL_LOG: content MUST be summary/key takeaways (see SKILL_LOG RULES)\n  - for JOURNAL: content is the diary text cleaned up (remove “journal:” prefix etc)\n- tags: max 3 (see TAG RULES)\n- amount: NUMBER only when money is present (strip currency symbols + thousand separators)\n- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc)\n\nDATE RESOLUTION (STRICT):\n- If ANY time reference exists (today/tomorrow/yesterday/weekday/date/time), you MUST set meta.date in YYYY-MM-DD.\n- Also set meta.when for relative/weekday-based references:\n  - today/hari ini => meta.when=\"today\", meta.date = current date (YYYY-MM-DD)\n  - tomorrow/besok => meta.when=\"tomorrow\", meta.date = current date + 1 day\n  - yesterday/kemarin => meta.when=\"yesterday\", meta.date = current date - 1 day\n  - weekday mentioned => resolve to NEXT occurrence after current date, meta.when=\"next_weekday\"\n  - explicit calendar date => meta.when=\"specific_date\", meta.date = that date (YYYY-MM-DD)\n- If NO time reference exists:\n  - For JOURNAL: default meta.date = TODAY (YYYY-MM-DD)\n  - For others: omit meta.date entirely\n\nSHOPPING RULES:\n- meta.shoppingCategory ∈ {\"urgent\",\"routine\",\"not_urgent\"}\n- Set shoppingCategory=\"routine\" ONLY IF repetition is explicit:\n  repetition keywords: \"setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan\"\n  OR meta.recurrenceDays is explicitly mentioned.\n- If weekday/date mentioned WITHOUT repetition words => NOT routine.\n  Treat it as one-time scheduled purchase: shoppingCategory=\"urgent\" and include targetDay/date as applicable.\n- routine => include recurrenceDays (if stated) + targetDay (if stated)\n- urgent => include targetDay (if stated)\n- default => not_urgent\n- IMPORTANT: “Buy X 50k” is SHOPPING. FINANCE only if it already happened (“barusan beli”, “tadi bayar”, “sudah transfer”, etc).\n\nMONEY META (FINANCE + money-related SHOPPING):\n- meta.paymentMethod: EXACT text from user as Source Wallet/Method (e.g. \"QRIS BNI\", \"Cash\", \"Gopay Later\", \"CC BCA\", \"BCA\"). If not specified, \"\".\n- meta.budgetCategory ∈ {\"needs\",\"wants\",\"savings\",\"sedekah\"}\n  - fixed: rent/electricity/internet/insurance/tuition\n  - needs: foods/transportation/groceries/health/stationary/breakfast/dinner\n  - wants: fancy dining/hobby/entertainment/subscription entertainment\n  - savings: investment/emergency/debt repayment\n  - sedekah: charity/giving/donation/tips/helping others\n\nFINANCE RULES:\n- meta.financeType ∈ {\"expense\",\"income\",\"lending\",\"reimbursement\",\"transfer\"}\n  - expense: money spent\n  - income: money received (salary, refund received, etc)\n  - lending: money given as a loan\n  - reimbursement: paid by you but will be repaid / reimbursed\n  - transfer: moving money between your own accounts/wallets (withdraw, deposit, topup, pindah buku, tarik tunai)\n- IF financeType=\"transfer\":\n  - meta.paymentMethod = Source Wallet (EXACT text)\n  - meta.toWallet = Destination Wallet (e.g. \"Cash\", \"Gopay\", \"OVO\", \"BCA\", etc)\n  - amount must be extracted as NUMBER\n\nSKILL_LOG RULES:\n- CRITICAL: content MUST be summary/key takeaways, not the raw duration sentence\n  Example: \"Belajar React 1 jam tentang Hooks\" => content \"Belajar React tentang Hooks\"\n- meta.durationMinutes: NUMBER (convert hours→minutes)\n- meta.skillName: infer from context; if known skills list is provided, match skillName to one of them when possible\n\nJOURNAL RULES:\n- JOURNAL is for feelings, daily recap, reflections, “Dear Diary”, or explicit logging.\n- Default meta.date = TODAY if not specified.\n- If “Journal kemarin …” or “yesterday …” => meta.when=\"yesterday\" and meta.date resolved accordingly.\n- If the text includes both “I feel …” and action items, SPLIT:\n  - feelings/recap => JOURNAL\n  - action tasks => TODO/SHOPPING/EVENT etc\n\nTAG RULES (STRICT):\n- Priority: intent > context > object\n- Avoid generic tags like \"people\", \"purchase\" unless no better option exists\n- Prefer semantic tags: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education\n- Max 3 tags per item\n\nExamples:\n- \"Gave money to street musician 5000\" => FINANCE expense, tags [\"charity\",\"donation\"], budgetCategory \"sedekah\", amount 5000\n- \"tip driver gojek 10000\" => FINANCE expense, tags [\"tip\",\"transport\"], amount 10000\n- \"Breakfast 14000\" => FINANCE expense, tags [\"food\"], amount 14000\n- \"Kirim dompet\" => TODO or NOTE depending on phrasing, tags [\"assistance\",\"delivery\"]\n- \"beli susu besok hari senin 12000\" => SHOPPING urgent + targetDay Monday + amount 12000 + meta.date resolved\n- \"beli susu setiap senin 12000\" => SHOPPING routine + targetDay Monday + amount 12000 (+ recurrenceDays if stated)\n- \"Tarik tunai BCA 500rb\" => FINANCE transfer, paymentMethod \"BCA\", toWallet \"Cash\", amount 500000\n- \"Topup Gopay dari Mandiri 100k\" => FINANCE transfer, paymentMethod \"Mandiri\", toWallet \"Gopay\", amount 100000\n- \"I felt really productive today because I finished the project\" => JOURNAL, meta.when=\"today\", meta.date=TODAY\n- \"Journal kemarin: pergi ke pantai sama keluarga\" => JOURNAL, content=\"Pergi ke pantai sama keluarga\", meta.when=\"yesterday\", meta.date=YESTERDAY\n\n",
+<<<<<<< HEAD
+  "skills": [],
+=======
   "skills": [
     {
       "id": "df27b0c1-e59c-4274-b4fe-8ff0a481bf57",
@@ -2480,11 +2669,22 @@
       "weeklyTargetMinutes": 420
     }
   ],
+>>>>>>> parent of 6e27aa7 (Update via BrainDump)
   "wallets": [
     {
       "id": "w-1",
       "name": "Cash",
       "type": "cash",
+<<<<<<< HEAD
+      "initialBalance": 0,
+      "color": "bg-emerald-500"
+    }
+  ],
+  "monthlyThemes": {
+    "2026-04": "kafkw",
+    "2026-02": "aefeaf"
+  }
+=======
       "initialBalance": 143000,
       "color": "bg-emerald-500"
     },
@@ -2522,4 +2722,5 @@
     "2026-03": "Self love and self grooming",
     "2026-04": "Family and Happiness"
   }
+>>>>>>> parent of 6e27aa7 (Update via BrainDump)
 }
