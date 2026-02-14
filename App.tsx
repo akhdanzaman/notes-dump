@@ -1494,7 +1494,7 @@ const App: React.FC = () => {
                                             
                                             <div className="space-y-4">
                                                 {entries.map(item => (
-                                                    <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} />
+                                                    <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} noStrikethrough={true} />
                                                 ))}
                                             </div>
                                         </div>

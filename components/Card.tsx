@@ -9,9 +9,10 @@ interface CardProps {
   onDelete?: (id: string) => void;
   readonly?: boolean;
   skillName?: string; // Optional: Pass resolved skill name
+  noStrikethrough?: boolean;
 }
 
-const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, readonly = false, skillName }) => {
+const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, readonly = false, skillName, noStrikethrough = false }) => {
   const { type, content, meta, isOptimistic, status, created_at, completed_at } = item;
   const isDone = status === 'done';
   const isNote = type === ItemType.NOTE;
@@ -122,8 +123,11 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
   // Skill formatting
   const durationLabel = meta?.durationMinutes ? `${meta.durationMinutes}m` : null;
 
+  // Determine strikethrough: isDone, not finance/skill/journal, and NOT explicitly suppressed
+  const shouldStrikethrough = isDone && !isFinance && !isSkill && !isJournal && !noStrikethrough;
+
   return (
-    <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone && !isFinance && !isSkill && !isJournal ? 'opacity-60 grayscale' : ''}`}>
+    <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone && !isFinance && !isSkill && !isJournal && !noStrikethrough ? 'opacity-60 grayscale' : ''}`}>
       
       {/* Header Row */}
       <div className={`flex items-start justify-between ${isNote || isSkill || isJournal ? 'mb-1' : 'mb-2'} pr-12`}>
@@ -227,8 +231,8 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
         </div>
       )}
 
-      {/* Content Paragraph - Logic updated to exclude Journal from strikethrough */}
-      <p className={`text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-medium ${isDone && !isFinance && !isSkill && !isJournal ? 'line-through text-muted' : ''} ${isJournal ? 'font-serif text-gray-100 italic' : ''}`}>
+      {/* Content Paragraph - Update class logic */}
+      <p className={`text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-medium ${shouldStrikethrough ? 'line-through text-muted' : ''} ${isJournal ? 'font-serif text-gray-100 italic' : ''}`}>
         {content}
       </p>
 
