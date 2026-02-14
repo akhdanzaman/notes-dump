@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "bbb74a60-1adb-4c79-bc2b-2d2478006860",
+      "type": "NOTE",
+      "content": "besok selesaiin summary iims 2026; besok selesaiin summary regulasi",
+      "status": "pending",
+      "created_at": "2026-02-14T17:31:50.875Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "177bc371-7a46-4d08-b12d-68657501ffc3",
       "status": "done",
       "created_at": "2026-02-14T17:25:28.299Z",
