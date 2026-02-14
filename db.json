@@ -1,15 +1,73 @@
 {
   "data": [
     {
-      "id": "f71d9bc2-730d-4609-9808-ad53a4cbc9c1",
-      "type": "NOTE",
-      "content": "expense jajan mie ayam 28000; expense makan ayam bakar 33000; expense iuran tiket iims 37500; income uang jajan dari bapak 2000000",
-      "status": "pending",
-      "created_at": "2026-02-14T16:45:14.039Z",
+      "id": "e46a00d8-ddab-4248-bea0-ded26b2aeab4",
+      "status": "done",
+      "created_at": "2026-02-14T16:45:18.787Z",
+      "completed_at": "2026-02-14T16:45:18.787Z",
+      "type": "FINANCE",
+      "content": "Jajan mie ayam",
       "meta": {
-        "tags": []
+        "tags": [
+          "food",
+          "lunch"
+        ],
+        "amount": 28000,
+        "budgetCategory": "needs",
+        "financeType": "expense"
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "f24da7da-0538-4245-b179-9cfe96697153",
+      "status": "done",
+      "created_at": "2026-02-14T16:45:18.787Z",
+      "completed_at": "2026-02-14T16:45:18.787Z",
+      "type": "FINANCE",
+      "content": "Makan ayam bakar",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner"
+        ],
+        "amount": 33000,
+        "budgetCategory": "needs",
+        "financeType": "expense"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "4be8e635-a249-4725-9f70-bfc55e888c88",
+      "status": "done",
+      "created_at": "2026-02-14T16:45:18.787Z",
+      "completed_at": "2026-02-14T16:45:18.787Z",
+      "type": "FINANCE",
+      "content": "Iuran tiket IIMS",
+      "meta": {
+        "tags": [
+          "event"
+        ],
+        "amount": 37500,
+        "budgetCategory": "wants",
+        "financeType": "expense"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "1f49f121-1c03-40ee-b072-fb379ad3b61e",
+      "status": "done",
+      "created_at": "2026-02-14T16:45:18.787Z",
+      "completed_at": "2026-02-14T16:45:18.787Z",
+      "type": "FINANCE",
+      "content": "Uang jajan dari bapak",
+      "meta": {
+        "tags": [
+          "income"
+        ],
+        "amount": 2000000,
+        "financeType": "income"
+      },
+      "isOptimistic": false
     },
     {
       "id": "839a836c-7f69-4b68-b128-3decf29e7aae",
