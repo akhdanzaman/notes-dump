@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "595a109f-2747-4c04-80e7-5aa89a49db46",
+      "type": "NOTE",
+      "content": "Aku abis balikin uang rafi 52500 gopay",
+      "status": "pending",
+      "created_at": "2026-02-14T16:09:39.982Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "54449a55-82d1-4681-93ff-64eba910888c",
       "status": "done",
       "created_at": "2026-02-14T16:04:53.504Z",
