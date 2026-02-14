@@ -32,9 +32,8 @@
           "ewallet"
         ],
         "amount": 37500,
-        "financeType": "income",
-        "paymentMethod": "Gopay",
-        "toWallet": "Gopay"
+        "financeType": "reimbursement",
+        "paymentMethod": "Gopay"
       },
       "isOptimistic": false
     },
