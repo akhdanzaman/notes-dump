@@ -995,7 +995,9 @@
         "amount": 75000,
         "budgetCategory": "wants",
         "dateISO": "2026-02-11",
-        "shoppingCategory": "urgent"
+        "shoppingCategory": "urgent",
+        "paymentMethod": "bni",
+        "financeType": "expense"
       },
       "isOptimistic": false,
       "completed_at": "2026-02-14T16:47:54.220Z"
