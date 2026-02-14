@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "262e6812-ff5a-41fc-bc91-90e7bb5365e4",
+      "type": "NOTE",
+      "content": "expense parkir 4000 cash",
+      "status": "pending",
+      "created_at": "2026-02-14T16:47:44.126Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "abd7e07e-8531-420c-8ec9-c8e290a6c806",
       "status": "done",
       "created_at": "2026-02-14T16:47:10.996Z",
