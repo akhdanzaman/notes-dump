@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "9db1ba4b-c453-46c2-9e9f-b82efa25383c",
-      "type": "NOTE",
-      "content": "expense parkir 10000 Tapcash",
-      "status": "pending",
-      "created_at": "2026-02-14T16:47:07.982Z",
+      "id": "abd7e07e-8531-420c-8ec9-c8e290a6c806",
+      "status": "done",
+      "created_at": "2026-02-14T16:47:10.996Z",
+      "completed_at": "2026-02-14T16:47:10.996Z",
+      "type": "FINANCE",
+      "content": "parkir",
       "meta": {
-        "tags": []
+        "tags": [
+          "travel"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "Tapcash"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "3e679af3-6cc5-43c9-8de7-2442d9566bbd",
