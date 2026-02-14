@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "8ac7a4cc-cef0-484d-9ad7-0f5dded2f31f",
-      "type": "NOTE",
-      "content": "Abis makan ayam bakar 33000 gopay",
-      "status": "pending",
-      "created_at": "2026-02-14T16:02:39.239Z",
+      "id": "c24f1b60-139a-4908-aead-aece89bc8fbd",
+      "status": "done",
+      "created_at": "2026-02-14T16:02:42.849Z",
+      "completed_at": "2026-02-14T16:02:42.849Z",
+      "type": "FINANCE",
+      "content": "Makan ayam bakar",
       "meta": {
-        "tags": []
+        "tags": [
+          "food"
+        ],
+        "amount": 33000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "gopay"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "f87864e1-4e6c-4b30-9da3-9009674abb22",
