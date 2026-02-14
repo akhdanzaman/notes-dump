@@ -1,16 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { BrainDumpItem, ItemType, BudgetRule, Skill, Wallet, FinanceType } from '../types';
-import { X, Save, DollarSign, Calendar, Wallet as WalletIcon, PieChart, Hourglass, BookOpen, ArrowRight } from 'lucide-react';
+import { X, Save, DollarSign, Calendar, Wallet as WalletIcon, Hourglass, ArrowRight, Bold, Italic, List, Type } from 'lucide-react';
 
 interface EditModalProps {
   item: BrainDumpItem;
   isOpen: boolean;
   onClose: () => void;
   onSave: (id: string, newContent: string, newTags: string[], amount?: number, date?: string, paymentMethod?: string, budgetCategory?: string, durationMinutes?: number, skillId?: string, toWallet?: string, financeType?: FinanceType) => void;
-  existingPaymentMethods?: string[]; // To populate datalist for backward compatibility
-  budgetRules?: BudgetRule[]; // To populate budget category selector
-  skills?: Skill[]; // To populate skill selector
-  wallets?: Wallet[]; // To populate payment method selector
+  existingPaymentMethods?: string[];
+  budgetRules?: BudgetRule[];
+  skills?: Skill[];
+  wallets?: Wallet[];
 }
 
 const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, existingPaymentMethods = [], budgetRules = [], skills = [], wallets = [] }) => {
@@ -27,7 +27,8 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
   const [duration, setDuration] = useState<string>(item.meta.durationMinutes ? item.meta.durationMinutes.toString() : '');
   const [skillId, setSkillId] = useState<string>(item.meta.skillId || '');
 
-  // Helper to convert UTC ISO string to Local datetime-local format (YYYY-MM-DDTHH:mm)
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const getInitialDate = (isoDate?: string) => {
       if (!isoDate || isoDate === 'null') return '';
       const date = new Date(isoDate);
@@ -46,7 +47,6 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
     const numAmount = amount ? parseFloat(amount) : undefined;
     const numDuration = duration ? parseFloat(duration) : undefined;
 
-    // Convert local datetime back to ISO UTC
     let finalDate: string | undefined = undefined;
     if (date) {
         finalDate = new Date(date).toISOString();
@@ -60,12 +60,49 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
     onClose();
   };
 
+  // Text Formatting Helpers
+  const insertFormat = (startChar: string, endChar: string = '') => {
+      if (!textareaRef.current) return;
+      
+      const start = textareaRef.current.selectionStart;
+      const end = textareaRef.current.selectionEnd;
+      const text = content;
+      
+      const before = text.substring(0, start);
+      const selected = text.substring(start, end);
+      const after = text.substring(end);
+      
+      const newText = before + startChar + selected + endChar + after;
+      
+      setContent(newText);
+      
+      // Need to defer focus to allow render
+      setTimeout(() => {
+          if (textareaRef.current) {
+              textareaRef.current.focus();
+              textareaRef.current.selectionStart = start + startChar.length;
+              textareaRef.current.selectionEnd = end + startChar.length;
+          }
+      }, 0);
+  };
+
+  const handleBold = () => insertFormat('**', '**');
+  const handleItalic = () => insertFormat('_', '_');
+  const handleList = () => {
+      if (!textareaRef.current) return;
+      // If at start of line, just add "- ". If in middle, add "\n- "
+      const start = textareaRef.current.selectionStart;
+      const text = content;
+      const isStartOfLine = start === 0 || text[start - 1] === '\n';
+      insertFormat(isStartOfLine ? '- ' : '\n- ');
+  };
+
+  const isNote = item.type === ItemType.NOTE || item.type === ItemType.JOURNAL;
   const showAmountField = item.type === ItemType.FINANCE || item.type === ItemType.SHOPPING || item.type === ItemType.TODO;
   const showDateField = item.type === ItemType.TODO || item.type === ItemType.EVENT || item.type === ItemType.SHOPPING;
   const showFinanceExtras = item.type === ItemType.FINANCE || (item.type === ItemType.SHOPPING && showAmountField);
   const showSkillExtras = item.type === ItemType.SKILL_LOG;
 
-  // If no custom rules, fallback to default 50-30-20 for display safety
   const displayRules = budgetRules.length > 0 ? budgetRules : [
       { id: 'needs', name: 'Needs', percentage: 50, color: 'bg-blue-500' },
       { id: 'wants', name: 'Wants', percentage: 30, color: 'bg-pink-500' },
@@ -74,11 +111,9 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
 
   const walletOptions = (
       <>
-        {/* Prioritize Configured Wallets */}
         {wallets.map(w => (
             <option key={w.id} value={w.name} />
         ))}
-        {/* Fallback to legacy payment methods */}
         {existingPaymentMethods.filter(pm => !wallets.some(w => w.name === pm)).map((pm, i) => (
             <option key={`legacy-${i}`} value={pm} />
         ))}
@@ -87,16 +122,16 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl p-6 max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div className={`bg-surface border border-border rounded-xl w-full shadow-2xl p-6 max-h-[90vh] overflow-y-auto no-scrollbar transition-all ${isNote ? 'max-w-2xl' : 'max-w-md'}`}>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-white">Edit Item</h3>
+          <h3 className="text-lg font-bold text-white">Edit {item.type}</h3>
           <button onClick={onClose} className="text-muted hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="space-y-4">
-          {/* Finance Type Selector (Only for Finance) */}
+          {/* Finance Type Selector */}
           {item.type === ItemType.FINANCE && (
               <div className="flex bg-background border border-border rounded-lg p-1">
                   {(['expense', 'income', 'transfer', 'lending', 'reimbursement'] as FinanceType[]).map(ft => (
@@ -111,12 +146,31 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
               </div>
           )}
 
+          {/* Content Area with Toolbar for Notes */}
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">Content</label>
+            <div className="flex justify-between items-end mb-1">
+                <label className="block text-xs font-medium text-muted">Content</label>
+                {isNote && (
+                    <div className="flex gap-1 bg-black/20 p-1 rounded-lg">
+                        <button onClick={handleBold} className="p-1.5 hover:bg-white/10 rounded text-muted hover:text-white" title="Bold">
+                            <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={handleItalic} className="p-1.5 hover:bg-white/10 rounded text-muted hover:text-white" title="Italic">
+                            <Italic className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="w-px bg-white/10 mx-0.5"></div>
+                        <button onClick={handleList} className="p-1.5 hover:bg-white/10 rounded text-muted hover:text-white" title="Bullet List">
+                            <List className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
+            </div>
             <textarea
-              className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-todo resize-none h-24"
+              ref={textareaRef}
+              className={`w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-todo resize-none leading-relaxed ${isNote ? 'h-80 text-base' : 'h-24'}`}
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              placeholder="Type something..."
             />
           </div>
           
@@ -193,7 +247,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                      </div>
                  )}
 
-                 {/* Budget Category (Hidden for transfers) */}
+                 {/* Budget Category */}
                  {financeType !== 'transfer' && (
                      <div className="col-span-2">
                          <label className="block text-xs font-medium text-muted mb-2">Budget Category</label>

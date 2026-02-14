@@ -126,6 +126,45 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
   // Determine strikethrough: isDone, not finance/skill/journal, and NOT explicitly suppressed
   const shouldStrikethrough = isDone && !isFinance && !isSkill && !isJournal && !noStrikethrough;
 
+  // --- Simple Markdown Parser ---
+  const renderFormattedContent = (text: string) => {
+    // Split by newlines to handle paragraphs/lists
+    const lines = text.split('\n');
+
+    return lines.map((line, lineIndex) => {
+        if (!line) return <div key={lineIndex} className="h-2"></div>;
+
+        // Check for list item
+        const isList = line.trim().startsWith('- ') || line.trim().startsWith('* ');
+        const cleanLine = isList ? line.trim().substring(2) : line;
+
+        // Split text by bold (**...**) and italic (_..._) markers
+        // Regex logic: Capture (** text **) OR (_ text _)
+        const parts = cleanLine.split(/(\*\*.*?\*\*|_.*?_)/g);
+
+        const renderedLine = parts.map((part, partIndex) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={partIndex} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+            }
+            if (part.startsWith('_') && part.endsWith('_')) {
+                return <em key={partIndex} className="italic text-gray-300">{part.slice(1, -1)}</em>;
+            }
+            return <span key={partIndex}>{part}</span>;
+        });
+
+        if (isList) {
+            return (
+                <div key={lineIndex} className="flex items-start gap-2 pl-2 mb-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-current mt-2 opacity-50 shrink-0"></div>
+                    <div className="flex-1">{renderedLine}</div>
+                </div>
+            );
+        }
+
+        return <div key={lineIndex} className="mb-0.5 min-h-[1.25rem]">{renderedLine}</div>;
+    });
+  };
+
   return (
     <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone && !isFinance && !isSkill && !isJournal && !noStrikethrough ? 'opacity-60 grayscale' : ''}`}>
       
@@ -231,10 +270,10 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
         </div>
       )}
 
-      {/* Content Paragraph - Update class logic */}
-      <p className={`text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-medium ${shouldStrikethrough ? 'line-through text-muted' : ''} ${isJournal ? 'font-serif text-gray-100 italic' : ''}`}>
-        {content}
-      </p>
+      {/* Content Rendering with Custom Markdown Parser */}
+      <div className={`text-sm text-gray-200 leading-relaxed font-medium ${shouldStrikethrough ? 'line-through text-muted' : ''} ${isJournal ? 'font-serif text-gray-100 italic' : ''}`}>
+        {renderFormattedContent(content)}
+      </div>
 
       {/* Metadata Footer */}
       {!isNote && !isSkill && !isJournal && (displayDate || validTags.length > 0) && (
