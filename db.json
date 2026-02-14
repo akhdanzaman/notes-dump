@@ -362,7 +362,7 @@
           "ewallet"
         ],
         "amount": 52000,
-        "budgetCategory": "needs",
+        "budgetCategory": "wants",
         "financeType": "expense",
         "paymentMethod": "gopay"
       },
