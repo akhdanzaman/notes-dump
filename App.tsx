@@ -73,7 +73,7 @@ const App: React.FC = () => {
 
   // Advanced Money Filters
   const [filterWallet, setFilterWallet] = useState<string>('');
-  const [filterTransactionType, setFilterTransactionType] = useState<FinanceType | ''>('');
+  const [filterTransactionType, setFilterTransactionType] = useState<string>('');
   const [filterMinAmount, setFilterMinAmount] = useState<string>('');
   const [filterMaxAmount, setFilterMaxAmount] = useState<string>('');
 
@@ -847,6 +847,9 @@ const App: React.FC = () => {
       // Filter by Type
       if (filterTransactionType) {
           allTransactions = allTransactions.filter(i => {
+              if (filterTransactionType === 'shopping') {
+                  return i.type === ItemType.SHOPPING;
+              }
               // Default to 'expense' if financeType is missing for money items
               const type = i.meta.financeType || ((i.type === ItemType.FINANCE || i.meta.amount) ? 'expense' : undefined);
               return type === filterTransactionType;
@@ -1208,7 +1211,7 @@ const App: React.FC = () => {
                                             <label className="block text-[10px] font-medium text-muted mb-1 flex items-center gap-1"><ArrowDownUp className="w-3 h-3" /> Type</label>
                                             <select 
                                                 value={filterTransactionType}
-                                                onChange={(e) => setFilterTransactionType(e.target.value as FinanceType | '')}
+                                                onChange={(e) => setFilterTransactionType(e.target.value)}
                                                 className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
                                             >
                                                 <option value="">All Types</option>
@@ -1217,6 +1220,7 @@ const App: React.FC = () => {
                                                 <option value="transfer">Transfer</option>
                                                 <option value="lending">Lending</option>
                                                 <option value="reimbursement">Reimbursement</option>
+                                                <option value="shopping">Shopping</option>
                                             </select>
                                         </div>
 
@@ -1965,7 +1969,7 @@ const App: React.FC = () => {
 
                                {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
                                    <div className="space-y-3">
-                                       {list.map(item => <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} />)}
+                                       {list.map(item => <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} noStrikethrough={true} />)}
                                    </div>
                                )}
                            </>
@@ -2095,29 +2099,65 @@ const App: React.FC = () => {
                  <textarea
                     autoFocus
                     className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 mb-4 h-24 resize-none"
-                    placeholder="e.g. Month of Discipline, Focus on Health..."
+                    placeholder="e.g. Month of Discipline, Focus on Skill X..."
                     value={tempThemeContent}
                     onChange={(e) => setTempThemeContent(e.target.value)}
-                    onKeyDown={(e) => {
-                         if (e.key === 'Enter' && !e.shiftKey) {
-                             e.preventDefault();
-                             handleSaveTheme();
-                         }
-                    }}
                  />
                  <div className="flex justify-end gap-2">
                      <button onClick={() => setThemeEditMode(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white">Cancel</button>
-                     <button onClick={handleSaveTheme} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500">Save</button>
+                     <button onClick={handleSaveTheme} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors">Save Theme</button>
                  </div>
              </div>
           </div>
       )}
 
-      {editingItem && <EditModal item={editingItem} isOpen={!!editingItem} onClose={() => setEditingItem(null)} onSave={handleUpdateItem} existingPaymentMethods={uniquePaymentMethods} budgetRules={budgetConfig.rules} skills={skills} wallets={wallets} />}
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSettingsSaved} currentBudgetConfig={budgetConfig} currentPrompt={customPrompt} />
-      <SkillModal isOpen={skillModal.isOpen} mode={skillModal.isOpen && skillModal.mode ? skillModal.mode : 'add'} initialName={skillModal.initialName} initialTarget={skillModal.initialTarget} onClose={() => setSkillModal({ ...skillModal, isOpen: false })} onSave={handleSaveSkill} />
-      <WalletModal isOpen={walletModal.isOpen} mode={walletModal.isOpen && walletModal.mode ? walletModal.mode : 'add'} initialData={walletModal.initialData} onClose={() => setWalletModal({ ...walletModal, isOpen: false })} onSave={handleSaveWallet} />
-      <ConfirmDialog isOpen={!!deleteId} title={deleteType === 'skill' ? "Delete Skill?" : "Delete Wallet?"} message={deleteType === 'skill' ? "Deleting this skill will prevent new logs from being auto-assigned, but existing logs will remain." : "Deleting this wallet will not remove transaction history, but they will no longer be linked to this wallet."} onConfirm={handleConfirmDelete} onCancel={() => { setDeleteId(null); setDeleteType(null); }} />
+      {/* Modals */}
+      {editingItem && (
+        <EditModal 
+          item={editingItem} 
+          isOpen={!!editingItem} 
+          onClose={() => setEditingItem(null)} 
+          onSave={handleUpdateItem}
+          existingPaymentMethods={uniquePaymentMethods}
+          budgetRules={budgetConfig.rules}
+          skills={skills}
+          wallets={wallets}
+        />
+      )}
+
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        onSave={handleSettingsSaved}
+        currentBudgetConfig={budgetConfig}
+        currentPrompt={customPrompt}
+      />
+
+      <SkillModal 
+        isOpen={skillModal.isOpen} 
+        onClose={() => setSkillModal({ ...skillModal, isOpen: false })} 
+        onSave={handleSaveSkill}
+        initialName={skillModal.initialName}
+        initialTarget={skillModal.initialTarget}
+        mode={skillModal.mode}
+      />
+
+      <WalletModal 
+        isOpen={walletModal.isOpen} 
+        onClose={() => setWalletModal({ ...walletModal, isOpen: false })} 
+        onSave={handleSaveWallet}
+        initialData={walletModal.initialData}
+        mode={walletModal.mode}
+      />
+
+      <ConfirmDialog 
+        isOpen={!!deleteId} 
+        title="Confirm Delete" 
+        message={deleteType === 'skill' ? "Delete this skill? History will remain but tracking will stop." : (deleteType === 'wallet' ? "Delete this wallet? Balance history might be affected." : "Delete this item?")}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => { setDeleteId(null); setDeleteType(null); }} 
+      />
+
     </div>
   );
 };

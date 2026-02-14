@@ -31,8 +31,8 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
         };
       case ItemType.SHOPPING:
         return {
-          border: 'border-l-4 border-l-acc-shopping',
-          icon: <ShoppingCart className="w-4 h-4 text-acc-shopping" />,
+          border: 'border-l-4 border-l-purple-500',
+          icon: <ShoppingCart className="w-4 h-4 text-purple-500" />,
           bg: 'bg-surface'
         };
       case ItemType.EVENT:
@@ -145,8 +145,8 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
               {skillName ? skillName.toUpperCase() : (financeTypeLabel || (type === ItemType.FINANCE ? meta?.financeType?.toUpperCase() : type))}
           </span>
           
-          {/* Payment Method Badge for Finance */}
-          {isFinance && meta?.paymentMethod && (
+          {/* Payment Method Badge for Finance & Shopping */}
+          {(isFinance || type === ItemType.SHOPPING) && meta?.paymentMethod && (
               <div className="flex items-center gap-1 text-[10px] text-muted bg-border px-1.5 py-0.5 rounded uppercase">
                   <span>{meta.paymentMethod}</span>
                   {meta.financeType === 'transfer' && meta.toWallet && (
