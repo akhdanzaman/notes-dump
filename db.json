@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "894818b7-9ef0-485e-97a9-af1a5fbc4e7e",
+      "type": "NOTE",
+      "content": "Arda balikin uang iims 37500 bni",
+      "status": "pending",
+      "created_at": "2026-02-14T16:02:53.888Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "c24f1b60-139a-4908-aead-aece89bc8fbd",
       "status": "done",
       "created_at": "2026-02-14T16:02:42.849Z",
