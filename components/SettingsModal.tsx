@@ -1,15 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
-import { X, Save, Github, WifiOff, CheckCircle2, Sparkles, PieChart, Plus, Trash2, AlertCircle, MessageSquare } from 'lucide-react';
+import { X, Save, Github, WifiOff, CheckCircle2, Sparkles, PieChart, Plus, Trash2, AlertCircle, MessageSquare, EyeOff, Layout } from 'lucide-react';
 import { getGithubConfig, saveGithubConfig, clearGithubConfig, GithubConfig } from '../services/githubService';
 import { getGeminiKey, saveGeminiKey, DEFAULT_PROMPT } from '../services/geminiService';
-import { BudgetConfig, BudgetRule } from '../types';
+import { BudgetConfig, BudgetRule, AppSettings } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (newBudgetConfig?: BudgetConfig, newPrompt?: string) => void;
+  onSave: (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => void;
   currentBudgetConfig?: BudgetConfig;
   currentPrompt?: string;
+  currentAppSettings?: AppSettings;
 }
 
 // Preset colors for budget categories
@@ -24,7 +26,7 @@ const COLOR_PRESETS = [
     { name: 'Gray', class: 'bg-gray-500' },
 ];
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, currentBudgetConfig, currentPrompt }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, currentBudgetConfig, currentPrompt, currentAppSettings }) => {
   const [config, setConfig] = useState<GithubConfig>({
     token: '',
     owner: '',
@@ -40,6 +42,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
   // Prompt State
   const [prompt, setPrompt] = useState('');
   const [isDefaultPrompt, setIsDefaultPrompt] = useState(true);
+
+  // App Settings State
+  const [defaultCollapsed, setDefaultCollapsed] = useState(false);
+  const [hideMoney, setHideMoney] = useState(false);
 
   const [status, setStatus] = useState<'idle' | 'saved'>('idle');
 
@@ -72,10 +78,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
           setPrompt(DEFAULT_PROMPT);
           setIsDefaultPrompt(true);
       }
+
+      // Init App Settings
+      if (currentAppSettings) {
+          setDefaultCollapsed(currentAppSettings.defaultCollapsed);
+          setHideMoney(currentAppSettings.hideMoney);
+      } else {
+          setDefaultCollapsed(false);
+          setHideMoney(false);
+      }
       
       setStatus('idle');
     }
-  }, [isOpen, currentBudgetConfig, currentPrompt]);
+  }, [isOpen, currentBudgetConfig, currentPrompt, currentAppSettings]);
 
   if (!isOpen) return null;
 
@@ -120,9 +135,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         rules: budgetRules
     };
 
+    // Prepare App Settings
+    const newAppSettings: AppSettings = {
+        defaultCollapsed,
+        hideMoney
+    };
+
     setStatus('saved');
     setTimeout(() => {
-        onSave(newBudgetConfig, prompt);
+        onSave(newBudgetConfig, prompt, newAppSettings);
     }, 800);
   };
 
@@ -153,6 +174,46 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
 
         <div className="space-y-8">
           
+          {/* APPEARANCE & PRIVACY */}
+          <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2 border-b border-border pb-2">
+                 <Layout className="w-4 h-4 text-primary" />
+                 <h4 className="text-sm font-semibold text-white">Appearance & Privacy</h4>
+            </div>
+            
+            <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                    <div className="flex flex-col">
+                        <span className="text-xs font-medium text-white">Default Card State</span>
+                        <span className="text-[10px] text-muted">Automatically collapse cards in lists</span>
+                    </div>
+                    <button 
+                        onClick={() => setDefaultCollapsed(!defaultCollapsed)}
+                        className={`w-10 h-5 rounded-full relative transition-colors ${defaultCollapsed ? 'bg-indigo-600' : 'bg-white/10'}`}
+                    >
+                        <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${defaultCollapsed ? 'translate-x-5' : ''}`}></div>
+                    </button>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                    <div className="flex flex-col">
+                        <span className="text-xs font-medium text-white flex items-center gap-1">
+                             <EyeOff className="w-3 h-3" /> Hide Nominal Amounts
+                        </span>
+                        <span className="text-[10px] text-muted">Mask monetary values on cards (Rp •••••)</span>
+                    </div>
+                    <button 
+                        onClick={() => setHideMoney(!hideMoney)}
+                        className={`w-10 h-5 rounded-full relative transition-colors ${hideMoney ? 'bg-indigo-600' : 'bg-white/10'}`}
+                    >
+                        <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${hideMoney ? 'translate-x-5' : ''}`}></div>
+                    </button>
+                </div>
+            </div>
+          </div>
+          
+          <div className="h-px bg-border w-full"></div>
+
           {/* BUDGET SETTINGS */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2 border-b border-border pb-2">

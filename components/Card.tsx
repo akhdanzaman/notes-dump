@@ -1,6 +1,7 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { ItemType, BrainDumpItem } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, BookOpen, Hourglass, ArrowRight, BookText } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Edit2, Trash2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, BookOpen, Hourglass, ArrowRight, BookText, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
 
 interface CardProps {
   item: BrainDumpItem;
@@ -10,15 +11,41 @@ interface CardProps {
   readonly?: boolean;
   skillName?: string; // Optional: Pass resolved skill name
   noStrikethrough?: boolean;
+  enableCollapse?: boolean;
+  defaultCollapsed?: boolean;
+  hideMoney?: boolean;
 }
 
-const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, readonly = false, skillName, noStrikethrough = false }) => {
+const Card: React.FC<CardProps> = ({ 
+    item, 
+    onToggleStatus, 
+    onEdit, 
+    onDelete, 
+    readonly = false, 
+    skillName, 
+    noStrikethrough = false,
+    enableCollapse = false,
+    defaultCollapsed = false,
+    hideMoney = false
+}) => {
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+
+  // Sync state if default changes (e.g. from settings) only on mount or strict reset required
+  // For now, we respect the internal state once initialized to prevent jarring jumps while using app
+  
   const { type, content, meta, isOptimistic, status, created_at, completed_at } = item;
   const isDone = status === 'done';
-  const isNote = type === ItemType.NOTE;
-  const isFinance = type === ItemType.FINANCE;
-  const isSkill = type === ItemType.SKILL_LOG;
-  const isJournal = type === ItemType.JOURNAL;
+  
+  const toggleCollapse = () => {
+      if (enableCollapse) setIsCollapsed(!isCollapsed);
+  };
+
+  // Helper to mask money
+  const formatMoney = (amount?: number) => {
+      if (amount === undefined || amount === null) return null;
+      if (hideMoney) return 'Rp •••••••';
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+  };
 
   // Visual variants based on Type
   const getStyles = () => {
@@ -80,8 +107,6 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
 
   // Smart Date Formatting
   let displayDate = null;
-  let showTime = false;
-
   const rawDate = readonly && completed_at ? completed_at : (meta?.date && meta.date !== 'null' ? meta.date : created_at);
   const isCreatedDate = !meta?.date || meta.date === 'null';
 
@@ -101,7 +126,6 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
           minute:'2-digit' 
         });
         displayDate = `${datePart} • ${timePart}`;
-        showTime = true;
       } else {
         displayDate = datePart;
       }
@@ -109,189 +133,150 @@ const Card: React.FC<CardProps> = ({ item, onToggleStatus, onEdit, onDelete, rea
   }
 
   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
-  const quantity = meta?.quantity && meta.quantity !== 'null' ? meta.quantity : null;
-
-  // Finance formatting
-  const formattedAmount = meta?.amount 
-    ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(meta.amount)
-    : null;
-    
-  const financeTypeLabel = meta?.financeType === 'lending' ? 'Lending' : 
-                           meta?.financeType === 'reimbursement' ? 'Reimbursed' : 
-                           meta?.financeType === 'transfer' ? 'Transfer' : null;
-
-  // Skill formatting
-  const durationLabel = meta?.durationMinutes ? `${meta.durationMinutes}m` : null;
-
-  // Determine strikethrough: isDone, not finance/skill/journal, and NOT explicitly suppressed
-  const shouldStrikethrough = isDone && !isFinance && !isSkill && !isJournal && !noStrikethrough;
-
-  // --- Simple Markdown Parser ---
-  const renderFormattedContent = (text: string) => {
-    // Split by newlines to handle paragraphs/lists
-    const lines = text.split('\n');
-
-    return lines.map((line, lineIndex) => {
-        if (!line) return <div key={lineIndex} className="h-2"></div>;
-
-        // Check for list item
-        const isList = line.trim().startsWith('- ') || line.trim().startsWith('* ');
-        const cleanLine = isList ? line.trim().substring(2) : line;
-
-        // Split text by bold (**...**) and italic (_..._) markers
-        // Regex logic: Capture (** text **) OR (_ text _)
-        const parts = cleanLine.split(/(\*\*.*?\*\*|_.*?_)/g);
-
-        const renderedLine = parts.map((part, partIndex) => {
-            if (part.startsWith('**') && part.endsWith('**')) {
-                return <strong key={partIndex} className="text-white font-bold">{part.slice(2, -2)}</strong>;
-            }
-            if (part.startsWith('_') && part.endsWith('_')) {
-                return <em key={partIndex} className="italic text-gray-300">{part.slice(1, -1)}</em>;
-            }
-            return <span key={partIndex}>{part}</span>;
-        });
-
-        if (isList) {
-            return (
-                <div key={lineIndex} className="flex items-start gap-2 pl-2 mb-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-current mt-2 opacity-50 shrink-0"></div>
-                    <div className="flex-1">{renderedLine}</div>
-                </div>
-            );
-        }
-
-        return <div key={lineIndex} className="mb-0.5 min-h-[1.25rem]">{renderedLine}</div>;
-    });
-  };
+  const displayAmount = formatMoney(meta?.amount);
 
   return (
-    <div className={`group relative mb-4 break-inside-avoid rounded-xl border border-border ${style.bg} ${style.border} p-4 shadow-lg transition-all duration-300 ${isOptimistic ? 'opacity-50 animate-pulse' : 'opacity-100'} ${isDone && !isFinance && !isSkill && !isJournal && !noStrikethrough ? 'opacity-60 grayscale' : ''}`}>
-      
-      {/* Header Row */}
-      <div className={`flex items-start justify-between ${isNote || isSkill || isJournal ? 'mb-1' : 'mb-2'} pr-12`}>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Action Checkbox for TODO/EVENT */}
-          {!readonly && !isFinance && !isSkill && !isJournal && (type === ItemType.TODO || type === ItemType.EVENT) && onToggleStatus ? (
-            <button onClick={() => onToggleStatus(item.id)} className="transition-colors hover:text-white text-muted">
-               {isDone ? <CheckCircle2 className="w-5 h-5 text-acc-todo" /> : <Circle className="w-5 h-5" />}
-            </button>
-          ) : (
-             style.icon
-          )}
-          
-          <span className="text-xs font-semibold tracking-wider text-muted opacity-80">
-              {skillName ? skillName.toUpperCase() : (financeTypeLabel || (type === ItemType.FINANCE ? meta?.financeType?.toUpperCase() : type))}
-          </span>
-          
-          {/* Payment Method Badge for Finance & Shopping */}
-          {(isFinance || type === ItemType.SHOPPING) && meta?.paymentMethod && (
-              <div className="flex items-center gap-1 text-[10px] text-muted bg-border px-1.5 py-0.5 rounded uppercase">
-                  <span>{meta.paymentMethod}</span>
-                  {meta.financeType === 'transfer' && meta.toWallet && (
-                      <>
-                        <ArrowRight className="w-3 h-3" />
-                        <span>{meta.toWallet}</span>
-                      </>
-                  )}
-              </div>
-          )}
-
-           {/* For SKILL: Display Date in Header */}
-           {isSkill && (
-             <>
-                {displayDate && (
-                  <span className="text-[10px] text-muted flex items-center gap-1 border-l border-border pl-2 ml-1">
-                     {displayDate}
-                  </span>
-                )}
-             </>
-          )}
-
-          {/* For NOTES/JOURNAL: Display Date and Tags in Header */}
-          {(isNote || isJournal) && (
-             <>
-                {displayDate && (
-                  <span className="text-[10px] text-muted flex items-center gap-1 border-l border-border pl-2 ml-1">
-                     {displayDate}
-                  </span>
-                )}
-                {validTags.map((tag, i) => (
-                  <span key={i} className="text-[10px] text-acc-note/80 bg-acc-note/10 px-1.5 py-0.5 rounded">
-                    #{tag}
-                  </span>
-                ))}
-             </>
-          )}
-        </div>
+    <div 
+        className={`${style.bg} ${style.border} rounded-r-lg border-y border-r border-border/50 shadow-sm transition-all hover:shadow-md hover:border-border ${isOptimistic ? 'opacity-50' : ''}`}
+    >
+      <div className={`p-3 ${enableCollapse && isCollapsed ? 'pb-3' : 'pb-1'}`}>
         
-        {/* Quantity for Shopping */}
-        {!isNote && !isSkill && !isJournal && quantity && (
-           <span className="text-xs bg-border px-2 py-1 rounded-full text-white">{quantity}</span>
-        )}
-        
-        {/* Amount for Finance */}
-        {!isNote && formattedAmount && (
-            <span className={`text-sm font-bold ${meta?.financeType === 'income' || meta?.financeType === 'reimbursement' ? 'text-emerald-400' : 'text-white'}`}>
-                {formattedAmount}
-            </span>
-        )}
-
-        {/* Duration for Skill */}
-        {isSkill && durationLabel && (
-             <div className="flex items-center gap-1 text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-full">
-                <Hourglass className="w-3 h-3" />
-                {durationLabel}
+        {/* Header Row: Always visible */}
+        <div 
+            className={`flex items-start gap-3 ${enableCollapse ? 'cursor-pointer' : ''}`}
+            onClick={toggleCollapse}
+        >
+          {/* Checkbox / Status Toggle */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent collapse trigger
+              if (!readonly && onToggleStatus) onToggleStatus(item.id);
+            }}
+            disabled={readonly}
+            className={`mt-0.5 transition-colors shrink-0 ${readonly ? 'cursor-default' : 'hover:opacity-70'}`}
+          >
+             {status === 'done' ? (
+                 <CheckCircle2 className={`w-4 h-4 ${style.icon.props.className.replace('w-4 h-4', '')}`} />
+             ) : (
+                 style.icon
+             )}
+          </button>
+          
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0">
+             <div className="flex justify-between items-start gap-2">
+                 {/* Title / Content */}
+                 <div className={`text-sm ${isDone && !noStrikethrough ? 'line-through text-muted' : 'text-gray-200'} ${enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap'}`}>
+                    {content}
+                 </div>
+                 
+                 {/* Collapse Chevron */}
+                 {enableCollapse && (
+                     <div className="text-muted/50 ml-1 mt-0.5">
+                         {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                     </div>
+                 )}
              </div>
-        )}
+
+             {/* Collapsed Preview Metadata */}
+             {enableCollapse && isCollapsed && (
+                 <div className="flex items-center gap-2 mt-1 text-[10px] text-muted h-4">
+                     {displayDate && <span>{displayDate}</span>}
+                     {displayAmount && (
+                         <>
+                            <span>•</span>
+                            <span className={`${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : 'text-amber-400'}`}>
+                                {displayAmount}
+                            </span>
+                         </>
+                     )}
+                     {skillName && (
+                         <>
+                           <span>•</span>
+                           <span className="text-indigo-400">{skillName}</span>
+                         </>
+                     )}
+                 </div>
+             )}
+          </div>
+        </div>
       </div>
 
-      {/* Action Buttons (Top Right) */}
-      {!readonly && (
-        <div className="absolute top-3 right-3 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-           {onEdit && (
-            <button 
-              onClick={() => onEdit(item)}
-              className="p-1.5 hover:bg-white/10 rounded-md text-muted hover:text-white transition-colors"
-              title="Edit"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </button>
-           )}
-           {onDelete && (
-            <button 
-              onClick={() => onDelete(item.id)}
-              className="p-1.5 hover:bg-red-900/30 rounded-md text-muted hover:text-red-400 transition-colors"
-              title="Delete"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-           )}
-        </div>
-      )}
+      {/* Expanded Body */}
+      {(!enableCollapse || !isCollapsed) && (
+          <div className="px-3 pb-3 pl-10">
+               
+               {/* Meta Row */}
+               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-1">
+                   
+                   {/* Date */}
+                   {displayDate && (
+                      <div className="flex items-center gap-1 text-[10px] text-muted">
+                        <Clock className="w-3 h-3" />
+                        <span>{displayDate}</span>
+                      </div>
+                   )}
 
-      {/* Content Rendering with Custom Markdown Parser */}
-      <div className={`text-sm text-gray-200 leading-relaxed font-medium ${shouldStrikethrough ? 'line-through text-muted' : ''} ${isJournal ? 'font-serif text-gray-100 italic' : ''}`}>
-        {renderFormattedContent(content)}
-      </div>
+                   {/* Finance Details */}
+                   {displayAmount && (
+                       <div className={`flex items-center gap-1 text-[10px] font-medium ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : 'text-amber-400'}`}>
+                           {type === 'FINANCE' && meta.financeType === 'transfer' ? <ArrowRightLeft className="w-3 h-3" /> : (type === 'FINANCE' ? <Wallet className="w-3 h-3" /> : <Tag className="w-3 h-3" />)}
+                           <span>{displayAmount}</span>
+                       </div>
+                   )}
 
-      {/* Metadata Footer */}
-      {!isNote && !isSkill && !isJournal && (displayDate || validTags.length > 0) && (
-        <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-2 items-center">
-          {displayDate && (
-             <div className={`flex items-center gap-1 text-xs ${readonly ? 'text-acc-todo' : (type === ItemType.EVENT ? 'text-acc-event' : 'text-muted')}`}>
-               {readonly ? <CheckCircle2 className="w-3 h-3" /> : (showTime ? <Clock className="w-3 h-3" /> : <Calendar className="w-3 h-3" />)}
-               <span>{readonly ? `Done: ${displayDate}` : (isCreatedDate ? `Added: ${displayDate}` : displayDate)}</span>
-             </div>
-          )}
-          
-          {validTags.map((tag, i) => (
-             <div key={i} className="flex items-center gap-1 text-xs text-muted bg-black/20 px-2 py-0.5 rounded">
-               <Tag className="w-3 h-3" />
-               <span>{tag}</span>
-             </div>
-          ))}
-        </div>
+                   {/* Payment Method / Wallet Info */}
+                   {(meta.paymentMethod || meta.toWallet) && (
+                       <div className="flex items-center gap-1 text-[10px] text-muted">
+                           <span className="bg-white/5 px-1.5 py-0.5 rounded text-gray-300">{meta.paymentMethod || 'Cash'}</span>
+                           {meta.toWallet && (
+                               <>
+                                <ArrowRight className="w-3 h-3 text-muted" />
+                                <span className="bg-white/5 px-1.5 py-0.5 rounded text-gray-300">{meta.toWallet}</span>
+                               </>
+                           )}
+                       </div>
+                   )}
+
+                   {/* Skill Info */}
+                   {skillName && (
+                       <div className="flex items-center gap-1 text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
+                           <BookOpen className="w-3 h-3" />
+                           <span>{skillName}</span>
+                           {meta.durationMinutes && <span className="text-muted ml-1">({meta.durationMinutes}m)</span>}
+                       </div>
+                   )}
+
+                   {/* Tags */}
+                   {validTags.map((tag, idx) => (
+                      <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted">
+                        #{tag}
+                      </span>
+                   ))}
+               </div>
+
+               {/* Actions */}
+               {!readonly && (
+                   <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-border/30">
+                       {onEdit && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onEdit(item); }} 
+                          className="flex items-center gap-1 text-[10px] text-muted hover:text-white transition-colors"
+                        >
+                           <Edit2 className="w-3 h-3" /> Edit
+                        </button>
+                       )}
+                       {onDelete && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 
+                          className="flex items-center gap-1 text-[10px] text-muted hover:text-red-400 transition-colors"
+                        >
+                           <Trash2 className="w-3 h-3" /> Delete
+                        </button>
+                       )}
+                   </div>
+               )}
+          </div>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+
 export enum ItemType {
   TODO = 'TODO',
   SHOPPING = 'SHOPPING',
@@ -21,6 +22,11 @@ export interface BudgetRule {
 export interface BudgetConfig {
   monthlyIncome: number;
   rules: BudgetRule[];
+}
+
+export interface AppSettings {
+  defaultCollapsed: boolean;
+  hideMoney: boolean;
 }
 
 export interface Skill {
@@ -75,6 +81,7 @@ export interface BrainDumpItem {
 export interface DbSchema {
   data: BrainDumpItem[];
   budgetConfig?: BudgetConfig;
+  appSettings?: AppSettings;
   customPrompt?: string;
   skills?: Skill[];
   wallets?: Wallet[];

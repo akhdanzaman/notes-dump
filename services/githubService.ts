@@ -1,5 +1,6 @@
+
 import { Octokit } from "@octokit/rest";
-import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings } from "../types";
 
 // --- Configuration & Constants ---
 
@@ -118,6 +119,7 @@ const validateSchema = (data: any): DbSchema => {
     return {
         data: Array.isArray(data.data) ? data.data : [],
         budgetConfig: data.budgetConfig,
+        appSettings: data.appSettings,
         customPrompt: data.customPrompt,
         skills: Array.isArray(data.skills) ? data.skills : [],
         wallets: Array.isArray(data.wallets) ? data.wallets : [],
@@ -205,7 +207,8 @@ const performSync = async (
     customPrompt?: string, 
     skills?: Skill[], 
     wallets?: Wallet[],
-    monthlyThemes?: Record<string, string>
+    monthlyThemes?: Record<string, string>,
+    appSettings?: AppSettings
 ): Promise<SyncResult> => {
   if (!isHydrated) {
       console.warn("Blocked Sync: Database is not hydrated. This prevents overwriting cloud data with initial empty state.");
@@ -219,7 +222,8 @@ const performSync = async (
     customPrompt: customPrompt,
     skills: skills,
     wallets: wallets,
-    monthlyThemes: monthlyThemes
+    monthlyThemes: monthlyThemes,
+    appSettings: appSettings
   };
   
   const jsonString = JSON.stringify(updatedDb, null, 2);
@@ -298,9 +302,10 @@ export const syncData = (
     customPrompt?: string, 
     skills?: Skill[], 
     wallets?: Wallet[],
-    monthlyThemes?: Record<string, string>
+    monthlyThemes?: Record<string, string>,
+    appSettings?: AppSettings
 ): Promise<SyncResult> => {
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes);
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings);
 
   const queuedTask = syncQueue.then(
       () => task(),

@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles, BookText, Filter, CalendarDays, ArrowUpDown, X, Tag, DollarSign, ArrowDownUp } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill, Wallet, FinanceType } from './types';
+import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill, Wallet, FinanceType, AppSettings } from './types';
 import { fetchDb, syncData, isUsingLocalStorage, SyncResult } from './services/githubService';
 import { classifyText, DEFAULT_PROMPT } from './services/geminiService';
 
@@ -40,6 +41,9 @@ const App: React.FC = () => {
   const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
   // Monthly Themes State
   const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
+  // App Settings
+  const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: false, hideMoney: false });
+  
   const [themeNavDate, setThemeNavDate] = useState(new Date());
 
   const [loading, setLoading] = useState(true);
@@ -134,7 +138,7 @@ const App: React.FC = () => {
       return [...updatedItems, ...newHistoryItems];
   };
 
-  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string, newSkills?: Skill[], newWallets?: Wallet[], newThemes?: Record<string, string>) => {
+  const saveAndSync = async (newItems: BrainDumpItem[], newConfig?: BudgetConfig, newPrompt?: string, newSkills?: Skill[], newWallets?: Wallet[], newThemes?: Record<string, string>, newAppSettings?: AppSettings) => {
       setSyncStatus('syncing');
       try {
           // Use syncData to save everything
@@ -143,8 +147,9 @@ const App: React.FC = () => {
           const skillsToSave = newSkills || skills;
           const walletsToSave = newWallets || wallets;
           const themesToSave = newThemes || monthlyThemes;
+          const settingsToSave = newAppSettings || appSettings;
           
-          const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave);
+          const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave, settingsToSave);
           
           if (result.method === 'error' || result.method === 'skipped_not_hydrated') {
               setSyncStatus('error');
@@ -190,7 +195,7 @@ const App: React.FC = () => {
             
             // Check for changes in routine resets to sync
             if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes);
+               await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings);
             } else {
                setSyncStatus(isUsingLocalStorage() ? 'local' : 'synced');
             }
@@ -213,7 +218,7 @@ const App: React.FC = () => {
                   { id: 'skill-1', name: 'General Learning', color: 'indigo-500', created_at: new Date().toISOString() }
               ];
               setSkills(defaults);
-              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes);
+              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes, data.appSettings);
           }
 
           // Load Wallets
@@ -224,12 +229,17 @@ const App: React.FC = () => {
               const defaultWallet: Wallet = { id: 'w-1', name: 'Cash', type: 'cash', initialBalance: 0, color: 'bg-emerald-500' };
               setWallets([defaultWallet]);
               // Trigger save with default wallet
-              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, data.skills, [defaultWallet], data.monthlyThemes);
+              saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, data.skills, [defaultWallet], data.monthlyThemes, data.appSettings);
           }
 
           // Load Themes
           if (data.monthlyThemes) {
               setMonthlyThemes(data.monthlyThemes);
+          }
+
+          // Load App Settings
+          if (data.appSettings) {
+              setAppSettings(data.appSettings);
           }
         }
       } catch (err) {
@@ -245,7 +255,7 @@ const App: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const handleSettingsSaved = (newBudgetConfig?: BudgetConfig, newPrompt?: string) => {
+  const handleSettingsSaved = (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => {
       setIsSettingsOpen(false);
       
       let shouldSync = false;
@@ -257,9 +267,13 @@ const App: React.FC = () => {
           setCustomPrompt(newPrompt);
           shouldSync = true;
       }
+      if (newAppSettings) {
+          setAppSettings(newAppSettings);
+          shouldSync = true;
+      }
 
       if (shouldSync) {
-          saveAndSync(items, newBudgetConfig, newPrompt, skills, wallets, monthlyThemes);
+          saveAndSync(items, newBudgetConfig, newPrompt, skills, wallets, monthlyThemes, newAppSettings);
       } else {
           loadData();
       }
@@ -1597,19 +1611,19 @@ const App: React.FC = () => {
                       {today.length > 0 && (
                         <section>
                           <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider mb-3 pl-1">Today</h3>
-                          <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
+                          <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />)}</div>
                         </section>
                       )}
                       {tomorrow.length > 0 && (
                         <section>
                           <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider mb-3 pl-1">Tomorrow</h3>
-                          <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
+                          <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />)}</div>
                         </section>
                       )}
                       {later.length > 0 && (
                         <section>
                           <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1">Later</h3>
-                          <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} />)}</div>
+                          <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />)}</div>
                         </section>
                       )}
                     </div>
@@ -1702,6 +1716,7 @@ const App: React.FC = () => {
                                             skillName={skill?.name || log.meta.skillName || 'Unknown'} 
                                             onEdit={setEditingItem} 
                                             onDelete={handleDelete}
+                                            enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney}
                                           />
                                       );
                                   })}
@@ -1799,7 +1814,7 @@ const App: React.FC = () => {
                                             
                                             <div className="space-y-4">
                                                 {entries.map(item => (
-                                                    <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} noStrikethrough={true} />
+                                                    <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} noStrikethrough={true} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />
                                                 ))}
                                             </div>
                                         </div>
@@ -1814,7 +1829,7 @@ const App: React.FC = () => {
                                     ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName)
                                     : undefined;
 
-                                return <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} skillName={skillName} />;
+                                return <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} skillName={skillName} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />;
                             })}
                             </div>
                           )
@@ -1969,7 +1984,7 @@ const App: React.FC = () => {
 
                                {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
                                    <div className="space-y-3">
-                                       {list.map(item => <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} noStrikethrough={true} />)}
+                                       {list.map(item => <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} noStrikethrough={true} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />)}
                                    </div>
                                )}
                            </>
@@ -2131,6 +2146,7 @@ const App: React.FC = () => {
         onSave={handleSettingsSaved}
         currentBudgetConfig={budgetConfig}
         currentPrompt={customPrompt}
+        currentAppSettings={appSettings}
       />
 
       <SkillModal 
