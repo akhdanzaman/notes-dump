@@ -289,7 +289,7 @@
           "dinner"
         ],
         "amount": 33000,
-        "budgetCategory": "needs",
+        "budgetCategory": "wants",
         "financeType": "expense",
         "paymentMethod": "gopay"
       },
