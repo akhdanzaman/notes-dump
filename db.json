@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "8866e62f-6629-4620-86ca-3d700be93f30",
+      "type": "NOTE",
+      "content": "10 februari beli lauk ayam 13000 cash",
+      "status": "pending",
+      "created_at": "2026-02-14T17:04:03.850Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "d2e618ea-07ef-4a20-9e35-e23c9388199c",
       "status": "done",
       "created_at": "2026-02-14T16:49:55.864Z",
