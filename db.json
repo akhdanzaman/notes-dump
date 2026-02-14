@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "8ac7a4cc-cef0-484d-9ad7-0f5dded2f31f",
+      "type": "NOTE",
+      "content": "Abis makan ayam bakar 33000 gopay",
+      "status": "pending",
+      "created_at": "2026-02-14T16:02:39.239Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "f87864e1-4e6c-4b30-9da3-9009674abb22",
       "status": "done",
       "created_at": "2026-02-14T16:02:22.892Z",
