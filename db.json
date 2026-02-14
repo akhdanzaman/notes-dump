@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "736db277-0534-41eb-be5f-d4375109ec90",
-      "type": "NOTE",
-      "content": "Arda abis balikin uang iims 37500 ke rek bni",
-      "status": "pending",
-      "created_at": "2026-02-14T16:04:46.320Z",
+      "id": "54449a55-82d1-4681-93ff-64eba910888c",
+      "status": "done",
+      "created_at": "2026-02-14T16:04:53.504Z",
+      "completed_at": "2026-02-14T16:04:53.504Z",
+      "type": "FINANCE",
+      "content": "Arda balikin uang iims",
       "meta": {
-        "tags": []
+        "tags": [
+          "people",
+          "event",
+          "bank"
+        ],
+        "amount": 37500,
+        "financeType": "reimbursement",
+        "toWallet": "BNI"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "d3b57a35-ef1e-4ea0-ad01-e12d8bb01971",
