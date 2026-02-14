@@ -420,7 +420,7 @@
           "purchase"
         ],
         "amount": 28000,
-        "budgetCategory": "needs",
+        "budgetCategory": "wants",
         "financeType": "expense",
         "paymentMethod": "bni"
       },
