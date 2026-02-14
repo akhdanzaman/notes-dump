@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "c4799488-32e5-4c77-8871-baf5f9cc24dd",
-      "type": "NOTE",
-      "content": "beli tiket sumber alam hari ini nanti 440000 bni",
+      "id": "63fd3053-bbd7-4924-98f1-80a94028cc45",
       "status": "pending",
-      "created_at": "2026-02-14T20:19:00.933Z",
+      "created_at": "2026-02-14T20:19:06.348Z",
+      "type": "SHOPPING",
+      "content": "beli tiket sumber alam",
       "meta": {
-        "tags": []
+        "tags": [
+          "travel"
+        ],
+        "amount": 440000,
+        "budgetCategory": "wants",
+        "date": "2026-02-14",
+        "paymentMethod": "bni",
+        "shoppingCategory": "urgent",
+        "targetDay": "Sunday"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "5751293d-aabe-4b88-9d6e-1e1947894308",
