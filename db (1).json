@@ -1565,7 +1565,7 @@
     },
     {
       "id": "53f3517f-f6d5-4d8c-9682-270691774224",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-28T10:35:50.776Z",
       "type": "SHOPPING",
       "content": "Bayar parkiran",
@@ -1581,8 +1581,7 @@
         "paymentMethod": "",
         "financeType": "expense"
       },
-      "isOptimistic": false,
-      "completed_at": "2026-02-06T13:36:48.867Z"
+      "isOptimistic": false
     },
     {
       "id": "a21a373f-0239-46ef-81e0-5c4c68d1561e",
@@ -2147,7 +2146,7 @@
     },
     {
       "id": "50774428-6d25-49c9-9303-0e2505420992",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-24T08:04:19.718Z",
       "type": "SHOPPING",
       "content": "Send laundry",
@@ -2163,8 +2162,7 @@
         "paymentMethod": "Cash",
         "financeType": "expense"
       },
-      "isOptimistic": false,
-      "completed_at": "2026-02-06T13:22:58.949Z"
+      "isOptimistic": false
     },
     {
       "id": "2242a9a4-40c4-4766-b0f9-102767df20eb",
@@ -2420,6 +2418,48 @@
       },
       "isOptimistic": false,
       "completed_at": "2026-02-01T13:12:53.462Z"
+    },
+    {
+      "id": "277b8f30-b438-4f0f-a666-91f3680fff95",
+      "status": "done",
+      "created_at": "2026-01-28T10:35:50.776Z",
+      "type": "SHOPPING",
+      "content": "Bayar parkiran",
+      "meta": {
+        "tags": [
+          "bills",
+          "errand"
+        ],
+        "amount": 25000,
+        "budgetCategory": "cat-1770450517162",
+        "recurrenceDays": 7,
+        "shoppingCategory": "not_urgent",
+        "paymentMethod": "",
+        "financeType": "expense"
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-06T13:36:48.867Z"
+    },
+    {
+      "id": "70cb0230-130b-49b3-836d-33cd50aec0f5",
+      "status": "done",
+      "created_at": "2026-01-24T08:04:19.718Z",
+      "type": "SHOPPING",
+      "content": "Send laundry",
+      "meta": {
+        "tags": [
+          "laundry",
+          "errand"
+        ],
+        "date": "2026-01-30T00:00:00.000Z",
+        "recurrenceDays": 7,
+        "shoppingCategory": "not_urgent",
+        "targetDay": "Friday",
+        "paymentMethod": "Cash",
+        "financeType": "expense"
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-06T13:22:58.949Z"
     }
   ],
   "budgetConfig": {
