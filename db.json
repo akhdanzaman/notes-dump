@@ -1,15 +1,22 @@
 {
   "data": [
     {
-      "id": "cb6de889-cbbd-4f90-80b0-ce7ca11e6c47",
-      "type": "NOTE",
-      "content": "Beli burger 52000 gopay",
-      "status": "pending",
-      "created_at": "2026-02-14T16:01:20.085Z",
+      "id": "9bfbb96b-3286-4b14-908a-4d8e0a35fd5a",
+      "status": "done",
+      "created_at": "2026-02-14T16:01:23.852Z",
+      "completed_at": "2026-02-14T16:01:23.852Z",
+      "type": "FINANCE",
+      "content": "Burger",
       "meta": {
-        "tags": []
+        "tags": [
+          "food"
+        ],
+        "amount": 52000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "gopay"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "e110af59-9141-4bab-9301-f405ad712a98",
