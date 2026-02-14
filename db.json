@@ -65,7 +65,8 @@
           "income"
         ],
         "amount": 2000000,
-        "financeType": "income"
+        "financeType": "income",
+        "paymentMethod": "bni"
       },
       "isOptimistic": false
     },
