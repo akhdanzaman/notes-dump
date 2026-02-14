@@ -2680,7 +2680,9 @@
       "color": "bg-emerald-500"
     }
   ],
-  "monthlyThemes": {}
+  "monthlyThemes": {
+    "2026-04": "kafkw"
+  }
 =======
       "initialBalance": 143000,
       "color": "bg-emerald-500"
