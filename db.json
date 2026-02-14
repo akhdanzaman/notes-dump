@@ -2905,5 +2905,9 @@
     "2026-02": "Bangun pagi dan semangat",
     "2026-03": "Self love and self grooming",
     "2026-04": "Family and Happiness"
+  },
+  "appSettings": {
+    "defaultCollapsed": true,
+    "hideMoney": true
   }
 }
