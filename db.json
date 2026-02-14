@@ -2702,6 +2702,13 @@
       "type": "cc",
       "initialBalance": 530000,
       "color": "bg-blue-500"
+    },
+    {
+      "id": "189ee73e-79b3-4ea5-bcaf-153f92bf05dc",
+      "name": "tapcash",
+      "type": "ewallet",
+      "initialBalance": 33000,
+      "color": "bg-blue-500"
     }
   ],
   "monthlyThemes": {
