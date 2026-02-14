@@ -51,7 +51,8 @@
         ],
         "amount": 60000,
         "budgetCategory": "wants",
-        "financeType": "expense"
+        "financeType": "lending",
+        "paymentMethod": ""
       },
       "isOptimistic": false
     },
