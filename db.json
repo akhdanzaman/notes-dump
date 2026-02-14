@@ -1417,12 +1417,13 @@
       "status": "pending",
       "created_at": "2026-02-01T23:06:02.801Z",
       "type": "NOTE",
-      "content": "notes: kosan tuku pulo asem, kayu putih\n\n",
+      "content": "notes: **kosan tuku pulo asem, kayu putih**",
       "meta": {
         "tags": [
           "kos"
         ],
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "financeType": "expense"
       },
       "isOptimistic": false
     },
