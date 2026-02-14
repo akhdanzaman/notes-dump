@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "9db1ba4b-c453-46c2-9e9f-b82efa25383c",
+      "type": "NOTE",
+      "content": "expense parkir 10000 Tapcash",
+      "status": "pending",
+      "created_at": "2026-02-14T16:47:07.982Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "3e679af3-6cc5-43c9-8de7-2442d9566bbd",
       "status": "done",
       "created_at": "2026-02-14T16:46:45.046Z",
