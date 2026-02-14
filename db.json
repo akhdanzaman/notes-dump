@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "9fa2de50-ddb7-4720-96c3-5d97d6918393",
+      "type": "NOTE",
+      "content": "transfer dari gopay ke bni 37500",
+      "status": "pending",
+      "created_at": "2026-02-14T17:25:22.312Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "3c55e846-fda2-473a-b0cd-854d43bac3ad",
       "status": "done",
       "created_at": "2026-02-14T17:10:53.161Z",
