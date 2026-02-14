@@ -1,15 +1,39 @@
 {
   "data": [
     {
-      "id": "c3f463e8-c51e-48a9-b908-b223bb376c60",
-      "type": "NOTE",
-      "content": "Expense beli air 10000 cash; expense beli gunting 17000",
-      "status": "pending",
-      "created_at": "2026-02-14T16:49:51.904Z",
+      "id": "d2e618ea-07ef-4a20-9e35-e23c9388199c",
+      "status": "done",
+      "created_at": "2026-02-14T16:49:55.864Z",
+      "completed_at": "2026-02-14T16:49:55.864Z",
+      "type": "FINANCE",
+      "content": "Beli air",
       "meta": {
-        "tags": []
+        "tags": [
+          "needs"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "cash"
       },
-      "isOptimistic": true
+      "isOptimistic": false
+    },
+    {
+      "id": "de14f0cf-ccfd-4576-aae1-aac326d5b0f3",
+      "status": "done",
+      "created_at": "2026-02-14T16:49:55.864Z",
+      "completed_at": "2026-02-14T16:49:55.864Z",
+      "type": "FINANCE",
+      "content": "Beli gunting",
+      "meta": {
+        "tags": [
+          "stationary"
+        ],
+        "amount": 17000,
+        "budgetCategory": "needs",
+        "financeType": "expense"
+      },
+      "isOptimistic": false
     },
     {
       "id": "2817ae76-6928-4dcd-9530-8d4a228e352a",
