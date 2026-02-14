@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "ddb12eca-3dbd-426d-bedc-726bb359858e",
+      "type": "NOTE",
+      "content": "Abis beli mie ayam 28000 gopay",
+      "status": "pending",
+      "created_at": "2026-02-14T16:01:39.372Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "9bfbb96b-3286-4b14-908a-4d8e0a35fd5a",
       "status": "done",
       "created_at": "2026-02-14T16:01:23.852Z",
