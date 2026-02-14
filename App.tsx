@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles, BookText } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles, BookText, Filter, CalendarDays, ArrowUpDown, X, Tag, DollarSign, ArrowDownUp } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill, Wallet, FinanceType } from './types';
@@ -20,6 +20,7 @@ type FocusSubTab = 'tasks' | 'skills';
 type NotesSubTab = 'general' | 'skills' | 'journal';
 type SyncStatus = 'synced' | 'syncing' | 'error' | 'local';
 type MoneyView = 'transactions' | 'budget' | 'wallets';
+type SortOrder = 'newest' | 'oldest' | 'highest_amount' | 'lowest_amount';
 
 const App: React.FC = () => {
   const [items, setItems] = useState<BrainDumpItem[]>([]);
@@ -62,8 +63,19 @@ const App: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteType, setDeleteType] = useState<'skill' | 'wallet' | null>(null);
 
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  // Filter & Sort State
+  const [selectedTag, setSelectedTag] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [filterDate, setFilterDate] = useState<string>(''); // YYYY-MM-DD
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
+
+  // Advanced Money Filters
+  const [filterWallet, setFilterWallet] = useState<string>('');
+  const [filterTransactionType, setFilterTransactionType] = useState<FinanceType | ''>('');
+  const [filterMinAmount, setFilterMinAmount] = useState<string>('');
+  const [filterMaxAmount, setFilterMaxAmount] = useState<string>('');
 
   // Finance Date Filter
   const [financeDate, setFinanceDate] = useState(new Date());
@@ -266,9 +278,38 @@ const App: React.FC = () => {
 
   const uniqueTags = useMemo(() => {
     const tags = new Set<string>();
-    items.forEach(i => i.meta?.tags?.forEach(t => tags.add(t)));
-    return Array.from(tags);
-  }, [items]);
+    let targetItems: BrainDumpItem[] = [];
+
+    if (activeTab === 'money') {
+        // Include all items that are financial in nature
+        targetItems = items.filter(i => 
+            i.type === ItemType.FINANCE || 
+            ((i.type === ItemType.SHOPPING || i.type === ItemType.TODO) && (i.meta.amount || 0) > 0)
+        );
+    } else if (activeTab === 'notes') {
+        // Filter based on active Notes sub-tab to keep tags relevant
+        if (notesSubTab === 'general') {
+            targetItems = items.filter(i => i.type === ItemType.NOTE);
+        } else if (notesSubTab === 'skills') {
+            targetItems = items.filter(i => i.type === ItemType.SKILL_LOG);
+        } else {
+            // Journal tags
+            targetItems = items.filter(i => 
+                i.type === ItemType.JOURNAL || 
+                (i.type === ItemType.TODO && i.status === 'done')
+            );
+        }
+    } else {
+        // Fallback for other tabs, though usually filters are hidden
+        targetItems = items;
+    }
+
+    targetItems.forEach(i => i.meta?.tags?.forEach(t => {
+        if (t && t !== 'null' && t !== 'undefined') tags.add(t);
+    }));
+    
+    return Array.from(tags).sort();
+  }, [items, activeTab, notesSubTab]);
 
   const handleSend = async (text: string) => {
     setPendingCount(prev => prev + 1);
@@ -629,18 +670,38 @@ const App: React.FC = () => {
         );
     }
     
+    // Tag Filter
     if (selectedTag) {
         relevantItems = relevantItems.filter(i => i.meta?.tags?.includes(selectedTag));
     }
+    
+    // Date Filter
+    if (filterDate) {
+        relevantItems = relevantItems.filter(i => {
+             const itemDateStr = i.meta.date || i.created_at;
+             if (!itemDateStr) return false;
+             
+             // Compare YYYY-MM-DD
+             const itemDate = new Date(itemDateStr);
+             const targetDate = new Date(filterDate);
+             
+             return itemDate.getFullYear() === targetDate.getFullYear() &&
+                    itemDate.getMonth() === targetDate.getMonth() &&
+                    itemDate.getDate() === targetDate.getDate();
+        });
+    }
+
     if (searchQuery) {
         const lowerQ = searchQuery.toLowerCase();
         relevantItems = relevantItems.filter(i => i.content.toLowerCase().includes(lowerQ) || i.meta.tags?.some(t => t.toLowerCase().includes(lowerQ)));
     }
+
     return relevantItems.sort((a, b) => {
-        // Sort by actual date for Journals
+        // Sort by actual date for Journals, created for others usually
         const da = a.meta.date ? new Date(a.meta.date).getTime() : new Date(a.created_at).getTime();
         const db = b.meta.date ? new Date(b.meta.date).getTime() : new Date(b.created_at).getTime();
-        return db - da;
+        
+        return sortOrder === 'newest' ? db - da : da - db;
     });
   };
 
@@ -667,11 +728,20 @@ const App: React.FC = () => {
           groups[key].sort((a, b) => {
               const ta = (a.type === ItemType.TODO && a.completed_at) ? new Date(a.completed_at).getTime() : new Date(a.created_at).getTime();
               const tb = (b.type === ItemType.TODO && b.completed_at) ? new Date(b.completed_at).getTime() : new Date(b.created_at).getTime();
-              return ta - tb;
+              return sortOrder === 'newest' ? tb - ta : ta - tb;
           });
       });
 
-      return groups;
+      // Sort groups themselves
+      const sortedKeys = Object.keys(groups).sort((a, b) => {
+           return sortOrder === 'newest' ? new Date(b).getTime() - new Date(a).getTime() : new Date(a).getTime() - new Date(b).getTime();
+      });
+      
+      // Return entries in order
+      const sortedGroups: Record<string, BrainDumpItem[]> = {};
+      sortedKeys.forEach(key => sortedGroups[key] = groups[key]);
+
+      return sortedGroups;
   };
 
   const getWalletStats = () => {
@@ -763,21 +833,62 @@ const App: React.FC = () => {
           return d.getMonth() === financeDate.getMonth() && d.getFullYear() === financeDate.getFullYear();
       });
 
-      // Filter logic if needed
+      // --- FILTERS ---
+
+      // Filter by Wallet (Source or Destination)
+      if (filterWallet) {
+          const wName = filterWallet.toLowerCase();
+          allTransactions = allTransactions.filter(i => 
+              i.meta.paymentMethod?.toLowerCase() === wName || 
+              i.meta.toWallet?.toLowerCase() === wName
+          );
+      }
+
+      // Filter by Type
+      if (filterTransactionType) {
+          allTransactions = allTransactions.filter(i => {
+              // Default to 'expense' if financeType is missing for money items
+              const type = i.meta.financeType || ((i.type === ItemType.FINANCE || i.meta.amount) ? 'expense' : undefined);
+              return type === filterTransactionType;
+          });
+      }
+
+      // Filter by Amount Range
+      if (filterMinAmount) {
+          allTransactions = allTransactions.filter(i => (i.meta.amount || 0) >= parseFloat(filterMinAmount));
+      }
+      if (filterMaxAmount) {
+          allTransactions = allTransactions.filter(i => (i.meta.amount || 0) <= parseFloat(filterMaxAmount));
+      }
+
+      // Tag Filter
       if (selectedTag) allTransactions = allTransactions.filter(i => i.meta?.tags?.includes(selectedTag));
+      
       if (searchQuery) {
         const lowerQ = searchQuery.toLowerCase();
         allTransactions = allTransactions.filter(i => i.content.toLowerCase().includes(lowerQ));
       }
 
-      // Sort recent first
+      // Sort
       allTransactions.sort((a, b) => {
+          // Amount Sort
+          if (sortOrder === 'highest_amount') {
+              return (b.meta.amount || 0) - (a.meta.amount || 0);
+          }
+          if (sortOrder === 'lowest_amount') {
+              return (a.meta.amount || 0) - (b.meta.amount || 0);
+          }
+
+          // Default Date Sort
           const dateA = new Date(a.completed_at || a.created_at).getTime();
           const dateB = new Date(b.completed_at || b.created_at).getTime();
-          return dateB - dateA;
+          return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
       });
 
-      // Totals
+      // Totals (Calculate based on visible list for context, but usually totals should reflect the whole month unless filtered deeply. 
+      // For now, let's keep totals based on the filtered list to reflect what is seen, OR we can calc based on unfiltered month data.
+      // Usually users want to see totals of what they filtered. Let's stick to filtered list for now.)
+      
       const totalIncome = allTransactions.reduce((acc, curr) => {
           if (curr.meta?.financeType === 'income' || curr.meta?.financeType === 'reimbursement') {
               return acc + (curr.meta.amount || 0);
@@ -785,17 +896,33 @@ const App: React.FC = () => {
           return acc;
       }, 0);
 
-      // Transfers don't count as expense in Monthly Flow (Net zero for user)
       const totalExpense = allTransactions.reduce((acc, curr) => {
         if (curr.meta?.financeType === 'transfer') return acc;
         
-        if (curr.type !== ItemType.FINANCE || curr.meta?.financeType === 'expense' || curr.meta?.financeType === 'lending') {
-            return acc + (curr.meta.amount || 0);
+        // If type is expense, lending or implicit expense
+        const type = curr.meta.financeType || 'expense';
+        if (type === 'expense' || type === 'lending') {
+             return acc + (curr.meta.amount || 0);
         }
         return acc;
       }, 0);
 
-      // Custom Budget Calculations
+      // Custom Budget Calculations (These usually need full month data to be accurate for "Remaining Budget", 
+      // but if we are filtering, maybe we just want to see the list. 
+      // Let's re-calculate full month stats separately for the Budget View to ensure accuracy regardless of filters on Transaction View.)
+
+      // ... However, the function returns one object. Let's recalculate full month data for the Budget Map 
+      // so the Budget View doesn't break when filters are applied.
+      
+      // FULL MONTH DATA (Unfiltered by wallet/amount/type) for Budget Context
+      let fullMonthTransactions = [...finance, ...implicitExpenses];
+      fullMonthTransactions = fullMonthTransactions.filter(i => {
+          const dateStr = i.completed_at || i.created_at;
+          if (!dateStr) return false;
+          const d = new Date(dateStr);
+          return d.getMonth() === financeDate.getMonth() && d.getFullYear() === financeDate.getFullYear();
+      });
+
       const budgetMap = new Map<string, number>();
       const plannedBudgetMap = new Map<string, number>();
       let uncategorized = 0;
@@ -813,8 +940,8 @@ const App: React.FC = () => {
           return foundRule ? foundRule.id : null;
       };
 
-      allTransactions.forEach(item => {
-           // Skip transfers, income, reimbursement from Budget calculations
+      // Use fullMonthTransactions for correct Budget Progress bars
+      fullMonthTransactions.forEach(item => {
            if (item.meta?.financeType === 'income' || item.meta?.financeType === 'reimbursement' || item.meta?.financeType === 'transfer') return;
            
            const amt = item.meta?.amount || 0;
@@ -885,6 +1012,12 @@ const App: React.FC = () => {
                }
            }
       });
+
+      // Recalculate Totals based on FULL MONTH for the top card overview, unless we want the top card to react to filters?
+      // User request implies filtering "Transactions". Let's return the filtered list for the list view, but keep totals consistent with the view context.
+      // If I filter by "Food", I expect "Total Expense" to show Food expense.
+      // So returning `totalIncome` and `totalExpense` derived from `allTransactions` (filtered) is correct for the Dashboard "Income/Expense" blocks when filters are active.
+      // However, Net Worth should be global. (Already handled by getWalletStats).
 
       return { 
           list: allTransactions, 
@@ -965,9 +1098,12 @@ const App: React.FC = () => {
     // Don't show filters for Journal subtab
     if (activeTab === 'notes' && notesSubTab === 'journal') return null;
 
+    const isMoney = activeTab === 'money';
+    const isTransactions = moneyView === 'transactions';
+
     return (
-        <div className="px-4 py-2 bg-background border-t border-border">
-            <div className="flex items-center gap-2 max-w-2xl mx-auto">
+        <div className="px-4 py-2 bg-background border-t border-border z-50">
+            <div className="flex items-center gap-2 max-w-2xl mx-auto relative">
                  {/* Search Bar */}
                  <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
@@ -979,26 +1115,191 @@ const App: React.FC = () => {
                         className="w-full bg-surface border border-border rounded-full pl-8 pr-4 py-1.5 text-xs text-white focus:outline-none focus:border-acc-note transition-colors"
                     />
                 </div>
-                 {/* Tags */}
-                 {uniqueTags.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar max-w-[50%]">
+                
+                {/* Filter & Sort Buttons */}
+                <div className="flex gap-2 relative">
+                    {/* Filter Dropdown */}
+                    <div className="relative">
                         <button 
-                            onClick={() => setSelectedTag(null)}
-                            className={`px-2 py-1 rounded-full text-[10px] font-medium border whitespace-nowrap ${!selectedTag ? 'bg-primary text-background border-primary' : 'border-border text-muted'}`}
+                            onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false); }}
+                            className={`p-1.5 rounded-full border transition-colors ${showFilterMenu || selectedTag || filterDate || filterWallet || filterTransactionType || filterMinAmount ? 'bg-acc-note/20 border-acc-note text-acc-note' : 'bg-surface border-border text-muted hover:text-white'}`}
                         >
-                            All
+                            <Filter className="w-4 h-4" />
                         </button>
-                        {uniqueTags.map(tag => (
-                            <button 
-                                key={tag}
-                                onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-                                className={`px-2 py-1 rounded-full text-[10px] font-medium border whitespace-nowrap ${tag === selectedTag ? 'bg-acc-note text-white border-acc-note' : 'border-border text-muted'}`}
-                            >
-                                #{tag}
-                            </button>
-                        ))}
+                        
+                        {showFilterMenu && (
+                            <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowFilterMenu(false)}></div>
+                            <div className="absolute right-0 bottom-full mb-2 w-64 bg-surface border border-border rounded-xl shadow-xl z-50 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                <h4 className="text-xs font-bold text-white mb-3 uppercase tracking-wider flex justify-between items-center">
+                                    Filters
+                                    {(selectedTag || filterDate || filterWallet || filterTransactionType || filterMinAmount || filterMaxAmount) && (
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedTag('');
+                                                setFilterDate('');
+                                                setFilterWallet('');
+                                                setFilterTransactionType('');
+                                                setFilterMinAmount('');
+                                                setFilterMaxAmount('');
+                                            }}
+                                            className="text-[10px] text-red-400 hover:underline"
+                                        >
+                                            Reset
+                                        </button>
+                                    )}
+                                </h4>
+                                
+                                {/* Tag Select */}
+                                <div className="mb-3">
+                                    <label className="block text-[10px] font-medium text-muted mb-1 flex items-center gap-1"><Tag className="w-3 h-3" /> Tag</label>
+                                    <select 
+                                        value={selectedTag || ''}
+                                        onChange={(e) => setSelectedTag(e.target.value)}
+                                        className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                    >
+                                        <option value="">All Tags</option>
+                                        {uniqueTags.map(tag => (
+                                            <option key={tag} value={tag}>{tag}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                
+                                {/* Date Input */}
+                                <div className="mb-3">
+                                    <label className="block text-[10px] font-medium text-muted mb-1 flex items-center gap-1"><CalendarDays className="w-3 h-3" /> Specific Date</label>
+                                    <div className="flex gap-1">
+                                        <input 
+                                            type="date"
+                                            value={filterDate}
+                                            onChange={(e) => setFilterDate(e.target.value)}
+                                            className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note [color-scheme:dark]"
+                                        />
+                                        {filterDate && (
+                                            <button onClick={() => setFilterDate('')} className="p-2 bg-white/10 rounded-lg hover:bg-white/20 text-white">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* MONEY SPECIFIC FILTERS */}
+                                {isMoney && isTransactions && (
+                                    <div className="pt-2 border-t border-border mt-2">
+                                        <h5 className="text-[10px] font-bold text-emerald-400 mb-2 uppercase tracking-wider">Money Filters</h5>
+                                        
+                                        {/* Wallet */}
+                                        <div className="mb-2">
+                                            <label className="block text-[10px] font-medium text-muted mb-1 flex items-center gap-1"><WalletIcon className="w-3 h-3" /> Wallet</label>
+                                            <select 
+                                                value={filterWallet}
+                                                onChange={(e) => setFilterWallet(e.target.value)}
+                                                className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                            >
+                                                <option value="">All Wallets</option>
+                                                {wallets.map(w => (
+                                                    <option key={w.id} value={w.name}>{w.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Type */}
+                                        <div className="mb-2">
+                                            <label className="block text-[10px] font-medium text-muted mb-1 flex items-center gap-1"><ArrowDownUp className="w-3 h-3" /> Type</label>
+                                            <select 
+                                                value={filterTransactionType}
+                                                onChange={(e) => setFilterTransactionType(e.target.value as FinanceType | '')}
+                                                className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                            >
+                                                <option value="">All Types</option>
+                                                <option value="expense">Expense</option>
+                                                <option value="income">Income</option>
+                                                <option value="transfer">Transfer</option>
+                                                <option value="lending">Lending</option>
+                                                <option value="reimbursement">Reimbursement</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Amount Range */}
+                                        <div>
+                                            <label className="block text-[10px] font-medium text-muted mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Amount Range</label>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="number"
+                                                    placeholder="Min"
+                                                    value={filterMinAmount}
+                                                    onChange={(e) => setFilterMinAmount(e.target.value)}
+                                                    className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                                />
+                                                <input 
+                                                    type="number"
+                                                    placeholder="Max"
+                                                    value={filterMaxAmount}
+                                                    onChange={(e) => setFilterMaxAmount(e.target.value)}
+                                                    className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            </>
+                        )}
                     </div>
-                )}
+
+                    {/* Sort Dropdown */}
+                    <div className="relative">
+                        <button 
+                            onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false); }}
+                            className={`p-1.5 rounded-full border transition-colors ${showSortMenu ? 'bg-primary/20 border-primary text-primary' : 'bg-surface border-border text-muted hover:text-white'}`}
+                        >
+                            <ArrowUpDown className="w-4 h-4" />
+                        </button>
+                        
+                        {showSortMenu && (
+                             <>
+                             <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)}></div>
+                             <div className="absolute right-0 bottom-full mb-2 w-44 bg-surface border border-border rounded-xl shadow-xl z-50 p-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                <h4 className="text-xs font-bold text-white mb-2 uppercase tracking-wider px-2">Sort By</h4>
+                                <button 
+                                    onClick={() => { setSortOrder('newest'); setShowSortMenu(false); }}
+                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'newest' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+                                >
+                                    Newest First
+                                    {sortOrder === 'newest' && <CheckCircle2 className="w-3 h-3 text-acc-todo" />}
+                                </button>
+                                <button 
+                                    onClick={() => { setSortOrder('oldest'); setShowSortMenu(false); }}
+                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'oldest' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+                                >
+                                    Oldest First
+                                    {sortOrder === 'oldest' && <CheckCircle2 className="w-3 h-3 text-acc-todo" />}
+                                </button>
+                                
+                                {isMoney && isTransactions && (
+                                    <>
+                                        <div className="h-px bg-border my-1"></div>
+                                        <button 
+                                            onClick={() => { setSortOrder('highest_amount'); setShowSortMenu(false); }}
+                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'highest_amount' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+                                        >
+                                            Highest Amount
+                                            {sortOrder === 'highest_amount' && <CheckCircle2 className="w-3 h-3 text-acc-todo" />}
+                                        </button>
+                                        <button 
+                                            onClick={() => { setSortOrder('lowest_amount'); setShowSortMenu(false); }}
+                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'lowest_amount' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+                                        >
+                                            Lowest Amount
+                                            {sortOrder === 'lowest_amount' && <CheckCircle2 className="w-3 h-3 text-acc-todo" />}
+                                        </button>
+                                    </>
+                                )}
+                             </div>
+                             </>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
