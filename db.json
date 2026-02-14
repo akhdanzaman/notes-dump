@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "2fe26552-139b-44de-b317-af3c6164a1b1",
-      "type": "NOTE",
-      "content": "9 februari bayar parkir 5000 cash",
-      "status": "pending",
-      "created_at": "2026-02-14T17:10:48.826Z",
+      "id": "3c55e846-fda2-473a-b0cd-854d43bac3ad",
+      "status": "done",
+      "created_at": "2026-02-14T17:10:53.161Z",
+      "completed_at": "2026-02-14T17:10:53.161Z",
+      "type": "FINANCE",
+      "content": "Bayar parkir",
       "meta": {
-        "tags": []
+        "tags": [
+          "travel"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-02-09",
+        "financeType": "expense",
+        "paymentMethod": "Cash"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "abaf0461-8a04-43fb-87f8-c66eb5c1d165",
