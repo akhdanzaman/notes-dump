@@ -14,7 +14,8 @@
         ],
         "amount": 28000,
         "budgetCategory": "needs",
-        "financeType": "expense"
+        "financeType": "expense",
+        "paymentMethod": "gopay"
       },
       "isOptimistic": false
     },
