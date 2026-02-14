@@ -1,6 +1,17 @@
 {
   "data": [
     {
+      "id": "f71d9bc2-730d-4609-9808-ad53a4cbc9c1",
+      "type": "NOTE",
+      "content": "expense jajan mie ayam 28000; expense makan ayam bakar 33000; expense iuran tiket iims 37500; income uang jajan dari bapak 2000000",
+      "status": "pending",
+      "created_at": "2026-02-14T16:45:14.039Z",
+      "meta": {
+        "tags": []
+      },
+      "isOptimistic": true
+    },
+    {
       "id": "839a836c-7f69-4b68-b128-3decf29e7aae",
       "status": "done",
       "created_at": "2026-02-14T16:44:35.968Z",
