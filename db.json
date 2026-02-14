@@ -86,7 +86,7 @@
         ],
         "amount": 150000,
         "financeType": "transfer",
-        "paymentMethod": "cash",
+        "paymentMethod": "bni",
         "toWallet": "gopay"
       },
       "isOptimistic": false
