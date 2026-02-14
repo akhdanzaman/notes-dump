@@ -1,15 +1,23 @@
 {
   "data": [
     {
-      "id": "5baf7208-9c65-41c3-ae0d-60e07113c201",
-      "type": "NOTE",
-      "content": "Fatih balikin uang iims 37500 gopay",
-      "status": "pending",
-      "created_at": "2026-02-14T16:04:22.959Z",
+      "id": "d3b57a35-ef1e-4ea0-ad01-e12d8bb01971",
+      "status": "done",
+      "created_at": "2026-02-14T16:04:32.583Z",
+      "completed_at": "2026-02-14T16:04:32.583Z",
+      "type": "FINANCE",
+      "content": "Fatih returns money for IIMS",
       "meta": {
-        "tags": []
+        "tags": [
+          "people",
+          "ewallet"
+        ],
+        "amount": 37500,
+        "financeType": "income",
+        "paymentMethod": "Gopay",
+        "toWallet": "Gopay"
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "3622ad13-1b37-484c-9e55-fd77c7a6af0f",
