@@ -1,6 +1,305 @@
 {
   "data": [
     {
+      "id": "177bc371-7a46-4d08-b12d-68657501ffc3",
+      "status": "done",
+      "created_at": "2026-02-14T17:25:28.299Z",
+      "completed_at": "2026-02-14T17:25:28.299Z",
+      "type": "FINANCE",
+      "content": "transfer dari gopay ke bni",
+      "meta": {
+        "tags": [
+          "transfer",
+          "ewallet",
+          "bank"
+        ],
+        "amount": 37500,
+        "financeType": "transfer",
+        "paymentMethod": "gopay",
+        "toWallet": "bni"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "3c55e846-fda2-473a-b0cd-854d43bac3ad",
+      "status": "done",
+      "created_at": "2026-02-14T17:10:53.161Z",
+      "completed_at": "2026-02-14T17:10:53.161Z",
+      "type": "FINANCE",
+      "content": "Bayar parkir",
+      "meta": {
+        "tags": [
+          "travel"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-02-09",
+        "financeType": "expense",
+        "paymentMethod": "Cash"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "abaf0461-8a04-43fb-87f8-c66eb5c1d165",
+      "status": "done",
+      "created_at": "2026-02-14T17:07:37.050Z",
+      "completed_at": "2026-02-14T17:07:37.050Z",
+      "type": "FINANCE",
+      "content": "Bayar parkir",
+      "meta": {
+        "tags": [
+          "travel"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-02-12",
+        "financeType": "expense",
+        "paymentMethod": "cash"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "33ee40f0-1345-41dd-8b49-ba0813f4ec9c",
+      "status": "done",
+      "created_at": "2026-02-14T17:06:48.377Z",
+      "completed_at": "2026-02-14T17:06:48.378Z",
+      "type": "FINANCE",
+      "content": "Paid parking",
+      "meta": {
+        "tags": [
+          "travel"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-02-13",
+        "financeType": "expense",
+        "paymentMethod": "Cash",
+        "targetDay": "Friday"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "7fe09955-38dd-4312-a238-59b3c7d5b880",
+      "status": "done",
+      "created_at": "2026-02-14T17:04:07.479Z",
+      "completed_at": "2026-02-14T17:04:07.479Z",
+      "type": "FINANCE",
+      "content": "Beli lauk ayam",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 13000,
+        "budgetCategory": "needs",
+        "date": "2026-02-10",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "targetDay": "Tuesday"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "d2e618ea-07ef-4a20-9e35-e23c9388199c",
+      "status": "done",
+      "created_at": "2026-02-14T16:49:55.864Z",
+      "completed_at": "2026-02-14T16:49:55.864Z",
+      "type": "FINANCE",
+      "content": "Beli air",
+      "meta": {
+        "tags": [
+          "needs"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "cash"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "de14f0cf-ccfd-4576-aae1-aac326d5b0f3",
+      "status": "done",
+      "created_at": "2026-02-14T16:49:55.864Z",
+      "completed_at": "2026-02-14T16:49:55.864Z",
+      "type": "FINANCE",
+      "content": "Beli gunting",
+      "meta": {
+        "tags": [
+          "stationary"
+        ],
+        "amount": 17000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "Cash"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "2817ae76-6928-4dcd-9530-8d4a228e352a",
+      "status": "done",
+      "created_at": "2026-02-14T16:47:47.365Z",
+      "completed_at": "2026-02-14T16:47:47.365Z",
+      "type": "FINANCE",
+      "content": "parkir",
+      "meta": {
+        "tags": [
+          "travel"
+        ],
+        "amount": 4000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "cash"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "abd7e07e-8531-420c-8ec9-c8e290a6c806",
+      "status": "done",
+      "created_at": "2026-02-14T16:47:10.996Z",
+      "completed_at": "2026-02-14T16:47:10.996Z",
+      "type": "FINANCE",
+      "content": "parkir",
+      "meta": {
+        "tags": [
+          "travel"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "Tapcash"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "3e679af3-6cc5-43c9-8de7-2442d9566bbd",
+      "status": "done",
+      "created_at": "2026-02-14T16:46:45.046Z",
+      "completed_at": "2026-02-14T16:46:45.046Z",
+      "type": "FINANCE",
+      "content": "Sarapan",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 8000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "Cash"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "e46a00d8-ddab-4248-bea0-ded26b2aeab4",
+      "status": "done",
+      "created_at": "2026-02-14T16:45:18.787Z",
+      "completed_at": "2026-02-14T16:45:18.787Z",
+      "type": "FINANCE",
+      "content": "Jajan mie ayam",
+      "meta": {
+        "tags": [
+          "food",
+          "lunch"
+        ],
+        "amount": 28000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "f24da7da-0538-4245-b179-9cfe96697153",
+      "status": "done",
+      "created_at": "2026-02-14T16:45:18.787Z",
+      "completed_at": "2026-02-14T16:45:18.787Z",
+      "type": "FINANCE",
+      "content": "Makan ayam bakar",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner"
+        ],
+        "amount": 33000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "4be8e635-a249-4725-9f70-bfc55e888c88",
+      "status": "done",
+      "created_at": "2026-02-14T16:45:18.787Z",
+      "completed_at": "2026-02-14T16:45:18.787Z",
+      "type": "FINANCE",
+      "content": "Iuran tiket IIMS",
+      "meta": {
+        "tags": [
+          "event"
+        ],
+        "amount": 37500,
+        "budgetCategory": "wants",
+        "financeType": "expense",
+        "paymentMethod": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "1f49f121-1c03-40ee-b072-fb379ad3b61e",
+      "status": "done",
+      "created_at": "2026-02-14T16:45:18.787Z",
+      "completed_at": "2026-02-14T16:45:18.787Z",
+      "type": "FINANCE",
+      "content": "Uang jajan dari bapak",
+      "meta": {
+        "tags": [
+          "income"
+        ],
+        "amount": 2000000,
+        "financeType": "income",
+        "paymentMethod": "bni"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "839a836c-7f69-4b68-b128-3decf29e7aae",
+      "status": "done",
+      "created_at": "2026-02-14T16:44:35.968Z",
+      "completed_at": "2026-02-14T16:44:35.968Z",
+      "type": "FINANCE",
+      "content": "transfer from cash to gopay",
+      "meta": {
+        "tags": [
+          "transfer",
+          "ewallet"
+        ],
+        "amount": 150000,
+        "financeType": "transfer",
+        "paymentMethod": "bni",
+        "toWallet": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "11caa774-6032-4b25-a8c2-bdbecb8d4e94",
+      "status": "done",
+      "created_at": "2026-02-14T16:44:35.968Z",
+      "completed_at": "2026-02-14T16:44:35.968Z",
+      "type": "FINANCE",
+      "content": "beli burger",
+      "meta": {
+        "tags": [
+          "food",
+          "ewallet"
+        ],
+        "amount": 52000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "gopay"
+      },
+      "isOptimistic": false
+    },
+    {
       "id": "c46e5a77-4830-4f5d-bf16-f4f012be4859",
       "status": "done",
       "created_at": "2026-02-13T00:09:38.590Z",
@@ -114,25 +413,6 @@
         "budgetCategory": "needs",
         "financeType": "expense",
         "paymentMethod": "Cash"
-      },
-      "isOptimistic": false
-    },
-    {
-      "id": "a51f2308-652f-41cb-9e92-0af87697c88b",
-      "status": "done",
-      "created_at": "2026-02-10T23:48:23.506Z",
-      "completed_at": "2026-02-10T23:48:23.506Z",
-      "type": "FINANCE",
-      "content": "Beli sarapan",
-      "meta": {
-        "tags": [
-          "food"
-        ],
-        "amount": 10000,
-        "budgetCategory": "needs",
-        "date": "2026-02-10T00:00:00.000Z",
-        "financeType": "expense",
-        "paymentMethod": "Gopay"
       },
       "isOptimistic": false
     },
@@ -702,7 +982,7 @@
     },
     {
       "id": "85500dbd-6807-45d6-a1fd-7e3ec8da4f4b",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-04T12:03:55.738Z",
       "type": "SHOPPING",
       "content": "shoe cleaning",
@@ -715,9 +995,12 @@
         "amount": 75000,
         "budgetCategory": "wants",
         "dateISO": "2026-02-11",
-        "shoppingCategory": "urgent"
+        "shoppingCategory": "urgent",
+        "paymentMethod": "bni",
+        "financeType": "expense"
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-14T16:47:54.220Z"
     },
     {
       "id": "88dc50fc-1a35-46cf-bd3a-b61a3ba3c532",
@@ -1565,7 +1848,7 @@
     },
     {
       "id": "53f3517f-f6d5-4d8c-9682-270691774224",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-28T10:35:50.776Z",
       "type": "SHOPPING",
       "content": "Bayar parkiran",
@@ -1581,8 +1864,7 @@
         "paymentMethod": "",
         "financeType": "expense"
       },
-      "isOptimistic": false,
-      "completed_at": "2026-02-06T13:36:48.867Z"
+      "isOptimistic": false
     },
     {
       "id": "a21a373f-0239-46ef-81e0-5c4c68d1561e",
@@ -2164,7 +2446,7 @@
         "financeType": "expense"
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-06T13:22:58.949Z"
+      "completed_at": "2026-02-14T16:48:00.145Z"
     },
     {
       "id": "2242a9a4-40c4-4766-b0f9-102767df20eb",
@@ -2420,10 +2702,53 @@
       },
       "isOptimistic": false,
       "completed_at": "2026-02-01T13:12:53.462Z"
+    },
+    {
+      "id": "13dd221a-aa23-4767-a05d-7d6290c80ad2",
+      "status": "done",
+      "created_at": "2026-01-28T10:35:50.776Z",
+      "type": "SHOPPING",
+      "content": "Bayar parkiran",
+      "meta": {
+        "tags": [
+          "bills",
+          "errand"
+        ],
+        "amount": 25000,
+        "budgetCategory": "cat-1770450517162",
+        "recurrenceDays": 7,
+        "shoppingCategory": "not_urgent",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "date": "2026-02-05T17:09:00.000Z"
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-06T13:36:48.867Z"
+    },
+    {
+      "id": "9fb0a73b-43f6-41eb-9d95-ab126731ee7a",
+      "status": "done",
+      "created_at": "2026-01-24T08:04:19.718Z",
+      "type": "SHOPPING",
+      "content": "Send laundry",
+      "meta": {
+        "tags": [
+          "laundry",
+          "errand"
+        ],
+        "date": "2026-01-30T00:00:00.000Z",
+        "recurrenceDays": 7,
+        "shoppingCategory": "not_urgent",
+        "targetDay": "Friday",
+        "paymentMethod": "Cash",
+        "financeType": "expense"
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-06T13:22:58.949Z"
     }
   ],
   "budgetConfig": {
-    "monthlyIncome": 7000004,
+    "monthlyIncome": 7000000,
     "rules": [
       {
         "id": "needs",
@@ -2514,6 +2839,13 @@
       "name": "gopay later",
       "type": "cc",
       "initialBalance": 530000,
+      "color": "bg-blue-500"
+    },
+    {
+      "id": "189ee73e-79b3-4ea5-bcaf-153f92bf05dc",
+      "name": "tapcash",
+      "type": "ewallet",
+      "initialBalance": 33000,
       "color": "bg-blue-500"
     }
   ],
