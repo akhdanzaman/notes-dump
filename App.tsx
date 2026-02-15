@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -6,7 +5,6 @@ import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, FocusSubT
 import { useBrainDumpData } from './hooks/useBrainDumpData';
 
 import InputBar from './components/InputBar';
-import EditModal from './components/EditModal';
 import SettingsModal from './components/SettingsModal';
 import SkillModal from './components/SkillModal';
 import WalletModal from './components/WalletModal';
@@ -71,10 +69,8 @@ const App: React.FC = () => {
   const [financeDate, setFinanceDate] = useState(new Date());
   const [moneyView, setMoneyView] = useState<MoneyView>('transactions');
 
-  // Input Focus State - CHANGED: Replaced isInputFocused with isMobileKeyboardOpen
+  // Input Focus State
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false);
-
-  const [editingItem, setEditingItem] = useState<BrainDumpItem | null>(null);
 
   // --- Theme Effect ---
   useEffect(() => {
@@ -241,15 +237,6 @@ const App: React.FC = () => {
     return Array.from(tags).sort();
   }, [items, activeTab, notesSubTab]);
 
-  // Unique Payment Methods for Edit Modal
-  const uniquePaymentMethods = useMemo(() => {
-    const methods = new Set<string>();
-    items.forEach(i => {
-        if (i.meta.paymentMethod) methods.add(i.meta.paymentMethod);
-    });
-    return Array.from(methods);
-  }, [items]);
-
   return (
     <div className="min-h-screen bg-background text-primary font-sans transition-colors duration-300">
       
@@ -299,17 +286,19 @@ const App: React.FC = () => {
                     focusDate={focusDate} setFocusDate={setFocusDate}
                     appSettings={appSettings}
                     handleToggleStatus={handleToggleStatus} handleDelete={setDeleteId}
-                    setEditingItem={setEditingItem}
+                    handleUpdateItem={handleUpdateItem}
                     handleOpenEditSkill={handleOpenEditSkill} handleOpenAddSkill={handleOpenAddSkill}
                     setDeleteId={setDeleteId} setDeleteType={setDeleteType}
                     searchQuery={searchQuery} selectedTag={selectedTag}
+                    wallets={wallets} budgetRules={budgetConfig.rules}
                 />
             )}
 
             {activeTab === 'shopping' && (
                 <ShoppingView 
                     items={items}
-                    handleToggleStatus={handleToggleStatus} handleDelete={handleDelete} setEditingItem={setEditingItem}
+                    handleToggleStatus={handleToggleStatus} handleDelete={handleDelete}
+                    handleUpdateItem={handleUpdateItem}
                 />
             )}
 
@@ -318,7 +307,8 @@ const App: React.FC = () => {
                     items={items} skills={skills}
                     notesSubTab={notesSubTab} setNotesSubTab={setNotesSubTab}
                     appSettings={appSettings}
-                    handleDelete={handleDelete} setEditingItem={setEditingItem}
+                    handleDelete={handleDelete}
+                    handleUpdateItem={handleUpdateItem}
                     selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
                 />
             )}
@@ -330,7 +320,8 @@ const App: React.FC = () => {
                     financeDate={financeDate} setFinanceDate={setFinanceDate}
                     showBalance={showBalance} setShowBalance={setShowBalance}
                     appSettings={appSettings}
-                    handleDelete={handleDelete} setEditingItem={setEditingItem}
+                    handleDelete={handleDelete}
+                    handleUpdateItem={handleUpdateItem}
                     handleOpenEditWallet={handleOpenEditWallet} handleOpenAddWallet={handleOpenAddWallet}
                     setDeleteId={setDeleteId} setDeleteType={setDeleteType} setIsSettingsOpen={setIsSettingsOpen}
                     filterWallet={filterWallet} filterTransactionType={filterTransactionType}
@@ -392,19 +383,6 @@ const App: React.FC = () => {
                  </div>
              </div>
           </div>
-      )}
-
-      {editingItem && (
-        <EditModal 
-          item={editingItem} 
-          isOpen={!!editingItem} 
-          onClose={() => setEditingItem(null)} 
-          onSave={handleUpdateItem}
-          existingPaymentMethods={uniquePaymentMethods}
-          budgetRules={budgetConfig.rules}
-          skills={skills}
-          wallets={wallets}
-        />
       )}
 
       <SettingsModal 

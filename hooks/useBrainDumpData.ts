@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { BrainDumpItem, ItemType, BudgetConfig, Skill, Wallet, FinanceType, AppSettings, SyncStatus, DbSchema } from '../types';
@@ -340,9 +339,19 @@ export const useBrainDumpData = () => {
         
             const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
             const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
-        
+            
+            // Logic: If marking Done, progress becomes 100%. If marking Pending, progress becomes 0%.
+            // This syncs the checkbox with the slider logic.
+            const newProgress = newStatus === 'done' ? 100 : 0;
+            const newProgressNotes = targetItem.meta.progressNotes; // Keep existing notes
+
             const updatedItems = prevItems.map(item => 
-              item.id === id ? { ...item, status: newStatus, completed_at: completedAt } : item
+              item.id === id ? { 
+                  ...item, 
+                  status: newStatus, 
+                  completed_at: completedAt,
+                  meta: { ...item.meta, progress: newProgress, progressNotes: newProgressNotes }
+              } : item
             );
     
             saveAndSync(updatedItems);
@@ -359,28 +368,60 @@ export const useBrainDumpData = () => {
         });
     };
     
-    const handleUpdateItem = async (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType) => {
+    const handleUpdateItem = async (
+        id: string, 
+        newContent: string, 
+        newTags: string[], 
+        newAmount?: number, 
+        newDate?: string, 
+        newPaymentMethod?: string, 
+        newBudgetCategory?: string, 
+        newDuration?: number, 
+        newSkillId?: string, 
+        newToWallet?: string, 
+        newFinanceType?: FinanceType,
+        newProgress?: number,
+        newProgressNotes?: string
+    ) => {
           setItems(prev => {
-              const updatedItems = prev.map(item => 
-                  item.id === id 
-                    ? { 
-                        ...item, 
-                        content: newContent, 
-                        meta: { 
-                            ...item.meta, 
-                            tags: newTags, 
-                            amount: newAmount, 
-                            date: newDate,
-                            paymentMethod: newPaymentMethod,
-                            budgetCategory: newBudgetCategory,
-                            durationMinutes: newDuration,
-                            skillId: newSkillId,
-                            toWallet: newToWallet,
-                            financeType: newFinanceType || item.meta.financeType
-                        } 
-                      } 
-                    : item
-              );
+              const updatedItems = prev.map(item => {
+                  if (item.id !== id) return item;
+
+                  // Auto-update status based on progress
+                  let newStatus = item.status;
+                  let completedAt = item.completed_at;
+
+                  if (newProgress !== undefined) {
+                      if (newProgress === 100 && item.status === 'pending') {
+                          newStatus = 'done';
+                          completedAt = new Date().toISOString();
+                      } else if (newProgress < 100 && item.status === 'done') {
+                          newStatus = 'pending';
+                          completedAt = undefined;
+                      }
+                  }
+
+                  return { 
+                    ...item, 
+                    content: newContent,
+                    status: newStatus,
+                    completed_at: completedAt,
+                    meta: { 
+                        ...item.meta, 
+                        tags: newTags, 
+                        amount: newAmount, 
+                        date: newDate,
+                        paymentMethod: newPaymentMethod,
+                        budgetCategory: newBudgetCategory,
+                        durationMinutes: newDuration,
+                        skillId: newSkillId,
+                        toWallet: newToWallet,
+                        financeType: newFinanceType || item.meta.financeType,
+                        progress: newProgress,
+                        progressNotes: newProgressNotes
+                    } 
+                  };
+              });
               saveAndSync(updatedItems);
               return updatedItems;
           });

@@ -66,6 +66,10 @@ export interface ItemMeta {
   durationMinutes?: number;
   skillId?: string; // ID of the Skill
   skillName?: string; // Temporary field for AI matching
+
+  // Task Progress specific
+  progress?: number; // 0-100
+  progressNotes?: string;
 }
 
 export interface BrainDumpItem {

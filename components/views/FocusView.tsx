@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { CheckCircle2, Sprout, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, ListTodo, CheckSquare } from 'lucide-react';
-import { BrainDumpItem, FocusSubTab, Skill, AppSettings } from '../../types';
+import { BrainDumpItem, FocusSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule } from '../../types';
 import { getFocusMonthData, getSkillItems } from '../../utils/selectors';
 import Card from '../Card';
 
@@ -16,7 +16,8 @@ interface FocusViewProps {
     appSettings: AppSettings;
     handleToggleStatus: (id: string) => void;
     handleDelete: (id: string) => void;
-    setEditingItem: (item: BrainDumpItem) => void;
+    // setEditingItem removed
+    handleUpdateItem: (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType, newProgress?: number, newProgressNotes?: string) => void;
     handleOpenEditSkill: (id: string, name: string, target?: number) => void;
     handleOpenAddSkill: () => void;
     setDeleteId: (id: string) => void;
@@ -24,14 +25,19 @@ interface FocusViewProps {
     
     searchQuery: string;
     selectedTag: string;
+    
+    // Context
+    wallets: Wallet[];
+    budgetRules: BudgetRule[];
 }
 
 const FocusView: React.FC<FocusViewProps> = ({
     items, skills, focusSubTab, setFocusSubTab,
     focusDate, setFocusDate,
-    appSettings, handleToggleStatus, handleDelete, setEditingItem,
+    appSettings, handleToggleStatus, handleDelete, handleUpdateItem,
     handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
-    searchQuery, selectedTag
+    searchQuery, selectedTag,
+    wallets, budgetRules
 }) => {
     // Data Preparation
     const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
@@ -95,6 +101,18 @@ const FocusView: React.FC<FocusViewProps> = ({
         const newDate = new Date(focusDate);
         newDate.setMonth(newDate.getMonth() + offset);
         setFocusDate(newDate);
+    };
+
+    const cardProps = {
+        onToggleStatus: handleToggleStatus,
+        onUpdate: handleUpdateItem,
+        onDelete: handleDelete,
+        enableCollapse: true,
+        defaultCollapsed: appSettings.defaultCollapsed,
+        hideMoney: appSettings.hideMoney,
+        skills,
+        wallets,
+        budgetRules
     };
 
     return (
@@ -169,19 +187,19 @@ const FocusView: React.FC<FocusViewProps> = ({
                                     {today.length > 0 && (
                                     <section>
                                         <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider mb-3 pl-1">Today / Overdue</h3>
-                                        <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />)}</div>
+                                        <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
                                     </section>
                                     )}
                                     {tomorrow.length > 0 && (
                                     <section>
                                         <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider mb-3 pl-1">Tomorrow</h3>
-                                        <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />)}</div>
+                                        <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
                                     </section>
                                     )}
                                     {later.length > 0 && (
                                     <section>
                                         <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1">Later</h3>
-                                        <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />)}</div>
+                                        <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
                                     </section>
                                     )}
                                 </div>
@@ -201,7 +219,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                     </h3>
                                     <div className="space-y-3 opacity-75">
                                         {doneList.map(item => (
-                                            <Card key={item.id} item={item} onToggleStatus={handleToggleStatus} onEdit={setEditingItem} onDelete={handleDelete} enableCollapse={true} defaultCollapsed={true} hideMoney={appSettings.hideMoney} />
+                                            <Card key={item.id} item={item} {...cardProps} defaultCollapsed={true} />
                                         ))}
                                     </div>
                                 </div>
@@ -288,9 +306,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             key={log.id} 
                                             item={log} 
                                             skillName={skill?.name || log.meta.skillName || 'Unknown'} 
-                                            onEdit={setEditingItem} 
-                                            onDelete={handleDelete}
-                                            enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney}
+                                            {...cardProps}
                                             />
                                         );
                                     })}

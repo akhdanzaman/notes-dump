@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { BrainDumpItem } from '../../types';
+import { BrainDumpItem, FinanceType } from '../../types';
 import { getShoppingItems } from '../../utils/selectors';
 import ShoppingItem from '../ShoppingItem';
 
@@ -8,11 +7,11 @@ interface ShoppingViewProps {
     items: BrainDumpItem[];
     handleToggleStatus: (id: string) => void;
     handleDelete: (id: string) => void;
-    setEditingItem: (item: BrainDumpItem) => void;
+    handleUpdateItem: (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType, newProgress?: number, newProgressNotes?: string) => void;
 }
 
 const ShoppingView: React.FC<ShoppingViewProps> = ({
-    items, handleToggleStatus, handleDelete, setEditingItem
+    items, handleToggleStatus, handleDelete, handleUpdateItem
 }) => {
     const { urgent, routine, normal } = getShoppingItems(items);
     if (urgent.length === 0 && routine.length === 0 && normal.length === 0) return <div className="text-center text-muted py-10">No life admin tasks.</div>;
@@ -29,7 +28,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                             item={item} 
                             onToggleStatus={handleToggleStatus} 
                             onDelete={handleDelete} 
-                            onEdit={setEditingItem} 
+                            handleUpdateItem={handleUpdateItem} 
                         />
                         ))}
                     </div>

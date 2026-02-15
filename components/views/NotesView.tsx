@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { NotebookPen, BookText, Library } from 'lucide-react';
-import { BrainDumpItem, Skill, NotesSubTab, AppSettings, SortOrder, ItemType } from '../../types';
+import { BrainDumpItem, Skill, NotesSubTab, AppSettings, SortOrder, ItemType, FinanceType } from '../../types';
 import { getNoteItems, getJournalGroups } from '../../utils/selectors';
 import Card from '../Card';
 
@@ -11,7 +11,7 @@ interface NotesViewProps {
     setNotesSubTab: (tab: NotesSubTab) => void;
     appSettings: AppSettings;
     handleDelete: (id: string) => void;
-    setEditingItem: (item: BrainDumpItem) => void;
+    handleUpdateItem: (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType, newProgress?: number, newProgressNotes?: string) => void;
     
     // Filters
     selectedTag: string;
@@ -23,7 +23,7 @@ interface NotesViewProps {
 
 const NotesView: React.FC<NotesViewProps> = ({
     items, skills, notesSubTab, setNotesSubTab, appSettings,
-    handleDelete, setEditingItem, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder
+    handleDelete, handleUpdateItem, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder
 }) => {
     // Data Preparation
     const generalItems = getNoteItems(items, 'general', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
@@ -100,6 +100,15 @@ const NotesView: React.FC<NotesViewProps> = ({
             );
         }
 
+        const commonProps = {
+            onUpdate: handleUpdateItem,
+            onDelete: handleDelete,
+            enableCollapse: true,
+            defaultCollapsed: appSettings.defaultCollapsed,
+            hideMoney: appSettings.hideMoney,
+            skills
+        };
+
         if (type === 'journal') {
             return (
                 <div className="space-y-8">
@@ -113,7 +122,7 @@ const NotesView: React.FC<NotesViewProps> = ({
                                 <h3 className="text-sm font-serif font-bold text-fuchsia-600 dark:text-fuchsia-200 mb-4">{friendlyDate}</h3>
                                 <div className="space-y-4">
                                     {entries.map(item => (
-                                        <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} noStrikethrough={true} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />
+                                        <Card key={item.id} item={item} {...commonProps} noStrikethrough={true} />
                                     ))}
                                 </div>
                             </div>
@@ -129,7 +138,7 @@ const NotesView: React.FC<NotesViewProps> = ({
                     const skillName = item.type === ItemType.SKILL_LOG 
                         ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName)
                         : undefined;
-                    return <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} skillName={skillName} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />;
+                    return <Card key={item.id} item={item} {...commonProps} skillName={skillName} />;
                 })}
             </div>
         );

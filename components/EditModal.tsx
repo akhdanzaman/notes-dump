@@ -1,13 +1,26 @@
-
 import React, { useState, useRef } from 'react';
 import { BrainDumpItem, ItemType, BudgetRule, Skill, Wallet, FinanceType } from '../types';
-import { X, Save, DollarSign, Calendar, Wallet as WalletIcon, Hourglass, ArrowRight, Bold, Italic, List, Type } from 'lucide-react';
+import { X, Save, DollarSign, Calendar, Wallet as WalletIcon, Hourglass, ArrowRight, Bold, Italic, List, Type, TrendingUp, FileText } from 'lucide-react';
 
 interface EditModalProps {
   item: BrainDumpItem;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string, newContent: string, newTags: string[], amount?: number, date?: string, paymentMethod?: string, budgetCategory?: string, durationMinutes?: number, skillId?: string, toWallet?: string, financeType?: FinanceType) => void;
+  onSave: (
+    id: string, 
+    newContent: string, 
+    newTags: string[], 
+    amount?: number, 
+    date?: string, 
+    paymentMethod?: string, 
+    budgetCategory?: string, 
+    durationMinutes?: number, 
+    skillId?: string, 
+    toWallet?: string, 
+    financeType?: FinanceType,
+    progress?: number,
+    progressNotes?: string
+  ) => void;
   existingPaymentMethods?: string[];
   budgetRules?: BudgetRule[];
   skills?: Skill[];
@@ -27,6 +40,10 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
   // Skill specific
   const [duration, setDuration] = useState<string>(item.meta.durationMinutes ? item.meta.durationMinutes.toString() : '');
   const [skillId, setSkillId] = useState<string>(item.meta.skillId || '');
+
+  // Task Progress specific
+  const [progress, setProgress] = useState<number>(item.meta.progress || (item.status === 'done' ? 100 : 0));
+  const [progressNotes, setProgressNotes] = useState<string>(item.meta.progressNotes || '');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -59,7 +76,21 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
     const finalSkillId = skillId === '' ? undefined : skillId;
     const finalToWallet = financeType === 'transfer' && toWallet ? toWallet : undefined;
 
-    onSave(item.id, content, tagArray, numAmount, finalDate, paymentMethod, finalBudgetCategory, numDuration, finalSkillId, finalToWallet, financeType);
+    onSave(
+        item.id, 
+        content, 
+        tagArray, 
+        numAmount, 
+        finalDate, 
+        paymentMethod, 
+        finalBudgetCategory, 
+        numDuration, 
+        finalSkillId, 
+        finalToWallet, 
+        financeType,
+        progress,
+        progressNotes
+    );
     onClose();
   };
 
@@ -101,6 +132,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
   };
 
   const isNote = item.type === ItemType.NOTE || item.type === ItemType.JOURNAL;
+  const isTask = item.type === ItemType.TODO;
   const showAmountField = item.type === ItemType.FINANCE || item.type === ItemType.SHOPPING || item.type === ItemType.TODO;
   const showDateField = item.type === ItemType.TODO || item.type === ItemType.EVENT || item.type === ItemType.SHOPPING || item.type === ItemType.FINANCE || item.type === ItemType.SKILL_LOG || item.type === ItemType.JOURNAL;
   const showFinanceExtras = item.type === ItemType.FINANCE || (item.type === ItemType.SHOPPING && showAmountField);
@@ -202,6 +234,43 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                    </div>
                )}
           </div>
+
+          {/* Task Progress (Only for TODO) */}
+          {isTask && (
+              <div className="space-y-3 pt-2 border-t border-border/50">
+                  <div>
+                      <div className="flex justify-between items-center mb-1">
+                          <label className="text-xs font-medium text-muted flex items-center gap-1">
+                             <TrendingUp className="w-3 h-3" /> Progress
+                          </label>
+                          <span className={`text-xs font-bold ${progress === 100 ? 'text-emerald-500' : 'text-primary'}`}>
+                              {progress === 100 ? 'Completed' : `${progress}%`}
+                          </span>
+                      </div>
+                      <input 
+                        type="range"
+                        min="0" 
+                        max="100" 
+                        step="5"
+                        value={progress}
+                        onChange={(e) => setProgress(parseInt(e.target.value))}
+                        className="w-full h-2 bg-black/10 dark:bg-black/30 rounded-lg appearance-none cursor-pointer accent-acc-todo"
+                      />
+                  </div>
+                  <div>
+                      <label className="text-xs font-medium text-muted flex items-center gap-1 mb-1">
+                          <FileText className="w-3 h-3" /> Progress Note
+                      </label>
+                      <input
+                          type="text"
+                          className="w-full bg-background border border-border rounded-lg p-2.5 text-sm text-primary focus:outline-none focus:border-indigo-500 placeholder-muted/50"
+                          value={progressNotes}
+                          onChange={(e) => setProgressNotes(e.target.value)}
+                          placeholder="What's the current status?"
+                      />
+                  </div>
+              </div>
+          )}
           
           {/* Skill Extras */}
           {showSkillExtras && (

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Calculator, Plus, AlertCircle } from 'lucide-react';
-import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder } from '../../types';
+import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType } from '../../types';
 import { getWalletStats, getFinanceItems } from '../../utils/selectors';
 import Card from '../Card';
 
@@ -17,7 +17,7 @@ interface MoneyViewProps {
     appSettings: AppSettings;
 
     handleDelete: (id: string) => void;
-    setEditingItem: (item: BrainDumpItem) => void;
+    handleUpdateItem: (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType, newProgress?: number, newProgressNotes?: string) => void;
     handleOpenEditWallet: (w: Wallet) => void;
     handleOpenAddWallet: () => void;
     setDeleteId: (id: string) => void;
@@ -37,7 +37,7 @@ interface MoneyViewProps {
 const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     items, wallets, budgetConfig, moneyView, setMoneyView,
     financeDate, setFinanceDate, showBalance, setShowBalance, appSettings,
-    handleDelete, setEditingItem, handleOpenEditWallet, handleOpenAddWallet,
+    handleDelete, handleUpdateItem, handleOpenEditWallet, handleOpenAddWallet,
     setDeleteId, setDeleteType, setIsSettingsOpen,
     filterWallet, filterTransactionType, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder
 }) => {
@@ -119,6 +119,17 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         setDragOffset(0);
         touchStartRef.current = null;
         isHorizontalSwipe.current = null;
+    };
+
+    const cardProps = {
+        onUpdate: handleUpdateItem,
+        onDelete: handleDelete,
+        enableCollapse: true,
+        defaultCollapsed: appSettings.defaultCollapsed,
+        hideMoney: appSettings.hideMoney,
+        wallets,
+        budgetRules: budgetConfig.rules,
+        noStrikethrough: true
     };
 
     return (
@@ -258,12 +269,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             <Card 
                                             key={item.id} 
                                             item={item} 
-                                            onEdit={setEditingItem} 
-                                            onDelete={handleDelete} 
-                                            noStrikethrough={true} 
-                                            enableCollapse={true} 
-                                            defaultCollapsed={appSettings.defaultCollapsed} 
-                                            hideMoney={appSettings.hideMoney} 
+                                            {...cardProps}
                                             categoryName={categoryName}
                                             />
                                         );
