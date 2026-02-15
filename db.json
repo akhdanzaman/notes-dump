@@ -2977,6 +2977,7 @@
   },
   "appSettings": {
     "defaultCollapsed": true,
-    "hideMoney": false
+    "hideMoney": false,
+    "theme": "light"
   }
 }
