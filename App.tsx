@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles, BookText, Filter, CalendarDays, ArrowUpDown, X, Tag, DollarSign, ArrowDownUp } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles, BookText, Filter, CalendarDays, ArrowUpDown, X, Tag, DollarSign, ArrowDownUp, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill, Wallet, FinanceType, AppSettings } from './types';
@@ -1050,10 +1050,8 @@ const App: React.FC = () => {
   };
 
   const getGreeting = () => {
-    const hours = new Date().getHours();
-    if (hours < 12) return 'Good Morning';
-    if (hours < 18) return 'Good Afternoon';
-    return 'Good Evening';
+    // Removed as per request
+    return '';
   };
 
   const renderSyncIndicator = () => {
@@ -1375,83 +1373,154 @@ const App: React.FC = () => {
                const overdueCount = later.filter(i => i.meta.date && new Date(i.meta.date) < new Date()).length;
                
                const { stats } = getSkillItems();
-               const topSkill = stats[0];
                const totalWeeklyHours = stats.reduce((acc, s) => acc + s.weeklyHours, 0);
                const totalAllTimeHours = stats.reduce((acc, s) => acc + s.totalHours, 0);
-               const avgProgress = stats.length > 0 
-                  ? stats.reduce((acc, s) => acc + s.weeklyProgress, 0) / stats.length 
-                  : 0;
 
                const { urgent, routine } = getShoppingItems();
                
                const { walletStats, totalNetWorth, totalAssets, totalDebt } = getWalletStats();
-               const { totalExpense } = getFinanceItems();
+               const { totalExpense, totalIncome, balance } = getFinanceItems();
                const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-
-               // Notes Metrics
-               const allNotes = items.filter(i => i.type === ItemType.NOTE);
-               const randomNotes = allNotes.length > 0 
-                    ? [...allNotes].sort(() => 0.5 - Math.random()).slice(0, 3) 
-                    : [];
 
                // Theme Data
                const { key: themeKey, content: themeContent } = getThemeForDate(themeNavDate);
+               
+               // Brain Bank count
+               const noteCount = items.filter(i => i.type === ItemType.NOTE).length;
 
                return (
-                   <div className="space-y-6">
-                        <div className="mb-4">
-                            <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">{getGreeting()}</h2>
-                            <p className="text-sm text-muted">Here is your daily snapshot.</p>
-                        </div>
-
-                        {/* NEW: Monthly Theme Card */}
-                        <div className="bg-surface border border-border p-4 rounded-xl transition-all relative">
-                            <div className="flex justify-between items-center mb-3">
-                                <button onClick={() => changeThemeMonth(-1)} className="p-1 text-muted hover:text-white hover:bg-white/10 rounded"><ChevronLeft className="w-4 h-4" /></button>
-                                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1">
-                                    <Sparkles className="w-3 h-3" /> {themeNavDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })} Theme
-                                </span>
-                                <button onClick={() => changeThemeMonth(1)} className="p-1 text-muted hover:text-white hover:bg-white/10 rounded"><ChevronRight className="w-4 h-4" /></button>
+                   <div className="space-y-4">
+                        {/* Monthly Theme Card (Top North Star) */}
+                        <div className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 flex justify-between items-center transition-all group">
+                            <div className="flex flex-col flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <button onClick={() => changeThemeMonth(-1)} className="p-0.5 text-muted hover:text-white"><ChevronLeft className="w-3 h-3" /></button>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3" /> {themeNavDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })} Theme
+                                    </span>
+                                    <button onClick={() => changeThemeMonth(1)} className="p-0.5 text-muted hover:text-white"><ChevronRight className="w-3 h-3" /></button>
+                                </div>
+                                <div onClick={() => { setTempThemeContent(themeContent); setThemeEditMode(true); }} className="cursor-pointer">
+                                    {themeContent ? (
+                                        <p className="text-sm font-medium text-white truncate pr-2 group-hover:text-indigo-200 transition-colors">"{themeContent}"</p>
+                                    ) : (
+                                        <p className="text-xs text-muted italic border-b border-dashed border-border/50 inline-block">Set a theme...</p>
+                                    )}
+                                </div>
                             </div>
-                            
-                            <div className="text-center py-2 px-1">
-                                {themeContent ? (
-                                    <p onClick={() => { setTempThemeContent(themeContent); setThemeEditMode(true); }} className="text-lg font-medium text-white cursor-pointer hover:opacity-80 transition-opacity">
-                                        "{themeContent}"
-                                    </p>
-                                ) : (
-                                    <p onClick={() => { setTempThemeContent(''); setThemeEditMode(true); }} className="text-sm text-muted italic cursor-pointer hover:text-white transition-colors border-b border-dashed border-border inline-block pb-1">
-                                        Set a theme for this month...
-                                    </p>
-                                )}
-                            </div>
-                            
-                            <button 
+                             <button 
                                 onClick={() => { setTempThemeContent(themeContent); setThemeEditMode(true); }}
-                                className="absolute top-3 right-10 p-1.5 text-muted hover:text-white rounded-md opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity"
+                                className="p-1.5 text-indigo-400/50 hover:text-indigo-300 rounded-md transition-colors"
                             >
                                 <Pencil className="w-3.5 h-3.5" />
                             </button>
                         </div>
 
-                        {/* Money Card (Total Net Worth) */}
-                        <div className="bg-gradient-to-br from-surface to-surface/50 border border-border p-5 rounded-xl transition-all group relative">
+                        {/* HERO SECTION: Action Center (Focus + Shopping) */}
+                        <div className="grid grid-cols-1 gap-4">
+                             <div className="bg-gradient-to-br from-surface to-acc-todo/10 border-l-4 border-l-acc-todo rounded-r-xl border-y border-r border-border p-5 shadow-lg relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <Target className="w-24 h-24 text-acc-todo" />
+                                </div>
+                                
+                                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                    Action Center
+                                </h2>
+                                
+                                <div className="space-y-6 relative z-10">
+                                    {/* Today's Tasks */}
+                                    <div>
+                                        <div className="flex justify-between items-end mb-2 border-b border-white/10 pb-1">
+                                            <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider">Today's Focus</h3>
+                                            <span className="text-xs text-muted font-mono">{today.length} tasks</span>
+                                        </div>
+                                        {today.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {today.slice(0, 3).map(i => (
+                                                    <div key={i.id} className="flex items-start gap-2 text-sm text-gray-200">
+                                                        <button 
+                                                            onClick={() => handleToggleStatus(i.id)}
+                                                            className="mt-0.5 text-muted hover:text-acc-todo transition-colors"
+                                                        >
+                                                            <CheckCircle2 className="w-4 h-4" />
+                                                        </button>
+                                                        <span className="truncate">{i.content}</span>
+                                                    </div>
+                                                ))}
+                                                {today.length > 3 && <div className="text-[10px] text-muted italic pl-6">+{today.length - 3} more...</div>}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-muted italic pl-1">No pending tasks for today.</p>
+                                        )}
+                                    </div>
+
+                                    {/* Urgent Shopping */}
+                                    {urgent.length > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-end mb-2 border-b border-white/10 pb-1">
+                                                <h3 className="text-sm font-bold text-red-400 uppercase tracking-wider flex items-center gap-1">
+                                                    <AlertTriangle className="w-3 h-3" /> Urgent To Buy
+                                                </h3>
+                                                <span className="text-xs text-muted font-mono">{urgent.length} items</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {urgent.slice(0, 3).map(i => (
+                                                    <div key={i.id} className="flex items-start gap-2 text-sm text-gray-200">
+                                                        <button 
+                                                            onClick={() => handleToggleStatus(i.id)}
+                                                            className="mt-0.5 text-muted hover:text-red-400 transition-colors"
+                                                        >
+                                                            <ShoppingCart className="w-4 h-4" />
+                                                        </button>
+                                                        <span className="truncate">{i.content}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Quick Link */}
+                                    <div className="pt-2 flex justify-end">
+                                        <button onClick={() => setActiveTab('focus')} className="text-xs font-medium text-acc-todo hover:text-white flex items-center gap-1 transition-colors">
+                                            Go to Focus Mode <ArrowRight className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>
+
+                        {/* Money Card (Total Net Worth + Insights) */}
+                        <div onClick={() => setActiveTab('money')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-5 rounded-xl transition-all cursor-pointer hover:border-emerald-500/30 group">
                              <div className="flex justify-between items-start mb-2">
                                 <div className="flex items-center gap-2 text-emerald-400">
                                     <WalletIcon className="w-5 h-5" />
-                                    <span className="text-xs font-bold uppercase tracking-wider">Total Net Worth</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider">Net Worth</span>
                                 </div>
-                                <button onClick={() => setShowBalance(!showBalance)} className="text-muted hover:text-white transition-colors">
+                                <button onClick={(e) => { e.stopPropagation(); setShowBalance(!showBalance); }} className="text-muted hover:text-white transition-colors">
                                     {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                              </div>
-                             <div 
-                                onClick={() => setActiveTab('money')}
-                                className="text-2xl font-bold text-white mb-1 cursor-pointer hover:text-emerald-400 transition-colors"
-                             >
-                                 {showBalance ? fmt(totalNetWorth) : '••••••••'}
+                             
+                             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-2">
+                                 <div className="text-3xl font-bold text-white">
+                                     {showBalance ? fmt(totalNetWorth) : '••••••••'}
+                                 </div>
+                                 
+                                 {/* Insight Badge */}
+                                 {balance !== 0 && (
+                                     <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${
+                                         balance > 0 
+                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                                            : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                     }`}>
+                                         {balance > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                                         <span>{showBalance ? fmt(Math.abs(balance)) : '•••'}</span>
+                                         <span className="opacity-70">this month</span>
+                                     </div>
+                                 )}
                              </div>
-                             <div className="flex gap-4 mt-2 pt-2 border-t border-white/5">
+                             
+                             <div className="flex gap-4 mt-3 pt-3 border-t border-white/5">
                                  <div className="text-xs text-muted">
                                     Assets: <span className="text-emerald-400 font-medium">{showBalance ? fmt(totalAssets) : '••'}</span>
                                  </div>
@@ -1461,112 +1530,35 @@ const App: React.FC = () => {
                              </div>
                         </div>
 
+                        {/* Secondary Stats Grid */}
                         <div className="grid grid-cols-2 gap-4">
-                             {/* Focus Card - Enhanced */}
-                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('tasks'); }} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-todo/30 transition-all group flex flex-col">
-                                  <div className="flex justify-between items-start mb-3">
-                                      <div className="p-2 bg-acc-todo/10 rounded-lg text-acc-todo">
-                                          <CheckCircle2 className="w-5 h-5" />
+                             {/* Skill Card */}
+                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('skills'); }} className="bg-surface border border-border p-4 rounded-xl cursor-pointer hover:border-indigo-500/30 transition-all group flex flex-col justify-between">
+                                  <div>
+                                      <div className="flex justify-between items-center mb-2">
+                                          <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Growth</span>
+                                          <GrowthIcon className="w-4 h-4 text-indigo-400" />
                                       </div>
-                                      <span className="text-xs text-muted group-hover:text-white font-medium">{today.length} Today</span>
-                                  </div>
-                                  <h3 className="font-semibold text-white mb-2">Focus</h3>
-                                  
-                                  {/* Quick Preview */}
-                                  <div className="flex-1 space-y-1 mb-2">
-                                      {today.slice(0, 3).map(i => (
-                                          <div key={i.id} className="text-[10px] text-gray-400 truncate flex items-center gap-1">
-                                              <div className="w-1 h-1 bg-acc-todo rounded-full shrink-0"></div>
-                                              {i.content}
-                                          </div>
-                                      ))}
-                                      {today.length === 0 && <span className="text-[10px] text-muted italic">All clear!</span>}
-                                  </div>
-
-                                  <div className="flex justify-between items-end text-[10px] text-muted border-t border-border pt-2 mt-auto">
-                                      <span>{tomorrow.length} tmrw</span>
-                                      {overdueCount > 0 && <span className="text-red-400">{overdueCount} overdue</span>}
-                                  </div>
-                             </div>
-
-                             {/* Skill Card - Enhanced */}
-                             <div onClick={() => { setActiveTab('focus'); setFocusSubTab('skills'); }} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-indigo-500/30 transition-all group flex flex-col">
-                                  <div className="flex justify-between items-start mb-3">
-                                      <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
-                                          <GrowthIcon className="w-5 h-5" />
+                                      <div className="text-2xl font-bold text-white mb-1">
+                                          {totalWeeklyHours}<span className="text-sm font-normal text-muted">h</span>
                                       </div>
-                                      <span className="text-xs text-muted group-hover:text-white font-medium">{totalAllTimeHours}h Total</span>
+                                      <div className="text-[10px] text-muted">Study time this week</div>
                                   </div>
-                                  <h3 className="font-semibold text-white mb-2">Growth</h3>
-                                  
-                                   {/* Quick Preview */}
-                                   <div className="flex-1 space-y-1 mb-2">
-                                      {topSkill ? (
-                                         <>
-                                            <div className="text-[10px] text-white truncate font-medium">{topSkill.name}</div>
-                                            <div className="w-full h-1 bg-black/30 rounded-full overflow-hidden">
-                                                <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, topSkill.weeklyProgress)}%` }}></div>
-                                            </div>
-                                         </>
-                                      ) : <span className="text-[10px] text-muted italic">No active skills</span>}
+                                  <div className="w-full h-1 bg-white/10 rounded-full mt-3 overflow-hidden">
+                                      <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, (totalWeeklyHours / 10) * 100)}%` }}></div>
                                   </div>
-
-                                  <p className="text-[10px] text-muted mt-auto pt-2 border-t border-border">{totalWeeklyHours}h total this week</p>
-                             </div>
-
-                             {/* Life Card - Enhanced */}
-                             <div onClick={() => setActiveTab('shopping')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-shopping/30 transition-all group flex flex-col">
-                                  <div className="flex justify-between items-start mb-3">
-                                      <div className="p-2 bg-acc-shopping/10 rounded-lg text-acc-shopping">
-                                          <ShoppingCart className="w-5 h-5" />
-                                      </div>
-                                      <span className="text-xs text-muted group-hover:text-white font-medium">{urgent.length} Urgent</span>
-                                  </div>
-                                  <h3 className="font-semibold text-white mb-2">Life</h3>
-
-                                  {/* Quick Preview */}
-                                  <div className="flex-1 space-y-1 mb-2">
-                                      {urgent.length > 0 ? urgent.slice(0, 2).map(i => (
-                                          <div key={i.id} className="text-[10px] text-red-400 truncate flex items-center gap-1">
-                                              <AlertTriangle className="w-2 h-2 shrink-0" />
-                                              {i.content}
-                                          </div>
-                                      )) : (
-                                          routine.slice(0, 2).map(i => (
-                                            <div key={i.id} className="text-[10px] text-gray-400 truncate flex items-center gap-1">
-                                                <div className="w-1 h-1 bg-acc-shopping rounded-full shrink-0"></div>
-                                                {i.content}
-                                            </div>
-                                          ))
-                                      )}
-                                      {urgent.length === 0 && routine.length === 0 && <span className="text-[10px] text-muted italic">No tasks</span>}
-                                  </div>
-
-                                  <p className="text-[10px] text-muted mt-auto pt-2 border-t border-border">{routine.length} routine items</p>
                              </div>
                              
-                             {/* Notes Card - Enhanced */}
-                             <div onClick={() => setActiveTab('notes')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-4 rounded-xl cursor-pointer hover:border-acc-note/30 transition-all group flex flex-col">
-                                  <div className="flex justify-between items-start mb-3">
-                                      <div className="p-2 bg-acc-note/10 rounded-lg text-acc-note">
-                                          <StickyNote className="w-5 h-5" />
-                                      </div>
-                                      <span className="text-xs text-muted group-hover:text-white font-medium">{allNotes.length} Notes</span>
+                             {/* Brain Bank (Reduced Priority) */}
+                             <div onClick={() => setActiveTab('notes')} className="bg-surface border border-border p-4 rounded-xl cursor-pointer hover:border-acc-note/30 transition-all group flex flex-col justify-between">
+                                  <div className="flex justify-between items-center mb-2">
+                                      <span className="text-xs font-bold text-acc-note uppercase tracking-wider">Brain Bank</span>
+                                      <StickyNote className="w-4 h-4 text-acc-note" />
                                   </div>
-                                  <h3 className="font-semibold text-white mb-2">Brain Bank</h3>
-                                  
-                                  <div className="flex-1 space-y-1 mb-2">
-                                      {randomNotes.length > 0 ? randomNotes.map(note => (
-                                          <div key={note.id} className="text-[10px] text-gray-400 truncate flex items-center gap-1">
-                                              <div className="w-1 h-1 bg-acc-note rounded-full shrink-0"></div>
-                                              {note.content}
-                                          </div>
-                                      )) : <span className="text-[10px] text-muted italic">Empty mind...</span>}
+                                  <div className="text-2xl font-bold text-white mb-1">
+                                      {noteCount}
                                   </div>
-
-                                  <p className="text-[10px] text-muted mt-auto pt-2 border-t border-border flex items-center gap-1">
-                                     <Sparkles className="w-3 h-3 text-acc-note" /> Random Rediscovery
-                                  </p>
+                                  <div className="text-[10px] text-muted">Captured thoughts</div>
                              </div>
                         </div>
                    </div>
