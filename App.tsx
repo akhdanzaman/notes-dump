@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles, BookText, Filter, CalendarDays, ArrowUpDown, X, Tag, DollarSign, ArrowDownUp, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, WifiOff, Target, ShoppingCart, StickyNote, History, Search, Settings, CloudCheck, CloudOff, Save, Wallet as WalletIcon, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, CheckCircle2, PiggyBank, Calculator, PieChart, BarChart3, List, BookOpen, Plus, Timer, TrendingUp as GrowthIcon, Pencil, Trash2, Library, NotebookPen, LayoutDashboard, ArrowRight, Eye, EyeOff, CreditCard, Sparkles, BookText, Filter, CalendarDays, ArrowUpDown, X, Tag, DollarSign, ArrowDownUp, Zap, ArrowUpRight, ArrowDownRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BrainDumpItem, ItemType, BudgetConfig, BudgetRule, Skill, Wallet, FinanceType, AppSettings } from './types';
@@ -74,6 +74,7 @@ const App: React.FC = () => {
   const [filterDate, setFilterDate] = useState<string>(''); // YYYY-MM-DD
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   // Advanced Money Filters
   const [filterWallet, setFilterWallet] = useState<string>('');
@@ -84,6 +85,9 @@ const App: React.FC = () => {
   // Finance Date Filter
   const [financeDate, setFinanceDate] = useState(new Date());
   const [moneyView, setMoneyView] = useState<MoneyView>('transactions');
+
+  // Input Focus State
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const [editingItem, setEditingItem] = useState<BrainDumpItem | null>(null);
   const itemsRef = useRef(items);
@@ -896,9 +900,19 @@ const App: React.FC = () => {
               return (a.meta.amount || 0) - (b.meta.amount || 0);
           }
 
-          // Default Date Sort
-          const dateA = new Date(a.completed_at || a.created_at).getTime();
-          const dateB = new Date(b.completed_at || b.created_at).getTime();
+          // Default Date Sort (Prioritize Activity Date > Completed Date > Created Date)
+          const getDate = (i: BrainDumpItem) => {
+              // Priority 1: Explicit Activity Date (meta.date)
+              if (i.meta.date && i.meta.date !== 'null') return new Date(i.meta.date).getTime();
+              // Priority 2: Completed Date (for logged transactions, this is often the "activity" timestamp)
+              if (i.completed_at) return new Date(i.completed_at).getTime();
+              // Priority 3: Creation Date (fallback)
+              return new Date(i.created_at).getTime();
+          };
+
+          const dateA = getDate(a);
+          const dateB = getDate(b);
+          
           return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
       });
 
@@ -1081,71 +1095,95 @@ const App: React.FC = () => {
   // --- Bottom Navigation Components ---
 
   const renderTabs = () => (
-    <div className="flex justify-center overflow-x-auto no-scrollbar pb-2 pt-2 px-4 bg-background/95 backdrop-blur-sm border-t border-border">
-      <div className="flex gap-4 sm:gap-6 min-w-max">
-        <button onClick={() => setActiveTab('summary')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'summary' ? 'text-primary' : 'text-muted hover:text-white'}`}>
-          <div className={`p-2 rounded-full ${activeTab === 'summary' ? 'bg-primary/10' : ''}`}><LayoutDashboard className="w-5 h-5" /></div>
+    <div className="w-full bg-background/95 backdrop-blur-sm border-t border-border pb-safe">
+      <div className="max-w-2xl mx-auto grid grid-cols-5 w-full">
+        <button onClick={() => setActiveTab('summary')} className={`flex flex-col items-center justify-center py-3 gap-1 text-[10px] font-medium transition-colors ${activeTab === 'summary' ? 'text-primary' : 'text-muted hover:text-white'}`}>
+          <div className={`p-1.5 rounded-full ${activeTab === 'summary' ? 'bg-primary/10' : ''}`}><LayoutDashboard className="w-5 h-5" /></div>
           Summary
         </button>
-        <button onClick={() => setActiveTab('focus')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'focus' ? 'text-primary' : 'text-muted hover:text-white'}`}>
-          <div className={`p-2 rounded-full ${activeTab === 'focus' ? 'bg-primary/10' : ''}`}><Target className="w-5 h-5" /></div>
+        <button onClick={() => setActiveTab('focus')} className={`flex flex-col items-center justify-center py-3 gap-1 text-[10px] font-medium transition-colors ${activeTab === 'focus' ? 'text-primary' : 'text-muted hover:text-white'}`}>
+          <div className={`p-1.5 rounded-full ${activeTab === 'focus' ? 'bg-primary/10' : ''}`}><Target className="w-5 h-5" /></div>
           Focus
         </button>
-        <button onClick={() => setActiveTab('shopping')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'shopping' ? 'text-primary' : 'text-muted hover:text-white'}`}>
-           <div className={`p-2 rounded-full ${activeTab === 'shopping' ? 'bg-primary/10' : ''}`}><ShoppingCart className="w-5 h-5" /></div>
+        <button onClick={() => setActiveTab('shopping')} className={`flex flex-col items-center justify-center py-3 gap-1 text-[10px] font-medium transition-colors ${activeTab === 'shopping' ? 'text-primary' : 'text-muted hover:text-white'}`}>
+           <div className={`p-1.5 rounded-full ${activeTab === 'shopping' ? 'bg-primary/10' : ''}`}><ShoppingCart className="w-5 h-5" /></div>
           Life
         </button>
-        <button onClick={() => setActiveTab('notes')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'notes' ? 'text-primary' : 'text-muted hover:text-white'}`}>
-           <div className={`p-2 rounded-full ${activeTab === 'notes' ? 'bg-primary/10' : ''}`}><StickyNote className="w-5 h-5" /></div>
+        <button onClick={() => setActiveTab('notes')} className={`flex flex-col items-center justify-center py-3 gap-1 text-[10px] font-medium transition-colors ${activeTab === 'notes' ? 'text-primary' : 'text-muted hover:text-white'}`}>
+           <div className={`p-1.5 rounded-full ${activeTab === 'notes' ? 'bg-primary/10' : ''}`}><StickyNote className="w-5 h-5" /></div>
           Notes
         </button>
-        <button onClick={() => setActiveTab('money')} className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${activeTab === 'money' ? 'text-primary' : 'text-muted hover:text-white'}`}>
-           <div className={`p-2 rounded-full ${activeTab === 'money' ? 'bg-primary/10' : ''}`}><WalletIcon className="w-5 h-5" /></div>
+        <button onClick={() => setActiveTab('money')} className={`flex flex-col items-center justify-center py-3 gap-1 text-[10px] font-medium transition-colors ${activeTab === 'money' ? 'text-primary' : 'text-muted hover:text-white'}`}>
+           <div className={`p-1.5 rounded-full ${activeTab === 'money' ? 'bg-primary/10' : ''}`}><WalletIcon className="w-5 h-5" /></div>
           Money
         </button>
       </div>
     </div>
   );
 
-  const renderFilters = () => {
+  const renderFloatingSearch = () => {
     // Show filters only for tabs that need them
     if (activeTab !== 'notes' && activeTab !== 'money') return null;
-    // Don't show filters for Journal subtab
     if (activeTab === 'notes' && notesSubTab === 'journal') return null;
-
+    
     const isMoney = activeTab === 'money';
     const isTransactions = moneyView === 'transactions';
+    const isFilterActive = selectedTag || filterDate || filterWallet || filterTransactionType || filterMinAmount || filterMaxAmount || searchQuery;
 
+    // Collapsed State: Floating Action Button
+    if (!isSearchExpanded) {
+        return (
+            <button 
+                onClick={() => setIsSearchExpanded(true)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center shadow-2xl border transition-all ${isFilterActive ? 'bg-acc-note text-white border-acc-note' : 'bg-surface text-muted border-border hover:text-white hover:border-white/30'}`}
+            >
+                <Search className="w-5 h-5" />
+                {isFilterActive && <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-surface"></div>}
+            </button>
+        );
+    }
+
+    // Expanded State: Floating Panel
     return (
-        <div className="px-4 py-2 bg-background border-t border-border z-50">
-            <div className="flex items-center gap-2 max-w-2xl mx-auto relative">
+         <div className="bg-surface border border-border rounded-2xl shadow-2xl p-3 relative w-full max-w-xl mx-auto">
+             <button 
+                onClick={() => setIsSearchExpanded(false)}
+                className="absolute -top-3 left-3 bg-surface border border-border rounded-full p-1.5 shadow-lg text-muted hover:text-white hover:border-white/30"
+            >
+                <X className="w-3.5 h-3.5" />
+            </button>
+            
+            <div className="flex flex-col gap-3 mt-2">
                  {/* Search Bar */}
-                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
+                 <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                     <input 
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search..."
-                        className="w-full bg-surface border border-border rounded-full pl-8 pr-4 py-1.5 text-xs text-white focus:outline-none focus:border-acc-note transition-colors"
+                        autoFocus
+                        className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-acc-note transition-colors"
                     />
                 </div>
                 
-                {/* Filter & Sort Buttons */}
-                <div className="flex gap-2 relative">
-                    {/* Filter Dropdown */}
-                    <div className="relative">
+                {/* Actions Row */}
+                <div className="flex gap-2">
+                    {/* Filter Button */}
+                    <div className="relative flex-1">
                         <button 
                             onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false); }}
-                            className={`p-1.5 rounded-full border transition-colors ${showFilterMenu || selectedTag || filterDate || filterWallet || filterTransactionType || filterMinAmount ? 'bg-acc-note/20 border-acc-note text-acc-note' : 'bg-surface border-border text-muted hover:text-white'}`}
+                            className={`w-full py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-colors ${showFilterMenu || (isFilterActive && !searchQuery) ? 'bg-acc-note/20 border-acc-note text-acc-note' : 'bg-background border-border text-muted hover:text-white'}`}
                         >
-                            <Filter className="w-4 h-4" />
+                            <Filter className="w-3.5 h-3.5" /> Filters
+                            {(selectedTag || filterDate || filterWallet || filterTransactionType || filterMinAmount || filterMaxAmount) && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-acc-note"></span>
+                            )}
                         </button>
-                        
-                        {showFilterMenu && (
+                         {showFilterMenu && (
                             <>
                             <div className="fixed inset-0 z-40" onClick={() => setShowFilterMenu(false)}></div>
-                            <div className="absolute right-0 bottom-full mb-2 w-64 bg-surface border border-border rounded-xl shadow-xl z-50 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                            <div className="absolute left-0 bottom-full mb-2 w-64 bg-surface border border-border rounded-xl shadow-xl z-50 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
                                 <h4 className="text-xs font-bold text-white mb-3 uppercase tracking-wider flex justify-between items-center">
                                     Filters
                                     {(selectedTag || filterDate || filterWallet || filterTransactionType || filterMinAmount || filterMaxAmount) && (
@@ -1263,16 +1301,15 @@ const App: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Sort Dropdown */}
-                    <div className="relative">
+                    {/* Sort Button */}
+                    <div className="relative flex-1">
                         <button 
                             onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false); }}
-                            className={`p-1.5 rounded-full border transition-colors ${showSortMenu ? 'bg-primary/20 border-primary text-primary' : 'bg-surface border-border text-muted hover:text-white'}`}
+                            className={`w-full py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-colors ${showSortMenu ? 'bg-primary/20 border-primary text-primary' : 'bg-background border-border text-muted hover:text-white'}`}
                         >
-                            <ArrowUpDown className="w-4 h-4" />
+                            <ArrowUpDown className="w-3.5 h-3.5" /> Sort
                         </button>
-                        
-                        {showSortMenu && (
+                         {showSortMenu && (
                              <>
                              <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)}></div>
                              <div className="absolute right-0 bottom-full mb-2 w-44 bg-surface border border-border rounded-xl shadow-xl z-50 p-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -1317,7 +1354,7 @@ const App: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </div>
+         </div>
     );
   };
 
@@ -1976,7 +2013,22 @@ const App: React.FC = () => {
 
                                {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
                                    <div className="space-y-3">
-                                       {list.map(item => <Card key={item.id} item={item} onEdit={setEditingItem} onDelete={handleDelete} noStrikethrough={true} enableCollapse={true} defaultCollapsed={appSettings.defaultCollapsed} hideMoney={appSettings.hideMoney} />)}
+                                       {list.map(item => {
+                                           const categoryName = budgetConfig.rules.find(r => r.id === item.meta.budgetCategory)?.name || item.meta.budgetCategory;
+                                           return (
+                                              <Card 
+                                                key={item.id} 
+                                                item={item} 
+                                                onEdit={setEditingItem} 
+                                                onDelete={handleDelete} 
+                                                noStrikethrough={true} 
+                                                enableCollapse={true} 
+                                                defaultCollapsed={appSettings.defaultCollapsed} 
+                                                hideMoney={appSettings.hideMoney} 
+                                                categoryName={categoryName}
+                                              />
+                                           );
+                                       })}
                                    </div>
                                )}
                            </>
@@ -2088,12 +2140,20 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Fixed Bottom Layout: Filters -> Tabs -> Input */}
-      <div className="fixed bottom-0 w-full z-50">
-          {renderFilters()}
-          {renderTabs()}
-          <div className="bg-background border-t border-border">
-             <InputBar onSend={handleSend} />
+      {/* Fixed Bottom Layout */}
+      <div className="fixed bottom-0 w-full z-40 bg-background border-t border-border">
+          
+          {/* Input Bar */}
+          <InputBar 
+            onSend={handleSend} 
+            onFocus={() => { setIsInputFocused(true); setIsSearchExpanded(false); }} 
+            onBlur={() => setIsInputFocused(false)} 
+            startAction={renderFloatingSearch()}
+          />
+
+          {/* Navigation Tabs (Hidden when keyboard active on mobile, visible on desktop) */}
+          <div className={isInputFocused ? "hidden md:block" : "block"}>
+             {renderTabs()}
           </div>
       </div>
 

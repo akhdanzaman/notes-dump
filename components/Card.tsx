@@ -10,6 +10,7 @@ interface CardProps {
   onDelete?: (id: string) => void;
   readonly?: boolean;
   skillName?: string; // Optional: Pass resolved skill name
+  categoryName?: string; // Optional: Pass resolved budget category name
   noStrikethrough?: boolean;
   enableCollapse?: boolean;
   defaultCollapsed?: boolean;
@@ -23,6 +24,7 @@ const Card: React.FC<CardProps> = ({
     onDelete, 
     readonly = false, 
     skillName, 
+    categoryName,
     noStrikethrough = false,
     enableCollapse = false,
     defaultCollapsed = false,
@@ -180,7 +182,12 @@ const Card: React.FC<CardProps> = ({
 
              {/* Collapsed Preview Metadata */}
              {enableCollapse && isCollapsed && (
-                 <div className="flex items-center gap-2 mt-1 text-[10px] text-muted h-4">
+                 <div className="flex items-center gap-2 mt-1 text-[10px] text-muted h-4 overflow-hidden">
+                     {categoryName && (
+                         <span className="text-blue-300 font-medium px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 capitalize">
+                             {categoryName}
+                         </span>
+                     )}
                      {displayDate && <span>{displayDate}</span>}
                      {displayAmount && (
                          <>
@@ -244,6 +251,13 @@ const Card: React.FC<CardProps> = ({
                            <BookOpen className="w-3 h-3" />
                            <span>{skillName}</span>
                            {meta.durationMinutes && <span className="text-muted ml-1">({meta.durationMinutes}m)</span>}
+                       </div>
+                   )}
+
+                   {/* Category Name (Expanded) */}
+                   {categoryName && !isCollapsed && (
+                       <div className="flex items-center gap-1 text-[10px] text-blue-300 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 capitalize">
+                           <span>{categoryName}</span>
                        </div>
                    )}
 

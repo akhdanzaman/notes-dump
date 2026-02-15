@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { BrainDumpItem, ItemType, BudgetRule, Skill, Wallet, FinanceType } from '../types';
 import { X, Save, DollarSign, Calendar, Wallet as WalletIcon, Hourglass, ArrowRight, Bold, Italic, List, Type } from 'lucide-react';
@@ -29,8 +30,10 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const getInitialDate = (isoDate?: string) => {
-      if (!isoDate || isoDate === 'null') return '';
+  const getInitialDate = (item: BrainDumpItem) => {
+      // Priority: meta.date > completed_at > created_at
+      const isoDate = (item.meta.date && item.meta.date !== 'null') ? item.meta.date : (item.completed_at || item.created_at);
+      if (!isoDate) return '';
       const date = new Date(isoDate);
       if (isNaN(date.getTime())) return '';
       const offset = date.getTimezoneOffset() * 60000;
@@ -38,7 +41,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
       return localDate.toISOString().slice(0, 16);
   };
 
-  const [date, setDate] = useState<string>(getInitialDate(item.meta.date));
+  const [date, setDate] = useState<string>(getInitialDate(item));
 
   if (!isOpen) return null;
 
@@ -99,7 +102,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
 
   const isNote = item.type === ItemType.NOTE || item.type === ItemType.JOURNAL;
   const showAmountField = item.type === ItemType.FINANCE || item.type === ItemType.SHOPPING || item.type === ItemType.TODO;
-  const showDateField = item.type === ItemType.TODO || item.type === ItemType.EVENT || item.type === ItemType.SHOPPING;
+  const showDateField = item.type === ItemType.TODO || item.type === ItemType.EVENT || item.type === ItemType.SHOPPING || item.type === ItemType.FINANCE || item.type === ItemType.SKILL_LOG || item.type === ItemType.JOURNAL;
   const showFinanceExtras = item.type === ItemType.FINANCE || (item.type === ItemType.SHOPPING && showAmountField);
   const showSkillExtras = item.type === ItemType.SKILL_LOG;
 
@@ -111,11 +114,12 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
 
   const walletOptions = (
       <>
+        <option value="">None / Cash</option>
         {wallets.map(w => (
-            <option key={w.id} value={w.name} />
+            <option key={w.id} value={w.name}>{w.name}</option>
         ))}
-        {existingPaymentMethods.filter(pm => !wallets.some(w => w.name === pm)).map((pm, i) => (
-            <option key={`legacy-${i}`} value={pm} />
+        {existingPaymentMethods.filter(pm => pm && !wallets.some(w => w.name === pm)).map((pm, i) => (
+            <option key={`legacy-${i}`} value={pm}>{pm}</option>
         ))}
       </>
   );
@@ -151,194 +155,158 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
             <div className="flex justify-between items-end mb-1">
                 <label className="block text-xs font-medium text-muted">Content</label>
                 {isNote && (
-                    <div className="flex gap-1 bg-black/20 p-1 rounded-lg">
-                        <button onClick={handleBold} className="p-1.5 hover:bg-white/10 rounded text-muted hover:text-white" title="Bold">
-                            <Bold className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={handleItalic} className="p-1.5 hover:bg-white/10 rounded text-muted hover:text-white" title="Italic">
-                            <Italic className="w-3.5 h-3.5" />
-                        </button>
-                        <div className="w-px bg-white/10 mx-0.5"></div>
-                        <button onClick={handleList} className="p-1.5 hover:bg-white/10 rounded text-muted hover:text-white" title="Bullet List">
-                            <List className="w-3.5 h-3.5" />
-                        </button>
+                    <div className="flex gap-1 bg-background border border-border rounded-md p-1">
+                        <button onClick={handleBold} className="p-1 hover:bg-white/10 rounded text-muted hover:text-white" title="Bold"><Bold className="w-3 h-3" /></button>
+                        <button onClick={handleItalic} className="p-1 hover:bg-white/10 rounded text-muted hover:text-white" title="Italic"><Italic className="w-3 h-3" /></button>
+                        <button onClick={handleList} className="p-1 hover:bg-white/10 rounded text-muted hover:text-white" title="List"><List className="w-3 h-3" /></button>
                     </div>
                 )}
             </div>
             <textarea
               ref={textareaRef}
-              className={`w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-todo resize-none leading-relaxed ${isNote ? 'h-80 text-base' : 'h-24'}`}
+              className={`w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 placeholder-muted/50 ${isNote ? 'h-48' : 'h-24'}`}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Type something..."
             />
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
-            {showDateField && (
-              <div className={!showAmountField ? "col-span-2" : ""}>
-                 <label className="block text-xs font-medium text-muted mb-1">Due Date</label>
-                 <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                    <input
-                      type="datetime-local"
-                      className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-acc-todo [color-scheme:dark]"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                    />
-                 </div>
-              </div>
-            )}
-
-            {showAmountField && (
-              <div className={!showDateField ? "col-span-2" : ""}>
-                <label className="block text-xs font-medium text-muted mb-1">Amount (IDR)</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                  <input
-                    type="number"
-                    className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-acc-todo"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {showFinanceExtras && (
-             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
-                 {/* Source Wallet / Payment Method */}
-                 <div className={financeType === 'transfer' ? '' : 'col-span-2'}>
-                    <label className="block text-xs font-medium text-muted mb-1">
-                        {financeType === 'transfer' ? 'From (Source)' : 'Payment Method / Wallet'}
-                    </label>
-                    <div className="relative">
-                        <WalletIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                        <input
-                            type="text"
-                            list="payment-methods"
-                            className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-acc-todo"
-                            value={paymentMethod}
-                            onChange={(e) => setPaymentMethod(e.target.value)}
-                            placeholder="e.g. Cash"
-                        />
-                        <datalist id="payment-methods">{walletOptions}</datalist>
-                    </div>
-                 </div>
-
-                 {/* Destination Wallet (Transfer Only) */}
-                 {financeType === 'transfer' && (
-                     <div>
-                        <label className="block text-xs font-medium text-muted mb-1">To (Destination)</label>
-                        <div className="relative">
-                            <ArrowRight className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                            <input
-                                type="text"
-                                list="to-wallets"
-                                className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-acc-todo"
-                                value={toWallet}
-                                onChange={(e) => setToWallet(e.target.value)}
-                                placeholder="e.g. Bank"
-                            />
-                            <datalist id="to-wallets">{walletOptions}</datalist>
-                        </div>
-                     </div>
-                 )}
-
-                 {/* Budget Category */}
-                 {financeType !== 'transfer' && (
-                     <div className="col-span-2">
-                         <label className="block text-xs font-medium text-muted mb-2">Budget Category</label>
-                         <div className="flex flex-wrap gap-2">
-                            {displayRules.map((rule) => {
-                                 const isSelected = budgetCategory ? (budgetCategory === rule.id || budgetCategory.toLowerCase() === rule.name.toLowerCase()) : false;
-                                 return (
-                                    <button
-                                        key={rule.id}
-                                        onClick={() => setBudgetCategory(isSelected ? '' : rule.id)}
-                                        className={`py-1.5 px-3 rounded-lg text-xs font-medium capitalize border transition-all flex items-center gap-2 ${
-                                            isSelected
-                                            ? `border-white/50 text-white ${rule.color}`
-                                            : 'bg-background border-border text-muted hover:bg-surface'
-                                        }`}
-                                    >
-                                        <div className={`w-2 h-2 rounded-full ${rule.color} ${isSelected ? 'ring-2 ring-white' : ''}`}></div>
-                                        {rule.name}
-                                    </button>
-                                 );
-                            })}
-                         </div>
-                     </div>
-                 )}
-             </div>
-          )}
-
-          {showSkillExtras && (
-              <div className="space-y-4 pt-2 border-t border-border/50">
-                  <div>
-                      <label className="block text-xs font-medium text-muted mb-1">Duration (Minutes)</label>
-                      <div className="relative">
-                        <Hourglass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+               {/* Amount Field */}
+               {showAmountField && (
+                   <div className={item.type === ItemType.FINANCE && financeType === 'transfer' ? "col-span-2" : ""}>
+                        <label className="block text-xs font-medium text-muted mb-1 flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" /> Amount
+                        </label>
                         <input
                             type="number"
-                            className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-3 text-white focus:outline-none focus:border-indigo-500"
-                            value={duration}
-                            onChange={(e) => setDuration(e.target.value)}
-                            placeholder="e.g. 45"
+                            className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="0"
                         />
-                      </div>
+                   </div>
+               )}
+
+               {/* Date Field */}
+               {showDateField && (
+                   <div className={(!showAmountField && !showSkillExtras) ? "col-span-2" : ""}>
+                        <label className="block text-xs font-medium text-muted mb-1 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> Date
+                        </label>
+                        <input
+                            type="datetime-local"
+                            className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                        />
+                   </div>
+               )}
+          </div>
+          
+          {/* Skill Extras */}
+          {showSkillExtras && (
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-muted mb-1 flex items-center gap-1">
+                        <Hourglass className="w-3 h-3" /> Duration (min)
+                    </label>
+                    <input
+                        type="number"
+                        className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                        value={duration}
+                        onChange={(e) => setDuration(e.target.value)}
+                        placeholder="Minutes"
+                    />
                   </div>
                   <div>
-                      <label className="block text-xs font-medium text-muted mb-1">Assigned Skill</label>
-                      <div className="grid grid-cols-2 gap-2">
-                          {skills.map(skill => {
-                              const isSelected = skillId === skill.id;
-                              return (
-                                <button
-                                    key={skill.id}
-                                    onClick={() => setSkillId(isSelected ? '' : skill.id)}
-                                    className={`py-2 px-3 rounded-lg text-xs font-medium border transition-all text-left ${
-                                        isSelected
-                                        ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                                        : 'bg-background border-border text-muted hover:bg-surface'
-                                    }`}
-                                >
-                                    {skill.name}
-                                </button>
-                              );
-                          })}
-                      </div>
+                    <label className="block text-xs font-medium text-muted mb-1 flex items-center gap-1">
+                        <Type className="w-3 h-3" /> Skill
+                    </label>
+                    <select
+                        className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                        value={skillId}
+                        onChange={(e) => setSkillId(e.target.value)}
+                    >
+                        <option value="">Uncategorized</option>
+                        {skills.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
                   </div>
               </div>
           )}
 
+          {/* Finance Extras */}
+          {showFinanceExtras && (
+              <div className="space-y-4 pt-2 border-t border-border/50">
+                  <div className="grid grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-xs font-medium text-muted mb-1 flex items-center gap-1">
+                             <WalletIcon className="w-3 h-3" /> {financeType === 'transfer' ? 'From Wallet' : 'Payment Method'}
+                          </label>
+                          <select
+                            className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                          >
+                             {walletOptions}
+                          </select>
+                      </div>
+
+                      {financeType === 'transfer' ? (
+                          <div>
+                            <label className="block text-xs font-medium text-muted mb-1 flex items-center gap-1">
+                                <ArrowRight className="w-3 h-3" /> To Wallet
+                            </label>
+                            <select
+                                className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                                value={toWallet}
+                                onChange={(e) => setToWallet(e.target.value)}
+                            >
+                                {walletOptions}
+                            </select>
+                          </div>
+                      ) : (
+                          <div>
+                            <label className="block text-xs font-medium text-muted mb-1">Budget Category</label>
+                            <select
+                                className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                                value={budgetCategory}
+                                onChange={(e) => setBudgetCategory(e.target.value)}
+                            >
+                                <option value="">Uncategorized</option>
+                                {displayRules.map(rule => (
+                                    <option key={rule.id} value={rule.id}>{rule.name}</option>
+                                ))}
+                            </select>
+                          </div>
+                      )}
+                  </div>
+              </div>
+          )}
+          
+          {/* Tags */}
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Tags (comma separated)</label>
             <input
               type="text"
-              className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-todo"
+              className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 placeholder-muted/50"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              placeholder="work, idea, priority"
+              placeholder="work, personal, urgent"
             />
           </div>
+
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button 
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white transition-colors"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={handleSave}
-            className="px-4 py-2 bg-primary text-background rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-white transition-colors"
-          >
-            <Save className="w-4 h-4" /> Save
-          </button>
+        <div className="flex justify-end gap-2 mt-6">
+            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white">Cancel</button>
+            <button 
+                onClick={handleSave}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors flex items-center gap-2"
+            >
+                <Save className="w-4 h-4" /> Save Changes
+            </button>
         </div>
       </div>
     </div>
