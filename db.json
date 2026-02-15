@@ -2243,7 +2243,7 @@
     },
     {
       "id": "9b7e6c2e-2eb2-40e9-8624-b97efdaee4de",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-01-25T15:03:02.796Z",
       "type": "SHOPPING",
       "content": "beli paket data",
@@ -2258,10 +2258,11 @@
         "amount": 150000,
         "paymentMethod": "",
         "budgetCategory": "cat-1770450517162",
-        "financeType": "expense"
+        "financeType": "expense",
+        "progress": 0,
+        "progressNotes": ""
       },
-      "isOptimistic": false,
-      "completed_at": "2026-02-04T12:05:44.224Z"
+      "isOptimistic": false
     },
     {
       "id": "13aa8124-19f4-4df5-afb8-8321e93687c0",
