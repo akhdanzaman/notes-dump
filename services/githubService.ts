@@ -17,7 +17,8 @@ export interface GithubConfig {
 
 export type SyncResult = { 
   success: boolean; 
-  method: 'cloud' | 'local' | 'skipped_not_hydrated' | 'skipped_no_changes' | 'error' 
+  method: 'cloud' | 'local' | 'skipped_not_hydrated' | 'skipped_no_changes' | 'error';
+  mergedData?: DbSchema;
 };
 
 // --- Module State (Singleton) ---
@@ -54,6 +55,37 @@ const fromBase64 = (str: string) => {
       })
       .join("")
   );
+};
+
+// Helper for merging data (Exported for use in hook if needed, but primarily used here)
+export const mergeDbData = (local: DbSchema, remote: DbSchema): DbSchema => {
+    // Items: Map by ID. Local wins conflicts (LWW) to preserve current edits. Remote adds missing.
+    const itemMap = new Map<string, BrainDumpItem>();
+    remote.data.forEach(i => itemMap.set(i.id, i));
+    local.data.forEach(i => itemMap.set(i.id, i));
+
+    // Skills
+    const skillMap = new Map<string, Skill>();
+    remote.skills?.forEach(s => skillMap.set(s.id, s));
+    local.skills?.forEach(s => skillMap.set(s.id, s));
+
+    // Wallets
+    const walletMap = new Map<string, Wallet>();
+    remote.wallets?.forEach(w => walletMap.set(w.id, w));
+    local.wallets?.forEach(w => walletMap.set(w.id, w));
+
+    // Themes
+    const themes = { ...remote.monthlyThemes, ...local.monthlyThemes };
+
+    return {
+        data: Array.from(itemMap.values()),
+        budgetConfig: local.budgetConfig || remote.budgetConfig, // Local priority for config
+        appSettings: local.appSettings || remote.appSettings,
+        customPrompt: local.customPrompt || remote.customPrompt,
+        skills: Array.from(skillMap.values()),
+        wallets: Array.from(walletMap.values()),
+        monthlyThemes: themes,
+    };
 };
 
 // --- Configuration Management ---
@@ -247,8 +279,8 @@ const performSync = async (
 
   const octokit = new Octokit({ auth: config.token });
 
-  const executeWrite = async (sha?: string) => {
-      const contentEncoded = toBase64(jsonString);
+  const executeWrite = async (sha?: string, contentStr?: string) => {
+      const contentEncoded = toBase64(contentStr || jsonString);
       const response = await octokit.repos.createOrUpdateFileContents({
         owner: config.owner,
         repo: config.repo,
@@ -272,15 +304,26 @@ const performSync = async (
 
       } catch (writeError: any) {
           if (writeError.status === 409) {
-              console.warn("Sync conflict (409). Fetching latest SHA and retrying...");
+              console.warn("Sync conflict (409). Fetching latest, merging, and retrying...");
               
-              const { sha } = await fetchDb(true); 
-              const newSha = await executeWrite(sha);
+              // 1. Fetch remote data (skip local write to process merge in memory first)
+              const { data: remoteData, sha: remoteSha } = await fetchDb(true); 
+              
+              // 2. Merge local (pending save) with remote
+              const mergedData = mergeDbData(updatedDb, remoteData);
+              const mergedJson = JSON.stringify(mergedData, null, 2);
+              
+              // 3. Update Local Storage immediately to persist merge
+              localStorage.setItem(LOCAL_STORAGE_KEY, mergedJson);
+              lastSnapshot = mergedJson;
+
+              // 4. Write merged data
+              const newSha = await executeWrite(remoteSha, mergedJson);
               
               currentCloudSha = newSha;
-              lastSnapshot = jsonString;
-
-              return { success: true, method: 'cloud' };
+              
+              // 5. Return merged data so App can update state
+              return { success: true, method: 'cloud', mergedData };
 
           } else if (writeError.status === 404) {
              console.error("Sync failed: 404. Check Repo/Token permissions.");

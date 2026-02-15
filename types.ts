@@ -94,3 +94,11 @@ export interface GitHubFileResponse {
   sha: string;
   encoding: string;
 }
+
+// --- UI Types moved from App.tsx ---
+export type Tab = 'summary' | 'focus' | 'shopping' | 'notes' | 'money';
+export type FocusSubTab = 'tasks' | 'skills';
+export type NotesSubTab = 'general' | 'skills' | 'journal';
+export type SyncStatus = 'synced' | 'syncing' | 'error' | 'local';
+export type MoneyView = 'transactions' | 'budget' | 'wallets';
+export type SortOrder = 'newest' | 'oldest' | 'highest_amount' | 'lowest_amount';

@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Github, WifiOff, CheckCircle2, Sparkles, PieChart, Plus, Trash2, AlertCircle, MessageSquare, EyeOff, Layout } from 'lucide-react';
+import { X, Save, Github, WifiOff, CheckCircle2, Sparkles, PieChart, Plus, Trash2, AlertCircle, MessageSquare, EyeOff, Layout, Download, Database } from 'lucide-react';
 import { getGithubConfig, saveGithubConfig, clearGithubConfig, GithubConfig } from '../services/githubService';
 import { getGeminiKey, saveGeminiKey, DEFAULT_PROMPT } from '../services/geminiService';
-import { BudgetConfig, BudgetRule, AppSettings } from '../types';
+import { exportToExcel } from '../services/exportService';
+import { BudgetConfig, BudgetRule, AppSettings, BrainDumpItem, Skill, Wallet } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,6 +13,11 @@ interface SettingsModalProps {
   currentBudgetConfig?: BudgetConfig;
   currentPrompt?: string;
   currentAppSettings?: AppSettings;
+  // New props for export
+  allItems: BrainDumpItem[];
+  allSkills: Skill[];
+  allWallets: Wallet[];
+  monthlyThemes: Record<string, string>;
 }
 
 // Preset colors for budget categories
@@ -26,7 +32,11 @@ const COLOR_PRESETS = [
     { name: 'Gray', class: 'bg-gray-500' },
 ];
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, currentBudgetConfig, currentPrompt, currentAppSettings }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ 
+    isOpen, onClose, onSave, 
+    currentBudgetConfig, currentPrompt, currentAppSettings,
+    allItems, allSkills, allWallets, monthlyThemes
+}) => {
   const [config, setConfig] = useState<GithubConfig>({
     token: '',
     owner: '',
@@ -158,6 +168,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
   const resetPrompt = () => {
       setPrompt(DEFAULT_PROMPT);
       setIsDefaultPrompt(true);
+  };
+
+  const handleExport = () => {
+      exportToExcel(
+          allItems, 
+          allSkills, 
+          allWallets, 
+          { monthlyIncome, rules: budgetRules }, // Use current state config
+          monthlyThemes, 
+          { defaultCollapsed, hideMoney } // Use current state settings
+      );
   };
 
   return (
@@ -339,6 +360,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                     Edit this to customize how the AI categorizes your inputs.
                  </p>
             </div>
+          </div>
+
+          <div className="h-px bg-border w-full"></div>
+
+          {/* Data Management Section */}
+          <div className="space-y-4">
+             <div className="flex items-center gap-2 mb-2">
+                 <Database className="w-4 h-4 text-white" />
+                 <h4 className="text-sm font-semibold text-white">Data Management</h4>
+             </div>
+             
+             <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                <div className="flex flex-col">
+                    <span className="text-xs font-medium text-white">Export Data</span>
+                    <span className="text-[10px] text-muted">Download all data as Excel (.xlsx)</span>
+                </div>
+                <button 
+                    onClick={handleExport}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                    <Download className="w-3.5 h-3.5" /> Export
+                </button>
+             </div>
           </div>
 
           <div className="h-px bg-border w-full"></div>

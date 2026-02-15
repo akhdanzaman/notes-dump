@@ -38,6 +38,10 @@ const Card: React.FC<CardProps> = ({
   const { type, content, meta, isOptimistic, status, created_at, completed_at } = item;
   const isDone = status === 'done';
   
+  // Logic to determine if text should be struck through
+  // Requested: SKILL_LOG should NOT have strikethrough
+  const shouldStrike = isDone && !noStrikethrough && type !== ItemType.SKILL_LOG;
+
   const toggleCollapse = () => {
       if (enableCollapse) setIsCollapsed(!isCollapsed);
   };
@@ -168,7 +172,7 @@ const Card: React.FC<CardProps> = ({
           <div className="flex-1 min-w-0">
              <div className="flex justify-between items-start gap-2">
                  {/* Title / Content */}
-                 <div className={`text-sm ${isDone && !noStrikethrough ? 'line-through text-muted' : 'text-gray-200'} ${enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap'}`}>
+                 <div className={`text-sm ${shouldStrike ? 'line-through text-muted' : 'text-gray-200'} ${enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap'}`}>
                     {content}
                  </div>
                  
