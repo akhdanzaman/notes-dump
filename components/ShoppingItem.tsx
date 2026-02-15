@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrainDumpItem } from '../types';
 import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2 } from 'lucide-react';
@@ -84,7 +85,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
     <div 
       className={`group flex items-center justify-between p-3 rounded-lg border transition-all 
         ${isWaitingForNextCycle 
-            ? 'bg-black/20 border-border/30 opacity-75' 
+            ? 'bg-black/10 dark:bg-black/20 border-border/30 opacity-75' 
             : `bg-surface border-border hover:border-acc-shopping/50 ${isDone && !isRoutine ? 'opacity-60' : ''}`
         }`}
     >
@@ -106,7 +107,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
         
         <div className="flex flex-col overflow-hidden min-w-0">
             <div className="flex items-center gap-2">
-                <span className={`text-sm truncate ${isDone ? 'line-through text-muted' : 'text-gray-200'}`}>
+                <span className={`text-sm truncate ${isDone ? 'line-through text-muted' : 'text-primary'}`}>
                     {content}
                 </span>
                 {quantity && (
@@ -142,7 +143,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
                 {/* Amount Indicator for Plans */}
                 {formattedAmount && (
-                    <div className="flex items-center gap-1 text-[10px] text-amber-400">
+                    <div className="flex items-center gap-1 text-[10px] text-amber-500">
                         <span>{formattedAmount}</span>
                     </div>
                 )}
@@ -159,7 +160,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       e.stopPropagation();
                       onEdit(item);
                   }}
-                  className="p-2 text-muted hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-2 text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                   title="Edit"
                 >
                   <Edit2 className="w-4 h-4" />
@@ -170,7 +171,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                     e.stopPropagation();
                     onDelete(item.id);
                 }}
-                className="p-2 text-muted hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+                className="p-2 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                 title="Delete"
               >
                   <Trash2 className="w-4 h-4" />

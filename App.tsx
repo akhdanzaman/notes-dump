@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, FocusSubTab, NotesSubTab, MoneyView, SortOrder, ItemType } from './types';
@@ -71,10 +71,51 @@ const App: React.FC = () => {
   const [financeDate, setFinanceDate] = useState(new Date());
   const [moneyView, setMoneyView] = useState<MoneyView>('transactions');
 
-  // Input Focus State
-  const [isInputFocused, setIsInputFocused] = useState(false);
+  // Input Focus State - CHANGED: Replaced isInputFocused with isMobileKeyboardOpen
+  const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false);
 
   const [editingItem, setEditingItem] = useState<BrainDumpItem | null>(null);
+
+  // --- Theme Effect ---
+  useEffect(() => {
+    // Apply theme to HTML element
+    const theme = appSettings.theme || 'dark';
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [appSettings.theme]);
+
+  // --- Keyboard Detection Effect ---
+  useEffect(() => {
+    // We assume the initial height is the "keyboard closed" state
+    const initialHeight = window.innerHeight;
+    
+    const handleResize = () => {
+        // Only trigger if an input is focused (simple optimization to avoid calc on scroll-hide address bars)
+        const isFocused = document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT';
+        
+        if (!isFocused) {
+            setIsMobileKeyboardOpen(false);
+            return;
+        }
+
+        const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        // If height is reduced by more than 150px (typical virtual keyboard height), assume it's open
+        const isKeyboardOpen = currentHeight < (initialHeight - 150);
+        
+        setIsMobileKeyboardOpen(isKeyboardOpen);
+    };
+
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+        if (window.visualViewport) window.visualViewport.removeEventListener('resize', handleResize);
+        window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // --- Handlers ---
 
@@ -178,13 +219,13 @@ const App: React.FC = () => {
         );
     } else if (activeTab === 'notes') {
         if (notesSubTab === 'general') {
-            targetItems = items.filter(i => i.type === 'NOTE');
+            targetItems = items.filter(i => i.type === ItemType.NOTE);
         } else if (notesSubTab === 'skills') {
             targetItems = items.filter(i => i.type === ItemType.SKILL_LOG);
         } else {
             targetItems = items.filter(i => 
                 i.type === 'JOURNAL' || 
-                (i.type === 'TODO' && i.status === 'done')
+                (i.type === ItemType.TODO && i.status === 'done')
             );
         }
     } else if (activeTab === 'focus') {
@@ -210,7 +251,7 @@ const App: React.FC = () => {
   }, [items]);
 
   return (
-    <div className="min-h-screen bg-background text-primary font-sans">
+    <div className="min-h-screen bg-background text-primary font-sans transition-colors duration-300">
       
       <Header 
         pendingCount={pendingCount}
@@ -307,8 +348,7 @@ const App: React.FC = () => {
           
           <InputBar 
             onSend={handleSend} 
-            onFocus={() => { setIsInputFocused(true); setIsSearchExpanded(false); }} 
-            onBlur={() => setIsInputFocused(false)} 
+            onFocus={() => { setIsSearchExpanded(false); }} 
             startAction={
                 <FloatingSearch 
                     activeTab={activeTab} notesSubTab={notesSubTab} moneyView={moneyView}
@@ -329,7 +369,7 @@ const App: React.FC = () => {
             }
           />
 
-          <div className={isInputFocused ? "hidden md:block" : "block"}>
+          <div className={isMobileKeyboardOpen ? "hidden md:block" : "block"}>
              <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
       </div>
@@ -338,16 +378,16 @@ const App: React.FC = () => {
       {themeEditMode && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-surface border border-border rounded-xl w-full max-w-sm shadow-2xl p-6">
-                 <h3 className="text-lg font-bold text-white mb-4">Set Theme</h3>
+                 <h3 className="text-lg font-bold text-primary mb-4">Set Theme</h3>
                  <textarea
                     autoFocus
-                    className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 mb-4 h-24 resize-none"
+                    className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 mb-4 h-24 resize-none"
                     placeholder="e.g. Month of Discipline, Focus on Skill X..."
                     value={tempThemeContent}
                     onChange={(e) => setTempThemeContent(e.target.value)}
                  />
                  <div className="flex justify-end gap-2">
-                     <button onClick={() => setThemeEditMode(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white">Cancel</button>
+                     <button onClick={() => setThemeEditMode(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-primary">Cancel</button>
                      <button onClick={handleSaveTheme} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors">Save Theme</button>
                  </div>
              </div>

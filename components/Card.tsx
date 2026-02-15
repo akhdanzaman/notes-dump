@@ -172,7 +172,7 @@ const Card: React.FC<CardProps> = ({
           <div className="flex-1 min-w-0">
              <div className="flex justify-between items-start gap-2">
                  {/* Title / Content */}
-                 <div className={`text-sm ${shouldStrike ? 'line-through text-muted' : 'text-gray-200'} ${enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap'}`}>
+                 <div className={`text-sm ${shouldStrike ? 'line-through text-muted' : 'text-primary'} ${enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap'}`}>
                     {content}
                  </div>
                  
@@ -188,7 +188,7 @@ const Card: React.FC<CardProps> = ({
              {enableCollapse && isCollapsed && (
                  <div className="flex items-center gap-2 mt-1 text-[10px] text-muted h-4 overflow-hidden">
                      {categoryName && (
-                         <span className="text-blue-300 font-medium px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 capitalize">
+                         <span className="text-blue-500 font-medium px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 capitalize">
                              {categoryName}
                          </span>
                      )}
@@ -196,7 +196,7 @@ const Card: React.FC<CardProps> = ({
                      {displayAmount && (
                          <>
                             <span>•</span>
-                            <span className={`${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : 'text-amber-400'}`}>
+                            <span className={`${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : 'text-amber-500'}`}>
                                 {displayAmount}
                             </span>
                          </>
@@ -204,7 +204,7 @@ const Card: React.FC<CardProps> = ({
                      {skillName && (
                          <>
                            <span>•</span>
-                           <span className="text-indigo-400">{skillName}</span>
+                           <span className="text-indigo-500">{skillName}</span>
                          </>
                      )}
                  </div>
@@ -230,7 +230,7 @@ const Card: React.FC<CardProps> = ({
 
                    {/* Finance Details */}
                    {displayAmount && (
-                       <div className={`flex items-center gap-1 text-[10px] font-medium ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : 'text-amber-400'}`}>
+                       <div className={`flex items-center gap-1 text-[10px] font-medium ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : 'text-amber-500'}`}>
                            {type === 'FINANCE' && meta.financeType === 'transfer' ? <ArrowRightLeft className="w-3 h-3" /> : (type === 'FINANCE' ? <Wallet className="w-3 h-3" /> : <Tag className="w-3 h-3" />)}
                            <span>{displayAmount}</span>
                        </div>
@@ -239,11 +239,11 @@ const Card: React.FC<CardProps> = ({
                    {/* Payment Method / Wallet Info */}
                    {(meta.paymentMethod || meta.toWallet) && (
                        <div className="flex items-center gap-1 text-[10px] text-muted">
-                           <span className="bg-white/5 px-1.5 py-0.5 rounded text-gray-300">{meta.paymentMethod || 'Cash'}</span>
+                           <span className="bg-muted/10 px-1.5 py-0.5 rounded text-primary">{meta.paymentMethod || 'Cash'}</span>
                            {meta.toWallet && (
                                <>
                                 <ArrowRight className="w-3 h-3 text-muted" />
-                                <span className="bg-white/5 px-1.5 py-0.5 rounded text-gray-300">{meta.toWallet}</span>
+                                <span className="bg-muted/10 px-1.5 py-0.5 rounded text-primary">{meta.toWallet}</span>
                                </>
                            )}
                        </div>
@@ -251,7 +251,7 @@ const Card: React.FC<CardProps> = ({
 
                    {/* Skill Info */}
                    {skillName && (
-                       <div className="flex items-center gap-1 text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
+                       <div className="flex items-center gap-1 text-[10px] text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded">
                            <BookOpen className="w-3 h-3" />
                            <span>{skillName}</span>
                            {meta.durationMinutes && <span className="text-muted ml-1">({meta.durationMinutes}m)</span>}
@@ -260,7 +260,7 @@ const Card: React.FC<CardProps> = ({
 
                    {/* Category Name (Expanded) */}
                    {categoryName && !isCollapsed && (
-                       <div className="flex items-center gap-1 text-[10px] text-blue-300 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 capitalize">
+                       <div className="flex items-center gap-1 text-[10px] text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 capitalize">
                            <span>{categoryName}</span>
                        </div>
                    )}
@@ -279,7 +279,7 @@ const Card: React.FC<CardProps> = ({
                        {onEdit && (
                         <button 
                           onClick={(e) => { e.stopPropagation(); onEdit(item); }} 
-                          className="flex items-center gap-1 text-[10px] text-muted hover:text-white transition-colors"
+                          className="flex items-center gap-1 text-[10px] text-muted hover:text-primary transition-colors"
                         >
                            <Edit2 className="w-3 h-3" /> Edit
                         </button>

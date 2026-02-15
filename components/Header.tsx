@@ -46,7 +46,7 @@ const Header: React.FC<HeaderProps> = ({ pendingCount, syncStatus, onSyncClick, 
             <button 
                 onClick={onClick}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${color}`}
-                title={syncStatus === 'synced' ? "Click to refresh from Cloud" : (syncStatus === 'error' ? "Click to Reload Page" : "Click to Sync")}
+                title={syncStatus === 'synced' ? "Click to refresh from Cloud" : (syncStatus === 'error' ? "Click to Retry Sync" : "Click to Sync")}
             >
                 {icon} <span className="hidden sm:inline">{text}</span>
             </button>
@@ -61,7 +61,7 @@ const Header: React.FC<HeaderProps> = ({ pendingCount, syncStatus, onSyncClick, 
                     <div className="bg-gradient-to-tr from-acc-todo to-acc-event p-2 rounded-lg">
                     <Brain className="w-5 h-5 text-white" />
                     </div>
-                    <h1 className="text-xl font-bold tracking-tight hidden sm:block">BrainDump <span className="text-muted font-normal text-sm ml-1">AI</span></h1>
+                    <h1 className="text-xl font-bold tracking-tight hidden sm:block text-primary">BrainDump <span className="text-muted font-normal text-sm ml-1">AI</span></h1>
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -73,14 +73,14 @@ const Header: React.FC<HeaderProps> = ({ pendingCount, syncStatus, onSyncClick, 
                     )}
                     {renderSyncIndicator()}
                     <div className="w-px h-6 bg-border mx-1"></div>
-                    <button onClick={onSettingsClick} className="p-2 text-muted hover:text-white hover:bg-surface rounded-full transition-colors"><Settings className="w-5 h-5" /></button>
+                    <button onClick={onSettingsClick} className="p-2 text-muted hover:text-primary hover:bg-surface rounded-full transition-colors"><Settings className="w-5 h-5" /></button>
                 </div>
                 </div>
             </header>
 
             {error && (
             <div className="fixed top-20 left-1/2 -translate-x-1/2 max-w-xl w-full px-4 z-30">
-                 <div className="p-4 rounded-xl bg-red-900/20 border border-red-900/50 flex items-center gap-3 text-red-200">
+                 <div className="p-4 rounded-xl bg-red-900/20 border border-red-900/50 flex items-center gap-3 text-red-800 dark:text-red-200">
                     <AlertTriangle className="w-5 h-5" />
                     <p>{error}</p>
                  </div>

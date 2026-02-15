@@ -27,6 +27,7 @@ export interface BudgetConfig {
 export interface AppSettings {
   defaultCollapsed: boolean;
   hideMoney: boolean;
+  theme?: 'light' | 'dark';
 }
 
 export interface Skill {

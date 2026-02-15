@@ -71,7 +71,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
         return (
             <button 
                 onClick={() => setIsSearchExpanded(true)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center shadow-2xl border transition-all ${isFilterActive ? 'bg-acc-note text-white border-acc-note' : 'bg-surface text-muted border-border hover:text-white hover:border-white/30'}`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center shadow-2xl border transition-all ${isFilterActive ? 'bg-acc-note text-white border-acc-note' : 'bg-surface text-muted border-border hover:text-primary hover:border-primary/30'}`}
             >
                 <Search className="w-5 h-5" />
                 {isFilterActive && <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-surface"></div>}
@@ -84,7 +84,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
          <div className="bg-surface border border-border rounded-2xl shadow-2xl p-3 relative w-full max-w-xl mx-auto">
              <button 
                 onClick={() => setIsSearchExpanded(false)}
-                className="absolute -top-3 left-3 bg-surface border border-border rounded-full p-1.5 shadow-lg text-muted hover:text-white hover:border-white/30"
+                className="absolute -top-3 left-3 bg-surface border border-border rounded-full p-1.5 shadow-lg text-muted hover:text-primary hover:border-primary/30"
             >
                 <X className="w-3.5 h-3.5" />
             </button>
@@ -99,7 +99,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search..."
                         autoFocus
-                        className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-acc-note transition-colors"
+                        className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-primary focus:outline-none focus:border-acc-note transition-colors"
                     />
                 </div>
                 
@@ -109,7 +109,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                     <div className="relative flex-1">
                         <button 
                             onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false); }}
-                            className={`w-full py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-colors ${showFilterMenu || (isFilterActive && !searchQuery) ? 'bg-acc-note/20 border-acc-note text-acc-note' : 'bg-background border-border text-muted hover:text-white'}`}
+                            className={`w-full py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-colors ${showFilterMenu || (isFilterActive && !searchQuery) ? 'bg-acc-note/20 border-acc-note text-acc-note' : 'bg-background border-border text-muted hover:text-primary'}`}
                         >
                             <Filter className="w-3.5 h-3.5" /> Filters
                             {(selectedTag || filterDate || filterDateTo || filterWallet || filterTransactionType || filterMinAmount || filterMaxAmount) && (
@@ -120,7 +120,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                             <>
                             <div className="fixed inset-0 z-40" onClick={() => setShowFilterMenu(false)}></div>
                             <div className="absolute left-0 bottom-full mb-2 w-80 max-w-[90vw] bg-surface border border-border rounded-xl shadow-xl z-50 p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                <h4 className="text-xs font-bold text-white mb-3 uppercase tracking-wider flex justify-between items-center">
+                                <h4 className="text-xs font-bold text-primary mb-3 uppercase tracking-wider flex justify-between items-center">
                                     Filters
                                     {(selectedTag || filterDate || filterDateTo || filterWallet || filterTransactionType || filterMinAmount || filterMaxAmount) && (
                                         <button 
@@ -146,7 +146,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                     <select 
                                         value={selectedTag || ''}
                                         onChange={(e) => setSelectedTag(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                        className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-note"
                                     >
                                         <option value="">All Tags</option>
                                         {uniqueTags.map(tag => (
@@ -163,7 +163,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                             type="date"
                                             value={filterDate}
                                             onChange={(e) => setFilterDate(e.target.value)}
-                                            className="min-w-0 flex-1 bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note [color-scheme:dark]"
+                                            className="min-w-0 flex-1 bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-note [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                             placeholder="From"
                                         />
                                         <span className="text-muted text-xs">-</span>
@@ -171,12 +171,12 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                             type="date"
                                             value={filterDateTo}
                                             onChange={(e) => setFilterDateTo(e.target.value)}
-                                            className="min-w-0 flex-1 bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note [color-scheme:dark]"
+                                            className="min-w-0 flex-1 bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-note [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                             placeholder="To"
                                             min={filterDate}
                                         />
                                         {(filterDate || filterDateTo) && (
-                                            <button onClick={() => { setFilterDate(''); setFilterDateTo(''); }} className="p-2 bg-white/10 rounded-lg hover:bg-white/20 text-white shrink-0">
+                                            <button onClick={() => { setFilterDate(''); setFilterDateTo(''); }} className="p-2 bg-primary/10 rounded-lg hover:bg-primary/20 text-primary shrink-0">
                                                 <X className="w-3 h-3" />
                                             </button>
                                         )}
@@ -194,7 +194,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                             <select 
                                                 value={filterWallet}
                                                 onChange={(e) => setFilterWallet(e.target.value)}
-                                                className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                                className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-note"
                                             >
                                                 <option value="">All Wallets</option>
                                                 {wallets.map(w => (
@@ -209,7 +209,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                             <select 
                                                 value={filterTransactionType}
                                                 onChange={(e) => setFilterTransactionType(e.target.value)}
-                                                className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                                className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-note"
                                             >
                                                 <option value="">All Types</option>
                                                 <option value="expense">Expense</option>
@@ -230,14 +230,14 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                                     placeholder="Min"
                                                     value={filterMinAmount}
                                                     onChange={(e) => setFilterMinAmount(e.target.value)}
-                                                    className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                                    className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-note"
                                                 />
                                                 <input 
                                                     type="number"
                                                     placeholder="Max"
                                                     value={filterMaxAmount}
                                                     onChange={(e) => setFilterMaxAmount(e.target.value)}
-                                                    className="w-full bg-background border border-border rounded-lg p-2 text-xs text-white focus:outline-none focus:border-acc-note"
+                                                    className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-note"
                                                 />
                                             </div>
                                         </div>
@@ -252,7 +252,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                     <div className="relative flex-1">
                         <button 
                             onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false); }}
-                            className={`w-full py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-colors ${showSortMenu ? 'bg-primary/20 border-primary text-primary' : 'bg-background border-border text-muted hover:text-white'}`}
+                            className={`w-full py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-colors ${showSortMenu ? 'bg-primary/20 border-primary text-primary' : 'bg-background border-border text-muted hover:text-primary'}`}
                         >
                             <ArrowUpDown className="w-3.5 h-3.5" /> Sort
                         </button>
@@ -260,17 +260,17 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                              <>
                              <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)}></div>
                              <div className="absolute right-0 bottom-full mb-2 w-44 bg-surface border border-border rounded-xl shadow-xl z-50 p-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                <h4 className="text-xs font-bold text-white mb-2 uppercase tracking-wider px-2">Sort By</h4>
+                                <h4 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider px-2">Sort By</h4>
                                 <button 
                                     onClick={() => { setSortOrder('newest'); setShowSortMenu(false); }}
-                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'newest' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'newest' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-primary hover:bg-primary/5'}`}
                                 >
                                     Newest First
                                     {sortOrder === 'newest' && <CheckCircle2 className="w-3 h-3 text-acc-todo" />}
                                 </button>
                                 <button 
                                     onClick={() => { setSortOrder('oldest'); setShowSortMenu(false); }}
-                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'oldest' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'oldest' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-primary hover:bg-primary/5'}`}
                                 >
                                     Oldest First
                                     {sortOrder === 'oldest' && <CheckCircle2 className="w-3 h-3 text-acc-todo" />}
@@ -281,14 +281,14 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         <div className="h-px bg-border my-1"></div>
                                         <button 
                                             onClick={() => { setSortOrder('highest_amount'); setShowSortMenu(false); }}
-                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'highest_amount' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'highest_amount' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-primary hover:bg-primary/5'}`}
                                         >
                                             Highest Amount
                                             {sortOrder === 'highest_amount' && <CheckCircle2 className="w-3 h-3 text-acc-todo" />}
                                         </button>
                                         <button 
                                             onClick={() => { setSortOrder('lowest_amount'); setShowSortMenu(false); }}
-                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'lowest_amount' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${sortOrder === 'lowest_amount' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-primary hover:bg-primary/5'}`}
                                         >
                                             Lowest Amount
                                             {sortOrder === 'lowest_amount' && <CheckCircle2 className="w-3 h-3 text-acc-todo" />}

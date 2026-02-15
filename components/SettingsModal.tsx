@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Github, WifiOff, CheckCircle2, Sparkles, PieChart, Plus, Trash2, AlertCircle, MessageSquare, EyeOff, Layout, Download, Database } from 'lucide-react';
+import { X, Save, Github, WifiOff, CheckCircle2, Sparkles, PieChart, Plus, Trash2, AlertCircle, MessageSquare, EyeOff, Layout, Download, Database, Moon, Sun } from 'lucide-react';
 import { getGithubConfig, saveGithubConfig, clearGithubConfig, GithubConfig } from '../services/githubService';
 import { getGeminiKey, saveGeminiKey, DEFAULT_PROMPT } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
@@ -56,6 +56,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   // App Settings State
   const [defaultCollapsed, setDefaultCollapsed] = useState(false);
   const [hideMoney, setHideMoney] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
   const [status, setStatus] = useState<'idle' | 'saved'>('idle');
 
@@ -93,9 +94,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       if (currentAppSettings) {
           setDefaultCollapsed(currentAppSettings.defaultCollapsed);
           setHideMoney(currentAppSettings.hideMoney);
+          setTheme(currentAppSettings.theme || 'dark');
       } else {
           setDefaultCollapsed(false);
           setHideMoney(false);
+          setTheme('dark');
       }
       
       setStatus('idle');
@@ -148,7 +151,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     // Prepare App Settings
     const newAppSettings: AppSettings = {
         defaultCollapsed,
-        hideMoney
+        hideMoney,
+        theme
     };
 
     setStatus('saved');
@@ -177,7 +181,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           allWallets, 
           { monthlyIncome, rules: budgetRules }, // Use current state config
           monthlyThemes, 
-          { defaultCollapsed, hideMoney } // Use current state settings
+          { defaultCollapsed, hideMoney, theme } // Use current state settings
       );
   };
 
@@ -186,9 +190,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl p-6 max-h-[90vh] overflow-y-auto no-scrollbar">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-bold text-white">Settings</h3>
+            <h3 className="text-lg font-bold text-primary">Settings</h3>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-white">
+          <button onClick={onClose} className="text-muted hover:text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -199,18 +203,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2 border-b border-border pb-2">
                  <Layout className="w-4 h-4 text-primary" />
-                 <h4 className="text-sm font-semibold text-white">Appearance & Privacy</h4>
+                 <h4 className="text-sm font-semibold text-primary">Appearance & Privacy</h4>
             </div>
             
             <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
                     <div className="flex flex-col">
-                        <span className="text-xs font-medium text-white">Default Card State</span>
+                        <span className="text-xs font-medium text-primary">Theme</span>
+                        <span className="text-[10px] text-muted">Switch between Light and Dark mode</span>
+                    </div>
+                    <div className="flex bg-surface border border-border rounded-lg p-0.5">
+                        <button 
+                            onClick={() => setTheme('light')}
+                            className={`p-1.5 rounded-md transition-colors ${theme === 'light' ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:text-primary'}`}
+                        >
+                            <Sun className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => setTheme('dark')}
+                            className={`p-1.5 rounded-md transition-colors ${theme === 'dark' ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:text-primary'}`}
+                        >
+                            <Moon className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                    <div className="flex flex-col">
+                        <span className="text-xs font-medium text-primary">Default Card State</span>
                         <span className="text-[10px] text-muted">Automatically collapse cards in lists</span>
                     </div>
                     <button 
                         onClick={() => setDefaultCollapsed(!defaultCollapsed)}
-                        className={`w-10 h-5 rounded-full relative transition-colors ${defaultCollapsed ? 'bg-indigo-600' : 'bg-white/10'}`}
+                        className={`w-10 h-5 rounded-full relative transition-colors ${defaultCollapsed ? 'bg-indigo-600' : 'bg-muted/30'}`}
                     >
                         <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${defaultCollapsed ? 'translate-x-5' : ''}`}></div>
                     </button>
@@ -218,14 +243,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
                     <div className="flex flex-col">
-                        <span className="text-xs font-medium text-white flex items-center gap-1">
+                        <span className="text-xs font-medium text-primary flex items-center gap-1">
                              <EyeOff className="w-3 h-3" /> Hide Nominal Amounts
                         </span>
                         <span className="text-[10px] text-muted">Mask monetary values on cards (Rp •••••)</span>
                     </div>
                     <button 
                         onClick={() => setHideMoney(!hideMoney)}
-                        className={`w-10 h-5 rounded-full relative transition-colors ${hideMoney ? 'bg-indigo-600' : 'bg-white/10'}`}
+                        className={`w-10 h-5 rounded-full relative transition-colors ${hideMoney ? 'bg-indigo-600' : 'bg-muted/30'}`}
                     >
                         <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${hideMoney ? 'translate-x-5' : ''}`}></div>
                     </button>
@@ -239,14 +264,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2 border-b border-border pb-2">
                  <PieChart className="w-4 h-4 text-acc-shopping" />
-                 <h4 className="text-sm font-semibold text-white">Budget & Income</h4>
+                 <h4 className="text-sm font-semibold text-primary">Budget & Income</h4>
             </div>
             
             <div>
                 <label className="block text-xs font-medium text-muted mb-1">Monthly Income (IDR)</label>
                 <input
                   type="number"
-                  className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-shopping transition-colors"
+                  className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-acc-shopping transition-colors"
                   value={monthlyIncome}
                   onChange={(e) => setMonthlyIncome(parseFloat(e.target.value) || 0)}
                   placeholder="e.g. 10000000"
@@ -265,7 +290,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div key={rule.id} className="flex items-center gap-2 p-2 bg-background rounded-lg border border-border">
                         {/* Color Picker (Simple) */}
                         <div className="dropdown relative group/color">
-                            <div className={`w-6 h-6 rounded-full cursor-pointer ${rule.color} border border-white/20`}></div>
+                            <div className={`w-6 h-6 rounded-full cursor-pointer ${rule.color} border border-border`}></div>
                             <div className="absolute top-full left-0 mt-1 bg-surface border border-border rounded-lg p-2 grid grid-cols-4 gap-1 shadow-xl hidden group-hover/color:grid z-10 w-32">
                                 {COLOR_PRESETS.map(c => (
                                     <button 
@@ -283,7 +308,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             type="text" 
                             value={rule.name}
                             onChange={(e) => handleUpdateRule(idx, 'name', e.target.value)}
-                            className="flex-1 bg-transparent text-xs text-white focus:outline-none border-b border-transparent focus:border-muted"
+                            className="flex-1 bg-transparent text-xs text-primary focus:outline-none border-b border-transparent focus:border-muted"
                             placeholder="Category Name"
                         />
 
@@ -293,7 +318,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 type="number" 
                                 value={rule.percentage}
                                 onChange={(e) => handleUpdateRule(idx, 'percentage', parseFloat(e.target.value) || 0)}
-                                className="w-12 bg-black/20 text-xs text-right text-white rounded p-1 focus:outline-none"
+                                className="w-12 bg-black/10 dark:bg-black/20 text-xs text-right text-primary rounded p-1 focus:outline-none"
                             />
                             <span className="text-xs text-muted">%</span>
                         </div>
@@ -305,7 +330,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                 ))}
                 
-                <button onClick={handleAddRule} className="w-full py-2 border border-dashed border-border rounded-lg text-xs text-muted hover:text-white hover:border-muted flex items-center justify-center gap-1 transition-colors">
+                <button onClick={handleAddRule} className="w-full py-2 border border-dashed border-border rounded-lg text-xs text-muted hover:text-primary hover:border-muted flex items-center justify-center gap-1 transition-colors">
                     <Plus className="w-3 h-3" /> Add Category
                 </button>
 
@@ -324,13 +349,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
                  <Sparkles className="w-4 h-4 text-acc-note" />
-                 <h4 className="text-sm font-semibold text-white">Gemini AI Configuration</h4>
+                 <h4 className="text-sm font-semibold text-primary">Gemini AI Configuration</h4>
             </div>
             <div>
                 <label className="block text-xs font-medium text-muted mb-1">Google Gemini API Key</label>
                 <input
                   type="password"
-                  className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-note transition-colors placeholder:text-muted/20"
+                  className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-acc-note transition-colors placeholder:text-muted/20"
                   value={geminiKey}
                   onChange={(e) => setGeminiKey(e.target.value)}
                   placeholder="AIzaSy..."
@@ -351,7 +376,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </button>
                  </div>
                  <textarea
-                    className="w-full bg-black/30 border border-border rounded-lg p-3 text-xs text-gray-300 focus:outline-none focus:border-acc-note h-32 resize-y"
+                    className="w-full bg-black/10 dark:bg-black/30 border border-border rounded-lg p-3 text-xs text-primary focus:outline-none focus:border-acc-note h-32 resize-y"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Enter custom prompt instructions for categorization..."
@@ -367,18 +392,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Data Management Section */}
           <div className="space-y-4">
              <div className="flex items-center gap-2 mb-2">
-                 <Database className="w-4 h-4 text-white" />
-                 <h4 className="text-sm font-semibold text-white">Data Management</h4>
+                 <Database className="w-4 h-4 text-primary" />
+                 <h4 className="text-sm font-semibold text-primary">Data Management</h4>
              </div>
              
              <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
                 <div className="flex flex-col">
-                    <span className="text-xs font-medium text-white">Export Data</span>
+                    <span className="text-xs font-medium text-primary">Export Data</span>
                     <span className="text-[10px] text-muted">Download all data as Excel (.xlsx)</span>
                 </div>
                 <button 
                     onClick={handleExport}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-lg transition-colors"
                 >
                     <Download className="w-3.5 h-3.5" /> Export
                 </button>
@@ -390,15 +415,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* GitHub Settings Section */}
           <div className="space-y-4">
              <div className="flex items-center gap-2 mb-2">
-                 <Github className="w-4 h-4 text-white" />
-                 <h4 className="text-sm font-semibold text-white">GitHub Cloud Sync</h4>
+                 <Github className="w-4 h-4 text-primary" />
+                 <h4 className="text-sm font-semibold text-primary">GitHub Cloud Sync</h4>
              </div>
              
              <div>
                 <label className="block text-xs font-medium text-muted mb-1">GitHub Personal Access Token</label>
                 <input
                 type="password"
-                className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-todo transition-colors placeholder:text-muted/20"
+                className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-acc-todo transition-colors placeholder:text-muted/20"
                 value={config.token}
                 onChange={(e) => setConfig({ ...config, token: e.target.value })}
                 placeholder="ghp_xxxxxxxxxxxx"
@@ -410,7 +435,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <label className="block text-xs font-medium text-muted mb-1">Owner (User/Org)</label>
                     <input
                     type="text"
-                    className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-todo transition-colors"
+                    className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-acc-todo transition-colors"
                     value={config.owner}
                     onChange={(e) => setConfig({ ...config, owner: e.target.value })}
                     placeholder="username"
@@ -420,7 +445,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <label className="block text-xs font-medium text-muted mb-1">Repository</label>
                     <input
                     type="text"
-                    className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-todo transition-colors"
+                    className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-acc-todo transition-colors"
                     value={config.repo}
                     onChange={(e) => setConfig({ ...config, repo: e.target.value })}
                     placeholder="my-notes"
@@ -432,7 +457,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block text-xs font-medium text-muted mb-1">File Path</label>
                 <input
                 type="text"
-                className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-acc-todo transition-colors"
+                className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-acc-todo transition-colors"
                 value={config.path}
                 onChange={(e) => setConfig({ ...config, path: e.target.value })}
                 placeholder="db.json"
@@ -445,7 +470,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             {config.token ? (
                  <button 
                  onClick={handleDisconnect}
-                 className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 px-2 py-1 hover:bg-red-400/10 rounded"
+                 className="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 flex items-center gap-1 px-2 py-1 hover:bg-red-400/10 rounded"
                >
                  <WifiOff className="w-3 h-3" /> Disconnect GitHub
                </button>
@@ -456,7 +481,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex gap-2">
             <button 
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white transition-colors"
+                className="px-4 py-2 rounded-lg text-sm text-muted hover:text-primary transition-colors"
             >
                 Cancel
             </button>
@@ -466,7 +491,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 className={`px-6 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg ${
                     status === 'saved' 
                     ? 'bg-green-500 text-white' 
-                    : 'bg-primary text-background hover:bg-white'
+                    : 'bg-primary text-background hover:opacity-90'
                 }`}
             >
                 {status === 'saved' ? (

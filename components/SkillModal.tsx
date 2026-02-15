@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Target } from 'lucide-react';
 
@@ -33,8 +34,8 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-surface border border-border rounded-xl w-full max-w-sm shadow-2xl p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-white">{mode === 'add' ? 'Add New Skill' : 'Edit Skill'}</h3>
-          <button onClick={onClose} className="text-muted hover:text-white">
+          <h3 className="text-lg font-bold text-primary">{mode === 'add' ? 'Add New Skill' : 'Edit Skill'}</h3>
+          <button onClick={onClose} className="text-muted hover:text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -45,7 +46,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                 <input
                     type="text"
                     autoFocus
-                    className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 placeholder-muted/50"
+                    className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 placeholder-muted/50"
                     placeholder="e.g. Python, Piano, Writing"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -58,7 +59,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                 </label>
                 <input
                     type="number"
-                    className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 placeholder-muted/50"
+                    className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 placeholder-muted/50"
                     placeholder="e.g. 5"
                     value={targetHours}
                     onChange={(e) => setTargetHours(e.target.value)}
@@ -71,7 +72,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
         </div>
 
         <div className="flex justify-end gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white">Cancel</button>
+            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-primary">Cancel</button>
             <button 
                 onClick={handleSave}
                 disabled={!name.trim()}

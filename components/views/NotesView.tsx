@@ -34,19 +34,19 @@ const NotesView: React.FC<NotesViewProps> = ({
             <div className="flex bg-surface rounded-lg p-1 mb-6 border border-border">
             <button 
                 onClick={() => setNotesSubTab('general')}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'general' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'general' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
             >
                 <NotebookPen className="w-3.5 h-3.5" /> General
             </button>
             <button 
                 onClick={() => setNotesSubTab('journal')}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'journal' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'journal' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
             >
                 <BookText className="w-3.5 h-3.5" /> Journal
             </button>
             <button 
                 onClick={() => setNotesSubTab('skills')}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'skills' ? 'bg-background text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === 'skills' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
             >
                 <Library className="w-3.5 h-3.5" /> Skill Logs
             </button>
@@ -73,7 +73,7 @@ const NotesView: React.FC<NotesViewProps> = ({
                             <div key={dateKey} className="relative pl-6 border-l border-border/50">
                                 {/* Date Header */}
                                 <div className="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-fuchsia-400/50 border border-fuchsia-400"></div>
-                                <h3 className="text-sm font-serif font-bold text-fuchsia-200 mb-4">{friendlyDate}</h3>
+                                <h3 className="text-sm font-serif font-bold text-fuchsia-600 dark:text-fuchsia-200 mb-4">{friendlyDate}</h3>
                                 
                                 <div className="space-y-4">
                                     {entries.map(item => (

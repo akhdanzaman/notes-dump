@@ -101,7 +101,7 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
                                     e.preventDefault(); // Prevent focus loss from textarea
                                     addTemplate(item.value);
                                 }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/90 backdrop-blur-md border border-border rounded-full text-xs font-medium text-white shadow-lg hover:border-primary/50 hover:bg-surface active:scale-95 transition-all whitespace-nowrap"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/90 backdrop-blur-md border border-border rounded-full text-xs font-medium text-primary shadow-lg hover:border-primary/50 hover:bg-surface active:scale-95 transition-all whitespace-nowrap"
                             >
                                 {item.icon}
                                 {item.label}
@@ -125,13 +125,13 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
               onFocus={handleFocus}
               onBlur={handleBlur}
               placeholder="Dump your brain here..."
-              className="flex-1 bg-transparent px-6 py-4 text-white placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
+              className="flex-1 bg-transparent px-6 py-4 text-primary placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
               rows={1}
             />
             <button
               onClick={() => handleSubmit()}
               disabled={!input.trim()}
-              className="p-4 mb-0.5 text-primary hover:text-white disabled:opacity-30 transition-colors"
+              className="p-4 mb-0.5 text-muted hover:text-indigo-500 disabled:opacity-30 transition-colors"
             >
               <SendHorizonal className="w-5 h-5" />
             </button>

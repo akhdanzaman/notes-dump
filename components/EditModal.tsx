@@ -128,8 +128,8 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className={`bg-surface border border-border rounded-xl w-full shadow-2xl p-6 max-h-[90vh] overflow-y-auto no-scrollbar transition-all ${isNote ? 'max-w-2xl' : 'max-w-md'}`}>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-white">Edit {item.type}</h3>
-          <button onClick={onClose} className="text-muted hover:text-white">
+          <h3 className="text-lg font-bold text-primary">Edit {item.type}</h3>
+          <button onClick={onClose} className="text-muted hover:text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -142,7 +142,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                       <button
                         key={ft}
                         onClick={() => setFinanceType(ft)}
-                        className={`flex-1 py-1.5 text-[10px] font-medium rounded capitalize ${financeType === ft ? 'bg-indigo-600 text-white' : 'text-muted hover:text-white'}`}
+                        className={`flex-1 py-1.5 text-[10px] font-medium rounded capitalize ${financeType === ft ? 'bg-indigo-600 text-white' : 'text-muted hover:text-primary'}`}
                       >
                           {ft}
                       </button>
@@ -156,15 +156,15 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                 <label className="block text-xs font-medium text-muted">Content</label>
                 {isNote && (
                     <div className="flex gap-1 bg-background border border-border rounded-md p-1">
-                        <button onClick={handleBold} className="p-1 hover:bg-white/10 rounded text-muted hover:text-white" title="Bold"><Bold className="w-3 h-3" /></button>
-                        <button onClick={handleItalic} className="p-1 hover:bg-white/10 rounded text-muted hover:text-white" title="Italic"><Italic className="w-3 h-3" /></button>
-                        <button onClick={handleList} className="p-1 hover:bg-white/10 rounded text-muted hover:text-white" title="List"><List className="w-3 h-3" /></button>
+                        <button onClick={handleBold} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-muted hover:text-primary" title="Bold"><Bold className="w-3 h-3" /></button>
+                        <button onClick={handleItalic} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-muted hover:text-primary" title="Italic"><Italic className="w-3 h-3" /></button>
+                        <button onClick={handleList} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-muted hover:text-primary" title="List"><List className="w-3 h-3" /></button>
                     </div>
                 )}
             </div>
             <textarea
               ref={textareaRef}
-              className={`w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 placeholder-muted/50 ${isNote ? 'h-48' : 'h-24'}`}
+              className={`w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 placeholder-muted/50 ${isNote ? 'h-48' : 'h-24'}`}
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
@@ -179,7 +179,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                         </label>
                         <input
                             type="number"
-                            className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                            className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             placeholder="0"
@@ -195,7 +195,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                         </label>
                         <input
                             type="datetime-local"
-                            className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
+                            className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
                         />
@@ -212,7 +212,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                     </label>
                     <input
                         type="number"
-                        className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500"
                         value={duration}
                         onChange={(e) => setDuration(e.target.value)}
                         placeholder="Minutes"
@@ -223,7 +223,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                         <Type className="w-3 h-3" /> Skill
                     </label>
                     <select
-                        className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500"
                         value={skillId}
                         onChange={(e) => setSkillId(e.target.value)}
                     >
@@ -245,7 +245,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                              <WalletIcon className="w-3 h-3" /> {financeType === 'transfer' ? 'From Wallet' : 'Payment Method'}
                           </label>
                           <select
-                            className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                            className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500"
                             value={paymentMethod}
                             onChange={(e) => setPaymentMethod(e.target.value)}
                           >
@@ -259,7 +259,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                                 <ArrowRight className="w-3 h-3" /> To Wallet
                             </label>
                             <select
-                                className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                                className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500"
                                 value={toWallet}
                                 onChange={(e) => setToWallet(e.target.value)}
                             >
@@ -270,7 +270,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                           <div>
                             <label className="block text-xs font-medium text-muted mb-1">Budget Category</label>
                             <select
-                                className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500"
+                                className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500"
                                 value={budgetCategory}
                                 onChange={(e) => setBudgetCategory(e.target.value)}
                             >
@@ -290,7 +290,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
             <label className="block text-xs font-medium text-muted mb-1">Tags (comma separated)</label>
             <input
               type="text"
-              className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 placeholder-muted/50"
+              className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 placeholder-muted/50"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="work, personal, urgent"
@@ -300,7 +300,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
         </div>
 
         <div className="flex justify-end gap-2 mt-6">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white">Cancel</button>
+            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-primary">Cancel</button>
             <button 
                 onClick={handleSave}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors flex items-center gap-2"

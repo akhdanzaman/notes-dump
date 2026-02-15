@@ -64,15 +64,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             <div className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 flex justify-between items-center transition-all group">
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <button onClick={() => changeThemeMonth(-1)} className="p-0.5 text-muted hover:text-white"><ChevronLeft className="w-3 h-3" /></button>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1">
+                        <button onClick={() => changeThemeMonth(-1)} className="p-0.5 text-muted hover:text-primary"><ChevronLeft className="w-3 h-3" /></button>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 flex items-center gap-1">
                             <Sparkles className="w-3 h-3" /> {themeNavDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })} Theme
                         </span>
-                        <button onClick={() => changeThemeMonth(1)} className="p-0.5 text-muted hover:text-white"><ChevronRight className="w-3 h-3" /></button>
+                        <button onClick={() => changeThemeMonth(1)} className="p-0.5 text-muted hover:text-primary"><ChevronRight className="w-3 h-3" /></button>
                     </div>
                     <div onClick={() => onThemeEdit(themeContent)} className="cursor-pointer">
                         {themeContent ? (
-                            <p className="text-sm font-medium text-white truncate pr-2 group-hover:text-indigo-200 transition-colors">"{themeContent}"</p>
+                            <p className="text-sm font-medium text-primary truncate pr-2 group-hover:text-indigo-500 transition-colors">"{themeContent}"</p>
                         ) : (
                             <p className="text-xs text-muted italic border-b border-dashed border-border/50 inline-block">Set a theme...</p>
                         )}
@@ -80,7 +80,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 </div>
                     <button 
                     onClick={() => onThemeEdit(themeContent)}
-                    className="p-1.5 text-indigo-400/50 hover:text-indigo-300 rounded-md transition-colors"
+                    className="p-1.5 text-indigo-400/50 hover:text-indigo-500 rounded-md transition-colors"
                 >
                     <Pencil className="w-3.5 h-3.5" />
                 </button>
@@ -93,21 +93,21 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         <Target className="w-24 h-24 text-acc-todo" />
                     </div>
                     
-                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
                         Action Center
                     </h2>
                     
                     <div className="space-y-6 relative z-10">
                         {/* Today's Tasks */}
                         <div>
-                            <div className="flex justify-between items-end mb-2 border-b border-white/10 pb-1">
+                            <div className="flex justify-between items-end mb-2 border-b border-border/30 pb-1">
                                 <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider">Today's Focus</h3>
                                 <span className="text-xs text-muted font-mono">{today.length} tasks</span>
                             </div>
                             {today.length > 0 ? (
                                 <div className="space-y-2">
                                     {today.slice(0, 3).map(i => (
-                                        <div key={i.id} className="flex items-start gap-2 text-sm text-gray-200">
+                                        <div key={i.id} className="flex items-start gap-2 text-sm text-primary">
                                             <button 
                                                 onClick={() => handleToggleStatus(i.id)}
                                                 className="mt-0.5 text-muted hover:text-acc-todo transition-colors"
@@ -127,18 +127,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         {/* Urgent Shopping */}
                         {urgent.length > 0 && (
                             <div>
-                                <div className="flex justify-between items-end mb-2 border-b border-white/10 pb-1">
-                                    <h3 className="text-sm font-bold text-red-400 uppercase tracking-wider flex items-center gap-1">
+                                <div className="flex justify-between items-end mb-2 border-b border-border/30 pb-1">
+                                    <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-1">
                                         <AlertTriangle className="w-3 h-3" /> Urgent To Buy
                                     </h3>
                                     <span className="text-xs text-muted font-mono">{urgent.length} items</span>
                                 </div>
                                 <div className="space-y-2">
                                     {urgent.slice(0, 3).map(i => (
-                                        <div key={i.id} className="flex items-start gap-2 text-sm text-gray-200">
+                                        <div key={i.id} className="flex items-start gap-2 text-sm text-primary">
                                             <button 
                                                 onClick={() => handleToggleStatus(i.id)}
-                                                className="mt-0.5 text-muted hover:text-red-400 transition-colors"
+                                                className="mt-0.5 text-muted hover:text-red-500 transition-colors"
                                             >
                                                 <ShoppingCart className="w-4 h-4" />
                                             </button>
@@ -151,7 +151,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         
                         {/* Quick Link */}
                         <div className="pt-2 flex justify-end">
-                            <button onClick={() => setActiveTab('focus')} className="text-xs font-medium text-acc-todo hover:text-white flex items-center gap-1 transition-colors">
+                            <button onClick={() => setActiveTab('focus')} className="text-xs font-medium text-acc-todo hover:text-primary flex items-center gap-1 transition-colors">
                                 Go to Focus Mode <ArrowRight className="w-3 h-3" />
                             </button>
                         </div>
@@ -162,17 +162,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             {/* Money Card */}
             <div onClick={() => setActiveTab('money')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-5 rounded-xl transition-all cursor-pointer hover:border-emerald-500/30 group">
                     <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2 text-emerald-400">
+                    <div className="flex items-center gap-2 text-emerald-500">
                         <WalletIcon className="w-5 h-5" />
                         <span className="text-xs font-bold uppercase tracking-wider">Net Worth</span>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); setShowBalance(!showBalance); }} className="text-muted hover:text-white transition-colors">
+                    <button onClick={(e) => { e.stopPropagation(); setShowBalance(!showBalance); }} className="text-muted hover:text-primary transition-colors">
                         {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                     </div>
                     
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-2">
-                        <div className="text-3xl font-bold text-white">
+                        <div className="text-3xl font-bold text-primary">
                             {showBalance ? fmt(totalNetWorth) : '••••••••'}
                         </div>
                         
@@ -180,8 +180,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         {balance !== 0 && (
                             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${
                                 balance > 0 
-                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                                    : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
+                                    : 'bg-red-500/10 border-red-500/20 text-red-500'
                             }`}>
                                 {balance > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                                 <span>{showBalance ? fmt(Math.abs(balance)) : '•••'}</span>
@@ -190,12 +190,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         )}
                     </div>
                     
-                    <div className="flex gap-4 mt-3 pt-3 border-t border-white/5">
+                    <div className="flex gap-4 mt-3 pt-3 border-t border-border/30">
                         <div className="text-xs text-muted">
-                        Assets: <span className="text-emerald-400 font-medium">{showBalance ? fmt(totalAssets) : '••'}</span>
+                        Assets: <span className="text-emerald-500 font-medium">{showBalance ? fmt(totalAssets) : '••'}</span>
                         </div>
                         <div className="text-xs text-muted">
-                        Debt: <span className="text-red-400 font-medium">{showBalance ? fmt(totalDebt) : '••'}</span>
+                        Debt: <span className="text-red-500 font-medium">{showBalance ? fmt(totalDebt) : '••'}</span>
                         </div>
                     </div>
             </div>
@@ -206,15 +206,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     <div onClick={() => { setActiveTab('focus'); setFocusSubTab('skills'); }} className="bg-surface border border-border p-4 rounded-xl cursor-pointer hover:border-indigo-500/30 transition-all group flex flex-col justify-between">
                         <div>
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Growth</span>
-                                <Sprout className="w-4 h-4 text-indigo-400" />
+                                <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Growth</span>
+                                <Sprout className="w-4 h-4 text-indigo-500" />
                             </div>
-                            <div className="text-2xl font-bold text-white mb-1">
+                            <div className="text-2xl font-bold text-primary mb-1">
                                 {totalWeeklyHours}<span className="text-sm font-normal text-muted">h</span>
                             </div>
                             <div className="text-[10px] text-muted">Study time this week</div>
                         </div>
-                        <div className="w-full h-1 bg-white/10 rounded-full mt-3 overflow-hidden">
+                        <div className="w-full h-1 bg-muted/20 rounded-full mt-3 overflow-hidden">
                             <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, (totalWeeklyHours / 10) * 100)}%` }}></div>
                         </div>
                     </div>
@@ -225,7 +225,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             <span className="text-xs font-bold text-acc-note uppercase tracking-wider">Brain Bank</span>
                             <StickyNote className="w-4 h-4 text-acc-note" />
                         </div>
-                        <div className="text-2xl font-bold text-white mb-1">
+                        <div className="text-2xl font-bold text-primary mb-1">
                             {noteCount}
                         </div>
                         <div className="text-[10px] text-muted">Captured thoughts</div>
