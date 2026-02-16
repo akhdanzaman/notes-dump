@@ -21,7 +21,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const [editAmount, setEditAmount] = useState(meta.amount ? meta.amount.toString() : '');
   const [editCategory, setEditCategory] = useState<ShoppingCategory>(meta.shoppingCategory || 'not_urgent');
   const [editRecurrence, setEditRecurrence] = useState(meta.recurrenceDays ? meta.recurrenceDays.toString() : '');
-  const [editTargetDay, setEditTargetDay] = useState(meta.targetDay || '');
+  const [editDate, setEditDate] = useState<string>('');
 
   // Sync state
   useEffect(() => {
@@ -30,7 +30,20 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       setEditAmount(meta.amount ? meta.amount.toString() : '');
       setEditCategory(meta.shoppingCategory || 'not_urgent');
       setEditRecurrence(meta.recurrenceDays ? meta.recurrenceDays.toString() : '');
-      setEditTargetDay(meta.targetDay || '');
+      
+      // Date Init
+      if (meta.date) {
+        const dateObj = new Date(meta.date);
+        if (!isNaN(dateObj.getTime())) {
+             const offset = dateObj.getTimezoneOffset() * 60000;
+             const localDate = new Date(dateObj.getTime() - offset);
+             setEditDate(localDate.toISOString().slice(0, 16));
+        } else {
+             setEditDate('');
+        }
+    } else {
+        setEditDate('');
+    }
   }, [item, isExpanded]);
 
   const updateFn = onUpdate || handleUpdateItem;
@@ -38,14 +51,16 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const handleSave = () => {
       if (!updateFn) return;
       const numAmount = editAmount ? parseFloat(editAmount) : undefined;
-      const numRecurrence = editRecurrence ? parseInt(editRecurrence) : undefined;
       
+      let finalDate: string | undefined = undefined;
+      if (editDate) finalDate = new Date(editDate).toISOString();
+
       updateFn(
           item.id,
           editContent,
           meta.tags || [],
           numAmount,
-          meta.date,
+          finalDate, // Pass the new date
           meta.paymentMethod,
           meta.budgetCategory,
           meta.durationMinutes,
@@ -61,7 +76,27 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const isRoutine = meta?.shoppingCategory === 'routine';
   const isUrgent = meta?.shoppingCategory === 'urgent';
   
-  // Date Logic (same as before)
+  // Date Logic for Display
+  let dateDisplay = null;
+  let isOverdue = false;
+  let isToday = false;
+
+  if (meta.date && !isDone) {
+      const d = new Date(meta.date);
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const itemDateStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      
+      if (itemDateStart < todayStart) isOverdue = true;
+      if (itemDateStart.getTime() === todayStart.getTime()) isToday = true;
+
+      dateDisplay = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+          dateDisplay += ` ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+      }
+  }
+
+  // Routine next cycle logic
   let nextDueText = null;
   let isWaitingForNextCycle = false;
   if (isRoutine && isDone && completed_at) {
@@ -122,6 +157,12 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                 
                 {/* Meta Summary */}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+                    {dateDisplay && (
+                        <div className={`flex items-center gap-1 text-[10px] ${isOverdue ? 'text-red-500 font-bold' : (isToday ? 'text-amber-500 font-bold' : 'text-muted')}`}>
+                            <Calendar className="w-3 h-3" />
+                            <span>{dateDisplay}</span>
+                        </div>
+                    )}
                     {isRoutine && (
                         <div className={`flex items-center gap-1 text-[10px] ${isWaitingForNextCycle ? 'text-acc-shopping' : 'text-acc-event/80'}`}>
                             <Repeat className="w-3 h-3" />
@@ -191,6 +232,15 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                               onChange={(e) => setEditAmount(e.target.value)}
                               placeholder="0"
                            />
+                      </div>
+                      <div>
+                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Date / Due</label>
+                           <input
+                                type="datetime-local"
+                                className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                            />
                       </div>
                   </div>
 

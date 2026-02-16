@@ -250,17 +250,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 <button onClick={() => changeMonth(1)} className="p-1 hover:bg-muted/10 rounded-full text-muted hover:text-primary"><ChevronRight className="w-5 h-5" /></button>
                             </div>
 
-                            {/* Projected/Planned Card */}
-                            {projectedExpense > 0 && (
-                                <div className="bg-surface/50 border border-dashed border-border rounded-xl p-3 mb-6 flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-muted">
-                                        <Calculator className="w-4 h-4" />
-                                        <span className="text-xs font-medium">Planned Spending (Pending)</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</span>
-                                </div>
-                            )}
-
                             {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
                                 <div className="space-y-3">
                                     {list.map(item => {
@@ -289,6 +278,17 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </span>
                                 <button onClick={() => changeMonth(1)} className="p-1 hover:bg-muted/10 rounded-full text-muted hover:text-primary"><ChevronRight className="w-5 h-5" /></button>
                             </div>
+
+                            {/* Projected/Planned Card Moved Here */}
+                            {projectedExpense > 0 && (
+                                <div className="bg-surface/50 border border-dashed border-border rounded-xl p-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-muted">
+                                        <Calculator className="w-4 h-4" />
+                                        <span className="text-xs font-medium">Planned Spending (Pending)</span>
+                                    </div>
+                                    <span className="text-sm font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</span>
+                                </div>
+                            )}
 
                             {effectiveIncome === 0 ? (
                                 <div className="text-center p-6 bg-surface border border-border rounded-xl">

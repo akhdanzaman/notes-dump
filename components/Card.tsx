@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity } from 'lucide-react';
 
 interface CardProps {
   item: BrainDumpItem;
@@ -14,6 +14,7 @@ interface CardProps {
   enableCollapse?: boolean;
   defaultCollapsed?: boolean;
   hideMoney?: boolean;
+  className?: string;
   
   // Context Props
   skills?: Skill[];
@@ -33,11 +34,13 @@ const Card: React.FC<CardProps> = ({
     enableCollapse = false,
     defaultCollapsed = false,
     hideMoney = false,
+    className = '',
     skills = [],
     wallets = [],
     budgetRules = []
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const [showFullText, setShowFullText] = useState(false);
   const { type, content, meta, isOptimistic, status, created_at, completed_at } = item;
   
   // --- Edit State ---
@@ -218,16 +221,44 @@ const Card: React.FC<CardProps> = ({
   const displayAmount = formatMoney(meta?.amount);
 
   // Field visibilities
-  const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL;
+  const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL || type === ItemType.SKILL_LOG;
   const showAmountField = type === ItemType.FINANCE || type === ItemType.SHOPPING || type === ItemType.TODO;
   const showDateField = type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING || type === ItemType.FINANCE || type === ItemType.SKILL_LOG || type === ItemType.JOURNAL;
   const showFinanceExtras = type === ItemType.FINANCE || (type === ItemType.SHOPPING && showAmountField);
   const showSkillExtras = type === ItemType.SKILL_LOG;
   const showProgress = type === ItemType.TODO && status === 'pending';
 
+  // Read More Logic
+  const charLimit = 280;
+  const lineLimit = 8;
+  const isLongText = content.length > charLimit || (content.match(/\n/g) || []).length > lineLimit;
+
+  // Helper to get normalized wallet options to avoid duplicates
+  const getWalletOptions = () => {
+    const unique = new Map<string, {name: string, id: string}>();
+    
+    // Add registered wallets
+    wallets.forEach(w => unique.set(w.name.toLowerCase(), {name: w.name, id: w.id}));
+    
+    // Check if current items have a custom method not in register
+    if (editPaymentMethod && !unique.has(editPaymentMethod.toLowerCase())) {
+        unique.set(editPaymentMethod.toLowerCase(), {name: editPaymentMethod, id: 'custom-payment'});
+    }
+    if (editToWallet && !unique.has(editToWallet.toLowerCase())) {
+        unique.set(editToWallet.toLowerCase(), {name: editToWallet, id: 'custom-to'});
+    }
+
+    return Array.from(unique.values()).map(w => (
+        <option key={w.id} value={w.name}>{w.name}</option>
+    ));
+  };
+
+  // Determine if we should show the date next to the icon (For Notes/Journals/SkillLogs)
+  const showDateInHeader = isNote && displayDate && isCollapsed;
+
   return (
     <div 
-        className={`${style.bg} ${style.border} rounded-r-lg border-y border-r border-border/50 shadow-sm transition-all hover:shadow-md hover:border-border ${isOptimistic ? 'opacity-50' : ''}`}
+        className={`${style.bg} ${style.border} rounded-r-lg border-y border-r border-r-border/50 border-y-border/50 shadow-sm transition-all hover:shadow-md hover:border-border ${isOptimistic ? 'opacity-50' : ''} break-inside-avoid ${className}`}
     >
       <div className={`p-3 ${enableCollapse && isCollapsed ? 'pb-3' : 'pb-0'}`}>
         
@@ -236,29 +267,58 @@ const Card: React.FC<CardProps> = ({
             className={`flex items-start gap-3 ${enableCollapse ? 'cursor-pointer' : ''}`}
             onClick={toggleCollapse}
         >
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!readonly && onToggleStatus) onToggleStatus(item.id);
-            }}
-            disabled={readonly}
-            className={`mt-0.5 transition-colors shrink-0 ${readonly ? 'cursor-default' : 'hover:opacity-70'}`}
-          >
-             {status === 'done' ? (
-                 <CheckCircle2 className={`w-4 h-4 ${style.icon.props.className.replace('w-4 h-4', '')}`} />
-             ) : (
-                 style.icon
-             )}
-          </button>
+          <div className="flex flex-col items-center gap-1 mt-0.5 shrink-0">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!readonly && onToggleStatus) onToggleStatus(item.id);
+                }}
+                disabled={readonly}
+                className={`transition-colors ${readonly ? 'cursor-default' : 'hover:opacity-70'}`}
+              >
+                {status === 'done' ? (
+                    <CheckCircle2 className={`w-4 h-4 ${style.icon.props.className.replace('w-4 h-4', '')}`} />
+                ) : (
+                    style.icon
+                )}
+              </button>
+          </div>
           
           <div className="flex-1 min-w-0">
              <div className="flex justify-between items-start gap-2">
-                 <div className={`text-sm ${shouldStrike ? 'line-through text-muted' : 'text-primary'} ${enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap'}`}>
-                    {content}
+                 <div className="flex flex-col w-full">
+                     {/* For Notes: Display Date in Header */}
+                     {showDateInHeader && (
+                        <span className="text-[10px] text-muted font-medium mb-1 block">
+                            {displayDate}
+                        </span>
+                     )}
+
+                     {/* Main Content Area */}
+                     <div className={`text-sm ${shouldStrike ? 'line-through text-muted' : 'text-primary'} ${
+                         isNote 
+                            ? (!isCollapsed ? 'hidden' : 'whitespace-pre-wrap') // Notes: Hide when expanded (edit mode), show when collapsed
+                            : (enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap') // Others: Truncate collapsed
+                     } ${isNote && isCollapsed && isLongText && !showFullText ? 'line-clamp-[8]' : ''}`}>
+                        {content}
+                     </div>
+
+                     {/* Read More Button for Notes */}
+                     {isNote && isCollapsed && isLongText && (
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowFullText(!showFullText);
+                            }}
+                            className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 mt-1 self-start"
+                        >
+                            {showFullText ? 'Show Less' : 'Read More'}
+                        </button>
+                     )}
                  </div>
                  
                  {enableCollapse && (
-                     <div className="text-muted/50 ml-1 mt-0.5">
+                     <div className="text-muted/50 ml-1 mt-0.5 shrink-0">
                          {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
                      </div>
                  )}
@@ -281,7 +341,10 @@ const Card: React.FC<CardProps> = ({
                              {categoryName}
                          </span>
                      )}
-                     {displayDate && <span>{displayDate}</span>}
+                     
+                     {/* Show date in footer if NOT shown in header */}
+                     {!showDateInHeader && displayDate && <span>{displayDate}</span>}
+                     
                      {displayAmount && (
                          <>
                             <span>•</span>
@@ -308,7 +371,7 @@ const Card: React.FC<CardProps> = ({
                
                {/* Content Edit */}
                <textarea
-                   className={`w-full bg-background border border-border rounded-lg p-3 text-sm text-primary focus:outline-none focus:border-primary mb-3 resize-none ${isNote ? 'h-32' : 'h-20'}`}
+                   className={`w-full bg-background border border-border rounded-lg p-3 text-sm text-primary focus:outline-none focus:border-primary mb-3 resize-none ${isNote ? 'h-48' : 'h-20'}`}
                    value={editContent}
                    onChange={(e) => setEditContent(e.target.value)}
                    placeholder="Content..."
@@ -406,7 +469,7 @@ const Card: React.FC<CardProps> = ({
                                    onChange={(e) => setEditPaymentMethod(e.target.value)}
                                >
                                    <option value="">Cash</option>
-                                   {wallets.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+                                   {getWalletOptions()}
                                </select>
                            </div>
 
@@ -419,7 +482,7 @@ const Card: React.FC<CardProps> = ({
                                        onChange={(e) => setEditToWallet(e.target.value)}
                                    >
                                        <option value="">Select...</option>
-                                       {wallets.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+                                       {getWalletOptions()}
                                    </select>
                                </div>
                            ) : (
@@ -441,25 +504,30 @@ const Card: React.FC<CardProps> = ({
 
                {/* Progress Control (Only for Todo) */}
                {showProgress && (
-                   <div className="bg-background/50 border border-border/50 rounded-lg p-2 mb-3">
-                       <div className="flex justify-between items-center mb-1">
-                           <span className="text-[10px] uppercase font-bold text-muted">Progress</span>
-                           <span className="text-xs font-bold text-primary">{editProgress}%</span>
+                   <div className="bg-acc-todo/5 border border-acc-todo/20 rounded-xl p-3 mb-3">
+                       <div className="flex justify-between items-center mb-2">
+                           <span className="text-xs uppercase font-bold text-acc-todo flex items-center gap-1">
+                               <Activity className="w-3.5 h-3.5" /> Progress
+                           </span>
+                           <span className="text-lg font-bold text-primary">{editProgress}%</span>
                        </div>
                        <input 
                            type="range"
                            min="0" max="100" step="5"
                            value={editProgress}
                            onChange={(e) => setEditProgress(parseInt(e.target.value))}
-                           className="w-full h-1.5 bg-black/10 dark:bg-black/30 rounded-lg appearance-none cursor-pointer accent-acc-todo mb-2"
+                           className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer accent-acc-todo mb-3"
                        />
-                       <input 
-                           type="text"
-                           value={editProgressNotes}
-                           onChange={(e) => setEditProgressNotes(e.target.value)}
-                           className="w-full bg-transparent border-b border-border/50 text-xs text-primary placeholder-muted/50 py-1 focus:outline-none focus:border-acc-todo"
-                           placeholder="Progress notes..."
-                       />
+                       <div>
+                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Latest Update</label>
+                            <input 
+                                type="text"
+                                value={editProgressNotes}
+                                onChange={(e) => setEditProgressNotes(e.target.value)}
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-primary placeholder-muted/50 focus:outline-none focus:border-acc-todo"
+                                placeholder="Add a progress note..."
+                            />
+                       </div>
                    </div>
                )}
 

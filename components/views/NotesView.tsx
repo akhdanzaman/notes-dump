@@ -106,7 +106,8 @@ const NotesView: React.FC<NotesViewProps> = ({
             enableCollapse: true,
             defaultCollapsed: appSettings.defaultCollapsed,
             hideMoney: appSettings.hideMoney,
-            skills
+            skills,
+            className: "mb-4 break-inside-avoid" // Fix layout breaking in columns
         };
 
         if (type === 'journal') {
@@ -133,7 +134,7 @@ const NotesView: React.FC<NotesViewProps> = ({
         }
 
         return (
-            <div className="columns-1 sm:columns-2 gap-4 space-y-4">
+            <div className="columns-1 sm:columns-2 gap-4">
                 {data.map(item => {
                     const skillName = item.type === ItemType.SKILL_LOG 
                         ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName)
