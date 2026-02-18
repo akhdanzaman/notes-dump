@@ -160,9 +160,14 @@ const App: React.FC = () => {
           setWallets(updated);
           saveAndSync(items, undefined, undefined, skills, updated, monthlyThemes);
       } else if (deleteId) {
-          handleDelete(deleteId);
+          handleDelete(deleteId); // Call actual delete logic after confirmation
       }
       setDeleteId(null);
+      setDeleteType(null);
+  };
+
+  const requestDeleteItem = (id: string) => {
+      setDeleteId(id);
       setDeleteType(null);
   };
 
@@ -285,7 +290,7 @@ const App: React.FC = () => {
                     focusSubTab={focusSubTab} setFocusSubTab={setFocusSubTab}
                     focusDate={focusDate} setFocusDate={setFocusDate}
                     appSettings={appSettings}
-                    handleToggleStatus={handleToggleStatus} handleDelete={setDeleteId}
+                    handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
                     handleUpdateItem={handleUpdateItem}
                     handleOpenEditSkill={handleOpenEditSkill} handleOpenAddSkill={handleOpenAddSkill}
                     setDeleteId={setDeleteId} setDeleteType={setDeleteType}
@@ -297,7 +302,7 @@ const App: React.FC = () => {
             {activeTab === 'shopping' && (
                 <ShoppingView 
                     items={items}
-                    handleToggleStatus={handleToggleStatus} handleDelete={handleDelete}
+                    handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
                     handleUpdateItem={handleUpdateItem}
                 />
             )}
@@ -307,7 +312,7 @@ const App: React.FC = () => {
                     items={items} skills={skills}
                     notesSubTab={notesSubTab} setNotesSubTab={setNotesSubTab}
                     appSettings={appSettings}
-                    handleDelete={handleDelete}
+                    handleDelete={requestDeleteItem}
                     handleUpdateItem={handleUpdateItem}
                     selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
                 />
@@ -320,7 +325,7 @@ const App: React.FC = () => {
                     financeDate={financeDate} setFinanceDate={setFinanceDate}
                     showBalance={showBalance} setShowBalance={setShowBalance}
                     appSettings={appSettings}
-                    handleDelete={handleDelete}
+                    handleDelete={requestDeleteItem}
                     handleUpdateItem={handleUpdateItem}
                     handleOpenEditWallet={handleOpenEditWallet} handleOpenAddWallet={handleOpenAddWallet}
                     setDeleteId={setDeleteId} setDeleteType={setDeleteType} setIsSettingsOpen={setIsSettingsOpen}

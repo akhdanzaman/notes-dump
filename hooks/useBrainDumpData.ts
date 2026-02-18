@@ -360,7 +360,6 @@ export const useBrainDumpData = () => {
     };
     
     const handleDelete = async (id: string) => {
-        if (!window.confirm("Are you sure you want to delete this?")) return;
         setItems(prev => {
             const updatedItems = prev.filter(i => i.id !== id);
             saveAndSync(updatedItems);

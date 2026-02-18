@@ -353,6 +353,24 @@ const Card: React.FC<CardProps> = ({
                             </span>
                          </>
                      )}
+
+                     {/* Payment Method Display */}
+                     {(meta.paymentMethod || meta.toWallet) && (
+                         <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1 text-muted">
+                                <WalletIcon className="w-3 h-3" />
+                                {meta.paymentMethod}
+                                {meta.financeType === 'transfer' && meta.toWallet && (
+                                     <>
+                                        <ArrowRight className="w-3 h-3" />
+                                        {meta.toWallet}
+                                     </>
+                                )}
+                            </span>
+                         </>
+                     )}
+
                      {skillName && (
                          <>
                            <span>•</span>
