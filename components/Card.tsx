@@ -6,7 +6,24 @@ interface CardProps {
   item: BrainDumpItem;
   onToggleStatus?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onUpdate?: (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType, newProgress?: number, newProgressNotes?: string) => void;
+  onUpdate?: (
+    id: string, 
+    newContent: string, 
+    newTags: string[], 
+    newAmount?: number, 
+    newDate?: string, 
+    newPaymentMethod?: string, 
+    newBudgetCategory?: string, 
+    newDuration?: number, 
+    newSkillId?: string, 
+    newToWallet?: string, 
+    newFinanceType?: FinanceType, 
+    newProgress?: number, 
+    newProgressNotes?: string,
+    newShoppingCategory?: any,
+    newRecurrenceDays?: number,
+    newQuantity?: string
+  ) => void;
   readonly?: boolean;
   skillName?: string;
   categoryName?: string;
@@ -119,7 +136,10 @@ const Card: React.FC<CardProps> = ({
           finalToWallet,
           editFinanceType,
           editProgress,
-          editProgressNotes
+          editProgressNotes,
+          item.meta.shoppingCategory,
+          item.meta.recurrenceDays,
+          item.meta.quantity
       );
       
       if (enableCollapse) {
@@ -369,7 +389,7 @@ const Card: React.FC<CardProps> = ({
                      )}
                  </div>
                  
-                 {enableCollapse && !isTransaction && (
+                 {enableCollapse && (
                      <div className="text-muted/50 ml-1 mt-0.5 shrink-0">
                          {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
                      </div>

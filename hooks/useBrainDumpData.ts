@@ -345,12 +345,23 @@ export const useBrainDumpData = () => {
             const newProgress = newStatus === 'done' ? 100 : 0;
             const newProgressNotes = targetItem.meta.progressNotes; // Keep existing notes
 
+            // Update date to today if marking as done for shopping/finance
+            let newDate = targetItem.meta.date;
+            if (newStatus === 'done' && (targetItem.type === ItemType.SHOPPING || targetItem.type === ItemType.FINANCE)) {
+                newDate = new Date().toISOString();
+            }
+
             const updatedItems = prevItems.map(item => 
               item.id === id ? { 
                   ...item, 
                   status: newStatus, 
                   completed_at: completedAt,
-                  meta: { ...item.meta, progress: newProgress, progressNotes: newProgressNotes }
+                  meta: { 
+                      ...item.meta, 
+                      progress: newProgress, 
+                      progressNotes: newProgressNotes,
+                      date: newDate
+                  }
               } : item
             );
     
@@ -380,7 +391,10 @@ export const useBrainDumpData = () => {
         newToWallet?: string, 
         newFinanceType?: FinanceType,
         newProgress?: number,
-        newProgressNotes?: string
+        newProgressNotes?: string,
+        newShoppingCategory?: ShoppingCategory,
+        newRecurrenceDays?: number,
+        newQuantity?: string
     ) => {
           setItems(prev => {
               const updatedItems = prev.map(item => {
@@ -417,7 +431,10 @@ export const useBrainDumpData = () => {
                         toWallet: newToWallet,
                         financeType: newFinanceType || item.meta.financeType,
                         progress: newProgress,
-                        progressNotes: newProgressNotes
+                        progressNotes: newProgressNotes,
+                        shoppingCategory: newShoppingCategory || item.meta.shoppingCategory,
+                        recurrenceDays: newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays,
+                        quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity
                     } 
                   };
               });

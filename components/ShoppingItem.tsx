@@ -6,7 +6,24 @@ interface ShoppingItemProps {
   item: BrainDumpItem;
   onToggleStatus: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate?: (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: any) => void;
+  onUpdate?: (
+    id: string, 
+    newContent: string, 
+    newTags: string[], 
+    newAmount?: number, 
+    newDate?: string, 
+    newPaymentMethod?: string, 
+    newBudgetCategory?: string, 
+    newDuration?: number, 
+    newSkillId?: string, 
+    newToWallet?: string, 
+    newFinanceType?: any,
+    newProgress?: number,
+    newProgressNotes?: string,
+    newShoppingCategory?: ShoppingCategory,
+    newRecurrenceDays?: number,
+    newQuantity?: string
+  ) => void;
   readonly?: boolean;
   handleUpdateItem?: any; // To match prop drilling, though we use onUpdate
 }
@@ -51,6 +68,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const handleSave = () => {
       if (!updateFn) return;
       const numAmount = editAmount ? parseFloat(editAmount) : undefined;
+      const numRecurrence = editRecurrence ? parseInt(editRecurrence) : undefined;
       
       let finalDate: string | undefined = undefined;
       if (editDate) finalDate = new Date(editDate).toISOString();
@@ -68,7 +86,10 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           meta.toWallet,
           meta.financeType,
           meta.progress,
-          meta.progressNotes
+          meta.progressNotes,
+          editCategory,
+          numRecurrence,
+          editQuantity
       );
   };
 
@@ -143,50 +164,52 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
             )}
             </button>
             
-            <div className="flex flex-col overflow-hidden min-w-0">
-                <div className="flex items-center gap-2">
-                    <span className={`text-sm truncate ${isDone ? 'line-through text-muted' : 'text-primary'}`}>
-                        {content}
-                    </span>
-                    {meta.quantity && (
-                        <span className="text-[10px] font-mono text-acc-shopping bg-acc-shopping/10 px-1.5 py-0.5 rounded shrink-0">
-                        {meta.quantity}
+            <div className="flex justify-between items-center w-full overflow-hidden">
+                <div className="flex flex-col min-w-0 pr-2">
+                    <div className="flex items-center gap-2">
+                        <span className={`text-sm font-semibold truncate ${isDone ? 'line-through text-muted' : 'text-primary'}`}>
+                            {content}
+                        </span>
+                        {meta.quantity && (
+                            <span className="text-[10px] font-mono text-acc-shopping bg-acc-shopping/10 px-1.5 py-0.5 rounded shrink-0">
+                            {meta.quantity}
+                            </span>
+                        )}
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
+                        {dateDisplay && (
+                            <span className={isOverdue ? 'text-red-500 font-bold' : (isToday ? 'text-amber-500 font-bold' : '')}>
+                                {dateDisplay}
+                            </span>
+                        )}
+                        {dateDisplay && (isUrgent || isRoutine) && <span className="w-0.5 h-0.5 rounded-full bg-muted"></span>}
+                        
+                        {isUrgent && !isDone && (
+                            <span className="text-red-400 font-medium">Urgent</span>
+                        )}
+                        {isUrgent && !isDone && isRoutine && <span className="w-0.5 h-0.5 rounded-full bg-muted"></span>}
+
+                        {isRoutine && (
+                            <span className={isWaitingForNextCycle ? 'text-acc-shopping' : 'text-acc-event/80'}>
+                                {isWaitingForNextCycle ? nextDueText : `Every ${meta.recurrenceDays || 7}d`}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                    {meta.amount && (
+                        <span className="text-sm font-bold text-primary">
+                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(meta.amount)}
                         </span>
                     )}
-                </div>
-                
-                {/* Meta Summary */}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
-                    {dateDisplay && (
-                        <div className={`flex items-center gap-1 text-[10px] ${isOverdue ? 'text-red-500 font-bold' : (isToday ? 'text-amber-500 font-bold' : 'text-muted')}`}>
-                            <Calendar className="w-3 h-3" />
-                            <span>{dateDisplay}</span>
-                        </div>
-                    )}
-                    {isRoutine && (
-                        <div className={`flex items-center gap-1 text-[10px] ${isWaitingForNextCycle ? 'text-acc-shopping' : 'text-acc-event/80'}`}>
-                            <Repeat className="w-3 h-3" />
-                            <span>{isWaitingForNextCycle ? nextDueText : `Every ${meta.recurrenceDays || 7}d`}</span>
-                        </div>
-                    )}
-                    {isUrgent && !isDone && (
-                        <div className="flex items-center gap-1 text-[10px] text-red-400">
-                            <AlertCircle className="w-3 h-3" />
-                            <span>Urgent</span>
-                        </div>
-                    )}
-                    {meta.amount && (
-                        <div className="text-[10px] text-amber-500 font-medium">
-                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(meta.amount)}
-                        </div>
-                    )}
+                    <div className="text-muted/50 hover:text-muted">
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </div>
                 </div>
             </div>
         </div>
-
-        <button className="text-muted/50 hover:text-muted">
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
       </div>
 
       {/* EXPANDED EDIT BODY */}

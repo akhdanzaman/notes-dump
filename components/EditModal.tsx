@@ -19,7 +19,10 @@ interface EditModalProps {
     toWallet?: string, 
     financeType?: FinanceType,
     progress?: number,
-    progressNotes?: string
+    progressNotes?: string,
+    shoppingCategory?: any,
+    recurrenceDays?: number,
+    quantity?: string
   ) => void;
   existingPaymentMethods?: string[];
   budgetRules?: BudgetRule[];
@@ -89,7 +92,10 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
         finalToWallet, 
         financeType,
         progress,
-        progressNotes
+        progressNotes,
+        item.meta.shoppingCategory,
+        item.meta.recurrenceDays,
+        item.meta.quantity
     );
     onClose();
   };

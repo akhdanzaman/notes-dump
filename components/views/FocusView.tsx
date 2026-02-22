@@ -17,7 +17,24 @@ interface FocusViewProps {
     handleToggleStatus: (id: string) => void;
     handleDelete: (id: string) => void;
     // setEditingItem removed
-    handleUpdateItem: (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType, newProgress?: number, newProgressNotes?: string) => void;
+    handleUpdateItem: (
+        id: string, 
+        newContent: string, 
+        newTags: string[], 
+        newAmount?: number, 
+        newDate?: string, 
+        newPaymentMethod?: string, 
+        newBudgetCategory?: string, 
+        newDuration?: number, 
+        newSkillId?: string, 
+        newToWallet?: string, 
+        newFinanceType?: FinanceType, 
+        newProgress?: number, 
+        newProgressNotes?: string,
+        newShoppingCategory?: any,
+        newRecurrenceDays?: number,
+        newQuantity?: string
+    ) => void;
     handleOpenEditSkill: (id: string, name: string, target?: number) => void;
     handleOpenAddSkill: () => void;
     setDeleteId: (id: string) => void;

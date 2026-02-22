@@ -17,7 +17,24 @@ interface MoneyViewProps {
     appSettings: AppSettings;
 
     handleDelete: (id: string) => void;
-    handleUpdateItem: (id: string, newContent: string, newTags: string[], newAmount?: number, newDate?: string, newPaymentMethod?: string, newBudgetCategory?: string, newDuration?: number, newSkillId?: string, newToWallet?: string, newFinanceType?: FinanceType, newProgress?: number, newProgressNotes?: string) => void;
+    handleUpdateItem: (
+        id: string, 
+        newContent: string, 
+        newTags: string[], 
+        newAmount?: number, 
+        newDate?: string, 
+        newPaymentMethod?: string, 
+        newBudgetCategory?: string, 
+        newDuration?: number, 
+        newSkillId?: string, 
+        newToWallet?: string, 
+        newFinanceType?: FinanceType, 
+        newProgress?: number, 
+        newProgressNotes?: string,
+        newShoppingCategory?: any,
+        newRecurrenceDays?: number,
+        newQuantity?: string
+    ) => void;
     handleOpenEditWallet: (w: Wallet) => void;
     handleOpenAddWallet: () => void;
     setDeleteId: (id: string) => void;
