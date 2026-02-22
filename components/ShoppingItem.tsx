@@ -116,7 +116,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   return (
     <div 
-      className={`group flex flex-col rounded-lg border transition-all overflow-hidden
+      className={`group flex flex-col rounded-2xl border transition-all overflow-hidden
         ${isDone 
             ? 'bg-black/10 dark:bg-black/20 border-border/30 opacity-75' 
             : `bg-surface border-border hover:border-acc-shopping/50`
@@ -196,13 +196,13 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                   {/* Content & Quantity */}
                   <div className="flex gap-2">
                       <input 
-                          className="flex-1 bg-background border border-border rounded-lg p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping"
+                          className="flex-1 bg-background border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping"
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}
                           placeholder="Item name"
                       />
                       <input 
-                          className="w-20 bg-background border border-border rounded-lg p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping"
+                          className="w-20 bg-background border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping"
                           value={editQuantity}
                           onChange={(e) => setEditQuantity(e.target.value)}
                           placeholder="Qty"
@@ -214,7 +214,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       <div>
                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Category</label>
                           <select
-                               className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
+                               className="w-full bg-background border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
                                value={editCategory}
                                onChange={(e) => setEditCategory(e.target.value as ShoppingCategory)}
                           >
@@ -271,7 +271,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleSave(); setIsExpanded(false); }}
-                        className="bg-acc-shopping text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-90 flex items-center gap-1"
+                        className="bg-acc-shopping text-white px-3 py-1.5 rounded-xl text-xs font-medium hover:opacity-90 flex items-center gap-1"
                       >
                           <Save className="w-3 h-3" /> Save
                       </button>

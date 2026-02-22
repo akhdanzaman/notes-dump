@@ -415,12 +415,20 @@ export const getFinanceItems = (
     budgetConfig: BudgetConfig,
     filterWallet: string,
     filterTransactionType: string,
+    filterCategory: string,
     filterMinAmount: string,
     filterMaxAmount: string,
     selectedTag: string,
     searchQuery: string,
     sortOrder: SortOrder
 ) => {
+    const resolveCategory = (cat?: string) => {
+        if (!cat) return null;
+        if (budgetConfig.rules.some(r => r.id === cat)) return cat; 
+        const foundRule = budgetConfig.rules.find(r => r.name.toLowerCase() === cat.toLowerCase());
+        return foundRule ? foundRule.id : null;
+    };
+
     // 1. Explicit Finance Items
     let finance = items.filter(i => i.type === ItemType.FINANCE);
     
@@ -447,11 +455,17 @@ export const getFinanceItems = (
 
     // Filter by Wallet (Source or Destination)
     if (filterWallet) {
-        const wName = filterWallet.toLowerCase();
-        allTransactions = allTransactions.filter(i => 
-            i.meta.paymentMethod?.toLowerCase() === wName || 
-            i.meta.toWallet?.toLowerCase() === wName
-        );
+        if (filterWallet === 'undefined') {
+            allTransactions = allTransactions.filter(i => 
+                !i.meta.paymentMethod && !i.meta.toWallet
+            );
+        } else {
+            const wName = filterWallet.toLowerCase();
+            allTransactions = allTransactions.filter(i => 
+                i.meta.paymentMethod?.toLowerCase() === wName || 
+                i.meta.toWallet?.toLowerCase() === wName
+            );
+        }
     }
 
     // Filter by Type
@@ -463,6 +477,17 @@ export const getFinanceItems = (
             // Default to 'expense' if financeType is missing for money items
             const type = i.meta.financeType || ((i.type === ItemType.FINANCE || i.meta.amount) ? 'expense' : undefined);
             return type === filterTransactionType;
+        });
+    }
+
+    // Filter by Category
+    if (filterCategory) {
+        allTransactions = allTransactions.filter(i => {
+            const catId = resolveCategory(i.meta.budgetCategory);
+            if (filterCategory === 'uncategorized') {
+                return !catId;
+            }
+            return catId === filterCategory;
         });
     }
 
@@ -546,12 +571,7 @@ export const getFinanceItems = (
         plannedBudgetMap.set(rule.id, 0);
     });
 
-    const resolveCategory = (cat?: string) => {
-        if (!cat) return null;
-        if (budgetMap.has(cat)) return cat; 
-        const foundRule = budgetConfig.rules.find(r => r.name.toLowerCase() === cat.toLowerCase());
-        return foundRule ? foundRule.id : null;
-    };
+
 
     // Use fullMonthTransactions for correct Budget Progress bars
     fullMonthTransactions.forEach(item => {

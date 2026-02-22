@@ -76,8 +76,8 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
   const isPopupVisible = showSuggestions || !!startAction;
 
   return (
-    <div className="w-full pt-2 pb-2 px-4 bg-background z-50">
-      <div className="max-w-2xl mx-auto">
+    <div className="w-full pt-2 pb-4 px-4 z-50 pointer-events-none">
+      <div className="max-w-2xl mx-auto pointer-events-auto">
         <div className="relative group">
           
           {/* Quick Suggestions & Actions Popup */}
@@ -101,7 +101,7 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
                                     e.preventDefault(); // Prevent focus loss from textarea
                                     addTemplate(item.value);
                                 }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/90 backdrop-blur-md border border-border rounded-full text-xs font-medium text-primary shadow-lg hover:border-primary/50 hover:bg-surface active:scale-95 transition-all whitespace-nowrap"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/80 backdrop-blur-md border border-border rounded-full text-xs font-medium text-primary shadow-lg hover:border-primary/50 hover:bg-surface active:scale-95 transition-all whitespace-nowrap"
                             >
                                 {item.icon}
                                 {item.label}
@@ -113,10 +113,10 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
           </div>
 
           {/* Glow Effect */}
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-acc-todo via-acc-note to-acc-event rounded-3xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2rem] opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
           
           {/* Input Area */}
-          <div className="relative flex items-end bg-surface rounded-3xl border border-border shadow-2xl overflow-hidden min-h-[56px]">
+          <div className="relative flex items-end bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden min-h-[56px]">
             <textarea
               ref={textareaRef}
               value={input}

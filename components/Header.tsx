@@ -18,71 +18,77 @@ const Header: React.FC<HeaderProps> = ({ pendingCount, syncStatus, onSyncClick, 
         let icon, text, color, onClick;
         switch(syncStatus) {
             case 'synced': 
-                icon = <CloudCheck className="w-4 h-4" />; 
+                icon = <CloudCheck className="w-5 h-5" />; 
                 text = "Saved"; 
-                color = "text-emerald-400 bg-emerald-400/10 border-emerald-400/20 hover:bg-emerald-400/20 cursor-pointer"; 
+                color = "text-emerald-500 bg-emerald-500/10"; 
                 onClick = onRefreshClick;
                 break;
             case 'syncing': 
-                icon = <RefreshCw className="w-4 h-4 animate-spin" />; 
+                icon = <RefreshCw className="w-5 h-5 animate-spin" />; 
                 text = "Saving..."; 
-                color = "text-blue-400 bg-blue-400/10 border-blue-400/20 cursor-wait"; 
+                color = "text-blue-500 bg-blue-500/10"; 
                 onClick = undefined;
                 break;
             case 'error': 
-                icon = <CloudOff className="w-4 h-4" />; 
-                text = "Sync Failed"; 
-                color = "text-red-400 bg-red-400/10 border-red-400/20 hover:bg-red-400/20 cursor-pointer"; 
+                icon = <CloudOff className="w-5 h-5" />; 
+                text = "Failed"; 
+                color = "text-red-500 bg-red-500/10"; 
                 onClick = onSyncClick;
                 break;
             case 'local': 
-                icon = <Save className="w-4 h-4" />; 
+                icon = <Save className="w-5 h-5" />; 
                 text = "Local"; 
-                color = "text-amber-400 bg-amber-400/10 border-amber-400/20 hover:bg-amber-400/20 cursor-pointer"; 
+                color = "text-amber-500 bg-amber-500/10"; 
                 onClick = onSyncClick;
                 break;
         }
         return (
             <button 
                 onClick={onClick}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${color}`}
-                title={syncStatus === 'synced' ? "Click to refresh from Cloud" : (syncStatus === 'error' ? "Click to Retry Sync" : "Click to Sync")}
+                className={`flex items-center justify-center w-10 h-10 rounded-full transition-all ${color}`}
+                title={syncStatus === 'synced' ? "Click to refresh" : (syncStatus === 'error' ? "Retry Sync" : "Sync Status")}
             >
-                {icon} <span className="hidden sm:inline">{text}</span>
+                {icon}
             </button>
         );
     };
 
     return (
         <>
-            <header className="fixed top-0 w-full bg-background/80 backdrop-blur-md z-40 border-b border-border">
-                <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="bg-gradient-to-tr from-acc-todo to-acc-event p-2 rounded-lg">
-                    <Brain className="w-5 h-5 text-white" />
+            <header className="fixed top-0 w-full bg-background/80 backdrop-blur-xl z-40 transition-all duration-300">
+                <div className="max-w-2xl mx-auto px-6 h-20 flex items-center justify-between">
+                    <div className="flex flex-col justify-center">
+                        <span className="text-xs font-semibold text-muted uppercase tracking-wider mb-0.5">My Assistant</span>
+                        <h1 className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
+                            BrainDump <span className="text-indigo-500">AI</span>
+                        </h1>
                     </div>
-                    <h1 className="text-xl font-bold tracking-tight hidden sm:block text-primary">BrainDump <span className="text-muted font-normal text-sm ml-1">AI</span></h1>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    {pendingCount > 0 && (
-                        <div className="flex items-center gap-2 text-xs text-acc-todo bg-acc-todo/10 px-3 py-1.5 rounded-full animate-pulse mr-1">
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                            <span className="hidden sm:inline">Processing...</span>
-                        </div>
-                    )}
-                    {renderSyncIndicator()}
-                    <div className="w-px h-6 bg-border mx-1"></div>
-                    <button onClick={onSettingsClick} className="p-2 text-muted hover:text-primary hover:bg-surface rounded-full transition-colors"><Settings className="w-5 h-5" /></button>
-                </div>
+                    
+                    <div className="flex items-center gap-3">
+                        {pendingCount > 0 && (
+                            <div className="flex items-center gap-2 text-xs text-blue-500 bg-blue-500/10 px-3 py-1.5 rounded-full animate-pulse">
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                <span className="hidden sm:inline font-medium">Processing...</span>
+                            </div>
+                        )}
+                        
+                        {renderSyncIndicator()}
+                        
+                        <button 
+                            onClick={onSettingsClick} 
+                            className="w-10 h-10 flex items-center justify-center text-primary bg-surface hover:bg-muted/10 rounded-full transition-colors"
+                        >
+                            <Settings className="w-6 h-6" />
+                        </button>
+                    </div>
                 </div>
             </header>
 
             {error && (
-            <div className="fixed top-20 left-1/2 -translate-x-1/2 max-w-xl w-full px-4 z-30">
-                 <div className="p-4 rounded-xl bg-red-900/20 border border-red-900/50 flex items-center gap-3 text-red-800 dark:text-red-200">
-                    <AlertTriangle className="w-5 h-5" />
-                    <p>{error}</p>
+            <div className="fixed top-24 left-1/2 -translate-x-1/2 max-w-xl w-[90%] z-30 animate-in slide-in-from-top-4 fade-in duration-300">
+                 <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 backdrop-blur-md flex items-start gap-3 text-red-600 dark:text-red-400 shadow-lg">
+                    <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium">{error}</p>
                  </div>
             </div>
             )}

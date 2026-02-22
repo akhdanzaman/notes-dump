@@ -5,20 +5,20 @@ import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, FocusSubT
 import { useBrainDumpData } from './hooks/useBrainDumpData';
 
 import InputBar from './components/InputBar';
-import SettingsModal from './components/SettingsModal';
 import SkillModal from './components/SkillModal';
 import WalletModal from './components/WalletModal';
 import ConfirmDialog from './components/ConfirmDialog';
 
-import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import FloatingSearch from './components/FloatingSearch';
+import ControlCenter from './components/ControlCenter';
 
 import SummaryView from './components/views/SummaryView';
 import FocusView from './components/views/FocusView';
 import ShoppingView from './components/views/ShoppingView';
 import NotesView from './components/views/NotesView';
 import MoneyViewComponent from './components/views/MoneyView';
+import { Brain } from 'lucide-react';
 
 const App: React.FC = () => {
   // Data Logic Hook
@@ -34,7 +34,7 @@ const App: React.FC = () => {
   const [focusSubTab, setFocusSubTab] = useState<FocusSubTab>('tasks');
   const [notesSubTab, setNotesSubTab] = useState<NotesSubTab>('general');
   const [showBalance, setShowBalance] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [themeNavDate, setThemeNavDate] = useState(new Date());
 
   // Focus View State
@@ -62,6 +62,7 @@ const App: React.FC = () => {
   // Advanced Money Filters
   const [filterWallet, setFilterWallet] = useState<string>('');
   const [filterTransactionType, setFilterTransactionType] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<string>('');
   const [filterMinAmount, setFilterMinAmount] = useState<string>('');
   const [filterMaxAmount, setFilterMaxAmount] = useState<string>('');
 
@@ -116,7 +117,8 @@ const App: React.FC = () => {
   // --- Handlers ---
 
   const handleSettingsSaved = (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => {
-      setIsSettingsOpen(false);
+      // Don't close control center immediately on save, let user close it
+      // setIsControlCenterOpen(false); 
       
       let shouldSync = false;
       if (newBudgetConfig) {
@@ -169,6 +171,45 @@ const App: React.FC = () => {
   const requestDeleteItem = (id: string) => {
       setDeleteId(id);
       setDeleteType(null);
+  };
+
+  // --- Data Management Handlers ---
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          try {
+              const data = JSON.parse(event.target?.result as string);
+              // Basic validation
+              if (data.items && Array.isArray(data.items)) {
+                  // Update all states
+                  saveAndSync(
+                      data.items, 
+                      data.budgetConfig || budgetConfig, 
+                      data.customPrompt || customPrompt, 
+                      data.skills || skills, 
+                      data.wallets || wallets, 
+                      data.monthlyThemes || monthlyThemes,
+                      data.appSettings || appSettings
+                  );
+                  alert('Data imported successfully!');
+                  setIsControlCenterOpen(false);
+              } else {
+                  alert('Invalid backup file format.');
+              }
+          } catch (err) {
+              console.error('Import error:', err);
+              alert('Failed to parse backup file.');
+          }
+      };
+      reader.readAsText(file);
+  };
+
+  const handleClearData = () => {
+      saveAndSync([], undefined, undefined, [], [], {}, undefined);
+      setIsControlCenterOpen(false);
   };
 
   // --- Skill & Wallet Modal Handlers ---
@@ -243,25 +284,23 @@ const App: React.FC = () => {
   }, [items, activeTab, notesSubTab]);
 
   return (
-    <div className="min-h-screen bg-background text-primary font-sans transition-colors duration-300">
+    <div className="min-h-screen bg-background text-primary font-sans transition-colors duration-300 selection:bg-indigo-500/30">
       
-      <Header 
-        pendingCount={pendingCount}
-        syncStatus={syncStatus}
-        onSyncClick={() => {
-            if (syncStatus === 'error') {
-                saveAndSync(items); // Retry instead of reload
-            } else {
-                saveAndSync(items);
-            }
-        }}
-        onRefreshClick={() => loadData()}
-        onSettingsClick={() => setIsSettingsOpen(true)}
-        error={error}
-      />
+      {/* Minimal Top Bar */}
+      <div className="fixed top-0 w-full z-30 bg-background/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-2xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
+                    <Brain className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-xl font-bold tracking-tight text-primary">BrainDump</h1>
+            </div>
+            {/* Optional: Add a small status indicator here if needed, but keeping it clean for now */}
+        </div>
+      </div>
 
       {/* Main Content */}
-      <main className="pt-20 pb-48 px-4 max-w-2xl mx-auto min-h-screen">
+      <main className="pt-24 pb-48 px-4 max-w-2xl mx-auto min-h-screen">
         
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted animate-pulse">
@@ -328,8 +367,9 @@ const App: React.FC = () => {
                     handleDelete={requestDeleteItem}
                     handleUpdateItem={handleUpdateItem}
                     handleOpenEditWallet={handleOpenEditWallet} handleOpenAddWallet={handleOpenAddWallet}
-                    setDeleteId={setDeleteId} setDeleteType={setDeleteType} setIsSettingsOpen={setIsSettingsOpen}
+                    setDeleteId={setDeleteId} setDeleteType={setDeleteType} setIsSettingsOpen={setIsControlCenterOpen}
                     filterWallet={filterWallet} filterTransactionType={filterTransactionType}
+                    filterCategory={filterCategory}
                     filterMinAmount={filterMinAmount} filterMaxAmount={filterMaxAmount}
                     selectedTag={selectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
                 />
@@ -340,68 +380,82 @@ const App: React.FC = () => {
       </main>
 
       {/* Fixed Bottom Layout */}
-      <div className="fixed bottom-0 w-full z-40 bg-background border-t border-border">
-          
-          <InputBar 
-            onSend={handleSend} 
-            onFocus={() => { setIsSearchExpanded(false); }} 
-            startAction={
-                <FloatingSearch 
-                    activeTab={activeTab} notesSubTab={notesSubTab} moneyView={moneyView}
-                    isSearchExpanded={isSearchExpanded} setIsSearchExpanded={setIsSearchExpanded}
-                    searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-                    showFilterMenu={showFilterMenu} setShowFilterMenu={setShowFilterMenu}
-                    showSortMenu={showSortMenu} setShowSortMenu={setShowSortMenu}
-                    selectedTag={selectedTag} setSelectedTag={setSelectedTag}
-                    filterDate={filterDate} setFilterDate={setFilterDate}
-                    filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
-                    sortOrder={sortOrder} setSortOrder={setSortOrder}
-                    filterWallet={filterWallet} setFilterWallet={setFilterWallet}
-                    filterTransactionType={filterTransactionType} setFilterTransactionType={setFilterTransactionType}
-                    filterMinAmount={filterMinAmount} setFilterMinAmount={setFilterMinAmount}
-                    filterMaxAmount={filterMaxAmount} setFilterMaxAmount={setFilterMaxAmount}
-                    uniqueTags={uniqueTags} wallets={wallets}
-                />
-            }
-          />
+      <div className="fixed bottom-0 w-full z-40 bg-transparent pointer-events-none">
+          <div className="pointer-events-auto">
+            <InputBar 
+                onSend={handleSend} 
+                onFocus={() => { setIsSearchExpanded(false); }} 
+                startAction={
+                    <FloatingSearch 
+                        activeTab={activeTab} notesSubTab={notesSubTab} moneyView={moneyView}
+                        isSearchExpanded={isSearchExpanded} setIsSearchExpanded={setIsSearchExpanded}
+                        searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+                        showFilterMenu={showFilterMenu} setShowFilterMenu={setShowFilterMenu}
+                        showSortMenu={showSortMenu} setShowSortMenu={setShowSortMenu}
+                        selectedTag={selectedTag} setSelectedTag={setSelectedTag}
+                        filterDate={filterDate} setFilterDate={setFilterDate}
+                        filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
+                        sortOrder={sortOrder} setSortOrder={setSortOrder}
+                        filterWallet={filterWallet} setFilterWallet={setFilterWallet}
+                        filterTransactionType={filterTransactionType} setFilterTransactionType={setFilterTransactionType}
+                        filterCategory={filterCategory} setFilterCategory={setFilterCategory}
+                        filterMinAmount={filterMinAmount} setFilterMinAmount={setFilterMinAmount}
+                        filterMaxAmount={filterMaxAmount} setFilterMaxAmount={setFilterMaxAmount}
+                        uniqueTags={uniqueTags} wallets={wallets} budgetConfig={budgetConfig}
+                    />
+                }
+            />
+          </div>
 
-          <div className={isMobileKeyboardOpen ? "hidden md:block" : "block"}>
-             <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+          <div className={`pointer-events-auto ${isMobileKeyboardOpen ? "hidden md:block" : "block"}`}>
+             <BottomNav 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+                onMenuClick={() => setIsControlCenterOpen(true)}
+             />
           </div>
       </div>
 
       {/* Modals */}
+      <ControlCenter 
+        isOpen={isControlCenterOpen}
+        onClose={() => setIsControlCenterOpen(false)}
+        syncStatus={syncStatus}
+        onSyncClick={() => saveAndSync(items)}
+        onRefreshClick={() => loadData()}
+        appSettings={appSettings}
+        setAppSettings={setAppSettings}
+        error={error}
+        pendingCount={pendingCount}
+        onSave={handleSettingsSaved}
+        currentBudgetConfig={budgetConfig}
+        currentPrompt={customPrompt}
+        allItems={items}
+        allSkills={skills}
+        allWallets={wallets}
+        monthlyThemes={monthlyThemes}
+        onImportData={handleImportData}
+        onClearData={handleClearData}
+      />
+
       {themeEditMode && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-surface border border-border rounded-xl w-full max-w-sm shadow-2xl p-6">
+             <div className="bg-surface border border-border rounded-3xl w-full max-w-sm shadow-2xl p-6">
                  <h3 className="text-lg font-bold text-primary mb-4">Set Theme</h3>
                  <textarea
                     autoFocus
-                    className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 mb-4 h-24 resize-none"
+                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 mb-4 h-32 resize-none"
                     placeholder="e.g. Month of Discipline, Focus on Skill X..."
                     value={tempThemeContent}
                     onChange={(e) => setTempThemeContent(e.target.value)}
                  />
                  <div className="flex justify-end gap-2">
-                     <button onClick={() => setThemeEditMode(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-primary">Cancel</button>
-                     <button onClick={handleSaveTheme} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors">Save Theme</button>
+                     <button onClick={() => setThemeEditMode(false)} className="px-5 py-2.5 rounded-xl text-sm text-muted hover:text-primary font-medium">Cancel</button>
+                     <button onClick={handleSaveTheme} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20">Save Theme</button>
                  </div>
              </div>
           </div>
       )}
-
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        onSave={handleSettingsSaved}
-        currentBudgetConfig={budgetConfig}
-        currentPrompt={customPrompt}
-        currentAppSettings={appSettings}
-        allItems={items}
-        allSkills={skills}
-        allWallets={wallets}
-        monthlyThemes={monthlyThemes}
-      />
 
       <SkillModal 
         isOpen={skillModal.isOpen} 

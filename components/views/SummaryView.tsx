@@ -61,7 +61,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     return (
         <div className="space-y-4">
             {/* Monthly Theme Card */}
-            <div className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 flex justify-between items-center transition-all group">
+            <div className="relative overflow-hidden rounded-3xl border border-indigo-500/30 bg-indigo-500/5 p-3 flex justify-between items-center transition-all group">
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                         <button onClick={() => changeThemeMonth(-1)} className="p-0.5 text-muted hover:text-primary"><ChevronLeft className="w-3 h-3" /></button>
@@ -88,7 +88,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
             {/* HERO SECTION: Action Center */}
             <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-gradient-to-br from-surface to-acc-todo/10 border-l-4 border-l-acc-todo rounded-r-xl border-y border-r border-border p-5 shadow-lg relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-surface to-acc-todo/10 border-l-4 border-l-acc-todo rounded-r-3xl border-y border-r border-border p-5 shadow-lg relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Target className="w-24 h-24 text-acc-todo" />
                     </div>
@@ -160,7 +160,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             </div>
 
             {/* Money Card */}
-            <div onClick={() => setActiveTab('money')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-5 rounded-xl transition-all cursor-pointer hover:border-emerald-500/30 group">
+            <div onClick={() => setActiveTab('money')} className="bg-gradient-to-br from-surface to-surface/50 border border-border p-5 rounded-3xl transition-all cursor-pointer hover:border-emerald-500/30 group">
                     <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2 text-emerald-500">
                         <WalletIcon className="w-5 h-5" />
@@ -203,7 +203,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             {/* Secondary Stats Grid */}
             <div className="grid grid-cols-2 gap-4">
                     {/* Skill Card */}
-                    <div onClick={() => { setActiveTab('focus'); setFocusSubTab('skills'); }} className="bg-surface border border-border p-4 rounded-xl cursor-pointer hover:border-indigo-500/30 transition-all group flex flex-col justify-between">
+                    <div onClick={() => { setActiveTab('focus'); setFocusSubTab('skills'); }} className="bg-surface border border-border p-4 rounded-3xl cursor-pointer hover:border-indigo-500/30 transition-all group flex flex-col justify-between">
                         <div>
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Growth</span>
@@ -220,7 +220,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
                     
                     {/* Brain Bank */}
-                    <div onClick={() => setActiveTab('notes')} className="bg-surface border border-border p-4 rounded-xl cursor-pointer hover:border-acc-note/30 transition-all group flex flex-col justify-between">
+                    <div onClick={() => setActiveTab('notes')} className="bg-surface border border-border p-4 rounded-3xl cursor-pointer hover:border-acc-note/30 transition-all group flex flex-col justify-between">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-xs font-bold text-acc-note uppercase tracking-wider">Brain Bank</span>
                             <StickyNote className="w-4 h-4 text-acc-note" />

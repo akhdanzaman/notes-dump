@@ -256,9 +256,12 @@ const Card: React.FC<CardProps> = ({
   // Determine if we should show the date next to the icon (For Notes/Journals/SkillLogs)
   const showDateInHeader = isNote && displayDate && isCollapsed;
 
+  // Compact Transaction Mode
+  const isTransaction = type === ItemType.FINANCE || (type === ItemType.SHOPPING && meta.amount);
+
   return (
     <div 
-        className={`${style.bg} ${style.border} rounded-r-lg border-y border-r border-r-border/50 border-y-border/50 shadow-sm transition-all hover:shadow-md hover:border-border ${isOptimistic ? 'opacity-50' : ''} break-inside-avoid ${className}`}
+        className={`${style.bg} ${style.border} rounded-xl border-y border-r border-r-border/50 border-y-border/50 shadow-sm transition-all hover:shadow-md hover:border-border ${isOptimistic ? 'opacity-50' : ''} break-inside-avoid ${className}`}
     >
       <div className={`p-3 ${enableCollapse && isCollapsed ? 'pb-3' : 'pb-0'}`}>
         
@@ -267,6 +270,7 @@ const Card: React.FC<CardProps> = ({
             className={`flex items-start gap-3 ${enableCollapse ? 'cursor-pointer' : ''}`}
             onClick={toggleCollapse}
         >
+          {/* Icon Section */}
           <div className="flex flex-col items-center gap-1 mt-0.5 shrink-0">
               <button 
                 onClick={(e) => {
@@ -274,7 +278,7 @@ const Card: React.FC<CardProps> = ({
                   if (!readonly && onToggleStatus) onToggleStatus(item.id);
                 }}
                 disabled={readonly}
-                className={`transition-colors ${readonly ? 'cursor-default' : 'hover:opacity-70'}`}
+                className={`transition-colors p-1.5 rounded-full bg-background border border-border/50 ${readonly ? 'cursor-default' : 'hover:bg-muted/10'}`}
               >
                 {status === 'done' ? (
                     <CheckCircle2 className={`w-4 h-4 ${style.icon.props.className.replace('w-4 h-4', '')}`} />
@@ -284,40 +288,88 @@ const Card: React.FC<CardProps> = ({
               </button>
           </div>
           
+          {/* Content Section */}
           <div className="flex-1 min-w-0">
              <div className="flex justify-between items-start gap-2">
                  <div className="flex flex-col w-full">
-                     {/* For Notes: Display Date in Header */}
-                     {showDateInHeader && (
-                        <span className="text-[10px] text-muted font-medium mb-1 block">
-                            {displayDate}
-                        </span>
-                     )}
+                     
+                     {/* Transaction Layout */}
+                     {isTransaction && enableCollapse && isCollapsed ? (
+                        <div className="flex justify-between items-center w-full">
+                            <div className="flex flex-col min-w-0 pr-2">
+                                <span className={`text-sm font-semibold truncate ${shouldStrike ? 'line-through text-muted' : 'text-primary'}`}>
+                                    {content}
+                                </span>
+                                <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
+                                    {displayDate && <span>{displayDate.split('•')[0].trim()}</span>}
+                                    {categoryName && (
+                                        <>
+                                            <span className="w-0.5 h-0.5 rounded-full bg-muted"></span>
+                                            <span className="text-primary/70">{categoryName}</span>
+                                        </>
+                                    )}
+                                    {(meta.paymentMethod || meta.toWallet) && (
+                                        <>
+                                            <span className="w-0.5 h-0.5 rounded-full bg-muted"></span>
+                                            <span className="flex items-center gap-0.5">
+                                                <WalletIcon className="w-2.5 h-2.5" />
+                                                {meta.paymentMethod}
+                                                {meta.financeType === 'transfer' && meta.toWallet && (
+                                                     <>
+                                                        <ArrowRight className="w-2.5 h-2.5" />
+                                                        {meta.toWallet}
+                                                     </>
+                                                )}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {displayAmount && (
+                                <div className="flex flex-col items-end shrink-0">
+                                    <span className={`text-sm font-bold ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-400' : 'text-primary')}`}>
+                                        {displayAmount}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                     ) : (
+                         /* Standard/Note Layout */
+                         <>
+                             {/* For Notes: Display Date in Header */}
+                             {showDateInHeader && (
+                                <span className="text-[10px] text-muted font-medium mb-1 block">
+                                    {displayDate}
+                                </span>
+                             )}
 
-                     {/* Main Content Area */}
-                     <div className={`text-sm ${shouldStrike ? 'line-through text-muted' : 'text-primary'} ${
-                         isNote 
-                            ? (!isCollapsed ? 'hidden' : 'whitespace-pre-wrap') // Notes: Hide when expanded (edit mode), show when collapsed
-                            : (enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap') // Others: Truncate collapsed
-                     } ${isNote && isCollapsed && isLongText && !showFullText ? 'line-clamp-[8]' : ''}`}>
-                        {content}
-                     </div>
+                             {/* Main Content Area */}
+                             <div className={`text-sm ${shouldStrike ? 'line-through text-muted' : 'text-primary'} ${
+                                 isNote 
+                                    ? (!isCollapsed ? 'hidden' : 'whitespace-pre-wrap') // Notes: Hide when expanded (edit mode), show when collapsed
+                                    : (enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap') // Others: Truncate collapsed
+                             } ${isNote && isCollapsed && isLongText && !showFullText ? 'line-clamp-[8]' : ''}`}>
+                                {content}
+                             </div>
 
-                     {/* Read More Button for Notes */}
-                     {isNote && isCollapsed && isLongText && (
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setShowFullText(!showFullText);
-                            }}
-                            className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 mt-1 self-start"
-                        >
-                            {showFullText ? 'Show Less' : 'Read More'}
-                        </button>
+                             {/* Read More Button for Notes */}
+                             {isNote && isCollapsed && isLongText && (
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowFullText(!showFullText);
+                                    }}
+                                    className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 mt-1 self-start"
+                                >
+                                    {showFullText ? 'Show Less' : 'Read More'}
+                                </button>
+                             )}
+                         </>
                      )}
                  </div>
                  
-                 {enableCollapse && (
+                 {enableCollapse && !isTransaction && (
                      <div className="text-muted/50 ml-1 mt-0.5 shrink-0">
                          {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
                      </div>
@@ -333,8 +385,8 @@ const Card: React.FC<CardProps> = ({
                 </div>
              )}
 
-             {/* Collapsed: Compact Metadata */}
-             {enableCollapse && isCollapsed && (
+             {/* Collapsed: Compact Metadata (Non-Transaction) */}
+             {enableCollapse && isCollapsed && !isTransaction && (
                  <div className="flex items-center gap-2 mt-1 text-[10px] text-muted h-4 overflow-hidden">
                      {categoryName && (
                          <span className="text-blue-500 font-medium px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 capitalize">
@@ -350,23 +402,6 @@ const Card: React.FC<CardProps> = ({
                             <span>•</span>
                             <span className={`${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : 'text-amber-500'}`}>
                                 {displayAmount}
-                            </span>
-                         </>
-                     )}
-
-                     {/* Payment Method Display */}
-                     {(meta.paymentMethod || meta.toWallet) && (
-                         <>
-                            <span>•</span>
-                            <span className="flex items-center gap-1 text-muted">
-                                <WalletIcon className="w-3 h-3" />
-                                {meta.paymentMethod}
-                                {meta.financeType === 'transfer' && meta.toWallet && (
-                                     <>
-                                        <ArrowRight className="w-3 h-3" />
-                                        {meta.toWallet}
-                                     </>
-                                )}
                             </span>
                          </>
                      )}
@@ -389,7 +424,7 @@ const Card: React.FC<CardProps> = ({
                
                {/* Content Edit */}
                <textarea
-                   className={`w-full bg-background border border-border rounded-lg p-3 text-sm text-primary focus:outline-none focus:border-primary mb-3 resize-none ${isNote ? 'h-48' : 'h-20'}`}
+                   className={`w-full bg-background border border-border rounded-2xl p-3 text-sm text-primary focus:outline-none focus:border-primary mb-3 resize-none ${isNote ? 'h-48' : 'h-20'}`}
                    value={editContent}
                    onChange={(e) => setEditContent(e.target.value)}
                    placeholder="Content..."
@@ -399,12 +434,12 @@ const Card: React.FC<CardProps> = ({
                <div className="grid grid-cols-2 gap-3 mb-3">
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
-                       <div className="col-span-2 flex bg-background border border-border rounded-lg p-1">
+                       <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1">
                            {(['expense', 'income', 'transfer'] as FinanceType[]).map(ft => (
                                <button
                                    key={ft}
                                    onClick={() => setEditFinanceType(ft)}
-                                   className={`flex-1 py-1 text-[10px] font-medium rounded capitalize ${editFinanceType === ft ? 'bg-indigo-600 text-white' : 'text-muted hover:text-primary'}`}
+                                   className={`flex-1 py-1 text-[10px] font-medium rounded-xl capitalize ${editFinanceType === ft ? 'bg-indigo-600 text-white' : 'text-muted hover:text-primary'}`}
                                >
                                    {ft}
                                </button>
@@ -420,7 +455,7 @@ const Card: React.FC<CardProps> = ({
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
                                     type="number"
-                                    className="w-full bg-background border border-border rounded-lg pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                    className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                     value={editAmount}
                                     onChange={(e) => setEditAmount(e.target.value)}
                                     placeholder="0"
@@ -437,7 +472,7 @@ const Card: React.FC<CardProps> = ({
                                 <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
                                     type="datetime-local"
-                                    className="w-full bg-background border border-border rounded-lg pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                    className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                     value={editDate}
                                     onChange={(e) => setEditDate(e.target.value)}
                                 />
@@ -454,7 +489,7 @@ const Card: React.FC<CardProps> = ({
                                     <Hourglass className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                     <input
                                         type="number"
-                                        className="w-full bg-background border border-border rounded-lg pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                        className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                         value={editDuration}
                                         onChange={(e) => setEditDuration(e.target.value)}
                                     />
@@ -463,7 +498,7 @@ const Card: React.FC<CardProps> = ({
                            <div>
                                 <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Skill</label>
                                 <select
-                                    className="w-full bg-background border border-border rounded-lg px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                    className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                     value={editSkillId}
                                     onChange={(e) => setEditSkillId(e.target.value)}
                                 >
@@ -482,11 +517,11 @@ const Card: React.FC<CardProps> = ({
                                    {editFinanceType === 'transfer' ? 'From' : 'Method'}
                                </label>
                                <select
-                                   className="w-full bg-background border border-border rounded-lg px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                   className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                    value={editPaymentMethod}
                                    onChange={(e) => setEditPaymentMethod(e.target.value)}
                                >
-                                   <option value="">Cash</option>
+                                   <option value="">Undefined</option>
                                    {getWalletOptions()}
                                </select>
                            </div>
@@ -495,7 +530,7 @@ const Card: React.FC<CardProps> = ({
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">To</label>
                                    <select
-                                       className="w-full bg-background border border-border rounded-lg px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                        value={editToWallet}
                                        onChange={(e) => setEditToWallet(e.target.value)}
                                    >
@@ -507,7 +542,7 @@ const Card: React.FC<CardProps> = ({
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget</label>
                                    <select
-                                       className="w-full bg-background border border-border rounded-lg px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                        value={editBudgetCategory}
                                        onChange={(e) => setEditBudgetCategory(e.target.value)}
                                    >
@@ -522,7 +557,7 @@ const Card: React.FC<CardProps> = ({
 
                {/* Progress Control (Only for Todo) */}
                {showProgress && (
-                   <div className="bg-acc-todo/5 border border-acc-todo/20 rounded-xl p-3 mb-3">
+                   <div className="bg-acc-todo/5 border border-acc-todo/20 rounded-2xl p-3 mb-3">
                        <div className="flex justify-between items-center mb-2">
                            <span className="text-xs uppercase font-bold text-acc-todo flex items-center gap-1">
                                <Activity className="w-3.5 h-3.5" /> Progress
@@ -534,7 +569,7 @@ const Card: React.FC<CardProps> = ({
                            min="0" max="100" step="5"
                            value={editProgress}
                            onChange={(e) => setEditProgress(parseInt(e.target.value))}
-                           className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer accent-acc-todo mb-3"
+                           className="w-full h-2 bg-background rounded-xl appearance-none cursor-pointer accent-acc-todo mb-3"
                        />
                        <div>
                             <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Latest Update</label>
@@ -542,7 +577,7 @@ const Card: React.FC<CardProps> = ({
                                 type="text"
                                 value={editProgressNotes}
                                 onChange={(e) => setEditProgressNotes(e.target.value)}
-                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-primary placeholder-muted/50 focus:outline-none focus:border-acc-todo"
+                                className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-sm text-primary placeholder-muted/50 focus:outline-none focus:border-acc-todo"
                                 placeholder="Add a progress note..."
                             />
                        </div>
@@ -554,7 +589,7 @@ const Card: React.FC<CardProps> = ({
                     <Tag className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                     <input
                         type="text"
-                        className="w-full bg-background border border-border rounded-lg pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary placeholder-muted/50"
+                        className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary placeholder-muted/50"
                         value={editTags}
                         onChange={(e) => setEditTags(e.target.value)}
                         placeholder="Tags (comma separated)..."
@@ -566,7 +601,7 @@ const Card: React.FC<CardProps> = ({
                    {onDelete && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 
-                      className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors"
+                      className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-2xl text-xs font-medium flex items-center gap-1 transition-colors"
                     >
                        <Trash2 className="w-3.5 h-3.5" /> Delete
                     </button>
@@ -575,7 +610,7 @@ const Card: React.FC<CardProps> = ({
                    {!readonly && onUpdate && (
                        <button
                            onClick={(e) => { e.stopPropagation(); handleSave(); }}
-                           className="px-4 py-1.5 bg-indigo-600 text-white hover:bg-indigo-500 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors shadow-sm"
+                           className="px-4 py-1.5 bg-indigo-600 text-white hover:bg-indigo-500 rounded-2xl text-xs font-medium flex items-center gap-1 transition-colors shadow-sm"
                        >
                            <Save className="w-3.5 h-3.5" /> Save Changes
                        </button>

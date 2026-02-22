@@ -118,16 +118,16 @@ const FocusView: React.FC<FocusViewProps> = ({
     return (
         <div className="min-h-[50vh] overflow-hidden">
             {/* Header Tabs */}
-            <div className="flex bg-surface rounded-lg p-1 mb-6 border border-border">
+            <div className="flex bg-surface rounded-2xl p-1 mb-6 border border-border">
                 <button 
                     onClick={() => setFocusSubTab('tasks')}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'tasks' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'tasks' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
                 >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Tasks
                 </button>
                 <button 
                     onClick={() => setFocusSubTab('skills')}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'skills' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'skills' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
                 >
                     <Sprout className="w-3.5 h-3.5" /> Skill Growth
                 </button>
@@ -151,7 +151,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                     <div className="w-full flex-shrink-0 px-1">
                         <div className="space-y-6">
                             {/* Month Navigation */}
-                            <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3">
+                            <div className="flex items-center justify-between bg-surface border border-border rounded-3xl p-3">
                                 <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-muted/10 rounded-full text-muted hover:text-primary"><ChevronLeft className="w-5 h-5" /></button>
                                 <span className="font-semibold text-primary">
                                     {focusDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
@@ -161,7 +161,7 @@ const FocusView: React.FC<FocusViewProps> = ({
 
                             {/* Summary Cards */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-surface border border-border p-4 rounded-xl flex items-center gap-3">
+                                <div className="bg-surface border border-border p-4 rounded-3xl flex items-center gap-3">
                                     <div className="p-3 bg-acc-todo/10 rounded-full text-acc-todo">
                                         <ListTodo className="w-5 h-5" />
                                     </div>
@@ -170,7 +170,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                         <div className="text-[10px] text-muted uppercase tracking-wider font-medium">To Do</div>
                                     </div>
                                 </div>
-                                <div className="bg-surface border border-border p-4 rounded-xl flex items-center gap-3">
+                                <div className="bg-surface border border-border p-4 rounded-3xl flex items-center gap-3">
                                     <div className="p-3 bg-emerald-500/10 rounded-full text-emerald-500">
                                         <CheckSquare className="w-5 h-5" />
                                     </div>
@@ -233,18 +233,18 @@ const FocusView: React.FC<FocusViewProps> = ({
                             {/* Skill Dashboard Cards */}
                             <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 mb-6">
                                 {stats.map(skill => (
-                                    <div key={skill.id} className="bg-surface border border-border p-4 rounded-xl relative group hover:border-indigo-500/50 transition-colors">
+                                    <div key={skill.id} className="bg-surface border border-border p-4 rounded-3xl relative group hover:border-indigo-500/50 transition-colors">
                                         <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                             <button 
                                             onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
-                                            className="p-1.5 hover:bg-muted/10 rounded-md text-muted hover:text-primary transition-colors"
+                                            className="p-1.5 hover:bg-muted/10 rounded-xl text-muted hover:text-primary transition-colors"
                                             title="Edit Skill"
                                             >
                                             <Pencil className="w-3.5 h-3.5" />
                                             </button>
                                             <button 
                                             onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
-                                            className="p-1.5 hover:bg-red-900/30 rounded-md text-muted hover:text-red-400 transition-colors"
+                                            className="p-1.5 hover:bg-red-900/30 rounded-xl text-muted hover:text-red-400 transition-colors"
                                             title="Delete"
                                             >
                                             <Trash2 className="w-3.5 h-3.5" />
@@ -282,7 +282,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 ))}
                                 
                                 {/* Add Skill Button */}
-                                <button onClick={handleOpenAddSkill} className="border border-dashed border-border rounded-xl flex flex-col items-center justify-center p-4 hover:border-indigo-500/50 hover:bg-surface/50 transition-all text-muted hover:text-primary min-h-[106px]">
+                                <button onClick={handleOpenAddSkill} className="border border-dashed border-border rounded-3xl flex flex-col items-center justify-center p-4 hover:border-indigo-500/50 hover:bg-surface/50 transition-all text-muted hover:text-primary min-h-[106px]">
                                     <Plus className="w-6 h-6 mb-1" />
                                     <span className="text-xs font-medium">Add Skill</span>
                                 </button>
@@ -293,7 +293,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 <History className="w-4 h-4" /> Recent Logs (Proof of Output)
                             </h3>
                             {logs.length === 0 ? (
-                                <div className="text-center text-muted py-10 bg-surface/30 rounded-xl border border-dashed border-border">
+                                <div className="text-center text-muted py-10 bg-surface/30 rounded-3xl border border-dashed border-border">
                                     <p>No study sessions logged yet.</p>
                                     <p className="text-xs mt-2 opacity-70">Try typing: "Belajar Python 45 menit tentang loops"</p>
                                 </div>

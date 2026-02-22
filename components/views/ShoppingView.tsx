@@ -37,7 +37,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     };
 
     return (
-    <div>
+    <div className="pb-20 min-h-[50vh]">
         {renderGroup("Urgent", urgent, "text-red-500")}
         {renderGroup("Routine & Maintenance", routine, "text-acc-event")}
         {renderGroup("To Do / To Buy", normal, "text-acc-shopping")}

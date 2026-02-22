@@ -148,12 +148,12 @@ const NotesView: React.FC<NotesViewProps> = ({
     return (
         <div className="min-h-[50vh] overflow-hidden">
             {/* Notes Sub-Tab Switcher */}
-            <div className="flex bg-surface rounded-lg p-1 mb-6 border border-border">
+            <div className="flex bg-surface rounded-2xl p-1 mb-6 border border-border">
                 {subTabs.map((tab) => (
                     <button 
                         key={tab}
                         onClick={() => setNotesSubTab(tab)}
-                        className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-colors ${notesSubTab === tab ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition-colors ${notesSubTab === tab ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
                     >
                         {tab === 'general' && <NotebookPen className="w-3.5 h-3.5" />}
                         {tab === 'journal' && <BookText className="w-3.5 h-3.5" />}
