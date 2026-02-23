@@ -162,52 +162,28 @@ const Card: React.FC<CardProps> = ({
   const getStyles = () => {
     switch (type) {
       case ItemType.TODO:
-        return {
-          border: 'border-l-4 border-l-acc-todo',
-          icon: <Circle className="w-4 h-4 text-acc-todo" />,
-          bg: 'bg-surface'
-        };
+        return { textColor: 'text-acc-todo', bg: 'bg-surface' };
       case ItemType.SHOPPING:
-        return {
-          border: 'border-l-4 border-l-purple-500',
-          icon: <ShoppingCart className="w-4 h-4 text-purple-500" />,
-          bg: 'bg-surface'
-        };
+        return { textColor: 'text-purple-500', bg: 'bg-surface' };
       case ItemType.EVENT:
-        return {
-          border: 'border-l-4 border-l-acc-event',
-          icon: <Calendar className="w-4 h-4 text-acc-event" />,
-          bg: 'bg-surface'
-        };
+        return { textColor: 'text-acc-event', bg: 'bg-surface' };
       case ItemType.SKILL_LOG:
-        return {
-          border: 'border-l-4 border-l-indigo-500',
-          icon: <BookOpen className="w-4 h-4 text-indigo-500" />,
-          bg: 'bg-surface'
-        };
+        return { textColor: 'text-indigo-500', bg: 'bg-surface' };
       case ItemType.JOURNAL:
-        return {
-          border: 'border-l-4 border-l-fuchsia-400',
-          icon: <BookText className="w-4 h-4 text-fuchsia-400" />,
-          bg: 'bg-surface'
-        };
+        return { textColor: 'text-fuchsia-400', bg: 'bg-surface' };
       case ItemType.FINANCE:
         const isIncome = meta?.financeType === 'income' || meta?.financeType === 'reimbursement';
         const isTransfer = meta?.financeType === 'transfer';
-        const colorClass = isTransfer ? 'border-l-blue-400' : (isIncome ? 'border-l-emerald-500' : 'border-l-red-500');
-        const Icon = isTransfer ? ArrowRightLeft : (meta?.financeType === 'lending' ? ArrowRightLeft : (isIncome ? TrendingUp : TrendingDown));
         const iconColor = isTransfer ? 'text-blue-400' : (isIncome ? 'text-emerald-500' : 'text-red-500');
         
         return {
-            border: `border-l-4 ${colorClass}`,
-            icon: <Icon className={`w-4 h-4 ${iconColor}`} />,
+            textColor: iconColor,
             bg: 'bg-surface'
         };
       case ItemType.NOTE:
       default:
         return {
-          border: 'border-l-4 border-l-acc-note',
-          icon: <StickyNote className="w-4 h-4 text-acc-note" />,
+          textColor: 'text-acc-note',
           bg: 'bg-surface'
         };
     }
@@ -281,166 +257,92 @@ const Card: React.FC<CardProps> = ({
 
   return (
     <div 
-        className={`${style.bg} ${style.border} rounded-xl border-y border-r border-r-border/50 border-y-border/50 shadow-sm transition-all hover:shadow-md hover:border-border ${isOptimistic ? 'opacity-50' : ''} break-inside-avoid ${className}`}
+        className={`${style.bg} rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        onClick={toggleCollapse}
     >
-      <div className={`p-3 ${enableCollapse && isCollapsed ? 'pb-3' : 'pb-0'}`}>
+      <div className="flex flex-col gap-1">
         
         {/* COLLAPSED HEADER */}
-        <div 
-            className={`flex items-start gap-3 ${enableCollapse ? 'cursor-pointer' : ''}`}
-            onClick={toggleCollapse}
-        >
-          {/* Icon Section */}
-          <div className="flex flex-col items-center gap-1 mt-0.5 shrink-0">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!readonly && onToggleStatus) onToggleStatus(item.id);
                 }}
                 disabled={readonly}
-                className={`transition-colors p-1.5 rounded-full bg-background border border-border/50 ${readonly ? 'cursor-default' : 'hover:bg-muted/10'}`}
+                className={`transition-colors shrink-0 ${readonly ? 'cursor-default' : 'hover:opacity-80'}`}
               >
                 {status === 'done' ? (
-                    <CheckCircle2 className={`w-4 h-4 ${style.icon.props.className.replace('w-4 h-4', '')}`} />
+                    <CheckCircle2 className="w-4 h-4 text-muted" />
                 ) : (
-                    style.icon
+                    <Circle className={`w-4 h-4 ${style.textColor}`} />
                 )}
               </button>
+              <span className={`text-sm font-semibold capitalize ${shouldStrike ? 'text-muted' : style.textColor}`}>
+                  {categoryName || type.toLowerCase()}
+              </span>
           </div>
           
-          {/* Content Section */}
-          <div className="flex-1 min-w-0">
-             <div className="flex justify-between items-start gap-2">
-                 <div className="flex flex-col w-full">
-                     
-                     {/* Transaction Layout */}
-                     {isTransaction && enableCollapse && isCollapsed ? (
-                        <div className="flex justify-between items-center w-full">
-                            <div className="flex flex-col min-w-0 pr-2">
-                                <span className={`text-sm font-semibold truncate ${shouldStrike ? 'line-through text-muted' : 'text-primary'}`}>
-                                    {content}
-                                </span>
-                                <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
-                                    {displayDate && <span>{displayDate.split('•')[0].trim()}</span>}
-                                    {categoryName && (
-                                        <>
-                                            <span className="w-0.5 h-0.5 rounded-full bg-muted"></span>
-                                            <span className="text-primary/70">{categoryName}</span>
-                                        </>
-                                    )}
-                                    {(meta.paymentMethod || meta.toWallet) && (
-                                        <>
-                                            <span className="w-0.5 h-0.5 rounded-full bg-muted"></span>
-                                            <span className="flex items-center gap-0.5">
-                                                <WalletIcon className="w-2.5 h-2.5" />
-                                                {meta.paymentMethod}
-                                                {meta.financeType === 'transfer' && meta.toWallet && (
-                                                     <>
-                                                        <ArrowRight className="w-2.5 h-2.5" />
-                                                        {meta.toWallet}
-                                                     </>
-                                                )}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            {displayAmount && (
-                                <div className="flex flex-col items-end shrink-0">
-                                    <span className={`text-sm font-bold ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-400' : 'text-primary')}`}>
-                                        {displayAmount}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                     ) : (
-                         /* Standard/Note Layout */
-                         <>
-                             {/* For Notes: Display Date in Header */}
-                             {showDateInHeader && (
-                                <span className="text-[10px] text-muted font-medium mb-1 block">
-                                    {displayDate}
-                                </span>
-                             )}
-
-                             {/* Main Content Area */}
-                             <div className={`text-sm ${shouldStrike ? 'line-through text-muted' : 'text-primary'} ${
-                                 isNote 
-                                    ? (!isCollapsed ? 'hidden' : 'whitespace-pre-wrap') // Notes: Hide when expanded (edit mode), show when collapsed
-                                    : (enableCollapse && isCollapsed ? 'truncate' : 'whitespace-pre-wrap') // Others: Truncate collapsed
-                             } ${isNote && isCollapsed && isLongText && !showFullText ? 'line-clamp-[8]' : ''}`}>
-                                {content}
-                             </div>
-
-                             {/* Read More Button for Notes */}
-                             {isNote && isCollapsed && isLongText && (
-                                <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowFullText(!showFullText);
-                                    }}
-                                    className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 mt-1 self-start"
-                                >
-                                    {showFullText ? 'Show Less' : 'Read More'}
-                                </button>
-                             )}
-                         </>
-                     )}
-                 </div>
-                 
-                 {enableCollapse && (
-                     <div className="text-muted/50 ml-1 mt-0.5 shrink-0">
-                         {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-                     </div>
-                 )}
-             </div>
-             
-             {/* Collapsed: Progress Bar */}
-             {enableCollapse && isCollapsed && type === ItemType.TODO && status === 'pending' && meta.progress && meta.progress > 0 && meta.progress < 100 && (
-                <div className="mt-2 mb-1">
-                    <div className="h-1 w-full bg-muted/20 rounded-full overflow-hidden">
-                        <div className="h-full bg-acc-todo" style={{ width: `${meta.progress}%` }}></div>
-                    </div>
-                </div>
-             )}
-
-             {/* Collapsed: Compact Metadata (Non-Transaction) */}
-             {enableCollapse && isCollapsed && !isTransaction && (
-                 <div className="flex items-center gap-2 mt-1 text-[10px] text-muted h-4 overflow-hidden">
-                     {categoryName && (
-                         <span className="text-blue-500 font-medium px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 capitalize">
-                             {categoryName}
-                         </span>
-                     )}
-                     
-                     {/* Show date in footer if NOT shown in header */}
-                     {!showDateInHeader && displayDate && <span>{displayDate}</span>}
-                     
-                     {displayAmount && (
-                         <>
-                            <span>•</span>
-                            <span className={`${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                {displayAmount}
-                            </span>
-                         </>
-                     )}
-
-                     {skillName && (
-                         <>
-                           <span>•</span>
-                           <span className="text-indigo-500">{skillName}</span>
-                         </>
-                     )}
-                 </div>
-             )}
+          <div className="text-sm font-medium text-muted">
+              {displayDate ? displayDate.split('•')[0].trim() : ''}
           </div>
         </div>
+        
+        {/* COLLAPSED CONTENT */}
+        {enableCollapse && isCollapsed ? (
+            <div className="flex justify-between items-start gap-4 mt-1">
+                <div className="flex flex-col min-w-0 flex-1">
+                    <div className={`text-base font-medium text-primary ${isNote ? 'line-clamp-3' : 'line-clamp-2'} ${shouldStrike ? 'line-through text-muted' : ''}`}>
+                        {content}
+                    </div>
+                    
+                    {/* Extra Metadata Row */}
+                    {(meta.paymentMethod || meta.toWallet || validTags.length > 0 || skillName) && (
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
+                            {(meta.paymentMethod || meta.toWallet) && (
+                                <span className="flex items-center gap-0.5">
+                                    <WalletIcon className="w-3 h-3" />
+                                    {meta.paymentMethod}
+                                    {meta.financeType === 'transfer' && meta.toWallet && (
+                                        <>
+                                            <ArrowRight className="w-3 h-3" />
+                                            {meta.toWallet}
+                                        </>
+                                    )}
+                                </span>
+                            )}
+                            {skillName && (
+                                <span className="text-indigo-500">{skillName}</span>
+                            )}
+                            {validTags.map(tag => (
+                                <span key={tag} className="px-1.5 py-0.5 rounded bg-muted/10">#{tag}</span>
+                            ))}
+                        </div>
+                    )}
+                    
+                    {/* Progress Bar */}
+                    {showProgress && meta.progress && meta.progress > 0 && meta.progress < 100 && (
+                        <div className="mt-2 w-full max-w-[200px]">
+                            <div className="h-1 w-full bg-muted/20 rounded-full overflow-hidden">
+                                <div className="h-full bg-acc-todo" style={{ width: `${meta.progress}%` }}></div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {(displayAmount || meta.durationMinutes) && (
+                    <div className={`text-base font-bold shrink-0 mt-0.5 ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-400' : 'text-primary')}`}>
+                        {displayAmount || `${meta.durationMinutes}m`}
+                    </div>
+                )}
+            </div>
+        ) : null}
       </div>
 
       {/* EXPANDED EDIT BODY */}
       {(!enableCollapse || !isCollapsed) && (
-          <div className="px-3 pb-3 pt-3">
+          <div className="pt-4 mt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
                
                {/* Content Edit */}
                <textarea

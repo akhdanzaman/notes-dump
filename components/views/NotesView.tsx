@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { NotebookPen, BookText, Library } from 'lucide-react';
 import { BrainDumpItem, Skill, NotesSubTab, AppSettings, SortOrder, ItemType, FinanceType } from '../../types';
 import { getNoteItems, getJournalGroups } from '../../utils/selectors';
@@ -163,22 +164,54 @@ const NotesView: React.FC<NotesViewProps> = ({
     };
 
     return (
-        <div className="min-h-[50vh] overflow-hidden">
-            {/* Notes Sub-Tab Switcher */}
-            <div className="flex bg-surface rounded-2xl p-1 mb-6 border border-border">
-                {subTabs.map((tab) => (
-                    <button 
-                        key={tab}
-                        onClick={() => setNotesSubTab(tab)}
-                        className={`flex-1 py-1.5 text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition-colors ${notesSubTab === tab ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
-                    >
-                        {tab === 'general' && <NotebookPen className="w-3.5 h-3.5" />}
-                        {tab === 'journal' && <BookText className="w-3.5 h-3.5" />}
-                        {tab === 'skills' && <Library className="w-3.5 h-3.5" />}
-                        <span className="capitalize">{tab === 'skills' ? 'Skill Logs' : tab}</span>
-                    </button>
-                ))}
-            </div>
+        <div className="min-h-[50vh] overflow-hidden pb-20">
+            {/* Top Container */}
+            <motion.div 
+                layout
+                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+            >
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4 }}
+                >
+                    <div className="flex bg-black/5 rounded-2xl p-1 mb-6">
+                        {subTabs.map((tab) => (
+                            <button 
+                                key={tab}
+                                onClick={() => setNotesSubTab(tab)}
+                                className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${notesSubTab === tab ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' : 'text-black/40 hover:text-black'}`}
+                            >
+                                {tab === 'general' && <NotebookPen className="w-4 h-4" />}
+                                {tab === 'journal' && <BookText className="w-4 h-4" />}
+                                {tab === 'skills' && <Library className="w-4 h-4" />}
+                                <span className="capitalize hidden sm:inline">{tab === 'skills' ? 'Skill Logs' : tab}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={notesSubTab}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2, ease: "linear" }}
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <h1 className="text-3xl font-bold tracking-tight capitalize">
+                                    {notesSubTab === 'skills' ? 'Skill Logs' : notesSubTab}
+                                </h1>
+                            </div>
+                            <p className="text-lg font-medium opacity-80">
+                                {notesSubTab === 'general' && `${generalItems.length} notes captured`}
+                                {notesSubTab === 'journal' && `${journalItems.length} journal entries`}
+                                {notesSubTab === 'skills' && `${skillItems.length} skill logs recorded`}
+                            </p>
+                        </motion.div>
+                    </AnimatePresence>
+                </motion.div>
+            </motion.div>
 
             {/* Sliding Container */}
             <div 
@@ -187,7 +220,7 @@ const NotesView: React.FC<NotesViewProps> = ({
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
             >
-                <div 
+                <motion.div 
                      className="flex w-full will-change-transform"
                      style={{
                          transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
@@ -195,18 +228,30 @@ const NotesView: React.FC<NotesViewProps> = ({
                      }}
                 >
                     {/* General */}
-                    <div className="w-full flex-shrink-0 px-1">
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
                         {renderContent(generalItems, 'general')}
-                    </div>
+                    </motion.div>
                     {/* Journal */}
-                    <div className="w-full flex-shrink-0 px-1">
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
                         {renderContent(journalItems, 'journal')}
-                    </div>
+                    </motion.div>
                     {/* Skills */}
-                    <div className="w-full flex-shrink-0 px-1">
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
                         {renderContent(skillItems, 'skills')}
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             </div>
         </div>
     );

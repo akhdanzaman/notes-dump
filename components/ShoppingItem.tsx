@@ -137,85 +137,78 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   return (
     <div 
-      className={`group flex flex-col rounded-2xl border transition-all overflow-hidden
+      className={`group flex flex-col rounded-[24px] p-4 shadow-sm transition-all overflow-hidden cursor-pointer
         ${isDone 
-            ? 'bg-black/10 dark:bg-black/20 border-border/30 opacity-75' 
-            : `bg-surface border-border hover:border-acc-shopping/50`
+            ? 'bg-surface/50 opacity-75' 
+            : `bg-surface hover:bg-surface/80`
         }`}
+      onClick={toggleExpand}
     >
-      {/* HEADER (Collapsed View) */}
-      <div 
-        className="flex items-center justify-between p-3 cursor-pointer"
-        onClick={toggleExpand}
-      >
-        <div className="flex items-center gap-3 flex-1 overflow-hidden">
-            <button 
-                onClick={(e) => {
-                    e.stopPropagation();
-                    if (!readonly) onToggleStatus(item.id);
-                }}
-                disabled={readonly}
-                className={`text-muted transition-colors shrink-0 ${readonly ? 'cursor-not-allowed' : 'hover:text-acc-shopping'}`}
-            >
-            {isDone ? (
-                <CheckCircle2 className="w-5 h-5 text-acc-shopping" />
-            ) : (
-                <Circle className="w-5 h-5" />
-            )}
-            </button>
+      <div className="flex flex-col gap-1">
+        
+        {/* Top Row */}
+        <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (!readonly) onToggleStatus(item.id);
+                    }}
+                    disabled={readonly}
+                    className={`transition-colors shrink-0 ${readonly ? 'cursor-not-allowed' : 'hover:opacity-80'}`}
+                >
+                {isDone ? (
+                    <CheckCircle2 className="w-4 h-4 text-muted" />
+                ) : (
+                    <Circle className={`w-4 h-4 ${isUrgent ? 'text-red-500' : (isRoutine ? 'text-acc-event' : 'text-acc-shopping')}`} />
+                )}
+                </button>
+                <span className={`text-sm font-semibold capitalize ${isDone ? 'text-muted' : (isUrgent ? 'text-red-500' : (isRoutine ? 'text-acc-event' : 'text-acc-shopping'))}`}>
+                    {isUrgent ? 'Urgent' : (isRoutine ? 'Routine' : 'Shopping')}
+                </span>
+            </div>
             
-            <div className="flex justify-between items-center w-full overflow-hidden">
-                <div className="flex flex-col min-w-0 pr-2">
-                    <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold truncate ${isDone ? 'line-through text-muted' : 'text-primary'}`}>
-                            {content}
-                        </span>
+            <div className="text-sm font-medium text-muted">
+                {dateDisplay ? dateDisplay.split('•')[0].trim() : ''}
+            </div>
+        </div>
+        
+        {/* Bottom Row */}
+        <div className="flex justify-between items-start gap-4 mt-1">
+            <div className="flex flex-col min-w-0 flex-1">
+                <div className={`text-base font-medium text-primary line-clamp-2 ${isDone ? 'line-through text-muted' : ''}`}>
+                    {content}
+                </div>
+                
+                {/* Extra Metadata Row */}
+                {(meta.quantity || isRoutine) && (
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
                         {meta.quantity && (
-                            <span className="text-[10px] font-mono text-acc-shopping bg-acc-shopping/10 px-1.5 py-0.5 rounded shrink-0">
-                            {meta.quantity}
+                            <span className="px-1.5 py-0.5 rounded bg-muted/10 font-mono">
+                                Qty: {meta.quantity}
                             </span>
                         )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
-                        {dateDisplay && (
-                            <span className={isOverdue ? 'text-red-500 font-bold' : (isToday ? 'text-amber-500 font-bold' : '')}>
-                                {dateDisplay}
-                            </span>
-                        )}
-                        {dateDisplay && (isUrgent || isRoutine) && <span className="w-0.5 h-0.5 rounded-full bg-muted"></span>}
-                        
-                        {isUrgent && !isDone && (
-                            <span className="text-red-400 font-medium">Urgent</span>
-                        )}
-                        {isUrgent && !isDone && isRoutine && <span className="w-0.5 h-0.5 rounded-full bg-muted"></span>}
-
                         {isRoutine && (
                             <span className={isWaitingForNextCycle ? 'text-acc-shopping' : 'text-acc-event/80'}>
                                 {isWaitingForNextCycle ? nextDueText : `Every ${meta.recurrenceDays || 7}d`}
                             </span>
                         )}
                     </div>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                    {meta.amount && (
-                        <span className="text-sm font-bold text-primary">
-                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(meta.amount)}
-                        </span>
-                    )}
-                    <div className="text-muted/50 hover:text-muted">
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
-                </div>
+                )}
             </div>
+
+            {meta.amount && (
+                <div className="text-base font-bold text-primary shrink-0 mt-0.5">
+                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(meta.amount)}
+                </div>
+            )}
         </div>
       </div>
 
       {/* EXPANDED EDIT BODY */}
       {isExpanded && !readonly && (
-          <div className="p-3 pt-0 border-t border-border/30 bg-background/30">
-              <div className="mt-3 space-y-3">
+          <div className="pt-4 mt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-3">
                   {/* Content & Quantity */}
                   <div className="flex gap-2">
                       <input 

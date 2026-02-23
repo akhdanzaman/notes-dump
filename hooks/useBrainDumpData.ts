@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { BrainDumpItem, ItemType, BudgetConfig, Skill, Wallet, FinanceType, AppSettings, SyncStatus, DbSchema } from '../types';
+import { BrainDumpItem, ItemType, BudgetConfig, Skill, Wallet, FinanceType, AppSettings, SyncStatus, DbSchema, ShoppingCategory } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage, SyncResult, mergeDbData } from '../services/githubService';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 

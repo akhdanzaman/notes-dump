@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Sprout, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, ListTodo, CheckSquare } from 'lucide-react';
 import { BrainDumpItem, FocusSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule } from '../../types';
 import { getFocusMonthData, getSkillItems } from '../../utils/selectors';
@@ -133,22 +134,78 @@ const FocusView: React.FC<FocusViewProps> = ({
     };
 
     return (
-        <div className="min-h-[50vh] overflow-hidden">
-            {/* Header Tabs */}
-            <div className="flex bg-surface rounded-2xl p-1 mb-6 border border-border">
-                <button 
-                    onClick={() => setFocusSubTab('tasks')}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'tasks' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
+        <div className="min-h-[50vh] overflow-hidden pb-20">
+            {/* Top Container */}
+            <motion.div 
+                layout
+                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+            >
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4 }}
                 >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Tasks
-                </button>
-                <button 
-                    onClick={() => setFocusSubTab('skills')}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'skills' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
-                >
-                    <Sprout className="w-3.5 h-3.5" /> Skill Growth
-                </button>
-            </div>
+                    <div className="flex bg-black/5 rounded-2xl p-1 mb-6">
+                        <button 
+                            onClick={() => setFocusSubTab('tasks')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'tasks' ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' : 'text-black/40 hover:text-black'}`}
+                        >
+                            <CheckCircle2 className="w-4 h-4" /> Tasks
+                        </button>
+                        <button 
+                            onClick={() => setFocusSubTab('skills')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${focusSubTab === 'skills' ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' : 'text-black/40 hover:text-black'}`}
+                        >
+                            <Sprout className="w-4 h-4" /> Skill Growth
+                        </button>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={focusSubTab + focusDate.toISOString()}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2, ease: "linear" }}
+                        >
+                            {focusSubTab === 'tasks' ? (
+                                <>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h1 className="text-3xl font-bold tracking-tight">Focus</h1>
+                                        <div className="flex items-center bg-black/5 rounded-full p-1">
+                                            <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronLeft className="w-4 h-4" /></button>
+                                            <span className="px-2 text-sm font-bold">{focusDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
+                                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronRight className="w-4 h-4" /></button>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold opacity-60 uppercase tracking-wider mb-1">To Do</p>
+                                            <p className="text-3xl font-bold">{summary.todo}</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold opacity-60 uppercase tracking-wider mb-1">Done</p>
+                                            <p className="text-3xl font-bold">{summary.done}</p>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h1 className="text-3xl font-bold tracking-tight">Skills</h1>
+                                        <button onClick={handleOpenAddSkill} className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors">
+                                            <Plus className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                    <p className="text-lg font-medium opacity-80">
+                                        Track your learning progress
+                                    </p>
+                                </>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </motion.div>
+            </motion.div>
 
             {/* Sliding Container */}
             <div 
@@ -157,7 +214,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
             >
-                <div 
+                <motion.div 
                     className="flex w-full will-change-transform"
                     style={{
                         transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
@@ -165,39 +222,12 @@ const FocusView: React.FC<FocusViewProps> = ({
                     }}
                 >
                     {/* --- TAB 1: TASKS --- */}
-                    <div className="w-full flex-shrink-0 px-1">
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
                         <div className="space-y-6">
-                            {/* Month Navigation */}
-                            <div className="flex items-center justify-between bg-surface border border-border rounded-3xl p-3">
-                                <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-muted/10 rounded-full text-muted hover:text-primary"><ChevronLeft className="w-5 h-5" /></button>
-                                <span className="font-semibold text-primary">
-                                    {focusDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                                </span>
-                                <button onClick={() => changeMonth(1)} className="p-1 hover:bg-muted/10 rounded-full text-muted hover:text-primary"><ChevronRight className="w-5 h-5" /></button>
-                            </div>
-
-                            {/* Summary Cards */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-surface border border-border p-4 rounded-3xl flex items-center gap-3">
-                                    <div className="p-3 bg-acc-todo/10 rounded-full text-acc-todo">
-                                        <ListTodo className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <div className="text-2xl font-bold text-primary">{summary.todo}</div>
-                                        <div className="text-[10px] text-muted uppercase tracking-wider font-medium">To Do</div>
-                                    </div>
-                                </div>
-                                <div className="bg-surface border border-border p-4 rounded-3xl flex items-center gap-3">
-                                    <div className="p-3 bg-emerald-500/10 rounded-full text-emerald-500">
-                                        <CheckSquare className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <div className="text-2xl font-bold text-primary">{summary.done}</div>
-                                        <div className="text-[10px] text-muted uppercase tracking-wider font-medium">Done</div>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Pending Tasks Sections */}
                             {(today.length > 0 || tomorrow.length > 0 || later.length > 0) ? (
                                 <div className="space-y-6">
@@ -222,7 +252,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 </div>
                             ) : (
                                 summary.todo === 0 && (
-                                    <div className="text-center text-muted py-8 border border-dashed border-border rounded-xl">
+                                    <div className="text-center text-muted py-8 border border-dashed border-border rounded-[24px]">
                                         No pending tasks for this month.
                                     </div>
                                 )
@@ -230,7 +260,7 @@ const FocusView: React.FC<FocusViewProps> = ({
 
                             {/* History Section */}
                             {doneList.length > 0 && (
-                                <div className="pt-6 border-t border-border">
+                                <div className="pt-6">
                                     <h3 className="text-sm font-bold text-emerald-500 uppercase tracking-wider mb-3 pl-1 flex items-center gap-2">
                                         <History className="w-4 h-4" /> History ({doneList.length})
                                     </h3>
@@ -242,15 +272,19 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* --- TAB 2: SKILLS --- */}
-                    <div className="w-full flex-shrink-0 px-1">
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
                         <div>
                             {/* Skill Dashboard Cards */}
                             <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 mb-6">
                                 {stats.map(skill => (
-                                    <div key={skill.id} className="bg-surface border border-border p-4 rounded-3xl relative group hover:border-indigo-500/50 transition-colors">
+                                    <div key={skill.id} className="bg-surface border border-border p-4 rounded-[24px] relative group hover:border-indigo-500/50 transition-colors">
                                         <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                             <button 
                                             onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
@@ -299,7 +333,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 ))}
                                 
                                 {/* Add Skill Button */}
-                                <button onClick={handleOpenAddSkill} className="border border-dashed border-border rounded-3xl flex flex-col items-center justify-center p-4 hover:border-indigo-500/50 hover:bg-surface/50 transition-all text-muted hover:text-primary min-h-[106px]">
+                                <button onClick={handleOpenAddSkill} className="border border-dashed border-border rounded-[24px] flex flex-col items-center justify-center p-4 hover:border-indigo-500/50 hover:bg-surface/50 transition-all text-muted hover:text-primary min-h-[106px]">
                                     <Plus className="w-6 h-6 mb-1" />
                                     <span className="text-xs font-medium">Add Skill</span>
                                 </button>
@@ -310,7 +344,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 <History className="w-4 h-4" /> Recent Logs (Proof of Output)
                             </h3>
                             {logs.length === 0 ? (
-                                <div className="text-center text-muted py-10 bg-surface/30 rounded-3xl border border-dashed border-border">
+                                <div className="text-center text-muted py-10 bg-surface/30 rounded-[24px] border border-dashed border-border">
                                     <p>No study sessions logged yet.</p>
                                     <p className="text-xs mt-2 opacity-70">Try typing: "Belajar Python 45 menit tentang loops"</p>
                                 </div>
@@ -330,8 +364,8 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 </div>
                             )}
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             </div>
         </div>
     );

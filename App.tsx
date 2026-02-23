@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
+import { motion, AnimatePresence } from 'framer-motion';
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, FocusSubTab, NotesSubTab, MoneyView, SortOrder, ItemType } from './types';
 import { useBrainDumpData } from './hooks/useBrainDumpData';
 
@@ -55,8 +56,6 @@ const App: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const [filterDate, setFilterDate] = useState<string>(''); // YYYY-MM-DD
   const [filterDateTo, setFilterDateTo] = useState<string>(''); // YYYY-MM-DD
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [showSortMenu, setShowSortMenu] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   // Advanced Money Filters
@@ -286,96 +285,90 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-background text-primary font-sans transition-colors duration-300 selection:bg-indigo-500/30">
       
-      {/* Minimal Top Bar */}
-      <div className="fixed top-0 w-full z-30 bg-background/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-2xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
-                    <Brain className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="text-xl font-bold tracking-tight text-primary">BrainDump</h1>
-            </div>
-            {/* Optional: Add a small status indicator here if needed, but keeping it clean for now */}
-        </div>
-      </div>
-
       {/* Main Content */}
-      <main className="pt-24 pb-48 px-4 max-w-2xl mx-auto min-h-screen">
+      <main className="pt-0 pb-48 max-w-2xl mx-auto min-h-screen">
         
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-64 text-muted animate-pulse">
+          <div className="flex flex-col items-center justify-center h-64 text-muted animate-pulse pt-24">
             <div className="w-12 h-12 bg-surface rounded-full mb-4"></div>
             <p>Syncing...</p>
           </div>
         ) : (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            
-            {activeTab === 'summary' && (
-                <SummaryView 
-                    items={items} skills={skills} wallets={wallets} budgetConfig={budgetConfig}
-                    themeNavDate={themeNavDate} setThemeNavDate={setThemeNavDate}
-                    monthlyThemes={monthlyThemes}
-                    onThemeEdit={(content) => { setTempThemeContent(content); setThemeEditMode(true); }}
-                    handleToggleStatus={handleToggleStatus}
-                    setActiveTab={setActiveTab}
-                    setFocusSubTab={setFocusSubTab}
-                    showBalance={showBalance} setShowBalance={setShowBalance}
-                />
-            )}
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="w-full"
+            >
+              {activeTab === 'summary' && (
+                  <SummaryView 
+                      items={items} skills={skills} wallets={wallets} budgetConfig={budgetConfig}
+                      themeNavDate={themeNavDate} setThemeNavDate={setThemeNavDate}
+                      monthlyThemes={monthlyThemes}
+                      onThemeEdit={(content) => { setTempThemeContent(content); setThemeEditMode(true); }}
+                      handleToggleStatus={handleToggleStatus}
+                      setActiveTab={setActiveTab}
+                      setFocusSubTab={setFocusSubTab}
+                      showBalance={showBalance} setShowBalance={setShowBalance}
+                  />
+              )}
 
-            {activeTab === 'focus' && (
-                <FocusView 
-                    items={items} skills={skills}
-                    focusSubTab={focusSubTab} setFocusSubTab={setFocusSubTab}
-                    focusDate={focusDate} setFocusDate={setFocusDate}
-                    appSettings={appSettings}
-                    handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
-                    handleUpdateItem={handleUpdateItem}
-                    handleOpenEditSkill={handleOpenEditSkill} handleOpenAddSkill={handleOpenAddSkill}
-                    setDeleteId={setDeleteId} setDeleteType={setDeleteType}
-                    searchQuery={searchQuery} selectedTag={selectedTag}
-                    wallets={wallets} budgetRules={budgetConfig.rules}
-                />
-            )}
+              {activeTab === 'focus' && (
+                  <FocusView 
+                      items={items} skills={skills}
+                      focusSubTab={focusSubTab} setFocusSubTab={setFocusSubTab}
+                      focusDate={focusDate} setFocusDate={setFocusDate}
+                      appSettings={appSettings}
+                      handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
+                      handleUpdateItem={handleUpdateItem}
+                      handleOpenEditSkill={handleOpenEditSkill} handleOpenAddSkill={handleOpenAddSkill}
+                      setDeleteId={setDeleteId} setDeleteType={setDeleteType}
+                      searchQuery={searchQuery} selectedTag={selectedTag}
+                      wallets={wallets} budgetRules={budgetConfig.rules}
+                  />
+              )}
 
-            {activeTab === 'shopping' && (
-                <ShoppingView 
-                    items={items}
-                    handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
-                    handleUpdateItem={handleUpdateItem}
-                />
-            )}
+              {activeTab === 'shopping' && (
+                  <ShoppingView 
+                      items={items}
+                      handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
+                      handleUpdateItem={handleUpdateItem}
+                  />
+              )}
 
-            {activeTab === 'notes' && (
-                <NotesView 
-                    items={items} skills={skills}
-                    notesSubTab={notesSubTab} setNotesSubTab={setNotesSubTab}
-                    appSettings={appSettings}
-                    handleDelete={requestDeleteItem}
-                    handleUpdateItem={handleUpdateItem}
-                    selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
-                />
-            )}
+              {activeTab === 'notes' && (
+                  <NotesView 
+                      items={items} skills={skills}
+                      notesSubTab={notesSubTab} setNotesSubTab={setNotesSubTab}
+                      appSettings={appSettings}
+                      handleDelete={requestDeleteItem}
+                      handleUpdateItem={handleUpdateItem}
+                      selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
+                  />
+              )}
 
-            {activeTab === 'money' && (
-                <MoneyViewComponent 
-                    items={items} wallets={wallets} budgetConfig={budgetConfig}
-                    moneyView={moneyView} setMoneyView={setMoneyView}
-                    financeDate={financeDate} setFinanceDate={setFinanceDate}
-                    showBalance={showBalance} setShowBalance={setShowBalance}
-                    appSettings={appSettings}
-                    handleDelete={requestDeleteItem}
-                    handleUpdateItem={handleUpdateItem}
-                    handleOpenEditWallet={handleOpenEditWallet} handleOpenAddWallet={handleOpenAddWallet}
-                    setDeleteId={setDeleteId} setDeleteType={setDeleteType} setIsSettingsOpen={setIsControlCenterOpen}
-                    filterWallet={filterWallet} filterTransactionType={filterTransactionType}
-                    filterCategory={filterCategory}
-                    filterMinAmount={filterMinAmount} filterMaxAmount={filterMaxAmount}
-                    selectedTag={selectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
-                />
-            )}
-
-          </div>
+              {activeTab === 'money' && (
+                  <MoneyViewComponent 
+                      items={items} wallets={wallets} budgetConfig={budgetConfig}
+                      moneyView={moneyView} setMoneyView={setMoneyView}
+                      financeDate={financeDate} setFinanceDate={setFinanceDate}
+                      showBalance={showBalance} setShowBalance={setShowBalance}
+                      appSettings={appSettings}
+                      handleDelete={requestDeleteItem}
+                      handleUpdateItem={handleUpdateItem}
+                      handleOpenEditWallet={handleOpenEditWallet} handleOpenAddWallet={handleOpenAddWallet}
+                      setDeleteId={setDeleteId} setDeleteType={setDeleteType} setIsSettingsOpen={setIsControlCenterOpen}
+                      filterWallet={filterWallet} filterTransactionType={filterTransactionType}
+                      filterCategory={filterCategory}
+                      filterMinAmount={filterMinAmount} filterMaxAmount={filterMaxAmount}
+                      selectedTag={selectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
+                  />
+              )}
+            </motion.div>
+          </AnimatePresence>
         )}
       </main>
 
@@ -390,8 +383,6 @@ const App: React.FC = () => {
                         activeTab={activeTab} notesSubTab={notesSubTab} moneyView={moneyView}
                         isSearchExpanded={isSearchExpanded} setIsSearchExpanded={setIsSearchExpanded}
                         searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-                        showFilterMenu={showFilterMenu} setShowFilterMenu={setShowFilterMenu}
-                        showSortMenu={showSortMenu} setShowSortMenu={setShowSortMenu}
                         selectedTag={selectedTag} setSelectedTag={setSelectedTag}
                         filterDate={filterDate} setFilterDate={setFilterDate}
                         filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}

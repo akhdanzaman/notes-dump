@@ -10,49 +10,38 @@ interface BottomNavProps {
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, onMenuClick }) => {
-    return (
-        <div className="w-full bg-background/80 backdrop-blur-xl border-t border-white/10 pb-safe z-40 transition-all duration-300">
-          <div className="max-w-2xl mx-auto grid grid-cols-6 w-full px-2">
-            <button onClick={() => setActiveTab('summary')} className={`group flex flex-col items-center justify-center py-3 gap-1 transition-all ${activeTab === 'summary' ? 'text-indigo-400' : 'text-muted hover:text-primary'}`}>
-              <div className={`p-1.5 rounded-2xl transition-all duration-300 ${activeTab === 'summary' ? 'bg-indigo-500/20 scale-110' : 'group-hover:bg-white/5'}`}>
-                <LayoutDashboard className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-medium tracking-wide">Home</span>
-            </button>
-            
-            <button onClick={() => setActiveTab('focus')} className={`group flex flex-col items-center justify-center py-3 gap-1 transition-all ${activeTab === 'focus' ? 'text-emerald-400' : 'text-muted hover:text-primary'}`}>
-              <div className={`p-1.5 rounded-2xl transition-all duration-300 ${activeTab === 'focus' ? 'bg-emerald-500/20 scale-110' : 'group-hover:bg-white/5'}`}>
-                <Target className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-medium tracking-wide">Focus</span>
-            </button>
-            
-            <button onClick={() => setActiveTab('shopping')} className={`group flex flex-col items-center justify-center py-3 gap-1 transition-all ${activeTab === 'shopping' ? 'text-amber-400' : 'text-muted hover:text-primary'}`}>
-               <div className={`p-1.5 rounded-2xl transition-all duration-300 ${activeTab === 'shopping' ? 'bg-amber-500/20 scale-110' : 'group-hover:bg-white/5'}`}>
-                 <ShoppingCart className="w-5 h-5" />
-               </div>
-              <span className="text-[10px] font-medium tracking-wide">Life</span>
-            </button>
-            
-            <button onClick={() => setActiveTab('notes')} className={`group flex flex-col items-center justify-center py-3 gap-1 transition-all ${activeTab === 'notes' ? 'text-blue-400' : 'text-muted hover:text-primary'}`}>
-               <div className={`p-1.5 rounded-2xl transition-all duration-300 ${activeTab === 'notes' ? 'bg-blue-500/20 scale-110' : 'group-hover:bg-white/5'}`}>
-                 <StickyNote className="w-5 h-5" />
-               </div>
-              <span className="text-[10px] font-medium tracking-wide">Notes</span>
-            </button>
-            
-            <button onClick={() => setActiveTab('money')} className={`group flex flex-col items-center justify-center py-3 gap-1 transition-all ${activeTab === 'money' ? 'text-rose-400' : 'text-muted hover:text-primary'}`}>
-               <div className={`p-1.5 rounded-2xl transition-all duration-300 ${activeTab === 'money' ? 'bg-rose-500/20 scale-110' : 'group-hover:bg-white/5'}`}>
-                 <WalletIcon className="w-5 h-5" />
-               </div>
-              <span className="text-[10px] font-medium tracking-wide">Money</span>
-            </button>
+    const tabs: { id: Tab; icon: React.ElementType; label: string }[] = [
+        { id: 'summary', icon: LayoutDashboard, label: 'Home' },
+        { id: 'focus', icon: Target, label: 'Focus' },
+        { id: 'shopping', icon: ShoppingCart, label: 'Life' },
+        { id: 'notes', icon: StickyNote, label: 'Notes' },
+        { id: 'money', icon: WalletIcon, label: 'Money' },
+    ];
 
-            <button onClick={onMenuClick} className="group flex flex-col items-center justify-center py-3 gap-1 text-muted hover:text-primary transition-all">
-               <div className="p-1.5 rounded-2xl group-hover:bg-white/5 transition-all duration-300">
-                 <Menu className="w-5 h-5" />
-               </div>
-              <span className="text-[10px] font-medium tracking-wide">Menu</span>
+    return (
+        <div className="w-full pb-6 px-4 z-40">
+          <div className="max-w-md mx-auto flex items-center justify-between bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-[40px] p-2 shadow-2xl border border-black/5 dark:border-white/10">
+            {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                const Icon = tab.icon;
+                return (
+                    <button 
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)} 
+                        className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ${isActive ? 'bg-black dark:bg-white text-white dark:text-black scale-110 shadow-lg' : 'text-black/40 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'}`}
+                    >
+                        <Icon className="w-5 h-5" />
+                    </button>
+                );
+            })}
+            
+            <div className="w-px h-6 bg-black/10 dark:bg-white/10 mx-1" />
+
+            <button 
+                onClick={onMenuClick} 
+                className="flex items-center justify-center w-12 h-12 rounded-full text-black/40 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-300"
+            >
+                <Menu className="w-5 h-5" />
             </button>
           </div>
         </div>

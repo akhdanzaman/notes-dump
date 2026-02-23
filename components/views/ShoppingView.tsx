@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrainDumpItem, FinanceType } from '../../types';
+import { motion } from 'framer-motion';
+import { BrainDumpItem, FinanceType, ShoppingCategory } from '../../types';
 import { getShoppingItems } from '../../utils/selectors';
 import ShoppingItem from '../ShoppingItem';
 
@@ -31,7 +32,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     items, handleToggleStatus, handleDelete, handleUpdateItem
 }) => {
     const { urgent, routine, normal } = getShoppingItems(items);
-    if (urgent.length === 0 && routine.length === 0 && normal.length === 0) return <div className="text-center text-muted py-10">No life admin tasks.</div>;
+    const isEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
 
     const renderGroup = (title: string, list: BrainDumpItem[], colorClass: string) => {
         if (list.length === 0) return null;
@@ -55,9 +56,50 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
 
     return (
     <div className="pb-20 min-h-[50vh]">
-        {renderGroup("Urgent", urgent, "text-red-500")}
-        {renderGroup("Routine & Maintenance", routine, "text-acc-event")}
-        {renderGroup("To Do / To Buy", normal, "text-acc-shopping")}
+        {/* Top Container */}
+        <motion.div 
+            layout
+            className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+        >
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+            >
+                <h1 className="text-3xl font-bold tracking-tight mb-6">Life & Shopping</h1>
+                <div className="flex gap-4">
+                    <div className="flex-1">
+                        <p className="text-sm font-bold opacity-60 uppercase tracking-wider mb-1 text-red-600 dark:text-red-500">Urgent</p>
+                        <p className="text-3xl font-bold">{urgent.length}</p>
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-bold opacity-60 uppercase tracking-wider mb-1">Routine</p>
+                        <p className="text-3xl font-bold">{routine.length}</p>
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-bold opacity-60 uppercase tracking-wider mb-1">Normal</p>
+                        <p className="text-3xl font-bold">{normal.length}</p>
+                    </div>
+                </div>
+            </motion.div>
+        </motion.div>
+
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="px-4"
+        >
+            {isEmpty ? (
+                <div className="text-center text-muted py-10">No life admin tasks.</div>
+            ) : (
+                <>
+                    {renderGroup("Urgent", urgent, "text-red-500")}
+                    {renderGroup("Routine & Maintenance", routine, "text-acc-event")}
+                    {renderGroup("To Do / To Buy", normal, "text-acc-shopping")}
+                </>
+            )}
+        </motion.div>
     </div>
     );
 };
