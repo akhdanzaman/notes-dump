@@ -58,9 +58,20 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     financeDate, setFinanceDate, showBalance, setShowBalance, appSettings,
     handleDelete, handleUpdateItem, handleOpenEditWallet, handleOpenAddWallet,
     setDeleteId, setDeleteType, setIsSettingsOpen,
-    filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder
+    filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
 }) => {
     
+    // Swipe State
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [budgetViewMode, setBudgetViewMode] = useState<'monthly' | 'yearly'>('monthly');
+
+    const touchStartRef = useRef<{ x: number, y: number } | null>(null);
+    const isHorizontalSwipe = useRef<boolean | null>(null);
+
+    const tabs: MoneyView[] = ['wallets', 'transactions', 'budget'];
+    const activeIndex = tabs.indexOf(moneyView);
+
     // Calculate Data for All Views
     const { walletStats, totalNetWorth, totalAssets, totalDebt } = getWalletStats(items, wallets);
     
@@ -69,28 +80,24 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         budgetMap, plannedBudgetMap, uncategorized, projectedUncategorized 
     } = getFinanceItems(
         items, financeDate, budgetConfig, 
-        filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder
+        filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
+        budgetViewMode
     );
 
     const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
                
-    const effectiveIncome = budgetConfig.monthlyIncome > 0 ? budgetConfig.monthlyIncome : totalIncome;
-    const incomeLabel = budgetConfig.monthlyIncome > 0 ? 'Fixed Income' : 'Recorded Income';
+    const effectiveIncome = budgetConfig.monthlyIncome > 0 
+        ? (budgetViewMode === 'yearly' ? budgetConfig.monthlyIncome * 12 : budgetConfig.monthlyIncome) 
+        : totalIncome;
+    const incomeLabel = budgetConfig.monthlyIncome > 0 
+        ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : 'Fixed Income') 
+        : 'Recorded Income';
 
     const changeMonth = (offset: number) => {
         const newDate = new Date(financeDate);
         newDate.setMonth(newDate.getMonth() + offset);
         setFinanceDate(newDate);
     };
-
-    // Swipe State
-    const [dragOffset, setDragOffset] = useState(0);
-    const [isDragging, setIsDragging] = useState(false);
-    const touchStartRef = useRef<{ x: number, y: number } | null>(null);
-    const isHorizontalSwipe = useRef<boolean | null>(null);
-
-    const tabs: MoneyView[] = ['wallets', 'transactions', 'budget'];
-    const activeIndex = tabs.indexOf(moneyView);
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -155,13 +162,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         <div className="min-h-[60vh] overflow-hidden pb-20">
             {/* Top Container */}
             <motion.div 
-                layout
+                layoutId="top-container"
                 className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
             >
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "linear" }}
                 >
                     <div className="flex bg-black/5 rounded-2xl p-1 mb-6">
                         {tabs.map(tab => (
@@ -180,10 +189,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                     <AnimatePresence mode="wait">
                         <motion.div
-                            key={"money-header" + financeDate.toISOString()}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.3, ease: "linear" }}
+                            key={financeDate.toISOString()}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2, ease: "linear" }}
                         >
                             <div className="flex justify-between items-start mb-2">
                                 <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
@@ -228,7 +238,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             </motion.div>
             
             {/* Sliding Container */}
-            <div
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
                 className="touch-pan-y"
                 onTouchStart={onTouchStart}
                 onTouchMove={onTouchMove}
@@ -249,37 +261,57 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     >
                         <div className="space-y-4">
                             {walletStats.map(wallet => (
-                                <div key={wallet.id} className="bg-surface border border-border p-4 rounded-3xl relative group hover:border-border transition-colors">
-                                    <div className="absolute top-3 right-3 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                        <button 
-                                            onClick={() => handleOpenEditWallet(wallet)}
-                                            className="p-1.5 hover:bg-muted/10 rounded-xl text-muted hover:text-primary transition-colors"
-                                        >
-                                            <Pencil className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button 
-                                            onClick={() => { setDeleteId(wallet.id); setDeleteType('wallet'); }}
-                                            className="p-1.5 hover:bg-red-900/30 rounded-xl text-muted hover:text-red-400 transition-colors"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
+                                <div 
+                                    key={wallet.id} 
+                                    className="bg-surface rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 relative group"
+                                >
+                                    <div className="flex flex-col gap-1">
+                                        {/* Header */}
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-5 h-5 rounded-full ${wallet.color} flex items-center justify-center text-white`}>
+                                                    {wallet.type === 'bank' ? <PiggyBank className="w-3 h-3" /> : 
+                                                        wallet.type === 'cc' ? <CreditCard className="w-3 h-3" /> : 
+                                                        wallet.type === 'ewallet' ? <WalletIcon className="w-3 h-3" /> :
+                                                        <WalletIcon className="w-3 h-3" />}
+                                                </div>
+                                                <span className="text-sm font-semibold capitalize text-primary opacity-70">
+                                                    {wallet.type}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => handleOpenEditWallet(wallet)}
+                                                    className="p-1.5 hover:bg-muted/10 rounded-xl text-muted hover:text-primary transition-colors"
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setDeleteId(wallet.id); setDeleteType('wallet'); }}
+                                                    className="p-1.5 hover:bg-red-900/30 rounded-xl text-muted hover:text-red-400 transition-colors"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className={`w-10 h-10 rounded-full ${wallet.color} flex items-center justify-center text-white`}>
-                                            {wallet.type === 'bank' ? <PiggyBank className="w-5 h-5" /> : 
-                                                wallet.type === 'cc' ? <CreditCard className="w-5 h-5" /> : 
-                                                wallet.type === 'ewallet' ? <WalletIcon className="w-5 h-5" /> :
-                                                <WalletIcon className="w-5 h-5" />}
+                                        {/* Body */}
+                                        <div className="flex justify-between items-start gap-4 mt-1">
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="text-base font-medium text-primary truncate">
+                                                    {wallet.name}
+                                                </div>
+                                                {wallet.type === 'cc' && (
+                                                    <div className="mt-1">
+                                                        <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Debt Account</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="text-base font-bold shrink-0 mt-0.5 text-primary">
+                                                {showBalance ? fmt(wallet.currentBalance) : '••••••••'}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="font-semibold text-primary">{wallet.name}</div>
-                                            <div className="text-[10px] text-muted uppercase tracking-wider">{wallet.type}</div>
-                                        </div>
-                                    </div>
-                                    <div className="text-xl font-bold text-primary tracking-tight flex items-center gap-2">
-                                        {showBalance ? fmt(wallet.currentBalance) : '••••••••'}
-                                        {wallet.type === 'cc' && <span className="text-xs font-normal text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">Debt</span>}
                                     </div>
                                 </div>
                             ))}
@@ -293,8 +325,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                     {/* VIEW: Transactions */}
                     <motion.div 
+                        key={"transactions-" + financeDate.toISOString()}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
+                        transition={{ duration: 0.4 }}
                         className="w-full flex-shrink-0 px-4"
                     >
                         <div>
@@ -318,80 +352,90 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                     {/* VIEW: Budget Dashboard */}
                     <motion.div 
+                        key={"budget-" + financeDate.toISOString()}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="w-full flex-shrink-0 px-4"
+                        transition={{ duration: 0.4 }}
+                        className="w-full flex-shrink-0 px-4 pb-8"
                     >
-                        <div className="space-y-6">
-                            {/* Projected/Planned Card Moved Here */}
-                            {projectedExpense > 0 && (
-                                <div className="bg-surface/50 border border-dashed border-border rounded-3xl p-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-muted">
-                                        <Calculator className="w-4 h-4" />
-                                        <span className="text-xs font-medium">Planned Spending (Pending)</span>
+                        {effectiveIncome === 0 ? (
+                            <div className="text-center p-6 bg-surface border border-border rounded-3xl">
+                                <PiggyBank className="w-8 h-8 text-muted mx-auto mb-2" />
+                                <p className="text-sm text-muted">Set a <strong>Monthly Income</strong> in Settings <br/>or record Income to see your budget breakdown.</p>
+                                <button onClick={() => setIsSettingsOpen(true)} className="mt-4 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-semibold hover:bg-primary/20">
+                                    Set Income
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-[#222224] dark:bg-[#222224] rounded-[32px] p-6 text-white shadow-xl">
+                                {/* Header */}
+                                <div className="flex justify-between items-center mb-8">
+                                    <h2 className="text-3xl font-bold tracking-tight">
+                                        {budgetConfig.rules.length} Categories
+                                    </h2>
+                                    <div className="flex bg-white/20 rounded-full p-1 cursor-pointer">
+                                        <button 
+                                            onClick={() => setBudgetViewMode('monthly')}
+                                            className={`${budgetViewMode === 'monthly' ? 'bg-white text-black' : 'text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
+                                        >
+                                            M
+                                        </button>
+                                        <button 
+                                            onClick={() => setBudgetViewMode('yearly')}
+                                            className={`${budgetViewMode === 'yearly' ? 'bg-white text-black' : 'text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
+                                        >
+                                            Y
+                                        </button>
                                     </div>
-                                    <span className="text-sm font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</span>
                                 </div>
-                            )}
 
-                            {effectiveIncome === 0 ? (
-                                <div className="text-center p-6 bg-surface border border-border rounded-3xl">
-                                    <PiggyBank className="w-8 h-8 text-muted mx-auto mb-2" />
-                                    <p className="text-sm text-muted">Set a <strong>Monthly Income</strong> in Settings <br/>or record Income to see your budget breakdown.</p>
-                                    <button onClick={() => setIsSettingsOpen(true)} className="mt-4 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-semibold hover:bg-primary/20">
-                                        Set Income
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex justify-between items-center mb-2 px-1">
-                                        <span className="text-xs font-medium text-muted">Basis: {incomeLabel}</span>
-                                        <span className="text-sm font-bold text-primary">{showBalance ? fmt(effectiveIncome) : '••••'}</span>
+                                {/* Basis Fixed Income & Planned Spending */}
+                                <div className="flex justify-between items-end mb-8 pb-6 border-b border-white/10">
+                                    <div>
+                                        <div className="text-white/60 text-sm mb-1 font-medium">Basis: {incomeLabel}</div>
+                                        <div className="text-xl font-bold">{showBalance ? fmt(effectiveIncome) : '••••'}</div>
                                     </div>
+                                    {projectedExpense > 0 && (
+                                        <div className="text-right">
+                                            <div className="text-white/60 text-sm mb-1 font-medium">Planned</div>
+                                            <div className="text-xl font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</div>
+                                        </div>
+                                    )}
+                                </div>
 
-                                    {/* Dynamic Budget Categories */}
+                                {/* Categories List */}
+                                <div className="space-y-6">
                                     {budgetConfig.rules.map(rule => {
                                         const spent = budgetMap.get(rule.id) || 0;
                                         const planned = plannedBudgetMap.get(rule.id) || 0;
                                         const limit = effectiveIncome * (rule.percentage / 100);
                                         
-                                        const barColor = rule.color || 'bg-gray-500';
+                                        // Calculate percentages relative to TOTAL income for the bars
+                                        const percentageOfTotalSpent = effectiveIncome > 0 ? (spent / effectiveIncome) * 100 : 0;
+                                        const percentageOfTotalPlanned = effectiveIncome > 0 ? (planned / effectiveIncome) * 100 : 0;
+                                        
+                                        // Calculate percentage relative to CATEGORY limit for the text display
+                                        const percentageOfCategorySpent = limit > 0 ? (spent / limit) * 100 : 0;
+                                        
+                                        const textColorClass = rule.color ? rule.color.replace('bg-', 'text-') : 'text-gray-400';
 
                                         return (
-                                            <div key={rule.id} className="mb-5">
-                                                <div className="flex justify-between items-end mb-1">
-                                                    <div className="flex flex-col">
-                                                        <span className={`text-sm font-semibold text-primary`}>{rule.name} <span className="text-xs font-normal text-muted opacity-70">({rule.percentage}%)</span></span>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="text-xs text-primary font-medium">
-                                                            {showBalance ? fmt(spent) : '•••'} <span className="text-muted/60">/ {showBalance ? fmt(limit) : '•••'}</span>
-                                                        </div>
-                                                        {planned > 0 && (
-                                                            <div className="text-[10px] text-amber-500">
-                                                                +{showBalance ? fmt(planned) : '•••'} planned
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                            <div key={rule.id}>
+                                                <div className={`flex items-center gap-2 text-sm font-semibold mb-1 ${textColorClass}`}>
+                                                    <div className={`w-2 h-2 rounded-full ${rule.color || 'bg-gray-500'}`}></div>
+                                                    {rule.name}
                                                 </div>
-                                                
-                                                {/* Stacked Bar Chart */}
-                                                <div className="h-4 w-full bg-surface rounded-full overflow-hidden border border-border relative flex mt-1">
-                                                    {/* Actual Spending */}
+                                                <div className={`text-sm font-bold mb-2 ${textColorClass}`}>
+                                                    {percentageOfCategorySpent.toFixed(1)} % <span className="text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
+                                                </div>
+                                                <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden flex relative">
+                                                    <div className={`h-full ${rule.color || 'bg-gray-500'}`} style={{ width: `${Math.min(percentageOfTotalSpent, 100)}%` }}></div>
+                                                    {planned > 0 && (
+                                                        <div className={`h-full ${rule.color || 'bg-gray-500'} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`} style={{ width: `${Math.min(percentageOfTotalPlanned, 100 - Math.min(percentageOfTotalSpent, 100))}%` }}></div>
+                                                    )}
+                                                    {/* Limit Marker at the rule's percentage of total */}
                                                     <div 
-                                                        className={`h-full ${barColor}`} 
-                                                        style={{ width: `${Math.min(100, (spent / effectiveIncome) * 100)}%` }}
-                                                    ></div>
-                                                    
-                                                    {/* Planned Spending (Stacked) */}
-                                                    <div 
-                                                        className={`h-full ${barColor} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`} 
-                                                        style={{ width: `${Math.min(100 - ((spent / effectiveIncome) * 100), (planned / effectiveIncome) * 100)}%` }}
-                                                    ></div>
-                                                    
-                                                    {/* Limit Marker */}
-                                                    <div 
-                                                        className="h-full w-0.5 bg-primary z-20 absolute top-0 shadow-[0_0_4px_rgba(0,0,0,0.5)]"
+                                                        className="h-full w-0.5 bg-white z-20 absolute top-0 shadow-[0_0_4px_rgba(0,0,0,0.5)]"
                                                         style={{ left: `${rule.percentage}%` }}
                                                     ></div>
                                                 </div>
@@ -401,27 +445,28 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                                     {/* Uncategorized */}
                                     {(uncategorized > 0 || projectedUncategorized > 0) && (
-                                        <div className="pt-4 border-t border-border mt-4">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-xs text-muted">Uncategorized / Others</span>
-                                                <div className="text-right">
-                                                    <span className="text-xs text-primary">{showBalance ? fmt(uncategorized) : '•••'}</span>
-                                                    {projectedUncategorized > 0 && (
-                                                        <span className="text-[10px] text-amber-500 ml-1">+{showBalance ? fmt(projectedUncategorized) : '•••'}</span>
-                                                    )}
-                                                </div>
+                                        <div className="pt-4 border-t border-white/10 mt-4">
+                                            <div className="flex items-center gap-2 text-sm font-semibold mb-1 text-gray-400">
+                                                <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                                                Other
                                             </div>
-                                            <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden flex border border-border">
-                                                    <div className="h-full bg-gray-500 opacity-50 flex-1"></div>
+                                            <div className="text-sm font-bold mb-2 text-gray-400">
+                                                {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
+                                            </div>
+                                            <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden flex">
+                                                <div className="h-full bg-gray-400" style={{ width: `${Math.min((uncategorized / effectiveIncome) * 100, 100)}%` }}></div>
+                                                {projectedUncategorized > 0 && (
+                                                    <div className="h-full bg-gray-400 opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]" style={{ width: `${Math.min((projectedUncategorized / effectiveIncome) * 100, 100 - Math.min((uncategorized / effectiveIncome) * 100, 100))}%` }}></div>
+                                                )}
                                             </div>
                                         </div>
                                     )}
-                                </>
-                            )}
-                        </div>
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 </motion.div>
-            </div>
+            </motion.div>
         </div>
     );
 };

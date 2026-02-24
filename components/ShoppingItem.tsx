@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrainDumpItem, ItemType, ShoppingCategory } from '../types';
+import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule } from '../types';
 import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag } from 'lucide-react';
 
 interface ShoppingItemProps {
@@ -26,9 +26,10 @@ interface ShoppingItemProps {
   ) => void;
   readonly?: boolean;
   handleUpdateItem?: any; // To match prop drilling, though we use onUpdate
+  budgetRules?: BudgetRule[];
 }
 
-const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem }) => {
+const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [] }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { content, meta, status, completed_at } = item;
   
@@ -39,6 +40,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const [editCategory, setEditCategory] = useState<ShoppingCategory>(meta.shoppingCategory || 'not_urgent');
   const [editRecurrence, setEditRecurrence] = useState(meta.recurrenceDays ? meta.recurrenceDays.toString() : '');
   const [editDate, setEditDate] = useState<string>('');
+  const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
 
   // Sync state
   useEffect(() => {
@@ -47,6 +49,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       setEditAmount(meta.amount ? meta.amount.toString() : '');
       setEditCategory(meta.shoppingCategory || 'not_urgent');
       setEditRecurrence(meta.recurrenceDays ? meta.recurrenceDays.toString() : '');
+      setEditBudgetCategory(meta.budgetCategory || '');
       
       // Date Init
       if (meta.date) {
@@ -80,7 +83,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           numAmount,
           finalDate, // Pass the new date
           meta.paymentMethod,
-          meta.budgetCategory,
+          editBudgetCategory,
           meta.durationMinutes,
           meta.skillId,
           meta.toWallet,

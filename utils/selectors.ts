@@ -420,7 +420,8 @@ export const getFinanceItems = (
     filterMaxAmount: string,
     selectedTag: string,
     searchQuery: string,
-    sortOrder: SortOrder
+    sortOrder: SortOrder,
+    viewMode: 'monthly' | 'yearly' = 'monthly'
 ) => {
     const resolveCategory = (cat?: string) => {
         if (!cat) return null;
@@ -442,13 +443,17 @@ export const getFinanceItems = (
     // Combine them
     let allTransactions = [...finance, ...implicitExpenses];
     
-    // Filter by Month
+    // Filter by Date (Month or Year)
     allTransactions = allTransactions.filter(i => {
         const dateStr = i.completed_at || i.created_at;
         if (!dateStr) return false;
         
         const d = new Date(dateStr);
-        return d.getMonth() === financeDate.getMonth() && d.getFullYear() === financeDate.getFullYear();
+        if (viewMode === 'yearly') {
+            return d.getFullYear() === financeDate.getFullYear();
+        } else {
+            return d.getMonth() === financeDate.getMonth() && d.getFullYear() === financeDate.getFullYear();
+        }
     });
 
     // --- FILTERS ---
@@ -552,13 +557,17 @@ export const getFinanceItems = (
       return acc;
     }, 0);
     
-    // FULL MONTH DATA (Unfiltered by wallet/amount/type) for Budget Context
-    let fullMonthTransactions = [...finance, ...implicitExpenses];
-    fullMonthTransactions = fullMonthTransactions.filter(i => {
+    // FULL PERIOD DATA (Unfiltered by wallet/amount/type) for Budget Context
+    let fullPeriodTransactions = [...finance, ...implicitExpenses];
+    fullPeriodTransactions = fullPeriodTransactions.filter(i => {
         const dateStr = i.completed_at || i.created_at;
         if (!dateStr) return false;
         const d = new Date(dateStr);
-        return d.getMonth() === financeDate.getMonth() && d.getFullYear() === financeDate.getFullYear();
+        if (viewMode === 'yearly') {
+            return d.getFullYear() === financeDate.getFullYear();
+        } else {
+            return d.getMonth() === financeDate.getMonth() && d.getFullYear() === financeDate.getFullYear();
+        }
     });
 
     const budgetMap = new Map<string, number>();
@@ -573,8 +582,8 @@ export const getFinanceItems = (
 
 
 
-    // Use fullMonthTransactions for correct Budget Progress bars
-    fullMonthTransactions.forEach(item => {
+    // Use fullPeriodTransactions for correct Budget Progress bars
+    fullPeriodTransactions.forEach(item => {
          if (item.meta?.financeType === 'income' || item.meta?.financeType === 'reimbursement' || item.meta?.financeType === 'transfer') return;
          
          const amt = item.meta?.amount || 0;
@@ -589,8 +598,17 @@ export const getFinanceItems = (
 
     // --- Projected / Planned Expenses ---
     let projectedExpense = 0;
-    const startOfMonth = new Date(financeDate.getFullYear(), financeDate.getMonth(), 1);
-    const endOfMonth = new Date(financeDate.getFullYear(), financeDate.getMonth() + 1, 0, 23, 59, 59);
+    
+    let startOfPeriod: Date, endOfPeriod: Date;
+    
+    if (viewMode === 'yearly') {
+        startOfPeriod = new Date(financeDate.getFullYear(), 0, 1);
+        endOfPeriod = new Date(financeDate.getFullYear(), 11, 31, 23, 59, 59);
+    } else {
+        startOfPeriod = new Date(financeDate.getFullYear(), financeDate.getMonth(), 1);
+        endOfPeriod = new Date(financeDate.getFullYear(), financeDate.getMonth() + 1, 0, 23, 59, 59);
+    }
+    
     const now = new Date();
 
     items.forEach(item => {
@@ -620,10 +638,12 @@ export const getFinanceItems = (
              }
              
              const cursor = new Date(nextDue);
-             while (cursor < startOfMonth) {
+             // Move cursor to start of period if it's before
+             while (cursor < startOfPeriod) {
                  cursor.setDate(cursor.getDate() + recurrence);
              }
-             while (cursor <= endOfMonth) {
+             
+             while (cursor <= endOfPeriod) {
                  projectedExpense += amount;
                  addToPlanned(amount);
                  cursor.setDate(cursor.getDate() + recurrence);
@@ -632,12 +652,13 @@ export const getFinanceItems = (
              if (item.status === 'pending') {
                  const targetDate = item.meta.date ? new Date(item.meta.date) : null;
                  if (!targetDate) {
-                     if (financeDate.getMonth() === now.getMonth() && financeDate.getFullYear() === now.getFullYear()) {
+                     // If no date, assume current period if current period includes NOW
+                     if (now >= startOfPeriod && now <= endOfPeriod) {
                          projectedExpense += amount;
                          addToPlanned(amount);
                      }
                  } else {
-                     if (targetDate.getMonth() === financeDate.getMonth() && targetDate.getFullYear() === financeDate.getFullYear()) {
+                     if (targetDate >= startOfPeriod && targetDate <= endOfPeriod) {
                          projectedExpense += amount;
                          addToPlanned(amount);
                      }

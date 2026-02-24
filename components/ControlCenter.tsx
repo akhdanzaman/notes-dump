@@ -64,7 +64,17 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     
     // --- Settings State ---
     const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect'>('main');
+    const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+
+    const handleTabChange = (tab: typeof activeTab) => {
+        if (tab === 'main') {
+            setDirection(-1);
+        } else {
+            setDirection(1);
+        }
+        setActiveTab(tab);
+    };
 
     // GitHub
     const [githubConfig, setGithubConfig] = useState<GithubConfig>({ token: '', owner: '', repo: '', path: 'db.json' });
@@ -120,8 +130,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             setActiveTab('main'); // Reset to main view on open
         }
     }, [isOpen, currentBudgetConfig, currentPrompt, appSettings]);
-
-    if (!isOpen) return null;
 
     // --- Handlers ---
 
@@ -253,8 +261,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                         initial={{ y: '100%' }}
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
-                        transition={{ duration: 0.3, ease: "linear" }}
-                        className={`fixed bottom-0 left-0 right-0 bg-surface border-t border-border rounded-t-3xl z-[70] shadow-2xl max-w-2xl mx-auto flex flex-col transition-all ${activeTab === 'main' ? 'h-auto max-h-[85vh]' : 'h-[85vh]'}`}
+                        transition={{ 
+                            duration: 0.4, 
+                            ease: [0.32, 0.72, 0, 1] 
+                        }}
+                        className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border rounded-t-3xl z-[70] shadow-2xl max-w-2xl mx-auto flex flex-col h-[85vh]"
                     >
                         
                         {/* Header */}
@@ -264,7 +275,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                     {activeTab !== 'main' && (
-                                        <button onClick={() => setActiveTab('main')} className="p-2 -ml-2 hover:bg-muted/10 rounded-full transition-colors">
+                                        <button onClick={() => handleTabChange('main')} className="p-2 -ml-2 hover:bg-muted/10 rounded-full transition-colors">
                                             <ArrowLeft className="w-6 h-6 text-primary" />
                                         </button>
                                     )}
@@ -290,14 +301,18 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                         </div>
 
                         {/* Scrollable Content */}
-                        <div className="overflow-y-auto p-6 pt-2 flex-1">
-                            <AnimatePresence mode="wait">
+                        <div className="overflow-y-auto p-6 pt-2 flex-1 relative">
+                            <AnimatePresence mode="wait" initial={false}>
                                 <motion.div
                                     key={activeTab}
-                                    initial={{ opacity: 0, x: 10 }}
+                                    initial={{ opacity: 0, x: direction * 20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -10 }}
-                                    transition={{ duration: 0.2 }}
+                                    exit={{ opacity: 0, x: direction * -20 }}
+                                    transition={{ 
+                                        duration: 0.25,
+                                        ease: "easeInOut"
+                                    }}
+                                    className="w-full"
                                 >
                                     {/* MAIN VIEW */}
                                     {activeTab === 'main' && (
@@ -352,7 +367,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 {menuItems.map(item => (
                                                     <button
                                                         key={item.id}
-                                                        onClick={() => setActiveTab(item.id as any)}
+                                                        onClick={() => handleTabChange(item.id as any)}
                                                         className="w-full flex items-center justify-between p-4 bg-background border border-border rounded-2xl hover:bg-muted/5 active:scale-95 transition-all group"
                                                     >
                                                         <div className="flex items-center gap-4">
@@ -453,7 +468,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 checked={localAppSettings.hideMoney}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, hideMoney: e.target.checked })}
                                                             />
-                                                            <div className="w-11 h-6 bg-muted/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                                            <div className="relative w-11 h-6 bg-muted/30 peer-focus:outline-none rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
                                                         </label>
                                                     </div>
 
@@ -474,7 +489,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 checked={localAppSettings.defaultCollapsed}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, defaultCollapsed: e.target.checked })}
                                                             />
-                                                            <div className="w-11 h-6 bg-muted/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                                            <div className="relative w-11 h-6 bg-muted/30 peer-focus:outline-none rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
                                                         </label>
                                                     </div>
                                                 </div>
@@ -507,7 +522,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </div>
                                                     </div>
                                                     <textarea
-                                                        className="w-full bg-black/5 dark:bg-black/30 border border-border rounded-xl p-3 text-xs text-primary focus:outline-none focus:border-acc-note h-48 resize-y font-mono"
+                                                        className="w-full bg-black/5 dark:bg-black/30 border border-border rounded-xl p-3 text-xs text-primary focus:outline-none focus:border-acc-note h-[450px] resize-y font-mono"
                                                         value={prompt}
                                                         onChange={(e) => setPrompt(e.target.value)}
                                                         placeholder="Enter custom prompt instructions..."

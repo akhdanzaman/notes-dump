@@ -60,16 +60,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const noteCount = items.filter(i => i.type === ItemType.NOTE).length;
 
     return (
-        <div className="space-y-3 pb-20">
+        <div className="pb-20">
             {/* Top Container */}
             <motion.div 
-                layout
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm"
+                layoutId="top-container"
+                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
             >
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "linear" }}
                 >
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2 text-sm font-bold">

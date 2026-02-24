@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Sprout, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, ListTodo, CheckSquare } from 'lucide-react';
+import { CheckCircle2, Sprout, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BrainDumpItem, FocusSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule } from '../../types';
 import { getFocusMonthData, getSkillItems } from '../../utils/selectors';
 import Card from '../Card';
@@ -17,7 +17,6 @@ interface FocusViewProps {
     appSettings: AppSettings;
     handleToggleStatus: (id: string) => void;
     handleDelete: (id: string) => void;
-    // setEditingItem removed
     handleUpdateItem: (
         id: string, 
         newContent: string, 
@@ -57,63 +56,11 @@ const FocusView: React.FC<FocusViewProps> = ({
     searchQuery, selectedTag,
     wallets, budgetRules
 }) => {
+    
     // Data Preparation
     const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
     const { today, tomorrow, later } = pendingGroups;
     const { stats, logs } = getSkillItems(items, skills);
-
-    // Swipe State
-    const [dragOffset, setDragOffset] = useState(0);
-    const [isDragging, setIsDragging] = useState(false);
-    const touchStartRef = useRef<{ x: number, y: number } | null>(null);
-    const isHorizontalSwipe = useRef<boolean | null>(null);
-
-    const activeIndex = focusSubTab === 'tasks' ? 0 : 1;
-
-    const onTouchStart = (e: React.TouchEvent) => {
-        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        setIsDragging(true);
-        isHorizontalSwipe.current = null;
-    };
-
-    const onTouchMove = (e: React.TouchEvent) => {
-        if (!touchStartRef.current) return;
-        
-        const dx = e.touches[0].clientX - touchStartRef.current.x;
-        const dy = e.touches[0].clientY - touchStartRef.current.y;
-
-        // Determine direction once to lock axis
-        if (isHorizontalSwipe.current === null) {
-             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
-                 isHorizontalSwipe.current = true;
-             } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
-                 isHorizontalSwipe.current = false;
-             }
-        }
-
-        if (isHorizontalSwipe.current) {
-            // Resistance at edges
-            if ((activeIndex === 0 && dx > 0) || (activeIndex === 1 && dx < 0)) {
-                setDragOffset(dx * 0.3);
-            } else {
-                setDragOffset(dx);
-            }
-        }
-    };
-
-    const onTouchEnd = () => {
-        setIsDragging(false);
-        const threshold = window.innerWidth * 0.25;
-        
-        if (isHorizontalSwipe.current && Math.abs(dragOffset) > threshold) {
-             if (dragOffset < 0 && activeIndex === 0) setFocusSubTab('skills');
-             if (dragOffset > 0 && activeIndex === 1) setFocusSubTab('tasks');
-        }
-        
-        setDragOffset(0);
-        touchStartRef.current = null;
-        isHorizontalSwipe.current = null;
-    };
 
     const changeMonth = (offset: number) => {
         const newDate = new Date(focusDate);
@@ -137,13 +84,15 @@ const FocusView: React.FC<FocusViewProps> = ({
         <div className="min-h-[50vh] overflow-hidden pb-20">
             {/* Top Container */}
             <motion.div 
-                layout
+                layoutId="top-container"
                 className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
             >
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "linear" }}
                 >
                     <div className="flex bg-black/5 rounded-2xl p-1 mb-6">
                         <button 
@@ -207,26 +156,16 @@ const FocusView: React.FC<FocusViewProps> = ({
                 </motion.div>
             </motion.div>
 
-            {/* Sliding Container */}
-            <div 
-                className="touch-pan-y"
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={onTouchEnd}
-            >
-                <motion.div 
-                    className="flex w-full will-change-transform"
-                    style={{
-                        transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
-                        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
-                    }}
+            {/* Lower Section */}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={focusSubTab}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
+                    exit={{ opacity: 0, y: 10, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+                    className="w-full px-4"
                 >
-                    {/* --- TAB 1: TASKS --- */}
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="w-full flex-shrink-0 px-4"
-                    >
+                    {focusSubTab === 'tasks' && (
                         <div className="space-y-6">
                             {/* Pending Tasks Sections */}
                             {(today.length > 0 || tomorrow.length > 0 || later.length > 0) ? (
@@ -272,14 +211,9 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 </div>
                             )}
                         </div>
-                    </motion.div>
+                    )}
 
-                    {/* --- TAB 2: SKILLS --- */}
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="w-full flex-shrink-0 px-4"
-                    >
+                    {focusSubTab === 'skills' && (
                         <div>
                             {/* Skill Dashboard Cards */}
                             <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 mb-6">
@@ -300,6 +234,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             >
                                             <Trash2 className="w-3.5 h-3.5" />
                                             </button>
+
                                         </div>
                                         <h4 className="text-sm font-medium text-muted mb-1 truncate pr-16">{skill.name}</h4>
                                         <div className="flex items-end justify-between mb-2">
@@ -364,9 +299,9 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 </div>
                             )}
                         </div>
-                    </motion.div>
+                    )}
                 </motion.div>
-            </div>
+            </AnimatePresence>
         </div>
     );
 };

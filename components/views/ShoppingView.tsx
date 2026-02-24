@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BrainDumpItem, FinanceType, ShoppingCategory } from '../../types';
 import { getShoppingItems } from '../../utils/selectors';
 import ShoppingItem from '../ShoppingItem';
@@ -31,6 +31,7 @@ interface ShoppingViewProps {
 const ShoppingView: React.FC<ShoppingViewProps> = ({
     items, handleToggleStatus, handleDelete, handleUpdateItem
 }) => {
+    
     const { urgent, routine, normal } = getShoppingItems(items);
     const isEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
 
@@ -58,13 +59,15 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     <div className="pb-20 min-h-[50vh]">
         {/* Top Container */}
         <motion.div 
-            layout
+            layoutId="top-container"
             className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+            transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
         >
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.4 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: "linear" }}
             >
                 <h1 className="text-3xl font-bold tracking-tight mb-6">Life & Shopping</h1>
                 <div className="flex gap-4">
@@ -86,8 +89,8 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
 
         <motion.div 
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
+            exit={{ opacity: 0, y: 10, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
             className="px-4"
         >
             {isEmpty ? (
