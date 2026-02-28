@@ -23,6 +23,8 @@ import MoneyViewComponent from './components/views/MoneyView';
 import RoutineTaskModal from './components/RoutineTaskModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddShoppingModal from './components/AddShoppingModal';
+import AddExpenseModal from './components/AddExpenseModal';
+import AddNoteModal from './components/AddNoteModal';
 import { Brain } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -31,7 +33,7 @@ const App: React.FC = () => {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       loading, error, pendingCount, syncStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction
+      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote
   } = useBrainDumpData();
 
   // --- UI State ---
@@ -52,6 +54,8 @@ const App: React.FC = () => {
   const [routineModalOpen, setRoutineModalOpen] = useState(false);
   const [addTaskModal, setAddTaskModal] = useState<{ isOpen: boolean; initialDate?: string }>({ isOpen: false });
   const [addShoppingModal, setAddShoppingModal] = useState<{ isOpen: boolean; initialCategory?: ShoppingCategory }>({ isOpen: false });
+  const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
+  const [addNoteModalOpen, setAddNoteModalOpen] = useState(false);
   const [themeEditMode, setThemeEditMode] = useState(false);
   const [tempThemeContent, setTempThemeContent] = useState('');
   
@@ -319,6 +323,12 @@ const App: React.FC = () => {
                           setActiveTab={setActiveTab}
                           setFocusSubTab={setFocusSubTab}
                           showBalance={showBalance} setShowBalance={setShowBalance}
+                          handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}
+                          handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
+                          handleOpenAddExpense={() => setAddExpenseModalOpen(true)}
+                          handleOpenAddNote={() => setAddNoteModalOpen(true)}
+                          handleUpdateItem={handleUpdateItem}
+                          handleDelete={requestDeleteItem}
                       />
                   )}
 
@@ -523,6 +533,26 @@ const App: React.FC = () => {
         initialCategory={addShoppingModal.initialCategory}
         budgetRules={budgetConfig.rules}
         wallets={wallets}
+      />
+
+      <AddExpenseModal
+        isOpen={addExpenseModalOpen}
+        onClose={() => setAddExpenseModalOpen(false)}
+        onSave={(amount, description, category, walletId, date) => {
+            const wallet = wallets.find(w => w.id === walletId);
+            const walletName = wallet ? wallet.name : '';
+            if (walletName) {
+                handleAddTransaction(description, amount, 'expense', walletName, category, undefined, date);
+            }
+        }}
+        wallets={wallets}
+        budgetConfig={budgetConfig}
+      />
+
+      <AddNoteModal
+        isOpen={addNoteModalOpen}
+        onClose={() => setAddNoteModalOpen(false)}
+        onSave={handleAddNote}
       />
 
       <ConfirmDialog 

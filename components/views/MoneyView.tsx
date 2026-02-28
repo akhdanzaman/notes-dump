@@ -5,6 +5,7 @@ import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder,
 import { getWalletStats, getFinanceItems } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+import { useSwipeDate } from '../../hooks/useSwipeDate';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -75,6 +76,18 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('money', setActiveTab);
 
+    // Date Swipe Logic
+    const changeMonth = (offset: number) => {
+        const newDate = new Date(financeDate);
+        newDate.setMonth(newDate.getMonth() + offset);
+        setFinanceDate(newDate);
+    };
+    
+    const dateSwipeHandlers = useSwipeDate(
+        () => changeMonth(-1), // Swipe Right -> Prev Month
+        () => changeMonth(1)   // Swipe Left -> Next Month
+    );
+
     // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -106,12 +119,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const incomeLabel = budgetConfig.monthlyIncome > 0 
         ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : 'Fixed Income') 
         : 'Recorded Income';
-
-    const changeMonth = (offset: number) => {
-        const newDate = new Date(financeDate);
-        newDate.setMonth(newDate.getMonth() + offset);
-        setFinanceDate(newDate);
-    };
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -206,56 +213,64 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         ))}
                     </div>
 
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={financeDate.toISOString()}
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -10 }}
-                            transition={{ duration: 0.2, ease: "linear" }}
-                        >
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
-                                <button onClick={() => setShowBalance(!showBalance)} className="opacity-60 hover:opacity-100 transition-opacity">
-                                    {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
-                            </div>
-                            <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
-                            
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div className="bg-black/5 rounded-[24px] p-4 flex flex-col justify-center">
-                                    <div className="flex items-center justify-between w-full">
-                                        <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-                                        <div className="flex flex-col items-center">
+                    <div>
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
+                            <button onClick={() => setShowBalance(!showBalance)} className="opacity-60 hover:opacity-100 transition-opacity">
+                                {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+                        <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div 
+                                className="bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y"
+                                onTouchStart={dateSwipeHandlers.onTouchStart}
+                                onTouchMove={dateSwipeHandlers.onTouchMove}
+                                onTouchEnd={dateSwipeHandlers.onTouchEnd}
+                            >
+                                <div className="flex items-center justify-between w-full">
+                                    <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+                                    
+                                    <AnimatePresence mode="wait">
+                                        <motion.div 
+                                            key={financeDate.toISOString()}
+                                            initial={{ opacity: 0, x: 10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -10 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="flex flex-col items-center"
+                                        >
                                             <span className="text-xs font-bold opacity-60 uppercase tracking-wider leading-none mb-1">
                                                 {financeDate.getFullYear()}
                                             </span>
                                             <span className="text-xl font-bold leading-none">
                                                 {financeDate.toLocaleDateString(undefined, { month: 'long' })}
                                             </span>
-                                        </div>
-                                        <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><ChevronRight className="w-4 h-4" /></button>
-                                    </div>
-                                </div>
-                                <div className="bg-black/5 rounded-[24px] p-4">
-                                    <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 text-[#FF5722]" /> Expense</div>
-                                    <div className="text-xl font-bold text-[#FF5722]">{showBalance ? fmt(totalExpense) : '••••'}</div>
+                                        </motion.div>
+                                    </AnimatePresence>
+
+                                    <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><ChevronRight className="w-4 h-4" /></button>
                                 </div>
                             </div>
-                            
-                            <div className="flex flex-wrap gap-4 pt-4 border-t border-black/10 dark:border-white/10">
-                                    <div className="text-sm font-medium opacity-80">
-                                    Assets: <span className="text-emerald-600 dark:text-emerald-500 font-bold">{showBalance ? fmt(totalAssets) : '••'}</span>
-                                    </div>
-                                    <div className="text-sm font-medium opacity-80">
-                                    Debt: <span className="text-[#FF5722] font-bold">{showBalance ? fmt(totalDebt) : '••'}</span>
-                                    </div>
-                                    <div className="text-sm font-medium opacity-80 flex items-center gap-1">
-                                        Savings: <span className="text-[#6366F1] font-bold">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
-                                    </div>
+                            <div className="bg-black/5 rounded-[24px] p-4">
+                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 text-[#FF5722]" /> Expense</div>
+                                <div className="text-xl font-bold text-[#FF5722]">{showBalance ? fmt(totalExpense) : '••••'}</div>
                             </div>
-                        </motion.div>
-                    </AnimatePresence>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-4 pt-4 border-t border-black/10 dark:border-white/10">
+                                <div className="text-sm font-medium opacity-80">
+                                Assets: <span className="text-emerald-600 dark:text-emerald-500 font-bold">{showBalance ? fmt(totalAssets) : '••'}</span>
+                                </div>
+                                <div className="text-sm font-medium opacity-80">
+                                Debt: <span className="text-[#FF5722] font-bold">{showBalance ? fmt(totalDebt) : '••'}</span>
+                                </div>
+                                <div className="text-sm font-medium opacity-80 flex items-center gap-1">
+                                    Savings: <span className="text-[#6366F1] font-bold">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
+                                </div>
+                        </div>
+                    </div>
                 </motion.div>
             </motion.div>
             

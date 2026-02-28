@@ -5,6 +5,7 @@ import { BrainDumpItem, FocusSubTab, Skill, AppSettings, FinanceType, Wallet, Bu
 import { getFocusMonthData, getSkillItems } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+import { useSwipeDate } from '../../hooks/useSwipeDate';
 
 interface FocusViewProps {
     items: BrainDumpItem[];
@@ -75,6 +76,18 @@ const FocusView: React.FC<FocusViewProps> = ({
     // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('focus', setActiveTab);
 
+    // Date Swipe Logic
+    const changeMonth = (offset: number) => {
+        const newDate = new Date(focusDate);
+        newDate.setMonth(newDate.getMonth() + offset);
+        setFocusDate(newDate);
+    };
+
+    const dateSwipeHandlers = useSwipeDate(
+        () => changeMonth(-1),
+        () => changeMonth(1)
+    );
+
     // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -132,12 +145,6 @@ const FocusView: React.FC<FocusViewProps> = ({
         isHorizontalSwipe.current = null;
     };
 
-    const changeMonth = (offset: number) => {
-        const newDate = new Date(focusDate);
-        newDate.setMonth(newDate.getMonth() + offset);
-        setFocusDate(newDate);
-    };
-
     const cardProps = {
         onToggleStatus: handleToggleStatus,
         onUpdate: handleUpdateItem,
@@ -186,7 +193,7 @@ const FocusView: React.FC<FocusViewProps> = ({
 
                     <AnimatePresence mode="wait">
                         <motion.div
-                            key={focusSubTab + focusDate.toISOString()}
+                            key={focusSubTab}
                             initial={{ opacity: 0, x: 10 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -10 }}
@@ -197,9 +204,25 @@ const FocusView: React.FC<FocusViewProps> = ({
                                     <div className="flex items-center justify-between mb-6">
                                         <h1 className="text-3xl font-bold tracking-tight">Focus</h1>
                                         <div className="flex items-center gap-2">
-                                            <div className="flex items-center bg-black/5 rounded-full p-1">
+                                            <div 
+                                                className="flex items-center bg-black/5 rounded-full p-1 touch-pan-y"
+                                                onTouchStart={dateSwipeHandlers.onTouchStart}
+                                                onTouchMove={dateSwipeHandlers.onTouchMove}
+                                                onTouchEnd={dateSwipeHandlers.onTouchEnd}
+                                            >
                                                 <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronLeft className="w-4 h-4" /></button>
-                                                <span className="px-2 text-sm font-bold">{focusDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
+                                                <AnimatePresence mode="wait">
+                                                    <motion.span 
+                                                        key={focusDate.toISOString()}
+                                                        initial={{ opacity: 0, x: 10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        exit={{ opacity: 0, x: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className="px-2 text-sm font-bold"
+                                                    >
+                                                        {focusDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                                                    </motion.span>
+                                                </AnimatePresence>
                                                 <button onClick={() => changeMonth(1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronRight className="w-4 h-4" /></button>
                                             </div>
                                         </div>

@@ -754,6 +754,25 @@ export const useBrainDumpData = () => {
         });
     };
 
+    const handleAddNote = async (content: string, tags: string[]) => {
+        const newItem: BrainDumpItem = {
+            id: uuidv4(),
+            type: ItemType.NOTE,
+            content,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            meta: {
+                tags: tags
+            }
+        };
+
+        setItems(prev => {
+            const updated = [newItem, ...prev];
+            saveAndSync(updated);
+            return updated;
+        });
+    };
+
     return {
         items,
         budgetConfig,
@@ -783,6 +802,7 @@ export const useBrainDumpData = () => {
         handleAddShoppingItem,
         handleAddSavingTransaction,
         handleResetRoutine,
-        handleAddTransaction
+        handleAddTransaction,
+        handleAddNote
     };
 };
