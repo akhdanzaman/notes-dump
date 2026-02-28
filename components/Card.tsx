@@ -37,6 +37,7 @@ interface CardProps {
   skillName?: string;
   categoryName?: string;
   noStrikethrough?: boolean;
+  noDarken?: boolean;
   enableCollapse?: boolean;
   defaultCollapsed?: boolean;
   hideMoney?: boolean;
@@ -59,6 +60,7 @@ const Card: React.FC<CardProps> = ({
     skillName, 
     categoryName, 
     noStrikethrough = false,
+    noDarken = false,
     enableCollapse = false,
     defaultCollapsed = false,
     hideMoney = false,
@@ -337,7 +339,7 @@ const Card: React.FC<CardProps> = ({
   const itemDate = meta.date ? new Date(meta.date) : null;
   const isFutureRoutine = meta.isRoutine && status === 'pending' && itemDate && itemDate > now;
   
-  const isDarkened = isRecentlyDone || isFutureRoutine;
+  const isDarkened = !noDarken && (isRecentlyDone || isFutureRoutine);
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
 
   return (

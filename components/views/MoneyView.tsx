@@ -177,7 +177,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         wallets,
         budgetRules: budgetConfig.rules,
         savingGoals,
-        noStrikethrough: true
+        noStrikethrough: true,
+        noDarken: true
     };
 
     return (
