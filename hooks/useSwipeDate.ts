@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, TouchEvent } from 'react';
 
 export const useSwipeDate = (onPrev: () => void, onNext: () => void) => {
     const touchStart = useRef<number | null>(null);
@@ -7,18 +7,18 @@ export const useSwipeDate = (onPrev: () => void, onNext: () => void) => {
     // Minimum swipe distance
     const minSwipeDistance = 30;
 
-    const onTouchStart = (e: React.TouchEvent) => {
+    const onTouchStart = (e: TouchEvent) => {
         e.stopPropagation(); 
         touchEnd.current = null;
         touchStart.current = e.targetTouches[0].clientX;
     };
 
-    const onTouchMove = (e: React.TouchEvent) => {
+    const onTouchMove = (e: TouchEvent) => {
         e.stopPropagation();
         touchEnd.current = e.targetTouches[0].clientX;
     };
 
-    const onTouchEnd = (e: React.TouchEvent) => {
+    const onTouchEnd = (e: TouchEvent) => {
         e.stopPropagation();
         if (!touchStart.current || !touchEnd.current) return;
         

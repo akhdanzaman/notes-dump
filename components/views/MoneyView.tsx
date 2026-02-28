@@ -478,8 +478,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                     <div className={`w-2 h-2 rounded-full ${rule.color || 'bg-gray-500'}`}></div>
                                                     {rule.name}
                                                 </div>
-                                                <div className={`text-sm font-bold mb-2 ${textColorClass}`}>
-                                                    {percentageOfCategorySpent.toFixed(1)} % <span className="text-zinc-400 dark:text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
+                                                <div className={`text-sm font-bold mb-2 ${textColorClass} flex items-center justify-between`}>
+                                                    <div>
+                                                        {percentageOfCategorySpent.toFixed(1)} % <span className="text-zinc-400 dark:text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
+                                                    </div>
+                                                    {planned > 0 && (
+                                                        <div className="text-amber-600 dark:text-amber-500 font-medium text-[10px] uppercase tracking-wider">
+                                                            Planned: {showBalance ? fmt(planned) : '•••'}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="h-3 w-full bg-zinc-100 dark:bg-white/20 rounded-full overflow-hidden flex relative">
                                                     <div className={`h-full ${rule.color || 'bg-gray-500'}`} style={{ width: `${Math.min(percentageOfTotalSpent, 100)}%` }}></div>
@@ -503,8 +510,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                 <div className="w-2 h-2 rounded-full bg-gray-400"></div>
                                                 Other
                                             </div>
-                                            <div className="text-sm font-bold mb-2 text-gray-400">
-                                                {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-zinc-400 dark:text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
+                                            <div className="text-sm font-bold mb-2 text-gray-400 flex items-center justify-between">
+                                                <div>
+                                                    {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-zinc-400 dark:text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
+                                                </div>
+                                                {projectedUncategorized > 0 && (
+                                                    <div className="text-amber-600 dark:text-amber-500 font-medium text-[10px] uppercase tracking-wider">
+                                                        Planned: {showBalance ? fmt(projectedUncategorized) : '•••'}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="h-3 w-full bg-zinc-100 dark:bg-white/20 rounded-full overflow-hidden flex">
                                                 <div className="h-full bg-gray-400" style={{ width: `${Math.min((uncategorized / effectiveIncome) * 100, 100)}%` }}></div>

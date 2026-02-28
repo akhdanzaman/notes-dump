@@ -62,21 +62,89 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     // --- Data Calculation ---
     
-    // 1. Today's Focus (Tasks + Urgent Shopping)
-    // We use current date for "Today's Focus", not themeNavDate
+    // 1. Main Display Logic (Fallback Priority)
     const todayDate = new Date();
     const { pendingGroups } = getFocusMonthData(items, todayDate, '', '');
     const { urgent } = getShoppingItems(items);
     
-    // Combine and sort: Urgent Shopping first, then Today's Tasks
-    const focusItems = [
-        ...urgent.map(i => ({ ...i, _isUrgentShopping: true })),
-        ...pendingGroups.today
-    ].slice(0, 5); // Limit to top 5
+    const { displayItems, displayTitle, displaySubtitle, isDoneState, icon: DisplayIcon } = useMemo(() => {
+        // 1. Today's Focus (Tasks + Urgent Shopping)
+        const todayItems = [
+            ...urgent.map(i => ({ ...i, _isUrgentShopping: true })),
+            ...pendingGroups.today
+        ];
+        if (todayItems.length > 0) {
+            return { 
+                displayItems: todayItems.slice(0, 5), 
+                displayTitle: "Today's Focus",
+                displaySubtitle: null,
+                isDoneState: false,
+                icon: <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
+            };
+        }
 
-    // 2. Daily Rituals (Routines)
-    const { routines } = pendingGroups;
-    const pendingRoutines = routines.filter(r => r.status === 'pending');
+        // 2. Tomorrow
+        if (pendingGroups.tomorrow.length > 0) {
+            return { 
+                displayItems: pendingGroups.tomorrow.slice(0, 5), 
+                displayTitle: "Tomorrow",
+                displaySubtitle: "Get a head start on tomorrow's tasks.",
+                isDoneState: false,
+                icon: <ArrowRight className="w-5 h-5 text-blue-500" />
+            };
+        }
+
+        // 3. Routine
+        const pendingRoutines = pendingGroups.routines.filter(r => r.status === 'pending');
+        if (pendingRoutines.length > 0) {
+            return { 
+                displayItems: pendingRoutines.slice(0, 5), 
+                displayTitle: "Daily Rituals",
+                displaySubtitle: "Keep your momentum going.",
+                isDoneState: false,
+                icon: <Coffee className="w-5 h-5 text-indigo-500" />
+            };
+        }
+
+        // 4. Later
+        if (pendingGroups.later.length > 0) {
+            return { 
+                displayItems: pendingGroups.later.slice(0, 5), 
+                displayTitle: "Upcoming",
+                displaySubtitle: "Tasks waiting for your attention.",
+                isDoneState: false,
+                icon: <Target className="w-5 h-5 text-purple-500" />
+            };
+        }
+
+        // 5. Recent Done
+        const recentDone = items
+            .filter(i => i.type === 'TODO' && i.status === 'done' && i.completed_at)
+            .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
+            .slice(0, 3);
+            
+        if (recentDone.length > 0) {
+            return { 
+                displayItems: recentDone, 
+                displayTitle: "Recently Completed",
+                displaySubtitle: "Great job! You're all caught up.",
+                isDoneState: true,
+                icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+            };
+        }
+
+        return { 
+            displayItems: [], 
+            displayTitle: "All Clear",
+            displaySubtitle: "Take a break or plan ahead.",
+            isDoneState: false,
+            icon: <CheckCircle2 className="w-5 h-5 text-zinc-400" />
+        };
+    }, [items, pendingGroups, urgent]);
+
+    // 2. Daily Rituals (Routines) - Only show if not already displayed in the main list
+    const pendingRoutines = pendingGroups.routines.filter(r => r.status === 'pending');
+    const showRitualsSection = pendingRoutines.length > 0 && displayTitle !== "Daily Rituals";
 
     // 3. Financial Snapshot
     // Use current month for financial snapshot
@@ -99,14 +167,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     const { content: themeContent } = getThemeForDate(themeNavDate);
     
-    // Last Done Task (for empty state)
-    const lastDoneTask = useMemo(() => {
-        if (focusItems.length > 0) return null;
-        return items
-            .filter(i => i.type === 'TODO' && i.status === 'done' && i.completed_at)
-            .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())[0];
-    }, [items, focusItems.length]);
-
     // Card Props for reuse
     const cardProps = {
         onToggleStatus: handleToggleStatus,
@@ -215,47 +275,39 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
                 </section>
 
-                {/* 2. Today's Focus */}
+                {/* 2. Dynamic Focus Section */}
                 <section>
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold flex items-center gap-2">
-                            <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-                            Today's Focus
-                        </h2>
+                        <div className="flex flex-col">
+                            <h2 className="text-lg font-bold flex items-center gap-2">
+                                {DisplayIcon}
+                                {displayTitle}
+                            </h2>
+                            {displaySubtitle && (
+                                <p className="text-xs opacity-50 font-medium mt-0.5">{displaySubtitle}</p>
+                            )}
+                        </div>
                         <button onClick={() => setActiveTab('focus')} className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider">
                             View All
                         </button>
                     </div>
                     
-                    {focusItems.length > 0 ? (
-                        <div className="space-y-3">
-                            {focusItems.map(item => (
+                    {displayItems.length > 0 ? (
+                        <div className={`space-y-3 ${isDoneState ? 'opacity-60 grayscale' : ''}`}>
+                            {displayItems.map(item => (
                                 <Card key={item.id} item={item} {...cardProps} />
                             ))}
                         </div>
                     ) : (
-                        lastDoneTask ? (
-                            <div className="space-y-3 opacity-60 grayscale">
-                                <div className="flex items-center gap-2 mb-2 px-1">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                    <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Recently Completed</span>
-                                </div>
-                                <Card item={lastDoneTask} {...cardProps} />
-                                <div className="text-center text-xs text-muted mt-2 font-medium">
-                                    Great job! You're all caught up.
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                                <p className="text-muted font-medium">All clear for today!</p>
-                                <p className="text-xs opacity-50 mt-1">Take a break or plan ahead.</p>
-                            </div>
-                        )
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
+                            <p className="text-muted font-medium">All clear!</p>
+                            <p className="text-xs opacity-50 mt-1">Take a break or plan ahead.</p>
+                        </div>
                     )}
                 </section>
 
                 {/* 3. Daily Rituals (Horizontal Scroll) */}
-                {pendingRoutines.length > 0 && (
+                {showRitualsSection && (
                     <section>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold flex items-center gap-2">

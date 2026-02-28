@@ -329,6 +329,7 @@ const Card: React.FC<CardProps> = ({
   // Compact Transaction Mode
   const isTransaction = type === ItemType.FINANCE || (type === ItemType.SHOPPING && meta.amount);
 
+  const isRecentlyDone = status === 'done' && completed_at && (new Date().getTime() - new Date(completed_at).getTime() < 86400000);
   const isRoutineDone = meta.isRoutine && status === 'done';
   
   // Check if routine is pending but scheduled for future (temporarily done)
@@ -336,9 +337,8 @@ const Card: React.FC<CardProps> = ({
   const itemDate = meta.date ? new Date(meta.date) : null;
   const isFutureRoutine = meta.isRoutine && status === 'pending' && itemDate && itemDate > now;
   
-  const isRoutineDarkened = isRoutineDone || isFutureRoutine;
-  // History items (isRoutine: false but was routine) should be normal
-  const bgClass = isRoutineDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
+  const isDarkened = isRecentlyDone || isFutureRoutine;
+  const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
 
   return (
     <div 
@@ -439,7 +439,7 @@ const Card: React.FC<CardProps> = ({
                     )}
                     
                     {/* Progress Bar */}
-                    {showProgress && meta.progress !== undefined && meta.progress < 100 && (
+                    {showProgress && meta.progress !== undefined && meta.progress > 0 && meta.progress < 100 && (
                         <div className="mt-2 w-full max-w-[200px]">
                             <div className="h-1 w-full bg-muted/20 rounded-full overflow-hidden">
                                 <div className="h-full bg-acc-todo" style={{ width: `${Math.max(2, meta.progress)}%` }}></div>

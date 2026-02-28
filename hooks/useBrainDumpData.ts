@@ -351,139 +351,135 @@ export const useBrainDumpData = () => {
     };
 
     const handleToggleStatus = async (id: string) => {
-        setItems((prevItems) => {
-            const targetItem = prevItems.find(i => i.id === id);
-            if (!targetItem) return prevItems;
-        
-            const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
-            const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
-            
-            // Logic: If marking Done, progress becomes 100%. If marking Pending, progress becomes 0%.
-            // This syncs the checkbox with the slider logic.
-            const newProgress = newStatus === 'done' ? 100 : 0;
-            const newProgressNotes = targetItem.meta.progressNotes; // Keep existing notes
-
-            // Update date to today if marking as done for shopping/finance
-            let newDate = targetItem.meta.date;
-            if (newStatus === 'done' && (targetItem.type === ItemType.SHOPPING || targetItem.type === ItemType.FINANCE)) {
-                newDate = new Date().toISOString();
-            }
-
-            const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
-            const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
-
-            let historyItemIdToCreate: string | undefined;
-            let historyItemIdToDelete: string | undefined;
-
-            if (newStatus === 'done' && (isShoppingRoutine || isTodoRoutine)) {
-                historyItemIdToCreate = uuidv4();
-            } else if (newStatus === 'pending' && (isShoppingRoutine || isTodoRoutine)) {
-                historyItemIdToDelete = targetItem.meta.lastGeneratedHistoryId;
-            }
-
-            let updatedItems = prevItems.map(item => 
-              item.id === id ? { 
-                  ...item, 
-                  status: newStatus, 
-                  completed_at: completedAt,
-                  meta: { 
-                      ...item.meta, 
-                      progress: newProgress, 
-                      progressNotes: newProgressNotes,
-                      date: newDate,
-                      lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
-                  }
-              } : item
-            );
-
-            // If unchecking, remove the history item that was generated
-            if (historyItemIdToDelete) {
-                updatedItems = updatedItems.filter(i => i.id !== historyItemIdToDelete);
-            }
-
-            // NEW LOGIC: If marking as done and it's a routine, create history item
-            if (historyItemIdToCreate) {
-                let newType = targetItem.type;
-                let newMeta = { ...targetItem.meta, isRoutine: false };
-
-                if (isShoppingRoutine) {
-                    newType = ItemType.FINANCE;
-                    newMeta = {
-                        ...newMeta,
-                        financeType: 'expense',
-                        shoppingCategory: undefined,
-                        amount: targetItem.meta.amount,
-                        budgetCategory: targetItem.meta.budgetCategory,
-                        paymentMethod: targetItem.meta.paymentMethod
-                    };
-                } else if (isTodoRoutine) {
-                    newType = ItemType.JOURNAL;
-                    newMeta = {
-                        ...newMeta,
-                        progress: undefined,
-                        progressNotes: undefined
-                    };
-                }
-
-                const historyItem: BrainDumpItem = {
-                    ...targetItem,
-                    id: historyItemIdToCreate,
-                    type: newType,
-                    status: 'done',
-                    created_at: completedAt || new Date().toISOString(),
-                    completed_at: completedAt,
-                    meta: {
-                        ...newMeta,
-                        date: completedAt || new Date().toISOString()
-                    }
-                };
-                
-                updatedItems.push(historyItem);
-            }
+        const prevItems = itemsRef.current;
+        const targetItem = prevItems.find(i => i.id === id);
+        if (!targetItem) return;
     
-            saveAndSync(updatedItems);
-            return updatedItems;
-        });
+        const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
+        const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
+        
+        // Logic: If marking Done, progress becomes 100%. If marking Pending, progress becomes 0%.
+        // This syncs the checkbox with the slider logic.
+        const newProgress = newStatus === 'done' ? 100 : 0;
+        const newProgressNotes = targetItem.meta.progressNotes; // Keep existing notes
+
+        // Update date to today if marking as done for shopping/finance
+        let newDate = targetItem.meta.date;
+        if (newStatus === 'done' && (targetItem.type === ItemType.SHOPPING || targetItem.type === ItemType.FINANCE)) {
+            newDate = new Date().toISOString();
+        }
+
+        const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
+        const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
+
+        let historyItemIdToCreate: string | undefined;
+        let historyItemIdToDelete: string | undefined;
+
+        if (newStatus === 'done' && (isShoppingRoutine || isTodoRoutine)) {
+            historyItemIdToCreate = uuidv4();
+        } else if (newStatus === 'pending' && (isShoppingRoutine || isTodoRoutine)) {
+            historyItemIdToDelete = targetItem.meta.lastGeneratedHistoryId;
+        }
+
+        let updatedItems = prevItems.map(item => 
+          item.id === id ? { 
+              ...item, 
+              status: newStatus, 
+              completed_at: completedAt,
+              meta: { 
+                  ...item.meta, 
+                  progress: newProgress, 
+                  progressNotes: newProgressNotes,
+                  date: newDate,
+                  lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
+              }
+          } : item
+        );
+
+        // If unchecking, remove the history item that was generated
+        if (historyItemIdToDelete) {
+            updatedItems = updatedItems.filter(i => i.id !== historyItemIdToDelete);
+        }
+
+        // NEW LOGIC: If marking as done and it's a routine, create history item
+        if (historyItemIdToCreate) {
+            let newType = targetItem.type;
+            let newMeta = { ...targetItem.meta, isRoutine: false };
+
+            if (isShoppingRoutine) {
+                newType = ItemType.FINANCE;
+                newMeta = {
+                    ...newMeta,
+                    financeType: 'expense',
+                    shoppingCategory: undefined,
+                    amount: targetItem.meta.amount,
+                    budgetCategory: targetItem.meta.budgetCategory,
+                    paymentMethod: targetItem.meta.paymentMethod
+                };
+            } else if (isTodoRoutine) {
+                newType = ItemType.JOURNAL;
+                newMeta = {
+                    ...newMeta,
+                    progress: undefined,
+                    progressNotes: undefined
+                };
+            }
+
+            const historyItem: BrainDumpItem = {
+                ...targetItem,
+                id: historyItemIdToCreate,
+                type: newType,
+                status: 'done',
+                created_at: completedAt || new Date().toISOString(),
+                completed_at: completedAt,
+                meta: {
+                    ...newMeta,
+                    date: completedAt || new Date().toISOString()
+                }
+            };
+            
+            updatedItems.push(historyItem);
+        }
+
+        setItems(updatedItems);
+        saveAndSync(updatedItems);
     };
     
     const handleResetRoutine = async (id: string) => {
-        setItems(prev => {
-            const item = prev.find(i => i.id === id);
-            
-            // Check if it's a routine (either explicit isRoutine OR shopping routine category)
-            const isShoppingRoutine = item?.type === ItemType.SHOPPING && item?.meta.shoppingCategory === 'routine';
-            const isTodoRoutine = item?.type === ItemType.TODO && item?.meta.isRoutine;
-            
-            if (!item || (!isTodoRoutine && !isShoppingRoutine) || item.status !== 'done') return prev;
+        const prev = itemsRef.current;
+        const item = prev.find(i => i.id === id);
+        
+        // Check if it's a routine (either explicit isRoutine OR shopping routine category)
+        const isShoppingRoutine = item?.type === ItemType.SHOPPING && item?.meta.shoppingCategory === 'routine';
+        const isTodoRoutine = item?.type === ItemType.TODO && item?.meta.isRoutine;
+        
+        if (!item || (!isTodoRoutine && !isShoppingRoutine) || item.status !== 'done') return;
 
-            // Reset the main item to pending
-            // We don't advance the date here because the user wants to do it "again" (presumably now or soon)
-            // The date will be updated when they complete it again (if logic exists) or stays as is.
-            const updatedItem: BrainDumpItem = {
-                ...item,
-                status: 'pending',
-                completed_at: undefined,
-                meta: {
-                    ...item.meta,
-                    progress: 0,
-                    progressNotes: undefined,
-                    lastGeneratedHistoryId: undefined // Clear it so it doesn't get deleted later
-                }
-            };
+        // Reset the main item to pending
+        // We don't advance the date here because the user wants to do it "again" (presumably now or soon)
+        // The date will be updated when they complete it again (if logic exists) or stays as is.
+        const updatedItem: BrainDumpItem = {
+            ...item,
+            status: 'pending',
+            completed_at: undefined,
+            meta: {
+                ...item.meta,
+                progress: 0,
+                progressNotes: undefined,
+                lastGeneratedHistoryId: undefined // Clear it so it doesn't get deleted later
+            }
+        };
 
-            const updatedList = prev.map(i => i.id === id ? updatedItem : i);
-            
-            saveAndSync(updatedList);
-            return updatedList;
-        });
+        const updatedList = prev.map(i => i.id === id ? updatedItem : i);
+        
+        setItems(updatedList);
+        saveAndSync(updatedList);
     };
 
     const handleDelete = async (id: string) => {
-        setItems(prev => {
-            const updatedItems = prev.filter(i => i.id !== id);
-            saveAndSync(updatedItems);
-            return updatedItems;
-        });
+        const updatedItems = itemsRef.current.filter(i => i.id !== id);
+        setItems(updatedItems);
+        saveAndSync(updatedItems);
     };
     
     const handleAddRoutineTask = async (
@@ -522,11 +518,9 @@ export const useBrainDumpData = () => {
             }
         };
 
-        setItems(prev => {
-            const updated = [newItem, ...prev];
-            saveAndSync(updated);
-            return updated;
-        });
+        const updated = [newItem, ...itemsRef.current];
+        setItems(updated);
+        saveAndSync(updated);
     };
 
     const handleUpdateItem = async (
@@ -554,84 +548,82 @@ export const useBrainDumpData = () => {
         newSavingGoalId?: string,
         newDedicatedWalletId?: string
     ) => {
-          setItems(prev => {
-              const updatedItems = prev.map(item => {
-                  if (item.id !== id) return item;
+          const updatedItems = itemsRef.current.map(item => {
+              if (item.id !== id) return item;
 
-                  // Auto-update status based on progress
-                  let newStatus = item.status;
-                  let completedAt = item.completed_at;
+              // Auto-update status based on progress
+              let newStatus = item.status;
+              let completedAt = item.completed_at;
 
-                  if (newProgress !== undefined) {
-                      if (newProgress === 100 && item.status === 'pending') {
-                          newStatus = 'done';
-                          completedAt = new Date().toISOString();
-                      } else if (newProgress < 100 && item.status === 'done') {
-                          newStatus = 'pending';
-                          completedAt = undefined;
-                      }
+              if (newProgress !== undefined) {
+                  if (newProgress === 100 && item.status === 'pending') {
+                      newStatus = 'done';
+                      completedAt = new Date().toISOString();
+                  } else if (newProgress < 100 && item.status === 'done') {
+                      newStatus = 'pending';
+                      completedAt = undefined;
                   }
+              }
 
-                  let finalDate = newDate || item.meta.date;
+              let finalDate = newDate || item.meta.date;
 
-                  // Recalculate Date if Routine Config Changed AND Date wasn't manually set
-                  if (!newDate && (newIsRoutine || item.meta.isRoutine)) {
-                      // If routine params changed
-                      const interval = newRoutineInterval || item.meta.routineInterval || 'daily';
-                      const daysOfWeek = newRoutineDaysOfWeek || item.meta.routineDaysOfWeek;
-                      const daysOfMonth = newRoutineDaysOfMonth || item.meta.routineDaysOfMonth;
-                      const monthsOfYear = newRoutineMonthsOfYear || item.meta.routineMonthsOfYear;
+              // Recalculate Date if Routine Config Changed AND Date wasn't manually set
+              if (!newDate && (newIsRoutine || item.meta.isRoutine)) {
+                  // If routine params changed
+                  const interval = newRoutineInterval || item.meta.routineInterval || 'daily';
+                  const daysOfWeek = newRoutineDaysOfWeek || item.meta.routineDaysOfWeek;
+                  const daysOfMonth = newRoutineDaysOfMonth || item.meta.routineDaysOfMonth;
+                  const monthsOfYear = newRoutineMonthsOfYear || item.meta.routineMonthsOfYear;
+                  
+                  // Only recalculate if we are pending. If done, the next reset will handle it.
+                  if (item.status === 'pending') {
+                      // Check if any schedule param actually changed
+                      const scheduleChanged = 
+                          interval !== item.meta.routineInterval ||
+                          JSON.stringify(daysOfWeek) !== JSON.stringify(item.meta.routineDaysOfWeek) ||
+                          JSON.stringify(daysOfMonth) !== JSON.stringify(item.meta.routineDaysOfMonth) ||
+                          JSON.stringify(monthsOfYear) !== JSON.stringify(item.meta.routineMonthsOfYear);
                       
-                      // Only recalculate if we are pending. If done, the next reset will handle it.
-                      if (item.status === 'pending') {
-                          // Check if any schedule param actually changed
-                          const scheduleChanged = 
-                              interval !== item.meta.routineInterval ||
-                              JSON.stringify(daysOfWeek) !== JSON.stringify(item.meta.routineDaysOfWeek) ||
-                              JSON.stringify(daysOfMonth) !== JSON.stringify(item.meta.routineDaysOfMonth) ||
-                              JSON.stringify(monthsOfYear) !== JSON.stringify(item.meta.routineMonthsOfYear);
-                          
-                          if (scheduleChanged) {
-                              const nextDue = calculateFirstDueDate(new Date(), interval, daysOfWeek, daysOfMonth, monthsOfYear);
-                              finalDate = nextDue.toISOString();
-                          }
+                      if (scheduleChanged) {
+                          const nextDue = calculateFirstDueDate(new Date(), interval, daysOfWeek, daysOfMonth, monthsOfYear);
+                          finalDate = nextDue.toISOString();
                       }
                   }
+              }
 
-                  return { 
-                    ...item, 
-                    content: newContent,
-                    status: newStatus,
-                    completed_at: completedAt,
-                    meta: { 
-                        ...item.meta, 
-                        tags: newTags, 
-                        amount: newAmount, 
-                        date: finalDate,
-                        paymentMethod: newPaymentMethod,
-                        budgetCategory: newBudgetCategory,
-                        durationMinutes: newDuration,
-                        skillId: newSkillId,
-                        toWallet: newToWallet,
-                        financeType: newFinanceType || item.meta.financeType,
-                        progress: newProgress,
-                        progressNotes: newProgressNotes,
-                        shoppingCategory: newShoppingCategory || item.meta.shoppingCategory,
-                        recurrenceDays: newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays,
-                        quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
-                        isRoutine: newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine,
-                        routineInterval: newRoutineInterval || item.meta.routineInterval,
-                        routineDaysOfWeek: newRoutineDaysOfWeek || item.meta.routineDaysOfWeek,
-                        routineDaysOfMonth: newRoutineDaysOfMonth || item.meta.routineDaysOfMonth,
-                        routineMonthsOfYear: newRoutineMonthsOfYear || item.meta.routineMonthsOfYear,
-                        savingGoalId: newSavingGoalId || item.meta.savingGoalId,
-                        dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId
-                    } 
-                  };
-              });
-              saveAndSync(updatedItems);
-              return updatedItems;
+              return { 
+                ...item, 
+                content: newContent,
+                status: newStatus,
+                completed_at: completedAt,
+                meta: { 
+                    ...item.meta, 
+                    tags: newTags, 
+                    amount: newAmount, 
+                    date: finalDate,
+                    paymentMethod: newPaymentMethod,
+                    budgetCategory: newBudgetCategory,
+                    durationMinutes: newDuration,
+                    skillId: newSkillId,
+                    toWallet: newToWallet,
+                    financeType: newFinanceType || item.meta.financeType,
+                    progress: newProgress,
+                    progressNotes: newProgressNotes,
+                    shoppingCategory: newShoppingCategory || item.meta.shoppingCategory,
+                    recurrenceDays: newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays,
+                    quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
+                    isRoutine: newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine,
+                    routineInterval: newRoutineInterval || item.meta.routineInterval,
+                    routineDaysOfWeek: newRoutineDaysOfWeek || item.meta.routineDaysOfWeek,
+                    routineDaysOfMonth: newRoutineDaysOfMonth || item.meta.routineDaysOfMonth,
+                    routineMonthsOfYear: newRoutineMonthsOfYear || item.meta.routineMonthsOfYear,
+                    savingGoalId: newSavingGoalId || item.meta.savingGoalId,
+                    dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId
+                } 
+              };
           });
+          setItems(updatedItems);
+          saveAndSync(updatedItems);
     };
 
     const handleAddTask = async (content: string, date: string) => {
@@ -647,11 +639,9 @@ export const useBrainDumpData = () => {
             }
         };
 
-        setItems(prev => {
-            const updated = [newItem, ...prev];
-            saveAndSync(updated);
-            return updated;
-        });
+        const updated = [newItem, ...itemsRef.current];
+        setItems(updated);
+        saveAndSync(updated);
     };
 
     const handleAddShoppingItem = async (
@@ -689,11 +679,9 @@ export const useBrainDumpData = () => {
             }
         };
 
-        setItems(prev => {
-            const updated = [newItem, ...prev];
-            saveAndSync(updated);
-            return updated;
-        });
+        const updated = [newItem, ...itemsRef.current];
+        setItems(updated);
+        saveAndSync(updated);
     };
 
     const handleAddSavingTransaction = (amount: number, walletId: string, date: string, goalId: string, goalName: string) => {
@@ -713,11 +701,9 @@ export const useBrainDumpData = () => {
             }
         };
 
-        setItems(prev => {
-            const updated = [newFinanceItem, ...prev];
-            saveAndSync(updated);
-            return updated;
-        });
+        const updated = [newFinanceItem, ...itemsRef.current];
+        setItems(updated);
+        saveAndSync(updated);
     };
 
     const handleAddTransaction = async (
@@ -747,11 +733,9 @@ export const useBrainDumpData = () => {
             }
         };
 
-        setItems(prev => {
-            const updated = [newItem, ...prev];
-            saveAndSync(updated);
-            return updated;
-        });
+        const updated = [newItem, ...itemsRef.current];
+        setItems(updated);
+        saveAndSync(updated);
     };
 
     const handleAddNote = async (content: string, tags: string[]) => {
@@ -766,11 +750,9 @@ export const useBrainDumpData = () => {
             }
         };
 
-        setItems(prev => {
-            const updated = [newItem, ...prev];
-            saveAndSync(updated);
-            return updated;
-        });
+        const updated = [newItem, ...itemsRef.current];
+        setItems(updated);
+        saveAndSync(updated);
     };
 
     return {

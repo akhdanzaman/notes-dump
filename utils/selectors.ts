@@ -73,7 +73,21 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
         if (!dateToCheck) return false;
         
         const d = new Date(dateToCheck);
-        return d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
+        const isSameMonth = d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
+        
+        // Dashboard Fix: Always include Today and Tomorrow items if we are looking at the current month
+        // This prevents items from "disappearing" when they cross month boundaries (e.g. Feb 28 -> March 1)
+        const now = new Date();
+        const isCurrentMonthView = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+        
+        if (isCurrentMonthView) {
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const tomorrowEnd = todayStart + (2 * 86400000); // End of tomorrow
+            const itemTime = d.getTime();
+            if (itemTime >= todayStart && itemTime < tomorrowEnd) return true;
+        }
+
+        return isSameMonth;
     });
 
     // 2. Split Pending / Done (Excluding routines from doneList)
@@ -82,6 +96,7 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
 
     // 3. Group Pending & Routines
     const now = new Date();
+    const oneDayAgo = now.getTime() - 86400000;
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const tomorrowStart = todayStart + 86400000;
     const afterTomorrowStart = tomorrowStart + 86400000;
@@ -96,8 +111,13 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
         routines.push(item);
     });
 
-    // Process non-routine pending items
-    pendingList.filter(i => !i.meta.isRoutine).forEach(item => {
+    // Process non-routine items (pending OR recently done within 24h)
+    relevantItems.filter(i => !i.meta.isRoutine).forEach(item => {
+        const isPending = item.status === 'pending';
+        const isRecentlyDone = item.status === 'done' && item.completed_at && new Date(item.completed_at).getTime() > oneDayAgo;
+
+        if (!isPending && !isRecentlyDone) return;
+
         // If no due date, categorize as Later
         if (!item.meta.date) {
             later.push(item);
@@ -122,6 +142,9 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
     });
 
     const sortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
+        if (a.status !== b.status) {
+            return a.status === 'pending' ? -1 : 1;
+        }
         const da = a.meta.date ? new Date(a.meta.date).getTime() : Infinity;
         const db = b.meta.date ? new Date(b.meta.date).getTime() : Infinity;
         return da - db;
@@ -681,26 +704,36 @@ export const getFinanceItems = (
          };
 
          if (item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine') {
-             const recurrence = item.meta.recurrenceDays || 7;
+             const interval = item.meta.routineInterval || 'weekly';
+             const daysOfWeek = item.meta.routineDaysOfWeek || [];
+             const daysOfMonth = item.meta.routineDaysOfMonth || [];
+             const monthsOfYear = item.meta.routineMonthsOfYear || [];
+
              let nextDue: Date;
              if (item.status === 'done' && item.completed_at) {
-                 nextDue = new Date(new Date(item.completed_at).getTime() + (recurrence * 86400000));
+                 nextDue = calculateNextDueDate(new Date(item.completed_at), interval, daysOfWeek, daysOfMonth, monthsOfYear);
              } else if (item.meta.date) {
                  nextDue = new Date(item.meta.date);
              } else {
                  nextDue = new Date();
              }
              
-             const cursor = new Date(nextDue);
+             let cursor = new Date(nextDue);
+             
              // Move cursor to start of period if it's before
-             while (cursor < startOfPeriod) {
-                 cursor.setDate(cursor.getDate() + recurrence);
+             // Safety break to prevent infinite loops
+             let safety = 0;
+             while (cursor < startOfPeriod && safety < 1000) {
+                 cursor = calculateNextDueDate(cursor, interval, daysOfWeek, daysOfMonth, monthsOfYear);
+                 safety++;
              }
              
-             while (cursor <= endOfPeriod) {
+             safety = 0;
+             while (cursor <= endOfPeriod && safety < 1000) {
                  projectedExpense += amount;
                  addToPlanned(amount);
-                 cursor.setDate(cursor.getDate() + recurrence);
+                 cursor = calculateNextDueDate(cursor, interval, daysOfWeek, daysOfMonth, monthsOfYear);
+                 safety++;
              }
          } else {
              if (item.status === 'pending') {
