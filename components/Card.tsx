@@ -4,6 +4,83 @@ import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, T
 
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
 
+// Helper to calculate next due date based on schedule (Same as RoutineTaskModal)
+const calculateNextDate = (
+    int: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    dOfWeek: number[],
+    dOfMonth: number[],
+    mOfYear: number[]
+) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (int === 'daily') {
+        return today;
+    }
+
+    if (int === 'weekly' && dOfWeek.length > 0) {
+        // Find next occurrence of any selected day
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i);
+            if (dOfWeek.includes(d.getDay())) {
+                return d;
+            }
+        }
+    }
+
+    if (int === 'monthly' && dOfMonth.length > 0) {
+        // Find next occurrence of any selected date
+        // Check current month first
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        
+        // Sort selected days
+        const sortedDays = [...dOfMonth].sort((a, b) => a - b);
+        
+        // Check remaining days in current month
+        for (const day of sortedDays) {
+            if (day >= today.getDate() && day <= daysInMonth) {
+                return new Date(currentYear, currentMonth, day);
+            }
+        }
+        
+        // If not found, get first available day in next month
+        const nextMonth = new Date(currentYear, currentMonth + 1, 1);
+        const nextMonthDays = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
+        for (const day of sortedDays) {
+            if (day <= nextMonthDays) {
+                return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
+            }
+        }
+    }
+
+    if (int === 'yearly' && mOfYear.length > 0) {
+            // Find next occurrence of any selected month
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const sortedMonths = [...mOfYear].sort((a, b) => a - b);
+
+            // Check remaining months in current year
+            for (const month of sortedMonths) {
+                if (month >= currentMonth) {
+                    if (month > currentMonth) {
+                        return new Date(currentYear, month, 1);
+                    } else {
+                        // Current month
+                        return today;
+                    }
+                }
+            }
+
+            // If not found, go to next year
+            return new Date(currentYear + 1, sortedMonths[0], 1);
+    }
+
+    return today;
+};
+
 interface CardProps {
   item: BrainDumpItem;
   onToggleStatus?: (id: string) => void;
@@ -99,6 +176,28 @@ const Card: React.FC<CardProps> = ({
   // Progress
   const [editProgress, setEditProgress] = useState(meta.progress || 0);
   const [editProgressNotes, setEditProgressNotes] = useState(meta.progressNotes || '');
+
+  const updateDateFromSchedule = (
+    int: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    dOfWeek: number[],
+    dOfMonth: number[],
+    mOfYear: number[]
+  ) => {
+    const nextDate = calculateNextDate(int, dOfWeek, dOfMonth, mOfYear);
+    // Adjust for timezone offset to ensure YYYY-MM-DD is correct
+    const offset = nextDate.getTimezoneOffset() * 60000;
+    // We want to preserve the time if it was set, but for routine start date, usually 00:00 or current time is fine.
+    // However, editDate is datetime-local string (YYYY-MM-DDTHH:mm).
+    // Let's keep the current time from editDate if possible, or default to 09:00
+    
+    let timePart = '09:00';
+    if (editDate && editDate.includes('T')) {
+        timePart = editDate.split('T')[1];
+    }
+    
+    const localISODate = (new Date(nextDate.getTime() - offset)).toISOString().slice(0, 10);
+    setEditDate(`${localISODate}T${timePart}`);
+  };
 
   // Initialize Edit State on Expand or Item Change
   useEffect(() => {
@@ -334,12 +433,7 @@ const Card: React.FC<CardProps> = ({
   const isRecentlyDone = status === 'done' && completed_at && (new Date().getTime() - new Date(completed_at).getTime() < 86400000);
   const isRoutineDone = meta.isRoutine && status === 'done';
   
-  // Check if routine is pending but scheduled for future (temporarily done)
-  const now = new Date();
-  const itemDate = meta.date ? new Date(meta.date) : null;
-  const isFutureRoutine = meta.isRoutine && status === 'pending' && itemDate && itemDate > now;
-  
-  const isDarkened = !noDarken && (isRecentlyDone || isFutureRoutine);
+  const isDarkened = !noDarken && isRecentlyDone;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
 
   return (
@@ -542,7 +636,10 @@ const Card: React.FC<CardProps> = ({
                                    {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
                                        <button
                                            key={int}
-                                           onClick={() => setEditRoutineInterval(int)}
+                                           onClick={() => {
+                                               setEditRoutineInterval(int);
+                                               updateDateFromSchedule(int, editRoutineDaysOfWeek, editRoutineDaysOfMonth, editRoutineMonthsOfYear);
+                                           }}
                                            className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${editRoutineInterval === int ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:text-primary hover:bg-background'}`}
                                        >
                                            {int}
@@ -559,11 +656,14 @@ const Card: React.FC<CardProps> = ({
                                                <button
                                                    key={idx}
                                                    onClick={() => {
+                                                       let newDays;
                                                        if (editRoutineDaysOfWeek.includes(idx)) {
-                                                           setEditRoutineDaysOfWeek(editRoutineDaysOfWeek.filter(d => d !== idx));
+                                                           newDays = editRoutineDaysOfWeek.filter(d => d !== idx);
                                                        } else {
-                                                           setEditRoutineDaysOfWeek([...editRoutineDaysOfWeek, idx]);
+                                                           newDays = [...editRoutineDaysOfWeek, idx];
                                                        }
+                                                       setEditRoutineDaysOfWeek(newDays);
+                                                       updateDateFromSchedule(editRoutineInterval, newDays, editRoutineDaysOfMonth, editRoutineMonthsOfYear);
                                                    }}
                                                    className={`flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all border ${editRoutineDaysOfWeek.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
                                                >
@@ -583,11 +683,14 @@ const Card: React.FC<CardProps> = ({
                                                <button
                                                    key={day}
                                                    onClick={() => {
+                                                       let newDays;
                                                        if (editRoutineDaysOfMonth.includes(day)) {
-                                                           setEditRoutineDaysOfMonth(editRoutineDaysOfMonth.filter(d => d !== day));
+                                                           newDays = editRoutineDaysOfMonth.filter(d => d !== day);
                                                        } else {
-                                                           setEditRoutineDaysOfMonth([...editRoutineDaysOfMonth, day]);
+                                                           newDays = [...editRoutineDaysOfMonth, day];
                                                        }
+                                                       setEditRoutineDaysOfMonth(newDays);
+                                                       updateDateFromSchedule(editRoutineInterval, editRoutineDaysOfWeek, newDays, editRoutineMonthsOfYear);
                                                    }}
                                                    className={`w-full aspect-square rounded-md flex items-center justify-center text-[9px] font-bold transition-all border ${editRoutineDaysOfMonth.includes(day) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
                                                >

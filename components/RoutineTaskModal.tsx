@@ -40,6 +40,103 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
     const [monthsOfYear, setMonthsOfYear] = useState<number[]>([]);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
+    // Helper to calculate next due date based on schedule
+    const calculateNextDate = (
+        int: 'daily' | 'weekly' | 'monthly' | 'yearly',
+        dOfWeek: number[],
+        dOfMonth: number[],
+        mOfYear: number[]
+    ) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (int === 'daily') {
+            return today;
+        }
+
+        if (int === 'weekly' && dOfWeek.length > 0) {
+            // Find next occurrence of any selected day
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(today);
+                d.setDate(today.getDate() + i);
+                if (dOfWeek.includes(d.getDay())) {
+                    return d;
+                }
+            }
+        }
+
+        if (int === 'monthly' && dOfMonth.length > 0) {
+            // Find next occurrence of any selected date
+            // Check current month first
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            
+            // Sort selected days
+            const sortedDays = [...dOfMonth].sort((a, b) => a - b);
+            
+            // Check remaining days in current month
+            for (const day of sortedDays) {
+                if (day >= today.getDate() && day <= daysInMonth) {
+                    return new Date(currentYear, currentMonth, day);
+                }
+            }
+            
+            // If not found, get first available day in next month
+            const nextMonth = new Date(currentYear, currentMonth + 1, 1);
+            // Handle edge case where next month might not have the day (e.g. Feb 30)
+            // But for simplicity, we just take the first valid day from the list
+            // Ideally we should check validity for next month
+            const nextMonthDays = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
+            for (const day of sortedDays) {
+                if (day <= nextMonthDays) {
+                    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
+                }
+            }
+        }
+
+        if (int === 'yearly' && mOfYear.length > 0) {
+             // Find next occurrence of any selected month
+             const currentMonth = today.getMonth();
+             const currentYear = today.getFullYear();
+             const sortedMonths = [...mOfYear].sort((a, b) => a - b);
+
+             // Check remaining months in current year
+             for (const month of sortedMonths) {
+                 if (month >= currentMonth) {
+                     // If it's the current month, check if today is valid (assuming 1st of month if no day specified, or just today)
+                     // For yearly, we usually just set it to the 1st of that month if we don't have day selector
+                     // But if it's current month, we can set to today if we want immediate start, or 1st if strictly following pattern
+                     // Let's set to 1st of the month for future months, and today if current month (and today is >= 1st)
+                     if (month > currentMonth) {
+                         return new Date(currentYear, month, 1);
+                     } else {
+                         // Current month
+                         return today;
+                     }
+                 }
+             }
+
+             // If not found, go to next year
+             return new Date(currentYear + 1, sortedMonths[0], 1);
+        }
+
+        return today;
+    };
+
+    const updateDateFromSchedule = (
+        int: 'daily' | 'weekly' | 'monthly' | 'yearly',
+        dOfWeek: number[],
+        dOfMonth: number[],
+        mOfYear: number[]
+    ) => {
+        const nextDate = calculateNextDate(int, dOfWeek, dOfMonth, mOfYear);
+        // Adjust for timezone offset to ensure YYYY-MM-DD is correct
+        const offset = nextDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(nextDate.getTime() - offset)).toISOString().slice(0, 10);
+        setDate(localISOTime);
+    };
+
     const handleSave = () => {
         if (!content.trim()) return;
         
@@ -70,27 +167,36 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
     };
 
     const toggleDayOfWeek = (val: number) => {
+        let newDays;
         if (daysOfWeek.includes(val)) {
-            setDaysOfWeek(daysOfWeek.filter(d => d !== val));
+            newDays = daysOfWeek.filter(d => d !== val);
         } else {
-            setDaysOfWeek([...daysOfWeek, val]);
+            newDays = [...daysOfWeek, val];
         }
+        setDaysOfWeek(newDays);
+        updateDateFromSchedule(interval, newDays, daysOfMonth, monthsOfYear);
     };
 
     const toggleDayOfMonth = (val: number) => {
+        let newDays;
         if (daysOfMonth.includes(val)) {
-            setDaysOfMonth(daysOfMonth.filter(d => d !== val));
+            newDays = daysOfMonth.filter(d => d !== val);
         } else {
-            setDaysOfMonth([...daysOfMonth, val]);
+            newDays = [...daysOfMonth, val];
         }
+        setDaysOfMonth(newDays);
+        updateDateFromSchedule(interval, daysOfWeek, newDays, monthsOfYear);
     };
 
     const toggleMonthOfYear = (val: number) => {
+        let newMonths;
         if (monthsOfYear.includes(val)) {
-            setMonthsOfYear(monthsOfYear.filter(m => m !== val));
+            newMonths = monthsOfYear.filter(m => m !== val);
         } else {
-            setMonthsOfYear([...monthsOfYear, val]);
+            newMonths = [...monthsOfYear, val];
         }
+        setMonthsOfYear(newMonths);
+        updateDateFromSchedule(interval, daysOfWeek, daysOfMonth, newMonths);
     };
 
     if (!isOpen) return null;
@@ -140,7 +246,10 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                 {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
                                     <button
                                         key={int}
-                                        onClick={() => setInterval(int)}
+                                        onClick={() => {
+                                            setInterval(int);
+                                            updateDateFromSchedule(int, daysOfWeek, daysOfMonth, monthsOfYear);
+                                        }}
                                         className={`py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-muted hover:text-primary hover:bg-background'}`}
                                     >
                                         {int}
