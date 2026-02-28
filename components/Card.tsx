@@ -708,6 +708,17 @@ const Card: React.FC<CardProps> = ({
                                            })()}
                                        </div>
                                    </div>
+                                   <div className="col-span-2">
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget Category</label>
+                                       <select
+                                           className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           value={editBudgetCategory}
+                                           onChange={(e) => setEditBudgetCategory(e.target.value)}
+                                       >
+                                           <option value="">None</option>
+                                           {budgetRules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                       </select>
+                                   </div>
                                </>
                            ) : (
                                <div>

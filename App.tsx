@@ -263,8 +263,8 @@ const App: React.FC = () => {
 
     if (activeTab === 'money') {
         targetItems = items.filter(i => 
-            i.type === 'FINANCE' || 
-            ((i.type === 'SHOPPING' || i.type === 'TODO') && (i.meta.amount || 0) > 0)
+            (i.type === 'FINANCE' && (i.status === 'done' || i.status === 'pending') && (i.meta.amount || 0) > 0) || 
+            ((i.type === 'SHOPPING' || i.type === 'TODO') && i.status === 'done' && (i.meta.amount || 0) > 0)
         );
     } else if (activeTab === 'notes') {
         if (notesSubTab === 'general') {

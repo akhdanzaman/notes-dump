@@ -74,7 +74,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const [budgetViewMode, setBudgetViewMode] = useState<'monthly' | 'yearly'>('monthly');
-    const [selectedGoalId, setSelectedGoalId] = useState<string>('all');
 
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -84,13 +83,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
     // Calculate Data for All Views
     const { walletStats, totalNetWorth, totalAssets, totalDebt, totalSavings } = getWalletStats(items, wallets);
-    
-    const displaySavings = useMemo(() => {
-        if (selectedGoalId === 'all') return totalSavings;
-        return items
-            .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId === selectedGoalId)
-            .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
-    }, [items, totalSavings, selectedGoalId]);
     
     const { 
         list, totalIncome, totalExpense, projectedExpense, 
@@ -250,24 +242,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     Debt: <span className="text-[#FF5722] font-bold">{showBalance ? fmt(totalDebt) : '••'}</span>
                                     </div>
                                     <div className="text-sm font-medium opacity-80 flex items-center gap-1">
-                                        Savings: 
-                                        {savingGoals.length > 1 ? (
-                                            <select 
-                                                value={selectedGoalId}
-                                                onChange={(e) => setSelectedGoalId(e.target.value)}
-                                                className="bg-transparent border-none p-0 font-bold text-[#6366F1] focus:outline-none cursor-pointer"
-                                            >
-                                                <option value="all" className="text-black dark:text-white">Total</option>
-                                                {savingGoals.map(g => (
-                                                    <option key={g.id} value={g.id} className="text-black dark:text-white">{g.content}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <span className="text-[#6366F1] font-bold">
-                                                {savingGoals.length === 1 ? savingGoals[0].content : 'Total'}
-                                            </span>
-                                        )}
-                                        <span className="text-[#6366F1] font-bold ml-1">{showBalance ? fmt(displaySavings || 0) : '••'}</span>
+                                        Savings: <span className="text-[#6366F1] font-bold">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
                                     </div>
                             </div>
                         </motion.div>

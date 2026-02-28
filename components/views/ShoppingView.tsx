@@ -59,6 +59,63 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     const [fundWallet, setFundWallet] = useState('');
     const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
 
+    // Swipe State
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
+    const isHorizontalSwipe = React.useRef<boolean | null>(null);
+
+    const tabs: ('shopping' | 'savings')[] = ['shopping', 'savings'];
+    const activeIndex = tabs.indexOf(shoppingSubTab);
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setIsDragging(true);
+        isHorizontalSwipe.current = null;
+    };
+
+    const onTouchMove = (e: React.TouchEvent) => {
+        if (!touchStartRef.current) return;
+        
+        const dx = e.touches[0].clientX - touchStartRef.current.x;
+        const dy = e.touches[0].clientY - touchStartRef.current.y;
+
+        if (isHorizontalSwipe.current === null) {
+             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
+                 isHorizontalSwipe.current = true;
+             } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
+                 isHorizontalSwipe.current = false;
+             }
+        }
+
+        if (isHorizontalSwipe.current) {
+            // Resistance
+            if ((activeIndex === 0 && dx > 0) || (activeIndex === tabs.length - 1 && dx < 0)) {
+                setDragOffset(dx * 0.3);
+            } else {
+                setDragOffset(dx);
+            }
+        }
+    };
+
+    const onTouchEnd = () => {
+        setIsDragging(false);
+        const threshold = window.innerWidth * 0.25;
+
+        if (isHorizontalSwipe.current && Math.abs(dragOffset) > threshold) {
+            if (dragOffset < 0 && activeIndex < tabs.length - 1) {
+                setShoppingSubTab(tabs[activeIndex + 1]);
+            }
+            if (dragOffset > 0 && activeIndex > 0) {
+                setShoppingSubTab(tabs[activeIndex - 1]);
+            }
+        }
+        
+        setDragOffset(0);
+        touchStartRef.current = null;
+        isHorizontalSwipe.current = null;
+    };
+
     const handleSaveFunds = () => {
         if (!addFundsModal || !fundAmount || !fundWallet) return;
         onAddFunds(Number(fundAmount), fundWallet, new Date(fundDate).toISOString(), addFundsModal.goalId, addFundsModal.goalName);
@@ -114,7 +171,8 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
 
         return (
             <motion.div 
-                layout
+                layout={!isDragging}
+                transition={{ type: "tween", duration: 0.3 }}
                 key={goal.id} 
                 className={`bg-surface border border-border rounded-[24px] overflow-hidden ${isDone ? 'opacity-60' : ''}`}
             >
@@ -162,7 +220,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
 
                     <div className="mb-2 flex justify-between items-end">
                         <div className="flex-1">
-                            {!isExpanded && !isDone && (
+                            {!isDone && (
                                 <div className="flex gap-2 mb-2">
                                     <button 
                                         onClick={(e) => {
@@ -322,7 +380,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     };
 
     return (
-    <div className="pb-20 min-h-[50vh]">
+    <div className="pb-20 min-h-[50vh] overflow-hidden">
         {/* Top Container */}
         <motion.div 
             layoutId="top-container"
@@ -389,31 +447,51 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
         <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
-            exit={{ opacity: 0, y: 10, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
-            className="px-4"
+            className="touch-pan-y"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
         >
-            {shoppingSubTab === 'shopping' ? (
-                isEmpty ? (
-                    <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
-                        <p className="text-muted font-medium">No life admin tasks.</p>
-                        <div className="flex gap-3">
-                            <button 
-                                onClick={() => handleOpenAddShopping('not_urgent')} 
-                                className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
-                            >
-                                <Plus className="w-4 h-4" /> Add Item
-                            </button>
+            <motion.div 
+                className="flex w-full will-change-transform"
+                style={{
+                    transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
+                    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
+                }}
+            >
+                {/* VIEW: Shopping */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="w-full flex-shrink-0 px-4"
+                >
+                    {isEmpty ? (
+                        <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                            <p className="text-muted font-medium">No life admin tasks.</p>
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => handleOpenAddShopping('not_urgent')} 
+                                    className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
+                                >
+                                    <Plus className="w-4 h-4" /> Add Item
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    <>
-                        {(urgent.length > 0 || !isEmpty) && renderGroup("Urgent", urgent, "text-red-500", "urgent")}
-                        {(routine.length > 0 || !isEmpty) && renderGroup("Routine & Maintenance", routine, "text-acc-event", "routine")}
-                        {(normal.length > 0 || !isEmpty) && renderGroup("To Do / To Buy", normal, "text-acc-shopping", "not_urgent")}
-                    </>
-                )
-            ) : (
-                <>
+                    ) : (
+                        <>
+                            {(urgent.length > 0 || !isEmpty) && renderGroup("Urgent", urgent, "text-red-500", "urgent")}
+                            {(routine.length > 0 || !isEmpty) && renderGroup("Routine & Maintenance", routine, "text-acc-event", "routine")}
+                            {(normal.length > 0 || !isEmpty) && renderGroup("To Do / To Buy", normal, "text-acc-shopping", "not_urgent")}
+                        </>
+                    )}
+                </motion.div>
+
+                {/* VIEW: Savings */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="w-full flex-shrink-0 px-4"
+                >
                     <div className="flex items-center justify-between mb-4 pl-1">
                         <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider">Saving Goals</h3>
                         <button 
@@ -439,8 +517,8 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                             </button>
                         </div>
                     )}
-                </>
-            )}
+                </motion.div>
+            </motion.div>
         </motion.div>
 
         {/* Add Funds Modal */}

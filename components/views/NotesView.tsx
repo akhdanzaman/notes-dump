@@ -49,8 +49,62 @@ const NotesView: React.FC<NotesViewProps> = ({
     const journalItems = getNoteItems(items, 'journal', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const skillItems = getNoteItems(items, 'skills', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
 
+    // Swipe State
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
+    const isHorizontalSwipe = React.useRef<boolean | null>(null);
+
     const subTabs: NotesSubTab[] = ['general', 'journal', 'skills'];
     const activeIndex = subTabs.indexOf(notesSubTab);
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setIsDragging(true);
+        isHorizontalSwipe.current = null;
+    };
+
+    const onTouchMove = (e: React.TouchEvent) => {
+        if (!touchStartRef.current) return;
+        
+        const dx = e.touches[0].clientX - touchStartRef.current.x;
+        const dy = e.touches[0].clientY - touchStartRef.current.y;
+
+        if (isHorizontalSwipe.current === null) {
+             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
+                 isHorizontalSwipe.current = true;
+             } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
+                 isHorizontalSwipe.current = false;
+             }
+        }
+
+        if (isHorizontalSwipe.current) {
+            // Resistance
+            if ((activeIndex === 0 && dx > 0) || (activeIndex === subTabs.length - 1 && dx < 0)) {
+                setDragOffset(dx * 0.3);
+            } else {
+                setDragOffset(dx);
+            }
+        }
+    };
+
+    const onTouchEnd = () => {
+        setIsDragging(false);
+        const threshold = window.innerWidth * 0.25;
+
+        if (isHorizontalSwipe.current && Math.abs(dragOffset) > threshold) {
+            if (dragOffset < 0 && activeIndex < subTabs.length - 1) {
+                setNotesSubTab(subTabs[activeIndex + 1]);
+            }
+            if (dragOffset > 0 && activeIndex > 0) {
+                setNotesSubTab(subTabs[activeIndex - 1]);
+            }
+        }
+        
+        setDragOffset(0);
+        touchStartRef.current = null;
+        isHorizontalSwipe.current = null;
+    };
               
     const renderContent = (data: BrainDumpItem[], type: 'general' | 'journal' | 'skills') => {
         if (data.length === 0) {
@@ -158,19 +212,49 @@ const NotesView: React.FC<NotesViewProps> = ({
             </motion.div>
 
             {/* Lower Section */}
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={notesSubTab}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
-                    exit={{ opacity: 0, y: 10, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
-                    className="w-full px-4"
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
+                className="touch-pan-y"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
+                <motion.div 
+                    className="flex w-full will-change-transform"
+                    style={{
+                        transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
+                        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
+                    }}
                 >
-                    {notesSubTab === 'general' && renderContent(generalItems, 'general')}
-                    {notesSubTab === 'journal' && renderContent(journalItems, 'journal')}
-                    {notesSubTab === 'skills' && renderContent(skillItems, 'skills')}
+                    {/* VIEW: General */}
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
+                        {renderContent(generalItems, 'general')}
+                    </motion.div>
+
+                    {/* VIEW: Journal */}
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
+                        {renderContent(journalItems, 'journal')}
+                    </motion.div>
+
+                    {/* VIEW: Skills */}
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
+                        {renderContent(skillItems, 'skills')}
+                    </motion.div>
                 </motion.div>
-            </AnimatePresence>
+            </motion.div>
         </div>
     );
 };

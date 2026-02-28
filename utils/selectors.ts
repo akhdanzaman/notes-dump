@@ -449,7 +449,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         .map(i => i.id));
 
     const totalSavings = items
-        .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId && activeGoals.has(i.meta.savingGoalId))
+        .filter(i => i.type === ItemType.FINANCE && (i.status === 'done' || i.status === 'pending') && i.meta.financeType === 'saving' && i.meta.savingGoalId && activeGoals.has(i.meta.savingGoalId))
         .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
 
     const totalNetWorth = totalAssets - totalDebt - totalSavings;
@@ -479,7 +479,7 @@ export const getFinanceItems = (
     };
 
     // 1. Explicit Finance Items
-    let finance = items.filter(i => i.type === ItemType.FINANCE);
+    let finance = items.filter(i => i.type === ItemType.FINANCE && (i.status === 'done' || i.status === 'pending') && (i.meta.amount || 0) > 0);
     
     // 2. Implicit Expenses
     const implicitExpenses = items.filter(i => 
