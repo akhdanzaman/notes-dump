@@ -338,7 +338,7 @@ const Card: React.FC<CardProps> = ({
   
   const isRoutineDarkened = isRoutineDone || isFutureRoutine;
   // History items (isRoutine: false but was routine) should be normal
-  const bgClass = isRoutineDarkened ? 'bg-surface/50 opacity-75 dark:bg-zinc-900/50' : style.bg;
+  const bgClass = isRoutineDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
 
   return (
     <div 

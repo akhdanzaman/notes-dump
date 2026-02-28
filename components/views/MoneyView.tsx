@@ -396,22 +396,22 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </button>
                             </div>
                         ) : (
-                            <div className="bg-[#222224] dark:bg-[#222224] rounded-[32px] p-6 text-white shadow-xl">
+                            <div className="bg-white dark:bg-[#222224] border border-zinc-200 dark:border-none rounded-[32px] p-6 text-zinc-900 dark:text-white shadow-xl">
                                 {/* Header */}
                                 <div className="flex justify-between items-center mb-8">
                                     <h2 className="text-3xl font-bold tracking-tight">
                                         {budgetConfig.rules.length} Categories
                                     </h2>
-                                    <div className="flex bg-white/20 rounded-full p-1 cursor-pointer">
+                                    <div className="flex bg-zinc-100 dark:bg-white/20 rounded-full p-1 cursor-pointer">
                                         <button 
                                             onClick={() => setBudgetViewMode('monthly')}
-                                            className={`${budgetViewMode === 'monthly' ? 'bg-white text-black' : 'text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
+                                            className={`${budgetViewMode === 'monthly' ? 'bg-white dark:bg-white text-black' : 'text-zinc-500 dark:text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
                                         >
                                             M
                                         </button>
                                         <button 
                                             onClick={() => setBudgetViewMode('yearly')}
-                                            className={`${budgetViewMode === 'yearly' ? 'bg-white text-black' : 'text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
+                                            className={`${budgetViewMode === 'yearly' ? 'bg-white dark:bg-white text-black' : 'text-zinc-500 dark:text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
                                         >
                                             Y
                                         </button>
@@ -419,15 +419,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </div>
 
                                 {/* Basis Fixed Income & Planned Spending */}
-                                <div className="flex justify-between items-end mb-8 pb-6 border-b border-white/10">
+                                <div className="flex justify-between items-end mb-8 pb-6 border-b border-zinc-100 dark:border-white/10">
                                     <div>
-                                        <div className="text-white/60 text-sm mb-1 font-medium">Basis: {incomeLabel}</div>
+                                        <div className="text-zinc-500 dark:text-white/60 text-sm mb-1 font-medium">Basis: {incomeLabel}</div>
                                         <div className="text-xl font-bold">{showBalance ? fmt(effectiveIncome) : '••••'}</div>
                                     </div>
                                     {projectedExpense > 0 && (
                                         <div className="text-right">
-                                            <div className="text-white/60 text-sm mb-1 font-medium">Planned</div>
-                                            <div className="text-xl font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</div>
+                                            <div className="text-zinc-500 dark:text-white/60 text-sm mb-1 font-medium">Planned</div>
+                                            <div className="text-xl font-bold text-amber-600 dark:text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</div>
                                         </div>
                                     )}
                                 </div>
@@ -455,16 +455,16 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                     {rule.name}
                                                 </div>
                                                 <div className={`text-sm font-bold mb-2 ${textColorClass}`}>
-                                                    {percentageOfCategorySpent.toFixed(1)} % <span className="text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
+                                                    {percentageOfCategorySpent.toFixed(1)} % <span className="text-zinc-400 dark:text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
                                                 </div>
-                                                <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden flex relative">
+                                                <div className="h-3 w-full bg-zinc-100 dark:bg-white/20 rounded-full overflow-hidden flex relative">
                                                     <div className={`h-full ${rule.color || 'bg-gray-500'}`} style={{ width: `${Math.min(percentageOfTotalSpent, 100)}%` }}></div>
                                                     {planned > 0 && (
-                                                        <div className={`h-full ${rule.color || 'bg-gray-500'} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`} style={{ width: `${Math.min(percentageOfTotalPlanned, 100 - Math.min(percentageOfTotalSpent, 100))}%` }}></div>
+                                                        <div className={`h-full ${rule.color || 'bg-gray-500'} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`} style={{ width: `${Math.min(percentageOfTotalPlanned, 100 - Math.min(percentageOfTotalSpent, 100))}%` }}></div>
                                                     )}
                                                     {/* Limit Marker at the rule's percentage of total */}
                                                     <div 
-                                                        className="h-full w-0.5 bg-white z-20 absolute top-0 shadow-[0_0_4px_rgba(0,0,0,0.5)]"
+                                                        className="h-full w-0.5 bg-zinc-400 dark:bg-white z-20 absolute top-0 shadow-[0_0_4px_rgba(0,0,0,0.2)]"
                                                         style={{ left: `${rule.percentage}%` }}
                                                     ></div>
                                                 </div>
@@ -474,18 +474,18 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                                     {/* Uncategorized */}
                                     {(uncategorized > 0 || projectedUncategorized > 0) && (
-                                        <div className="pt-4 border-t border-white/10 mt-4">
+                                        <div className="pt-4 border-t border-zinc-100 dark:border-white/10 mt-4">
                                             <div className="flex items-center gap-2 text-sm font-semibold mb-1 text-gray-400">
                                                 <div className="w-2 h-2 rounded-full bg-gray-400"></div>
                                                 Other
                                             </div>
                                             <div className="text-sm font-bold mb-2 text-gray-400">
-                                                {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
+                                                {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-zinc-400 dark:text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
                                             </div>
-                                            <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden flex">
+                                            <div className="h-3 w-full bg-zinc-100 dark:bg-white/20 rounded-full overflow-hidden flex">
                                                 <div className="h-full bg-gray-400" style={{ width: `${Math.min((uncategorized / effectiveIncome) * 100, 100)}%` }}></div>
                                                 {projectedUncategorized > 0 && (
-                                                    <div className="h-full bg-gray-400 opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]" style={{ width: `${Math.min((projectedUncategorized / effectiveIncome) * 100, 100 - Math.min((uncategorized / effectiveIncome) * 100, 100))}%` }}></div>
+                                                    <div className="h-full bg-gray-400 opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]" style={{ width: `${Math.min((projectedUncategorized / effectiveIncome) * 100, 100 - Math.min((uncategorized / effectiveIncome) * 100, 100))}%` }}></div>
                                                 )}
                                             </div>
                                         </div>
