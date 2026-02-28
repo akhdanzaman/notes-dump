@@ -1,9 +1,10 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Calculator, Plus, AlertCircle } from 'lucide-react';
-import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType, ItemType } from '../../types';
+import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType, ItemType, Tab } from '../../types';
 import { getWalletStats, getFinanceItems } from '../../utils/selectors';
 import Card from '../Card';
+import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -59,6 +60,7 @@ interface MoneyViewProps {
     searchQuery: string;
     sortOrder: SortOrder;
     savingGoals: BrainDumpItem[];
+    setActiveTab: (tab: Tab) => void;
 }
 
 const MoneyViewComponent: React.FC<MoneyViewProps> = ({
@@ -67,10 +69,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     handleDelete, handleUpdateItem, handleOpenEditWallet, handleOpenAddWallet,
     setDeleteId, setDeleteType, setIsSettingsOpen,
     filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
-    savingGoals,
+    savingGoals, setActiveTab
 }) => {
     
-    // Swipe State
+    // Main Tab Swipe Logic
+    const swipeHandlers = useSwipeTabs('money', setActiveTab);
+
+    // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const [budgetViewMode, setBudgetViewMode] = useState<'monthly' | 'yearly'>('monthly');
@@ -173,8 +178,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                onTouchStart={swipeHandlers.onTouchStart}
+                onTouchMove={swipeHandlers.onTouchMove}
+                onTouchEnd={swipeHandlers.onTouchEnd}
+                style={{ x: swipeHandlers.dragOffset }}
             >
                 <motion.div
                     initial={{ opacity: 0 }}

@@ -337,6 +337,7 @@ const App: React.FC = () => {
                           searchQuery={searchQuery} selectedTag={selectedTag}
                           wallets={wallets} budgetRules={budgetConfig.rules}
                           handleResetRoutine={handleResetRoutine}
+                          setActiveTab={setActiveTab}
                       />
                   )}
 
@@ -368,6 +369,7 @@ const App: React.FC = () => {
                                   handleToggleStatus(goal.id);
                               }
                           }}
+                          setActiveTab={setActiveTab}
                       />
                   )}
 
@@ -379,6 +381,7 @@ const App: React.FC = () => {
                           handleDelete={requestDeleteItem}
                           handleUpdateItem={handleUpdateItem}
                           selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
+                          setActiveTab={setActiveTab}
                       />
                   )}
 
@@ -398,6 +401,7 @@ const App: React.FC = () => {
                           filterMinAmount={filterMinAmount} filterMaxAmount={filterMaxAmount}
                           selectedTag={selectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
                           savingGoals={savingGoals}
+                          setActiveTab={setActiveTab}
                       />
                   )}
               </div>

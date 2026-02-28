@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotebookPen, BookText, Library } from 'lucide-react';
-import { BrainDumpItem, Skill, NotesSubTab, AppSettings, SortOrder, ItemType, FinanceType } from '../../types';
+import { BrainDumpItem, Skill, NotesSubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab } from '../../types';
 import { getNoteItems, getJournalGroups } from '../../utils/selectors';
 import Card from '../Card';
+import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 
 interface NotesViewProps {
     items: BrainDumpItem[];
@@ -37,11 +38,12 @@ interface NotesViewProps {
     filterDateTo: string;
     searchQuery: string;
     sortOrder: SortOrder;
+    setActiveTab: (tab: Tab) => void;
 }
 
 const NotesView: React.FC<NotesViewProps> = ({
     items, skills, notesSubTab, setNotesSubTab, appSettings,
-    handleDelete, handleUpdateItem, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder
+    handleDelete, handleUpdateItem, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab
 }) => {
     
     // Data Preparation
@@ -49,7 +51,10 @@ const NotesView: React.FC<NotesViewProps> = ({
     const journalItems = getNoteItems(items, 'journal', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const skillItems = getNoteItems(items, 'skills', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
 
-    // Swipe State
+    // Main Tab Swipe Logic
+    const swipeHandlers = useSwipeTabs('notes', setActiveTab);
+
+    // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
@@ -169,8 +174,12 @@ const NotesView: React.FC<NotesViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                onTouchStart={swipeHandlers.onTouchStart}
+                onTouchMove={swipeHandlers.onTouchMove}
+                onTouchEnd={swipeHandlers.onTouchEnd}
+                style={{ x: swipeHandlers.dragOffset }}
             >
                 <div>
                     <div className="flex bg-black/5 rounded-2xl p-1 mb-6">

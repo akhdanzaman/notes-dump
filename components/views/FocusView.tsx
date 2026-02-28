@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Sprout, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight } from 'lucide-react';
-import { BrainDumpItem, FocusSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule } from '../../types';
+import { BrainDumpItem, FocusSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab } from '../../types';
 import { getFocusMonthData, getSkillItems } from '../../utils/selectors';
 import Card from '../Card';
+import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 
 interface FocusViewProps {
     items: BrainDumpItem[];
@@ -54,6 +55,7 @@ interface FocusViewProps {
     wallets: Wallet[];
     budgetRules: BudgetRule[];
     handleResetRoutine: (id: string) => void;
+    setActiveTab: (tab: Tab) => void;
 }
 
 const FocusView: React.FC<FocusViewProps> = ({
@@ -62,7 +64,7 @@ const FocusView: React.FC<FocusViewProps> = ({
     appSettings, handleToggleStatus, handleDelete, handleUpdateItem,
     handleOpenAddRoutine, handleOpenAddTask, handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
     searchQuery, selectedTag,
-    wallets, budgetRules, handleResetRoutine
+    wallets, budgetRules, handleResetRoutine, setActiveTab
 }) => {
     
     // Data Preparation
@@ -70,7 +72,10 @@ const FocusView: React.FC<FocusViewProps> = ({
     const { today, tomorrow, later, routines } = pendingGroups;
     const { stats, logs } = getSkillItems(items, skills);
 
-    // Swipe State
+    // Main Tab Swipe Logic
+    const swipeHandlers = useSwipeTabs('focus', setActiveTab);
+
+    // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
@@ -151,8 +156,12 @@ const FocusView: React.FC<FocusViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                onTouchStart={swipeHandlers.onTouchStart}
+                onTouchMove={swipeHandlers.onTouchMove}
+                onTouchEnd={swipeHandlers.onTouchEnd}
+                style={{ x: swipeHandlers.dragOffset }}
             >
                 <motion.div
                     initial={{ opacity: 0 }}

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainDumpItem, FinanceType, ShoppingCategory, BudgetRule, Wallet } from '../../types';
+import { BrainDumpItem, FinanceType, ShoppingCategory, BudgetRule, Wallet, Tab } from '../../types';
 import { getShoppingItems } from '../../utils/selectors';
 import ShoppingItem from '../ShoppingItem';
+import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 
 import { Plus, ShoppingCart, PiggyBank, Target, Wallet as WalletIcon, Calendar, Check, X, ChevronDown, ChevronUp, Trash2, Pencil, Save } from 'lucide-react';
 import { ItemType } from '../../types';
@@ -44,11 +45,12 @@ interface ShoppingViewProps {
     wallets: Wallet[];
     onAddFunds: (amount: number, walletId: string, date: string, goalId: string, goalName: string) => void;
     onCompleteGoal: (goal: BrainDumpItem) => void;
+    setActiveTab: (tab: Tab) => void;
 }
 
 const ShoppingView: React.FC<ShoppingViewProps> = ({
     items, handleToggleStatus, handleDelete, handleUpdateItem, budgetRules, handleResetRoutine, handleOpenAddShopping,
-    shoppingSubTab, setShoppingSubTab, wallets, onAddFunds, onCompleteGoal
+    shoppingSubTab, setShoppingSubTab, wallets, onAddFunds, onCompleteGoal, setActiveTab
 }) => {
     
     const { urgent, routine, normal, savings } = getShoppingItems(items);
@@ -59,7 +61,10 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     const [fundWallet, setFundWallet] = useState('');
     const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
 
-    // Swipe State
+    // Main Tab Swipe Logic
+    const swipeHandlers = useSwipeTabs('shopping', setActiveTab);
+
+    // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
@@ -384,8 +389,12 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
         {/* Top Container */}
         <motion.div 
             layoutId="top-container"
-            className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+            className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
             transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+            onTouchStart={swipeHandlers.onTouchStart}
+            onTouchMove={swipeHandlers.onTouchMove}
+            onTouchEnd={swipeHandlers.onTouchEnd}
+            style={{ x: swipeHandlers.dragOffset }}
         >
             <motion.div
                 initial={{ opacity: 0 }}

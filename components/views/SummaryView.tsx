@@ -2,8 +2,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Sparkles, ChevronRight, Pencil, Target, CheckCircle2, ShoppingCart, AlertTriangle, ArrowRight, Wallet as WalletIcon, EyeOff, Eye, ArrowUpRight, ArrowDownRight, Sprout, StickyNote } from 'lucide-react';
-import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType } from '../../types';
+import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType, Tab } from '../../types';
 import { getFocusItems, getSkillItems, getShoppingItems, getWalletStats, getFinanceItems } from '../../utils/selectors';
+import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -15,7 +16,7 @@ interface SummaryViewProps {
     monthlyThemes: Record<string, string>;
     onThemeEdit: (content: string) => void;
     handleToggleStatus: (id: string) => void;
-    setActiveTab: (tab: any) => void;
+    setActiveTab: (tab: Tab) => void;
     setFocusSubTab: (tab: any) => void;
     showBalance: boolean;
     setShowBalance: (val: boolean) => void;
@@ -27,6 +28,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     handleToggleStatus, setActiveTab, setFocusSubTab,
     showBalance, setShowBalance
 }) => {
+    // Swipe Logic
+    const swipeHandlers = useSwipeTabs('summary', setActiveTab);
+
     // Calculate metrics
     const { today } = getFocusItems(items);
     const { stats } = getSkillItems(items, skills);
@@ -64,8 +68,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4"
+                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                onTouchStart={swipeHandlers.onTouchStart}
+                onTouchMove={swipeHandlers.onTouchMove}
+                onTouchEnd={swipeHandlers.onTouchEnd}
+                style={{ x: swipeHandlers.dragOffset }}
             >
                 <motion.div
                     initial={{ opacity: 0 }}
