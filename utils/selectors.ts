@@ -76,14 +76,11 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
         return d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
     });
 
-    // 2. Split Pending / Done
+    // 2. Split Pending / Done (Excluding routines from doneList)
     const pendingList = relevantItems.filter(i => i.status === 'pending');
-    const doneList = relevantItems.filter(i => i.status === 'done');
+    const doneList = relevantItems.filter(i => i.status === 'done' && !i.meta.isRoutine);
 
-    // 3. Group Pending (Reuse logic but flat if not current month?)
-    // Actually, we can just use the standard Today/Tomorrow logic for "Due dates"
-    // but filtered to this month.
-    
+    // 3. Group Pending & Routines
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const tomorrowStart = todayStart + 86400000;
@@ -92,9 +89,16 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
     const today: BrainDumpItem[] = [];
     const tomorrow: BrainDumpItem[] = [];
     const later: BrainDumpItem[] = [];
+    const routines: BrainDumpItem[] = [];
 
-    pendingList.forEach(item => {
-        // If no due date, categorize as Later (or Today if created today? Let's stick to Later/General)
+    // Add all routine items (pending and done) to routines group
+    relevantItems.filter(i => i.meta.isRoutine).forEach(item => {
+        routines.push(item);
+    });
+
+    // Process non-routine pending items
+    pendingList.filter(i => !i.meta.isRoutine).forEach(item => {
+        // If no due date, categorize as Later
         if (!item.meta.date) {
             later.push(item);
             return;
@@ -108,11 +112,6 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
             return;
         }
 
-        // Logic:
-        // If due date < tomorrowStart => Today (Overdue or Today)
-        // If due date is tomorrow => Tomorrow
-        // Else => Later in this month
-        
         if (itemTime < tomorrowStart) {
             today.push(item);
         } else if (itemTime >= tomorrowStart && itemTime < afterTomorrowStart) {
@@ -127,6 +126,16 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
         const db = b.meta.date ? new Date(b.meta.date).getTime() : Infinity;
         return da - db;
     };
+
+    // Special sort for routines: pending first, then done, then by date
+    const routineSortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
+        if (a.status !== b.status) {
+            return a.status === 'pending' ? -1 : 1;
+        }
+        const da = a.meta.date ? new Date(a.meta.date).getTime() : Infinity;
+        const db = b.meta.date ? new Date(b.meta.date).getTime() : Infinity;
+        return da - db;
+    };
     
     // Sort Done list by completed_at desc
     const sortedDone = doneList.sort((a,b) => {
@@ -135,15 +144,32 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
         return db - da;
     });
 
+    // Calculate Counts
+    // Future pending routines count as "Done" contextually (temporarily done)
+    const futurePendingRoutines = routines.filter(r => 
+        r.status === 'pending' && 
+        r.meta.date && 
+        new Date(r.meta.date) > now
+    );
+    
+    // Todo count: All pending items MINUS future pending routines
+    // (Since pendingList includes all pending items, including routines)
+    const activePendingCount = pendingList.length - futurePendingRoutines.length;
+
+    // Done count: Done non-routines + Done routines + Future pending routines
+    const doneRoutinesCount = routines.filter(r => r.status === 'done').length;
+    const totalDoneCount = doneList.length + doneRoutinesCount + futurePendingRoutines.length;
+
     return {
         summary: {
-            todo: pendingList.length,
-            done: doneList.length
+            todo: activePendingCount,
+            done: totalDoneCount
         },
         pendingGroups: {
             today: today.sort(sortFn),
             tomorrow: tomorrow.sort(sortFn),
-            later: later.sort(sortFn)
+            later: later.sort(sortFn),
+            routines: routines.sort(routineSortFn)
         },
         doneList: sortedDone
     };
@@ -211,6 +237,7 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
         if (i.type !== ItemType.SHOPPING) return false;
         if (i.status === 'pending') return true;
         if (i.status === 'done' && i.meta?.shoppingCategory === 'routine') return true;
+        if (i.status === 'done' && i.meta?.shoppingCategory === 'saving') return true; // Keep savings visible even if done
         if (i.status === 'done' && i.completed_at) {
             const completedTime = new Date(i.completed_at).getTime();
             const now = new Date().getTime();
@@ -222,6 +249,12 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
     
     const urgent = visibleItems.filter(i => i.meta?.shoppingCategory === 'urgent');
     const routine = visibleItems.filter(i => i.meta?.shoppingCategory === 'routine');
+    const savings = visibleItems.filter(i => i.meta?.shoppingCategory === 'saving').map(goal => {
+        const savedAmount = items
+            .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId === goal.id)
+            .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+        return { ...goal, meta: { ...goal.meta, savedAmount } };
+    });
     const normal = visibleItems.filter(i => !i.meta?.shoppingCategory || i.meta.shoppingCategory === 'not_urgent');
 
     const sortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
@@ -234,8 +267,9 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
     urgent.sort(sortFn);
     routine.sort(sortFn);
     normal.sort(sortFn);
+    savings.sort(sortFn);
 
-    return { urgent, routine, normal };
+    return { urgent, routine, normal, savings };
 };
 
 // --- Note Selectors ---
@@ -257,10 +291,10 @@ export const getNoteItems = (
     } else if (notesSubTab === 'skills') {
         relevantItems = items.filter(i => i.type === ItemType.SKILL_LOG);
     } else {
-        // JOURNAL: Include explicit journals AND done TODO items
+        // JOURNAL: Include explicit journals AND done TODO items (excluding routines, as they generate their own history items)
         relevantItems = items.filter(i => 
             i.type === ItemType.JOURNAL || 
-            (i.type === ItemType.TODO && i.status === 'done')
+            (i.type === ItemType.TODO && i.status === 'done' && !i.meta.isRoutine)
         );
     }
     
@@ -362,8 +396,9 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
             const wallet = wallets.find(w => w.name.toLowerCase() === walletName);
             const isCC = wallet?.type === 'cc';
 
-            const isIncome = item.meta.financeType === 'income' || item.meta.financeType === 'reimbursement';
+            const isIncome = item.meta.financeType === 'income';
             const isTransfer = item.meta.financeType === 'transfer';
+            const isSaving = item.meta.financeType === 'saving';
             
             if (isIncome) {
                  // Income adds to Asset. If CC, it reduces debt (by subtracting from the 'positive' debt balance).
@@ -384,8 +419,11 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
                     if (isDestCC) balanceMap.set(destName, Math.max(0, destCurrent - amount)); // Paying CC bill -> Decreases Debt
                     else balanceMap.set(destName, destCurrent + amount); // Transfer to Asset -> Increases Asset
                 }
+            } else if (isSaving) {
+                // Savings do not reduce asset (wallet balance remains unchanged)
+                // but they will reduce net worth later
             } else {
-                // Expense or Lending
+                // Expense
                 if (isCC) balanceMap.set(walletName, current + amount); // Spending on CC -> Increases Debt
                 else balanceMap.set(walletName, current - amount); // Spending from Asset -> Decreases Asset
             }
@@ -404,9 +442,19 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
 
     const totalAssets = assets.reduce((acc, w) => acc + w.currentBalance, 0);
     const totalDebt = liabilities.reduce((acc, w) => acc + w.currentBalance, 0);
-    const totalNetWorth = totalAssets - totalDebt;
+    
+    // Calculate total savings
+    const activeGoals = new Set(items
+        .filter(i => i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving' && i.status !== 'done')
+        .map(i => i.id));
 
-    return { walletStats, totalNetWorth, totalAssets, totalDebt };
+    const totalSavings = items
+        .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId && activeGoals.has(i.meta.savingGoalId))
+        .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+
+    const totalNetWorth = totalAssets - totalDebt - totalSavings;
+
+    return { walletStats, totalNetWorth, totalAssets, totalDebt, totalSavings };
 };
 
 export const getFinanceItems = (
@@ -437,7 +485,10 @@ export const getFinanceItems = (
     const implicitExpenses = items.filter(i => 
         (i.type === ItemType.SHOPPING || i.type === ItemType.TODO) && 
         i.status === 'done' && 
-        (i.meta.amount || 0) > 0
+        (i.meta.amount || 0) > 0 &&
+        !i.meta.isRoutine && 
+        i.meta.shoppingCategory !== 'routine' &&
+        i.meta.shoppingCategory !== 'saving'
     );
 
     // Combine them
@@ -488,6 +539,9 @@ export const getFinanceItems = (
     // Filter by Category
     if (filterCategory) {
         allTransactions = allTransactions.filter(i => {
+            if (filterTransactionType === 'saving') {
+                return i.meta.savingGoalId === filterCategory;
+            }
             const catId = resolveCategory(i.meta.budgetCategory);
             if (filterCategory === 'uncategorized') {
                 return !catId;
@@ -540,7 +594,7 @@ export const getFinanceItems = (
 
     // Totals
     const totalIncome = allTransactions.reduce((acc, curr) => {
-        if (curr.meta?.financeType === 'income' || curr.meta?.financeType === 'reimbursement') {
+        if (curr.meta?.financeType === 'income') {
             return acc + (curr.meta.amount || 0);
         }
         return acc;
@@ -549,9 +603,9 @@ export const getFinanceItems = (
     const totalExpense = allTransactions.reduce((acc, curr) => {
       if (curr.meta?.financeType === 'transfer') return acc;
       
-      // If type is expense, lending or implicit expense
+      // If type is expense or implicit expense
       const type = curr.meta.financeType || 'expense';
-      if (type === 'expense' || type === 'lending') {
+      if (type === 'expense') {
            return acc + (curr.meta.amount || 0);
       }
       return acc;
@@ -584,7 +638,7 @@ export const getFinanceItems = (
 
     // Use fullPeriodTransactions for correct Budget Progress bars
     fullPeriodTransactions.forEach(item => {
-         if (item.meta?.financeType === 'income' || item.meta?.financeType === 'reimbursement' || item.meta?.financeType === 'transfer') return;
+         if (item.meta?.financeType === 'income' || item.meta?.financeType === 'transfer') return;
          
          const amt = item.meta?.amount || 0;
          const catId = resolveCategory(item.meta?.budgetCategory);
@@ -613,7 +667,7 @@ export const getFinanceItems = (
 
     items.forEach(item => {
          if ((item.type !== ItemType.SHOPPING && item.type !== ItemType.TODO) || (item.meta.amount || 0) <= 0) return;
-         if (item.type === ItemType.SHOPPING && (!item.meta.shoppingCategory || item.meta.shoppingCategory === 'not_urgent')) return;
+         if (item.type === ItemType.SHOPPING && (!item.meta.shoppingCategory || item.meta.shoppingCategory === 'not_urgent' || item.meta.shoppingCategory === 'saving')) return;
 
          const amount = item.meta.amount || 0;
          const catId = resolveCategory(item.meta.budgetCategory);
@@ -678,4 +732,209 @@ export const getFinanceItems = (
         uncategorized, 
         projectedUncategorized 
     };
+};
+
+export const calculateNextDueDate = (
+    completedDate: Date,
+    interval: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    daysOfWeek: number[] = [],
+    daysOfMonth: number[] = [],
+    monthsOfYear: number[] = []
+): Date => {
+    let nextDueTime = completedDate.getTime();
+    
+    if (interval === 'daily') {
+        nextDueTime = completedDate.getTime() + (1 * 24 * 60 * 60 * 1000);
+    } 
+    else if (interval === 'weekly') {
+        if (daysOfWeek.length > 0) {
+            const currentDay = completedDate.getDay(); // 0-6
+            const sortedDays = [...daysOfWeek].sort((a, b) => a - b);
+            const nextDay = sortedDays.find(d => d > currentDay);
+            
+            if (nextDay !== undefined) {
+                const daysToAdd = nextDay - currentDay;
+                nextDueTime = completedDate.getTime() + (daysToAdd * 24 * 60 * 60 * 1000);
+            } else {
+                const firstDay = sortedDays[0];
+                const daysToAdd = (7 - currentDay) + firstDay;
+                nextDueTime = completedDate.getTime() + (daysToAdd * 24 * 60 * 60 * 1000);
+            }
+        } else {
+             nextDueTime = completedDate.getTime() + (7 * 24 * 60 * 60 * 1000);
+        }
+    }
+    else if (interval === 'monthly') {
+        if (daysOfMonth.length > 0) {
+            const currentDay = completedDate.getDate(); // 1-31
+            const sortedDays = [...daysOfMonth].sort((a, b) => a - b);
+            const nextDay = sortedDays.find(d => d > currentDay);
+            
+            const nextDateObj = new Date(completedDate);
+            if (nextDay !== undefined) {
+                // Same month, later date
+                nextDateObj.setDate(nextDay);
+            } else {
+                // Next month, first available date
+                // We need to be careful about month overflow (e.g. Jan 31 -> Feb 28/29)
+                // If we just add 1 month, it might skip.
+                // Strategy: Set to 1st of next month, then set date.
+                nextDateObj.setMonth(nextDateObj.getMonth() + 1);
+                nextDateObj.setDate(sortedDays[0]);
+            }
+            nextDueTime = nextDateObj.getTime();
+        } else {
+            nextDueTime = completedDate.getTime() + (30 * 24 * 60 * 60 * 1000);
+        }
+    }
+    else if (interval === 'yearly') {
+        if (monthsOfYear.length > 0) {
+            const currentMonth = completedDate.getMonth(); // 0-11
+            const sortedMonths = [...monthsOfYear].sort((a, b) => a - b);
+            const nextMonth = sortedMonths.find(m => m > currentMonth);
+            
+            const nextDateObj = new Date(completedDate);
+            if (nextMonth !== undefined) {
+                nextDateObj.setMonth(nextMonth);
+                nextDateObj.setDate(1); 
+            } else {
+                nextDateObj.setFullYear(nextDateObj.getFullYear() + 1);
+                nextDateObj.setMonth(sortedMonths[0]);
+                nextDateObj.setDate(1);
+            }
+            nextDueTime = nextDateObj.getTime();
+        } else {
+            nextDueTime = completedDate.getTime() + (365 * 24 * 60 * 60 * 1000);
+        }
+    }
+    
+    return new Date(nextDueTime);
+};
+
+export const calculateFirstDueDate = (
+    fromDate: Date,
+    interval: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    daysOfWeek: number[] = [],
+    daysOfMonth: number[] = [],
+    monthsOfYear: number[] = []
+): Date => {
+    let nextDueTime = fromDate.getTime();
+    
+    if (interval === 'daily') {
+        // Starts today
+        return fromDate;
+    } 
+    else if (interval === 'weekly') {
+        if (daysOfWeek.length > 0) {
+            const currentDay = fromDate.getDay(); // 0-6
+            const sortedDays = [...daysOfWeek].sort((a, b) => a - b);
+            // Find today or future day in same week
+            const nextDay = sortedDays.find(d => d >= currentDay);
+            
+            if (nextDay !== undefined) {
+                const daysToAdd = nextDay - currentDay;
+                nextDueTime = fromDate.getTime() + (daysToAdd * 24 * 60 * 60 * 1000);
+            } else {
+                // Wrap to next week
+                const firstDay = sortedDays[0];
+                const daysToAdd = (7 - currentDay) + firstDay;
+                nextDueTime = fromDate.getTime() + (daysToAdd * 24 * 60 * 60 * 1000);
+            }
+        }
+    }
+    else if (interval === 'monthly') {
+        if (daysOfMonth.length > 0) {
+            const currentDay = fromDate.getDate(); // 1-31
+            const sortedDays = [...daysOfMonth].sort((a, b) => a - b);
+            const nextDay = sortedDays.find(d => d >= currentDay);
+            
+            const nextDateObj = new Date(fromDate);
+            if (nextDay !== undefined) {
+                // Same month, today or later
+                nextDateObj.setDate(nextDay);
+            } else {
+                // Next month, first available date
+                nextDateObj.setMonth(nextDateObj.getMonth() + 1);
+                nextDateObj.setDate(sortedDays[0]);
+            }
+            nextDueTime = nextDateObj.getTime();
+        }
+    }
+    else if (interval === 'yearly') {
+        if (monthsOfYear.length > 0) {
+            const currentMonth = fromDate.getMonth(); // 0-11
+            const sortedMonths = [...monthsOfYear].sort((a, b) => a - b);
+            // Check if current month is in list, if so, check if day is passed? 
+            // Usually yearly is just "in this month". Let's assume 1st of month for simplicity or today if same month.
+            
+            const nextMonth = sortedMonths.find(m => m >= currentMonth);
+            
+            const nextDateObj = new Date(fromDate);
+            if (nextMonth !== undefined) {
+                if (nextMonth > currentMonth) {
+                    nextDateObj.setMonth(nextMonth);
+                    nextDateObj.setDate(1);
+                } else {
+                    // Same month, so it's today (or we could check days if we had them, but we don't for yearly)
+                    // Let's assume if it's the same month, it's due "this month", so "now" is fine.
+                }
+            } else {
+                // Next year
+                nextDateObj.setFullYear(nextDateObj.getFullYear() + 1);
+                nextDateObj.setMonth(sortedMonths[0]);
+                nextDateObj.setDate(1);
+            }
+            nextDueTime = nextDateObj.getTime();
+        }
+    }
+    
+    return new Date(nextDueTime);
+};
+
+export const getRoutineScheduleLabel = (
+    interval: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'daily',
+    daysOfWeek: number[] = [],
+    daysOfMonth: number[] = [],
+    monthsOfYear: number[] = [],
+    recurrenceDays: number = 1
+): string => {
+    if (interval === 'daily') {
+        return recurrenceDays > 1 ? `Every ${recurrenceDays} Days` : 'Every Day';
+    }
+    
+    if (interval === 'weekly') {
+        if (!daysOfWeek || daysOfWeek.length === 0) return `Every ${recurrenceDays > 1 ? recurrenceDays + ' ' : ''}Week${recurrenceDays > 1 ? 's' : ''}`;
+        
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const selectedDays = daysOfWeek
+            .sort((a, b) => a - b)
+            .map(d => dayNames[d]);
+            
+        return `Every ${selectedDays.join(', ')}`;
+    }
+    
+    if (interval === 'monthly') {
+        if (!daysOfMonth || daysOfMonth.length === 0) return `Every ${recurrenceDays > 1 ? recurrenceDays + ' ' : ''}Month${recurrenceDays > 1 ? 's' : ''}`;
+        
+        const selectedDates = daysOfMonth.sort((a, b) => a - b).map(d => {
+            const lastDigit = d % 10;
+            const suffix = (d >= 11 && d <= 13) ? 'th' : (lastDigit === 1 ? 'st' : (lastDigit === 2 ? 'nd' : (lastDigit === 3 ? 'rd' : 'th')));
+            return `${d}${suffix}`;
+        });
+        
+        return `Monthly on ${selectedDates.join(', ')}`;
+    }
+    
+    if (interval === 'yearly') {
+        if (!monthsOfYear || monthsOfYear.length === 0) return `Every ${recurrenceDays > 1 ? recurrenceDays + ' ' : ''}Year${recurrenceDays > 1 ? 's' : ''}`;
+        
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const selectedMonths = monthsOfYear
+            .sort((a, b) => a - b)
+            .map(m => monthNames[m]);
+            
+        return `Yearly in ${selectedMonths.join(', ')}`;
+    }
+    
+    return 'Routine';
 };

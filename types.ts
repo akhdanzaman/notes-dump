@@ -9,8 +9,8 @@ export enum ItemType {
   JOURNAL = 'JOURNAL'
 }
 
-export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine';
-export type FinanceType = 'expense' | 'income' | 'lending' | 'reimbursement' | 'transfer';
+export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving';
+export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving';
 
 export interface BudgetRule {
   id: string;
@@ -54,6 +54,13 @@ export interface ItemMeta {
   recurrenceDays?: number; // Number of days for routine items
   targetDay?: string; // e.g. "Monday", "Sunday"
   
+  // Routine Task specific
+  isRoutine?: boolean;
+  routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  routineDaysOfWeek?: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
+  routineDaysOfMonth?: number[]; // 1-31
+  routineMonthsOfYear?: number[]; // 0-11
+  
   // Finance specific
   amount?: number;
   currency?: string;
@@ -70,6 +77,14 @@ export interface ItemMeta {
   // Task Progress specific
   progress?: number; // 0-100
   progressNotes?: string;
+
+  // Savings specific
+  savedAmount?: number;
+  savingGoalId?: string;
+  dedicatedWalletId?: string;
+
+  // Routine History Tracking
+  lastGeneratedHistoryId?: string;
 }
 
 export interface BrainDumpItem {

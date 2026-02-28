@@ -2,8 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, FocusSubTab, NotesSubTab, MoneyView, SortOrder, ItemType } from './types';
+import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, FocusSubTab, NotesSubTab, MoneyView, SortOrder, ItemType, ShoppingCategory } from './types';
 import { useBrainDumpData } from './hooks/useBrainDumpData';
+import { getShoppingItems } from './utils/selectors';
 
 import InputBar from './components/InputBar';
 import SkillModal from './components/SkillModal';
@@ -19,6 +20,9 @@ import FocusView from './components/views/FocusView';
 import ShoppingView from './components/views/ShoppingView';
 import NotesView from './components/views/NotesView';
 import MoneyViewComponent from './components/views/MoneyView';
+import RoutineTaskModal from './components/RoutineTaskModal';
+import AddTaskModal from './components/AddTaskModal';
+import AddShoppingModal from './components/AddShoppingModal';
 import { Brain } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -27,13 +31,14 @@ const App: React.FC = () => {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       loading, error, pendingCount, syncStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData
+      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction
   } = useBrainDumpData();
 
   // --- UI State ---
   const [activeTab, setActiveTab] = useState<Tab>('summary');
   const [focusSubTab, setFocusSubTab] = useState<FocusSubTab>('tasks');
   const [notesSubTab, setNotesSubTab] = useState<NotesSubTab>('general');
+  const [shoppingSubTab, setShoppingSubTab] = useState<'shopping' | 'savings'>('shopping');
   const [showBalance, setShowBalance] = useState(false);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [themeNavDate, setThemeNavDate] = useState(new Date());
@@ -44,6 +49,9 @@ const App: React.FC = () => {
   // Modal States
   const [skillModal, setSkillModal] = useState<{ isOpen: boolean; mode: 'add' | 'edit'; skillId?: string; initialName?: string; initialTarget?: number }>({ isOpen: false, mode: 'add' });
   const [walletModal, setWalletModal] = useState<{ isOpen: boolean; mode: 'add' | 'edit'; walletId?: string; initialData?: Wallet }>({ isOpen: false, mode: 'add' });
+  const [routineModalOpen, setRoutineModalOpen] = useState(false);
+  const [addTaskModal, setAddTaskModal] = useState<{ isOpen: boolean; initialDate?: string }>({ isOpen: false });
+  const [addShoppingModal, setAddShoppingModal] = useState<{ isOpen: boolean; initialCategory?: ShoppingCategory }>({ isOpen: false });
   const [themeEditMode, setThemeEditMode] = useState(false);
   const [tempThemeContent, setTempThemeContent] = useState('');
   
@@ -282,6 +290,11 @@ const App: React.FC = () => {
     return Array.from(tags).sort();
   }, [items, activeTab, notesSubTab]);
 
+  const savingGoals = useMemo(() => {
+      const { savings } = getShoppingItems(items);
+      return savings;
+  }, [items]);
+
   return (
     <div className="min-h-screen bg-background text-primary font-sans transition-colors duration-300 selection:bg-indigo-500/30">
       
@@ -317,10 +330,13 @@ const App: React.FC = () => {
                           appSettings={appSettings}
                           handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
                           handleUpdateItem={handleUpdateItem}
+                          handleOpenAddRoutine={() => setRoutineModalOpen(true)}
+                          handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}
                           handleOpenEditSkill={handleOpenEditSkill} handleOpenAddSkill={handleOpenAddSkill}
                           setDeleteId={setDeleteId} setDeleteType={setDeleteType}
                           searchQuery={searchQuery} selectedTag={selectedTag}
                           wallets={wallets} budgetRules={budgetConfig.rules}
+                          handleResetRoutine={handleResetRoutine}
                       />
                   )}
 
@@ -329,6 +345,29 @@ const App: React.FC = () => {
                           items={items}
                           handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
                           handleUpdateItem={handleUpdateItem}
+                          budgetRules={budgetConfig.rules}
+                          handleResetRoutine={handleResetRoutine}
+                          handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
+                          shoppingSubTab={shoppingSubTab}
+                          setShoppingSubTab={setShoppingSubTab}
+                          wallets={wallets}
+                          onAddFunds={handleAddSavingTransaction}
+                          onCompleteGoal={(goal) => {
+                              if (confirm(`Complete goal "${goal.content}"? This will deduct ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(goal.meta.savedAmount || 0)} from your wallet.`)) {
+                                  if ((goal.meta.savedAmount || 0) > 0) {
+                                      handleAddTransaction(
+                                          `Completed Goal: ${goal.content}`,
+                                          goal.meta.savedAmount || 0,
+                                          'expense',
+                                          goal.meta.paymentMethod,
+                                          'wants', // Default budget category
+                                          undefined,
+                                          new Date().toISOString()
+                                      );
+                                  }
+                                  handleToggleStatus(goal.id);
+                              }
+                          }}
                       />
                   )}
 
@@ -358,6 +397,7 @@ const App: React.FC = () => {
                           filterCategory={filterCategory}
                           filterMinAmount={filterMinAmount} filterMaxAmount={filterMaxAmount}
                           selectedTag={selectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
+                          savingGoals={savingGoals}
                       />
                   )}
               </div>
@@ -386,6 +426,7 @@ const App: React.FC = () => {
                         filterMinAmount={filterMinAmount} setFilterMinAmount={setFilterMinAmount}
                         filterMaxAmount={filterMaxAmount} setFilterMaxAmount={setFilterMaxAmount}
                         uniqueTags={uniqueTags} wallets={wallets} budgetConfig={budgetConfig}
+                        savingGoals={savingGoals}
                     />
                 }
             />
@@ -456,6 +497,28 @@ const App: React.FC = () => {
         onSave={handleSaveWallet}
         initialData={walletModal.initialData}
         mode={walletModal.mode}
+      />
+
+      <RoutineTaskModal 
+        isOpen={routineModalOpen}
+        onClose={() => setRoutineModalOpen(false)}
+        onSave={handleAddRoutineTask}
+      />
+
+      <AddTaskModal 
+        isOpen={addTaskModal.isOpen}
+        onClose={() => setAddTaskModal({ isOpen: false })}
+        onSave={handleAddTask}
+        initialDate={addTaskModal.initialDate}
+      />
+
+      <AddShoppingModal
+        isOpen={addShoppingModal.isOpen}
+        onClose={() => setAddShoppingModal({ isOpen: false })}
+        onSave={handleAddShoppingItem}
+        initialCategory={addShoppingModal.initialCategory}
+        budgetRules={budgetConfig.rules}
+        wallets={wallets}
       />
 
       <ConfirmDialog 

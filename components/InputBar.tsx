@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, ReactNode } from 'react';
-import { SendHorizonal, TrendingDown, TrendingUp, Target, ShoppingCart, StickyNote, Sparkles } from 'lucide-react';
+import { SendHorizonal, TrendingDown, TrendingUp, Target, ShoppingCart, StickyNote, Sparkles, PiggyBank } from 'lucide-react';
 
 interface InputBarProps {
   onSend: (text: string) => void;
@@ -12,6 +12,7 @@ interface InputBarProps {
 const SUGGESTIONS = [
   { label: 'Expense', value: 'Expense:', icon: <TrendingDown className="w-3 h-3 text-red-400" /> },
   { label: 'Income', value: 'Income:', icon: <TrendingUp className="w-3 h-3 text-emerald-400" /> },
+  { label: 'Saving', value: 'Saving:', icon: <PiggyBank className="w-3 h-3 text-indigo-400" /> },
   { label: 'Focus', value: 'Focus:', icon: <Target className="w-3 h-3 text-blue-400" /> },
   { label: 'Shopping', value: 'shopping:', icon: <ShoppingCart className="w-3 h-3 text-purple-400" /> },
   { label: 'Notes', value: 'notes:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },

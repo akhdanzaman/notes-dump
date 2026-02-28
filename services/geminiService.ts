@@ -1,167 +1,121 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { ItemType, BrainDumpItem } from "../types";
+import { ItemType, BrainDumpItem } from '../types';
 
-const GEMINI_SETTINGS_KEY = "braindump_gemini_key";
+const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
 
 export const getGeminiKey = (): string => {
-  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.API_KEY || "";
+  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.API_KEY || '';
 };
 
 export const saveGeminiKey = (key: string) => {
   if (key) {
-    localStorage.setItem(GEMINI_SETTINGS_KEY, key);
+      localStorage.setItem(GEMINI_SETTINGS_KEY, key);
   } else {
-    localStorage.removeItem(GEMINI_SETTINGS_KEY);
+      localStorage.removeItem(GEMINI_SETTINGS_KEY);
   }
 };
 
 // Updated to Gemini 2.5 Flash Lite as requested
-const modelName = "gemini-2.5-flash";
+const modelName = 'gemini-2.5-flash';
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const DEFAULT_PROMPT = `Task: Split the input into distinct items. If the user lists multiple things, split them.
-Output MUST be a JSON ARRAY of objects.
+export const DEFAULT_PROMPT = `Task: Split input into distinct items. Output MUST be a JSON ARRAY of objects.
 
 TYPE (pick one):
 - TODO: work/career/productivity actions.
-- SHOPPING: planned purchases / life admin / chores / errands (future/plan).
-  IMPORTANT: “Buy X 50k” => SHOPPING (plan), NOT FINANCE.
+- SHOPPING: planned purchases/errands (future/plan). IMPORTANT: “Buy X 50k” => SHOPPING, not FINANCE. "Saving for X 100m" => SHOPPING with shoppingCategory "saving".
 - NOTE: ideas/knowledge/random thoughts.
 - EVENT: scheduled dates/times.
-- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement (transfer/topup/withdraw).
+- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement OR adding funds to a saving goal.
 - SKILL_LOG: time spent learning/practicing a skill.
-- JOURNAL: personal diary entries, feelings, daily recaps, “Dear Diary”, or explicit “Log to journal”.
+- JOURNAL: personal diary entries, feelings, daily recaps, "Dear Diary", or explicit "Log to journal".
 
-OUTPUT FORMAT (STRICT):
-Return ONLY a JSON ARRAY of objects.
-Each object must have:
-- type: TODO | SHOPPING | NOTE | EVENT | FINANCE | SKILL_LOG | JOURNAL
-- content: string
-- meta: object (optional fields as needed)
+COMMON EXTRACTION:
+- amount: NUMBER only (strip currency symbols + thousand separators).
+- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc).
+- tags: max 3, see TAG RULES below.
 
-COMMON EXTRACTION (apply to all items):
-- content: clean, concise item text
-  - for SKILL_LOG: content MUST be summary/key takeaways (see SKILL_LOG RULES)
-  - for JOURNAL: content is the diary text cleaned up (remove “journal:” prefix etc)
-- tags: max 3 (see TAG RULES)
-- amount: NUMBER only when money is present (strip currency symbols + thousand separators)
-- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc)
+DATE (STRICT):
+- Always resolve meta.dateISO = YYYY-MM-DD when any time reference exists.
+- Set meta.when if relative/weekday-based:
+  - today/hari ini => when="today"
+  - tomorrow/besok => when="tomorrow"
+  - yesterday/kemarin => when="yesterday" (Important for FINANCE/JOURNAL)
+  - weekday mentioned => NEXT occurrence after current date, when="next_weekday"
+  - explicit calendar date => when="specific_date"
+- FOR JOURNAL: Default date to TODAY if not specified. "Journal for yesterday..." => date=yesterday.
 
-DATE RESOLUTION (STRICT):
-- If ANY time reference exists (today/tomorrow/yesterday/weekday/date/time), you MUST set meta.date in YYYY-MM-DD.
-- Also set meta.when for relative/weekday-based references:
-  - today/hari ini => meta.when="today", meta.date = current date (YYYY-MM-DD)
-  - tomorrow/besok => meta.when="tomorrow", meta.date = current date + 1 day
-  - yesterday/kemarin => meta.when="yesterday", meta.date = current date - 1 day
-  - weekday mentioned => resolve to NEXT occurrence after current date, meta.when="next_weekday"
-  - explicit calendar date => meta.when="specific_date", meta.date = that date (YYYY-MM-DD)
-- If NO time reference exists:
-  - For JOURNAL: default meta.date = TODAY (YYYY-MM-DD)
-  - For others: omit meta.date entirely
-
-SHOPPING RULES:
-- meta.shoppingCategory ∈ {"urgent","routine","not_urgent"}
-- Set shoppingCategory="routine" ONLY IF repetition is explicit:
-  repetition keywords: "setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan"
-  OR meta.recurrenceDays is explicitly mentioned.
-- If weekday/date mentioned WITHOUT repetition words => NOT routine.
-  Treat it as one-time scheduled purchase: shoppingCategory="urgent" and include targetDay/date as applicable.
-- routine => include recurrenceDays (if stated) + targetDay (if stated)
-- urgent => include targetDay (if stated)
-- default => not_urgent
-- IMPORTANT: “Buy X 50k” is SHOPPING. FINANCE only if it already happened (“barusan beli”, “tadi bayar”, “sudah transfer”, etc).
+SHOPPING META:
+- shoppingCategory ∈ {urgent, routine, not_urgent, saving}
+- routine ONLY if repetition is explicit: "setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan" OR recurrenceDays given.
+- saving ONLY if the user is setting a goal to save money for something (e.g., "saving for a car 100 million").
+- If weekday/date mentioned WITHOUT repetition words => NOT routine, set urgent (one-time scheduled).
+- routine => include recurrenceDays (if stated) + targetDay (if stated).
+- urgent => include targetDay (if stated).
+- default => not_urgent.
 
 MONEY META (FINANCE + money-related SHOPPING):
-- meta.paymentMethod: EXACT text from user as Source Wallet/Method (e.g. "QRIS BNI", "Cash", "Gopay Later", "CC BCA", "BCA"). If not specified, "".
-- meta.budgetCategory ∈ {"needs","wants","savings","sedekah"}
-  - fixed: rent/electricity/internet/insurance/tuition
-  - needs: foods/transportation/groceries/health/stationary/breakfast/dinner
-  - wants: fancy dining/hobby/entertainment/subscription entertainment
+- paymentMethod: EXACT text from user (Source Wallet), else "".
+- budgetCategory ∈ {needs, wants, savings, sedekah}
+  - needs: rent/groceries/electricity/transport/health
+  - wants: dining/hobby/entertainment/subscription entertainment
   - savings: investment/emergency/debt repayment
-  - sedekah: charity/giving/donation/tips/helping others
+  - sedekah: charity/giving/donation
 
-FINANCE RULES:
-- meta.financeType ∈ {"expense","income","lending","reimbursement","transfer"}
-  - expense: money spent
-  - income: money received (salary, refund received, etc)
-  - lending: money given as a loan
-  - reimbursement: paid by you but will be repaid / reimbursed
-  - transfer: moving money between your own accounts/wallets (withdraw, deposit, topup, pindah buku, tarik tunai)
-- IF financeType="transfer":
-  - meta.paymentMethod = Source Wallet (EXACT text)
-  - meta.toWallet = Destination Wallet (e.g. "Cash", "Gopay", "OVO", "BCA", etc)
-  - amount must be extracted as NUMBER
+FINANCE META:
+- financeType ∈ {expense, income, transfer, saving}
+- transfer: moving money between own accounts (withdraw, deposit, topup, pindah buku).
+    - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.
+- saving: adding funds to an existing saving goal (e.g., "saved 500k for car from BCA").
+    - IF saving: set 'paymentMethod' = Source Wallet, 'financeType' = 'saving'.
 
-SKILL_LOG RULES:
-- CRITICAL: content MUST be summary/key takeaways, not the raw duration sentence
+SKILL_LOG META:
+- content MUST be summary/key takeaways (not raw duration sentence)
   Example: "Belajar React 1 jam tentang Hooks" => content "Belajar React tentang Hooks"
-- meta.durationMinutes: NUMBER (convert hours→minutes)
-- meta.skillName: infer from context; if known skills list is provided, match skillName to one of them when possible
-
-JOURNAL RULES:
-- JOURNAL is for feelings, daily recap, reflections, “Dear Diary”, or explicit logging.
-- Default meta.date = TODAY if not specified.
-- If “Journal kemarin …” or “yesterday …” => meta.when="yesterday" and meta.date resolved accordingly.
-- If the text includes both “I feel …” and action items, SPLIT:
-  - feelings/recap => JOURNAL
-  - action tasks => TODO/SHOPPING/EVENT etc
+- durationMinutes: NUMBER (convert hours→minutes)
+- skillName: infer from context; match known skills if provided
 
 TAG RULES (STRICT):
-- Priority: intent > context > object
-- Avoid generic tags like "people", "purchase" unless no better option exists
-- Prefer semantic tags: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education
-- Max 3 tags per item
+- Priority: intent > context > object.
+- Avoid generic tags: "people", "purchase" unless no better option.
+- Prefer semantic tags like: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.
+- Max 3 tags.
 
 Examples:
-- "Gave money to street musician 5000" => FINANCE expense, tags ["charity","donation"], budgetCategory "sedekah", amount 5000
-- "tip driver gojek 10000" => FINANCE expense, tags ["tip","transport"], amount 10000
-- "Breakfast 14000" => FINANCE expense, tags ["food"], amount 14000
-- "Kirim dompet" => TODO or NOTE depending on phrasing, tags ["assistance","delivery"]
-- "beli susu besok hari senin 12000" => SHOPPING urgent + targetDay Monday + amount 12000 + meta.date resolved
-- "beli susu setiap senin 12000" => SHOPPING routine + targetDay Monday + amount 12000 (+ recurrenceDays if stated)
+- "Gave money to street musician 5000" => tags ["charity","donation"], budgetCategory "sedekah"
+- "tip driver gojek 10000" => tags ["tip","transport"]
+- "Breakfast 14000" => tags ["food"]
+- "Kirim dompet" => tags ["assistance","delivery"]
+- "beli susu besok hari senin 12000" => SHOPPING urgent + targetDay Monday + amount 12000
+- "beli susu setiap senin 12000" => SHOPPING routine + targetDay Monday + amount 12000
 - "Tarik tunai BCA 500rb" => FINANCE transfer, paymentMethod "BCA", toWallet "Cash", amount 500000
 - "Topup Gopay dari Mandiri 100k" => FINANCE transfer, paymentMethod "Mandiri", toWallet "Gopay", amount 100000
-- "I felt really productive today because I finished the project" => JOURNAL, meta.when="today", meta.date=TODAY
-- "Journal kemarin: pergi ke pantai sama keluarga" => JOURNAL, content="Pergi ke pantai sama keluarga", meta.when="yesterday", meta.date=YESTERDAY
-
+- "I felt really productive today because I finished the project" => JOURNAL, date=TODAY
+- "Journal kemarin: pergi ke pantai sama keluarga" => JOURNAL, content="Pergi ke pantai sama keluarga", date=YESTERDAY
+- "Saving for a new car 100 million" => SHOPPING saving, content "new car", amount 100000000
+- "Saved 500k for car from BCA" => FINANCE saving, content "Saved for car", amount 500000, paymentMethod "BCA"
 `;
 
 // CHANGED: Added availableSkills to prompt context
-export const classifyText = async (
-  text: string,
-  existingTags: string[] = [],
-  availableSkills: string[] = [],
-  retryCount = 0,
-  customPrompt?: string,
-): Promise<Partial<BrainDumpItem>[]> => {
+export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string): Promise<Partial<BrainDumpItem>[]> => {
   const apiKey = getGeminiKey();
-
+  
   if (!apiKey) {
-    console.warn("No Gemini API Key found.");
-    return [
-      {
+      console.warn("No Gemini API Key found.");
+      return [{
         type: ItemType.NOTE,
         content: text,
-        meta: { tags: ["missing-api-key"] },
-      },
-    ];
+        meta: { tags: ['missing-api-key'] }
+      }];
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
   const currentDate = new Date().toISOString();
-  const currentDayName = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-  });
-  const tagsContext =
-    existingTags.length > 0
-      ? `Existing tags context: ${existingTags.join(", ")}`
-      : "";
-  const skillsContext =
-    availableSkills.length > 0
-      ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(", ")}`
-      : "";
+  const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const tagsContext = existingTags.length > 0 ? `Existing tags context: ${existingTags.join(', ')}` : '';
+  const skillsContext = availableSkills.length > 0 ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(', ')}` : '';
 
   const promptToUse = customPrompt || DEFAULT_PROMPT;
 
@@ -183,8 +137,7 @@ export const classifyText = async (
             properties: {
               type: {
                 type: Type.STRING,
-                description:
-                  "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG, JOURNAL",
+                description: "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG, JOURNAL",
               },
               content: {
                 type: Type.STRING,
@@ -201,86 +154,67 @@ export const classifyText = async (
                   targetDay: { type: Type.STRING },
                   amount: { type: Type.NUMBER },
                   financeType: { type: Type.STRING },
-                  paymentMethod: {
-                    type: Type.STRING,
-                    description: "Source Wallet / Method",
-                  },
-                  toWallet: {
-                    type: Type.STRING,
-                    description: "Destination Wallet for transfers",
-                  },
+                  paymentMethod: { type: Type.STRING, description: "Source Wallet / Method" },
+                  toWallet: { type: Type.STRING, description: "Destination Wallet for transfers" },
                   budgetCategory: { type: Type.STRING },
-                  durationMinutes: {
-                    type: Type.NUMBER,
-                    description: "Duration in minutes for SKILL_LOG",
-                  },
-                  skillName: {
-                    type: Type.STRING,
-                    description: "Name of the skill practiced",
-                  },
-                },
-              },
+                  durationMinutes: { type: Type.NUMBER, description: "Duration in minutes for SKILL_LOG" },
+                  skillName: { type: Type.STRING, description: "Name of the skill practiced" }
+                }
+              }
             },
             required: ["type", "content"],
-          },
+          }
         },
       },
     });
 
     const parsed = JSON.parse(response.text || "[]");
-
+    
     // Ensure result is an array
     const resultsArray = Array.isArray(parsed) ? parsed : [parsed];
 
     return resultsArray.map((result: any) => {
-      // Validate type matches our Enum
-      let matchedType = ItemType.NOTE;
-      const typeStr = result.type?.toUpperCase();
-      if (Object.values(ItemType).includes(typeStr as ItemType)) {
-        matchedType = typeStr as ItemType;
-      }
+        // Validate type matches our Enum
+        let matchedType = ItemType.NOTE;
+        const typeStr = result.type?.toUpperCase();
+        if (Object.values(ItemType).includes(typeStr as ItemType)) {
+          matchedType = typeStr as ItemType;
+        }
 
-      // Default shopping category if missing
-      if (matchedType === ItemType.SHOPPING && !result.meta?.shoppingCategory) {
-        if (!result.meta) result.meta = {};
-        result.meta.shoppingCategory = "not_urgent";
-      }
+        // Default shopping category if missing
+        if (matchedType === ItemType.SHOPPING && !result.meta?.shoppingCategory) {
+            if (!result.meta) result.meta = {};
+            result.meta.shoppingCategory = 'not_urgent';
+        }
 
-      // Default date for JOURNAL if missing is TODAY (created_at handles it mostly, but strict date helps sorting)
-      if (matchedType === ItemType.JOURNAL && !result.meta?.date) {
-        if (!result.meta) result.meta = {};
-        result.meta.date = new Date().toISOString();
-      }
+        // Default date for JOURNAL if missing is TODAY (created_at handles it mostly, but strict date helps sorting)
+        if (matchedType === ItemType.JOURNAL && !result.meta?.date) {
+             if (!result.meta) result.meta = {};
+             result.meta.date = new Date().toISOString();
+        }
 
-      return {
-        type: matchedType,
-        content: result.content || text,
-        meta: result.meta || { tags: [] },
-      };
+        return {
+          type: matchedType,
+          content: result.content || text,
+          meta: result.meta || { tags: [] }
+        };
     });
+
   } catch (error: any) {
     const status = error?.status || error?.response?.status;
-
+    
     if (retryCount < 2 && (status === 429 || status >= 500)) {
-      const delay = Math.pow(2, retryCount) * 1000;
-      await wait(delay);
-      return classifyText(
-        text,
-        existingTags,
-        availableSkills,
-        retryCount + 1,
-        customPrompt,
-      );
+        const delay = Math.pow(2, retryCount) * 1000;
+        await wait(delay);
+        return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt);
     }
 
     console.error("Gemini classification failed:", error);
-
-    return [
-      {
-        type: ItemType.NOTE,
-        content: text,
-        meta: { tags: ["uncategorized"] },
-      },
-    ];
+    
+    return [{
+      type: ItemType.NOTE,
+      content: text,
+      meta: { tags: ['uncategorized'] }
+    }];
   }
 };

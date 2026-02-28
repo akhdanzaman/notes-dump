@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Calculator, Plus, AlertCircle } from 'lucide-react';
-import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType } from '../../types';
+import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType, ItemType } from '../../types';
 import { getWalletStats, getFinanceItems } from '../../utils/selectors';
 import Card from '../Card';
 
@@ -34,7 +34,14 @@ interface MoneyViewProps {
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
-        newQuantity?: string
+        newQuantity?: string,
+        newIsRoutine?: boolean,
+        newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+        newRoutineDaysOfWeek?: number[],
+        newRoutineDaysOfMonth?: number[],
+        newRoutineMonthsOfYear?: number[],
+        newSavingGoalId?: string,
+        newDedicatedWalletId?: string
     ) => void;
     handleOpenEditWallet: (w: Wallet) => void;
     handleOpenAddWallet: () => void;
@@ -51,6 +58,7 @@ interface MoneyViewProps {
     selectedTag: string;
     searchQuery: string;
     sortOrder: SortOrder;
+    savingGoals: BrainDumpItem[];
 }
 
 const MoneyViewComponent: React.FC<MoneyViewProps> = ({
@@ -59,12 +67,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     handleDelete, handleUpdateItem, handleOpenEditWallet, handleOpenAddWallet,
     setDeleteId, setDeleteType, setIsSettingsOpen,
     filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
+    savingGoals,
 }) => {
     
     // Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const [budgetViewMode, setBudgetViewMode] = useState<'monthly' | 'yearly'>('monthly');
+    const [selectedGoalId, setSelectedGoalId] = useState<string>('all');
 
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -73,7 +83,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const activeIndex = tabs.indexOf(moneyView);
 
     // Calculate Data for All Views
-    const { walletStats, totalNetWorth, totalAssets, totalDebt } = getWalletStats(items, wallets);
+    const { walletStats, totalNetWorth, totalAssets, totalDebt, totalSavings } = getWalletStats(items, wallets);
+    
+    const displaySavings = useMemo(() => {
+        if (selectedGoalId === 'all') return totalSavings;
+        return items
+            .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId === selectedGoalId)
+            .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+    }, [items, totalSavings, selectedGoalId]);
     
     const { 
         list, totalIncome, totalExpense, projectedExpense, 
@@ -155,6 +172,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         hideMoney: appSettings.hideMoney,
         wallets,
         budgetRules: budgetConfig.rules,
+        savingGoals,
         noStrikethrough: true
     };
 
@@ -224,12 +242,32 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </div>
                             </div>
                             
-                            <div className="flex gap-4 pt-4 border-t border-black/10 dark:border-white/10">
+                            <div className="flex flex-wrap gap-4 pt-4 border-t border-black/10 dark:border-white/10">
                                     <div className="text-sm font-medium opacity-80">
                                     Assets: <span className="text-emerald-600 dark:text-emerald-500 font-bold">{showBalance ? fmt(totalAssets) : '••'}</span>
                                     </div>
                                     <div className="text-sm font-medium opacity-80">
                                     Debt: <span className="text-[#FF5722] font-bold">{showBalance ? fmt(totalDebt) : '••'}</span>
+                                    </div>
+                                    <div className="text-sm font-medium opacity-80 flex items-center gap-1">
+                                        Savings: 
+                                        {savingGoals.length > 1 ? (
+                                            <select 
+                                                value={selectedGoalId}
+                                                onChange={(e) => setSelectedGoalId(e.target.value)}
+                                                className="bg-transparent border-none p-0 font-bold text-[#6366F1] focus:outline-none cursor-pointer"
+                                            >
+                                                <option value="all" className="text-black dark:text-white">Total</option>
+                                                {savingGoals.map(g => (
+                                                    <option key={g.id} value={g.id} className="text-black dark:text-white">{g.content}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <span className="text-[#6366F1] font-bold">
+                                                {savingGoals.length === 1 ? savingGoals[0].content : 'Total'}
+                                            </span>
+                                        )}
+                                        <span className="text-[#6366F1] font-bold ml-1">{showBalance ? fmt(displaySavings || 0) : '••'}</span>
                                     </div>
                             </div>
                         </motion.div>
@@ -307,6 +345,22 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                         <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Debt Account</span>
                                                     </div>
                                                 )}
+                                                {(() => {
+                                                    const walletSavings = savingGoals
+                                                        .filter(g => g.meta.dedicatedWalletId === wallet.id)
+                                                        .reduce((sum, g) => sum + (g.meta.savedAmount || 0), 0);
+                                                    
+                                                    if (walletSavings > 0) {
+                                                        return (
+                                                            <div className="mt-1">
+                                                                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                                    Savings: {showBalance ? fmt(walletSavings) : '••••'}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </div>
                                             <div className="text-base font-bold shrink-0 mt-0.5 text-primary">
                                                 {showBalance ? fmt(wallet.currentBalance) : '••••••••'}

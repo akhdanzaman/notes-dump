@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BrainDumpItem, ItemType, BudgetConfig, Skill, Wallet, FinanceType, AppSettings, SyncStatus, DbSchema, ShoppingCategory } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage, SyncResult, mergeDbData } from '../services/githubService';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
+import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors';
 
 export const useBrainDumpData = () => {
     const [items, setItems] = useState<BrainDumpItem[]>([]);
@@ -34,39 +35,56 @@ export const useBrainDumpData = () => {
         const newHistoryItems: BrainDumpItem[] = [];
 
         const updatedItems = currentItems.map(item => {
-            if (item.type === ItemType.SHOPPING && 
-                item.meta.shoppingCategory === 'routine' && 
-                item.status === 'done' && 
-                item.completed_at) {
+            const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
+            const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
+
+            if ((isShoppingRoutine || isTodoRoutine) && item.status === 'done' && item.completed_at) {
                 
-                const completedTime = new Date(item.completed_at).getTime();
-                const recurrenceDays = item.meta.recurrenceDays || 7;
-                const nextDueTime = completedTime + (recurrenceDays * 24 * 60 * 60 * 1000);
+                const completedDate = new Date(item.completed_at);
+                let nextDueTime = completedDate.getTime();
+                
+                if (isShoppingRoutine) {
+                    // Shopping routines use the same logic now if they have these fields, 
+                    // otherwise fallback to recurrenceDays
+                    if (item.meta.routineInterval) {
+                        nextDueTime = calculateNextDueDate(
+                            completedDate,
+                            item.meta.routineInterval,
+                            item.meta.routineDaysOfWeek,
+                            item.meta.routineDaysOfMonth,
+                            item.meta.routineMonthsOfYear
+                        ).getTime();
+                    } else {
+                        const recurrenceDays = item.meta.recurrenceDays || 7;
+                        nextDueTime = completedDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000);
+                    }
+                } else if (isTodoRoutine) {
+                    nextDueTime = calculateNextDueDate(
+                        completedDate,
+                        item.meta.routineInterval || 'daily',
+                        item.meta.routineDaysOfWeek,
+                        item.meta.routineDaysOfMonth,
+                        item.meta.routineMonthsOfYear
+                    ).getTime();
+                }
                 
                 if (now.getTime() >= nextDueTime) {
-                    // Create a history record of the completed instance
-                    const historyItem: BrainDumpItem = {
-                        ...item,
-                        id: uuidv4(), // New ID for the history log
-                        meta: {
-                            ...item.meta,
-                            shoppingCategory: 'not_urgent', // Downgrade to normal completed item so it doesn't trigger recursion
-                        }
-                    };
-                    newHistoryItems.push(historyItem);
-
                     // Reset the main item to pending for the new cycle
                     return {
                         ...item,
                         status: 'pending' as const,
                         completed_at: undefined,
+                        meta: {
+                            ...item.meta,
+                            date: new Date(nextDueTime).toISOString() // Set due date to the calculated next due time
+                        }
                     };
                 }
             }
             return item;
         });
 
-        return [...updatedItems, ...newHistoryItems];
+        return updatedItems;
     };
 
     const saveAndSync = async (
@@ -351,7 +369,19 @@ export const useBrainDumpData = () => {
                 newDate = new Date().toISOString();
             }
 
-            const updatedItems = prevItems.map(item => 
+            const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
+            const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
+
+            let historyItemIdToCreate: string | undefined;
+            let historyItemIdToDelete: string | undefined;
+
+            if (newStatus === 'done' && (isShoppingRoutine || isTodoRoutine)) {
+                historyItemIdToCreate = uuidv4();
+            } else if (newStatus === 'pending' && (isShoppingRoutine || isTodoRoutine)) {
+                historyItemIdToDelete = targetItem.meta.lastGeneratedHistoryId;
+            }
+
+            let updatedItems = prevItems.map(item => 
               item.id === id ? { 
                   ...item, 
                   status: newStatus, 
@@ -360,16 +390,94 @@ export const useBrainDumpData = () => {
                       ...item.meta, 
                       progress: newProgress, 
                       progressNotes: newProgressNotes,
-                      date: newDate
+                      date: newDate,
+                      lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
                   }
               } : item
             );
+
+            // If unchecking, remove the history item that was generated
+            if (historyItemIdToDelete) {
+                updatedItems = updatedItems.filter(i => i.id !== historyItemIdToDelete);
+            }
+
+            // NEW LOGIC: If marking as done and it's a routine, create history item
+            if (historyItemIdToCreate) {
+                let newType = targetItem.type;
+                let newMeta = { ...targetItem.meta, isRoutine: false };
+
+                if (isShoppingRoutine) {
+                    newType = ItemType.FINANCE;
+                    newMeta = {
+                        ...newMeta,
+                        financeType: 'expense',
+                        shoppingCategory: undefined,
+                        amount: targetItem.meta.amount,
+                        budgetCategory: targetItem.meta.budgetCategory,
+                        paymentMethod: targetItem.meta.paymentMethod
+                    };
+                } else if (isTodoRoutine) {
+                    newType = ItemType.JOURNAL;
+                    newMeta = {
+                        ...newMeta,
+                        progress: undefined,
+                        progressNotes: undefined
+                    };
+                }
+
+                const historyItem: BrainDumpItem = {
+                    ...targetItem,
+                    id: historyItemIdToCreate,
+                    type: newType,
+                    status: 'done',
+                    created_at: completedAt || new Date().toISOString(),
+                    completed_at: completedAt,
+                    meta: {
+                        ...newMeta,
+                        date: completedAt || new Date().toISOString()
+                    }
+                };
+                
+                updatedItems.push(historyItem);
+            }
     
             saveAndSync(updatedItems);
             return updatedItems;
         });
     };
     
+    const handleResetRoutine = async (id: string) => {
+        setItems(prev => {
+            const item = prev.find(i => i.id === id);
+            
+            // Check if it's a routine (either explicit isRoutine OR shopping routine category)
+            const isShoppingRoutine = item?.type === ItemType.SHOPPING && item?.meta.shoppingCategory === 'routine';
+            const isTodoRoutine = item?.type === ItemType.TODO && item?.meta.isRoutine;
+            
+            if (!item || (!isTodoRoutine && !isShoppingRoutine) || item.status !== 'done') return prev;
+
+            // Reset the main item to pending
+            // We don't advance the date here because the user wants to do it "again" (presumably now or soon)
+            // The date will be updated when they complete it again (if logic exists) or stays as is.
+            const updatedItem: BrainDumpItem = {
+                ...item,
+                status: 'pending',
+                completed_at: undefined,
+                meta: {
+                    ...item.meta,
+                    progress: 0,
+                    progressNotes: undefined,
+                    lastGeneratedHistoryId: undefined // Clear it so it doesn't get deleted later
+                }
+            };
+
+            const updatedList = prev.map(i => i.id === id ? updatedItem : i);
+            
+            saveAndSync(updatedList);
+            return updatedList;
+        });
+    };
+
     const handleDelete = async (id: string) => {
         setItems(prev => {
             const updatedItems = prev.filter(i => i.id !== id);
@@ -378,6 +486,49 @@ export const useBrainDumpData = () => {
         });
     };
     
+    const handleAddRoutineTask = async (
+        content: string,
+        interval: 'daily' | 'weekly' | 'monthly' | 'yearly', 
+        daysOfWeek?: number[],
+        daysOfMonth?: number[],
+        monthsOfYear?: number[],
+        customDate?: string,
+        recurrenceDays?: number // Legacy/Fallback
+    ) => {
+        const now = new Date();
+        let initialNextDue = customDate ? new Date(customDate) : calculateFirstDueDate(
+            now, 
+            interval, 
+            daysOfWeek, 
+            daysOfMonth, 
+            monthsOfYear
+        );
+        
+        const newItem: BrainDumpItem = {
+            id: uuidv4(),
+            type: ItemType.TODO,
+            content,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            meta: {
+                tags: ['routine'],
+                isRoutine: true,
+                routineInterval: interval,
+                routineDaysOfWeek: daysOfWeek,
+                routineDaysOfMonth: daysOfMonth,
+                routineMonthsOfYear: monthsOfYear,
+                recurrenceDays: recurrenceDays || 1, // Keep for backward compatibility
+                date: initialNextDue.toISOString()
+            }
+        };
+
+        setItems(prev => {
+            const updated = [newItem, ...prev];
+            saveAndSync(updated);
+            return updated;
+        });
+    };
+
     const handleUpdateItem = async (
         id: string, 
         newContent: string, 
@@ -394,7 +545,14 @@ export const useBrainDumpData = () => {
         newProgressNotes?: string,
         newShoppingCategory?: ShoppingCategory,
         newRecurrenceDays?: number,
-        newQuantity?: string
+        newQuantity?: string,
+        newIsRoutine?: boolean,
+        newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+        newRoutineDaysOfWeek?: number[],
+        newRoutineDaysOfMonth?: number[],
+        newRoutineMonthsOfYear?: number[],
+        newSavingGoalId?: string,
+        newDedicatedWalletId?: string
     ) => {
           setItems(prev => {
               const updatedItems = prev.map(item => {
@@ -414,6 +572,32 @@ export const useBrainDumpData = () => {
                       }
                   }
 
+                  let finalDate = newDate || item.meta.date;
+
+                  // Recalculate Date if Routine Config Changed AND Date wasn't manually set
+                  if (!newDate && (newIsRoutine || item.meta.isRoutine)) {
+                      // If routine params changed
+                      const interval = newRoutineInterval || item.meta.routineInterval || 'daily';
+                      const daysOfWeek = newRoutineDaysOfWeek || item.meta.routineDaysOfWeek;
+                      const daysOfMonth = newRoutineDaysOfMonth || item.meta.routineDaysOfMonth;
+                      const monthsOfYear = newRoutineMonthsOfYear || item.meta.routineMonthsOfYear;
+                      
+                      // Only recalculate if we are pending. If done, the next reset will handle it.
+                      if (item.status === 'pending') {
+                          // Check if any schedule param actually changed
+                          const scheduleChanged = 
+                              interval !== item.meta.routineInterval ||
+                              JSON.stringify(daysOfWeek) !== JSON.stringify(item.meta.routineDaysOfWeek) ||
+                              JSON.stringify(daysOfMonth) !== JSON.stringify(item.meta.routineDaysOfMonth) ||
+                              JSON.stringify(monthsOfYear) !== JSON.stringify(item.meta.routineMonthsOfYear);
+                          
+                          if (scheduleChanged) {
+                              const nextDue = calculateFirstDueDate(new Date(), interval, daysOfWeek, daysOfMonth, monthsOfYear);
+                              finalDate = nextDue.toISOString();
+                          }
+                      }
+                  }
+
                   return { 
                     ...item, 
                     content: newContent,
@@ -423,7 +607,7 @@ export const useBrainDumpData = () => {
                         ...item.meta, 
                         tags: newTags, 
                         amount: newAmount, 
-                        date: newDate,
+                        date: finalDate,
                         paymentMethod: newPaymentMethod,
                         budgetCategory: newBudgetCategory,
                         durationMinutes: newDuration,
@@ -434,13 +618,140 @@ export const useBrainDumpData = () => {
                         progressNotes: newProgressNotes,
                         shoppingCategory: newShoppingCategory || item.meta.shoppingCategory,
                         recurrenceDays: newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays,
-                        quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity
+                        quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
+                        isRoutine: newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine,
+                        routineInterval: newRoutineInterval || item.meta.routineInterval,
+                        routineDaysOfWeek: newRoutineDaysOfWeek || item.meta.routineDaysOfWeek,
+                        routineDaysOfMonth: newRoutineDaysOfMonth || item.meta.routineDaysOfMonth,
+                        routineMonthsOfYear: newRoutineMonthsOfYear || item.meta.routineMonthsOfYear,
+                        savingGoalId: newSavingGoalId || item.meta.savingGoalId,
+                        dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId
                     } 
                   };
               });
               saveAndSync(updatedItems);
               return updatedItems;
           });
+    };
+
+    const handleAddTask = async (content: string, date: string) => {
+        const newItem: BrainDumpItem = {
+            id: uuidv4(),
+            type: ItemType.TODO,
+            content,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            meta: {
+                tags: [],
+                date: date
+            }
+        };
+
+        setItems(prev => {
+            const updated = [newItem, ...prev];
+            saveAndSync(updated);
+            return updated;
+        });
+    };
+
+    const handleAddShoppingItem = async (
+        content: string, 
+        category: ShoppingCategory,
+        quantity?: string,
+        amount?: number,
+        budgetCategory?: string,
+        date?: string,
+        routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+        routineDaysOfWeek?: number[],
+        routineDaysOfMonth?: number[],
+        routineMonthsOfYear?: number[],
+        dedicatedWalletId?: string
+    ) => {
+        const newItem: BrainDumpItem = {
+            id: uuidv4(),
+            type: ItemType.SHOPPING,
+            content,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            meta: {
+                tags: [],
+                shoppingCategory: category,
+                quantity,
+                amount,
+                budgetCategory,
+                date: date || new Date().toISOString(),
+                isRoutine: category === 'routine',
+                routineInterval: category === 'routine' ? routineInterval : undefined,
+                routineDaysOfWeek: category === 'routine' ? routineDaysOfWeek : undefined,
+                routineDaysOfMonth: category === 'routine' ? routineDaysOfMonth : undefined,
+                routineMonthsOfYear: category === 'routine' ? routineMonthsOfYear : undefined,
+                dedicatedWalletId: category === 'saving' ? dedicatedWalletId : undefined
+            }
+        };
+
+        setItems(prev => {
+            const updated = [newItem, ...prev];
+            saveAndSync(updated);
+            return updated;
+        });
+    };
+
+    const handleAddSavingTransaction = (amount: number, walletId: string, date: string, goalId: string, goalName: string) => {
+        const newFinanceItem: BrainDumpItem = {
+            id: uuidv4(),
+            type: ItemType.FINANCE,
+            content: `Saved for: ${goalName}`,
+            status: 'done',
+            created_at: new Date().toISOString(),
+            completed_at: new Date(date).toISOString(),
+            meta: {
+                tags: [],
+                amount,
+                paymentMethod: walletId,
+                financeType: 'saving',
+                savingGoalId: goalId
+            }
+        };
+
+        setItems(prev => {
+            const updated = [newFinanceItem, ...prev];
+            saveAndSync(updated);
+            return updated;
+        });
+    };
+
+    const handleAddTransaction = async (
+        content: string,
+        amount: number,
+        type: FinanceType,
+        paymentMethod?: string,
+        budgetCategory?: string,
+        toWallet?: string,
+        date?: string
+    ) => {
+        const newItem: BrainDumpItem = {
+            id: uuidv4(),
+            type: ItemType.FINANCE,
+            content,
+            status: 'done',
+            created_at: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+            meta: {
+                tags: [],
+                amount,
+                financeType: type,
+                paymentMethod,
+                budgetCategory,
+                toWallet,
+                date: date || new Date().toISOString()
+            }
+        };
+
+        setItems(prev => {
+            const updated = [newItem, ...prev];
+            saveAndSync(updated);
+            return updated;
+        });
     };
 
     return {
@@ -466,6 +777,12 @@ export const useBrainDumpData = () => {
         handleSend,
         handleToggleStatus,
         handleDelete,
-        handleUpdateItem
+        handleUpdateItem,
+        handleAddRoutineTask,
+        handleAddTask,
+        handleAddShoppingItem,
+        handleAddSavingTransaction,
+        handleResetRoutine,
+        handleAddTransaction
     };
 };

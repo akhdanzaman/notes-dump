@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Search, X, Filter, Tag, CalendarDays, Wallet as WalletIcon, ArrowDownUp, DollarSign, ArrowUpDown, CheckCircle2, PieChart } from 'lucide-react';
-import { Tab, NotesSubTab, MoneyView, Wallet, SortOrder, BudgetConfig } from '../types';
+import { Tab, NotesSubTab, MoneyView, Wallet, SortOrder, BudgetConfig, BrainDumpItem } from '../types';
 
 interface FloatingSearchProps {
     activeTab: Tab;
@@ -38,6 +38,7 @@ interface FloatingSearchProps {
     uniqueTags: string[];
     wallets: Wallet[];
     budgetConfig: BudgetConfig;
+    savingGoals?: BrainDumpItem[];
 }
 
 const FloatingSearch: React.FC<FloatingSearchProps> = ({
@@ -53,7 +54,8 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
     filterCategory, setFilterCategory,
     filterMinAmount, setFilterMinAmount,
     filterMaxAmount, setFilterMaxAmount,
-    uniqueTags, wallets, budgetConfig
+    uniqueTags, wallets, budgetConfig,
+    savingGoals = []
 }) => {
 
     // Show filters only for tabs that need them
@@ -170,20 +172,22 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                     {isMoney && isTransactions && (
                         <div className="pt-4 border-t border-border/30 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Wallet */}
-                            <div>
-                                <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide px-1">Wallet</label>
-                                <select 
-                                    value={filterWallet}
-                                    onChange={(e) => setFilterWallet(e.target.value)}
-                                    className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
-                                >
-                                    <option value="">All Wallets</option>
-                                    <option value="undefined">Undefined</option>
-                                    {wallets.map(w => (
-                                        <option key={w.id} value={w.name}>{w.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            {filterTransactionType !== 'saving' && (
+                                <div>
+                                    <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide px-1">Wallet</label>
+                                    <select 
+                                        value={filterWallet}
+                                        onChange={(e) => setFilterWallet(e.target.value)}
+                                        className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
+                                    >
+                                        <option value="">All Wallets</option>
+                                        <option value="undefined">Undefined</option>
+                                        {wallets.map(w => (
+                                            <option key={w.id} value={w.name}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Category */}
                             <div>
@@ -213,11 +217,27 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                     <option value="expense">Expense</option>
                                     <option value="income">Income</option>
                                     <option value="transfer">Transfer</option>
-                                    <option value="lending">Lending</option>
-                                    <option value="reimbursement">Reimbursement</option>
+                                    <option value="saving">Saving</option>
                                     <option value="shopping">Shopping</option>
                                 </select>
                             </div>
+
+                            {/* Saving Goal Filter */}
+                            {filterTransactionType === 'saving' && (
+                                <div>
+                                    <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide px-1">Saving Goal</label>
+                                    <select 
+                                        value={filterCategory}
+                                        onChange={(e) => setFilterCategory(e.target.value)}
+                                        className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
+                                    >
+                                        <option value="">All Goals</option>
+                                        {savingGoals.map(g => (
+                                            <option key={g.id} value={g.id}>{g.content}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Amount Range */}
                             <div>

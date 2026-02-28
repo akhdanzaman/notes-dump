@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw } from 'lucide-react';
+
+import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
 
 interface CardProps {
   item: BrainDumpItem;
@@ -22,8 +24,15 @@ interface CardProps {
     newProgressNotes?: string,
     newShoppingCategory?: any,
     newRecurrenceDays?: number,
-    newQuantity?: string
+    newQuantity?: string,
+    newIsRoutine?: boolean,
+    newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    newRoutineDaysOfWeek?: number[],
+    newRoutineDaysOfMonth?: number[],
+    newRoutineMonthsOfYear?: number[],
+    newSavingGoalId?: string
   ) => void;
+  onResetRoutine?: (id: string) => void;
   readonly?: boolean;
   skillName?: string;
   categoryName?: string;
@@ -37,6 +46,7 @@ interface CardProps {
   skills?: Skill[];
   wallets?: Wallet[];
   budgetRules?: BudgetRule[];
+  savingGoals?: BrainDumpItem[];
 }
 
 const Card: React.FC<CardProps> = ({ 
@@ -44,6 +54,7 @@ const Card: React.FC<CardProps> = ({
     onToggleStatus, 
     onDelete, 
     onUpdate,
+    onResetRoutine,
     readonly = false, 
     skillName, 
     categoryName, 
@@ -54,7 +65,8 @@ const Card: React.FC<CardProps> = ({
     className = '',
     skills = [],
     wallets = [],
-    budgetRules = []
+    budgetRules = [],
+    savingGoals = []
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [showFullText, setShowFullText] = useState(false);
@@ -73,6 +85,14 @@ const Card: React.FC<CardProps> = ({
   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
   const [editDuration, setEditDuration] = useState<string>(meta.durationMinutes ? meta.durationMinutes.toString() : '');
   const [editSkillId, setEditSkillId] = useState(meta.skillId || '');
+  const [editSavingGoalId, setEditSavingGoalId] = useState(meta.savingGoalId || '');
+
+  // Routine
+  const [editRecurrenceDays, setEditRecurrenceDays] = useState<string>(meta.recurrenceDays ? meta.recurrenceDays.toString() : '1');
+  const [editRoutineInterval, setEditRoutineInterval] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>(meta.routineInterval || 'daily');
+  const [editRoutineDaysOfWeek, setEditRoutineDaysOfWeek] = useState<number[]>(meta.routineDaysOfWeek || []);
+  const [editRoutineDaysOfMonth, setEditRoutineDaysOfMonth] = useState<number[]>(meta.routineDaysOfMonth || []);
+  const [editRoutineMonthsOfYear, setEditRoutineMonthsOfYear] = useState<number[]>(meta.routineMonthsOfYear || []);
 
   // Progress
   const [editProgress, setEditProgress] = useState(meta.progress || 0);
@@ -89,8 +109,15 @@ const Card: React.FC<CardProps> = ({
     setEditBudgetCategory(meta.budgetCategory || '');
     setEditDuration(meta.durationMinutes ? meta.durationMinutes.toString() : '');
     setEditSkillId(meta.skillId || '');
+    setEditSavingGoalId(meta.savingGoalId || '');
     setEditProgress(meta.progress || 0);
     setEditProgressNotes(meta.progressNotes || '');
+    
+    setEditRecurrenceDays(meta.recurrenceDays ? meta.recurrenceDays.toString() : '1');
+    setEditRoutineInterval(meta.routineInterval || 'daily');
+    setEditRoutineDaysOfWeek(meta.routineDaysOfWeek || []);
+    setEditRoutineDaysOfMonth(meta.routineDaysOfMonth || []);
+    setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
     
     // Date Init
     const isoDate = (meta.date && meta.date !== 'null') ? meta.date : (completed_at || created_at);
@@ -122,6 +149,9 @@ const Card: React.FC<CardProps> = ({
       const finalBudgetCategory = editBudgetCategory === '' ? undefined : editBudgetCategory;
       const finalSkillId = editSkillId === '' ? undefined : editSkillId;
       const finalToWallet = editFinanceType === 'transfer' && editToWallet ? editToWallet : undefined;
+      const finalSavingGoalId = editFinanceType === 'saving' && editSavingGoalId ? editSavingGoalId : undefined;
+
+      const numRecurrence = editRecurrenceDays ? parseInt(editRecurrenceDays) : undefined;
 
       onUpdate(
           item.id,
@@ -135,11 +165,18 @@ const Card: React.FC<CardProps> = ({
           finalSkillId,
           finalToWallet,
           editFinanceType,
-          editProgress,
-          editProgressNotes,
+          showProgress ? editProgress : undefined,
+          showProgress ? editProgressNotes : undefined,
           item.meta.shoppingCategory,
-          item.meta.recurrenceDays,
-          item.meta.quantity
+          numRecurrence,
+          item.meta.quantity,
+          // Routine params
+          item.meta.isRoutine,
+          editRoutineInterval,
+          editRoutineDaysOfWeek,
+          editRoutineDaysOfMonth,
+          editRoutineMonthsOfYear,
+          finalSavingGoalId
       );
       
       if (enableCollapse) {
@@ -172,9 +209,10 @@ const Card: React.FC<CardProps> = ({
       case ItemType.JOURNAL:
         return { textColor: 'text-fuchsia-400', bg: 'bg-surface' };
       case ItemType.FINANCE:
-        const isIncome = meta?.financeType === 'income' || meta?.financeType === 'reimbursement';
+        const isIncome = meta?.financeType === 'income';
         const isTransfer = meta?.financeType === 'transfer';
-        const iconColor = isTransfer ? 'text-blue-400' : (isIncome ? 'text-emerald-500' : 'text-red-500');
+        const isSaving = meta?.financeType === 'saving';
+        const iconColor = isTransfer ? 'text-blue-400' : (isIncome ? 'text-emerald-500' : (isSaving ? 'text-[#6366F1]' : 'text-red-500'));
         
         return {
             textColor: iconColor,
@@ -196,16 +234,52 @@ const Card: React.FC<CardProps> = ({
   const rawDate = readonly && completed_at ? completed_at : (meta?.date && meta.date !== 'null' ? meta.date : created_at);
   const isCreatedDate = !meta?.date || meta.date === 'null';
 
+  // Routine next cycle logic
+  let nextDueText = null;
+  let isWaitingForNextCycle = false;
+  if (meta.isRoutine && status === 'done' && completed_at) {
+     const doneDate = new Date(completed_at);
+     
+     const nextDate = calculateNextDueDate(
+         doneDate,
+         meta.routineInterval || 'daily',
+         meta.routineDaysOfWeek,
+         meta.routineDaysOfMonth,
+         meta.routineMonthsOfYear
+     );
+     
+     isWaitingForNextCycle = true;
+     nextDueText = `Next: ${nextDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
+  }
+
   if (rawDate) {
     const dateObj = new Date(rawDate);
     if (!isNaN(dateObj.getTime())) {
+      const now = new Date();
+      const isToday = dateObj.toDateString() === now.toDateString();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      const isTomorrow = dateObj.toDateString() === tomorrow.toDateString();
+
       const hasTimeComponent = rawDate.includes('T') && !rawDate.endsWith('00:00:00.000Z');
-      const datePart = dateObj.toLocaleDateString(undefined, { 
+      
+      let datePart = '';
+      if (isToday) datePart = 'Today';
+      else if (isTomorrow) datePart = 'Tomorrow';
+      else datePart = dateObj.toLocaleDateString(undefined, { 
         weekday: 'short', 
         month: 'short', 
         day: 'numeric' 
       });
-      if (hasTimeComponent || isCreatedDate) {
+
+      if (meta.isRoutine) {
+          // For routines, show next due date if done, otherwise show current due date
+          if (isWaitingForNextCycle && nextDueText) {
+              displayDate = nextDueText;
+          } else {
+              displayDate = datePart;
+          }
+      } else if (hasTimeComponent || isCreatedDate) {
         displayDate = `${datePart} • ${dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute:'2-digit' })}`;
       } else {
         displayDate = datePart;
@@ -214,11 +288,11 @@ const Card: React.FC<CardProps> = ({
   }
 
   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
-  const displayAmount = formatMoney(meta?.amount);
+  const displayAmount = type !== ItemType.TODO ? formatMoney(meta?.amount) : null;
 
   // Field visibilities
   const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL || type === ItemType.SKILL_LOG;
-  const showAmountField = type === ItemType.FINANCE || type === ItemType.SHOPPING || type === ItemType.TODO;
+  const showAmountField = type === ItemType.FINANCE || type === ItemType.SHOPPING;
   const showDateField = type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING || type === ItemType.FINANCE || type === ItemType.SKILL_LOG || type === ItemType.JOURNAL;
   const showFinanceExtras = type === ItemType.FINANCE || (type === ItemType.SHOPPING && showAmountField);
   const showSkillExtras = type === ItemType.SKILL_LOG;
@@ -255,9 +329,20 @@ const Card: React.FC<CardProps> = ({
   // Compact Transaction Mode
   const isTransaction = type === ItemType.FINANCE || (type === ItemType.SHOPPING && meta.amount);
 
+  const isRoutineDone = meta.isRoutine && status === 'done';
+  
+  // Check if routine is pending but scheduled for future (temporarily done)
+  const now = new Date();
+  const itemDate = meta.date ? new Date(meta.date) : null;
+  const isFutureRoutine = meta.isRoutine && status === 'pending' && itemDate && itemDate > now;
+  
+  const isRoutineDarkened = isRoutineDone || isFutureRoutine;
+  // History items (isRoutine: false but was routine) should be normal
+  const bgClass = isRoutineDarkened ? 'bg-surface/50 opacity-75 dark:bg-zinc-900/50' : style.bg;
+
   return (
     <div 
-        className={`${style.bg} rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        className={`${bgClass} rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
@@ -279,12 +364,39 @@ const Card: React.FC<CardProps> = ({
                     <Circle className={`w-4 h-4 ${style.textColor}`} />
                 )}
               </button>
-              <span className={`text-sm font-semibold capitalize ${shouldStrike ? 'text-muted' : style.textColor}`}>
-                  {categoryName || type.toLowerCase()}
-              </span>
+              <div className="flex items-center gap-1.5">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${shouldStrike ? 'text-muted' : style.textColor}`}>
+                      {categoryName || type.toLowerCase()}
+                  </span>
+                  {meta.isRoutine && (
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+                          <Repeat className="w-2.5 h-2.5 text-indigo-500" />
+                          <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-tight">
+                              {getRoutineScheduleLabel(
+                                  meta.routineInterval,
+                                  meta.routineDaysOfWeek,
+                                  meta.routineDaysOfMonth,
+                                  meta.routineMonthsOfYear,
+                                  meta.recurrenceDays
+                              )}
+                          </span>
+                      </div>
+                  )}
+                  {isRoutineDone && onResetRoutine && (
+                      <button
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              onResetRoutine(item.id);
+                          }}
+                          className="ml-1 px-2 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
+                      >
+                          <RotateCcw className="w-2.5 h-2.5" /> Reset
+                      </button>
+                  )}
+              </div>
           </div>
           
-          <div className="text-sm font-medium text-muted">
+          <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
               {displayDate ? displayDate.split('•')[0].trim() : ''}
           </div>
         </div>
@@ -300,10 +412,15 @@ const Card: React.FC<CardProps> = ({
                     {/* Extra Metadata Row */}
                     {(meta.paymentMethod || meta.toWallet || validTags.length > 0 || skillName) && (
                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
-                            {(meta.paymentMethod || meta.toWallet) && (
+                            {(meta.paymentMethod || meta.toWallet || (meta.financeType === 'saving' && meta.savingGoalId)) && (
                                 <span className="flex items-center gap-0.5">
                                     <WalletIcon className="w-3 h-3" />
-                                    {meta.paymentMethod}
+                                    {meta.financeType === 'saving' && meta.savingGoalId ? (() => {
+                                        const goal = savingGoals.find(g => g.id === meta.savingGoalId);
+                                        const walletId = goal?.meta.dedicatedWalletId;
+                                        const wallet = wallets.find(w => w.id === walletId);
+                                        return wallet ? wallet.name : (meta.paymentMethod || 'Linked to Goal');
+                                    })() : meta.paymentMethod}
                                     {meta.financeType === 'transfer' && meta.toWallet && (
                                         <>
                                             <ArrowRight className="w-3 h-3" />
@@ -322,10 +439,10 @@ const Card: React.FC<CardProps> = ({
                     )}
                     
                     {/* Progress Bar */}
-                    {showProgress && meta.progress && meta.progress > 0 && meta.progress < 100 && (
+                    {showProgress && meta.progress !== undefined && meta.progress < 100 && (
                         <div className="mt-2 w-full max-w-[200px]">
                             <div className="h-1 w-full bg-muted/20 rounded-full overflow-hidden">
-                                <div className="h-full bg-acc-todo" style={{ width: `${meta.progress}%` }}></div>
+                                <div className="h-full bg-acc-todo" style={{ width: `${Math.max(2, meta.progress)}%` }}></div>
                             </div>
                         </div>
                     )}
@@ -356,12 +473,12 @@ const Card: React.FC<CardProps> = ({
                <div className="grid grid-cols-2 gap-3 mb-3">
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
-                       <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1">
-                           {(['expense', 'income', 'transfer'] as FinanceType[]).map(ft => (
+                       <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1 overflow-x-auto no-scrollbar">
+                           {(['expense', 'income', 'transfer', 'saving'] as FinanceType[]).map(ft => (
                                <button
                                    key={ft}
                                    onClick={() => setEditFinanceType(ft)}
-                                   className={`flex-1 py-1 text-[10px] font-medium rounded-xl capitalize ${editFinanceType === ft ? 'bg-indigo-600 text-white' : 'text-muted hover:text-primary'}`}
+                                   className={`flex-1 py-1 px-2 text-[10px] font-medium rounded-xl capitalize whitespace-nowrap ${editFinanceType === ft ? 'bg-[#6366F1] text-white' : 'text-muted hover:text-primary'}`}
                                >
                                    {ft}
                                </button>
@@ -387,7 +504,7 @@ const Card: React.FC<CardProps> = ({
                    )}
 
                    {/* Date */}
-                   {showDateField && (
+                   {showDateField && !meta.isRoutine && (
                         <div className={(!showAmountField && !showSkillExtras) ? "col-span-2" : ""}>
                             <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Date</label>
                             <div className="relative">
@@ -400,6 +517,110 @@ const Card: React.FC<CardProps> = ({
                                 />
                             </div>
                         </div>
+                   )}
+
+                   {/* Routine Settings */}
+                   {meta.isRoutine && (
+                       <div className="col-span-2 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl p-4 mt-2">
+                           <div className="flex items-center justify-between mb-4">
+                               <div className="flex items-center gap-2">
+                                   <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                                       <Repeat className="w-4 h-4 text-indigo-500" />
+                                   </div>
+                                   <div>
+                                       <h4 className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Routine Schedule</h4>
+                                       <p className="text-[10px] text-muted font-medium">Configure how this task repeats</p>
+                                   </div>
+                               </div>
+                           </div>
+                           
+                           <div className="space-y-4">
+                               {/* Interval Selector */}
+                               <div className="grid grid-cols-4 gap-2 bg-background/50 p-1.5 rounded-2xl border border-border/50">
+                                   {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
+                                       <button
+                                           key={int}
+                                           onClick={() => setEditRoutineInterval(int)}
+                                           className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${editRoutineInterval === int ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:text-primary hover:bg-background'}`}
+                                       >
+                                           {int}
+                                       </button>
+                                   ))}
+                               </div>
+
+                               {/* Weekly Selector */}
+                               {editRoutineInterval === 'weekly' && (
+                                   <div>
+                                       <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Days</label>
+                                       <div className="flex gap-1">
+                                           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, idx) => (
+                                               <button
+                                                   key={idx}
+                                                   onClick={() => {
+                                                       if (editRoutineDaysOfWeek.includes(idx)) {
+                                                           setEditRoutineDaysOfWeek(editRoutineDaysOfWeek.filter(d => d !== idx));
+                                                       } else {
+                                                           setEditRoutineDaysOfWeek([...editRoutineDaysOfWeek, idx]);
+                                                       }
+                                                   }}
+                                                   className={`flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all border ${editRoutineDaysOfWeek.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                               >
+                                                   {label}
+                                               </button>
+                                           ))}
+                                       </div>
+                                   </div>
+                               )}
+
+                               {/* Monthly Selector */}
+                               {editRoutineInterval === 'monthly' && (
+                                   <div>
+                                       <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Dates</label>
+                                       <div className="grid grid-cols-7 gap-1">
+                                           {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                                               <button
+                                                   key={day}
+                                                   onClick={() => {
+                                                       if (editRoutineDaysOfMonth.includes(day)) {
+                                                           setEditRoutineDaysOfMonth(editRoutineDaysOfMonth.filter(d => d !== day));
+                                                       } else {
+                                                           setEditRoutineDaysOfMonth([...editRoutineDaysOfMonth, day]);
+                                                       }
+                                                   }}
+                                                   className={`w-full aspect-square rounded-md flex items-center justify-center text-[9px] font-bold transition-all border ${editRoutineDaysOfMonth.includes(day) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                               >
+                                                   {day}
+                                               </button>
+                                           ))}
+                                       </div>
+                                   </div>
+                               )}
+
+                               {/* Yearly Selector */}
+                               {editRoutineInterval === 'yearly' && (
+                                   <div>
+                                       <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Months</label>
+                                       <div className="grid grid-cols-4 gap-1.5">
+                                           {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((label, idx) => (
+                                               <button
+                                                   key={idx}
+                                                   onClick={() => {
+                                                       if (editRoutineMonthsOfYear.includes(idx)) {
+                                                           setEditRoutineMonthsOfYear(editRoutineMonthsOfYear.filter(m => m !== idx));
+                                                       } else {
+                                                           setEditRoutineMonthsOfYear([...editRoutineMonthsOfYear, idx]);
+                                                       }
+                                                   }}
+                                                   className={`py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${editRoutineMonthsOfYear.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                               >
+                                                   {label}
+                                               </button>
+                                           ))}
+                                       </div>
+                                   </div>
+                               )}
+                           </div>
+                       </div>
                    )}
 
                    {/* Skill Fields */}
@@ -434,19 +655,21 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Extras (Payment/Budget) */}
                    {showFinanceExtras && (
                        <>
-                           <div>
-                               <label className="text-[10px] uppercase text-muted font-bold mb-1 block">
-                                   {editFinanceType === 'transfer' ? 'From' : 'Method'}
-                               </label>
-                               <select
-                                   className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
-                                   value={editPaymentMethod}
-                                   onChange={(e) => setEditPaymentMethod(e.target.value)}
-                               >
-                                   <option value="">Undefined</option>
-                                   {getWalletOptions()}
-                               </select>
-                           </div>
+                           {editFinanceType !== 'saving' && (
+                               <div>
+                                   <label className="text-[10px] uppercase text-muted font-bold mb-1 block">
+                                       {editFinanceType === 'transfer' ? 'From' : 'Method'}
+                                   </label>
+                                   <select
+                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                       value={editPaymentMethod}
+                                       onChange={(e) => setEditPaymentMethod(e.target.value)}
+                                   >
+                                       <option value="">Undefined</option>
+                                       {getWalletOptions()}
+                                   </select>
+                               </div>
+                           )}
 
                            {editFinanceType === 'transfer' ? (
                                <div>
@@ -460,6 +683,32 @@ const Card: React.FC<CardProps> = ({
                                        {getWalletOptions()}
                                    </select>
                                </div>
+                           ) : editFinanceType === 'saving' ? (
+                               <>
+                                   <div>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Saving Goal</label>
+                                       <select
+                                           className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           value={editSavingGoalId}
+                                           onChange={(e) => setEditSavingGoalId(e.target.value)}
+                                       >
+                                           <option value="">Select Goal...</option>
+                                           {savingGoals.map(g => <option key={g.id} value={g.id}>{g.content}</option>)}
+                                       </select>
+                                   </div>
+                                   <div>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Wallet</label>
+                                       <div className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-muted flex items-center gap-2">
+                                           <WalletIcon className="w-3 h-3" />
+                                           {(() => {
+                                               const goal = savingGoals.find(g => g.id === editSavingGoalId);
+                                               const walletId = goal?.meta.dedicatedWalletId;
+                                               const wallet = wallets.find(w => w.id === walletId);
+                                               return wallet ? wallet.name : (editPaymentMethod || 'Linked to Goal');
+                                           })()}
+                                       </div>
+                                   </div>
+                               </>
                            ) : (
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget</label>

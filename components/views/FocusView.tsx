@@ -33,8 +33,15 @@ interface FocusViewProps {
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
-        newQuantity?: string
+        newQuantity?: string,
+        newIsRoutine?: boolean,
+        newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+        newRoutineDaysOfWeek?: number[],
+        newRoutineDaysOfMonth?: number[],
+        newRoutineMonthsOfYear?: number[]
     ) => void;
+    handleOpenAddRoutine: () => void;
+    handleOpenAddTask: (initialDate?: string) => void;
     handleOpenEditSkill: (id: string, name: string, target?: number) => void;
     handleOpenAddSkill: () => void;
     setDeleteId: (id: string) => void;
@@ -46,20 +53,21 @@ interface FocusViewProps {
     // Context
     wallets: Wallet[];
     budgetRules: BudgetRule[];
+    handleResetRoutine: (id: string) => void;
 }
 
 const FocusView: React.FC<FocusViewProps> = ({
     items, skills, focusSubTab, setFocusSubTab,
     focusDate, setFocusDate,
     appSettings, handleToggleStatus, handleDelete, handleUpdateItem,
-    handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
+    handleOpenAddRoutine, handleOpenAddTask, handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
     searchQuery, selectedTag,
-    wallets, budgetRules
+    wallets, budgetRules, handleResetRoutine
 }) => {
     
     // Data Preparation
     const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
-    const { today, tomorrow, later } = pendingGroups;
+    const { today, tomorrow, later, routines } = pendingGroups;
     const { stats, logs } = getSkillItems(items, skills);
 
     const changeMonth = (offset: number) => {
@@ -77,7 +85,8 @@ const FocusView: React.FC<FocusViewProps> = ({
         hideMoney: appSettings.hideMoney,
         skills,
         wallets,
-        budgetRules
+        budgetRules,
+        onResetRoutine: handleResetRoutine
     };
 
     return (
@@ -121,10 +130,12 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 <>
                                     <div className="flex items-center justify-between mb-6">
                                         <h1 className="text-3xl font-bold tracking-tight">Focus</h1>
-                                        <div className="flex items-center bg-black/5 rounded-full p-1">
-                                            <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronLeft className="w-4 h-4" /></button>
-                                            <span className="px-2 text-sm font-bold">{focusDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
-                                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronRight className="w-4 h-4" /></button>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center bg-black/5 rounded-full p-1">
+                                                <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronLeft className="w-4 h-4" /></button>
+                                                <span className="px-2 text-sm font-bold">{focusDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
+                                                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronRight className="w-4 h-4" /></button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex gap-4">
@@ -168,47 +179,98 @@ const FocusView: React.FC<FocusViewProps> = ({
                     {focusSubTab === 'tasks' && (
                         <div className="space-y-6">
                             {/* Pending Tasks Sections */}
-                            {(today.length > 0 || tomorrow.length > 0 || later.length > 0) ? (
+                            {(today.length > 0 || tomorrow.length > 0 || later.length > 0 || (routines && routines.length > 0)) ? (
                                 <div className="space-y-6">
-                                    {today.length > 0 && (
                                     <section>
-                                        <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider mb-3 pl-1">Today / Overdue</h3>
-                                        <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        <div className="flex items-center justify-between mb-3 pl-1">
+                                            <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider">Today / Overdue</h3>
+                                            <button 
+                                                onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} 
+                                                className="p-1 hover:bg-acc-todo/10 text-acc-todo rounded-md transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        {today.length > 0 ? (
+                                            <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        ) : (
+                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                        )}
                                     </section>
-                                    )}
-                                    {tomorrow.length > 0 && (
+
                                     <section>
-                                        <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider mb-3 pl-1">Tomorrow</h3>
-                                        <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        <div className="flex items-center justify-between mb-3 pl-1">
+                                            <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
+                                                <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Routines
+                                            </h3>
+                                            <button 
+                                                onClick={handleOpenAddRoutine}
+                                                className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        {routines && routines.length > 0 ? (
+                                            <div className="space-y-3">{routines.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        ) : (
+                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                        )}
                                     </section>
-                                    )}
-                                    {later.length > 0 && (
+
                                     <section>
-                                        <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1">Later</h3>
-                                        <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        <div className="flex items-center justify-between mb-3 pl-1">
+                                            <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider">Tomorrow</h3>
+                                            <button 
+                                                onClick={() => handleOpenAddTask(new Date(Date.now() + 86400000).toISOString().split('T')[0])} 
+                                                className="p-1 hover:bg-acc-event/10 text-acc-event rounded-md transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        {tomorrow.length > 0 ? (
+                                            <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        ) : (
+                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                        )}
                                     </section>
-                                    )}
+
+                                    <section>
+                                        <div className="flex items-center justify-between mb-3 pl-1">
+                                            <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
+                                            <button 
+                                                onClick={() => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0])} 
+                                                className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        {later.length > 0 ? (
+                                            <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        ) : (
+                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                        )}
+                                    </section>
                                 </div>
                             ) : (
                                 summary.todo === 0 && (
-                                    <div className="text-center text-muted py-8 border border-dashed border-border rounded-[24px]">
-                                        No pending tasks for this month.
+                                    <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                                        <p className="text-muted font-medium">No pending tasks for this month.</p>
+                                        <div className="flex gap-3">
+                                            <button 
+                                                onClick={() => handleOpenAddTask()} 
+                                                className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" /> Add Task
+                                            </button>
+                                            <button 
+                                                onClick={handleOpenAddRoutine}
+                                                className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" /> Add Routine
+                                            </button>
+                                        </div>
                                     </div>
                                 )
-                            )}
-
-                            {/* History Section */}
-                            {doneList.length > 0 && (
-                                <div className="pt-6">
-                                    <h3 className="text-sm font-bold text-emerald-500 uppercase tracking-wider mb-3 pl-1 flex items-center gap-2">
-                                        <History className="w-4 h-4" /> History ({doneList.length})
-                                    </h3>
-                                    <div className="space-y-3 opacity-75">
-                                        {doneList.map(item => (
-                                            <Card key={item.id} item={item} {...cardProps} defaultCollapsed={true} />
-                                        ))}
-                                    </div>
-                                </div>
                             )}
                         </div>
                     )}
