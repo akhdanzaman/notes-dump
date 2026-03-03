@@ -392,6 +392,24 @@ const App: React.FC = () => {
                           handleUpdateItem={handleUpdateItem}
                           selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
                           setActiveTab={setActiveTab}
+                          onAddItem={(type) => {
+                              if (type === ItemType.NOTE) setAddNoteModalOpen(true);
+                              // For Journal and Skill Logs, we might need specific modals or just use the generic note modal with pre-filled type
+                              // Currently AddNoteModal handles basic notes. 
+                              // If we want to add specific types, we might need to update AddNoteModal or use different ones.
+                              // For now, let's open AddNoteModal and we can enhance it later if needed, 
+                              // OR we can just use the InputBar logic if we want to keep it simple.
+                              // Actually, let's use the existing modals if available.
+                              if (type === ItemType.SKILL_LOG) {
+                                  // We don't have a dedicated "Add Skill Log" modal that is separate from the main input flow usually.
+                                  // But we can open the AddTaskModal or similar if adapted.
+                                  // For now, let's just open the AddNoteModal which is generic enough.
+                                  setAddNoteModalOpen(true); 
+                              }
+                              if (type === ItemType.JOURNAL) {
+                                  setAddNoteModalOpen(true);
+                              }
+                          }}
                       />
                   )}
 
@@ -412,6 +430,9 @@ const App: React.FC = () => {
                           selectedTag={selectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
                           savingGoals={savingGoals}
                           setActiveTab={setActiveTab}
+                          onAddItem={(type) => {
+                              if (type === ItemType.FINANCE) setAddExpenseModalOpen(true);
+                          }}
                       />
                   )}
               </div>

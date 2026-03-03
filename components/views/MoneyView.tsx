@@ -62,6 +62,7 @@ interface MoneyViewProps {
     sortOrder: SortOrder;
     savingGoals: BrainDumpItem[];
     setActiveTab: (tab: Tab) => void;
+    onAddItem: (type: ItemType) => void;
 }
 
 const MoneyViewComponent: React.FC<MoneyViewProps> = ({
@@ -70,7 +71,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     handleDelete, handleUpdateItem, handleOpenEditWallet, handleOpenAddWallet,
     setDeleteId, setDeleteType, setIsSettingsOpen,
     filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
-    savingGoals, setActiveTab
+    savingGoals, setActiveTab, onAddItem
 }) => {
     
     // Main Tab Swipe Logic
@@ -260,7 +261,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                         </div>
                         
-                        <div className="flex flex-wrap gap-4 pt-4 border-t border-black/10 dark:border-white/10">
+                        <div className="flex flex-wrap gap-4 pt-4 border-t border-black/10 dark:border-white/10 items-center justify-between">
+                            <div className="flex gap-4">
                                 <div className="text-sm font-medium opacity-80">
                                 Assets: <span className="text-emerald-600 dark:text-emerald-500 font-bold">{showBalance ? fmt(totalAssets) : '••'}</span>
                                 </div>
@@ -270,6 +272,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 <div className="text-sm font-medium opacity-80 flex items-center gap-1">
                                     Savings: <span className="text-[#6366F1] font-bold">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
                                 </div>
+                            </div>
+                            <button 
+                                onClick={() => onAddItem(ItemType.FINANCE)}
+                                className="w-10 h-10 flex items-center justify-center bg-black dark:bg-zinc-800 text-white dark:text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all"
+                            >
+                                <Plus className="w-6 h-6" />
+                            </button>
                         </div>
                     </div>
                 </motion.div>

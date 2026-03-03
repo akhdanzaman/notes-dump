@@ -54,6 +54,26 @@ const COLOR_PRESETS = [
     { name: 'Gray', class: 'bg-gray-500' },
 ];
 
+const ClockDisplay = () => {
+    const [time, setTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div className="flex flex-col items-center text-center">
+            <div className="text-2xl font-bold text-primary font-mono tracking-wider">
+                {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+            </div>
+            <div className="text-xs font-medium text-muted uppercase tracking-wider mt-1">
+                {time.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            </div>
+        </div>
+    );
+};
+
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
     isOpen, onClose, syncStatus, onSyncClick, onRefreshClick, 
     appSettings, setAppSettings, error, pendingCount,
@@ -319,9 +339,20 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         <div className="space-y-6">
                                             {/* Status Card */}
                                             <div className="bg-background border border-border rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-xs font-semibold text-muted uppercase tracking-wider">System Status</span>
-                                                    {renderSyncStatus()}
+                                                <div className="flex items-center gap-6">
+                                                    {pendingCount > 0 && (
+                                                        <div className="flex flex-col gap-1 border-r border-border pr-6">
+                                                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Pending</span>
+                                                            <div className="flex items-center gap-1.5 text-primary">
+                                                                <CloudOff className="w-3.5 h-3.5 text-amber-500" />
+                                                                <span className="font-bold text-sm">{pendingCount}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[10px] font-bold text-muted uppercase tracking-wider">System Status</span>
+                                                        {renderSyncStatus()}
+                                                    </div>
                                                 </div>
                                                 <div className="flex gap-2">
                                                     {(syncStatus === 'error' || syncStatus === 'local') && (
@@ -354,10 +385,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     <span className="font-medium text-primary">{localAppSettings.theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
                                                 </button>
                                                 
-                                                {/* Placeholder for another quick action or stats */}
-                                                <div className="flex flex-col items-center justify-center gap-2 p-6 bg-background border border-border rounded-2xl shadow-sm opacity-60">
-                                                    <div className="text-2xl font-bold text-primary">{pendingCount}</div>
-                                                    <span className="text-xs font-medium text-muted uppercase tracking-wider">Pending Changes</span>
+                                                {/* Clock & Date */}
+                                                <div className="flex flex-col items-center justify-center gap-2 p-6 bg-background border border-border rounded-2xl shadow-sm">
+                                                    <ClockDisplay />
                                                 </div>
                                             </div>
 

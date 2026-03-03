@@ -519,7 +519,13 @@ export const getFinanceItems = (
     
     // Filter by Date (Month or Year)
     allTransactions = allTransactions.filter(i => {
-        const dateStr = i.completed_at || i.created_at;
+        // For Finance items, prioritize the user-set date (meta.date).
+        // For Shopping/Todos (implicit expenses), prioritize the completion date.
+        // Fallback to creation date.
+        const dateStr = (i.type === ItemType.FINANCE) 
+            ? (i.meta.date || i.created_at) 
+            : (i.completed_at || i.created_at);
+            
         if (!dateStr) return false;
         
         const d = new Date(dateStr);
@@ -637,7 +643,10 @@ export const getFinanceItems = (
     // FULL PERIOD DATA (Unfiltered by wallet/amount/type) for Budget Context
     let fullPeriodTransactions = [...finance, ...implicitExpenses];
     fullPeriodTransactions = fullPeriodTransactions.filter(i => {
-        const dateStr = i.completed_at || i.created_at;
+        const dateStr = (i.type === ItemType.FINANCE) 
+            ? (i.meta.date || i.created_at) 
+            : (i.completed_at || i.created_at);
+
         if (!dateStr) return false;
         const d = new Date(dateStr);
         if (viewMode === 'yearly') {

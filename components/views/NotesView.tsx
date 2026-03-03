@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { NotebookPen, BookText, Library } from 'lucide-react';
+import { NotebookPen, BookText, Library, Plus } from 'lucide-react';
 import { BrainDumpItem, Skill, NotesSubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab } from '../../types';
 import { getNoteItems, getJournalGroups } from '../../utils/selectors';
 import Card from '../Card';
@@ -39,11 +39,12 @@ interface NotesViewProps {
     searchQuery: string;
     sortOrder: SortOrder;
     setActiveTab: (tab: Tab) => void;
+    onAddItem: (type: ItemType) => void;
 }
 
 const NotesView: React.FC<NotesViewProps> = ({
     items, skills, notesSubTab, setNotesSubTab, appSettings,
-    handleDelete, handleUpdateItem, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab
+    handleDelete, handleUpdateItem, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab, onAddItem
 }) => {
     
     // Data Preparation
@@ -174,7 +175,7 @@ const NotesView: React.FC<NotesViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
+                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y relative"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -218,6 +219,18 @@ const NotesView: React.FC<NotesViewProps> = ({
                         </motion.div>
                     </AnimatePresence>
                 </div>
+
+                {/* Quick Add Button */}
+                <button 
+                    onClick={() => onAddItem(
+                        notesSubTab === 'skills' ? ItemType.SKILL_LOG : 
+                        notesSubTab === 'journal' ? ItemType.JOURNAL : 
+                        ItemType.NOTE
+                    )}
+                    className="absolute bottom-6 right-6 w-10 h-10 flex items-center justify-center bg-black dark:bg-zinc-800 text-white dark:text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all z-10"
+                >
+                    <Plus className="w-6 h-6" />
+                </button>
             </motion.div>
 
             {/* Lower Section */}
