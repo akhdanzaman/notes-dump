@@ -212,6 +212,12 @@ export const clearGithubConfig = () => {
     lastSnapshot = null;
 };
 
+export const forceHydrateGithub = () => {
+    isHydrated = true;
+    currentCloudSha = undefined;
+    lastSnapshot = null;
+};
+
 export const isUsingLocalStorage = () => !getGithubConfig();
 
 // --- Core Logic ---
@@ -231,7 +237,7 @@ const validateSchema = (data: any): DbSchema => {
     };
 };
 
-export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string }> => {
+export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; isNew: boolean }> => {
   const config = getGithubConfig();
 
   if (!config) {
@@ -241,7 +247,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
     isHydrated = true;
     lastSnapshot = JSON.stringify(data);
     
-    return { data, sha: 'local-sha' };
+    return { data, sha: 'local-sha', isNew: false };
   }
 
   const octokit = new Octokit({ auth: config.token });
@@ -273,7 +279,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
     currentCloudSha = sha;
     lastSnapshot = jsonString; 
 
-    return { data, sha };
+    return { data, sha, isNew: false };
 
   } catch (error: any) {
     console.warn("GitHub fetch failed:", error.status, error.message);
@@ -286,7 +292,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
             isHydrated = true; 
             lastSnapshot = local;
             
-            return { data, sha: error.status === 404 ? '' : 'local-sha' };
+            return { data, sha: error.status === 404 ? '' : 'local-sha', isNew: error.status === 404 };
         }
     }
 
@@ -298,7 +304,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
       currentCloudSha = undefined;
       lastSnapshot = JSON.stringify(emptyDb);
 
-      return { data: emptyDb, sha: '' };
+      return { data: emptyDb, sha: '', isNew: true };
     }
 
     throw error;

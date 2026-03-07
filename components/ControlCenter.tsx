@@ -9,8 +9,8 @@ import {
     MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft
 } from 'lucide-react';
 import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
-import { getGithubConfig, saveGithubConfig, clearGithubConfig, GithubConfig } from '../services/githubService';
-import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig } from '../services/spreadsheetService';
+import { getGithubConfig, saveGithubConfig, clearGithubConfig, forceHydrateGithub, GithubConfig } from '../services/githubService';
+import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, forceHydrateSpreadsheet, SpreadsheetConfig } from '../services/spreadsheetService';
 import { getGeminiKey, saveGeminiKey, DEFAULT_PROMPT } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
 import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, getGoogleSession, clearGoogleSession, GoogleProfile, AppConfig } from '../services/googleProfileService';
@@ -133,7 +133,28 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
     const [isSyncingProfile, setIsSyncingProfile] = useState(false);
 
+    const handleGoogleLoginSuccessRef = useRef<((tokens: any) => Promise<void>) | null>(null);
+
     // --- Initialization ---
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            // Validate origin is from AI Studio preview or localhost
+            const origin = event.origin;
+            if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+                return;
+            }
+            if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.tokens) {
+                if (handleGoogleLoginSuccessRef.current) {
+                    handleGoogleLoginSuccessRef.current(event.data.tokens);
+                }
+            } else if (event.data?.type === 'OAUTH_AUTH_ERROR') {
+                alert(`Authentication failed: ${event.data.error}`);
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
     useEffect(() => {
         if (isOpen) {
             // Check for Google Auth redirect
@@ -260,6 +281,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         }
     };
 
+    useEffect(() => {
+        handleGoogleLoginSuccessRef.current = handleGoogleLoginSuccess;
+    }, [handleGoogleLoginSuccess]);
+
     const handleGoogleLogin = async () => {
         try {
             const origin = window.location.origin;
@@ -267,8 +292,21 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             if (!response.ok) throw new Error('Failed to get auth URL');
             const { url } = await response.json();
             
-            // Redirect to Google Auth
-            window.location.href = url;
+            // Open popup
+            const width = 500;
+            const height = 600;
+            const left = window.screenX + (window.outerWidth - width) / 2;
+            const top = window.screenY + (window.outerHeight - height) / 2;
+            
+            const authWindow = window.open(
+                url,
+                'google_oauth',
+                `width=${width},height=${height},left=${left},top=${top},popup=1`
+            );
+
+            if (!authWindow) {
+                alert('Please allow popups for this site to connect your account.');
+            }
         } catch (error) {
             console.error('Login error:', error);
             alert('Failed to start login process.');
@@ -420,9 +458,12 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             }, 1500);
             alert(`Connected to ${provider} and merged data.`);
         } else if (choice === 'overwrite_cloud') {
+            if (provider === 'spreadsheet') forceHydrateSpreadsheet();
+            if (provider === 'github') forceHydrateGithub();
             onSyncClick();
             alert(`Connected to ${provider} and overwrote cloud data.`);
         } else if (choice === 'overwrite_local') {
+            localStorage.removeItem('braindump_db');
             if (onRefreshClick) onRefreshClick();
             alert(`Connected to ${provider} and overwrote local data.`);
         }

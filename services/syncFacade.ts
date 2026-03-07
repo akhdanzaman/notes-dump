@@ -30,29 +30,33 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
   for (const provider of providers) {
     try {
       if (provider === 'spreadsheet') {
-        const { data, sha, reconciled } = await fetchSpreadsheetDb(true); // skip local storage update
+        const { data, sha, reconciled, isNew } = await fetchSpreadsheetDb(true); // skip local storage update
         if (reconciled) hasChanges = true;
         if (!mergedData) {
-          mergedData = data;
+          mergedData = isNew && baseData ? baseData : data;
           finalSha = sha;
+          if (isNew && baseData) hasChanges = true; // We populated empty spreadsheet with local data
         } else {
           const prevData = mergedData;
-          mergedData = mergeDbData(mergedData, data, baseData);
+          mergedData = mergeDbData(mergedData, isNew && baseData ? baseData : data, baseData);
           if (JSON.stringify(mergedData.data) !== JSON.stringify(prevData.data)) {
             hasChanges = true;
           }
+          if (isNew) hasChanges = true;
         }
       } else if (provider === 'github') {
-        const { data, sha } = await fetchGithubDb(true); // skip local storage update
+        const { data, sha, isNew } = await fetchGithubDb(true); // skip local storage update
         if (!mergedData) {
-          mergedData = data;
+          mergedData = isNew && baseData ? baseData : data;
           finalSha = sha;
+          if (isNew && baseData) hasChanges = true;
         } else {
           const prevData = mergedData;
-          mergedData = mergeDbData(mergedData, data, baseData);
+          mergedData = mergeDbData(mergedData, isNew && baseData ? baseData : data, baseData);
           if (JSON.stringify(mergedData.data) !== JSON.stringify(prevData.data)) {
             hasChanges = true;
           }
+          if (isNew) hasChanges = true;
         }
       }
     } catch (e) {

@@ -179,7 +179,7 @@ export const useBrainDumpData = () => {
           setFetchStatus('syncing');
           setError(null);
   
-          const { data } = await fetchDb();
+          const { data, hasChanges } = await fetchDb();
           if (data) {
             if (Array.isArray(data.data)) {
               const migratedData = data.data.map(item => ({
@@ -196,8 +196,8 @@ export const useBrainDumpData = () => {
               const checkedData = checkRoutineResets(migratedData);
               setItems(checkedData);
               
-              if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-                 await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings);
+              if (JSON.stringify(checkedData) !== JSON.stringify(data.data) || hasChanges) {
+                 await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings, data.chatHistory);
               }
             }
             

@@ -99,6 +99,14 @@ const App: React.FC = () => {
       handleUpdateChatHistory([]);
   };
 
+  // --- Initialization Effect ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('google_auth')) {
+      setIsControlCenterOpen(true);
+    }
+  }, []);
+
   // --- Theme Effect ---
   useEffect(() => {
     // Apply theme to HTML element

@@ -66,6 +66,11 @@ export const clearSpreadsheetConfig = () => {
   lastSnapshot = null;
 };
 
+export const forceHydrateSpreadsheet = () => {
+  isHydrated = true;
+  lastSnapshot = null;
+};
+
 const refreshAccessToken = async (config: SpreadsheetConfig): Promise<SpreadsheetConfig> => {
   if (!config.refreshToken) throw new Error("No refresh token available");
   
@@ -123,7 +128,7 @@ const validateSchema = (data: any): DbSchema => {
   };
 };
 
-export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
+export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean; isNew: boolean }> => {
   const config = getSpreadsheetConfig();
   if (!config) throw new Error("No spreadsheet config");
 
@@ -154,7 +159,7 @@ export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ da
         const data = validateSchema(JSON.parse(local));
         isHydrated = true;
         lastSnapshot = local;
-        return { data, sha: 'local-sha', reconciled: false };
+        return { data, sha: 'local-sha', reconciled: false, isNew: false };
       }
     }
     throw error;
@@ -198,7 +203,9 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     // Find system sheet data
     const systemSheet = batchData.valueRanges?.find((r: any) => r.range && (r.range.includes(SYSTEM_SHEET_NAME) || r.range.includes('Sheet1')));
     
-    let dbData = processFetchResponse(systemSheet, skipLocalStorage).data;
+    const processed = processFetchResponse(systemSheet, skipLocalStorage);
+    let dbData = processed.data;
+    let isNew = processed.isNew;
     let reconciled = false;
 
     // Reconcile with user-facing sheets
@@ -207,6 +214,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
         if (JSON.stringify(reconciledDb.data) !== JSON.stringify(dbData.data)) {
             dbData = reconciledDb;
             reconciled = true;
+            isNew = false; // If we reconciled data from other sheets, it's not new
         }
     }
 
@@ -219,13 +227,15 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     isHydrated = true;
     lastSnapshot = jsonString;
     
-    return { data: dbData, sha: 'spreadsheet-sha', reconciled };
+    return { data: dbData, sha: 'spreadsheet-sha', reconciled, isNew };
 };
 
 const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
   let jsonString = '{"data":[]}';
+  let isNew = true;
   if (data && data.values && data.values.length > 0) {
     jsonString = data.values.map((row: any[]) => row[0] || '').join('');
+    isNew = false;
   }
   
   let rawData;
@@ -235,6 +245,7 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
     console.warn("Failed to parse spreadsheet data, initializing empty DB", e);
     rawData = { data: [] };
     jsonString = '{"data":[]}';
+    isNew = true;
   }
 
   const dbData = validateSchema(rawData);
@@ -246,7 +257,7 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
   isHydrated = true;
   lastSnapshot = jsonString;
   
-  return { data: dbData, sha: 'spreadsheet-sha' }; 
+  return { data: dbData, sha: 'spreadsheet-sha', isNew }; 
 };
 
 const performSync = async (
