@@ -9,6 +9,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const redirectUri = `${origin}/api/auth/callback`;
 
   try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment variables");
+    }
+
     if (!code) {
       throw new Error("No code provided");
     }
@@ -20,8 +27,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: new URLSearchParams({
         code: code as string,
-        client_id: process.env.GOOGLE_CLIENT_ID || '',
-        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        client_id: clientId,
+        client_secret: clientSecret,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),

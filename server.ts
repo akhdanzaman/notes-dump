@@ -20,6 +20,13 @@ async function startServer() {
 
   // Google OAuth Endpoints
   app.get("/api/auth/google/url", (req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    
+    if (!clientId) {
+      console.error("GOOGLE_CLIENT_ID is missing from environment variables");
+      return res.status(500).json({ error: "Server configuration error: GOOGLE_CLIENT_ID is missing" });
+    }
+
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
     const origin = req.query.origin as string || `${protocol}://${host}`;
@@ -27,7 +34,7 @@ async function startServer() {
     
     // Construct the OAuth provider's authorization URL
     const params = new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID || '',
+      client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'https://www.googleapis.com/auth/spreadsheets',
@@ -47,6 +54,13 @@ async function startServer() {
     const redirectUri = `${origin}/api/auth/callback`;
 
     try {
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+      if (!clientId || !clientSecret) {
+        throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment variables");
+      }
+
       if (!code) {
         throw new Error("No code provided");
       }
@@ -58,8 +72,8 @@ async function startServer() {
         },
         body: new URLSearchParams({
           code: code as string,
-          client_id: process.env.GOOGLE_CLIENT_ID || '',
-          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+          client_id: clientId,
+          client_secret: clientSecret,
           redirect_uri: redirectUri,
           grant_type: 'authorization_code',
         }),

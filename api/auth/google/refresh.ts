@@ -7,6 +7,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { refresh_token } = req.body;
   try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment variables");
+    }
+
     if (!refresh_token) throw new Error("No refresh token provided");
 
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -16,8 +23,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: new URLSearchParams({
         refresh_token,
-        client_id: process.env.GOOGLE_CLIENT_ID || '',
-        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        client_id: clientId,
+        client_secret: clientSecret,
         grant_type: 'refresh_token',
       }),
     });
