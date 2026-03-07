@@ -37,7 +37,7 @@ async function startServer() {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
       access_type: 'offline',
       prompt: 'consent',
       state: origin // Pass origin in state
@@ -85,35 +85,20 @@ async function startServer() {
         throw new Error(tokens.error_description || tokens.error);
       }
 
-      // Send success message to parent window and close popup
-      res.send(`
-        <html>
-          <body>
-            <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', tokens: ${JSON.stringify(tokens)} }, '*');
-                window.close();
-              } else {
-                window.location.href = '/';
-              }
-            </script>
-            <p>Authentication successful. This window should close automatically.</p>
-          </body>
-        </html>
-      `);
+      // Redirect to app with tokens in URL fragment
+      // We use the 'state' parameter as the origin to redirect back to
+      const appUrl = (state as string) || '/';
+      const redirectUrl = new URL(appUrl);
+      redirectUrl.searchParams.set('google_auth', JSON.stringify(tokens));
+      
+      res.redirect(302, redirectUrl.toString());
     } catch (error: any) {
       console.error("OAuth error:", error);
-      res.send(`
+      res.status(500).send(`
         <html>
           <body>
             <p>Authentication failed: ${error.message}</p>
-            <script>
-              setTimeout(() => {
-                if (window.opener) {
-                  window.close();
-                }
-              }, 3000);
-            </script>
+            <a href="/">Return to App</a>
           </body>
         </html>
       `);

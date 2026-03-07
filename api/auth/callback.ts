@@ -40,23 +40,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error(tokens.error_description || tokens.error);
     }
 
-    // Send success message to parent window and close popup
-    res.setHeader('Content-Type', 'text/html');
-    res.status(200).send(`
-      <html>
-        <body>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', tokens: ${JSON.stringify(tokens)} }, '*');
-              window.close();
-            } else {
-              window.location.href = '/';
-            }
-          </script>
-          <p>Authentication successful. This window should close automatically.</p>
-        </body>
-      </html>
-    `);
+    // Redirect to app with tokens in URL fragment
+    // We use the 'state' parameter as the origin to redirect back to
+    const appUrl = (state as string) || '/';
+    let redirectUrl;
+    try {
+        redirectUrl = new URL(appUrl);
+    } catch (e) {
+        // If appUrl is relative, use current host as base
+        redirectUrl = new URL(appUrl, `${protocol}://${host}`);
+    }
+    
+    redirectUrl.searchParams.set('google_auth', JSON.stringify(tokens));
+    
+    res.redirect(302, redirectUrl.toString());
   } catch (error: any) {
     console.error("OAuth error:", error);
     res.setHeader('Content-Type', 'text/html');
@@ -64,13 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       <html>
         <body>
           <p>Authentication failed: ${error.message}</p>
-          <script>
-            setTimeout(() => {
-              if (window.opener) {
-                window.close();
-              }
-            }, 3000);
-          </script>
+          <a href="/">Return to App</a>
         </body>
       </html>
     `);
