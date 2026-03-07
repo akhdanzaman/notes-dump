@@ -24,6 +24,22 @@ export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
     const local = localStorage.getItem(SETTINGS_KEY);
     if (local) {
       const parsed = JSON.parse(local);
+      
+      // Try to sync with google session
+      const sessionStr = localStorage.getItem('braindump_google_session');
+      if (sessionStr) {
+          try {
+              const session = JSON.parse(sessionStr);
+              if (session.access_token && session.expires_at > Date.now()) {
+                  parsed.accessToken = session.access_token;
+                  parsed.tokenExpiresAt = session.expires_at;
+                  if (session.refresh_token) {
+                      parsed.refreshToken = session.refresh_token;
+                  }
+              }
+          } catch(e) {}
+      }
+
       if (parsed.spreadsheetId && parsed.accessToken) {
         return parsed;
       }
@@ -69,6 +85,19 @@ const refreshAccessToken = async (config: SpreadsheetConfig): Promise<Spreadshee
   };
   
   saveSpreadsheetConfig(newConfig);
+  
+  // Also update google session
+  try {
+      const sessionStr = localStorage.getItem('braindump_google_session');
+      if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          session.access_token = data.access_token;
+          session.expires_in = data.expires_in;
+          session.expires_at = Date.now() + (data.expires_in * 1000);
+          localStorage.setItem('braindump_google_session', JSON.stringify(session));
+      }
+  } catch(e) {}
+  
   return newConfig;
 };
 

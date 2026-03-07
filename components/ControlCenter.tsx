@@ -1046,18 +1046,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                                         {!spreadsheetConfig && (
                                                             <button 
-                                                                onClick={() => {
-                                                                    if (!spreadsheetLink) return;
-                                                                    const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                                                                    if (!match) {
-                                                                        alert("Invalid link");
-                                                                        return;
-                                                                    }
-                                                                    // If we have a profile, we should have a token.
-                                                                    // If not, we might need to re-auth, but for now let's assume valid token if profile exists
-                                                                    // Or trigger login again if needed.
-                                                                    handleGoogleLogin(); 
-                                                                }}
+                                                                onClick={handleConnectSpreadsheet}
                                                                 disabled={!spreadsheetLink}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
