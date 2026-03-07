@@ -5921,7 +5921,7 @@
     "2026-04": "Family and Happiness"
   },
   "appSettings": {
-    "defaultCollapsed": true,
+    "defaultCollapsed": false,
     "hideMoney": false,
     "theme": "dark"
   },
