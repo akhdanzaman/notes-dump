@@ -23,7 +23,7 @@ async function startServer() {
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
     const origin = req.query.origin as string || `${protocol}://${host}`;
-    const redirectUri = `${origin}/auth/callback`;
+    const redirectUri = `${origin}/api/auth/callback`;
     
     // Construct the OAuth provider's authorization URL
     const params = new URLSearchParams({
@@ -40,11 +40,11 @@ async function startServer() {
     res.json({ url: authUrl });
   });
 
-  app.get("/auth/callback", async (req, res) => {
+  app.get("/api/auth/callback", async (req, res) => {
     const { code, state } = req.query;
     // Use state as origin if available, otherwise fallback to request host
     const origin = (state as string) || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
-    const redirectUri = `${origin}/auth/callback`;
+    const redirectUri = `${origin}/api/auth/callback`;
 
     try {
       if (!code) {
