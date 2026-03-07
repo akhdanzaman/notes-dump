@@ -5923,7 +5923,7 @@
   "appSettings": {
     "defaultCollapsed": false,
     "hideMoney": false,
-    "theme": "dark"
+    "theme": "light"
   },
   "chatHistory": []
 }
