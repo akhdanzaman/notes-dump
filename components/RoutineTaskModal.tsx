@@ -13,6 +13,7 @@ interface RoutineTaskModalProps {
         daysOfMonth?: number[],
         monthsOfYear?: number[],
         date?: string,
+        recurrenceDays?: number,
         priority?: Priority
     ) => void;
 }
@@ -157,7 +158,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
             return;
         }
 
-        onSave(content, interval, daysOfWeek, daysOfMonth, monthsOfYear, date, priority);
+        onSave(content, interval, daysOfWeek, daysOfMonth, monthsOfYear, date, undefined, priority);
         
         // Reset
         setContent('');

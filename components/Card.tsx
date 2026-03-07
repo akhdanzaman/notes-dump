@@ -107,7 +107,9 @@ interface CardProps {
     newRoutineDaysOfWeek?: number[],
     newRoutineDaysOfMonth?: number[],
     newRoutineMonthsOfYear?: number[],
-    newSavingGoalId?: string
+    newSavingGoalId?: string,
+    newDedicatedWalletId?: string,
+    newPriority?: Priority
   ) => void;
   onResetRoutine?: (id: string) => void;
   readonly?: boolean;

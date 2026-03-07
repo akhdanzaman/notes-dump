@@ -381,7 +381,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const totalPercentage = budgetRules.reduce((sum, r) => sum + r.percentage, 0);
 
     const toggleTheme = () => {
-        const newTheme = localAppSettings.theme === 'dark' ? 'light' : 'dark';
+        const newTheme: 'light' | 'dark' = localAppSettings.theme === 'dark' ? 'light' : 'dark';
         const newSettings = { ...localAppSettings, theme: newTheme };
         setLocalAppSettings(newSettings);
         setAppSettings(newSettings); // Apply immediately for instant feedback

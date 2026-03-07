@@ -1,6 +1,6 @@
 
 import { Octokit } from "@octokit/rest";
-import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage } from "../types";
 
 // --- Configuration & Constants ---
 
@@ -139,6 +139,14 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     // Themes
     const themes = { ...remote.monthlyThemes, ...local.monthlyThemes };
 
+    // Chat History (Append only, simple merge)
+    // We can just take the longer one or try to merge unique messages. 
+    // For simplicity, let's prefer local if it has more messages, otherwise remote.
+    // A better approach for chat is usually append-only.
+    const localChat = local.chatHistory || [];
+    const remoteChat = remote.chatHistory || [];
+    const chatHistory = localChat.length >= remoteChat.length ? localChat : remoteChat;
+
     return {
         data: Array.from(itemMap.values()),
         budgetConfig: local.budgetConfig || remote.budgetConfig,
@@ -147,6 +155,7 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
         skills: Array.from(skillMap.values()),
         wallets: Array.from(walletMap.values()),
         monthlyThemes: themes,
+        chatHistory: chatHistory
     };
 };
 
@@ -217,7 +226,8 @@ const validateSchema = (data: any): DbSchema => {
         customPrompt: data.customPrompt,
         skills: Array.isArray(data.skills) ? data.skills : [],
         wallets: Array.isArray(data.wallets) ? data.wallets : [],
-        monthlyThemes: data.monthlyThemes || {}
+        monthlyThemes: data.monthlyThemes || {},
+        chatHistory: Array.isArray(data.chatHistory) ? data.chatHistory : []
     };
 };
 
@@ -302,7 +312,8 @@ const performSync = async (
     skills?: Skill[], 
     wallets?: Wallet[],
     monthlyThemes?: Record<string, string>,
-    appSettings?: AppSettings
+    appSettings?: AppSettings,
+    chatHistory?: ChatMessage[]
 ): Promise<SyncResult> => {
   if (!isHydrated) {
       console.warn("Blocked Sync: Database is not hydrated. This prevents overwriting cloud data with initial empty state.");
@@ -317,7 +328,8 @@ const performSync = async (
     skills: skills,
     wallets: wallets,
     monthlyThemes: monthlyThemes,
-    appSettings: appSettings
+    appSettings: appSettings,
+    chatHistory: chatHistory
   };
   
   const jsonString = JSON.stringify(updatedDb, null, 2);
@@ -412,9 +424,10 @@ export const syncData = (
     skills?: Skill[], 
     wallets?: Wallet[],
     monthlyThemes?: Record<string, string>,
-    appSettings?: AppSettings
+    appSettings?: AppSettings,
+    chatHistory?: ChatMessage[]
 ): Promise<SyncResult> => {
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings);
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory);
 
   const queuedTask = syncQueue.then(
       () => task(),

@@ -1,4 +1,4 @@
-import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage } from "../types";
 import { SyncResult, mergeDbData } from "./githubService";
 import { generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
@@ -89,7 +89,8 @@ const validateSchema = (data: any): DbSchema => {
       customPrompt: data.customPrompt,
       skills: Array.isArray(data.skills) ? data.skills : [],
       wallets: Array.isArray(data.wallets) ? data.wallets : [],
-      monthlyThemes: data.monthlyThemes || {}
+      monthlyThemes: data.monthlyThemes || {},
+      chatHistory: Array.isArray(data.chatHistory) ? data.chatHistory : []
   };
 };
 
@@ -226,10 +227,11 @@ const performSync = async (
   skills?: Skill[], 
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
-  appSettings?: AppSettings
+  appSettings?: AppSettings,
+  chatHistory?: ChatMessage[]
 ): Promise<SyncResult> => {
   const updatedDb: DbSchema = { 
-    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings
+    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory
   };
   
   const jsonString = JSON.stringify(updatedDb);
@@ -377,9 +379,10 @@ export const syncSpreadsheetData = (
   skills?: Skill[], 
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
-  appSettings?: AppSettings
+  appSettings?: AppSettings,
+  chatHistory?: ChatMessage[]
 ): Promise<SyncResult> => {
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings);
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory);
   const queuedTask = syncQueue.then(() => task(), () => task());
   syncQueue = queuedTask;
   return queuedTask;

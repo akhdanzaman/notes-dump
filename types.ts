@@ -69,6 +69,9 @@ export interface ItemMeta {
   paymentMethod?: string; // e.g., 'cash', 'paylater', 'transfer', 'QRIS BNI'
   toWallet?: string; // Destination wallet for transfers
   budgetCategory?: string; // Custom category ID or Name
+  commodity?: string; // Main expenditure category
+  subcommodity?: string; // Detailed sub-category
+  merchant?: string; // Merchant/Vendor name
 
   // Skill Growth specific
   durationMinutes?: number;
@@ -100,6 +103,11 @@ export interface BrainDumpItem {
   isOptimistic?: boolean; // For UI state only, not saved to DB
 }
 
+export interface ChatMessage {
+    role: 'user' | 'model';
+    text: string;
+}
+
 export interface DbSchema {
   data: BrainDumpItem[];
   budgetConfig?: BudgetConfig;
@@ -108,6 +116,7 @@ export interface DbSchema {
   skills?: Skill[];
   wallets?: Wallet[];
   monthlyThemes?: Record<string, string>; // Key: "YYYY-MM", Value: "Theme Content"
+  chatHistory?: ChatMessage[];
 }
 
 // For Github API responses

@@ -1,4 +1,4 @@
-import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema } from "../types";
+import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage } from "../types";
 import { fetchDb as fetchGithubDb, syncData as syncGithubData, getGithubConfig, isUsingLocalStorage as isGithubLocal, SyncResult, mergeDbData } from "./githubService";
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, clearSpreadsheetConfig } from "./spreadsheetService";
 
@@ -92,11 +92,12 @@ export const syncData = async (
   skills?: Skill[], 
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
-  appSettings?: AppSettings
+  appSettings?: AppSettings,
+  chatHistory?: ChatMessage[]
 ): Promise<SyncResult> => {
   const providers = getActiveSyncProviders();
   if (providers.length === 0) {
-    return syncGithubData(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings); // Fallback to local
+    return syncGithubData(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory); // Fallback to local
   }
 
   let hasError = false;
@@ -107,15 +108,16 @@ export const syncData = async (
   let currentWallets = wallets;
   let currentThemes = monthlyThemes;
   let currentSettings = appSettings;
+  let currentChatHistory = chatHistory;
   let finalMergedData: DbSchema | undefined;
 
   for (const provider of providers) {
     try {
       let res: SyncResult;
       if (provider === 'spreadsheet') {
-        res = await syncSpreadsheetData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings);
+        res = await syncSpreadsheetData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory);
       } else {
-        res = await syncGithubData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings);
+        res = await syncGithubData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory);
       }
 
       if (!res.success) hasError = true;
@@ -129,6 +131,7 @@ export const syncData = async (
         currentWallets = res.mergedData.wallets;
         currentThemes = res.mergedData.monthlyThemes;
         currentSettings = res.mergedData.appSettings;
+        currentChatHistory = res.mergedData.chatHistory;
       }
     } catch (e) {
       console.error(`Failed to sync to ${provider}`, e);

@@ -7,7 +7,7 @@ import {
     EyeOff, Eye, ArrowUpRight, ArrowDownRight, Sprout, StickyNote,
     Plus, Zap, Coffee, TrendingUp, RefreshCw, ChevronDown
 } from 'lucide-react';
-import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType, Tab, FinanceType, Priority } from '../../types';
+import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType, Tab, FinanceType, Priority, ShoppingCategory } from '../../types';
 import { getFocusMonthData, getSkillItems, getShoppingItems, getWalletStats, getFinanceItems, generateInsights } from '../../utils/selectors';
 import { generateAIInsights, Insight } from '../../services/insightService';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -31,7 +31,7 @@ interface SummaryViewProps {
     
     // Handlers for Quick Actions
     handleOpenAddTask: (date?: string) => void;
-    handleOpenAddShopping: (category?: string) => void;
+    handleOpenAddShopping: (category?: ShoppingCategory) => void;
     handleOpenAddExpense: () => void;
     handleOpenAddNote: () => void;
     handleUpdateItem: (

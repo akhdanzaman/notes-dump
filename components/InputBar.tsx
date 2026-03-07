@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, ReactNode } from 'react';
-import { SendHorizonal, TrendingDown, TrendingUp, Target, ShoppingCart, StickyNote, Sparkles, PiggyBank, Loader2 } from 'lucide-react';
+import { SendHorizonal, TrendingDown, TrendingUp, Target, ShoppingCart, StickyNote, Sparkles, PiggyBank, Loader2, MessageSquareText } from 'lucide-react';
 import { SyncStatus } from '../types';
 
 interface InputBarProps {
@@ -11,6 +11,8 @@ interface InputBarProps {
   saveStatus?: SyncStatus;
   fetchStatus?: SyncStatus;
   pendingCount?: number;
+  isChatOpen?: boolean;
+  onOpenChat?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -22,7 +24,7 @@ const SUGGESTIONS = [
   { label: 'Notes', value: 'notes:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
 ];
 
-const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startAction, saveStatus, fetchStatus, pendingCount }) => {
+const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startAction, saveStatus, fetchStatus, pendingCount, isChatOpen, onOpenChat }) => {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -78,7 +80,7 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
       textareaRef.current?.focus();
   };
 
-  const isPopupVisible = showSuggestions || !!startAction || saveStatus === 'saving' || fetchStatus === 'syncing' || (pendingCount && pendingCount > 0);
+  const isPopupVisible = showSuggestions || !!startAction || saveStatus === 'saving' || fetchStatus === 'syncing' || (pendingCount !== undefined && pendingCount > 0);
 
   return (
     <div className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none">
@@ -118,7 +120,7 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
                   </div>
 
                   {/* Syncing Animation */}
-                  {(saveStatus === 'saving' || fetchStatus === 'syncing' || (pendingCount && pendingCount > 0)) && (
+                  {(saveStatus === 'saving' || fetchStatus === 'syncing') && (
                       <div className="shrink-0 z-20">
                           <div className={`w-10 h-10 rounded-full ${saveStatus === 'saving' ? 'bg-amber-500/20 border-amber-500/40' : fetchStatus === 'syncing' ? 'bg-blue-500/20 border-blue-500/40' : 'bg-purple-500/20 border-purple-500/40'} backdrop-blur-xl border flex items-center justify-center shadow-xl ${saveStatus === 'saving' ? 'shadow-amber-500/20' : fetchStatus === 'syncing' ? 'shadow-blue-500/20' : 'shadow-purple-500/20'} animate-pulse`}>
                               <Loader2 className={`w-5 h-5 ${saveStatus === 'saving' ? 'text-amber-400' : fetchStatus === 'syncing' ? 'text-blue-400' : 'text-purple-400'} animate-spin`} />
@@ -133,6 +135,13 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
           
           {/* Input Area */}
           <div className="relative flex items-end bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden min-h-[56px]">
+            <button
+              onClick={onOpenChat}
+              className={`p-4 mb-0.5 transition-colors ${isChatOpen ? 'text-indigo-500' : 'text-muted hover:text-indigo-500'}`}
+              title="Open AI Chat"
+            >
+              <MessageSquareText className="w-5 h-5" />
+            </button>
             <textarea
               ref={textareaRef}
               value={input}
@@ -140,8 +149,8 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
               onKeyDown={handleKeyDown}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              placeholder="Dump your brain here..."
-              className="flex-1 bg-transparent px-6 py-4 text-primary placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
+              placeholder={isChatOpen ? "Ask a follow-up question..." : "Dump your brain here..."}
+              className="flex-1 bg-transparent py-4 text-primary placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
               rows={1}
             />
             <button

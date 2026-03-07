@@ -25,6 +25,7 @@ import AddTaskModal from './components/AddTaskModal';
 import AddShoppingModal from './components/AddShoppingModal';
 import AddExpenseModal from './components/AddExpenseModal';
 import AddNoteModal from './components/AddNoteModal';
+import FloatingChatBox from './components/FloatingChatBox';
 import { Brain } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   const {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
+      chatHistory, setChatHistory,
       loading, error, pendingCount, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
       handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote
   } = useBrainDumpData();
@@ -84,6 +86,19 @@ const App: React.FC = () => {
   // Input Focus State
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false);
 
+  // Chat State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [newChatMessage, setNewChatMessage] = useState<{ text: string; id: string } | null>(null);
+
+  const handleUpdateChatHistory = (newHistory: import('./types').ChatMessage[]) => {
+      setChatHistory(newHistory);
+      saveAndSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, newHistory);
+  };
+
+  const handleResetChat = () => {
+      handleUpdateChatHistory([]);
+  };
+
   // --- Theme Effect ---
   useEffect(() => {
     // Apply theme to HTML element
@@ -126,6 +141,19 @@ const App: React.FC = () => {
   }, []);
 
   // --- Handlers ---
+
+  const handleAppSend = (text: string) => {
+      const lower = text.toLowerCase().trim();
+      const isQuestion = lower.endsWith('?') || 
+          ['apa', 'apakah', 'bagaimana', 'kenapa', 'mengapa', 'siapa', 'kapan', 'berapa', 'tolong', 'tanya', 'ask', 'can you', 'how', 'what', 'why', 'when', 'where', 'who', 'saran', 'suggest'].some(word => lower.startsWith(word));
+
+      if (isQuestion || isChatOpen) {
+          setNewChatMessage({ text, id: uuidv4() });
+          setIsChatOpen(true);
+      } else {
+          handleSend(text);
+      }
+  };
 
   const handleSettingsSaved = (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => {
       // Don't close control center immediately on save, let user close it
@@ -442,13 +470,27 @@ const App: React.FC = () => {
 
       {/* Fixed Bottom Layout */}
       <div className="fixed bottom-0 w-full z-40 bg-transparent pointer-events-none">
+          <FloatingChatBox 
+              isOpen={isChatOpen} 
+              onClose={() => setIsChatOpen(false)} 
+              items={items} 
+              budgetConfig={budgetConfig} 
+              wallets={wallets} 
+              skills={skills} 
+              newMessage={newChatMessage} 
+              chatHistory={chatHistory}
+              onUpdateHistory={handleUpdateChatHistory}
+              onResetChat={handleResetChat}
+          />
           <div className="pointer-events-auto">
             <InputBar 
-                onSend={handleSend} 
+                onSend={handleAppSend} 
                 onFocus={() => { setIsSearchExpanded(false); }} 
                 saveStatus={saveStatus}
                 fetchStatus={fetchStatus}
                 pendingCount={pendingCount}
+                isChatOpen={isChatOpen}
+                onOpenChat={() => setIsChatOpen(!isChatOpen)}
                 startAction={(activeTab === 'notes' || activeTab === 'money') ? (
                     <FloatingSearch 
                         activeTab={activeTab} notesSubTab={notesSubTab} moneyView={moneyView}

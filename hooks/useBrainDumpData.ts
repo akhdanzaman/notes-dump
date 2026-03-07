@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { BrainDumpItem, ItemType, BudgetConfig, Skill, Wallet, FinanceType, AppSettings, SyncStatus, DbSchema, ShoppingCategory, Priority } from '../types';
+import { BrainDumpItem, ItemType, BudgetConfig, Skill, Wallet, FinanceType, AppSettings, SyncStatus, DbSchema, ShoppingCategory, Priority, ChatMessage } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult, mergeDbData } from '../services/githubService';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
@@ -21,6 +21,7 @@ export const useBrainDumpData = () => {
     const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
     const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
     const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: false, hideMoney: false });
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [pendingCount, setPendingCount] = useState(0); 
@@ -101,6 +102,8 @@ export const useBrainDumpData = () => {
     monthlyThemesRef.current = monthlyThemes;
     const appSettingsRef = useRef(appSettings);
     appSettingsRef.current = appSettings;
+    const chatHistoryRef = useRef(chatHistory);
+    chatHistoryRef.current = chatHistory;
 
     const saveAndSync = useCallback(async (
         newItems: BrainDumpItem[], 
@@ -109,7 +112,8 @@ export const useBrainDumpData = () => {
         newSkills?: Skill[], 
         newWallets?: Wallet[], 
         newThemes?: Record<string, string>, 
-        newAppSettings?: AppSettings
+        newAppSettings?: AppSettings,
+        newChatHistory?: ChatMessage[]
     ) => {
         const baseItems = itemsRef.current;
         setSaveStatus('saving');
@@ -121,8 +125,9 @@ export const useBrainDumpData = () => {
             const walletsToSave = newWallets || walletsRef.current;
             const themesToSave = newThemes || monthlyThemesRef.current;
             const settingsToSave = newAppSettings || appSettingsRef.current;
+            const chatHistoryToSave = newChatHistory || chatHistoryRef.current;
             
-            const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave, settingsToSave);
+            const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave, settingsToSave, chatHistoryToSave);
             
             if (!result.success) {
                 throw new Error("Sync failed, preserving local state.");
@@ -133,7 +138,7 @@ export const useBrainDumpData = () => {
                 
                 setItems(currentItems => {
                    const merged = mergeDbData(
-                       { data: currentItems, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema, 
+                       { data: currentItems, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, chatHistory: chatHistoryRef.current } as DbSchema, 
                        remoteSchema,
                        { data: baseItems } as DbSchema
                    );
@@ -151,6 +156,7 @@ export const useBrainDumpData = () => {
                 });
 
                 if (remoteSchema.monthlyThemes) setMonthlyThemes(prev => ({ ...remoteSchema.monthlyThemes, ...prev }));
+                if (remoteSchema.chatHistory) setChatHistory(remoteSchema.chatHistory);
             }
             
             setSaveStatus('synced');
@@ -217,6 +223,7 @@ export const useBrainDumpData = () => {
   
             if (data.monthlyThemes) setMonthlyThemes(data.monthlyThemes);
             if (data.appSettings) setAppSettings(data.appSettings);
+            if (data.chatHistory) setChatHistory(data.chatHistory);
           }
         } catch (err) {
           console.error(err);
@@ -767,6 +774,8 @@ export const useBrainDumpData = () => {
         setMonthlyThemes,
         appSettings,
         setAppSettings,
+        chatHistory,
+        setChatHistory,
         loading,
         error,
         pendingCount,

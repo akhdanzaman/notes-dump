@@ -34,7 +34,7 @@ TYPE (pick one):
 COMMON EXTRACTION:
 - amount: NUMBER only (strip currency symbols + thousand separators).
 - targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc).
-- tags: max 3, see TAG RULES below.
+- tags: max 2, see TAG RULES below.
 
 DATE (STRICT):
 - Always resolve meta.dateISO = YYYY-MM-DD when any time reference exists.
@@ -62,15 +62,40 @@ PRIORITY (TODO/EVENT ONLY):
 - default: normal.
 
 MONEY META (FINANCE + money-related SHOPPING):
-- paymentMethod: EXACT text from user (Source Wallet), else "".
-- budgetCategory ∈ {needs, wants, savings, sedekah}
-  - needs: rent/groceries/electricity/transport/health
+- financeType ∈ {expense, income, transfer, saving}
+- budgetCategory ∈ {needs, wants, savings, sedekah, fixed, unintend}
+  - needs: groceries/electricity/health
   - wants: dining/hobby/entertainment/subscription entertainment
   - savings: investment/emergency/debt repayment
   - sedekah: charity/giving/donation
+  - fixed: rent/laundry/internet/electricity/parking
+  - unintend: miss/extra charge/penalty/lost
+- commodity ∈ {food, transport, utilities, health, education, shopping, housing, personal_care, digital, social, other}
+- subcommodity: detailed sub-category.
+  - food: breakfast, lunch, dinner, snack, drink, groceries
+  - transport: parking, fuel, public_transport, ride_hailing, toll
+  - utilities: electricity, water, internet, phone
+  - health: doctor, medicine, insurance, fitness
+  - education: course, books, tuition
+  - shopping: clothing, electronics, home, hobby
+  - housing: rent, maintenance, furniture
+  - personal_care: haircut, skincare, spa
+  - digital: subscription, app, game, software
+  - social: gift, donation, party, hangout
+  - other: miscellaneous
+- paymentMethod: EXACT text from user (Source Wallet), else "".
+- toWallet: Destination wallet (transfer only).
+- merchant: Vendor name if mentioned.
+- amount: number.
+
+CLASSIFICATION PRIORITY (FINANCE):
+1. Determine financeType.
+2. Determine budgetCategory.
+3. Determine commodity.
+4. Determine subcommodity.
+If ambiguous, choose the most conservative value. If commodity/subcommodity unclear, use 'other'.
 
 FINANCE META:
-- financeType ∈ {expense, income, transfer, saving}
 - transfer: moving money between own accounts (withdraw, deposit, topup, pindah buku).
     - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.
 - saving: adding funds to an existing saving goal (e.g., "saved 500k for car from BCA").
@@ -83,15 +108,14 @@ SKILL_LOG META:
 - skillName: infer from context; match known skills if provided
 
 TAG RULES (STRICT):
-- Priority: intent > context > object.
-- Avoid generic tags: "people", "purchase" unless no better option.
-- Prefer semantic tags like: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.
-- Max 3 tags.
+- Max 2 tags.
+- Do NOT duplicate values from budgetCategory, commodity, subcommodity, or paymentMethod.
+- Use for specific context not covered above (e.g. "trip to bali", "birthday").
 
 Examples:
-- "Gave money to street musician 5000" => tags ["charity","donation"], budgetCategory "sedekah"
-- "tip driver gojek 10000" => tags ["tip","transport"]
-- "Breakfast 14000" => tags ["food"]
+- "Gave money to street musician 5000" => financeType "expense", budgetCategory "sedekah", commodity "social", subcommodity "donation", amount 5000
+- "tip driver gojek 10000" => financeType "expense", budgetCategory "wants", commodity "transport", subcommodity "tip", amount 10000
+- "Breakfast 14000" => financeType "expense", budgetCategory "needs", commodity "food", subcommodity "breakfast", amount 14000
 - "Kirim dompet" => tags ["assistance","delivery"]
 - "beli susu besok hari senin 12000" => SHOPPING urgent + targetDay Monday + amount 12000
 - "beli susu setiap senin 12000" => SHOPPING routine + targetDay Monday + amount 12000
@@ -163,6 +187,9 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
                   paymentMethod: { type: Type.STRING, description: "Source Wallet / Method" },
                   toWallet: { type: Type.STRING, description: "Destination Wallet for transfers" },
                   budgetCategory: { type: Type.STRING },
+                  commodity: { type: Type.STRING, description: "Main expenditure category" },
+                  subcommodity: { type: Type.STRING, description: "Detailed sub-category" },
+                  merchant: { type: Type.STRING, description: "Merchant/Vendor name" },
                   durationMinutes: { type: Type.NUMBER, description: "Duration in minutes for SKILL_LOG" },
                   skillName: { type: Type.STRING, description: "Name of the skill practiced" },
                   priority: { type: Type.STRING, description: "Priority level: low, normal, high" }

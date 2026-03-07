@@ -113,7 +113,73 @@ export const generateAIInsights = async (
     planned: plannedBudgetMap.get(rule.id) || 0
   }));
 
+  // Daily and Weekly data
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const sevenDaysAgo = todayStart - (7 * 24 * 60 * 60 * 1000);
+
+  const recentItems = items.filter(i => {
+      const d = new Date(i.created_at).getTime();
+      return d >= sevenDaysAgo;
+  });
+
+  const todayItems = recentItems.filter(i => new Date(i.created_at).getTime() >= todayStart);
+
+  const getSummaryStats = (arr: BrainDumpItem[]) => {
+      return {
+          expenses: arr.filter(i => i.type === ItemType.FINANCE && i.meta.financeType === 'expense').reduce((sum, i) => sum + (i.meta.amount || 0), 0),
+          tasksCompleted: arr.filter(i => i.type === ItemType.TODO && i.status === 'done').length,
+          tasksAdded: arr.filter(i => i.type === ItemType.TODO).length,
+          shoppingItemsAdded: arr.filter(i => i.type === ItemType.SHOPPING).length,
+          shoppingItemsBought: arr.filter(i => i.type === ItemType.SHOPPING && i.status === 'done').length,
+          journalEntries: arr.filter(i => i.type === ItemType.JOURNAL).length,
+          savingTransactions: arr.filter(i => i.type === ItemType.FINANCE && i.meta.financeType === 'saving').length,
+      };
+  };
+
+  // Skill Progress
+  const skillProgress = skills.map(s => {
+      // Calculate weekly progress
+      const startOfWeek = new Date();
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setHours(0, 0, 0, 0);
+      startOfWeek.setDate(diff);
+
+      const weeklyMinutes = items
+          .filter(i => i.type === ItemType.SKILL_LOG && i.meta.skillId === s.id)
+          .filter(i => {
+              const d = new Date(i.meta.date || i.created_at);
+              return d >= startOfWeek;
+          })
+          .reduce((sum, i) => sum + (i.meta.durationMinutes || 0), 0);
+
+      return {
+          name: s.name,
+          current: weeklyMinutes,
+          target: s.weeklyTargetMinutes || 0,
+          percentage: s.weeklyTargetMinutes ? Math.round((weeklyMinutes / s.weeklyTargetMinutes) * 100) : 0
+      };
+  });
+
+  // Saving Goals
+  const savingGoals = items
+      .filter(i => i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving')
+      .map(goal => {
+          const savedAmount = items
+              .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId === goal.id)
+              .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+          
+          return {
+              name: goal.content,
+              current: savedAmount,
+              target: goal.meta.amount || 0,
+              percentage: goal.meta.amount ? Math.round((savedAmount / goal.meta.amount) * 100) : 0
+          };
+      });
+
   const dataSummary = {
+    today: getSummaryStats(todayItems),
+    past7Days: getSummaryStats(recentItems),
     currentMonth: {
       daysElapsed: currentDay,
       dailyAverageExpense: currentTotalExpense / currentDay,
@@ -121,7 +187,9 @@ export const generateAIInsights = async (
       projectedTotalExpense: currentTotalExpense + projectedExpense,
       expenseByTag: currentTags,
       completedTasks: completedTasksCurrentMonth,
-      dailyAverageTasks: completedTasksCurrentMonth / currentDay
+      dailyAverageTasks: completedTasksCurrentMonth / currentDay,
+      skillProgress,
+      savingGoals
     },
     lastMonth: {
       daysElapsed: currentDay,
@@ -140,16 +208,19 @@ export const generateAIInsights = async (
 
   const prompt = `
     You are an AI assistant analyzing a user's personal productivity and finance data.
-    Compare the current month's data (up to today) with last month's data (up to the same day) and provide 3-5 deep, actionable insights.
+    Provide exactly 4 short, punchy, and actionable reviews based on the provided data.
+    
+    The 4 reviews MUST be:
+    1. "Daily Review": Focus on today's or recent daily averages (budget, focus, goals, shopping, journal).
+    2. "Weekly Review": Focus on the past 7 days trend.
+    3. "Month over Month Review": Compare the current month's data (up to today) with last month's data (up to the same day).
+    4. "General Review": A holistic overview or advice covering budget, focus, goals, shopping, journal, etc.
     
     CRITICAL RULES:
-    1. DO NOT write paragraphs.
-    2. Keep the message extremely short, punchy, and to the point (max 1-2 short sentences).
-    3. Use specific numbers and tags provided.
-    4. Focus on Month-over-Month (MoM) comparisons using AVERAGES (e.g., daily average expense, average expense per transaction for a tag).
-    5. Consider the budget limits and planned spending. Warn if projected expenses exceed the budget.
-    6. Focus MORE on financial insights if task/skill entries are sparse. Be flexible and proportional to the data available.
-    7. Highlight neglected tasks from last month if any.
+    1. DO NOT write paragraphs. Keep the message extremely short, punchy, and to the point (max 2 short sentences per review).
+    2. Use specific numbers and tags provided.
+    3. Cover ALL aspects: Budget, Focus (Tasks), Goals (Skills/Savings), Shopping, and Journaling.
+    4. The 'title' field MUST be exactly one of: "Daily Review", "Weekly Review", "Month over Month Review", "General Review".
     
     Data Summary (Apple-to-Apple comparison up to day ${currentDay} of the month):
     ${JSON.stringify(dataSummary, null, 2)}
