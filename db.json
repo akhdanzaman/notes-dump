@@ -2,40 +2,45 @@
   "data": [
     {
       "id": "c7d2ff95-c84c-49a7-b6a3-889db6d53e8b",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-15T02:46:18.289Z",
+      "completed_at": "2026-02-15T02:46:18.289Z",
       "type": "FINANCE",
       "content": "Sarapan",
       "meta": {
         "tags": [
-          "food"
+          "food",
+          "breakfast"
         ],
         "amount": 8000,
         "paymentMethod": "cash",
         "targetDay": "",
-        "date": "2026-02-15T02:46:00.000Z",
+        "budgetCategory": "needs",
         "financeType": "expense",
-        "progress": 0,
-        "progressNotes": ""
+        "toWallet": "",
+        "date": "2026-02-15T02:46:18.000Z"
       },
       "isOptimistic": false
     },
     {
       "id": "67f3eace-f4f8-48ce-90b5-4ef15baa9110",
       "status": "pending",
-      "created_at": "2026-02-14T21:28:52.471Z",
+      "created_at": "2026-02-14T21:28:52.000Z",
       "type": "NOTE",
-      "content": "update\n1. Benerin sort by date nya\n2. Show tipe expenses nya, wants atau needs\n3. Benerin rendering notes nya\n4. Collapse search bar nya",
+      "content": "update\n1. Tasks by progress done\n3. Benerin rendering notes nya\n2. benerin dropdown wallet\n",
       "meta": {
         "tags": [],
         "paymentMethod": "",
-        "financeType": "expense"
+        "financeType": "expense",
+        "date": "2026-02-14T21:28:00.000Z",
+        "progress": 0,
+        "progressNotes": ""
       },
       "isOptimistic": false
     },
     {
       "id": "bd7b3555-a533-4def-b0bc-25a8334ea331",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-14T21:07:58.119Z",
       "type": "TODO",
       "content": "Selesaiin summary IIMS 2026",
@@ -46,28 +51,37 @@
         ],
         "date": "2026-02-14",
         "targetDay": "Sunday",
-        "toWallet": "Cash"
+        "toWallet": "Cash",
+        "priority": "normal",
+        "progressNotes": ""
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-15T08:44:39.609Z"
     },
     {
       "id": "63fd3053-bbd7-4924-98f1-80a94028cc45",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-14T20:19:06.348Z",
       "type": "SHOPPING",
-      "content": "beli tiket sumber alam",
+      "content": "beli tiket handoyo",
       "meta": {
         "tags": [
           "travel"
         ],
-        "amount": 440000,
+        "amount": 480000,
         "budgetCategory": "wants",
-        "date": "2026-02-14",
-        "paymentMethod": "bni",
+        "date": "2026-02-18T00:00:00.000Z",
+        "paymentMethod": "7474b330-c25e-47a4-9633-7217b2a82e03",
         "shoppingCategory": "urgent",
-        "targetDay": "Sunday"
+        "targetDay": "Sunday",
+        "financeType": "expense",
+        "progress": 100,
+        "progressNotes": "",
+        "toWallet": "",
+        "quantity": ""
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-02-19T05:41:22.000Z"
     },
     {
       "id": "5751293d-aabe-4b88-9d6e-1e1947894308",
@@ -80,32 +94,22 @@
           "work",
           "project"
         ],
-        "date": "2026-02-15",
-        "targetDay": "Monday"
+        "date": "2026-02-15T00:00:00.000Z",
+        "targetDay": "Monday",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "progress": 100,
+        "progressNotes": "dikit lg",
+        "priority": "normal"
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-14T21:07:30.341Z"
-    },
-    {
-      "id": "06f1cfd1-4b36-4a18-87bc-4d1a0ce4f1a5",
-      "status": "pending",
-      "created_at": "2026-02-14T17:31:54.661Z",
-      "type": "TODO",
-      "content": "Selesaiin summary regulasi",
-      "meta": {
-        "tags": [
-          "work",
-          "data"
-        ],
-        "date": "2026-02-15",
-        "targetDay": "Monday"
-      },
-      "isOptimistic": false
+      "completed_at": "2026-02-16T17:40:06.745Z"
     },
     {
       "id": "177bc371-7a46-4d08-b12d-68657501ffc3",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-14T17:25:28.299Z",
+      "completed_at": "2026-02-14T17:25:28.299Z",
       "type": "FINANCE",
       "content": "transfer dari gopay ke bni",
       "meta": {
@@ -118,9 +122,8 @@
         "financeType": "transfer",
         "paymentMethod": "gopay",
         "toWallet": "bni",
-        "date": "2026-02-14T17:25:00.000Z",
-        "progress": 0,
-        "progressNotes": ""
+        "budgetCategory": "",
+        "date": "2026-02-14T17:25:28.000Z"
       },
       "isOptimistic": false
     },
@@ -137,9 +140,10 @@
         ],
         "amount": 5000,
         "budgetCategory": "needs",
-        "date": "2026-02-09",
+        "date": "2026-02-09T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": "Cash"
+        "paymentMethod": "w-1",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -156,9 +160,10 @@
         ],
         "amount": 5000,
         "budgetCategory": "needs",
-        "date": "2026-02-12",
+        "date": "2026-02-12T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": "cash"
+        "paymentMethod": "cash",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -175,10 +180,11 @@
         ],
         "amount": 5000,
         "budgetCategory": "needs",
-        "date": "2026-02-13",
+        "date": "2026-02-13T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": "Cash",
-        "targetDay": "Friday"
+        "paymentMethod": "w-1",
+        "targetDay": "Friday",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -195,10 +201,11 @@
         ],
         "amount": 13000,
         "budgetCategory": "needs",
-        "date": "2026-02-10",
+        "date": "2026-02-10T00:00:00.000Z",
         "financeType": "expense",
         "paymentMethod": "cash",
-        "targetDay": "Tuesday"
+        "targetDay": "Tuesday",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -216,7 +223,9 @@
         "amount": 10000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "cash"
+        "paymentMethod": "cash",
+        "toWallet": "",
+        "date": "2026-02-14T16:49:55.000Z"
       },
       "isOptimistic": false
     },
@@ -234,14 +243,17 @@
         "amount": 17000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "Cash"
+        "paymentMethod": "w-1",
+        "toWallet": "",
+        "date": "2026-02-14T16:49:55.000Z"
       },
       "isOptimistic": false
     },
     {
       "id": "2817ae76-6928-4dcd-9530-8d4a228e352a",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-14T16:47:47.365Z",
+      "completed_at": "2026-02-14T16:47:47.365Z",
       "type": "FINANCE",
       "content": "parkir",
       "meta": {
@@ -252,9 +264,8 @@
         "budgetCategory": "needs",
         "financeType": "expense",
         "paymentMethod": "cash",
-        "date": "2026-02-14T16:47:00.000Z",
-        "progress": 0,
-        "progressNotes": ""
+        "toWallet": "",
+        "date": "2026-02-14T16:47:47.000Z"
       },
       "isOptimistic": false
     },
@@ -272,14 +283,17 @@
         "amount": 10000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "Tapcash"
+        "paymentMethod": "Tapcash",
+        "toWallet": "",
+        "date": "2026-02-14T16:47:10.000Z"
       },
       "isOptimistic": false
     },
     {
       "id": "3e679af3-6cc5-43c9-8de7-2442d9566bbd",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-14T16:46:45.046Z",
+      "completed_at": "2026-02-14T16:46:45.046Z",
       "type": "FINANCE",
       "content": "Sarapan",
       "meta": {
@@ -289,10 +303,9 @@
         "amount": 8000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "Cash",
-        "date": "2026-02-14T16:46:00.000Z",
-        "progress": 0,
-        "progressNotes": ""
+        "paymentMethod": "w-1",
+        "toWallet": "",
+        "date": "2026-02-14T16:46:45.000Z"
       },
       "isOptimistic": false
     },
@@ -311,7 +324,9 @@
         "amount": 28000,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": "gopay"
+        "paymentMethod": "gopay",
+        "toWallet": "",
+        "date": "2026-02-14T16:45:18.000Z"
       },
       "isOptimistic": false
     },
@@ -330,7 +345,9 @@
         "amount": 33000,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": "gopay"
+        "paymentMethod": "gopay",
+        "toWallet": "",
+        "date": "2026-02-14T16:45:18.000Z"
       },
       "isOptimistic": false
     },
@@ -348,7 +365,9 @@
         "amount": 37500,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": "gopay"
+        "paymentMethod": "gopay",
+        "toWallet": "",
+        "date": "2026-02-14T16:45:18.000Z"
       },
       "isOptimistic": false
     },
@@ -365,7 +384,10 @@
         ],
         "amount": 2000000,
         "financeType": "income",
-        "paymentMethod": "bni"
+        "paymentMethod": "bni",
+        "budgetCategory": "",
+        "toWallet": "",
+        "date": "2026-02-14T16:45:18.000Z"
       },
       "isOptimistic": false
     },
@@ -384,7 +406,9 @@
         "amount": 150000,
         "financeType": "transfer",
         "paymentMethod": "bni",
-        "toWallet": "gopay"
+        "toWallet": "gopay",
+        "budgetCategory": "",
+        "date": "2026-02-14T16:44:35.000Z"
       },
       "isOptimistic": false
     },
@@ -403,7 +427,9 @@
         "amount": 52000,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": "gopay"
+        "paymentMethod": "gopay",
+        "toWallet": "",
+        "date": "2026-02-14T16:44:35.000Z"
       },
       "isOptimistic": false
     },
@@ -421,8 +447,10 @@
         "amount": 10000,
         "date": "2026-02-13T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": "Cash",
-        "targetDay": ""
+        "paymentMethod": "w-1",
+        "targetDay": "",
+        "budgetCategory": "needs",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -439,10 +467,11 @@
         ],
         "amount": 30000,
         "budgetCategory": "needs",
-        "date": "2026-02-11",
+        "date": "2026-02-11T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": "Cash",
-        "targetDay": "Wednesday"
+        "paymentMethod": "w-1",
+        "targetDay": "Wednesday",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -461,7 +490,9 @@
         "amount": 28000,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": "bni"
+        "paymentMethod": "bni",
+        "toWallet": "",
+        "date": "2026-02-11T12:53:57.000Z"
       },
       "isOptimistic": false
     },
@@ -480,7 +511,9 @@
         "amount": 150000,
         "financeType": "transfer",
         "paymentMethod": "bca",
-        "toWallet": "cash"
+        "toWallet": "cash",
+        "budgetCategory": "",
+        "date": "2026-02-11T11:56:08.000Z"
       },
       "isOptimistic": false
     },
@@ -497,7 +530,7 @@
         ],
         "amount": 10000,
         "budgetCategory": "needs",
-        "date": "2026-02-11",
+        "date": "2026-02-11T00:00:00.000Z",
         "financeType": "expense",
         "paymentMethod": "gopay",
         "targetDay": "",
@@ -520,7 +553,9 @@
         "amount": 5000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "Cash"
+        "paymentMethod": "w-1",
+        "toWallet": "",
+        "date": "2026-02-11T11:55:16.000Z"
       },
       "isOptimistic": false
     },
@@ -538,26 +573,31 @@
         "amount": 305000,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": "BCA"
+        "paymentMethod": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
+        "toWallet": "",
+        "date": "2026-02-10T23:24:40.000Z"
       },
       "isOptimistic": false
     },
     {
       "id": "81d28d6e-2b59-4370-85d7-51a2126cd325",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-02-10T10:51:26.468Z",
-      "completed_at": "2026-02-10T10:51:26.469Z",
       "type": "FINANCE",
       "content": "Bayar parkir",
       "meta": {
         "tags": [
-          "travel"
+          "transport"
         ],
         "amount": 5000,
         "financeType": "expense",
-        "paymentMethod": "Cash",
+        "paymentMethod": "w-1",
         "targetDay": "Tuesday",
-        "budgetCategory": "cat-1770450517162"
+        "budgetCategory": "cat-1770450517162",
+        "date": "2026-02-10T10:51:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -576,8 +616,9 @@
         "budgetCategory": "needs",
         "date": "2026-02-10T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": "Cash",
-        "targetDay": "Tuesday"
+        "paymentMethod": "w-1",
+        "targetDay": "Tuesday",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -595,7 +636,9 @@
         "amount": 10000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "cash"
+        "paymentMethod": "cash",
+        "toWallet": "",
+        "date": "2026-02-09T11:48:34.000Z"
       },
       "isOptimistic": false
     },
@@ -614,7 +657,9 @@
         "amount": 17000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "Cash"
+        "paymentMethod": "w-1",
+        "toWallet": "",
+        "date": "2026-02-09T11:47:56.000Z"
       },
       "isOptimistic": false
     },
@@ -629,7 +674,7 @@
         "tags": [
           "education"
         ],
-        "date": "2026-02-07",
+        "date": "2026-02-07T00:00:00.000Z",
         "durationMinutes": 15,
         "skillName": "Belajar bahasa inggris",
         "targetDay": "Saturday",
@@ -670,16 +715,18 @@
         "tags": [],
         "date": "2026-02-08",
         "targetDay": "hari ini",
-        "toWallet": "today"
+        "toWallet": "today",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false
     },
     {
       "id": "c60967ad-0b70-460a-a222-81edc890f0ba",
       "status": "done",
-      "created_at": "2026-02-08T14:05:12.874Z",
+      "created_at": "2026-02-08T14:05:12.000Z",
       "completed_at": "2026-02-08T14:05:12.874Z",
-      "type": "JOURNAL",
+      "type": "NOTE",
       "content": "Walked",
       "meta": {
         "tags": [
@@ -692,9 +739,9 @@
     {
       "id": "4709aee5-b79b-44a8-8a75-9ea5f687ad0b",
       "status": "done",
-      "created_at": "2026-02-08T14:04:49.567Z",
+      "created_at": "2026-02-08T14:04:49.000Z",
       "completed_at": "2026-02-08T14:04:49.567Z",
-      "type": "JOURNAL",
+      "type": "NOTE",
       "content": "Jalan kaki 3km buat exercise ringan",
       "meta": {
         "tags": [
@@ -720,7 +767,9 @@
         "amount": 50000,
         "financeType": "transfer",
         "paymentMethod": "bni",
-        "toWallet": "gopay"
+        "toWallet": "gopay",
+        "budgetCategory": "",
+        "date": "2026-02-08T09:56:22.000Z"
       },
       "isOptimistic": false
     },
@@ -738,7 +787,9 @@
         "amount": 16000,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": "cash"
+        "paymentMethod": "cash",
+        "toWallet": "",
+        "date": "2026-02-08T06:36:18.000Z"
       },
       "isOptimistic": false
     },
@@ -756,7 +807,9 @@
         "amount": 4800,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "cash"
+        "paymentMethod": "cash",
+        "toWallet": "",
+        "date": "2026-02-08T06:36:10.000Z"
       },
       "isOptimistic": false
     },
@@ -774,7 +827,9 @@
         "amount": 13000,
         "budgetCategory": "needs",
         "financeType": "expense",
-        "paymentMethod": "cash"
+        "paymentMethod": "cash",
+        "toWallet": "",
+        "date": "2026-02-08T06:36:03.000Z"
       },
       "isOptimistic": false
     },
@@ -792,7 +847,14 @@
         "amount": 165000,
         "budgetCategory": "wants",
         "financeType": "expense",
-        "paymentMethod": "Gopay Later"
+        "paymentMethod": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
+        "date": "2026-02-08T05:58:00.000Z",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -808,10 +870,12 @@
           "food"
         ],
         "amount": 15000,
-        "paymentMethod": "BNI",
+        "paymentMethod": "7474b330-c25e-47a4-9633-7217b2a82e03",
         "targetDay": "Sunday",
         "financeType": "expense",
-        "budgetCategory": "needs"
+        "budgetCategory": "needs",
+        "toWallet": "",
+        "date": "2026-02-08T03:06:22.000Z"
       },
       "isOptimistic": false
     },
@@ -825,7 +889,9 @@
         "tags": [],
         "date": "2026-02-08",
         "targetDay": "Minggu",
-        "toWallet": "tomorrow"
+        "toWallet": "tomorrow",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-08T13:53:24.027Z"
@@ -840,7 +906,9 @@
         "tags": [],
         "date": "2026-02-09",
         "targetDay": "Monday",
-        "toWallet": "Cash"
+        "toWallet": "Cash",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-09T11:47:58.821Z"
@@ -855,7 +923,9 @@
         "tags": [],
         "date": "2026-02-09",
         "targetDay": "Senin",
-        "toWallet": "Cash (Default fallback)"
+        "toWallet": "Cash (Default fallback)",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-09T11:47:57.598Z"
@@ -868,9 +938,10 @@
       "content": "Morning walk",
       "meta": {
         "tags": [],
-        "date": "2026-02-08",
+        "date": "2026-02-08T00:00:00.000Z",
         "targetDay": "Sunday",
-        "toWallet": "tomorrow"
+        "toWallet": "tomorrow",
+        "priority": "normal"
       },
       "isOptimistic": false,
       "completed_at": "2026-02-08T13:53:26.689Z"
@@ -885,7 +956,9 @@
         "tags": [
           "clothing"
         ],
-        "shoppingCategory": "not_urgent"
+        "shoppingCategory": "not_urgent",
+        "quantity": "",
+        "amount": 0
       },
       "isOptimistic": false
     },
@@ -903,7 +976,8 @@
         ],
         "durationMinutes": 30,
         "skillName": "Focus reading",
-        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1",
+        "date": "2026-02-07T13:21:02.000Z"
       },
       "isOptimistic": false
     },
@@ -925,7 +999,8 @@
         "date": "2026-02-07T00:00:00.000Z",
         "financeType": "expense",
         "targetDay": "Saturday",
-        "paymentMethod": "Cash"
+        "paymentMethod": "w-1",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -944,7 +1019,13 @@
         "budgetCategory": "needs",
         "date": "2026-02-07T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": "Gopay Later"
+        "paymentMethod": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -959,7 +1040,9 @@
           "productivity",
           "work"
         ],
-        "date": "2026-02-07"
+        "date": "2026-02-07",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-07T13:20:49.589Z"
@@ -975,12 +1058,23 @@
           "food",
           "purchase"
         ],
-        "amount": 25000,
+        "amount": 30000,
         "budgetCategory": "needs",
         "recurrenceDays": 1,
         "shoppingCategory": "routine",
         "paymentMethod": "",
-        "financeType": "expense"
+        "financeType": "expense",
+        "quantity": "",
+        "isRoutine": true,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [
+          5,
+          6
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "progress": 0,
+        "date": "2026-02-27T22:18:00.000Z"
       },
       "isOptimistic": false
     },
@@ -996,7 +1090,7 @@
           "reading",
           "productivity"
         ],
-        "date": "2026-02-06",
+        "date": "2026-02-06T00:00:00.000Z",
         "durationMinutes": 30,
         "skillName": "Focus reading",
         "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
@@ -1005,9 +1099,8 @@
     },
     {
       "id": "bcf1c08f-5df5-4f5e-be13-5ce823d1c6e1",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-02-06T11:25:59.181Z",
-      "completed_at": "2026-02-06T11:25:59.181Z",
       "type": "FINANCE",
       "content": "Bought breakfast",
       "meta": {
@@ -1020,15 +1113,18 @@
         "dateISO": "2026-02-06",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "date": "2026-02-06T11:25:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
     {
       "id": "92f12575-df62-4783-b8aa-6e28fbeb6c0c",
-      "status": "done",
+      "status": "pending",
       "created_at": "2026-02-06T11:25:59.181Z",
-      "completed_at": "2026-02-06T11:25:59.181Z",
       "type": "FINANCE",
       "content": "Donated",
       "meta": {
@@ -1041,7 +1137,11 @@
         "dateISO": "2026-02-06",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "date": "2026-02-06T11:25:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1063,7 +1163,9 @@
         "dateISO": "2026-02-05",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-05T12:26:32.000Z"
       },
       "isOptimistic": false
     },
@@ -1084,7 +1186,9 @@
         "dateISO": "2026-02-05",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-05T04:16:42.000Z"
       },
       "isOptimistic": false
     },
@@ -1105,10 +1209,15 @@
         "dateISO": "2026-02-11",
         "shoppingCategory": "urgent",
         "paymentMethod": "bni",
-        "financeType": "expense"
+        "financeType": "expense",
+        "progress": 100,
+        "date": "2026-02-09T14:01:00.000Z",
+        "progressNotes": "",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-14T16:47:54.220Z"
+      "completed_at": "2026-02-15T14:01:52.000Z"
     },
     {
       "id": "88dc50fc-1a35-46cf-bd3a-b61a3ba3c532",
@@ -1127,7 +1236,9 @@
         "dateISO": "2026-02-04",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-04T12:03:17.000Z"
       },
       "isOptimistic": false
     },
@@ -1148,7 +1259,9 @@
         "dateISO": "2026-02-04",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-04T10:58:31.000Z"
       },
       "isOptimistic": false
     },
@@ -1169,7 +1282,9 @@
         "dateISO": "2026-02-04",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-04T10:58:24.000Z"
       },
       "isOptimistic": false
     },
@@ -1183,7 +1298,9 @@
         "tags": [],
         "dateISO": "2026-02-04",
         "targetDay": "Rabu",
-        "when": "tomorrow"
+        "when": "tomorrow",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-04T12:03:21.652Z"
@@ -1205,7 +1322,9 @@
         "dateISO": "2026-02-03",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-03T10:52:59.000Z"
       },
       "isOptimistic": false
     },
@@ -1226,7 +1345,9 @@
         "dateISO": "2026-02-03",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-03T10:52:59.000Z"
       },
       "isOptimistic": false
     },
@@ -1242,7 +1363,9 @@
           "productivity"
         ],
         "dateISO": "2026-02-02",
-        "when": "today"
+        "when": "today",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-03T11:39:39.019Z"
@@ -1262,7 +1385,8 @@
         "durationMinutes": 60,
         "skillName": "Focus reading",
         "when": "today",
-        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1",
+        "date": "2026-02-02T22:00:02.000Z"
       },
       "isOptimistic": false
     },
@@ -1283,7 +1407,9 @@
         "dateISO": "2026-02-02",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-02T21:16:42.000Z"
       },
       "isOptimistic": false
     },
@@ -1298,7 +1424,9 @@
           "purchase"
         ],
         "budgetCategory": "wants",
-        "shoppingCategory": "not_urgent"
+        "shoppingCategory": "not_urgent",
+        "amount": 0,
+        "quantity": ""
       },
       "isOptimistic": false
     },
@@ -1315,7 +1443,9 @@
           "project"
         ],
         "dateISO": "2026-02-02",
-        "when": "today"
+        "when": "today",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-03T11:39:43.617Z"
@@ -1333,7 +1463,9 @@
           "productivity"
         ],
         "dateISO": "2026-02-02",
-        "when": "today"
+        "when": "today",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-03T11:39:44.743Z"
@@ -1351,7 +1483,9 @@
           "people"
         ],
         "dateISO": "2026-02-02",
-        "when": "today"
+        "when": "today",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-03T11:39:45.699Z"
@@ -1367,7 +1501,9 @@
           "purchase"
         ],
         "budgetCategory": "wants",
-        "shoppingCategory": "not_urgent"
+        "shoppingCategory": "not_urgent",
+        "amount": 0,
+        "quantity": ""
       },
       "isOptimistic": false
     },
@@ -1388,7 +1524,9 @@
         "dateISO": "2026-02-02",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-02T12:53:07.000Z"
       },
       "isOptimistic": false
     },
@@ -1409,7 +1547,9 @@
         "dateISO": "2026-02-02",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-02T10:41:29.000Z"
       },
       "isOptimistic": false
     },
@@ -1430,7 +1570,9 @@
         "dateISO": "2026-02-02",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-02T10:41:25.000Z"
       },
       "isOptimistic": false
     },
@@ -1447,13 +1589,15 @@
           "office"
         ],
         "budgetCategory": "needs",
-        "shoppingCategory": "not_urgent"
+        "shoppingCategory": "not_urgent",
+        "amount": 0,
+        "quantity": ""
       },
       "isOptimistic": false
     },
     {
       "id": "58df31d6-a72c-4e0e-a6db-9e112d187b9a",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-02-01T23:21:32.757Z",
       "type": "SHOPPING",
       "content": "skincare dan haircare , usmile",
@@ -1465,14 +1609,21 @@
         ],
         "budgetCategory": "wants",
         "shoppingCategory": "not_urgent",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "progress": 100,
+        "date": "2026-03-01T06:44:57.935Z",
+        "amount": 0,
+        "toWallet": "",
+        "financeType": "expense",
+        "quantity": ""
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-03-01T06:44:57.000Z"
     },
     {
       "id": "f3f5b703-3d30-4f3a-9365-55ef212a94dd",
       "status": "pending",
-      "created_at": "2026-02-01T23:06:02.801Z",
+      "created_at": "2026-02-01T23:06:02.000Z",
       "type": "NOTE",
       "content": "notes: **kosan tuku pulo asem, kayu putih**",
       "meta": {
@@ -1501,7 +1652,8 @@
         "durationMinutes": 45,
         "skillName": "Focus reading",
         "when": "today",
-        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1",
+        "date": "2026-02-01T23:05:24.000Z"
       },
       "isOptimistic": false
     },
@@ -1522,7 +1674,9 @@
         "dateISO": "2026-02-01",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-01T13:12:48.000Z"
       },
       "isOptimistic": false
     },
@@ -1536,7 +1690,9 @@
         "tags": [
           "business"
         ],
-        "date": "2026-02-01"
+        "date": "2026-02-01",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-01T23:22:00.960Z"
@@ -1557,7 +1713,9 @@
         "dateISO": "2026-02-01",
         "financeType": "expense",
         "when": "today",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-01T06:28:57.000Z"
       },
       "isOptimistic": false
     },
@@ -1572,7 +1730,7 @@
         "tags": [
           "kaizen"
         ],
-        "date": "2026-02-01",
+        "date": "2026-02-01T00:00:00.000Z",
         "durationMinutes": 50,
         "skillName": "Belajar bahasa inggris",
         "skillId": "df27b0c1-e59c-4274-b4fe-8ff0a481bf57"
@@ -1588,7 +1746,9 @@
       "meta": {
         "tags": [],
         "date": "2026-02-04",
-        "targetDay": "Rabu"
+        "targetDay": "Rabu",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-02-02T12:53:27.425Z"
@@ -1602,7 +1762,7 @@
       "content": "Belajar bahasa inggris",
       "meta": {
         "tags": [],
-        "date": "2026-02-01",
+        "date": "2026-02-01T00:00:00.000Z",
         "durationMinutes": 60,
         "skillName": "Belajar bahasa inggris",
         "skillId": "df27b0c1-e59c-4274-b4fe-8ff0a481bf57"
@@ -1625,7 +1785,8 @@
         "budgetCategory": "cat-1769922349475",
         "date": "2026-02-01T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1643,7 +1804,9 @@
         "amount": 50000,
         "budgetCategory": "cat-1770451205002",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": "",
+        "date": "2026-02-01T04:20:55.000Z"
       },
       "isOptimistic": false
     },
@@ -1663,7 +1826,8 @@
         "budgetCategory": "needs",
         "date": "2026-02-01T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1680,27 +1844,15 @@
         ],
         "amount": 2240000,
         "budgetCategory": "needs",
-        "date": "2026-01-31",
-        "financeType": "income"
-      },
-      "isOptimistic": false
-    },
-    {
-      "id": "ec8ab5d3-c480-4d30-9d8c-9b775c7dbc67",
-      "status": "pending",
-      "created_at": "2026-01-31T20:20:04.585Z",
-      "type": "SHOPPING",
-      "content": "Bayar tagihan gopay later",
-      "meta": {
-        "tags": [
-          "bills"
-        ],
-        "amount": 412000,
-        "budgetCategory": "wants",
-        "date": "2026-02-20T00:00:00.000Z",
-        "paymentMethod": "Gopay Later",
-        "shoppingCategory": "urgent",
-        "financeType": "expense"
+        "date": "2026-01-30T00:00:00.000Z",
+        "financeType": "income",
+        "paymentMethod": "",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1720,7 +1872,8 @@
         "budgetCategory": "wants",
         "date": "2026-01-31T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1740,7 +1893,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-31T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1760,7 +1914,8 @@
         "budgetCategory": "wants",
         "date": "2026-01-31T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1780,7 +1935,8 @@
         "budgetCategory": "wants",
         "date": "2026-01-31T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1800,7 +1956,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-31T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1819,7 +1976,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-31T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1839,7 +1997,8 @@
         "budgetCategory": "wants",
         "date": "2026-01-31T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1855,10 +2014,16 @@
         ],
         "date": "2026-02-01",
         "shoppingCategory": "urgent",
-        "targetDay": "Sunday"
+        "targetDay": "Sunday",
+        "amount": 0,
+        "budgetCategory": "",
+        "paymentMethod": "",
+        "toWallet": "",
+        "financeType": "expense",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-01-31T11:07:31.595Z"
+      "completed_at": "2026-01-31T11:07:31.000Z"
     },
     {
       "id": "85bd99cf-7f3a-4c60-b05f-7892216cbc0a",
@@ -1876,7 +2041,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-30T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1895,10 +2061,12 @@
         "date": "2026-02-01T00:00:00.000Z",
         "shoppingCategory": "urgent",
         "paymentMethod": "",
-        "financeType": "expense"
+        "financeType": "expense",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-01T05:06:10.129Z"
+      "completed_at": "2026-02-01T05:06:10.000Z"
     },
     {
       "id": "d478ce21-03c6-4ce5-8673-b828302c29a4",
@@ -1916,7 +2084,8 @@
         "budgetCategory": "wants",
         "date": "2026-01-29T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1936,7 +2105,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-29T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -1950,7 +2120,9 @@
         "tags": [
           "business"
         ],
-        "date": "2026-01-29"
+        "date": "2026-01-29",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-29T23:32:02.259Z"
@@ -1966,12 +2138,27 @@
           "bills",
           "errand"
         ],
-        "amount": 25000,
+        "amount": 5000,
         "budgetCategory": "cat-1770450517162",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
         "paymentMethod": "",
-        "financeType": "expense"
+        "financeType": "expense",
+        "date": "2026-03-12T22:01:00.000Z",
+        "progress": 0,
+        "quantity": "",
+        "isRoutine": true,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": []
       },
       "isOptimistic": false
     },
@@ -1991,7 +2178,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-28T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2011,7 +2199,8 @@
         "budgetCategory": "wants",
         "date": "2026-01-28T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2025,7 +2214,9 @@
         "tags": [
           "business"
         ],
-        "date": "2026-01-28"
+        "date": "2026-01-28",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-28T12:27:03.591Z"
@@ -2040,7 +2231,9 @@
         "tags": [
           "business"
         ],
-        "date": "2026-01-27"
+        "date": "2026-01-27",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-28T09:33:03.958Z"
@@ -2055,7 +2248,9 @@
         "tags": [
           "kaizen"
         ],
-        "date": "2026-01-27"
+        "date": "2026-01-27",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-28T09:33:06.407Z"
@@ -2070,7 +2265,9 @@
         "tags": [
           "business"
         ],
-        "date": "2026-01-27"
+        "date": "2026-01-27",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-28T09:33:09.522Z"
@@ -2091,7 +2288,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-27T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2110,7 +2308,8 @@
         "budgetCategory": "cat-1770450517162",
         "date": "2026-01-18T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2130,7 +2329,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-27T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2147,12 +2347,24 @@
         ],
         "amount": 25000,
         "budgetCategory": "needs",
-        "date": "2026-01-30T00:00:00.000Z",
+        "date": "2026-03-07T10:57:08.126Z",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
         "targetDay": "Friday",
         "paymentMethod": "",
-        "financeType": "expense"
+        "financeType": "expense",
+        "quantity": "",
+        "isRoutine": true,
+        "routineInterval": "monthly",
+        "routineDaysOfWeek": [
+          5
+        ],
+        "routineDaysOfMonth": [
+          1,
+          15
+        ],
+        "routineMonthsOfYear": [],
+        "progress": 0
       },
       "isOptimistic": false
     },
@@ -2172,7 +2384,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-26T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2191,7 +2404,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-26T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2212,7 +2426,8 @@
         "date": "2026-01-26T00:00:00.000Z",
         "financeType": "expense",
         "quantity": "725ml",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2227,7 +2442,9 @@
           "business",
           "kaizen"
         ],
-        "date": "2026-01-26"
+        "date": "2026-01-26",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-27T08:45:42.286Z"
@@ -2245,7 +2462,10 @@
         ],
         "amount": 450000,
         "financeType": "reimbursement",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "budgetCategory": "",
+        "toWallet": "",
+        "date": "2026-01-26T08:43:36.000Z"
       },
       "isOptimistic": false
     },
@@ -2260,7 +2480,7 @@
           "bills",
           "purchase"
         ],
-        "date": "2026-02-16T00:00:00.000Z",
+        "date": "2026-03-13T23:27:00.000Z",
         "recurrenceDays": 28,
         "shoppingCategory": "routine",
         "amount": 150000,
@@ -2268,36 +2488,22 @@
         "budgetCategory": "cat-1770450517162",
         "financeType": "expense",
         "progress": 0,
-        "progressNotes": ""
+        "quantity": "",
+        "isRoutine": true,
+        "routineInterval": "monthly",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [
+          14
+        ],
+        "routineMonthsOfYear": []
       },
       "isOptimistic": false
-    },
-    {
-      "id": "13aa8124-19f4-4df5-afb8-8321e93687c0",
-      "status": "pending",
-      "created_at": "2026-01-25T15:02:41.591Z",
-      "type": "SHOPPING",
-      "content": "bayar kosan",
-      "meta": {
-        "tags": [
-          "bills"
-        ],
-        "date": "2026-02-19T00:00:00.000Z",
-        "recurrenceDays": 30,
-        "shoppingCategory": "routine",
-        "amount": 1300000,
-        "paymentMethod": "",
-        "budgetCategory": "cat-1770450517162",
-        "financeType": "expense"
-      },
-      "isOptimistic": false,
-      "completed_at": "2026-01-26T12:41:20.205Z"
     },
     {
       "id": "6fc3d6e9-dc30-4aaa-a0f3-5799b23d7830",
       "status": "done",
       "created_at": "2026-01-25T14:33:38.479Z",
-      "completed_at": "2026-01-25T14:42:22.224Z",
+      "completed_at": "2026-01-25T14:42:22.000Z",
       "type": "SHOPPING",
       "content": "beli kaos polos",
       "meta": {
@@ -2308,7 +2514,9 @@
         "amount": 100000,
         "paymentMethod": "",
         "budgetCategory": "needs",
-        "financeType": "expense"
+        "financeType": "expense",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false
     },
@@ -2324,7 +2532,10 @@
           "electronics"
         ],
         "shoppingCategory": "not_urgent",
-        "amount": 9000000
+        "amount": 9000000,
+        "progress": 0,
+        "date": "2026-02-27T23:18:47.443Z",
+        "quantity": ""
       },
       "isOptimistic": false
     },
@@ -2344,7 +2555,8 @@
         "budgetCategory": "wants",
         "date": "2026-01-25T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2358,10 +2570,14 @@
         "tags": [],
         "shoppingCategory": "not_urgent",
         "paymentMethod": "Gopay later",
-        "budgetCategory": "wants"
+        "budgetCategory": "wants",
+        "amount": 0,
+        "toWallet": "",
+        "financeType": "expense",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-01T06:41:22.665Z"
+      "completed_at": "2026-02-01T06:41:22.000Z"
     },
     {
       "id": "08f8cd0b-c137-4876-8330-0629423238e6",
@@ -2374,7 +2590,9 @@
           "purchase",
           "electronics"
         ],
-        "shoppingCategory": "not_urgent"
+        "shoppingCategory": "not_urgent",
+        "amount": 0,
+        "quantity": ""
       },
       "isOptimistic": false
     },
@@ -2394,7 +2612,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-25T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2415,7 +2634,8 @@
         "date": "2026-01-25T00:00:00.000Z",
         "financeType": "expense",
         "quantity": "3 roti",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2431,10 +2651,16 @@
         ],
         "date": "2026-01-25",
         "shoppingCategory": "not_urgent",
-        "targetDay": "Sunday"
+        "targetDay": "Sunday",
+        "amount": 0,
+        "budgetCategory": "",
+        "paymentMethod": "",
+        "toWallet": "",
+        "financeType": "expense",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-01-25T02:17:06.290Z"
+      "completed_at": "2026-01-25T02:17:06.000Z"
     },
     {
       "id": "243eb27c-ceff-4c03-a4a0-278b69445ef7",
@@ -2446,7 +2672,10 @@
         "tags": [
           "purchase"
         ],
-        "shoppingCategory": "not_urgent"
+        "shoppingCategory": "not_urgent",
+        "progress": 0,
+        "amount": 0,
+        "quantity": ""
       },
       "isOptimistic": false
     },
@@ -2461,7 +2690,9 @@
           "electronics",
           "business"
         ],
-        "date": "2026-01-24"
+        "date": "2026-01-24",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-25T14:21:22.355Z"
@@ -2482,20 +2713,26 @@
         "budgetCategory": "needs",
         "date": "2026-01-24T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
     {
       "id": "7fb9cb9a-ab08-4009-b361-8492a89a29f9",
       "status": "pending",
-      "created_at": "2026-01-24T10:08:34.516Z",
+      "created_at": "2026-01-24T10:08:34.000Z",
       "type": "NOTE",
-      "content": "Github : M@********6",
+      "content": "Github : M@********6\nalfagift: M@*******5",
       "meta": {
         "tags": [
           "business"
-        ]
+        ],
+        "date": "2026-01-24T10:08:00.000Z",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "progress": 0,
+        "progressNotes": ""
       },
       "isOptimistic": false
     },
@@ -2512,7 +2749,9 @@
           "errand"
         ],
         "date": "2026-01-26",
-        "targetDay": "Monday"
+        "targetDay": "Monday",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-26T08:44:16.188Z"
@@ -2532,10 +2771,12 @@
         "shoppingCategory": "urgent",
         "amount": 180000,
         "budgetCategory": "wants",
-        "financeType": "expense"
+        "financeType": "expense",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-01-25T14:32:54.951Z"
+      "completed_at": "2026-01-25T14:32:54.000Z"
     },
     {
       "id": "50774428-6d25-49c9-9303-0e2505420992",
@@ -2548,12 +2789,24 @@
           "laundry",
           "errand"
         ],
-        "date": "2026-01-30T00:00:00.000Z",
-        "recurrenceDays": 7,
+        "date": "2026-03-06T07:16:35.583Z",
+        "recurrenceDays": 6,
         "shoppingCategory": "routine",
         "targetDay": "Friday",
         "paymentMethod": "Cash",
-        "financeType": "expense"
+        "financeType": "expense",
+        "quantity": "",
+        "progress": 100,
+        "budgetCategory": "",
+        "isRoutine": true,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          5
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "lastGeneratedHistoryId": "3164217c-4688-4e7e-bc47-8aa818477ba2",
+        "amount": 0
       },
       "isOptimistic": false
     },
@@ -2571,15 +2824,17 @@
         ],
         "amount": 450000,
         "budgetCategory": "needs",
-        "date": "2026-01-23",
-        "financeType": "expense"
+        "date": "2026-01-23T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
     {
       "id": "0e40fb4b-4813-498a-8ad6-a49cd39507cc",
       "status": "pending",
-      "created_at": "2026-01-24T07:57:54.502Z",
+      "created_at": "2026-01-24T07:57:54.000Z",
       "type": "NOTE",
       "content": "kharisma bahari:\nnasi sayur 8000\nnasi ayam 17000\n\nnasi uduk:\nnasi tempe kering cumi 16000",
       "meta": {
@@ -2607,7 +2862,8 @@
         "budgetCategory": "needs",
         "date": "2026-01-24T00:00:00.000Z",
         "financeType": "expense",
-        "paymentMethod": ""
+        "paymentMethod": "",
+        "toWallet": ""
       },
       "isOptimistic": false
     },
@@ -2620,7 +2876,9 @@
       "meta": {
         "tags": [],
         "date": "2026-01-25",
-        "targetDay": "Sunday"
+        "targetDay": "Sunday",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-25T23:42:29.246Z"
@@ -2641,10 +2899,12 @@
         "amount": 25000,
         "paymentMethod": "",
         "budgetCategory": "wants",
-        "financeType": "expense"
+        "financeType": "expense",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-01-24T08:16:41.965Z"
+      "completed_at": "2026-01-24T08:16:41.000Z"
     },
     {
       "id": "8147925f-57a4-49b2-a14f-d830471d5a4a",
@@ -2658,7 +2918,9 @@
           "observation",
           "SNI"
         ],
-        "date": "2026-01-25T11:22:00.000Z"
+        "date": "2026-01-25T11:22:00.000Z",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-29T23:32:05.121Z"
@@ -2675,7 +2937,9 @@
           "observation",
           "SNI"
         ],
-        "date": "2026-01-25T11:22:00.000Z"
+        "date": "2026-01-25T11:22:00.000Z",
+        "priority": "normal",
+        "progressNotes": ""
       },
       "isOptimistic": false,
       "completed_at": "2026-01-25T14:21:30.070Z"
@@ -2695,10 +2959,12 @@
         "amount": 150000,
         "paymentMethod": "",
         "budgetCategory": "wants",
-        "financeType": "expense"
+        "financeType": "expense",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-01-24T05:24:46.211Z"
+      "completed_at": "2026-01-24T05:24:46.000Z"
     },
     {
       "id": "1fcbd815-30a9-4765-b17d-6336ee94caef",
@@ -2715,22 +2981,29 @@
         "amount": 65000,
         "paymentMethod": "",
         "budgetCategory": "needs",
-        "financeType": "expense"
+        "financeType": "expense",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-01-24T13:15:43.293Z"
+      "completed_at": "2026-01-24T13:15:43.000Z"
     },
     {
       "id": "ced554e8-fccc-4379-b606-4661df4ab6c0",
       "type": "NOTE",
-      "content": "Honuma san orang jepang yang suka senyum",
+      "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut lacus libero, imperdiet quis mattis sed, ultricies eget purus. Donec bibendum blandit lorem, et lobortis mi tristique at. Aenean sed sagittis nisl, eget efficitur ipsum. Fusce tristique tempor eleifend. Aenean hendrerit luctus fermentum. Aenean arcu nunc, semper vestibulum commodo nec, commodo porta urna. Maecenas consectetur libero quis ex condimentum faucibus. Fusce metus leo, sollicitudin sit amet diam et, lacinia porta tortor. In in hendrerit ante, id sodales diam.\n\nQuisque nec lacus viverra, sagittis arcu rutrum, sagittis dui. Aenean orci ipsum, commodo sed aliquet ut, vulputate vel orci. Quisque tincidunt erat ante, sit amet efficitur odio mollis ut. Donec ornare bibendum dui, at bibendum turpis rhoncus ac. Suspendisse in auctor ligula. Nunc eu convallis turpis, ac faucibus tellus. Ut consectetur vehicula fermentum. Vestibulum blandit hendrerit erat, id volutpat metus. Nunc aliquam enim et vestibulum commodo. Donec quis est tellus.\n\nMaecenas diam sem, egestas ut sollicitudin eu, hendrerit quis felis. Maecenas gravida purus sem, non gravida eros lobortis sed. Mauris placerat felis sed leo efficitur, at finibus velit placerat. Donec bibendum tellus libero, at accumsan nibh pulvinar eu. Ut ac elementum mauris, at fermentum sapien. Integer elementum in velit non scelerisque. Duis vitae magna fermentum, auctor turpis at, tristique tellus. Phasellus volutpat id diam sit amet blandit. Curabitur at posuere arcu, in cursus nibh.\n\nVestibulum varius magna augue, vel ultricies leo rhoncus non. Donec sollicitudin leo quis magna aliquam iaculis. Curabitur non felis nulla. Donec placerat odio eget nulla vehicula mollis. Curabitur consequat sollicitudin auctor. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras ultrices tempus varius. Integer luctus, sem in convallis venenatis, lacus velit imperdiet metus, quis lacinia lectus ipsum consectetur orci. Ut at eros eu neque ultrices imperdiet ac vel lacus. Vivamus ante nibh, posuere vitae lorem sed, faucibus sodales orci.\n\nNunc est enim, placerat eu magna vitae, hendrerit efficitur sem. Nunc a est nibh. Donec aliquam augue massa, nec vehicula sapien malesuada sit amet. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam efficitur nunc a enim ultrices faucibus. Vestibulum hendrerit vitae eros sed lobortis. Nunc ornare dui eget lobortis luctus. Nunc malesuada, nulla at laoreet commodo, ligula nisl egestas sem, vel euismod libero turpis ac ligula. Sed fringilla eu urna at volutpat. Nam rhoncus ut nibh ac varius. Suspendisse purus ligula, lacinia at molestie sit amet, tempus vitae arcu. Curabitur hendrerit eros ut magna facilisis mollis. Donec sodales leo quis augue gravida suscipit. In non sodales libero, vitae facilisis tellus.",
       "status": "pending",
-      "created_at": "2026-01-24T04:48:26.067Z",
+      "created_at": "2026-01-24T04:48:26.000Z",
       "meta": {
         "tags": [
           "observation",
           "people"
-        ]
+        ],
+        "date": "2026-01-24T04:48:00.000Z",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "progress": 0,
+        "progressNotes": ""
       },
       "isOptimistic": false
     },
@@ -2739,7 +3012,7 @@
       "type": "NOTE",
       "content": "Daftar referensi tempat makan: \nmie ayam mahkota, \njuragan dimsum, \npecel lele deket pos, \ntenda tenda soto deket pecel lele, \nbubur ayam al azhar kelapa gading, \nalfamidi kekiri ada PSB.",
       "status": "pending",
-      "created_at": "2026-01-24T04:47:51.673Z",
+      "created_at": "2026-01-24T04:47:51.000Z",
       "meta": {
         "tags": [
           "food",
@@ -2753,21 +3026,34 @@
       "id": "fe47f26c-1845-4381-8f5b-98f37f499013",
       "type": "SHOPPING",
       "content": "Ambil laundry",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-24T04:41:52.242Z",
       "meta": {
         "tags": [
           "errand",
           "laundry"
         ],
-        "date": "2026-01-25T00:00:00.000Z",
+        "date": "2026-03-01T12:37:45.359Z",
         "shoppingCategory": "routine",
-        "amount": 36000,
-        "paymentMethod": "Cash",
+        "paymentMethod": "w-1",
         "budgetCategory": "needs",
-        "financeType": "expense"
+        "financeType": "expense",
+        "progress": 100,
+        "recurrenceDays": 6,
+        "quantity": "",
+        "isRoutine": true,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          0
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "amount": 32000,
+        "lastGeneratedHistoryId": "ac0b6ae4-6aea-4589-a5d3-d1aeae59a6e3",
+        "toWallet": ""
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-03-01T12:37:45.000Z"
     },
     {
       "id": "c1e4542c-2cde-46af-bd15-deb32a203caa",
@@ -2785,53 +3071,12 @@
         "amount": 15000,
         "paymentMethod": "",
         "budgetCategory": "wants",
-        "financeType": "expense"
-      },
-      "isOptimistic": false,
-      "completed_at": "2026-01-24T14:57:40.720Z"
-    },
-    {
-      "id": "5152d4b0-e3ef-409f-9069-caa4a18a9e39",
-      "type": "SHOPPING",
-      "content": "Ambil laundry",
-      "status": "done",
-      "created_at": "2026-01-24T04:41:52.242Z",
-      "meta": {
-        "tags": [
-          "errand",
-          "laundry"
-        ],
-        "date": "2026-01-25T00:00:00.000Z",
-        "shoppingCategory": "not_urgent",
-        "amount": 36000,
-        "paymentMethod": "",
-        "budgetCategory": "needs",
-        "financeType": "expense"
-      },
-      "isOptimistic": false,
-      "completed_at": "2026-02-01T13:12:53.462Z"
-    },
-    {
-      "id": "13dd221a-aa23-4767-a05d-7d6290c80ad2",
-      "status": "done",
-      "created_at": "2026-01-28T10:35:50.776Z",
-      "type": "SHOPPING",
-      "content": "Bayar parkiran",
-      "meta": {
-        "tags": [
-          "bills",
-          "errand"
-        ],
-        "amount": 25000,
-        "budgetCategory": "cat-1770450517162",
-        "recurrenceDays": 7,
-        "shoppingCategory": "not_urgent",
-        "paymentMethod": "",
         "financeType": "expense",
-        "date": "2026-02-05T17:09:00.000Z"
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-06T13:36:48.867Z"
+      "completed_at": "2026-01-24T14:57:40.000Z"
     },
     {
       "id": "9fb0a73b-43f6-41eb-9d95-ab126731ee7a",
@@ -2848,14 +3093,2240 @@
         "recurrenceDays": 7,
         "shoppingCategory": "not_urgent",
         "targetDay": "Friday",
-        "paymentMethod": "Cash",
-        "financeType": "expense"
+        "paymentMethod": "w-1",
+        "financeType": "expense",
+        "amount": 0,
+        "budgetCategory": "",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-06T13:22:58.949Z"
+      "completed_at": "2026-02-06T13:22:58.000Z"
     },
     {
-      "id": "c13cc725-467f-4bc5-9711-a38c180ab4dd",
+      "id": "d72a28f8-907d-47d9-95d3-3d1a1f70bca9",
+      "status": "done",
+      "created_at": "2026-03-07T10:50:59.017Z",
+      "completed_at": "2026-03-07T10:50:59.017Z",
+      "type": "FINANCE",
+      "content": "Beli makan buka puasa",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner"
+        ],
+        "amount": 23000,
+        "commodity": "food",
+        "date": "2026-03-07T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "subcommodity": "dinner",
+        "targetDay": "Saturday",
+        "budgetCategory": "needs",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "priority": "normal",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "14ec95e6-11b0-4562-8e93-3203447b47f4",
+      "status": "done",
+      "created_at": "2026-03-07T10:50:42.017Z",
+      "completed_at": "2026-03-07T10:50:42.017Z",
+      "type": "FINANCE",
+      "content": "Makan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "commodity": "food",
+        "date": "2026-03-07T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "subcommodity": "breakfast",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "1879464e-39f3-47e7-a12a-42937865e73f",
+      "status": "done",
+      "created_at": "2026-03-06T15:22:17.586Z",
+      "completed_at": "2026-03-06T15:22:17.586Z",
+      "type": "FINANCE",
+      "content": "parkir",
+      "meta": {
+        "tags": [
+          "transport"
+        ],
+        "amount": 5000,
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "targetDay": "2026-03-06",
+        "date": "2026-03-06T15:22:00.000Z",
+        "budgetCategory": "cat-1770450517162",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "priority": "normal",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "119657ba-7a2c-495b-ac96-5487461e27aa",
+      "status": "done",
+      "created_at": "2026-03-06T05:10:33.436Z",
+      "completed_at": "2026-03-06T05:10:33.436Z",
+      "type": "FINANCE",
+      "content": "Beli makan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 8000,
+        "budgetCategory": "needs",
+        "date": "2026-03-06T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "3d41101b-b370-41f7-94e7-fb9512d7e3ce",
+      "status": "done",
+      "created_at": "2026-03-06T05:10:11.329Z",
+      "completed_at": "2026-03-06T05:10:11.329Z",
+      "type": "FINANCE",
+      "content": "bayar parkir",
+      "meta": {
+        "tags": [
+          "transport",
+          "expense"
+        ],
+        "amount": 5000,
+        "budgetCategory": "cat-1770450517162",
+        "date": "2026-03-06T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c654b7d8-8cc0-44ce-a7ec-60e6b7951716",
+      "status": "done",
+      "created_at": "2026-03-06T05:09:57.611Z",
+      "completed_at": "2026-03-06T05:09:57.611Z",
+      "type": "FINANCE",
+      "content": "Beli air",
+      "meta": {
+        "tags": [
+          "water"
+        ],
+        "amount": 4000,
+        "budgetCategory": "needs",
+        "date": "2026-03-06T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "gopay",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c69cca29-2cbc-4ab9-8de1-c002ac2316a7",
+      "status": "done",
+      "created_at": "2026-03-05T05:10:56.723Z",
+      "completed_at": "2026-03-05T05:10:56.723Z",
+      "type": "FINANCE",
+      "content": "tunjangan hari raya",
+      "meta": {
+        "tags": [
+          "income",
+          "bank"
+        ],
+        "amount": 3370000,
+        "date": "2026-03-05T00:00:00.000Z",
+        "financeType": "income",
+        "paymentMethod": "bca",
+        "budgetCategory": "Income",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "a710cc4c-5f83-4707-9568-7c209f7aaafc",
+      "status": "done",
+      "created_at": "2026-03-04T11:48:57.406Z",
+      "completed_at": "2026-03-04T11:48:57.406Z",
+      "type": "FINANCE",
+      "content": "Transfer dari bca ke cash",
+      "meta": {
+        "tags": [
+          "transfer",
+          "bank"
+        ],
+        "amount": 250000,
+        "date": "2026-03-04T00:00:00.000Z",
+        "financeType": "transfer",
+        "paymentMethod": "bca",
+        "toWallet": "cash",
+        "budgetCategory": "Transfer"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "eaf98961-18f1-462e-a7e9-9ba6890f41a0",
+      "status": "done",
+      "created_at": "2026-03-04T11:48:48.119Z",
+      "completed_at": "2026-03-04T11:48:48.119Z",
+      "type": "FINANCE",
+      "content": "Beli makan buat buka puasa dan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner"
+        ],
+        "amount": 26000,
+        "budgetCategory": "needs",
+        "date": "2026-03-04T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "a97616f5-ee0f-459e-a73c-1087fad6bb49",
+      "status": "done",
+      "created_at": "2026-03-04T10:59:09.909Z",
+      "completed_at": "2026-03-04T10:59:09.909Z",
+      "type": "FINANCE",
+      "content": "Beli takjil",
+      "meta": {
+        "tags": [
+          "food",
+          "snacks"
+        ],
+        "amount": 5000,
+        "budgetCategory": "wants",
+        "date": "2026-03-04T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "14772e3e-42a0-49d7-b6d7-89412617ef76",
+      "status": "done",
+      "created_at": "2026-03-04T10:59:02.685Z",
+      "completed_at": "2026-03-04T10:59:02.685Z",
+      "type": "FINANCE",
+      "content": "beli takjil",
+      "meta": {
+        "tags": [
+          "food",
+          "snacks"
+        ],
+        "amount": 10000,
+        "budgetCategory": "wants",
+        "date": "2026-03-04T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "bni",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "77314311-b40b-45b2-9f5c-d7b1ae76c3f6",
+      "status": "done",
+      "created_at": "2026-03-04T04:43:28.685Z",
+      "completed_at": "2026-03-04T04:43:28.685Z",
+      "type": "FINANCE",
+      "content": "beli chatgpt",
+      "meta": {
+        "tags": [
+          "chatgpt",
+          "ewallet"
+        ],
+        "amount": 17000,
+        "budgetCategory": "wants",
+        "date": "2026-03-04T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "gopay",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "2c77fda7-4310-489e-b85c-acbcd80a7faf",
+      "status": "done",
+      "created_at": "2026-03-03T21:33:59.104Z",
+      "completed_at": "2026-03-03T21:33:59.104Z",
+      "type": "FINANCE",
+      "content": "makan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "date": "2026-03-03T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "gopay",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "97dbfbb5-5f51-46a9-a8aa-f538d8443d08",
+      "status": "done",
+      "created_at": "2026-03-03T10:34:23.884Z",
+      "completed_at": "2026-03-03T10:34:23.884Z",
+      "type": "FINANCE",
+      "content": "10000 hilang",
+      "meta": {
+        "tags": [
+          "loss"
+        ],
+        "amount": 10000,
+        "budgetCategory": "cat-1770451205002",
+        "date": "2026-03-03T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c53d6acf-b019-47e8-a252-43729bd22d5a",
+      "status": "done",
+      "created_at": "2026-03-03T10:33:36.111Z",
+      "completed_at": "2026-03-03T10:33:36.111Z",
+      "type": "FINANCE",
+      "content": "Biaya admin bulanan BCA",
+      "meta": {
+        "tags": [
+          "expense",
+          "bank"
+        ],
+        "amount": 14000,
+        "budgetCategory": "needs",
+        "date": "2026-03-03T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "bca",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "68993f7d-fcce-4f44-8551-6103952cd6f4",
+      "status": "done",
+      "created_at": "2026-03-03T10:31:24.665Z",
+      "completed_at": "2026-03-03T10:31:24.666Z",
+      "type": "FINANCE",
+      "content": "biaya admin",
+      "meta": {
+        "tags": [
+          "expense",
+          "bank"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-03-03T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "bni",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "134d52a7-3072-49db-935f-2c6315a79cdc",
+      "status": "done",
+      "created_at": "2026-03-03T10:25:02.544Z",
+      "completed_at": "2026-03-03T10:25:02.544Z",
+      "type": "FINANCE",
+      "content": "Beli jajan buka",
+      "meta": {
+        "tags": [
+          "snacks"
+        ],
+        "amount": 10000,
+        "budgetCategory": "wants",
+        "date": "2026-03-03T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "1ff046e5-1746-471e-9db2-465f6278fae9",
+      "status": "done",
+      "created_at": "2026-03-03T00:47:54.055Z",
+      "completed_at": "2026-03-03T00:47:54.055Z",
+      "type": "FINANCE",
+      "content": "Beli makan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 8000,
+        "budgetCategory": "needs",
+        "date": "2026-03-03T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "37229ff3-fc29-4f25-8e9c-edf48ce4ad23",
+      "status": "done",
+      "created_at": "2026-03-02T10:33:33.114Z",
+      "completed_at": "2026-03-02T10:33:33.114Z",
+      "type": "FINANCE",
+      "content": "Beli makan malam",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner"
+        ],
+        "amount": 8000,
+        "budgetCategory": "needs",
+        "date": "2026-03-02T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "bd89f76e-d219-44d5-9768-42c9a7492b57",
+      "status": "done",
+      "created_at": "2026-03-02T10:33:16.752Z",
+      "completed_at": "2026-03-02T10:33:16.752Z",
+      "type": "FINANCE",
+      "content": "jajan ngabuburit",
+      "meta": {
+        "tags": [
+          "snacks",
+          "food"
+        ],
+        "amount": 21000,
+        "budgetCategory": "wants",
+        "date": "2026-03-02T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "4dbebf50-9df6-4459-beb1-532f08e094f5",
+      "status": "done",
+      "created_at": "2026-03-01T23:44:10.586Z",
+      "completed_at": "2026-03-01T23:44:10.587Z",
+      "type": "FINANCE",
+      "content": "beli makan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 8000,
+        "budgetCategory": "needs",
+        "date": "2026-03-01T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "1881145d-5a18-42a3-9e65-f8084372820a",
+      "status": "done",
+      "created_at": "2026-03-01T12:38:07.654Z",
+      "completed_at": "2026-03-01T12:38:07.654Z",
+      "type": "FINANCE",
+      "content": "parkir masjid",
+      "meta": {
+        "tags": [
+          "transport"
+        ],
+        "amount": 4000,
+        "budgetCategory": "needs",
+        "date": "2026-03-01T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "13f18d4f-fcff-49c3-9bfc-02fd3c990b15",
+      "type": "TODO",
+      "content": "Packing buku-buku buat dibawa ke jakarta",
+      "status": "pending",
+      "created_at": "2026-03-01T06:48:10.134Z",
+      "meta": {
+        "tags": [],
+        "date": "2026-03-22T00:00:00.000Z",
+        "priority": "normal",
+        "progressNotes": ""
+      }
+    },
+    {
+      "id": "036eaead-2d45-45e5-b282-01048f7a2ed3",
+      "type": "NOTE",
+      "content": "Bulan maret ini:\n1. Aku mau tetap konsisten bangun pagi, dengan juga ngurangin jam tidur (<8 jam)\n2. konsisten untuk self-care (daily)\n3. tambahin minat baca (30 menit/hari)\n4. kurangi scroll tiktok/reels di kosan (<2 jam/hari)",
+      "status": "pending",
+      "created_at": "2026-03-01T06:43:44.000Z",
+      "meta": {
+        "tags": [
+          "resolusi",
+          "maret"
+        ]
+      }
+    },
+    {
+      "id": "fe250206-4a7e-4841-a79a-fab34c78a06a",
+      "status": "done",
+      "created_at": "2026-03-01T06:35:57.574Z",
+      "completed_at": "2026-03-01T06:35:57.574Z",
+      "type": "FINANCE",
+      "content": "skincare dan haircare",
+      "meta": {
+        "tags": [
+          "skincare",
+          "haircare"
+        ],
+        "amount": 467000,
+        "budgetCategory": "needs",
+        "date": "2026-03-01T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "bca",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "b94db102-dddd-4088-b1b0-e5543f6a33fc",
+      "status": "done",
+      "created_at": "2026-03-01T02:22:38.921Z",
+      "completed_at": "2026-03-01T02:22:38.921Z",
+      "type": "FINANCE",
+      "content": "Makan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 13000,
+        "budgetCategory": "needs",
+        "date": "2026-03-01T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "41eb6a9e-d25d-4a74-b7a5-31d7589396e7",
+      "status": "done",
+      "created_at": "2026-02-28T18:38:00.399Z",
+      "completed_at": "2026-02-28T18:38:00.399Z",
+      "type": "FINANCE",
+      "content": "makan malam",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner"
+        ],
+        "amount": 13000,
+        "budgetCategory": "needs",
+        "date": "2026-02-28T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "f973a21a-a62c-4478-9290-b84dcc6b3da4",
+      "type": "TODO",
+      "content": "bikin grand theme",
+      "status": "done",
+      "created_at": "2026-02-28T10:59:53.642Z",
+      "meta": {
+        "tags": [],
+        "date": "2026-03-01T00:00:00.000Z",
+        "progress": 100,
+        "priority": "normal",
+        "progressNotes": ""
+      },
+      "completed_at": "2026-03-01T12:38:18.079Z"
+    },
+    {
+      "id": "9fde9889-fef5-4e69-b3c8-5f7fcb299c53",
+      "type": "TODO",
+      "content": "baca buku",
+      "status": "done",
+      "created_at": "2026-02-28T10:59:20.296Z",
+      "meta": {
+        "tags": [],
+        "date": "2026-02-28T00:00:00.000Z",
+        "progress": 100,
+        "paymentMethod": "",
+        "financeType": "expense",
+        "progressNotes": "",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "priority": "normal"
+      },
+      "completed_at": "2026-03-04T13:01:26.767Z"
+    },
+    {
+      "id": "8c7fc93d-9c4e-4ab5-bdf6-c2a006e52140",
+      "type": "TODO",
+      "content": "baca buku",
+      "status": "done",
+      "created_at": "2026-02-28T10:58:43.917Z",
+      "meta": {
+        "tags": [],
+        "date": "2026-03-01T00:00:00.000Z",
+        "progress": 100,
+        "priority": "normal",
+        "progressNotes": ""
+      },
+      "completed_at": "2026-03-01T05:14:03.287Z"
+    },
+    {
+      "id": "17870393-0af6-460f-8455-57efa944ef0e",
+      "type": "TODO",
+      "content": "Bikin resolusi maret",
+      "status": "done",
+      "created_at": "2026-02-28T10:55:33.884Z",
+      "meta": {
+        "tags": [],
+        "date": "2026-03-01T00:00:00.000Z",
+        "progress": 100,
+        "priority": "normal",
+        "progressNotes": ""
+      },
+      "completed_at": "2026-03-01T06:44:04.827Z"
+    },
+    {
+      "id": "f13fc0d2-4c7d-4603-9176-1004422ce381",
+      "type": "SHOPPING",
+      "content": "Bayar kosan",
+      "status": "pending",
+      "created_at": "2026-02-28T10:17:59.586Z",
+      "meta": {
+        "tags": [],
+        "shoppingCategory": "routine",
+        "amount": 1300000,
+        "budgetCategory": "cat-1770450517162",
+        "date": "2026-03-07T10:56:50.745Z",
+        "isRoutine": true,
+        "routineInterval": "monthly",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [
+          19
+        ],
+        "routineMonthsOfYear": [],
+        "quantity": "",
+        "progress": 0
+      }
+    },
+    {
+      "id": "bf6c88b0-b655-4d46-85ff-1d47e0a2a3e9",
+      "type": "FINANCE",
+      "content": "ambil laundry",
+      "status": "done",
+      "created_at": "2026-02-28T09:56:24.649Z",
+      "completed_at": "2026-02-28T09:56:24.649Z",
+      "meta": {
+        "tags": [],
+        "amount": 36000,
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "budgetCategory": "needs",
+        "date": "2026-02-16T00:00:00.000Z",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      }
+    },
+    {
+      "id": "f8d986ef-c914-46c4-bf8a-e52ef5ad6d61",
+      "status": "done",
+      "created_at": "2026-02-28T09:25:13.599Z",
+      "completed_at": "2026-02-28T09:25:13.599Z",
+      "type": "FINANCE",
+      "content": "refund shopee",
+      "meta": {
+        "tags": [
+          "income"
+        ],
+        "amount": 19000,
+        "date": "2026-02-28T00:00:00.000Z",
+        "financeType": "income",
+        "paymentMethod": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "budgetCategory": "Income",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "01a897eb-31f4-4fa0-836f-4967b87bdcb9",
+      "status": "done",
+      "created_at": "2026-02-28T07:49:52.909Z",
+      "completed_at": "2026-02-28T07:49:52.909Z",
+      "type": "FINANCE",
+      "content": "transfer from bni to gopaylater",
+      "meta": {
+        "tags": [
+          "transfer",
+          "bank",
+          "ewallet"
+        ],
+        "amount": 413000,
+        "financeType": "transfer",
+        "paymentMethod": "7474b330-c25e-47a4-9633-7217b2a82e03",
+        "toWallet": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
+        "date": "2026-02-28T07:49:00.000Z",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "budgetCategory": "Transfer"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "bab774eb-4af0-49e5-9610-f7ff4129358c",
+      "type": "SHOPPING",
+      "content": "Emergency Savings",
+      "status": "pending",
+      "created_at": "2026-02-28T07:30:44.382Z",
+      "meta": {
+        "tags": [],
+        "shoppingCategory": "saving",
+        "amount": 18000000,
+        "date": "2026-02-28T00:00:00.000Z",
+        "isRoutine": false,
+        "dedicatedWalletId": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
+        "quantity": ""
+      }
+    },
+    {
+      "id": "3a713719-146b-47cb-b0ff-926d7c2b16e1",
+      "type": "TODO",
+      "content": "Summary Teni Data",
+      "status": "done",
+      "created_at": "2026-02-28T06:32:38.324Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": true,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          5
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-03-06T06:39:00.000Z",
+        "lastGeneratedHistoryId": "5832bf78-ca0c-4acb-808d-7b419a66bce3",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "progress": 100,
+        "progressNotes": "",
+        "priority": "normal"
+      },
+      "completed_at": "2026-03-06T15:22:17.050Z"
+    },
+    {
+      "id": "819a0f54-9f42-47d6-9abf-2d42194d97cb",
+      "type": "SHOPPING",
+      "content": "New car",
+      "status": "pending",
+      "created_at": "2026-02-28T05:51:09.212Z",
+      "meta": {
+        "tags": [],
+        "shoppingCategory": "saving",
+        "amount": 100000000,
+        "date": "2026-02-28T00:00:00.000Z",
+        "isRoutine": false,
+        "financeType": "saving",
+        "savingGoalId": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
+        "dedicatedWalletId": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
+        "quantity": ""
+      }
+    },
+    {
+      "id": "a709391b-92d1-4049-ad6c-d5fd60008a36",
+      "status": "done",
+      "created_at": "2026-02-28T05:49:09.159Z",
+      "completed_at": "2026-02-28T05:49:09.159Z",
+      "type": "FINANCE",
+      "content": "Emergency Savings",
+      "meta": {
+        "tags": [],
+        "amount": 500000,
+        "budgetCategory": "savings",
+        "date": "2026-02-28T00:00:00.000Z",
+        "financeType": "saving",
+        "paymentMethod": "7474b330-c25e-47a4-9633-7217b2a82e03",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "savingGoalId": "bab774eb-4af0-49e5-9610-f7ff4129358c",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "b659da7b-9f6b-448f-8c3c-7ed0e9b52234",
+      "type": "SHOPPING",
+      "content": "Phone",
+      "status": "pending",
+      "created_at": "2026-02-28T01:02:26.320Z",
+      "meta": {
+        "tags": [],
+        "shoppingCategory": "saving",
+        "date": "2026-02-28T00:00:00.000Z",
+        "isRoutine": false,
+        "progress": 0,
+        "savedAmount": 500000,
+        "amount": 9000003,
+        "financeType": "saving",
+        "savingGoalId": "706600d1-164c-4f14-b23d-e738add0f1f2",
+        "dedicatedWalletId": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
+        "quantity": ""
+      }
+    },
+    {
+      "id": "3c8ca6e8-f5b8-4203-a1d1-9dc6f42aab80",
+      "type": "TODO",
+      "content": "Briefing weekly",
+      "status": "done",
+      "created_at": "2026-02-27T23:56:00.102Z",
+      "meta": {
+        "tags": [],
+        "isRoutine": true,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-03-01T20:00:03.779Z",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "progress": 100,
+        "progressNotes": "",
+        "lastGeneratedHistoryId": "2f3d8582-6911-4a38-aa1f-894ccf4a5f55",
+        "priority": "normal"
+      },
+      "completed_at": "2026-03-02T05:11:33.697Z"
+    },
+    {
+      "id": "3f2fb374-972d-48f0-90e4-4ab467455d7e",
+      "type": "TODO",
+      "content": "Briefing mingguan",
+      "status": "done",
+      "created_at": "2026-02-27T23:55:44.940Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": true,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1,
+          6
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-03-02T06:52:17.109Z",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "lastGeneratedHistoryId": "3eea7468-c66a-48ff-9ea0-afb77c24f47e",
+        "progress": 100,
+        "priority": "normal",
+        "progressNotes": ""
+      },
+      "completed_at": "2026-03-06T15:22:20.123Z"
+    },
+    {
+      "id": "3891d8c2-763a-47a7-9300-b64de5774766",
+      "status": "done",
+      "created_at": "2026-02-27T12:54:44.486Z",
+      "completed_at": "2026-02-27T12:54:59.000Z",
+      "type": "SHOPPING",
+      "content": "Beli rak buat di kamar",
+      "meta": {
+        "tags": [
+          "purchase",
+          "inventory"
+        ],
+        "amount": 52000,
+        "budgetCategory": "wants",
+        "paymentMethod": "7474b330-c25e-47a4-9633-7217b2a82e03",
+        "shoppingCategory": "not_urgent",
+        "date": "2026-02-27T12:54:00.000Z",
+        "financeType": "expense",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": "",
+        "quantity": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "40da99ea-26a1-4735-bdfd-7da4de679945",
+      "status": "done",
+      "created_at": "2026-02-27T11:42:25.012Z",
+      "completed_at": "2026-02-27T11:42:25.012Z",
+      "type": "FINANCE",
+      "content": "Jajan nextar, susu, doritos",
+      "meta": {
+        "tags": [
+          "food",
+          "snacks"
+        ],
+        "amount": 30000,
+        "budgetCategory": "wants",
+        "date": "2026-02-27T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "23c312bc-ab8c-46a7-949a-26eb9c00868f",
+      "status": "done",
+      "created_at": "2026-02-27T11:41:52.592Z",
+      "completed_at": "2026-02-27T11:41:52.592Z",
+      "type": "FINANCE",
+      "content": "air minum",
+      "meta": {
+        "tags": [
+          "food",
+          "water"
+        ],
+        "amount": 11000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "date": "2026-02-27T11:41:00.000Z",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "d406aab3-74c1-4da4-adbe-32550addf5e4",
+      "status": "pending",
+      "created_at": "2026-02-27T11:41:44.908Z",
+      "type": "FINANCE",
+      "content": "makan buka puasa",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 8000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "date": "2026-02-27T11:41:00.000Z",
+        "paymentMethod": "w-1",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c9db155e-c476-4aea-be86-7d05c3d85845",
+      "status": "done",
+      "created_at": "2026-02-27T05:21:18.450Z",
+      "completed_at": "2026-02-27T05:21:18.450Z",
+      "type": "FINANCE",
+      "content": "buka puasa dan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast",
+          "dinner"
+        ],
+        "amount": 25000,
+        "budgetCategory": "needs",
+        "date": "2026-02-27T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "39a66dfc-9a9a-47a6-9780-0539a7292d54",
+      "status": "done",
+      "created_at": "2026-02-26T12:25:47.000Z",
+      "completed_at": "2026-02-26T12:25:47.313Z",
+      "type": "NOTE",
+      "content": "Sudah bekerja selama satu bulan sebagai government relation di industri otomotif (spare parts) setelah lulus teknik industri.",
+      "meta": {
+        "tags": [
+          "work",
+          "career"
+        ],
+        "date": "2026-02-26"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "4b97e857-4575-4d05-b2c5-deef3ddd798d",
+      "status": "done",
+      "created_at": "2026-02-26T12:25:47.000Z",
+      "completed_at": "2026-02-26T12:25:47.313Z",
+      "type": "NOTE",
+      "content": "Hanya berkutat terkait regulasi. Merasa pekerjaan terkait regulasi akan habis dan bukan menjadi pekerjaan utama lagi. Tidak tahu deliverables dari pekerjaan sekarang.",
+      "meta": {
+        "tags": [
+          "work",
+          "career",
+          "productivity"
+        ],
+        "date": "2026-02-26"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "eed31917-c5d2-499c-8404-1fc7a68cf491",
+      "status": "done",
+      "created_at": "2026-02-26T12:25:47.000Z",
+      "completed_at": "2026-02-26T12:25:47.313Z",
+      "type": "NOTE",
+      "content": "Kadang salah menginterpretasikan regulasi dan kurang teliti dalam submission, meskipun bisa direvisi.",
+      "meta": {
+        "tags": [
+          "work",
+          "regulations",
+          "error"
+        ],
+        "date": "2026-02-26"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "51583fb4-2f99-45a9-992e-df6744195594",
+      "status": "done",
+      "created_at": "2026-02-26T12:25:47.000Z",
+      "completed_at": "2026-02-26T12:25:47.313Z",
+      "type": "NOTE",
+      "content": "Tidak mendapatkan pekerjaan rutin selain request kecil-kecilan seperti membuat draft surat, melakukan klasifikasi data, dan mengisi regulatory compliance matrix.",
+      "meta": {
+        "tags": [
+          "work",
+          "routine",
+          "data"
+        ],
+        "date": "2026-02-26"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "aba870f9-d9f1-422f-bab5-dc60f4f085d2",
+      "status": "done",
+      "created_at": "2026-02-26T12:25:47.000Z",
+      "completed_at": "2026-02-26T12:25:47.313Z",
+      "type": "NOTE",
+      "content": "Merasa sedikit gagap saat berbicara, banyak terselip, dan kalimat berputar-putar. Hal ini membuat tidak percaya diri.",
+      "meta": {
+        "tags": [
+          "communication",
+          "skill",
+          "self-improvement"
+        ],
+        "date": "2026-02-26"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "0f41f95d-8dc7-4f2e-b28e-80fbc338bda8",
+      "status": "done",
+      "created_at": "2026-02-26T12:25:47.313Z",
+      "type": "TODO",
+      "content": "Cari cara untuk berlatih berbicara.",
+      "meta": {
+        "tags": [
+          "communication",
+          "skill",
+          "self-improvement"
+        ],
+        "progress": 100,
+        "priority": "normal",
+        "progressNotes": ""
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-27T23:43:08.723Z"
+    },
+    {
+      "id": "ec292211-2bbd-469f-9265-48ea8d38f45a",
+      "status": "pending",
+      "created_at": "2026-02-26T10:19:14.183Z",
+      "type": "FINANCE",
+      "content": "santunan anak yatim",
+      "meta": {
+        "tags": [
+          "charity",
+          "donation"
+        ],
+        "amount": 50000,
+        "budgetCategory": "cat-1769922349475",
+        "financeType": "expense",
+        "paymentMethod": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
+        "date": "2026-02-26T10:19:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "6ad577f8-ce6c-4b12-8f1b-00c4d6a3609f",
+      "status": "done",
+      "created_at": "2026-02-26T10:19:02.238Z",
+      "completed_at": "2026-02-26T10:19:02.238Z",
+      "type": "FINANCE",
+      "content": "gaji",
+      "meta": {
+        "tags": [
+          "income"
+        ],
+        "amount": 6545000,
+        "date": "2026-02-26T00:00:00.000Z",
+        "financeType": "income",
+        "paymentMethod": "bca",
+        "budgetCategory": "Income",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "83bf9792-a9e5-4690-823d-43736342e17a",
+      "status": "done",
+      "created_at": "2026-02-25T10:28:56.918Z",
+      "completed_at": "2026-02-25T10:28:56.918Z",
+      "type": "FINANCE",
+      "content": "Beli sahur dan buka",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast",
+          "dinner"
+        ],
+        "amount": 18000,
+        "budgetCategory": "needs",
+        "date": "2026-02-25T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "fd0edb43-2cd0-4efd-996e-26ee36fdfe53",
+      "status": "done",
+      "created_at": "2026-02-24T13:49:51.626Z",
+      "completed_at": "2026-02-24T13:49:51.626Z",
+      "type": "FINANCE",
+      "content": "Beli vitamin c dan roti",
+      "meta": {
+        "tags": [
+          "food",
+          "health"
+        ],
+        "amount": 25000,
+        "budgetCategory": "needs",
+        "date": "2026-02-24T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c34de1a7-e2fd-46f7-a104-7658db8c642b",
+      "status": "done",
+      "created_at": "2026-02-24T11:16:25.184Z",
+      "completed_at": "2026-02-24T11:16:25.184Z",
+      "type": "FINANCE",
+      "content": "Beli sahur dan buka",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 16000,
+        "budgetCategory": "needs",
+        "date": "2026-02-24T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "0b2ee358-352d-4157-acad-62964d2221b5",
+      "status": "done",
+      "created_at": "2026-02-23T12:27:35.029Z",
+      "completed_at": "2026-02-23T12:27:35.029Z",
+      "type": "SKILL_LOG",
+      "content": "Prayed",
+      "meta": {
+        "tags": [
+          "mindfulness"
+        ],
+        "date": "2026-02-23T00:00:00.000Z",
+        "durationMinutes": 20,
+        "skillName": "Praying skill",
+        "skillId": "f0d24c27-ffe6-4f3a-95a0-4309c515a72c"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c3120d47-5c9f-4d2e-93ce-70ee460cdf4d",
+      "status": "done",
+      "created_at": "2026-02-23T12:19:21.386Z",
+      "completed_at": "2026-02-23T12:19:21.386Z",
+      "type": "FINANCE",
+      "content": "Beli makan buat sahur",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 12000,
+        "budgetCategory": "needs",
+        "date": "2026-02-23T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "697c27a4-d8cc-4523-a9ab-1e335e5b0387",
+      "status": "done",
+      "created_at": "2026-02-23T12:19:11.206Z",
+      "type": "SHOPPING",
+      "content": "beli shampo kering",
+      "meta": {
+        "tags": [
+          "haircare"
+        ],
+        "shoppingCategory": "not_urgent",
+        "progress": 100,
+        "date": "2026-03-01T06:45:07.953Z",
+        "amount": 0,
+        "budgetCategory": "",
+        "paymentMethod": "",
+        "toWallet": "",
+        "financeType": "expense",
+        "quantity": ""
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-03-01T06:45:07.000Z"
+    },
+    {
+      "id": "8e426e53-3473-4535-8071-564f553d0cd7",
+      "status": "pending",
+      "created_at": "2026-02-23T10:20:21.584Z",
+      "type": "FINANCE",
+      "content": "tebus menu shoppee",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 29000,
+        "budgetCategory": "needs",
+        "date": "2026-02-23T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "0bf39644-ea66-4240-b70a-a8ceca235670",
+      "status": "pending",
+      "created_at": "2026-02-23T10:19:08.979Z",
+      "type": "FINANCE",
+      "content": "Transfer from BNI to ShopeePay",
+      "meta": {
+        "tags": [
+          "transfer",
+          "bank",
+          "ewallet"
+        ],
+        "amount": 50000,
+        "financeType": "transfer",
+        "paymentMethod": "7474b330-c25e-47a4-9633-7217b2a82e03",
+        "toWallet": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "date": "2026-02-23T10:19:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "budgetCategory": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "1143ae2b-be62-492d-b088-d45a3490f893",
+      "status": "pending",
+      "created_at": "2026-02-23T10:17:23.510Z",
+      "type": "FINANCE",
+      "content": "Makan malam",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner",
+          "expense"
+        ],
+        "amount": 19000,
+        "budgetCategory": "needs",
+        "date": "2026-02-23T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "e08594fd-5482-4810-bb37-3b452553ccb3",
+      "status": "done",
+      "created_at": "2026-02-23T10:07:00.890Z",
+      "completed_at": "2026-02-23T10:07:00.890Z",
+      "type": "FINANCE",
+      "content": "parkir 2 minggu",
+      "meta": {
+        "tags": [
+          "transport",
+          "expense"
+        ],
+        "amount": 50000,
+        "budgetCategory": "needs",
+        "date": "2026-02-23T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "4deaa329-2ccc-42de-bf02-9f3cacc145b6",
+      "status": "pending",
+      "created_at": "2026-02-23T05:11:53.350Z",
+      "type": "SHOPPING",
+      "content": "Pengen beli parfum",
+      "meta": {
+        "tags": [
+          "skincare"
+        ],
+        "shoppingCategory": "not_urgent",
+        "targetDay": "",
+        "amount": 0,
+        "quantity": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "0d73c468-299a-4c34-8d36-30ffb89da3f6",
+      "status": "done",
+      "created_at": "2026-02-22T12:25:48.798Z",
+      "completed_at": "2026-02-22T12:25:48.798Z",
+      "type": "FINANCE",
+      "content": "ambil laundry",
+      "meta": {
+        "tags": [
+          "laundry",
+          "errand",
+          "needs"
+        ],
+        "amount": 27000,
+        "budgetCategory": "needs",
+        "date": "2026-02-22T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "b377fb46-1f25-4f99-a37c-792a39cbb496",
+      "status": "done",
+      "created_at": "2026-02-22T12:25:40.711Z",
+      "completed_at": "2026-02-22T12:25:40.711Z",
+      "type": "FINANCE",
+      "content": "Transfer from bca to cash 250000",
+      "meta": {
+        "tags": [
+          "transfer",
+          "bank"
+        ],
+        "amount": 250000,
+        "financeType": "transfer",
+        "paymentMethod": "bca",
+        "toWallet": "cash",
+        "budgetCategory": "Transfer",
+        "date": "2026-02-22T12:25:40.000Z"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "b6696f8b-d277-4ec0-8d62-c68972be91cf",
+      "status": "pending",
+      "created_at": "2026-02-22T07:33:41.307Z",
+      "type": "FINANCE",
+      "content": "tip to driver",
+      "meta": {
+        "tags": [
+          "tip",
+          "transport"
+        ],
+        "amount": 1000,
+        "budgetCategory": "wants",
+        "financeType": "expense",
+        "paymentMethod": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "date": "2026-02-22T07:33:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "f349e960-636e-4b7b-9f15-020b1a6c889b",
+      "status": "pending",
+      "created_at": "2026-02-22T07:33:30.064Z",
+      "type": "FINANCE",
+      "content": "Transfer from BNI to ShopeePay",
+      "meta": {
+        "tags": [
+          "transfer",
+          "bank",
+          "ewallet"
+        ],
+        "amount": 50000,
+        "date": "2026-02-22T00:00:00.000Z",
+        "financeType": "transfer",
+        "paymentMethod": "7474b330-c25e-47a4-9633-7217b2a82e03",
+        "toWallet": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "progress": 0,
+        "progressNotes": "",
+        "budgetCategory": "Transfer"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c4778b91-2071-463f-98c3-9aa721ccc1a9",
+      "status": "pending",
+      "created_at": "2026-02-22T07:32:30.805Z",
+      "type": "FINANCE",
+      "content": "beli makan untuk buka puasa dan sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "ewallet",
+          "expense"
+        ],
+        "amount": 19000,
+        "budgetCategory": "needs",
+        "date": "2026-02-22T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c08a1359-6661-4b13-aea8-cdf281dd8079",
+      "status": "pending",
+      "created_at": "2026-02-21T10:57:40.205Z",
+      "type": "FINANCE",
+      "content": "Beli makan malam dan sahur",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 24000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "date": "2026-02-21T10:57:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "c7a82c4d-9a50-4ddb-b43a-6686a3500817",
+      "status": "done",
+      "created_at": "2026-02-21T02:45:16.392Z",
+      "completed_at": "2026-02-21T02:45:16.392Z",
+      "type": "FINANCE",
+      "content": "Beli case HP",
+      "meta": {
+        "tags": [
+          "electronics",
+          "ewallet"
+        ],
+        "amount": 37000,
+        "budgetCategory": "wants",
+        "financeType": "expense",
+        "paymentMethod": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
+        "date": "2026-02-21T02:45:00.000Z",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "74365315-b532-4593-bec8-1e5109085582",
+      "status": "pending",
+      "created_at": "2026-02-21T01:11:34.797Z",
+      "type": "FINANCE",
+      "content": "Bayar parkir",
+      "meta": {
+        "tags": [
+          "transport",
+          "expense"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-02-20T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "065b7eda-8e78-44b7-8494-7e305e917d11",
+      "status": "done",
+      "created_at": "2026-02-20T11:19:50.724Z",
+      "completed_at": "2026-02-20T11:19:50.724Z",
+      "type": "FINANCE",
+      "content": "beli makan malam dan sarapan",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner",
+          "breakfast"
+        ],
+        "amount": 21000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": "",
+        "date": "2026-02-20T11:19:50.000Z"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "a8288a1f-a389-4793-bad5-b7da5c7968a8",
+      "status": "pending",
+      "created_at": "2026-02-19T12:13:12.943Z",
+      "type": "SKILL_LOG",
+      "content": "Praying",
+      "meta": {
+        "tags": [
+          "mindfulness"
+        ],
+        "date": "2026-02-19T00:00:00.000Z",
+        "durationMinutes": 15,
+        "skillName": "Praying skill",
+        "skillId": "f0d24c27-ffe6-4f3a-95a0-4309c515a72c",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "progress": 0,
+        "progressNotes": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "4a5215e7-f066-4eff-af37-dd14e2b40631",
+      "status": "done",
+      "created_at": "2026-02-19T12:13:02.531Z",
+      "completed_at": "2026-02-19T12:13:02.531Z",
+      "type": "FINANCE",
+      "content": "Beli untuk sahur",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 21000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": "",
+        "date": "2026-02-19T12:13:02.000Z"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "200acb82-d9ce-4df8-999a-0086ac954e56",
+      "status": "done",
+      "created_at": "2026-02-19T10:39:06.027Z",
+      "completed_at": "2026-02-19T10:39:06.027Z",
+      "type": "FINANCE",
+      "content": "beli bensin",
+      "meta": {
+        "tags": [
+          "transport"
+        ],
+        "amount": 30000,
+        "budgetCategory": "needs",
+        "date": "2026-02-19T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "761be867-48ec-42b2-8443-7fad05cde7bc",
+      "status": "pending",
+      "created_at": "2026-02-19T10:38:42.638Z",
+      "type": "FINANCE",
+      "content": "Parking fee",
+      "meta": {
+        "tags": [
+          "transport",
+          "expense"
+        ],
+        "amount": 5000,
+        "date": "2026-02-16T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "targetDay": "Monday",
+        "budgetCategory": "needs",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "181daa9d-4834-4fee-8ac2-757c5ede8b06",
+      "status": "done",
+      "created_at": "2026-02-19T10:38:09.072Z",
+      "completed_at": "2026-02-19T10:38:09.072Z",
+      "type": "FINANCE",
+      "content": "bayar parkir",
+      "meta": {
+        "tags": [
+          "transport"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-02-16T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "975740c2-8cbb-45b5-a4c3-c54ec2464ceb",
+      "status": "pending",
+      "created_at": "2026-02-19T10:38:09.072Z",
+      "type": "FINANCE",
+      "content": "bayar parkir",
+      "meta": {
+        "tags": [
+          "transport"
+        ],
+        "amount": 5000,
+        "budgetCategory": "needs",
+        "date": "2026-02-19T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "w-1",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "6b46ffd8-841d-4e8f-bc6e-1ac8596234ac",
+      "status": "done",
+      "created_at": "2026-02-18T12:12:52.854Z",
+      "completed_at": "2026-02-18T12:12:52.854Z",
+      "type": "SKILL_LOG",
+      "content": "Prayer",
+      "meta": {
+        "tags": [
+          "mindfulness"
+        ],
+        "date": "2026-02-18T00:00:00.000Z",
+        "durationMinutes": 5,
+        "skillName": "Praying skill",
+        "skillId": "f0d24c27-ffe6-4f3a-95a0-4309c515a72c"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "0c5b631a-504e-4b97-aed5-3b9f162f4171",
+      "status": "pending",
+      "created_at": "2026-02-18T11:39:42.398Z",
+      "type": "FINANCE",
+      "content": "Beli sarung dan sajadah",
+      "meta": {
+        "tags": [
+          "clothing",
+          "needs",
+          "ewallet"
+        ],
+        "amount": 84000,
+        "budgetCategory": "wants",
+        "financeType": "expense",
+        "paymentMethod": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
+        "date": "2026-02-18T11:39:00.000Z",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "93bca09d-b391-4e08-839f-07ed147f7d60",
+      "status": "done",
+      "created_at": "2026-02-18T10:47:55.462Z",
+      "completed_at": "2026-02-18T10:47:55.462Z",
+      "type": "FINANCE",
+      "content": "Breakfast",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "date": "2026-02-18T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "9ef13c98-a5ed-49c5-b3da-e488e9fbf904",
+      "status": "done",
+      "created_at": "2026-02-18T10:47:55.462Z",
+      "completed_at": "2026-02-18T10:47:55.462Z",
+      "type": "FINANCE",
+      "content": "Dinner",
+      "meta": {
+        "tags": [
+          "food",
+          "dinner"
+        ],
+        "amount": 19000,
+        "budgetCategory": "needs",
+        "date": "2026-02-18T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "d937affb-cf62-400f-ae46-aa16ea7fb646",
+      "status": "done",
+      "created_at": "2026-02-17T12:04:29.381Z",
+      "completed_at": "2026-02-17T12:04:29.381Z",
+      "type": "SKILL_LOG",
+      "content": "Baca buku fokus",
+      "meta": {
+        "tags": [
+          "reading"
+        ],
+        "date": "2026-02-17T00:00:00.000Z",
+        "durationMinutes": 45,
+        "skillName": "Focus reading",
+        "skillId": "7744808a-8a3d-4f50-a30e-ea4f6e09d2c1"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "13dfa2f2-a62e-4210-9c0e-ed4fdee7054c",
+      "status": "pending",
+      "created_at": "2026-02-17T08:41:21.017Z",
+      "type": "FINANCE",
+      "content": "Beli makan siang",
+      "meta": {
+        "tags": [
+          "food",
+          "lunch",
+          "ewallet"
+        ],
+        "amount": 33000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "4e19f9db-1ee3-498c-bc72-ae7941804ee9",
+        "date": "2026-02-17T08:41:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "4bd4ff31-d354-4ac4-9e72-b4426e7b137a",
+      "status": "pending",
+      "created_at": "2026-02-17T06:35:44.958Z",
+      "type": "FINANCE",
+      "content": "Beli kaos 2 biji",
+      "meta": {
+        "tags": [
+          "clothing",
+          "expense",
+          "ewallet"
+        ],
+        "amount": 108000,
+        "budgetCategory": "needs",
+        "date": "2026-02-17T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "ad0206e8-e9c3-4147-8f22-f72a762a881c",
+      "status": "done",
+      "created_at": "2026-02-17T03:46:23.225Z",
+      "completed_at": "2026-02-17T03:46:23.225Z",
+      "type": "FINANCE",
+      "content": "Beli sarapan",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 10000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "toWallet": "",
+        "date": "2026-02-17T03:46:23.000Z"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "04f1a95f-efb6-4317-bec5-3d003db8ec5d",
+      "status": "pending",
+      "created_at": "2026-02-17T03:45:17.000Z",
+      "type": "NOTE",
+      "content": "7 kaos hitam 2 kaos putih",
+      "meta": {
+        "tags": [
+          "clothing",
+          "inventory"
+        ],
+        "date": "2026-02-17T03:45:00.000Z",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "progress": 0,
+        "progressNotes": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "f53973c9-c6c4-4eda-9dc8-4d067596ae7c",
+      "status": "pending",
+      "created_at": "2026-02-16T16:51:44.444Z",
+      "type": "FINANCE",
+      "content": "transfer ke gopay",
+      "meta": {
+        "tags": [
+          "transfer",
+          "bank",
+          "ewallet"
+        ],
+        "amount": 50000,
+        "budgetCategory": "savings",
+        "financeType": "transfer",
+        "paymentMethod": "bni",
+        "toWallet": "706600d1-164c-4f14-b23d-e738add0f1f2",
+        "date": "2026-02-16T16:51:00.000Z",
+        "progress": 0,
+        "progressNotes": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "34c0620c-485e-490f-ae68-87dccdfac149",
+      "status": "done",
+      "created_at": "2026-02-16T16:51:44.444Z",
+      "completed_at": "2026-02-16T16:51:44.444Z",
+      "type": "FINANCE",
+      "content": "admin transfer",
+      "meta": {
+        "tags": [
+          "bank",
+          "expense",
+          "transfer"
+        ],
+        "amount": 1000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "bni",
+        "toWallet": "",
+        "date": "2026-02-16T16:51:44.000Z"
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "373e003f-fc24-4173-974e-25aa0aaca453",
+      "status": "done",
+      "created_at": "2026-02-16T13:22:12.913Z",
+      "completed_at": "2026-02-16T13:22:12.913Z",
+      "type": "FINANCE",
+      "content": "jajan mcd",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 28000,
+        "budgetCategory": "wants",
+        "date": "2026-02-16T00:00:00.000Z",
+        "financeType": "expense",
+        "paymentMethod": "706600d1-164c-4f14-b23d-e738add0f1f2",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "79f9b00d-bd02-4676-99a4-a0766c10e8b1",
+      "status": "done",
+      "created_at": "2026-02-16T09:25:53.655Z",
+      "type": "TODO",
+      "content": "Bikin mapping terkait vpti",
+      "meta": {
+        "tags": [
+          "work",
+          "project"
+        ],
+        "date": "2026-02-17",
+        "targetDay": "Selasa",
+        "toWallet": "Selasa",
+        "progress": 100,
+        "priority": "normal",
+        "progressNotes": ""
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-22T07:47:58.731Z"
+    },
+    {
+      "id": "ed418234-12d6-4083-ae77-7b75dfdb788b",
+      "status": "pending",
+      "created_at": "2026-02-16T00:50:36.905Z",
+      "type": "FINANCE",
+      "content": "sarapan",
+      "meta": {
+        "tags": [
+          "food",
+          "breakfast"
+        ],
+        "amount": 18000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "7474b330-c25e-47a4-9633-7217b2a82e03",
+        "date": "2026-02-16T00:50:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "aa5034df-1153-4e64-a09f-9c57d4789306",
+      "status": "pending",
+      "created_at": "2026-02-15T13:23:19.507Z",
+      "type": "FINANCE",
+      "content": "ambil laundry",
+      "meta": {
+        "tags": [
+          "laundry",
+          "errand"
+        ],
+        "amount": 32000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "date": "2026-02-08T13:23:00.000Z",
+        "paymentMethod": "",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "f268a919-b3c3-4338-b27d-fa6e707de0b4",
+      "status": "done",
+      "created_at": "2026-02-15T13:22:59.147Z",
+      "completed_at": "2026-02-15T13:22:59.147Z",
+      "type": "FINANCE",
+      "content": "lauk ayam",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 13000,
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "targetDay": "",
+        "date": "2026-02-15T13:22:00.000Z",
+        "budgetCategory": "needs",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "ffe6773d-d702-4451-a82a-100b007e686f",
+      "status": "pending",
+      "created_at": "2026-02-15T12:18:33.630Z",
+      "type": "FINANCE",
+      "content": "Transfer uang dari BCA ke Cash",
+      "meta": {
+        "tags": [
+          "transfer",
+          "bank"
+        ],
+        "amount": 250000,
+        "financeType": "transfer",
+        "paymentMethod": "bca",
+        "toWallet": "w-1",
+        "date": "2026-02-15T12:18:00.000Z",
+        "progress": 0,
+        "progressNotes": "",
+        "budgetCategory": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "6c3769af-e78b-4642-a1a0-e00f52cd6674",
+      "status": "done",
+      "created_at": "2026-02-15T09:36:05.952Z",
+      "type": "EVENT",
+      "content": "Presentasi regulasi terkait otomotif",
+      "meta": {
+        "tags": [],
+        "date": "2026-02-18T00:00:00.000Z",
+        "targetDay": "Rabu",
+        "toWallet": "Cash",
+        "progress": 100,
+        "priority": "normal"
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-22T07:48:00.439Z"
+    },
+    {
+      "id": "94746070-1177-4a5c-8fa2-ab5a77d1cc7a",
+      "status": "done",
+      "created_at": "2026-02-15T09:17:25.946Z",
+      "type": "SHOPPING",
+      "content": "Ambil uang di ATM",
+      "meta": {
+        "tags": [
+          "bank",
+          "errand"
+        ],
+        "date": "2026-02-15",
+        "shoppingCategory": "urgent",
+        "progress": 100,
+        "amount": 0,
+        "budgetCategory": "",
+        "paymentMethod": "",
+        "toWallet": "",
+        "financeType": "expense",
+        "quantity": ""
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-16T08:24:43.000Z"
+    },
+    {
+      "id": "dcd041ba-e573-4ae8-8585-a7c38af11074",
+      "status": "done",
+      "created_at": "2026-02-15T09:16:17.159Z",
+      "completed_at": "2026-02-15T09:16:17.159Z",
+      "type": "FINANCE",
+      "content": "ambil uang dari atm",
+      "meta": {
+        "tags": [
+          "bank",
+          "transfer"
+        ],
+        "date": "2026-02-15T00:00:00.000Z",
+        "financeType": "transfer",
+        "paymentMethod": "atm",
+        "toWallet": "w-1",
+        "amount": 0,
+        "budgetCategory": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "42863403-db86-485a-9634-af69cdad79ed",
+      "status": "done",
+      "created_at": "2026-02-15T08:21:08.582Z",
+      "completed_at": "2026-02-15T08:21:08.582Z",
+      "type": "FINANCE",
+      "content": "sedekah tip ke gojek",
+      "meta": {
+        "tags": [
+          "charity",
+          "tip",
+          "transport"
+        ],
+        "amount": 5000,
+        "budgetCategory": "cat-1769922349475",
+        "financeType": "expense",
+        "paymentMethod": "706600d1-164c-4f14-b23d-e738add0f1f2",
+        "date": "2026-02-15T08:21:00.000Z",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "57c61622-0ed1-4042-815c-4895051323ea",
+      "status": "done",
+      "created_at": "2026-02-15T06:22:35.372Z",
+      "completed_at": "2026-02-15T06:22:35.372Z",
+      "type": "FINANCE",
+      "content": "Beli nasi uduk",
+      "meta": {
+        "tags": [
+          "food"
+        ],
+        "amount": 13000,
+        "budgetCategory": "needs",
+        "financeType": "expense",
+        "paymentMethod": "cash",
+        "date": "2026-02-15T06:22:00.000Z",
+        "toWallet": ""
+      },
+      "isOptimistic": false
+    },
+    {
+      "id": "e551c87f-cf17-4e9f-b385-63e2c2d303d9",
       "type": "SHOPPING",
       "content": "Ambil laundry",
       "status": "done",
@@ -2865,18 +5336,25 @@
           "errand",
           "laundry"
         ],
-        "date": "2026-01-25T00:00:00.000Z",
+        "date": "2026-02-01T00:00:00.000Z",
         "shoppingCategory": "not_urgent",
         "amount": 36000,
-        "paymentMethod": "Cash",
+        "paymentMethod": "",
         "budgetCategory": "needs",
-        "financeType": "expense"
+        "financeType": "expense",
+        "recurrenceDays": 1,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-08T13:29:38.225Z"
+      "completed_at": "2026-02-08T13:29:38.000Z"
     },
     {
-      "id": "ca0c5fc6-337d-42d5-9fc2-21bbcb087e52",
+      "id": "ab868b6c-c141-4c7f-90b8-9df82ad4b972",
       "status": "done",
       "created_at": "2026-01-24T08:04:19.718Z",
       "type": "SHOPPING",
@@ -2890,11 +5368,428 @@
         "recurrenceDays": 7,
         "shoppingCategory": "not_urgent",
         "targetDay": "Friday",
-        "paymentMethod": "Cash",
-        "financeType": "expense"
+        "paymentMethod": "w-1",
+        "financeType": "expense",
+        "amount": 0,
+        "budgetCategory": "",
+        "toWallet": "",
+        "quantity": ""
       },
       "isOptimistic": false,
-      "completed_at": "2026-02-14T16:48:00.145Z"
+      "completed_at": "2026-02-14T16:48:00.000Z"
+    },
+    {
+      "id": "5f93ab31-89ce-4489-9e47-76a65f818aec",
+      "type": "NOTE",
+      "content": "read permenperin",
+      "status": "done",
+      "created_at": "2026-02-25T11:29:30.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1,
+          2
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "date": "2026-02-25T11:29:00.000Z",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "recurrenceDays": 2
+      },
+      "completed_at": "2026-02-27T23:20:17.090Z"
+    },
+    {
+      "id": "b1108542-dc11-4241-9294-8f0e90345504",
+      "type": "NOTE",
+      "content": "If i am a ",
+      "status": "done",
+      "created_at": "2026-02-27T23:06:36.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "daily",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-27T00:00:00.000Z"
+      },
+      "completed_at": "2026-02-27T23:20:21.869Z"
+    },
+    {
+      "id": "58ff5dac-06bb-447a-a511-4e254325d60b",
+      "status": "done",
+      "created_at": "2026-01-25T15:02:41.591Z",
+      "type": "FINANCE",
+      "content": "bayar kosan",
+      "meta": {
+        "tags": [
+          "bills"
+        ],
+        "date": "2026-02-19T00:00:00.000Z",
+        "recurrenceDays": 30,
+        "amount": 1300000,
+        "paymentMethod": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
+        "budgetCategory": "cat-1770450517162",
+        "financeType": "expense",
+        "progress": 0,
+        "isRoutine": false,
+        "toWallet": ""
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-27T23:27:58.708Z"
+    },
+    {
+      "id": "5056fb2e-eee6-4dfd-9aac-eaee5b1767cc",
+      "type": "NOTE",
+      "content": "Test routine 1",
+      "status": "done",
+      "created_at": "2026-02-28T06:24:28.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-28T00:00:00.000Z"
+      },
+      "completed_at": "2026-02-28T06:24:28.696Z"
+    },
+    {
+      "id": "4be29d27-599e-4bf4-877b-acdc70e2630f",
+      "type": "NOTE",
+      "content": "Briefing mingguan",
+      "status": "done",
+      "created_at": "2026-02-28T06:25:58.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-27T00:00:00.000Z",
+        "paymentMethod": "",
+        "financeType": "expense"
+      },
+      "completed_at": "2026-02-28T06:25:58.308Z"
+    },
+    {
+      "id": "6c00b9da-fffd-4d14-be05-4a18247f249b",
+      "type": "NOTE",
+      "content": "Test routine 1",
+      "status": "done",
+      "created_at": "2026-02-28T06:26:19.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-28T00:00:00.000Z"
+      },
+      "completed_at": "2026-02-28T06:26:19.819Z"
+    },
+    {
+      "id": "8560a85c-f5da-4433-88dd-037936d5f635",
+      "type": "NOTE",
+      "content": "Briefing mingguan",
+      "status": "done",
+      "created_at": "2026-02-28T06:33:00.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-27T00:00:00.000Z",
+        "paymentMethod": "",
+        "financeType": "expense"
+      },
+      "completed_at": "2026-02-28T06:33:00.719Z"
+    },
+    {
+      "id": "e01a3199-356a-4459-a93d-c80839f2dcb1",
+      "type": "NOTE",
+      "content": "Summary Teni Data",
+      "status": "done",
+      "created_at": "2026-02-28T06:39:47.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          5
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-28T00:00:00.000Z"
+      },
+      "completed_at": "2026-02-28T06:39:47.233Z"
+    },
+    {
+      "id": "923a31fe-ad40-4f77-9800-8aba963adc75",
+      "type": "NOTE",
+      "content": "Briefing mingguan",
+      "status": "done",
+      "created_at": "2026-02-28T06:51:30.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1,
+          6
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-28T06:51:30.411Z",
+        "paymentMethod": "",
+        "financeType": "expense"
+      },
+      "completed_at": "2026-02-28T06:51:30.411Z"
+    },
+    {
+      "id": "2cb407d4-6aa6-405a-ab4d-ad4b79936503",
+      "type": "NOTE",
+      "content": "Briefing mingguan",
+      "status": "done",
+      "created_at": "2026-02-28T06:52:17.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1,
+          6
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-28T06:52:17.109Z",
+        "paymentMethod": "",
+        "financeType": "expense"
+      },
+      "completed_at": "2026-02-28T06:52:17.109Z"
+    },
+    {
+      "id": "3164217c-4688-4e7e-bc47-8aa818477ba2",
+      "status": "done",
+      "created_at": "2026-02-28T07:16:35.583Z",
+      "type": "FINANCE",
+      "content": "Send laundry",
+      "meta": {
+        "tags": [
+          "laundry",
+          "errand"
+        ],
+        "date": "2026-02-28T07:16:35.000Z",
+        "recurrenceDays": 6,
+        "targetDay": "Friday",
+        "paymentMethod": "w-1",
+        "financeType": "expense",
+        "quantity": "",
+        "progress": 0,
+        "budgetCategory": "",
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          5
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "amount": 0,
+        "toWallet": ""
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-02-28T07:16:35.583Z"
+    },
+    {
+      "id": "2297c4cd-a92c-4518-b278-9f60a7da1db4",
+      "type": "NOTE",
+      "content": "Briefing weekly",
+      "status": "done",
+      "created_at": "2026-02-28T20:00:03.000Z",
+      "meta": {
+        "tags": [],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-02-28T20:00:03.779Z",
+        "paymentMethod": "",
+        "financeType": "expense"
+      },
+      "completed_at": "2026-02-28T20:00:03.779Z"
+    },
+    {
+      "id": "ac0b6ae4-6aea-4589-a5d3-d1aeae59a6e3",
+      "type": "FINANCE",
+      "content": "Ambil laundry",
+      "status": "done",
+      "created_at": "2026-03-01T12:37:45.359Z",
+      "meta": {
+        "tags": [
+          "errand",
+          "laundry"
+        ],
+        "date": "2026-03-01T12:37:00.000Z",
+        "paymentMethod": "w-1",
+        "budgetCategory": "cat-1770450517162",
+        "financeType": "expense",
+        "recurrenceDays": 6,
+        "quantity": "",
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          0
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "amount": 32000,
+        "toWallet": ""
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-03-01T12:37:45.359Z"
+    },
+    {
+      "id": "2f3d8582-6911-4a38-aa1f-894ccf4a5f55",
+      "type": "NOTE",
+      "content": "Briefing weekly",
+      "status": "done",
+      "created_at": "2026-03-02T05:11:33.000Z",
+      "meta": {
+        "tags": [],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-03-02T05:11:33.697Z",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "lastGeneratedHistoryId": "2297c4cd-a92c-4518-b278-9f60a7da1db4"
+      },
+      "completed_at": "2026-03-02T05:11:33.697Z"
+    },
+    {
+      "id": "47989c2b-23d7-4670-b999-5a59ade0f80b",
+      "type": "NOTE",
+      "content": "awf",
+      "status": "done",
+      "created_at": "2026-03-04T13:01:07.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1,
+          2
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-03-04T13:01:07.311Z"
+      },
+      "completed_at": "2026-03-04T13:01:07.311Z"
+    },
+    {
+      "id": "5832bf78-ca0c-4acb-808d-7b419a66bce3",
+      "type": "NOTE",
+      "content": "Summary Teni Data",
+      "status": "done",
+      "created_at": "2026-03-06T15:22:17.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          5
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-03-06T15:22:17.050Z",
+        "lastGeneratedHistoryId": "e01a3199-356a-4459-a93d-c80839f2dcb1",
+        "paymentMethod": "",
+        "financeType": "expense"
+      },
+      "completed_at": "2026-03-06T15:22:17.050Z"
+    },
+    {
+      "id": "3eea7468-c66a-48ff-9ea0-afb77c24f47e",
+      "type": "NOTE",
+      "content": "Briefing mingguan",
+      "status": "done",
+      "created_at": "2026-03-06T15:22:20.000Z",
+      "meta": {
+        "tags": [
+          "routine"
+        ],
+        "isRoutine": false,
+        "routineInterval": "weekly",
+        "routineDaysOfWeek": [
+          1,
+          6
+        ],
+        "routineDaysOfMonth": [],
+        "routineMonthsOfYear": [],
+        "recurrenceDays": 1,
+        "date": "2026-03-06T15:22:20.123Z",
+        "paymentMethod": "",
+        "financeType": "expense",
+        "lastGeneratedHistoryId": "2cb407d4-6aa6-405a-ab4d-ad4b79936503"
+      },
+      "completed_at": "2026-03-06T15:22:20.123Z"
     }
   ],
   "budgetConfig": {
@@ -2909,7 +5804,7 @@
       {
         "id": "wants",
         "name": "Wants",
-        "percentage": 30,
+        "percentage": 25,
         "color": "bg-pink-500"
       },
       {
@@ -2927,18 +5822,18 @@
       {
         "id": "cat-1770450517162",
         "name": "Fixed",
-        "percentage": 20,
+        "percentage": 22,
         "color": "bg-cyan-500"
       },
       {
         "id": "cat-1770451205002",
         "name": "Unintend",
-        "percentage": 0,
+        "percentage": 3,
         "color": "bg-red-500"
       }
     ]
   },
-  "customPrompt": "Task: Split the input into distinct items. If the user lists multiple things(separated by ';'), split them.\nOutput MUST be a JSON ARRAY of objects.\n\nTYPE (pick one):\n- TODO: work/career/productivity actions.\n- SHOPPING: planned purchases / life admin / chores / errands (future/plan).\n  IMPORTANT: “Buy X 50k” => SHOPPING (plan), NOT FINANCE.\n- NOTE: ideas/knowledge/random thoughts.\n- EVENT: scheduled dates/times.\n- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement (transfer/topup/withdraw).\n- SKILL_LOG: time spent learning/practicing a skill.\n- JOURNAL: personal diary entries, feelings, daily recaps, “Dear Diary”, or explicit “Log to journal”.\n\nOUTPUT FORMAT (STRICT):\nReturn ONLY a JSON ARRAY of objects.\nEach object must have:\n- type: TODO | SHOPPING | NOTE | EVENT | FINANCE | SKILL_LOG | JOURNAL\n- content: string\n- meta: object (optional fields as needed)\n\nCOMMON EXTRACTION (apply to all items):\n- content: clean, concise item text\n  - for SKILL_LOG: content MUST be summary/key takeaways (see SKILL_LOG RULES)\n  - for JOURNAL: content is the diary text cleaned up (remove “journal:” prefix etc)\n- tags: max 3 (see TAG RULES)\n- amount: NUMBER only when money is present (strip currency symbols + thousand separators)\n- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc)\n\nDATE RESOLUTION (STRICT):\n- If ANY time reference exists (today/tomorrow/yesterday/weekday/date/time), you MUST set meta.date in YYYY-MM-DD.\n- Also set meta.when for relative/weekday-based references:\n  - today/hari ini => meta.when=\"today\", meta.date = current date (YYYY-MM-DD)\n  - tomorrow/besok => meta.when=\"tomorrow\", meta.date = current date + 1 day\n  - yesterday/kemarin => meta.when=\"yesterday\", meta.date = current date - 1 day\n  - weekday mentioned => resolve to NEXT occurrence after current date, meta.when=\"next_weekday\"\n  - explicit calendar date => meta.when=\"specific_date\", meta.date = that date (YYYY-MM-DD)\n- If NO time reference exists:\n  - For JOURNAL: default meta.date = TODAY (YYYY-MM-DD)\n  - For others: omit meta.date entirely\n\nSHOPPING RULES:\n- meta.shoppingCategory ∈ {\"urgent\",\"routine\",\"not_urgent\"}\n- Set shoppingCategory=\"routine\" ONLY IF repetition is explicit:\n  repetition keywords: \"setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan\"\n  OR meta.recurrenceDays is explicitly mentioned.\n- If weekday/date mentioned WITHOUT repetition words => NOT routine.\n  Treat it as one-time scheduled purchase: shoppingCategory=\"urgent\" and include targetDay/date as applicable.\n- routine => include recurrenceDays (if stated) + targetDay (if stated)\n- urgent => include targetDay (if stated)\n- default => not_urgent\n- IMPORTANT: “Buy X 50k” is SHOPPING. FINANCE only if it already happened (“barusan beli”, “tadi bayar”, “sudah transfer”, etc).\n\nMONEY META (FINANCE + money-related SHOPPING):\n- meta.paymentMethod: EXACT text from user as Source Wallet/Method (e.g. \"QRIS BNI\", \"Cash\", \"Gopay Later\", \"CC BCA\", \"BCA\"). If not specified, \"\".\n- meta.budgetCategory ∈ {\"needs\",\"wants\",\"savings\",\"sedekah\"}\n  - fixed: rent/electricity/internet/insurance/tuition\n  - needs: transportation/groceries/health/stationary/breakfast/dinner\n  - wants: fancy dining/hobby/entertainment/subscription entertainment/snacks/foods\n  - savings: investment/emergency/debt repayment\n  - sedekah: charity/giving/donation/tips/helping others\n\nFINANCE RULES:\n- meta.financeType ∈ {\"expense\",\"income\",\"lending\",\"reimbursement\",\"transfer\"}\n  - expense: money spent\n  - income: money received (salary, refund received, etc)\n  - lending: money given as a loan\n  - reimbursement: paid by you but will be repaid / reimbursed\n  - transfer: moving money between your own accounts/wallets (withdraw, deposit, topup, pindah buku, tarik tunai)\n- IF financeType=\"transfer\":\n  - meta.paymentMethod = Source Wallet (EXACT text)\n  - meta.toWallet = Destination Wallet (e.g. \"Cash\", \"Gopay\", \"OVO\", \"BCA\", etc)\n  - amount must be extracted as NUMBER\n\nSKILL_LOG RULES:\n- CRITICAL: content MUST be summary/key takeaways, not the raw duration sentence\n  Example: \"Belajar React 1 jam tentang Hooks\" => content \"Belajar React tentang Hooks\"\n- meta.durationMinutes: NUMBER (convert hours→minutes)\n- meta.skillName: infer from context; if known skills list is provided, match skillName to one of them when possible\n\nJOURNAL RULES:\n- JOURNAL is for feelings, daily recap, reflections, “Dear Diary”, or explicit logging.\n- Default meta.date = TODAY if not specified.\n- If “Journal kemarin …” or “yesterday …” => meta.when=\"yesterday\" and meta.date resolved accordingly.\n- If the text includes both “I feel …” and action items, SPLIT:\n  - feelings/recap => JOURNAL\n  - action tasks => TODO/SHOPPING/EVENT etc\n\nTAG RULES (STRICT):\n- Priority: intent > context > object\n- Avoid generic tags like \"people\", \"purchase\" unless no better option exists\n- Prefer semantic tags: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education\n- Max 3 tags per item\n\nExamples:\n- \"Gave money to street musician 5000\" => FINANCE expense, tags [\"charity\",\"donation\"], budgetCategory \"sedekah\", amount 5000\n- \"tip driver gojek 10000\" => FINANCE expense, tags [\"tip\",\"transport\"], amount 10000\n- \"Breakfast 14000\" => FINANCE expense, tags [\"food\"], amount 14000\n- \"Kirim dompet\" => TODO or NOTE depending on phrasing, tags [\"assistance\",\"delivery\"]\n- \"beli susu besok hari senin 12000\" => SHOPPING urgent + targetDay Monday + amount 12000 + meta.date resolved\n- \"beli susu setiap senin 12000\" => SHOPPING routine + targetDay Monday + amount 12000 (+ recurrenceDays if stated)\n- \"Tarik tunai BCA 500rb\" => FINANCE transfer, paymentMethod \"BCA\", toWallet \"Cash\", amount 500000\n- \"Topup Gopay dari Mandiri 100k\" => FINANCE transfer, paymentMethod \"Mandiri\", toWallet \"Gopay\", amount 100000\n- \"I felt really productive today because I finished the project\" => JOURNAL, meta.when=\"today\", meta.date=TODAY\n- \"Journal kemarin: pergi ke pantai sama keluarga\" => JOURNAL, content=\"Pergi ke pantai sama keluarga\", meta.when=\"yesterday\", meta.date=YESTERDAY\n\nAlways write context into bahasa indonesia\n\n",
+  "customPrompt": "Task: Split input into distinct items. Output MUST be a JSON ARRAY of objects.\n\nTYPE (pick one):\n- TODO: work/career/productivity actions.\n- SHOPPING: planned purchases/errands (future/plan). IMPORTANT: “Buy X 50k” => SHOPPING, not FINANCE.\n- NOTE: ideas/knowledge/random thoughts.\n- EVENT: scheduled dates/times.\n- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement.\n- SKILL_LOG: time spent learning/practicing a skill.\n- JOURNAL: personal diary entries, feelings, daily recaps, \"Dear Diary\", or explicit \"Log to journal\".\n\nCOMMON EXTRACTION:\n- amount: NUMBER only (strip currency symbols + thousand separators).\n- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc).\n- tags: max 2, see TAG RULES below.\n\nDATE (STRICT):\n- Always resolve meta.dateISO = YYYY-MM-DD when any time reference exists.\n- Set meta.when if relative/weekday-based:\n  - today/hari ini => when=\"today\"\n  - tomorrow/besok => when=\"tomorrow\"\n  - yesterday/kemarin => when=\"yesterday\" (Important for FINANCE/JOURNAL)\n  - weekday mentioned => NEXT occurrence after current date, when=\"next_weekday\"\n  - explicit calendar date => when=\"specific_date\"\n- FOR JOURNAL: Default date to TODAY if not specified. \"Journal for yesterday...\" => date=yesterday.\n\nSHOPPING META:\n- shoppingCategory ∈ {urgent, routine, not_urgent}\n- routine ONLY if repetition is explicit: \"setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan\" OR recurrenceDays given.\n- If weekday/date mentioned WITHOUT repetition words => NOT routine, set urgent (one-time scheduled).\n- routine => include recurrenceDays (if stated) + targetDay (if stated).\n- urgent => include targetDay (if stated).\n- default => not_urgent.\n\nMONEY META (FINANCE + money-related SHOPPING):\n- paymentMethod: EXACT text from user (Source Wallet), else \"\".\n- budgetCategory ∈ {needs, wants, savings, sedekah}\n- needs: transportation/groceries/health/stationary/breakfast/dinner\n- wants: fancy dining/hobby/entertainment/subscription entertainment/snacks\n  - savings: investment/emergency/debt repayment\n  - sedekah: charity/giving/donation\n\nFINANCE META:\n- financeType ∈ {expense, income, lending, reimbursement, transfer}\n- transfer: moving money between own accounts (withdraw, deposit, topup, pindah buku).\n    - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.\n\nSKILL_LOG META:\n- content MUST be summary/key takeaways (not raw duration sentence)\n  Example: \"Belajar React 1 jam tentang Hooks\" => content \"Belajar React tentang Hooks\"\n- durationMinutes: NUMBER (convert hours→minutes)\n- skillName: infer from context; match known skills if provided\n\nTAG RULES (STRICT):\n- Priority: big picture > detail.\n- Avoid generic tags: \"people\", \"purchase\" unless no better option.\n- Prefer semantic tags like: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.\n- Max 2 tags.\n\nExamples:\n- \"Gave money to street musician 5000\" => tags [\"charity\"], budgetCategory \"sedekah\"\n- \"tip driver gojek 10000\" => tags [\"tip\", \"transport\"]\n- \"Breakfast 14000\" => tags [\"food\", \"breakfast\"]\n- \"Kirim dompet\" => tags [\"delivery\"]\n- \"beli susu besok hari senin 12000\" => SHOPPING urgent + targetDay Monday + amount 12000\n- \"beli susu setiap senin 12000\" => SHOPPING routine + targetDay Monday + amount 12000\n- \"Tarik tunai BCA 500rb\" => FINANCE transfer, paymentMethod \"BCA\", toWallet \"Cash\", amount 500000\n- \"Topup Gopay dari Mandiri 100k\" => FINANCE transfer, paymentMethod \"Mandiri\", toWallet \"Gopay\", amount 100000\n- \"I felt really productive today because I finished the project\" => JOURNAL, date=TODAY\n- \"Journal kemarin: pergi ke pantai sama keluarga\" => JOURNAL, content=\"Pergi ke pantai sama keluarga\", date=YESTERDAY\n",
   "skills": [
     {
       "id": "df27b0c1-e59c-4274-b4fe-8ff0a481bf57",
@@ -2953,6 +5848,13 @@
       "color": "indigo-500",
       "created_at": "2026-02-01T13:42:16.281Z",
       "weeklyTargetMinutes": 420
+    },
+    {
+      "id": "f0d24c27-ffe6-4f3a-95a0-4309c515a72c",
+      "name": "Praying skill",
+      "color": "indigo-500",
+      "created_at": "2026-02-18T11:33:27.786Z",
+      "weeklyTargetMinutes": 180
     }
   ],
   "wallets": [
@@ -2961,7 +5863,7 @@
       "name": "Cash",
       "type": "cash",
       "initialBalance": 143000,
-      "color": "bg-emerald-500"
+      "color": "bg-slate-500"
     },
     {
       "id": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
@@ -2975,18 +5877,18 @@
       "name": "Gopay",
       "type": "ewallet",
       "initialBalance": 20000,
-      "color": "bg-blue-500"
+      "color": "bg-emerald-500"
     },
     {
       "id": "7474b330-c25e-47a4-9633-7217b2a82e03",
       "name": "BNI",
       "type": "bank",
       "initialBalance": 438000,
-      "color": "bg-blue-500"
+      "color": "bg-amber-500"
     },
     {
       "id": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
-      "name": "gopay later",
+      "name": "gopaylater",
       "type": "cc",
       "initialBalance": 530000,
       "color": "bg-blue-500"
@@ -2996,7 +5898,21 @@
       "name": "tapcash",
       "type": "ewallet",
       "initialBalance": 33000,
+      "color": "bg-amber-500"
+    },
+    {
+      "id": "4e19f9db-1ee3-498c-bc72-ae7941804ee9",
+      "name": "Ovo",
+      "type": "ewallet",
+      "initialBalance": 48000,
       "color": "bg-blue-500"
+    },
+    {
+      "id": "83fd31b7-64da-44e1-bd91-ed77796714a4",
+      "name": "shopeepay",
+      "type": "ewallet",
+      "initialBalance": 11000,
+      "color": "bg-red-500"
     }
   ],
   "monthlyThemes": {
@@ -3007,6 +5923,7 @@
   "appSettings": {
     "defaultCollapsed": true,
     "hideMoney": false,
-    "theme": "light"
-  }
+    "theme": "dark"
+  },
+  "chatHistory": []
 }
