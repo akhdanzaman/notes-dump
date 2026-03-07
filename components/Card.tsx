@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw } from 'lucide-react';
+import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority } from '../types';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
 
@@ -176,6 +176,7 @@ const Card: React.FC<CardProps> = ({
   // Progress
   const [editProgress, setEditProgress] = useState(meta.progress || 0);
   const [editProgressNotes, setEditProgressNotes] = useState(meta.progressNotes || '');
+  const [editPriority, setEditPriority] = useState<Priority>(meta.priority || 'normal');
 
   const updateDateFromSchedule = (
     int: 'daily' | 'weekly' | 'monthly' | 'yearly',
@@ -219,6 +220,7 @@ const Card: React.FC<CardProps> = ({
     setEditRoutineDaysOfWeek(meta.routineDaysOfWeek || []);
     setEditRoutineDaysOfMonth(meta.routineDaysOfMonth || []);
     setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
+    setEditPriority(meta.priority || 'normal');
     
     // Date Init
     const isoDate = (meta.date && meta.date !== 'null') ? meta.date : (completed_at || created_at);
@@ -277,7 +279,9 @@ const Card: React.FC<CardProps> = ({
           editRoutineDaysOfWeek,
           editRoutineDaysOfMonth,
           editRoutineMonthsOfYear,
-          finalSavingGoalId
+          finalSavingGoalId,
+          undefined, // newDedicatedWalletId
+          editPriority
       );
       
       if (enableCollapse) {
@@ -404,23 +408,29 @@ const Card: React.FC<CardProps> = ({
   const lineLimit = 8;
   const isLongText = content.length > charLimit || (content.match(/\n/g) || []).length > lineLimit;
 
+  const getWalletName = (idOrName?: string) => {
+      if (!idOrName) return '';
+      const w = wallets.find(w => w.id === idOrName || w.name.toLowerCase() === idOrName.toLowerCase());
+      return w ? w.name : idOrName;
+  };
+
   // Helper to get normalized wallet options to avoid duplicates
   const getWalletOptions = () => {
     const unique = new Map<string, {name: string, id: string}>();
     
     // Add registered wallets
-    wallets.forEach(w => unique.set(w.name.toLowerCase(), {name: w.name, id: w.id}));
+    wallets.forEach(w => unique.set(w.id, {name: w.name, id: w.id}));
     
     // Check if current items have a custom method not in register
-    if (editPaymentMethod && !unique.has(editPaymentMethod.toLowerCase())) {
-        unique.set(editPaymentMethod.toLowerCase(), {name: editPaymentMethod, id: 'custom-payment'});
+    if (editPaymentMethod && !unique.has(editPaymentMethod)) {
+        unique.set(editPaymentMethod, {name: getWalletName(editPaymentMethod), id: editPaymentMethod});
     }
-    if (editToWallet && !unique.has(editToWallet.toLowerCase())) {
-        unique.set(editToWallet.toLowerCase(), {name: editToWallet, id: 'custom-to'});
+    if (editToWallet && !unique.has(editToWallet)) {
+        unique.set(editToWallet, {name: getWalletName(editToWallet), id: editToWallet});
     }
 
     return Array.from(unique.values()).map(w => (
-        <option key={w.id} value={w.name}>{w.name}</option>
+        <option key={w.id} value={w.id}>{w.name}</option>
     ));
   };
 
@@ -478,6 +488,18 @@ const Card: React.FC<CardProps> = ({
                           </span>
                       </div>
                   )}
+                  {meta.priority && meta.priority !== 'normal' && (
+                      <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border ${
+                          meta.priority === 'high' 
+                            ? 'bg-red-500/10 border-red-500/20 text-red-500' 
+                            : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
+                      }`}>
+                          <AlertCircle className="w-2.5 h-2.5" />
+                          <span className="text-[9px] font-bold uppercase tracking-tight">
+                              {meta.priority}
+                          </span>
+                      </div>
+                  )}
                   {isRoutineDone && onResetRoutine && (
                       <button
                           onClick={(e) => {
@@ -515,12 +537,12 @@ const Card: React.FC<CardProps> = ({
                                         const goal = savingGoals.find(g => g.id === meta.savingGoalId);
                                         const walletId = goal?.meta.dedicatedWalletId;
                                         const wallet = wallets.find(w => w.id === walletId);
-                                        return wallet ? wallet.name : (meta.paymentMethod || 'Linked to Goal');
-                                    })() : meta.paymentMethod}
+                                        return wallet ? wallet.name : (getWalletName(meta.paymentMethod) || 'Linked to Goal');
+                                    })() : getWalletName(meta.paymentMethod)}
                                     {meta.financeType === 'transfer' && meta.toWallet && (
                                         <>
                                             <ArrowRight className="w-3 h-3" />
-                                            {meta.toWallet}
+                                            {getWalletName(meta.toWallet)}
                                         </>
                                     )}
                                 </span>
@@ -613,6 +635,28 @@ const Card: React.FC<CardProps> = ({
                                 />
                             </div>
                         </div>
+                   )}
+
+                   {/* Priority */}
+                   {(type === ItemType.TODO || type === ItemType.EVENT) && (
+                       <div className="col-span-2">
+                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Priority</label>
+                           <div className="grid grid-cols-3 gap-2">
+                               {(['low', 'normal', 'high'] as Priority[]).map(p => (
+                                   <button
+                                       key={p}
+                                       onClick={() => setEditPriority(p)}
+                                       className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+                                           editPriority === p 
+                                               ? 'bg-indigo-600 text-white shadow-sm' 
+                                               : 'bg-background border border-border text-muted hover:border-indigo-500/50'
+                                       }`}
+                                   >
+                                       {p}
+                                   </button>
+                               ))}
+                           </div>
+                       </div>
                    )}
 
                    {/* Routine Settings */}
@@ -809,7 +853,7 @@ const Card: React.FC<CardProps> = ({
                                                const goal = savingGoals.find(g => g.id === editSavingGoalId);
                                                const walletId = goal?.meta.dedicatedWalletId;
                                                const wallet = wallets.find(w => w.id === walletId);
-                                               return wallet ? wallet.name : (editPaymentMethod || 'Linked to Goal');
+                                               return wallet ? wallet.name : (getWalletName(editPaymentMethod) || 'Linked to Goal');
                                            })()}
                                        </div>
                                    </div>

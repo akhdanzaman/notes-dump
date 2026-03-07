@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { BrainDumpItem, ItemType, BudgetConfig, Skill, Wallet, FinanceType, AppSettings, SyncStatus, DbSchema, ShoppingCategory } from '../types';
-import { fetchDb, syncData, isUsingLocalStorage, SyncResult, mergeDbData } from '../services/githubService';
+import { BrainDumpItem, ItemType, BudgetConfig, Skill, Wallet, FinanceType, AppSettings, SyncStatus, DbSchema, ShoppingCategory, Priority } from '../types';
+import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
+import { SyncResult, mergeDbData } from '../services/githubService';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors';
 
@@ -24,7 +25,8 @@ export const useBrainDumpData = () => {
     const [loading, setLoading] = useState(true);
     const [pendingCount, setPendingCount] = useState(0); 
     const [error, setError] = useState<string | null>(null);
-    const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
+    const [saveStatus, setSaveStatus] = useState<SyncStatus>('synced');
+    const [fetchStatus, setFetchStatus] = useState<SyncStatus>('synced');
 
     const itemsRef = useRef(items);
     itemsRef.current = items;
@@ -87,7 +89,20 @@ export const useBrainDumpData = () => {
         return updatedItems;
     };
 
-    const saveAndSync = async (
+    const budgetConfigRef = useRef(budgetConfig);
+    budgetConfigRef.current = budgetConfig;
+    const customPromptRef = useRef(customPrompt);
+    customPromptRef.current = customPrompt;
+    const skillsRef = useRef(skills);
+    skillsRef.current = skills;
+    const walletsRef = useRef(wallets);
+    walletsRef.current = wallets;
+    const monthlyThemesRef = useRef(monthlyThemes);
+    monthlyThemesRef.current = monthlyThemes;
+    const appSettingsRef = useRef(appSettings);
+    appSettingsRef.current = appSettings;
+
+    const saveAndSync = useCallback(async (
         newItems: BrainDumpItem[], 
         newConfig?: BudgetConfig, 
         newPrompt?: string, 
@@ -96,79 +111,76 @@ export const useBrainDumpData = () => {
         newThemes?: Record<string, string>, 
         newAppSettings?: AppSettings
     ) => {
-        setSyncStatus('syncing');
+        const baseItems = itemsRef.current;
+        setSaveStatus('saving');
         try {
             // Use syncData to save everything
-            const configToSave = newConfig || budgetConfig;
-            const promptToSave = newPrompt !== undefined ? newPrompt : customPrompt;
-            const skillsToSave = newSkills || skills;
-            const walletsToSave = newWallets || wallets;
-            const themesToSave = newThemes || monthlyThemes;
-            const settingsToSave = newAppSettings || appSettings;
+            const configToSave = newConfig || budgetConfigRef.current;
+            const promptToSave = newPrompt !== undefined ? newPrompt : customPromptRef.current;
+            const skillsToSave = newSkills || skillsRef.current;
+            const walletsToSave = newWallets || walletsRef.current;
+            const themesToSave = newThemes || monthlyThemesRef.current;
+            const settingsToSave = newAppSettings || appSettingsRef.current;
             
             const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave, settingsToSave);
             
+            if (!result.success) {
+                throw new Error("Sync failed, preserving local state.");
+            }
+            
             if (result.mergedData) {
-                // Conflict resolution: Merge result from cloud with current local state
-                // This ensures if user kept typing while sync was happening, we don't overwrite their new keystrokes/items
-                // but we DO add the items that came from the cloud.
-                
                 const remoteSchema = result.mergedData;
                 
                 setItems(currentItems => {
-                   const merged = mergeDbData({ data: currentItems } as DbSchema, remoteSchema);
+                   const merged = mergeDbData(
+                       { data: currentItems, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema, 
+                       remoteSchema,
+                       { data: baseItems } as DbSchema
+                   );
                    return merged.data;
                 });
                 
                 setSkills(currentSkills => {
-                    const merged = mergeDbData({ skills: currentSkills } as DbSchema, remoteSchema);
+                    const merged = mergeDbData({ data: itemsRef.current, skills: currentSkills } as DbSchema, remoteSchema);
                     return merged.skills || [];
                 });
                 
                 setWallets(currentWallets => {
-                     const merged = mergeDbData({ wallets: currentWallets } as DbSchema, remoteSchema);
+                     const merged = mergeDbData({ data: itemsRef.current, wallets: currentWallets } as DbSchema, remoteSchema);
                      return merged.wallets || [];
                 });
 
                 if (remoteSchema.monthlyThemes) setMonthlyThemes(prev => ({ ...remoteSchema.monthlyThemes, ...prev }));
-                
-                // For singleton configs, we usually accept the merged (local priority) one or just keep current
-                // if the merge logic in githubService preferred local.
             }
             
-            if (result.method === 'error' || result.method === 'skipped_not_hydrated') {
-                setSyncStatus('error');
-                if (result.method === 'skipped_not_hydrated') {
-                    setError("Cloud sync inactive. Please reload the page to reconnect.");
-                }
-            } else if (result.method === 'local') {
-                setSyncStatus('local');
-            } else {
-                setSyncStatus('synced');
-            }
+            setSaveStatus('synced');
         } catch (e) {
-            console.error(e);
-            setSyncStatus('error');
+            console.error("Sync error:", e);
+            setSaveStatus('error');
+            setError("Gagal menyimpan data ke cloud. Perubahan tetap tersimpan di perangkat.");
         }
-    };
+    }, []);
+
+    const isSyncingRef = useRef(false);
 
     const loadData = useCallback(async () => {
+        // Prevent multiple simultaneous loads
+        if (isSyncingRef.current && itemsRef.current.length > 0) return;
+
+        isSyncingRef.current = true;
         try {
-          // Don't show full loading screen on background re-fetch, only initial
-          if (items.length === 0) setLoading(true);
+          if (itemsRef.current.length === 0) setLoading(true);
+          setFetchStatus('syncing');
           setError(null);
   
           const { data } = await fetchDb();
           if (data) {
             if (Array.isArray(data.data)) {
-              // Migration: Ensure all items have valid meta structure
               const migratedData = data.data.map(item => ({
                   ...item,
                   meta: {
                       tags: [],
-                      // Preserve existing meta
                       ...item.meta,
-                      // Default shopping category if missing for SHOPPING type
                       shoppingCategory: (item.type === ItemType.SHOPPING && !item.meta?.shoppingCategory) 
                           ? 'not_urgent' 
                           : item.meta?.shoppingCategory
@@ -178,27 +190,16 @@ export const useBrainDumpData = () => {
               const checkedData = checkRoutineResets(migratedData);
               setItems(checkedData);
               
-              // Check for changes in routine resets to sync
               if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
                  await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings);
-              } else {
-                 setSyncStatus(isUsingLocalStorage() ? 'local' : 'synced');
               }
             }
             
-            // Load Budget Config if exists
-            if (data.budgetConfig) {
-                setBudgetConfig(data.budgetConfig);
-            }
-            // Load Prompt if exists
-            if (data.customPrompt) {
-                setCustomPrompt(data.customPrompt);
-            }
-            // Load Skills
+            if (data.budgetConfig) setBudgetConfig(data.budgetConfig);
+            if (data.customPrompt) setCustomPrompt(data.customPrompt);
             if (data.skills) {
                 setSkills(data.skills);
             } else {
-                // Default Skills if empty
                 const defaults: Skill[] = [
                     { id: 'skill-1', name: 'General Learning', color: 'indigo-500', created_at: new Date().toISOString() }
                 ];
@@ -206,35 +207,27 @@ export const useBrainDumpData = () => {
                 saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes, data.appSettings);
             }
   
-            // Load Wallets
             if (data.wallets && data.wallets.length > 0) {
                 setWallets(data.wallets);
             } else {
-                // Create default Cash wallet if none exist
                 const defaultWallet: Wallet = { id: 'w-1', name: 'Cash', type: 'cash', initialBalance: 0, color: 'bg-emerald-500' };
                 setWallets([defaultWallet]);
-                // Trigger save with default wallet
                 saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, data.skills, [defaultWallet], data.monthlyThemes, data.appSettings);
             }
   
-            // Load Themes
-            if (data.monthlyThemes) {
-                setMonthlyThemes(data.monthlyThemes);
-            }
-  
-            // Load App Settings
-            if (data.appSettings) {
-                setAppSettings(data.appSettings);
-            }
+            if (data.monthlyThemes) setMonthlyThemes(data.monthlyThemes);
+            if (data.appSettings) setAppSettings(data.appSettings);
           }
         } catch (err) {
           console.error(err);
           setError("Failed to load data. Please check connection.");
-          setSyncStatus('error');
+          setFetchStatus('error');
         } finally {
           setLoading(false);
+          isSyncingRef.current = false;
+          setFetchStatus(prev => prev === 'error' ? 'error' : (isUsingLocalStorage() ? 'local' : 'synced'));
         }
-    }, []);
+    }, [saveAndSync]);
 
     useEffect(() => {
         loadData();
@@ -489,7 +482,8 @@ export const useBrainDumpData = () => {
         daysOfMonth?: number[],
         monthsOfYear?: number[],
         customDate?: string,
-        recurrenceDays?: number // Legacy/Fallback
+        recurrenceDays?: number, // Legacy/Fallback
+        priority: Priority = 'normal'
     ) => {
         const now = new Date();
         let initialNextDue = customDate ? new Date(customDate) : calculateFirstDueDate(
@@ -514,7 +508,8 @@ export const useBrainDumpData = () => {
                 routineDaysOfMonth: daysOfMonth,
                 routineMonthsOfYear: monthsOfYear,
                 recurrenceDays: recurrenceDays || 1, // Keep for backward compatibility
-                date: initialNextDue.toISOString()
+                date: initialNextDue.toISOString(),
+                priority
             }
         };
 
@@ -546,7 +541,8 @@ export const useBrainDumpData = () => {
         newRoutineDaysOfMonth?: number[],
         newRoutineMonthsOfYear?: number[],
         newSavingGoalId?: string,
-        newDedicatedWalletId?: string
+        newDedicatedWalletId?: string,
+        newPriority?: Priority
     ) => {
           const updatedItems = itemsRef.current.map(item => {
               if (item.id !== id) return item;
@@ -618,7 +614,8 @@ export const useBrainDumpData = () => {
                     routineDaysOfMonth: newRoutineDaysOfMonth || item.meta.routineDaysOfMonth,
                     routineMonthsOfYear: newRoutineMonthsOfYear || item.meta.routineMonthsOfYear,
                     savingGoalId: newSavingGoalId || item.meta.savingGoalId,
-                    dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId
+                    dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId,
+                    priority: newPriority !== undefined ? newPriority : item.meta.priority
                 } 
               };
           });
@@ -626,7 +623,7 @@ export const useBrainDumpData = () => {
           saveAndSync(updatedItems);
     };
 
-    const handleAddTask = async (content: string, date: string) => {
+    const handleAddTask = async (content: string, date: string, priority: Priority = 'normal') => {
         const newItem: BrainDumpItem = {
             id: uuidv4(),
             type: ItemType.TODO,
@@ -635,7 +632,8 @@ export const useBrainDumpData = () => {
             created_at: new Date().toISOString(),
             meta: {
                 tags: [],
-                date: date
+                date: date,
+                priority
             }
         };
 
@@ -772,7 +770,8 @@ export const useBrainDumpData = () => {
         loading,
         error,
         pendingCount,
-        syncStatus,
+        saveStatus,
+        fetchStatus,
         loadData,
         saveAndSync,
         handleSend,

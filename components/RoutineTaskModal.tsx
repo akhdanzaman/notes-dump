@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, Check } from 'lucide-react';
+import { X, Calendar, Clock, Check, AlertCircle } from 'lucide-react';
+import { Priority } from '../types';
 
 interface RoutineTaskModalProps {
     isOpen: boolean;
@@ -11,7 +12,8 @@ interface RoutineTaskModalProps {
         daysOfWeek?: number[],
         daysOfMonth?: number[],
         monthsOfYear?: number[],
-        date?: string
+        date?: string,
+        priority?: Priority
     ) => void;
 }
 
@@ -39,6 +41,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
     const [daysOfMonth, setDaysOfMonth] = useState<number[]>([]);
     const [monthsOfYear, setMonthsOfYear] = useState<number[]>([]);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [priority, setPriority] = useState<Priority>('normal');
 
     // Helper to calculate next due date based on schedule
     const calculateNextDate = (
@@ -154,7 +157,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
             return;
         }
 
-        onSave(content, interval, daysOfWeek, daysOfMonth, monthsOfYear, date);
+        onSave(content, interval, daysOfWeek, daysOfMonth, monthsOfYear, date, priority);
         
         // Reset
         setContent('');
@@ -163,6 +166,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
         setDaysOfMonth([]);
         setMonthsOfYear([]);
         setDate(new Date().toISOString().split('T')[0]);
+        setPriority('normal');
         onClose();
     };
 
@@ -321,6 +325,25 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                         onChange={e => setDate(e.target.value)}
                                         className="w-full bg-background border border-border rounded-xl pl-10 pr-3 py-3 text-sm font-bold text-primary focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                     />
+                                </div>
+                            </div>
+
+                            <div className="mt-6">
+                                <label className="block text-[10px] font-bold text-muted mb-3 uppercase tracking-[0.2em]">Priority</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(['low', 'normal', 'high'] as Priority[]).map(p => (
+                                        <button
+                                            key={p}
+                                            onClick={() => setPriority(p)}
+                                            className={`py-3 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all ${
+                                                priority === p 
+                                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
+                                                    : 'bg-background border border-border text-muted hover:border-indigo-500/50'
+                                            }`}
+                                        >
+                                            {p}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         </div>

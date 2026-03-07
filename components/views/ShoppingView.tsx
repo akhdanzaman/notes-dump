@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainDumpItem, FinanceType, ShoppingCategory, BudgetRule, Wallet, Tab } from '../../types';
+import { BrainDumpItem, FinanceType, ShoppingCategory, BudgetRule, Wallet, Tab, Priority } from '../../types';
 import { getShoppingItems } from '../../utils/selectors';
 import ShoppingItem from '../ShoppingItem';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -35,7 +35,8 @@ interface ShoppingViewProps {
         newRoutineDaysOfMonth?: number[],
         newRoutineMonthsOfYear?: number[],
         newSavingGoalId?: string,
-        newDedicatedWalletId?: string
+        newDedicatedWalletId?: string,
+        newPriority?: Priority
     ) => void;
     budgetRules: BudgetRule[];
     handleResetRoutine: (id: string) => void;
@@ -365,7 +366,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                 </div>
                 {list.length > 0 ? (
                     <div className="space-y-2">
-                        {list.map(item => (
+                        {list?.map(item => (
                         <ShoppingItem 
                             key={item.id} 
                             item={item} 
@@ -513,7 +514,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
 
                     {savings.length > 0 ? (
                         <div className="space-y-4">
-                            {savings.map(goal => renderGoalCard(goal))}
+                            {savings?.map(goal => renderGoalCard(goal))}
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">

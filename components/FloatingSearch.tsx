@@ -199,7 +199,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                 >
                                     <option value="">All Categories</option>
                                     <option value="uncategorized">Uncategorized</option>
-                                    {budgetConfig.rules.map(rule => (
+                                    {budgetConfig.rules?.map(rule => (
                                         <option key={rule.id} value={rule.id}>{rule.name}</option>
                                     ))}
                                 </select>

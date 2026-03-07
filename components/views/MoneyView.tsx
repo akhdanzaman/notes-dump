@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Calculator, Plus, AlertCircle } from 'lucide-react';
-import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType, ItemType, Tab } from '../../types';
+import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType, ItemType, Tab, Priority } from '../../types';
 import { getWalletStats, getFinanceItems } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -43,7 +43,8 @@ interface MoneyViewProps {
         newRoutineDaysOfMonth?: number[],
         newRoutineMonthsOfYear?: number[],
         newSavingGoalId?: string,
-        newDedicatedWalletId?: string
+        newDedicatedWalletId?: string,
+        newPriority?: Priority
     ) => void;
     handleOpenEditWallet: (w: Wallet) => void;
     handleOpenAddWallet: () => void;
@@ -468,7 +469,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                                 {/* Categories List */}
                                 <div className="space-y-6">
-                                    {budgetConfig.rules.map(rule => {
+                                    {budgetConfig.rules?.map(rule => {
                                         const spent = budgetMap.get(rule.id) || 0;
                                         const planned = plannedBudgetMap.get(rule.id) || 0;
                                         const limit = effectiveIncome * (rule.percentage / 100);

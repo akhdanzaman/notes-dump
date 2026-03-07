@@ -55,6 +55,12 @@ SHOPPING META:
 - urgent => include targetDay (if stated).
 - default => not_urgent.
 
+PRIORITY (TODO/EVENT ONLY):
+- priority ∈ {low, normal, high}
+- high: urgent, important, deadline today, "penting", "segera", "urgent", "prioritas".
+- low: "kapan-kapan", "nanti saja", "low priority", "tidak mendesak".
+- default: normal.
+
 MONEY META (FINANCE + money-related SHOPPING):
 - paymentMethod: EXACT text from user (Source Wallet), else "".
 - budgetCategory ∈ {needs, wants, savings, sedekah}
@@ -158,7 +164,8 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
                   toWallet: { type: Type.STRING, description: "Destination Wallet for transfers" },
                   budgetCategory: { type: Type.STRING },
                   durationMinutes: { type: Type.NUMBER, description: "Duration in minutes for SKILL_LOG" },
-                  skillName: { type: Type.STRING, description: "Name of the skill practiced" }
+                  skillName: { type: Type.STRING, description: "Name of the skill practiced" },
+                  priority: { type: Type.STRING, description: "Priority level: low, normal, high" }
                 }
               }
             },

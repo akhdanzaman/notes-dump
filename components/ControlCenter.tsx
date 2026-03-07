@@ -10,13 +10,15 @@ import {
 } from 'lucide-react';
 import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
 import { getGithubConfig, saveGithubConfig, clearGithubConfig, GithubConfig } from '../services/githubService';
+import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig } from '../services/spreadsheetService';
 import { getGeminiKey, saveGeminiKey, DEFAULT_PROMPT } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
 
 interface ControlCenterProps {
     isOpen: boolean;
     onClose: () => void;
-    syncStatus: SyncStatus;
+    saveStatus: SyncStatus;
+    fetchStatus: SyncStatus;
     onSyncClick: () => void;
     onRefreshClick?: () => void;
     
@@ -75,7 +77,7 @@ const ClockDisplay = () => {
 };
 
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
-    isOpen, onClose, syncStatus, onSyncClick, onRefreshClick, 
+    isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, 
     appSettings, setAppSettings, error, pendingCount,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes,
@@ -85,7 +87,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     // --- Settings State ---
     const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect'>('main');
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+    const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saved'>('idle');
+
+    type ConnectionAction = 'github' | 'spreadsheet';
+    const [connectionModal, setConnectionModal] = useState<{
+        isOpen: boolean;
+        provider: ConnectionAction;
+        config: any;
+    } | null>(null);
 
     const handleTabChange = (tab: typeof activeTab) => {
         if (tab === 'main') {
@@ -98,6 +107,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
     // GitHub
     const [githubConfig, setGithubConfig] = useState<GithubConfig>({ token: '', owner: '', repo: '', path: 'db.json' });
+    
+    // Spreadsheet
+    const [spreadsheetLink, setSpreadsheetLink] = useState('');
+    const [spreadsheetConfig, setSpreadsheetConfig] = useState<SpreadsheetConfig | null>(null);
+    const [isConnectingSpreadsheet, setIsConnectingSpreadsheet] = useState(false);
     
     // Gemini
     const [geminiKey, setGeminiKey] = useState('');
@@ -120,6 +134,13 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             // Load GitHub
             const gh = getGithubConfig();
             if (gh) setGithubConfig(gh);
+
+            // Load Spreadsheet
+            const ss = getSpreadsheetConfig();
+            if (ss) {
+                setSpreadsheetConfig(ss);
+                setSpreadsheetLink(ss.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${ss.spreadsheetId}/edit`);
+            }
 
             // Load Gemini
             setGeminiKey(getGeminiKey());
@@ -146,16 +167,98 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             // Load App Settings
             setLocalAppSettings(appSettings);
 
-            setSaveStatus('idle');
+            setSettingsSaveStatus('idle');
             setActiveTab('main'); // Reset to main view on open
         }
     }, [isOpen, currentBudgetConfig, currentPrompt, appSettings]);
 
     // --- Handlers ---
 
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const origin = event.origin;
+            if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+                return;
+            }
+            if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+                const tokens = event.data.tokens;
+                
+                // Extract ID from link
+                const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                const spreadsheetId = match ? match[1] : spreadsheetLink;
+
+                const newConfig: SpreadsheetConfig = {
+                    spreadsheetId,
+                    spreadsheetUrl: spreadsheetLink,
+                    accessToken: tokens.access_token,
+                    refreshToken: tokens.refresh_token,
+                    tokenExpiresAt: Date.now() + (tokens.expires_in * 1000)
+                };
+                
+                setIsConnectingSpreadsheet(false);
+                setConnectionModal({
+                    isOpen: true,
+                    provider: 'spreadsheet',
+                    config: newConfig
+                });
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [spreadsheetLink]);
+
+    const handleConnectSpreadsheet = async () => {
+        if (!spreadsheetLink) {
+            alert("Please enter a spreadsheet link first.");
+            return;
+        }
+        
+        const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (!match) {
+            alert("Invalid spreadsheet link. Please make sure it contains /d/SPREADSHEET_ID");
+            return;
+        }
+
+        setIsConnectingSpreadsheet(true);
+        try {
+            const origin = window.location.origin;
+            const response = await fetch(`/api/auth/google/url?origin=${encodeURIComponent(origin)}`);
+            if (!response.ok) throw new Error('Failed to get auth URL');
+            const { url } = await response.json();
+
+            const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
+            if (!authWindow) {
+                alert('Please allow popups for this site to connect your account.');
+                setIsConnectingSpreadsheet(false);
+            }
+        } catch (error) {
+            console.error('OAuth error:', error);
+            alert('Failed to start connection process.');
+            setIsConnectingSpreadsheet(false);
+        }
+    };
+
+    const handleDisconnectSpreadsheet = () => {
+        clearSpreadsheetConfig();
+        setSpreadsheetConfig(null);
+        setSpreadsheetLink('');
+        if (onRefreshClick) onRefreshClick();
+    };
+
     const handleSave = () => {
-        // Save GitHub
-        if (githubConfig.token && githubConfig.owner && githubConfig.repo) {
+        // Check if GitHub is being newly connected
+        const currentGithub = getGithubConfig();
+        const isNewGithub = githubConfig.token && githubConfig.owner && githubConfig.repo && 
+            (!currentGithub || currentGithub.token !== githubConfig.token || currentGithub.repo !== githubConfig.repo);
+
+        if (isNewGithub) {
+            setConnectionModal({
+                isOpen: true,
+                provider: 'github',
+                config: githubConfig
+            });
+            return; // Stop save process, wait for modal choice
+        } else if (githubConfig.token && githubConfig.owner && githubConfig.repo) {
             saveGithubConfig(githubConfig);
         }
 
@@ -169,20 +272,63 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         // Prepare Objects
         const newBudgetConfig: BudgetConfig = { monthlyIncome, rules: budgetRules };
 
-        setSaveStatus('saved');
+        setSettingsSaveStatus('saved');
         
         // Propagate changes
         onSave(newBudgetConfig, prompt, localAppSettings);
         
         setTimeout(() => {
-            setSaveStatus('idle');
+            setSettingsSaveStatus('idle');
         }, 800);
     };
 
     const handleDisconnectGithub = () => {
-        if (window.confirm("Disconnect GitHub? The app will switch to Local Mode.")) {
-            clearGithubConfig();
-            setGithubConfig({ token: '', owner: '', repo: '', path: 'db.json' });
+        clearGithubConfig();
+        setGithubConfig({ token: '', owner: '', repo: '', path: 'db.json' });
+        if (onRefreshClick) onRefreshClick();
+    };
+
+    const handleConnectionChoice = async (choice: 'merge' | 'overwrite_cloud' | 'overwrite_local') => {
+        if (!connectionModal) return;
+        
+        const { provider, config } = connectionModal;
+        
+        // Save the config
+        if (provider === 'spreadsheet') {
+            saveSpreadsheetConfig(config);
+            setSpreadsheetConfig(config);
+        } else if (provider === 'github') {
+            saveGithubConfig(config);
+        }
+        
+        setConnectionModal(null);
+        
+        // Trigger the action
+        if (choice === 'merge') {
+            if (onRefreshClick) onRefreshClick();
+            setTimeout(() => {
+                onSyncClick();
+            }, 1500);
+            alert(`Connected to ${provider} and merged data.`);
+        } else if (choice === 'overwrite_cloud') {
+            onSyncClick();
+            alert(`Connected to ${provider} and overwrote cloud data.`);
+        } else if (choice === 'overwrite_local') {
+            if (onRefreshClick) onRefreshClick();
+            alert(`Connected to ${provider} and overwrote local data.`);
+        }
+
+        // If it was github, we also need to finish the save process
+        if (provider === 'github') {
+            saveGeminiKey(geminiKey);
+            localStorage.setItem('braindump_gcal_key', gCalKey);
+            localStorage.setItem('braindump_gcal_id', gCalId);
+            const newBudgetConfig: BudgetConfig = { monthlyIncome, rules: budgetRules };
+            setSettingsSaveStatus('saved');
+            onSave(newBudgetConfig, prompt, localAppSettings);
+            setTimeout(() => {
+                setSettingsSaveStatus('idle');
+            }, 800);
         }
     };
 
@@ -243,11 +389,20 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     };
 
     const renderSyncStatus = () => {
-        switch(syncStatus) {
+        const activeStatus = saveStatus === 'saving' ? 'saving' 
+                           : fetchStatus === 'syncing' ? 'syncing'
+                           : saveStatus === 'error' ? 'error'
+                           : fetchStatus === 'error' ? 'error'
+                           : saveStatus === 'local' ? 'local'
+                           : 'synced';
+
+        switch(activeStatus) {
             case 'synced':
                 return <div className="flex items-center gap-2 text-emerald-500"><CloudCheck className="w-5 h-5" /><span className="font-medium">Synced</span></div>;
             case 'syncing':
-                return <div className="flex items-center gap-2 text-blue-500"><RefreshCw className="w-5 h-5 animate-spin" /><span className="font-medium">Syncing...</span></div>;
+                return <div className="flex items-center gap-2 text-blue-500"><RefreshCw className="w-5 h-5 animate-spin" /><span className="font-medium">Fetching...</span></div>;
+            case 'saving':
+                return <div className="flex items-center gap-2 text-amber-500"><Save className="w-5 h-5 animate-spin" /><span className="font-medium">Saving...</span></div>;
             case 'error':
                 return <div className="flex items-center gap-2 text-red-500"><CloudOff className="w-5 h-5" /><span className="font-medium">Failed</span></div>;
             case 'local':
@@ -307,10 +462,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {activeTab !== 'main' && (
                                         <button 
                                             onClick={handleSave}
-                                            disabled={saveStatus === 'saved'}
-                                            className={`p-2 rounded-full transition-all ${saveStatus === 'saved' ? 'bg-green-500 text-white' : 'hover:bg-muted/10 text-primary'}`}
+                                            disabled={settingsSaveStatus === 'saved'}
+                                            className={`p-2 rounded-full transition-all ${settingsSaveStatus === 'saved' ? 'bg-green-500 text-white' : 'hover:bg-muted/10 text-primary'}`}
                                         >
-                                            {saveStatus === 'saved' ? <CheckCircle2 className="w-6 h-6" /> : <Save className="w-6 h-6" />}
+                                            {settingsSaveStatus === 'saved' ? <CheckCircle2 className="w-6 h-6" /> : <Save className="w-6 h-6" />}
                                         </button>
                                     )}
                                     <button onClick={onClose} className="p-2 hover:bg-muted/10 rounded-full transition-colors">
@@ -355,12 +510,12 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    {(syncStatus === 'error' || syncStatus === 'local') && (
+                                                    {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
                                                         <button onClick={onSyncClick} className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors">
                                                             <RefreshCw className="w-5 h-5" />
                                                         </button>
                                                     )}
-                                                    {syncStatus === 'synced' && onRefreshClick && (
+                                                    {saveStatus === 'synced' && fetchStatus === 'synced' && onRefreshClick && (
                                                         <button onClick={onRefreshClick} className="p-2 bg-surface border border-border text-muted hover:text-primary rounded-xl transition-colors">
                                                             <RefreshCw className="w-5 h-5" />
                                                         </button>
@@ -730,6 +885,54 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 </div>
                                             </section>
 
+                                            {/* Spreadsheet */}
+                                            <section>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Google Sheets Sync</h3>
+                                                <div className="bg-background border border-border rounded-2xl p-4 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
+                                                                <Database className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Spreadsheet</div>
+                                                                <div className="text-xs text-muted">Use Google Sheets as database.</div>
+                                                            </div>
+                                                        </div>
+                                                        {spreadsheetConfig && (
+                                                            <button onClick={handleDisconnectSpreadsheet} className="text-red-400 hover:bg-red-400/10 p-2 rounded-lg" title="Disconnect">
+                                                                <WifiOff className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div className="space-y-2">
+                                                        <input
+                                                            type="text"
+                                                            className="w-full bg-surface border border-border rounded-xl p-3 text-primary focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-muted/20 text-xs"
+                                                            value={spreadsheetLink}
+                                                            onChange={(e) => setSpreadsheetLink(e.target.value)}
+                                                            placeholder="Paste Google Sheets Link here..."
+                                                            disabled={!!spreadsheetConfig}
+                                                        />
+                                                        {!spreadsheetConfig && (
+                                                            <button 
+                                                                onClick={handleConnectSpreadsheet}
+                                                                disabled={isConnectingSpreadsheet || !spreadsheetLink}
+                                                                className="w-full py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                                                            >
+                                                                {isConnectingSpreadsheet ? 'Connecting...' : 'Connect Spreadsheet'}
+                                                            </button>
+                                                        )}
+                                                        {spreadsheetConfig && (
+                                                            <div className="text-xs text-emerald-500 font-medium flex items-center gap-1">
+                                                                <CheckCircle2 className="w-4 h-4" /> Connected
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </section>
+
                                             {/* GitHub */}
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Cloud Sync</h3>
@@ -823,6 +1026,47 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                             </AnimatePresence>
                         </div>
                     </motion.div>
+                    
+                    {/* Connection Modal */}
+                    {connectionModal?.isOpen && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+                            <div className="bg-surface rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-border">
+                                <h3 className="text-xl font-bold text-primary mb-2">Connect Database</h3>
+                                <p className="text-sm text-muted mb-6">How would you like to handle the data when connecting to {connectionModal.provider === 'github' ? 'GitHub' : 'Google Sheets'}?</p>
+                                
+                                <div className="space-y-3">
+                                    <button 
+                                        onClick={() => handleConnectionChoice('merge')}
+                                        className="w-full text-left p-4 rounded-2xl border border-border hover:bg-muted/5 transition-colors group"
+                                    >
+                                        <div className="font-bold text-primary group-hover:text-emerald-500 transition-colors">Merge Data</div>
+                                        <div className="text-xs text-muted mt-1">Combine local data with cloud data.</div>
+                                    </button>
+                                    <button 
+                                        onClick={() => handleConnectionChoice('overwrite_cloud')}
+                                        className="w-full text-left p-4 rounded-2xl border border-border hover:bg-muted/5 transition-colors group"
+                                    >
+                                        <div className="font-bold text-primary group-hover:text-blue-500 transition-colors">Overwrite Cloud</div>
+                                        <div className="text-xs text-muted mt-1">Replace cloud data with your current local data.</div>
+                                    </button>
+                                    <button 
+                                        onClick={() => handleConnectionChoice('overwrite_local')}
+                                        className="w-full text-left p-4 rounded-2xl border border-border hover:bg-muted/5 transition-colors group"
+                                    >
+                                        <div className="font-bold text-primary group-hover:text-amber-500 transition-colors">Overwrite Local</div>
+                                        <div className="text-xs text-muted mt-1">Replace your current local data with cloud data.</div>
+                                    </button>
+                                </div>
+                                
+                                <button 
+                                    onClick={() => setConnectionModal(null)}
+                                    className="mt-6 w-full py-3 text-sm font-bold text-muted hover:text-primary transition-colors rounded-xl hover:bg-muted/10"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </AnimatePresence>

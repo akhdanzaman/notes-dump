@@ -1,14 +1,15 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ChevronLeft, ChevronRight, Pencil, Target, CheckCircle2, 
     ShoppingCart, AlertTriangle, ArrowRight, Wallet as WalletIcon, 
     EyeOff, Eye, ArrowUpRight, ArrowDownRight, Sprout, StickyNote,
-    Plus, Zap, Coffee, TrendingUp
+    Plus, Zap, Coffee, TrendingUp, RefreshCw, ChevronDown
 } from 'lucide-react';
-import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType, Tab, FinanceType } from '../../types';
-import { getFocusMonthData, getSkillItems, getShoppingItems, getWalletStats, getFinanceItems } from '../../utils/selectors';
+import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType, Tab, FinanceType, Priority } from '../../types';
+import { getFocusMonthData, getSkillItems, getShoppingItems, getWalletStats, getFinanceItems, generateInsights } from '../../utils/selectors';
+import { generateAIInsights, Insight } from '../../services/insightService';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import Card from '../Card';
@@ -33,7 +34,32 @@ interface SummaryViewProps {
     handleOpenAddShopping: (category?: string) => void;
     handleOpenAddExpense: () => void;
     handleOpenAddNote: () => void;
-    handleUpdateItem: (id: string, content: string, tags: string[], amount?: number, date?: string, paymentMethod?: string, budgetCategory?: string, duration?: number, skillId?: string, toWallet?: string, financeType?: FinanceType, progress?: number, progressNotes?: string, shoppingCategory?: any, recurrenceDays?: number, quantity?: string, isRoutine?: boolean, routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly', routineDaysOfWeek?: number[], routineDaysOfMonth?: number[], routineMonthsOfYear?: number[]) => void;
+    handleUpdateItem: (
+        id: string, 
+        content: string, 
+        tags: string[], 
+        amount?: number, 
+        date?: string, 
+        paymentMethod?: string, 
+        budgetCategory?: string, 
+        duration?: number, 
+        skillId?: string, 
+        toWallet?: string, 
+        financeType?: FinanceType, 
+        progress?: number, 
+        progressNotes?: string, 
+        shoppingCategory?: any, 
+        recurrenceDays?: number, 
+        quantity?: string, 
+        isRoutine?: boolean, 
+        routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly', 
+        routineDaysOfWeek?: number[], 
+        routineDaysOfMonth?: number[], 
+        routineMonthsOfYear?: number[],
+        savingGoalId?: string,
+        dedicatedWalletId?: string,
+        priority?: Priority
+    ) => void;
     handleDelete: (id: string) => void;
 }
 
@@ -167,6 +193,60 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     const { content: themeContent } = getThemeForDate(themeNavDate);
     
+    // 5. Insights
+    const localInsights = useMemo(() => generateInsights(items, budgetConfig, wallets, skills), [items, budgetConfig, wallets, skills]);
+    
+    const [aiInsights, setAiInsights] = useState<Insight[]>(() => {
+        const saved = localStorage.getItem('braindump_ai_insights');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    });
+    const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+    const [isInsightsCollapsed, setIsInsightsCollapsed] = useState(true);
+
+    const fetchAIInsights = async (force = false) => {
+        // Check if we already fetched today
+        const lastFetched = localStorage.getItem('braindump_ai_insights_date');
+        const today = new Date().toDateString();
+        
+        if (!force && lastFetched === today) {
+            return;
+        }
+
+        setIsLoadingInsights(true);
+        const generated = await generateAIInsights(items, budgetConfig, wallets, skills);
+        if (generated.length > 0) {
+            setAiInsights(generated);
+            localStorage.setItem('braindump_ai_insights', JSON.stringify(generated));
+            localStorage.setItem('braindump_ai_insights_date', today);
+        }
+        setIsLoadingInsights(false);
+    };
+
+    useEffect(() => {
+        // Only fetch if there are items to analyze
+        if (items.length > 0) {
+            fetchAIInsights();
+        }
+
+        // Check for day change periodically (every 1 hour)
+        const intervalId = setInterval(() => {
+            if (items.length > 0) {
+                fetchAIInsights();
+            }
+        }, 60 * 60 * 1000);
+
+        return () => clearInterval(intervalId);
+    }, [items.length, budgetConfig, wallets, skills]);
+
+    const displayInsights = aiInsights.length > 0 ? aiInsights : localInsights;
+
     // Card Props for reuse
     const cardProps = {
         onToggleStatus: handleToggleStatus,
@@ -280,7 +360,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex flex-col">
                             <h2 className="text-lg font-bold flex items-center gap-2">
-                                {DisplayIcon}
                                 {displayTitle}
                             </h2>
                             {displaySubtitle && (
@@ -311,7 +390,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     <section>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold flex items-center gap-2">
-                                <Coffee className="w-5 h-5 text-indigo-500" />
                                 Rituals
                             </h2>
                         </div>
@@ -338,7 +416,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 <section onClick={() => setActiveTab('money')} className="cursor-pointer group">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5 text-emerald-500" />
                             Financials
                         </h2>
                         <ArrowRight className="w-4 h-4 opacity-30 group-hover:opacity-100 transition-opacity" />
@@ -381,6 +458,82 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         </div>
                     </div>
                 </section>
+
+                {/* 5. Information */}
+                {displayInsights.length > 0 && (
+                    <section>
+                        <div className="flex items-center justify-between mb-4">
+                            <button 
+                                onClick={() => setIsInsightsCollapsed(!isInsightsCollapsed)}
+                                className="flex items-center gap-2 group"
+                            >
+                                <h2 className="text-lg font-bold flex items-center gap-2">
+                                    Information
+                                </h2>
+                                <motion.div
+                                    animate={{ rotate: isInsightsCollapsed ? -90 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <ChevronDown className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                </motion.div>
+                            </button>
+                            <button 
+                                onClick={() => fetchAIInsights(true)} 
+                                disabled={isLoadingInsights}
+                                className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider flex items-center gap-1 disabled:opacity-30"
+                            >
+                                <RefreshCw className={`w-3 h-3 ${isLoadingInsights ? 'animate-spin' : ''}`} />
+                                {isLoadingInsights ? 'Refreshing...' : 'Refresh'}
+                            </button>
+                        </div>
+                        <AnimatePresence initial={false}>
+                            {!isInsightsCollapsed && (
+                                <motion.div 
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="space-y-3 pb-2">
+                                        {displayInsights?.map((insight, idx) => {
+                                            let bgColor = 'bg-zinc-100 dark:bg-zinc-800';
+                                            let iconColor = 'text-zinc-500';
+                                            let Icon = AlertTriangle;
+
+                                            if (insight.type === 'warning') {
+                                                bgColor = 'bg-red-50 dark:bg-red-900/20';
+                                                iconColor = 'text-red-500';
+                                                Icon = AlertTriangle;
+                                            } else if (insight.type === 'success') {
+                                                bgColor = 'bg-emerald-50 dark:bg-emerald-900/20';
+                                                iconColor = 'text-emerald-500';
+                                                Icon = CheckCircle2;
+                                            } else {
+                                                bgColor = 'bg-blue-50 dark:bg-blue-900/20';
+                                                iconColor = 'text-blue-500';
+                                                if (insight.iconType === 'task') Icon = Target;
+                                                else if (insight.iconType === 'finance') Icon = WalletIcon;
+                                                else if (insight.iconType === 'shopping') Icon = ShoppingCart;
+                                                else if (insight.iconType === 'skill') Icon = Sprout;
+                                            }
+
+                                            return (
+                                                <div key={idx} className={`p-4 rounded-2xl flex items-start gap-3 ${bgColor}`}>
+                                                    <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${iconColor}`} />
+                                                    <div>
+                                                        <h3 className="text-sm font-bold mb-0.5">{insight.title}</h3>
+                                                        <p className="text-xs opacity-70 leading-relaxed">{insight.message}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </section>
+                )}
             </motion.div>
         </div>
     );

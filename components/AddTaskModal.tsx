@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Calendar } from 'lucide-react';
+import { X, Check, Calendar, AlertCircle } from 'lucide-react';
+import { Priority } from '../types';
 
 interface AddTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (content: string, date: string) => void;
+    onSave: (content: string, date: string, priority: Priority) => void;
     initialDate?: string;
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, initialDate }) => {
     const [content, setContent] = useState('');
     const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
+    const [priority, setPriority] = useState<Priority>('normal');
 
     const handleSave = () => {
         if (!content.trim()) return;
-        onSave(content, new Date(date).toISOString());
+        onSave(content, new Date(date).toISOString(), priority);
         setContent('');
+        setPriority('normal');
         onClose();
     };
 
@@ -62,6 +65,25 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                                 onChange={e => setDate(e.target.value)}
                                 className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Priority</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {(['low', 'normal', 'high'] as Priority[]).map(p => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPriority(p)}
+                                        className={`py-3 rounded-xl font-bold text-sm capitalize transition-all ${
+                                            priority === p 
+                                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
+                                                : 'bg-background border border-border text-muted hover:border-indigo-500/50'
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
 

@@ -1,12 +1,16 @@
 
 import React, { useState, useRef, useEffect, ReactNode } from 'react';
-import { SendHorizonal, TrendingDown, TrendingUp, Target, ShoppingCart, StickyNote, Sparkles, PiggyBank } from 'lucide-react';
+import { SendHorizonal, TrendingDown, TrendingUp, Target, ShoppingCart, StickyNote, Sparkles, PiggyBank, Loader2 } from 'lucide-react';
+import { SyncStatus } from '../types';
 
 interface InputBarProps {
   onSend: (text: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   startAction?: ReactNode;
+  saveStatus?: SyncStatus;
+  fetchStatus?: SyncStatus;
+  pendingCount?: number;
 }
 
 const SUGGESTIONS = [
@@ -18,7 +22,7 @@ const SUGGESTIONS = [
   { label: 'Notes', value: 'notes:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
 ];
 
-const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startAction }) => {
+const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startAction, saveStatus, fetchStatus, pendingCount }) => {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -74,41 +78,52 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, onFocus, onBlur, startActio
       textareaRef.current?.focus();
   };
 
-  const isPopupVisible = showSuggestions || !!startAction;
+  const isPopupVisible = showSuggestions || !!startAction || saveStatus === 'saving' || fetchStatus === 'syncing' || (pendingCount && pendingCount > 0);
 
   return (
-    <div className="w-full pt-2 pb-4 px-4 z-50 pointer-events-none">
+    <div className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none">
       <div className="max-w-2xl mx-auto pointer-events-auto">
         <div className="relative group">
           
           {/* Quick Suggestions & Actions Popup */}
-          <div className={`absolute bottom-full left-0 w-full mb-3 transition-all duration-200 ease-out origin-bottom ${isPopupVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}`}>
-              <div className="flex items-end gap-2 px-1 py-1">
+          <div className={`absolute bottom-full left-0 w-full mb-3 transition-all duration-300 ease-out origin-bottom ${isPopupVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}`}>
+              <div className="flex items-center justify-between gap-2 px-1 py-1 w-full">
                   
-                  {/* Start Action (e.g. Search Button) */}
-                  {startAction && (
+                  <div className="flex items-center gap-2 flex-1 overflow-hidden">
+                    {/* Start Action (e.g. Search Button) */}
+                    {startAction && (
+                        <div className="shrink-0 z-20">
+                            {startAction}
+                        </div>
+                    )}
+                    
+                    {/* Suggestions List */}
+                    {showSuggestions && (
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1">
+                            {SUGGESTIONS.map((item) => (
+                                <button
+                                    key={item.label}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault(); // Prevent focus loss from textarea
+                                        addTemplate(item.value);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/80 backdrop-blur-md border border-border rounded-full text-xs font-medium text-primary shadow-lg hover:border-primary/50 hover:bg-surface active:scale-95 transition-all whitespace-nowrap"
+                                >
+                                    {item.icon}
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                  </div>
+
+                  {/* Syncing Animation */}
+                  {(saveStatus === 'saving' || fetchStatus === 'syncing' || (pendingCount && pendingCount > 0)) && (
                       <div className="shrink-0 z-20">
-                          {startAction}
+                          <div className={`w-10 h-10 rounded-full ${saveStatus === 'saving' ? 'bg-amber-500/20 border-amber-500/40' : fetchStatus === 'syncing' ? 'bg-blue-500/20 border-blue-500/40' : 'bg-purple-500/20 border-purple-500/40'} backdrop-blur-xl border flex items-center justify-center shadow-xl ${saveStatus === 'saving' ? 'shadow-amber-500/20' : fetchStatus === 'syncing' ? 'shadow-blue-500/20' : 'shadow-purple-500/20'} animate-pulse`}>
+                              <Loader2 className={`w-5 h-5 ${saveStatus === 'saving' ? 'text-amber-400' : fetchStatus === 'syncing' ? 'text-blue-400' : 'text-purple-400'} animate-spin`} />
+                          </div>
                       </div>
-                  )}
-                  
-                  {/* Suggestions List */}
-                  {showSuggestions && (
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1">
-                        {SUGGESTIONS.map((item) => (
-                            <button
-                                key={item.label}
-                                onMouseDown={(e) => {
-                                    e.preventDefault(); // Prevent focus loss from textarea
-                                    addTemplate(item.value);
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/80 backdrop-blur-md border border-border rounded-full text-xs font-medium text-primary shadow-lg hover:border-primary/50 hover:bg-surface active:scale-95 transition-all whitespace-nowrap"
-                            >
-                                {item.icon}
-                                {item.label}
-                            </button>
-                        ))}
-                    </div>
                   )}
               </div>
           </div>

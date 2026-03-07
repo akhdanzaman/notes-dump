@@ -5,18 +5,28 @@ import { SyncStatus } from '../types';
 
 interface HeaderProps {
     pendingCount: number;
-    syncStatus: SyncStatus;
+    saveStatus: SyncStatus;
+    fetchStatus: SyncStatus;
     onSyncClick: () => void;
     onRefreshClick?: () => void;
     onSettingsClick: () => void;
     error: string | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ pendingCount, syncStatus, onSyncClick, onRefreshClick, onSettingsClick, error }) => {
+const Header: React.FC<HeaderProps> = ({ pendingCount, saveStatus, fetchStatus, onSyncClick, onRefreshClick, onSettingsClick, error }) => {
     
     const renderSyncIndicator = () => {
         let icon, text, color, onClick;
-        switch(syncStatus) {
+        
+        // Prioritize showing saving/syncing status, then error, then synced
+        const activeStatus = saveStatus === 'saving' ? 'saving' 
+                           : fetchStatus === 'syncing' ? 'syncing'
+                           : saveStatus === 'error' ? 'error'
+                           : fetchStatus === 'error' ? 'error'
+                           : saveStatus === 'local' ? 'local'
+                           : 'synced';
+
+        switch(activeStatus) {
             case 'synced': 
                 icon = <CloudCheck className="w-5 h-5" />; 
                 text = "Saved"; 
@@ -25,8 +35,14 @@ const Header: React.FC<HeaderProps> = ({ pendingCount, syncStatus, onSyncClick, 
                 break;
             case 'syncing': 
                 icon = <RefreshCw className="w-5 h-5 animate-spin" />; 
-                text = "Saving..."; 
+                text = "Fetching..."; 
                 color = "text-blue-500 bg-blue-500/10"; 
+                onClick = undefined;
+                break;
+            case 'saving': 
+                icon = <Save className="w-5 h-5 animate-spin" />; 
+                text = "Saving..."; 
+                color = "text-amber-500 bg-amber-500/10"; 
                 onClick = undefined;
                 break;
             case 'error': 
@@ -46,7 +62,7 @@ const Header: React.FC<HeaderProps> = ({ pendingCount, syncStatus, onSyncClick, 
             <button 
                 onClick={onClick}
                 className={`flex items-center justify-center w-10 h-10 rounded-full transition-all ${color}`}
-                title={syncStatus === 'synced' ? "Click to refresh" : (syncStatus === 'error' ? "Retry Sync" : "Sync Status")}
+                title={activeStatus === 'synced' ? "Click to refresh" : (activeStatus === 'error' ? "Retry Sync" : "Sync Status")}
             >
                 {icon}
             </button>

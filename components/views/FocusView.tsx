@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Sprout, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight } from 'lucide-react';
-import { BrainDumpItem, FocusSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab } from '../../types';
+import { BrainDumpItem, FocusSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority } from '../../types';
 import { getFocusMonthData, getSkillItems } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -40,7 +40,10 @@ interface FocusViewProps {
         newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
         newRoutineDaysOfWeek?: number[],
         newRoutineDaysOfMonth?: number[],
-        newRoutineMonthsOfYear?: number[]
+        newRoutineMonthsOfYear?: number[],
+        newSavingGoalId?: string,
+        newDedicatedWalletId?: string,
+        newPriority?: Priority
     ) => void;
     handleOpenAddRoutine: () => void;
     handleOpenAddTask: (initialDate?: string) => void;
@@ -293,7 +296,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             </button>
                                         </div>
                                         {today.length > 0 ? (
-                                            <div className="space-y-3">{today.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                            <div className="space-y-3">{today?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
                                         ) : (
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
@@ -312,7 +315,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             </button>
                                         </div>
                                         {routines && routines.length > 0 ? (
-                                            <div className="space-y-3">{routines.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                            <div className="space-y-3">{routines?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
                                         ) : (
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
@@ -329,7 +332,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             </button>
                                         </div>
                                         {tomorrow.length > 0 ? (
-                                            <div className="space-y-3">{tomorrow.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                            <div className="space-y-3">{tomorrow?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
                                         ) : (
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
@@ -346,7 +349,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             </button>
                                         </div>
                                         {later.length > 0 ? (
-                                            <div className="space-y-3">{later.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                            <div className="space-y-3">{later?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
                                         ) : (
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
@@ -453,7 +456,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {logs.map(log => {
+                                    {logs?.map(log => {
                                         const skill = skills.find(s => s.id === log.meta.skillId);
                                         return (
                                             <Card 

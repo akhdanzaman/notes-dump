@@ -11,6 +11,7 @@ export enum ItemType {
 
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving';
 export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving';
+export type Priority = 'low' | 'normal' | 'high';
 
 export interface BudgetRule {
   id: string;
@@ -85,6 +86,7 @@ export interface ItemMeta {
 
   // Routine History Tracking
   lastGeneratedHistoryId?: string;
+  priority?: Priority;
 }
 
 export interface BrainDumpItem {
@@ -119,6 +121,6 @@ export interface GitHubFileResponse {
 export type Tab = 'summary' | 'focus' | 'shopping' | 'notes' | 'money';
 export type FocusSubTab = 'tasks' | 'skills';
 export type NotesSubTab = 'general' | 'skills' | 'journal';
-export type SyncStatus = 'synced' | 'syncing' | 'error' | 'local';
+export type SyncStatus = 'synced' | 'syncing' | 'saving' | 'error' | 'local';
 export type MoneyView = 'transactions' | 'budget' | 'wallets';
 export type SortOrder = 'newest' | 'oldest' | 'highest_amount' | 'lowest_amount';

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotebookPen, BookText, Library, Plus } from 'lucide-react';
-import { BrainDumpItem, Skill, NotesSubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab } from '../../types';
+import { BrainDumpItem, Skill, NotesSubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
 import { getNoteItems, getJournalGroups } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -29,7 +29,15 @@ interface NotesViewProps {
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
-        newQuantity?: string
+        newQuantity?: string,
+        newIsRoutine?: boolean,
+        newRoutineInterval?: any,
+        newRoutineDaysOfWeek?: number[],
+        newRoutineDaysOfMonth?: number[],
+        newRoutineMonthsOfYear?: number[],
+        newSavingGoalId?: string,
+        newDedicatedWalletId?: string,
+        newPriority?: Priority
     ) => void;
     
     // Filters
@@ -160,7 +168,7 @@ const NotesView: React.FC<NotesViewProps> = ({
 
         return (
             <div className="columns-1 sm:columns-2 gap-4">
-                {data.map(item => {
+                {data?.map(item => {
                     const skillName = item.type === ItemType.SKILL_LOG 
                         ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName)
                         : undefined;

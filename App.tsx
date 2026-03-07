@@ -32,7 +32,7 @@ const App: React.FC = () => {
   const {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
-      loading, error, pendingCount, syncStatus, saveAndSync, handleSend, handleToggleStatus,
+      loading, error, pendingCount, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
       handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote
   } = useBrainDumpData();
 
@@ -306,7 +306,7 @@ const App: React.FC = () => {
       <main className="pt-0 pb-48 max-w-2xl mx-auto min-h-screen relative">
         
         <div className="relative z-10">
-            {loading ? (
+            {(loading && items.length === 0) ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted animate-pulse pt-24">
                 <div className="w-12 h-12 bg-surface rounded-full mb-4"></div>
                 <p>Syncing...</p>
@@ -446,7 +446,10 @@ const App: React.FC = () => {
             <InputBar 
                 onSend={handleSend} 
                 onFocus={() => { setIsSearchExpanded(false); }} 
-                startAction={
+                saveStatus={saveStatus}
+                fetchStatus={fetchStatus}
+                pendingCount={pendingCount}
+                startAction={(activeTab === 'notes' || activeTab === 'money') ? (
                     <FloatingSearch 
                         activeTab={activeTab} notesSubTab={notesSubTab} moneyView={moneyView}
                         isSearchExpanded={isSearchExpanded} setIsSearchExpanded={setIsSearchExpanded}
@@ -463,7 +466,7 @@ const App: React.FC = () => {
                         uniqueTags={uniqueTags} wallets={wallets} budgetConfig={budgetConfig}
                         savingGoals={savingGoals}
                     />
-                }
+                ) : null}
             />
           </div>
 
@@ -480,7 +483,8 @@ const App: React.FC = () => {
       <ControlCenter 
         isOpen={isControlCenterOpen}
         onClose={() => setIsControlCenterOpen(false)}
-        syncStatus={syncStatus}
+        saveStatus={saveStatus}
+        fetchStatus={fetchStatus}
         onSyncClick={() => saveAndSync(items)}
         onRefreshClick={() => loadData()}
         appSettings={appSettings}
