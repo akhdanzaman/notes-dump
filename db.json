@@ -5769,6 +5769,10 @@
     "monthlyIncome": 0,
     "rules": []
   },
+  "appSettings": {
+    "defaultCollapsed": true,
+    "hideMoney": false
+  },
   "customPrompt": "Task: Split input into distinct items. Output MUST be a JSON ARRAY of objects.\n\nTYPE (pick one):\n- TODO: work/career/productivity actions.\n- SHOPPING: planned purchases/errands (future/plan). IMPORTANT: “Buy X 50k” => SHOPPING, not FINANCE.\n- NOTE: ideas/knowledge/random thoughts.\n- EVENT: scheduled dates/times.\n- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement.\n- SKILL_LOG: time spent learning/practicing a skill.\n- JOURNAL: personal diary entries, feelings, daily recaps, \"Dear Diary\", or explicit \"Log to journal\".\n\nCOMMON EXTRACTION:\n- amount: NUMBER only (strip currency symbols + thousand separators).\n- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc).\n- tags: max 2, see TAG RULES below.\n\nDATE (STRICT):\n- Always resolve meta.dateISO = YYYY-MM-DD when any time reference exists.\n- Set meta.when if relative/weekday-based:\n  - today/hari ini => when=\"today\"\n  - tomorrow/besok => when=\"tomorrow\"\n  - yesterday/kemarin => when=\"yesterday\" (Important for FINANCE/JOURNAL)\n  - weekday mentioned => NEXT occurrence after current date, when=\"next_weekday\"\n  - explicit calendar date => when=\"specific_date\"\n- FOR JOURNAL: Default date to TODAY if not specified. \"Journal for yesterday...\" => date=yesterday.\n\nSHOPPING META:\n- shoppingCategory ∈ {urgent, routine, not_urgent}\n- routine ONLY if repetition is explicit: \"setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan\" OR recurrenceDays given.\n- If weekday/date mentioned WITHOUT repetition words => NOT routine, set urgent (one-time scheduled).\n- routine => include recurrenceDays (if stated) + targetDay (if stated).\n- urgent => include targetDay (if stated).\n- default => not_urgent.\n\nMONEY META (FINANCE + money-related SHOPPING):\n- paymentMethod: EXACT text from user (Source Wallet), else \"\".\n- budgetCategory ∈ {needs, wants, savings, sedekah}\n- needs: transportation/groceries/health/stationary/breakfast/dinner\n- wants: fancy dining/hobby/entertainment/subscription entertainment/snacks\n  - savings: investment/emergency/debt repayment\n  - sedekah: charity/giving/donation\n\nFINANCE META:\n- financeType ∈ {expense, income, lending, reimbursement, transfer}\n- transfer: moving money between own accounts (withdraw, deposit, topup, pindah buku).\n    - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.\n\nSKILL_LOG META:\n- content MUST be summary/key takeaways (not raw duration sentence)\n  Example: \"Belajar React 1 jam tentang Hooks\" => content \"Belajar React tentang Hooks\"\n- durationMinutes: NUMBER (convert hours→minutes)\n- skillName: infer from context; match known skills if provided\n\nTAG RULES (STRICT):\n- Priority: big picture > detail.\n- Avoid generic tags: \"people\", \"purchase\" unless no better option.\n- Prefer semantic tags like: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.\n- Max 2 tags.\n\nExamples:\n- \"Gave money to street musician 5000\" => tags [\"charity\"], budgetCategory \"sedekah\"\n- \"tip driver gojek 10000\" => tags [\"tip\", \"transport\"]\n- \"Breakfast 14000\" => tags [\"food\", \"breakfast\"]\n- \"Kirim dompet\" => tags [\"delivery\"]\n- \"beli susu besok hari senin 12000\" => SHOPPING urgent + targetDay Monday + amount 12000\n- \"beli susu setiap senin 12000\" => SHOPPING routine + targetDay Monday + amount 12000\n- \"Tarik tunai BCA 500rb\" => FINANCE transfer, paymentMethod \"BCA\", toWallet \"Cash\", amount 500000\n- \"Topup Gopay dari Mandiri 100k\" => FINANCE transfer, paymentMethod \"Mandiri\", toWallet \"Gopay\", amount 100000\n- \"I felt really productive today because I finished the project\" => JOURNAL, date=TODAY\n- \"Journal kemarin: pergi ke pantai sama keluarga\" => JOURNAL, content=\"Pergi ke pantai sama keluarga\", date=YESTERDAY\n",
   "skills": [
     {
@@ -5855,10 +5859,6 @@
     "2026-02": "Bangun pagi dan semangat",
     "2026-03": "Self love and self grooming",
     "2026-04": "Family and Happiness"
-  },
-  "appSettings": {
-    "defaultCollapsed": true,
-    "hideMoney": false
   },
   "chatHistory": []
 }
