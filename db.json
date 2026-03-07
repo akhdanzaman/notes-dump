@@ -2347,7 +2347,7 @@
         ],
         "amount": 25000,
         "budgetCategory": "needs",
-        "date": "2026-03-07T10:57:08.126Z",
+        "date": "2026-03-01T00:00:00.000Z",
         "recurrenceDays": 7,
         "shoppingCategory": "routine",
         "targetDay": "Friday",
@@ -2363,8 +2363,7 @@
           1,
           15
         ],
-        "routineMonthsOfYear": [],
-        "progress": 0
+        "routineMonthsOfYear": []
       },
       "isOptimistic": false
     },
@@ -2471,7 +2470,7 @@
     },
     {
       "id": "9b7e6c2e-2eb2-40e9-8624-b97efdaee4de",
-      "status": "pending",
+      "status": "done",
       "created_at": "2026-01-25T15:03:02.796Z",
       "type": "SHOPPING",
       "content": "beli paket data",
@@ -2480,14 +2479,14 @@
           "bills",
           "purchase"
         ],
-        "date": "2026-03-13T23:27:00.000Z",
+        "date": "2026-03-07T11:05:31.254Z",
         "recurrenceDays": 28,
         "shoppingCategory": "routine",
         "amount": 150000,
         "paymentMethod": "",
         "budgetCategory": "cat-1770450517162",
         "financeType": "expense",
-        "progress": 0,
+        "progress": 100,
         "quantity": "",
         "isRoutine": true,
         "routineInterval": "monthly",
@@ -2495,9 +2494,12 @@
         "routineDaysOfMonth": [
           14
         ],
-        "routineMonthsOfYear": []
+        "routineMonthsOfYear": [],
+        "lastGeneratedHistoryId": "c2535010-726e-4bf8-a70d-fc78ff15200e",
+        "toWallet": ""
       },
-      "isOptimistic": false
+      "isOptimistic": false,
+      "completed_at": "2026-03-07T11:05:31.000Z"
     },
     {
       "id": "6fc3d6e9-dc30-4aaa-a0f3-5799b23d7830",
@@ -3104,59 +3106,6 @@
       "completed_at": "2026-02-06T13:22:58.000Z"
     },
     {
-      "id": "d72a28f8-907d-47d9-95d3-3d1a1f70bca9",
-      "status": "done",
-      "created_at": "2026-03-07T10:50:59.017Z",
-      "completed_at": "2026-03-07T10:50:59.017Z",
-      "type": "FINANCE",
-      "content": "Beli makan buka puasa",
-      "meta": {
-        "tags": [
-          "food",
-          "dinner"
-        ],
-        "amount": 23000,
-        "commodity": "food",
-        "date": "2026-03-07T00:00:00.000Z",
-        "financeType": "expense",
-        "paymentMethod": "83fd31b7-64da-44e1-bd91-ed77796714a4",
-        "subcommodity": "dinner",
-        "targetDay": "Saturday",
-        "budgetCategory": "needs",
-        "recurrenceDays": 1,
-        "routineInterval": "daily",
-        "routineDaysOfWeek": [],
-        "routineDaysOfMonth": [],
-        "routineMonthsOfYear": [],
-        "priority": "normal",
-        "toWallet": ""
-      },
-      "isOptimistic": false
-    },
-    {
-      "id": "14ec95e6-11b0-4562-8e93-3203447b47f4",
-      "status": "done",
-      "created_at": "2026-03-07T10:50:42.017Z",
-      "completed_at": "2026-03-07T10:50:42.017Z",
-      "type": "FINANCE",
-      "content": "Makan sahur",
-      "meta": {
-        "tags": [
-          "food",
-          "breakfast"
-        ],
-        "amount": 10000,
-        "budgetCategory": "needs",
-        "commodity": "food",
-        "date": "2026-03-07T00:00:00.000Z",
-        "financeType": "expense",
-        "paymentMethod": "cash",
-        "subcommodity": "breakfast",
-        "toWallet": ""
-      },
-      "isOptimistic": false
-    },
-    {
       "id": "1879464e-39f3-47e7-a12a-42937865e73f",
       "status": "done",
       "created_at": "2026-03-06T15:22:17.586Z",
@@ -3171,15 +3120,9 @@
         "financeType": "expense",
         "paymentMethod": "cash",
         "targetDay": "2026-03-06",
-        "date": "2026-03-06T15:22:00.000Z",
-        "budgetCategory": "cat-1770450517162",
-        "recurrenceDays": 1,
-        "routineInterval": "daily",
-        "routineDaysOfWeek": [],
-        "routineDaysOfMonth": [],
-        "routineMonthsOfYear": [],
-        "priority": "normal",
-        "toWallet": ""
+        "toWallet": "cash",
+        "budgetCategory": "",
+        "date": "2026-03-06T15:22:17.000Z"
       },
       "isOptimistic": false
     },
@@ -3266,7 +3209,7 @@
         "date": "2026-03-05T00:00:00.000Z",
         "financeType": "income",
         "paymentMethod": "bca",
-        "budgetCategory": "Income",
+        "budgetCategory": "",
         "toWallet": ""
       },
       "isOptimistic": false
@@ -3288,7 +3231,7 @@
         "financeType": "transfer",
         "paymentMethod": "bca",
         "toWallet": "cash",
-        "budgetCategory": "Transfer"
+        "budgetCategory": ""
       },
       "isOptimistic": false
     },
@@ -3765,7 +3708,7 @@
         "shoppingCategory": "routine",
         "amount": 1300000,
         "budgetCategory": "cat-1770450517162",
-        "date": "2026-03-07T10:56:50.745Z",
+        "date": "2026-03-19T00:00:00.000Z",
         "isRoutine": true,
         "routineInterval": "monthly",
         "routineDaysOfWeek": [],
@@ -3773,8 +3716,7 @@
           19
         ],
         "routineMonthsOfYear": [],
-        "quantity": "",
-        "progress": 0
+        "quantity": ""
       }
     },
     {
@@ -3819,7 +3761,7 @@
         "routineDaysOfWeek": [],
         "routineDaysOfMonth": [],
         "routineMonthsOfYear": [],
-        "budgetCategory": "Income",
+        "budgetCategory": "",
         "toWallet": ""
       },
       "isOptimistic": false
@@ -3847,7 +3789,7 @@
         "routineDaysOfWeek": [],
         "routineDaysOfMonth": [],
         "routineMonthsOfYear": [],
-        "budgetCategory": "Transfer"
+        "budgetCategory": ""
       },
       "isOptimistic": false
     },
@@ -4280,7 +4222,7 @@
         "date": "2026-02-26T00:00:00.000Z",
         "financeType": "income",
         "paymentMethod": "bca",
-        "budgetCategory": "Income",
+        "budgetCategory": "",
         "toWallet": ""
       },
       "isOptimistic": false
@@ -4557,7 +4499,7 @@
         "financeType": "transfer",
         "paymentMethod": "bca",
         "toWallet": "cash",
-        "budgetCategory": "Transfer",
+        "budgetCategory": "",
         "date": "2026-02-22T12:25:40.000Z"
       },
       "isOptimistic": false
@@ -4603,7 +4545,7 @@
         "toWallet": "83fd31b7-64da-44e1-bd91-ed77796714a4",
         "progress": 0,
         "progressNotes": "",
-        "budgetCategory": "Transfer"
+        "budgetCategory": ""
       },
       "isOptimistic": false
     },
@@ -5790,48 +5732,42 @@
         "lastGeneratedHistoryId": "2cb407d4-6aa6-405a-ab4d-ad4b79936503"
       },
       "completed_at": "2026-03-06T15:22:20.123Z"
+    },
+    {
+      "id": "c2535010-726e-4bf8-a70d-fc78ff15200e",
+      "status": "done",
+      "created_at": "2026-03-07T11:05:31.254Z",
+      "type": "FINANCE",
+      "content": "beli paket data",
+      "meta": {
+        "tags": [
+          "bills",
+          "purchase"
+        ],
+        "date": "2026-03-07T11:05:00.000Z",
+        "recurrenceDays": 28,
+        "amount": 150000,
+        "paymentMethod": "w-1",
+        "budgetCategory": "cat-1770450517162",
+        "financeType": "expense",
+        "quantity": "",
+        "isRoutine": false,
+        "routineInterval": "monthly",
+        "routineDaysOfWeek": [],
+        "routineDaysOfMonth": [
+          14
+        ],
+        "routineMonthsOfYear": [],
+        "priority": "normal",
+        "toWallet": ""
+      },
+      "isOptimistic": false,
+      "completed_at": "2026-03-07T11:05:31.254Z"
     }
   ],
   "budgetConfig": {
-    "monthlyIncome": 7000000,
-    "rules": [
-      {
-        "id": "needs",
-        "name": "Needs",
-        "percentage": 20,
-        "color": "bg-blue-500"
-      },
-      {
-        "id": "wants",
-        "name": "Wants",
-        "percentage": 25,
-        "color": "bg-pink-500"
-      },
-      {
-        "id": "savings",
-        "name": "Savings",
-        "percentage": 20,
-        "color": "bg-emerald-500"
-      },
-      {
-        "id": "cat-1769922349475",
-        "name": "Sedekah",
-        "percentage": 10,
-        "color": "bg-gray-500"
-      },
-      {
-        "id": "cat-1770450517162",
-        "name": "Fixed",
-        "percentage": 22,
-        "color": "bg-cyan-500"
-      },
-      {
-        "id": "cat-1770451205002",
-        "name": "Unintend",
-        "percentage": 3,
-        "color": "bg-red-500"
-      }
-    ]
+    "monthlyIncome": 0,
+    "rules": []
   },
   "customPrompt": "Task: Split input into distinct items. Output MUST be a JSON ARRAY of objects.\n\nTYPE (pick one):\n- TODO: work/career/productivity actions.\n- SHOPPING: planned purchases/errands (future/plan). IMPORTANT: “Buy X 50k” => SHOPPING, not FINANCE.\n- NOTE: ideas/knowledge/random thoughts.\n- EVENT: scheduled dates/times.\n- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement.\n- SKILL_LOG: time spent learning/practicing a skill.\n- JOURNAL: personal diary entries, feelings, daily recaps, \"Dear Diary\", or explicit \"Log to journal\".\n\nCOMMON EXTRACTION:\n- amount: NUMBER only (strip currency symbols + thousand separators).\n- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc).\n- tags: max 2, see TAG RULES below.\n\nDATE (STRICT):\n- Always resolve meta.dateISO = YYYY-MM-DD when any time reference exists.\n- Set meta.when if relative/weekday-based:\n  - today/hari ini => when=\"today\"\n  - tomorrow/besok => when=\"tomorrow\"\n  - yesterday/kemarin => when=\"yesterday\" (Important for FINANCE/JOURNAL)\n  - weekday mentioned => NEXT occurrence after current date, when=\"next_weekday\"\n  - explicit calendar date => when=\"specific_date\"\n- FOR JOURNAL: Default date to TODAY if not specified. \"Journal for yesterday...\" => date=yesterday.\n\nSHOPPING META:\n- shoppingCategory ∈ {urgent, routine, not_urgent}\n- routine ONLY if repetition is explicit: \"setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan\" OR recurrenceDays given.\n- If weekday/date mentioned WITHOUT repetition words => NOT routine, set urgent (one-time scheduled).\n- routine => include recurrenceDays (if stated) + targetDay (if stated).\n- urgent => include targetDay (if stated).\n- default => not_urgent.\n\nMONEY META (FINANCE + money-related SHOPPING):\n- paymentMethod: EXACT text from user (Source Wallet), else \"\".\n- budgetCategory ∈ {needs, wants, savings, sedekah}\n- needs: transportation/groceries/health/stationary/breakfast/dinner\n- wants: fancy dining/hobby/entertainment/subscription entertainment/snacks\n  - savings: investment/emergency/debt repayment\n  - sedekah: charity/giving/donation\n\nFINANCE META:\n- financeType ∈ {expense, income, lending, reimbursement, transfer}\n- transfer: moving money between own accounts (withdraw, deposit, topup, pindah buku).\n    - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.\n\nSKILL_LOG META:\n- content MUST be summary/key takeaways (not raw duration sentence)\n  Example: \"Belajar React 1 jam tentang Hooks\" => content \"Belajar React tentang Hooks\"\n- durationMinutes: NUMBER (convert hours→minutes)\n- skillName: infer from context; match known skills if provided\n\nTAG RULES (STRICT):\n- Priority: big picture > detail.\n- Avoid generic tags: \"people\", \"purchase\" unless no better option.\n- Prefer semantic tags like: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education.\n- Max 2 tags.\n\nExamples:\n- \"Gave money to street musician 5000\" => tags [\"charity\"], budgetCategory \"sedekah\"\n- \"tip driver gojek 10000\" => tags [\"tip\", \"transport\"]\n- \"Breakfast 14000\" => tags [\"food\", \"breakfast\"]\n- \"Kirim dompet\" => tags [\"delivery\"]\n- \"beli susu besok hari senin 12000\" => SHOPPING urgent + targetDay Monday + amount 12000\n- \"beli susu setiap senin 12000\" => SHOPPING routine + targetDay Monday + amount 12000\n- \"Tarik tunai BCA 500rb\" => FINANCE transfer, paymentMethod \"BCA\", toWallet \"Cash\", amount 500000\n- \"Topup Gopay dari Mandiri 100k\" => FINANCE transfer, paymentMethod \"Mandiri\", toWallet \"Gopay\", amount 100000\n- \"I felt really productive today because I finished the project\" => JOURNAL, date=TODAY\n- \"Journal kemarin: pergi ke pantai sama keluarga\" => JOURNAL, content=\"Pergi ke pantai sama keluarga\", date=YESTERDAY\n",
   "skills": [
@@ -5921,9 +5857,8 @@
     "2026-04": "Family and Happiness"
   },
   "appSettings": {
-    "defaultCollapsed": false,
-    "hideMoney": false,
-    "theme": "light"
+    "defaultCollapsed": true,
+    "hideMoney": false
   },
   "chatHistory": []
 }
