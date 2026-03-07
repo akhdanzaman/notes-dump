@@ -5,6 +5,8 @@ import { createServer as createViteServer } from "vite";
 
 dotenv.config();
 
+const authSessions = new Map<string, { status: 'pending' | 'success' | 'error', tokens?: any, error?: string }>();
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -31,6 +33,14 @@ async function startServer() {
     const host = req.get('host');
     const origin = req.query.origin as string || `${protocol}://${host}`;
     const redirectUri = `${origin}/api/auth/callback`;
+    const sessionId = req.query.sessionId as string;
+
+    if (sessionId) {
+      authSessions.set(sessionId, { status: 'pending' });
+    }
+
+    const stateObj = { origin, sessionId };
+    const state = Buffer.from(JSON.stringify(stateObj)).toString('base64');
     
     // Construct the OAuth provider's authorization URL
     const params = new URLSearchParams({
@@ -40,17 +50,46 @@ async function startServer() {
       scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
       access_type: 'offline',
       prompt: 'consent',
-      state: origin // Pass origin in state
+      state: state // Pass origin and sessionId in state
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     res.json({ url: authUrl });
   });
 
+  app.get("/api/auth/status", (req, res) => {
+    const sessionId = req.query.sessionId as string;
+    if (!sessionId) return res.status(400).json({ error: 'Missing sessionId' });
+    
+    const session = authSessions.get(sessionId);
+    if (!session) return res.json({ status: 'not_found' });
+    
+    if (session.status === 'success') {
+      authSessions.delete(sessionId); // clean up
+      return res.json({ status: 'success', tokens: session.tokens });
+    } else if (session.status === 'error') {
+      authSessions.delete(sessionId);
+      return res.json({ status: 'error', error: session.error });
+    }
+    
+    res.json({ status: 'pending' });
+  });
+
   app.get(["/api/auth/callback", "/api/auth/callback/"], async (req, res) => {
     const { code, state } = req.query;
-    // Use state as origin if available, otherwise fallback to request host
-    const origin = (state as string) || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
+    let origin = `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
+    let sessionId = '';
+
+    if (state) {
+      try {
+        const stateObj = JSON.parse(Buffer.from(state as string, 'base64').toString('utf-8'));
+        if (stateObj.origin) origin = stateObj.origin;
+        if (stateObj.sessionId) sessionId = stateObj.sessionId;
+      } catch (e) {
+        // fallback
+        origin = state as string;
+      }
+    }
     const redirectUri = `${origin}/api/auth/callback`;
 
     try {
@@ -85,6 +124,10 @@ async function startServer() {
         throw new Error(tokens.error_description || tokens.error);
       }
 
+      if (sessionId) {
+        authSessions.set(sessionId, { status: 'success', tokens });
+      }
+
       // Send success message to parent window and close popup
       res.send(`
         <html>
@@ -97,12 +140,15 @@ async function startServer() {
                 window.location.href = '/?google_auth=' + encodeURIComponent(JSON.stringify(${JSON.stringify(tokens)}));
               }
             </script>
-            <p>Authentication successful. This window should close automatically.</p>
+            <p>Authentication successful. This window should close automatically. If not, you can safely close it.</p>
           </body>
         </html>
       `);
     } catch (error: any) {
       console.error("OAuth error:", error);
+      if (sessionId) {
+        authSessions.set(sessionId, { status: 'error', error: error.message });
+      }
       res.status(500).send(`
         <html>
           <body>

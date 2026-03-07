@@ -288,7 +288,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const handleGoogleLogin = async () => {
         try {
             const origin = window.location.origin;
-            const response = await fetch(`/api/auth/google/url?origin=${encodeURIComponent(origin)}`);
+            // Generate a random session ID for cross-browser login
+            const sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            
+            const response = await fetch(`/api/auth/google/url?origin=${encodeURIComponent(origin)}&sessionId=${sessionId}`);
             if (!response.ok) throw new Error('Failed to get auth URL');
             const { url } = await response.json();
             
@@ -305,8 +308,40 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             );
 
             if (!authWindow) {
-                alert('Please allow popups for this site to connect your account.');
+                alert('Popup blocked. You can still login by opening this URL in a new tab: ' + url);
             }
+
+            // Start polling for session status
+            const pollInterval = setInterval(async () => {
+                try {
+                    const statusRes = await fetch(`/api/auth/status?sessionId=${sessionId}`);
+                    if (!statusRes.ok) return;
+                    const statusData = await statusRes.json();
+                    
+                    if (statusData.status === 'success') {
+                        clearInterval(pollInterval);
+                        if (authWindow) authWindow.close();
+                        if (handleGoogleLoginSuccessRef.current) {
+                            handleGoogleLoginSuccessRef.current(statusData.tokens);
+                        }
+                    } else if (statusData.status === 'error') {
+                        clearInterval(pollInterval);
+                        if (authWindow) authWindow.close();
+                        alert(`Authentication failed: ${statusData.error}`);
+                    } else if (statusData.status === 'not_found') {
+                        // Session expired or not found
+                        clearInterval(pollInterval);
+                    }
+                } catch (e) {
+                    // Ignore fetch errors during polling
+                }
+            }, 2000);
+
+            // Stop polling after 5 minutes
+            setTimeout(() => {
+                clearInterval(pollInterval);
+            }, 5 * 60 * 1000);
+
         } catch (error) {
             console.error('Login error:', error);
             alert('Failed to start login process.');
@@ -368,13 +403,22 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         if (onRefreshClick) onRefreshClick();
     };
 
-    const handleDisconnectSpreadsheet = () => {
+    const handleGoogleSignOut = () => {
         if (window.confirm("Are you sure you want to sign out? This will disconnect your spreadsheet and clear your session.")) {
             clearSpreadsheetConfig();
             setSpreadsheetConfig(null);
             setSpreadsheetLink('');
             setGoogleProfile(null);
             clearGoogleSession();
+            if (onRefreshClick) onRefreshClick();
+        }
+    };
+
+    const handleDisconnectSpreadsheetOnly = () => {
+        if (window.confirm("Are you sure you want to disconnect your spreadsheet? You will remain signed in to Google.")) {
+            clearSpreadsheetConfig();
+            setSpreadsheetConfig(null);
+            setSpreadsheetLink('');
             if (onRefreshClick) onRefreshClick();
         }
     };
@@ -1030,7 +1074,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 </div>
                                                             </div>
                                                             <button 
-                                                                onClick={handleDisconnectSpreadsheet}
+                                                                onClick={handleGoogleSignOut}
                                                                 className="text-xs text-red-500 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
                                                             >
                                                                 Sign Out
@@ -1085,13 +1129,20 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
 
-                                                        {!spreadsheetConfig && (
+                                                        {!spreadsheetConfig ? (
                                                             <button 
                                                                 onClick={handleConnectSpreadsheet}
                                                                 disabled={!spreadsheetLink}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
                                                                 Connect Spreadsheet
+                                                            </button>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={handleDisconnectSpreadsheetOnly}
+                                                                className="w-full py-2.5 bg-red-500/10 text-red-500 font-medium rounded-xl hover:bg-red-500/20 transition-colors"
+                                                            >
+                                                                Disconnect Spreadsheet
                                                             </button>
                                                         )}
                                                     </div>
