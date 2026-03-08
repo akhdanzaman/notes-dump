@@ -513,6 +513,68 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     />
                                                 </div>
                                             </section>
+                                            <section>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">AI Models</h3>
+                                                <div className="bg-background border border-border rounded-2xl p-4 space-y-4">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-muted mb-1">Parsing Chat (geminiService)</label>
+                                                        <select
+                                                            className="w-full bg-surface border border-border rounded-xl p-3 text-xs text-primary focus:outline-none focus:border-acc-note transition-colors"
+                                                            value={localAppSettings.parsingModel || 'gemini-3.1-flash-preview'}
+                                                            onChange={(e) => setLocalAppSettings({ ...localAppSettings, parsingModel: e.target.value })}
+                                                        >
+                                                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                                            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                                                            <option value="gemini-2.0-pro-exp">Gemini 2.0 Pro (Exp)</option>
+                                                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                                            <option value="gemini-3.0-flash-preview">Gemini 3.0 Flash Preview</option>
+                                                            <option value="gemini-3.0-pro-preview">Gemini 3.0 Pro Preview</option>
+                                                            <option value="gemini-3.1-flash-preview">Gemini 3.1 Flash Preview</option>
+                                                            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite Preview</option>
+                                                            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-muted mb-1">Chat Bar AI (chatService)</label>
+                                                        <select
+                                                            className="w-full bg-surface border border-border rounded-xl p-3 text-xs text-primary focus:outline-none focus:border-acc-note transition-colors"
+                                                            value={localAppSettings.chatModel || 'gemini-3.1-flash-preview'}
+                                                            onChange={(e) => setLocalAppSettings({ ...localAppSettings, chatModel: e.target.value })}
+                                                        >
+                                                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                                            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                                                            <option value="gemini-2.0-pro-exp">Gemini 2.0 Pro (Exp)</option>
+                                                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                                            <option value="gemini-3.0-flash-preview">Gemini 3.0 Flash Preview</option>
+                                                            <option value="gemini-3.0-pro-preview">Gemini 3.0 Pro Preview</option>
+                                                            <option value="gemini-3.1-flash-preview">Gemini 3.1 Flash Preview</option>
+                                                            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite Preview</option>
+                                                            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-muted mb-1">AI Insight (insightService)</label>
+                                                        <select
+                                                            className="w-full bg-surface border border-border rounded-xl p-3 text-xs text-primary focus:outline-none focus:border-acc-note transition-colors"
+                                                            value={localAppSettings.insightModel || 'gemini-3.1-flash-preview'}
+                                                            onChange={(e) => setLocalAppSettings({ ...localAppSettings, insightModel: e.target.value })}
+                                                        >
+                                                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                                            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                                                            <option value="gemini-2.0-pro-exp">Gemini 2.0 Pro (Exp)</option>
+                                                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                                            <option value="gemini-3.0-flash-preview">Gemini 3.0 Flash Preview</option>
+                                                            <option value="gemini-3.0-pro-preview">Gemini 3.0 Pro Preview</option>
+                                                            <option value="gemini-3.1-flash-preview">Gemini 3.1 Flash Preview</option>
+                                                            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite Preview</option>
+                                                            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </section>
                                         </div>
                                     )}
 

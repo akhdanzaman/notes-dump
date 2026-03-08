@@ -487,6 +487,7 @@ const App: React.FC = () => {
               chatHistory={chatHistory}
               onUpdateHistory={handleUpdateChatHistory}
               onResetChat={handleResetChat}
+              chatModel={appSettings.chatModel}
           />
           <div className="pointer-events-auto">
             <InputBar 

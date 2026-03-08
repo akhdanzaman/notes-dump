@@ -14,7 +14,8 @@ export const generateAIInsights = async (
   items: BrainDumpItem[],
   budgetConfig: BudgetConfig,
   wallets: Wallet[],
-  skills: Skill[]
+  skills: Skill[],
+  insightModel?: string
 ): Promise<Insight[]> => {
   const apiKey = getGeminiKey();
   if (!apiKey) {
@@ -27,6 +28,7 @@ export const generateAIInsights = async (
   }
 
   const ai = new GoogleGenAI({ apiKey });
+  const activeModel = insightModel || 'gemini-3.1-flash-preview';
   
   // Aggregate data
   const now = new Date();
@@ -228,7 +230,7 @@ export const generateAIInsights = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: activeModel,
       contents: prompt,
       config: {
         responseMimeType: "application/json",

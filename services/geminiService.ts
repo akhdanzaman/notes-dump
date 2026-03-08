@@ -1,28 +1,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { ItemType, BrainDumpItem } from "../types";
+import { ItemType, BrainDumpItem } from '../types';
 
-const GEMINI_SETTINGS_KEY = "braindump_gemini_key";
+const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
 
 export const getGeminiKey = (): string => {
-  return (
-    localStorage.getItem(GEMINI_SETTINGS_KEY) ||
-    process.env.GEMINI_API_KEY ||
-    ""
-  );
+  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.GEMINI_API_KEY || '';
 };
 
 export const saveGeminiKey = (key: string) => {
   if (key) {
-    localStorage.setItem(GEMINI_SETTINGS_KEY, key);
+      localStorage.setItem(GEMINI_SETTINGS_KEY, key);
   } else {
-    localStorage.removeItem(GEMINI_SETTINGS_KEY);
+      localStorage.removeItem(GEMINI_SETTINGS_KEY);
   }
 };
 
 // Updated to Gemini 3 Flash Preview as requested
-const modelName = "gemini-2.5-flash";
+const modelName = 'gemini-3-flash-preview';
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const DEFAULT_PROMPT = `Task: Split input into distinct items. Output MUST be a JSON ARRAY of objects.
 
@@ -134,46 +130,31 @@ Examples:
 `;
 
 // CHANGED: Added availableSkills to prompt context
-export const classifyText = async (
-  text: string,
-  existingTags: string[] = [],
-  availableSkills: string[] = [],
-  retryCount = 0,
-  customPrompt?: string,
-): Promise<Partial<BrainDumpItem>[]> => {
+export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string, parsingModel?: string): Promise<Partial<BrainDumpItem>[]> => {
   const apiKey = getGeminiKey();
-
+  
   if (!apiKey) {
-    console.warn("No Gemini API Key found.");
-    return [
-      {
+      console.warn("No Gemini API Key found.");
+      return [{
         type: ItemType.NOTE,
         content: text,
-        meta: { tags: ["missing-api-key"] },
-      },
-    ];
+        meta: { tags: ['missing-api-key'] }
+      }];
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
   const currentDate = new Date().toISOString();
-  const currentDayName = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-  });
-  const tagsContext =
-    existingTags.length > 0
-      ? `Existing tags context: ${existingTags.join(", ")}`
-      : "";
-  const skillsContext =
-    availableSkills.length > 0
-      ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(", ")}`
-      : "";
+  const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const tagsContext = existingTags.length > 0 ? `Existing tags context: ${existingTags.join(', ')}` : '';
+  const skillsContext = availableSkills.length > 0 ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(', ')}` : '';
 
   const promptToUse = customPrompt || DEFAULT_PROMPT;
+  const activeModel = parsingModel || modelName;
 
   try {
     const response = await ai.models.generateContent({
-      model: modelName,
+      model: activeModel,
       contents: `Analyze this user input: "${text}". 
       Current Date context: ${currentDate} (${currentDayName}).
       ${tagsContext}
@@ -189,8 +170,7 @@ export const classifyText = async (
             properties: {
               type: {
                 type: Type.STRING,
-                description:
-                  "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG, JOURNAL",
+                description: "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG, JOURNAL",
               },
               content: {
                 type: Type.STRING,
@@ -207,109 +187,74 @@ export const classifyText = async (
                   targetDay: { type: Type.STRING },
                   amount: { type: Type.NUMBER },
                   financeType: { type: Type.STRING },
-                  paymentMethod: {
-                    type: Type.STRING,
-                    description: "Source Wallet / Method",
-                  },
-                  toWallet: {
-                    type: Type.STRING,
-                    description: "Destination Wallet for transfers",
-                  },
-                  budgetCategory: {
-                    type: Type.STRING,
-                    description: "Classification of expense budget category",
-                  },
-                  commodity: {
-                    type: Type.STRING,
-                    description: "Main expenditure category",
-                  },
-                  subcommodity: {
-                    type: Type.STRING,
-                    description: "Detailed sub-category",
-                  },
-                  merchant: {
-                    type: Type.STRING,
-                    description: "Merchant/Vendor name",
-                  },
-                  durationMinutes: {
-                    type: Type.NUMBER,
-                    description: "Duration in minutes for SKILL_LOG",
-                  },
-                  skillName: {
-                    type: Type.STRING,
-                    description: "Name of the skill practiced",
-                  },
-                  priority: {
-                    type: Type.STRING,
-                    description: "Priority level: low, normal, high",
-                  },
-                },
-              },
+                  paymentMethod: { type: Type.STRING, description: "Source Wallet / Method" },
+                  toWallet: { type: Type.STRING, description: "Destination Wallet for transfers" },
+                  budgetCategory: { type: Type.STRING, description: "Classification of expense budget category"  },
+                  commodity: { type: Type.STRING, description: "Main expenditure category" },
+                  subcommodity: { type: Type.STRING, description: "Detailed sub-category" },
+                  merchant: { type: Type.STRING, description: "Merchant/Vendor name" },
+                  durationMinutes: { type: Type.NUMBER, description: "Duration in minutes for SKILL_LOG" },
+                  skillName: { type: Type.STRING, description: "Name of the skill practiced" },
+                  priority: { type: Type.STRING, description: "Priority level: low, normal, high" }
+                }
+              }
             },
             required: ["type", "content"],
-          },
+          }
         },
       },
     });
 
     const parsed = JSON.parse(response.text || "[]");
-
+    
     // Ensure result is an array
     const resultsArray = Array.isArray(parsed) ? parsed : [parsed];
 
     return resultsArray.map((result: any) => {
-      // Validate type matches our Enum
-      let matchedType = ItemType.NOTE;
-      const typeStr = result.type?.toUpperCase();
-      if (Object.values(ItemType).includes(typeStr as ItemType)) {
-        matchedType = typeStr as ItemType;
-      }
+        // Validate type matches our Enum
+        let matchedType = ItemType.NOTE;
+        const typeStr = result.type?.toUpperCase();
+        if (Object.values(ItemType).includes(typeStr as ItemType)) {
+          matchedType = typeStr as ItemType;
+        }
 
-      // Default shopping category if missing
-      if (matchedType === ItemType.SHOPPING && !result.meta?.shoppingCategory) {
-        if (!result.meta) result.meta = {};
-        result.meta.shoppingCategory = "not_urgent";
-      }
+        // Default shopping category if missing
+        if (matchedType === ItemType.SHOPPING && !result.meta?.shoppingCategory) {
+            if (!result.meta) result.meta = {};
+            result.meta.shoppingCategory = 'not_urgent';
+        }
 
-      // Default date for JOURNAL if missing is TODAY (created_at handles it mostly, but strict date helps sorting)
-      if (matchedType === ItemType.JOURNAL && !result.meta?.date) {
-        if (!result.meta) result.meta = {};
-        result.meta.date = new Date().toISOString();
-      }
+        // Default date for JOURNAL if missing is TODAY (created_at handles it mostly, but strict date helps sorting)
+        if (matchedType === ItemType.JOURNAL && !result.meta?.date) {
+             if (!result.meta) result.meta = {};
+             result.meta.date = new Date().toISOString();
+        }
 
-      return {
-        type: matchedType,
-        content: result.content || text,
-        meta: result.meta || { tags: [] },
-      };
+        return {
+          type: matchedType,
+          content: result.content || text,
+          meta: result.meta || { tags: [] }
+        };
     });
+
   } catch (error: any) {
     const status = error?.status || error?.response?.status;
-
+    
     if (retryCount < 2 && (status === 429 || status >= 500)) {
-      const delay = Math.pow(2, retryCount) * 1000;
-      await wait(delay);
-      return classifyText(
-        text,
-        existingTags,
-        availableSkills,
-        retryCount + 1,
-        customPrompt,
-      );
+        const delay = Math.pow(2, retryCount) * 1000;
+        await wait(delay);
+        return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt, parsingModel);
     }
 
     console.error("Gemini classification failed:", error);
-
-    return [
-      {
-        type: ItemType.NOTE,
-        content: text,
-        meta: {
-          tags: ["parsing_failed"],
-          parsingError:
-            error?.message || "Unknown error occurred during parsing",
-        },
-      },
-    ];
+    
+    return [{
+      type: ItemType.NOTE,
+      content: text,
+      meta: { 
+          tags: ['parsing_failed'],
+          parsingError: error?.message || "Unknown error occurred during parsing"
+      }
+    }];
   }
 };

@@ -7,7 +7,7 @@ import {
     EyeOff, Eye, ArrowUpRight, ArrowDownRight, Sprout, StickyNote,
     Plus, Zap, Coffee, TrendingUp, RefreshCw, ChevronDown
 } from 'lucide-react';
-import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType, Tab, FinanceType, Priority, ShoppingCategory } from '../../types';
+import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType, Tab, FinanceType, Priority, ShoppingCategory, AppSettings } from '../../types';
 import { getFocusMonthData, getSkillItems, getShoppingItems, getWalletStats, getFinanceItems, generateInsights } from '../../utils/selectors';
 import { generateAIInsights, Insight } from '../../services/insightService';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -221,7 +221,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         }
 
         setIsLoadingInsights(true);
-        const generated = await generateAIInsights(items, budgetConfig, wallets, skills);
+        const generated = await generateAIInsights(items, budgetConfig, wallets, skills, appSettings.insightModel);
         if (generated.length > 0) {
             setAiInsights(generated);
             localStorage.setItem('braindump_ai_insights', JSON.stringify(generated));

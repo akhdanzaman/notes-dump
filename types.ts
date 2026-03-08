@@ -30,6 +30,9 @@ export interface AppSettings {
   hideMoney: boolean;
   theme?: 'light' | 'dark';
   enableDailyInsight?: boolean;
+  parsingModel?: string;
+  chatModel?: string;
+  insightModel?: string;
 }
 
 export interface Skill {

@@ -16,9 +16,10 @@ interface FloatingChatBoxProps {
     chatHistory: ChatMessage[];
     onUpdateHistory: (newHistory: ChatMessage[]) => void;
     onResetChat: () => void;
+    chatModel?: string;
 }
 
-const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, items, budgetConfig, wallets, skills, newMessage, chatHistory, onUpdateHistory, onResetChat }) => {
+const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, items, budgetConfig, wallets, skills, newMessage, chatHistory, onUpdateHistory, onResetChat, chatModel }) => {
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +49,7 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
         setIsLoading(true);
 
         try {
-            const responseText = await generateChatResponse(text, updatedHistory, items, budgetConfig, wallets, skills);
+            const responseText = await generateChatResponse(text, updatedHistory, items, budgetConfig, wallets, skills, chatModel);
             const modelMsg: ChatMessage = { role: 'model', text: responseText };
             onUpdateHistory([...updatedHistory, modelMsg]);
         } catch (error) {

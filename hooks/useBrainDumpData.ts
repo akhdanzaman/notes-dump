@@ -254,7 +254,7 @@ export const useBrainDumpData = () => {
                 itemsRef.current.forEach(i => i.meta?.tags?.forEach(t => currentTags.add(t)));
                 const skillNames = skillsRef.current.map(s => s.name);
                 
-                const classifiedItems = await classifyText(item.content, Array.from(currentTags), skillNames, 0, customPromptRef.current);
+                const classifiedItems = await classifyText(item.content, Array.from(currentTags), skillNames, 0, customPromptRef.current, appSettingsRef.current.parsingModel);
                 
                 // If it failed again, classifyText returns an item with 'parsing_failed' tag.
                 // We'll just replace the old item with the new one (which might still be failed, or might succeed).
@@ -337,7 +337,7 @@ export const useBrainDumpData = () => {
             // Pass known skills to classifier
             const skillNames = skills.map(s => s.name);
     
-            const classifiedItems = await classifyText(text, Array.from(currentTags), skillNames, 0, customPrompt);
+            const classifiedItems = await classifyText(text, Array.from(currentTags), skillNames, 0, customPrompt, appSettingsRef.current.parsingModel);
       
             const newItems: BrainDumpItem[] = classifiedItems.map(partial => {
                 const isFinance = partial.type === ItemType.FINANCE;

@@ -15,7 +15,8 @@ export const generateChatResponse = async (
     items: BrainDumpItem[],
     budgetConfig: BudgetConfig,
     wallets: Wallet[],
-    skills: Skill[]
+    skills: Skill[],
+    chatModel?: string
 ): Promise<string> => {
     const apiKey = getGeminiKey();
     if (!apiKey) {
@@ -23,6 +24,7 @@ export const generateChatResponse = async (
     }
 
     const ai = new GoogleGenAI({ apiKey });
+    const activeModel = chatModel || modelName;
 
     // Truncate items to the last 200 to prevent massive payloads
     const recentItems = items.slice(-200);
@@ -62,7 +64,7 @@ ${JSON.stringify(skills, null, 2)}
         prompt += `User: ${message}\n\nAssistant:`;
 
         const response = await ai.models.generateContent({
-            model: modelName,
+            model: activeModel,
             contents: prompt,
             config: {
                 systemInstruction,
