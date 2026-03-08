@@ -248,7 +248,10 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
     return [{
       type: ItemType.NOTE,
       content: text,
-      meta: { tags: ['uncategorized'] }
+      meta: { 
+          tags: ['parsing_failed'],
+          parsingError: error?.message || "Unknown error occurred during parsing"
+      }
     }];
   }
 };

@@ -444,13 +444,14 @@ const Card: React.FC<CardProps> = ({
 
   const isRecentlyDone = status === 'done' && completed_at && (new Date().getTime() - new Date(completed_at).getTime() < 86400000);
   const isRoutineDone = meta.isRoutine && status === 'done';
+  const isParsingFailed = meta.tags?.includes('parsing_failed');
   
-  const isDarkened = !noDarken && isRecentlyDone;
+  const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed);
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
 
   return (
     <div 
-        className={`${bgClass} rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        className={`${bgClass} rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
@@ -552,9 +553,19 @@ const Card: React.FC<CardProps> = ({
                             {skillName && (
                                 <span className="text-indigo-500">{skillName}</span>
                             )}
-                            {validTags.map(tag => (
-                                <span key={tag} className="px-1.5 py-0.5 rounded bg-muted/10">#{tag}</span>
-                            ))}
+                            {validTags.map(tag => {
+                                if (tag === 'parsing_failed' && meta.parsingError) {
+                                    return (
+                                        <span key={tag} className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 flex items-center gap-1" title={meta.parsingError}>
+                                            <AlertCircle className="w-3 h-3" />
+                                            Parsing Failed: {meta.parsingError}
+                                        </span>
+                                    );
+                                }
+                                return (
+                                    <span key={tag} className="px-1.5 py-0.5 rounded bg-muted/10">#{tag}</span>
+                                );
+                            })}
                         </div>
                     )}
                     

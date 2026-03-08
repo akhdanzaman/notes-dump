@@ -237,9 +237,73 @@ export const useBrainDumpData = () => {
         }
     }, [saveAndSync]);
 
+    const retryFailedParsings = useCallback(async () => {
+        const failedItems = itemsRef.current.filter(i => i.meta?.tags?.includes('parsing_failed'));
+        if (failedItems.length === 0) return;
+
+        console.log(`Retrying parsing for ${failedItems.length} items...`);
+        
+        for (const item of failedItems) {
+            // We only retry items that are still pending
+            if (item.status !== 'pending') continue;
+            
+            setPendingCount(prev => prev + 1);
+            
+            try {
+                const currentTags = new Set<string>();
+                itemsRef.current.forEach(i => i.meta?.tags?.forEach(t => currentTags.add(t)));
+                const skillNames = skillsRef.current.map(s => s.name);
+                
+                const classifiedItems = await classifyText(item.content, Array.from(currentTags), skillNames, 0, customPromptRef.current);
+                
+                // If it failed again, classifyText returns an item with 'parsing_failed' tag.
+                // We'll just replace the old item with the new one (which might still be failed, or might succeed).
+                const newItems: BrainDumpItem[] = classifiedItems.map(partial => {
+                    const isFinance = partial.type === ItemType.FINANCE;
+                    const isRecord = isFinance || partial.type === ItemType.SKILL_LOG || partial.type === ItemType.JOURNAL;
+                    
+                    let finalMeta = { tags: [], ...partial.meta };
+                    if (partial.type === ItemType.SKILL_LOG && partial.meta?.skillName) {
+                        const matchedSkill = skillsRef.current.find(s => s.name.toLowerCase() === partial.meta?.skillName?.toLowerCase());
+                        if (matchedSkill) {
+                            finalMeta = { ...finalMeta, skillId: matchedSkill.id };
+                        } else if (skillsRef.current.length > 0) {
+                            finalMeta = { ...finalMeta, skillId: skillsRef.current[0].id };
+                        }
+                    }
+
+                    return {
+                        id: uuidv4(),
+                        status: isRecord ? 'done' : 'pending',
+                        created_at: item.created_at, // Preserve original creation date
+                        completed_at: isRecord ? new Date().toISOString() : undefined,
+                        type: ItemType.NOTE,
+                        content: item.content,
+                        ...partial, 
+                        meta: finalMeta,
+                        isOptimistic: false,
+                    };
+                });
+
+                setItems((prev) => {
+                    const prevWithoutOld = prev.filter(i => i.id !== item.id);
+                    const updated = [...newItems, ...prevWithoutOld];
+                    saveAndSync(updated); 
+                    return updated;
+                });
+            } catch (err) {
+                console.error("Retry parsing failed for item:", item.id, err);
+            } finally {
+                setPendingCount(prev => Math.max(0, prev - 1));
+            }
+        }
+    }, [saveAndSync]);
+
     useEffect(() => {
-        loadData();
-    }, [loadData]);
+        loadData().then(() => {
+            retryFailedParsings();
+        });
+    }, [loadData, retryFailedParsings]);
 
     // Auto-fetch on visibility change or window focus
     useEffect(() => {
