@@ -256,7 +256,12 @@ const performSync = async (
   }
 
   if (!isHydrated) {
-    return { success: false, method: 'skipped_not_hydrated' };
+    try {
+      await fetchSpreadsheetDb(false);
+    } catch (e) {
+      console.warn("Failed to hydrate spreadsheet before sync", e);
+      return { success: false, method: 'skipped_not_hydrated' };
+    }
   }
 
   if (lastSnapshot === jsonString && !forceOverwrite) {
@@ -276,7 +281,7 @@ const performSync = async (
   try {
     if (!forceOverwrite) {
         // 1. Fetch latest data from spreadsheet and merge
-        const { data: remoteDb } = await fetchSpreadsheetDb(true);
+        const { data: remoteDb } = await fetchSpreadsheetDb(false);
         
         let baseDb: DbSchema | undefined;
         if (lastSnapshot) {
@@ -331,6 +336,7 @@ const performSync = async (
     const existingSheetTitles = new Set((meta.sheets || []).map((s: any) => s.properties.title));
 
     // 3. Create missing sheets
+    console.log("Creating missing sheets...");
     const requests = [];
     for (const sheet of allSheets) {
       if (!existingSheetTitles.has(sheet.name)) {
@@ -351,10 +357,11 @@ const performSync = async (
         },
         body: JSON.stringify({ requests })
       });
-      if (!batchRes.ok) throw new Error("Failed to create sheets");
+      if (!batchRes.ok) throw new Error(`Failed to create sheets: ${await batchRes.text()}`);
     }
 
     // 4. Clear existing data in target sheets to avoid leftover rows
+    console.log("Clearing sheets...");
     const rangesToClear = allSheets.map(s => `'${s.name}'!A:ZZ`);
     const clearRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchClear`, {
       method: 'POST',
@@ -364,9 +371,10 @@ const performSync = async (
       },
       body: JSON.stringify({ ranges: rangesToClear })
     });
-    if (!clearRes.ok) throw new Error("Failed to clear sheets");
+    if (!clearRes.ok) throw new Error(`Failed to clear sheets: ${await clearRes.text()}`);
 
     // 5. Write new data
+    console.log("Writing new data...");
     const data = allSheets.map(sheet => ({
       range: `'${sheet.name}'!A1`,
       values: sheet.data
@@ -399,6 +407,9 @@ const performSync = async (
 
   } catch (error: any) {
     console.error("Failed to sync to Spreadsheet:", error);
+    if (error.response) {
+      console.error("Error response:", await error.response.text());
+    }
     return { success: false, method: 'error' }; 
   }
 };
