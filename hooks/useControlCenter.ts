@@ -286,16 +286,8 @@ export const useControlCenter = ({
             if (!response.ok) throw new Error('Failed to get auth URL');
             const { url } = await response.json();
             
-            // Open Google Auth in a popup
-            const authWindow = window.open(
-                url,
-                'oauth_popup',
-                'width=600,height=700'
-            );
-
-            if (!authWindow) {
-                console.warn('Please allow popups for this site to connect your account.');
-            }
+            // Redirect to Google Auth
+            window.location.href = url;
         } catch (error) {
             console.error('Login error:', error);
             // alert('Failed to start login process.');
