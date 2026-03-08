@@ -719,7 +719,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                     if (!spreadsheetLink) return;
                                                                     const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
                                                                     if (!match) {
-                                                                        alert("Invalid link");
+                                                                        // alert("Invalid link");
                                                                         return;
                                                                     }
                                                                     handleConnectSpreadsheet(); 

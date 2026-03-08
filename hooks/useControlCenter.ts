@@ -230,7 +230,7 @@ export const useControlCenter = ({
                     saveSpreadsheetConfig(newConfig);
                     setSpreadsheetConfig(newConfig);
                     setSpreadsheetLink(newConfig.spreadsheetUrl);
-                    alert(`Welcome back, ${profile.name}! Settings synced from cloud.`);
+                    // alert(`Welcome back, ${profile.name}! Settings synced from cloud.`);
                 }
                 
                 if (cloudConfig.theme) {
@@ -266,12 +266,12 @@ export const useControlCenter = ({
                 } else {
                     // Just save the token for future use (we need a dummy config or just store it separately)
                     // For now, we wait for user to enter spreadsheet link
-                    alert(`Welcome, ${profile.name}! Please enter your spreadsheet link to finish setup.`);
+                    // alert(`Welcome, ${profile.name}! Please enter your spreadsheet link to finish setup.`);
                 }
             }
         } catch (error) {
             console.error("Profile sync error:", error);
-            alert("Failed to sync profile data.");
+            // alert("Failed to sync profile data.");
         } finally {
             setIsSyncingProfile(false);
             // Trigger refresh to update UI
@@ -294,23 +294,23 @@ export const useControlCenter = ({
             );
 
             if (!authWindow) {
-                alert('Please allow popups for this site to connect your account.');
+                console.warn('Please allow popups for this site to connect your account.');
             }
         } catch (error) {
             console.error('Login error:', error);
-            alert('Failed to start login process.');
+            // alert('Failed to start login process.');
         }
     };
 
     const handleConnectSpreadsheet = async () => {
         if (!spreadsheetLink) {
-            alert("Please enter a spreadsheet link first.");
+            // alert("Please enter a spreadsheet link first.");
             return;
         }
         
         const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
         if (!match) {
-            alert("Invalid spreadsheet link. Please make sure it contains /d/SPREADSHEET_ID");
+            // alert("Invalid spreadsheet link. Please make sure it contains /d/SPREADSHEET_ID");
             return;
         }
 
@@ -320,7 +320,7 @@ export const useControlCenter = ({
         if (!session) {
             // If we have a profile but no session, something is wrong (likely expired)
             if (googleProfile) {
-                alert("Your session has expired. Please sign in again to connect your spreadsheet.");
+                // alert("Your session has expired. Please sign in again to connect your spreadsheet.");
             }
             handleGoogleLogin();
             return;
@@ -346,10 +346,10 @@ export const useControlCenter = ({
                 spreadsheetUrl: spreadsheetLink,
                 theme: localAppSettings.theme
             }, session.access_token);
-            alert("Spreadsheet connected and settings saved to Google Drive.");
+            // alert("Spreadsheet connected and settings saved to Google Drive.");
         } catch (e) {
             console.warn("Failed to sync to Drive", e);
-            alert("Spreadsheet connected locally, but failed to sync to Google Drive.");
+            // alert("Spreadsheet connected locally, but failed to sync to Google Drive.");
         }
         
         onSyncClick(false);
@@ -441,13 +441,13 @@ export const useControlCenter = ({
             setTimeout(() => {
                 onSyncClick(false);
             }, 1500);
-            alert(`Connected to ${provider} and merged data.`);
+            // alert(`Connected to ${provider} and merged data.`);
         } else if (choice === 'overwrite_cloud') {
             onSyncClick(true);
-            alert(`Connected to ${provider} and overwrote cloud data.`);
+            // alert(`Connected to ${provider} and overwrote cloud data.`);
         } else if (choice === 'overwrite_local') {
             if (onRefreshClick) onRefreshClick();
-            alert(`Connected to ${provider} and overwrote local data.`);
+            // alert(`Connected to ${provider} and overwrote local data.`);
         }
 
         // If it was github, we also need to finish the save process
