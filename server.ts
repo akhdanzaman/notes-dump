@@ -90,14 +90,24 @@ async function startServer() {
         <html>
           <body>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', tokens: ${JSON.stringify(tokens)} }, '*');
+              try {
+                const tokens = ${JSON.stringify(tokens)};
+                localStorage.setItem('oauth_tokens', JSON.stringify(tokens));
+                
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', tokens: tokens }, '*');
+                }
+                
                 window.close();
-              } else {
-                window.location.href = '/';
+                
+                setTimeout(() => {
+                  document.body.innerHTML = '<div style="font-family: sans-serif; padding: 20px; text-align: center;"><h3>Authentication successful!</h3><p>You can close this window now and return to the app.</p></div>';
+                }, 1000);
+              } catch (e) {
+                document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
               }
             </script>
-            <p>Authentication successful. This window should close automatically.</p>
+            <p>Authentication successful. Processing...</p>
           </body>
         </html>
       `);

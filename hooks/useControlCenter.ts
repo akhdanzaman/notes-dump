@@ -158,8 +158,50 @@ export const useControlCenter = ({
                 handleGoogleLoginSuccess(event.data.tokens);
             }
         };
+
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === 'oauth_tokens' && event.newValue) {
+                try {
+                    const tokens = JSON.parse(event.newValue);
+                    if (tokens && tokens.access_token) {
+                        handleGoogleLoginSuccess(tokens);
+                        localStorage.removeItem('oauth_tokens');
+                    }
+                } catch (e) {
+                    console.error("Failed to parse oauth tokens from storage", e);
+                }
+            }
+        };
+
         window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
+        window.addEventListener('storage', handleStorage);
+        
+        // Also check on mount in case the storage event was missed
+        const checkStoredTokens = () => {
+            const storedTokens = localStorage.getItem('oauth_tokens');
+            if (storedTokens) {
+                try {
+                    const tokens = JSON.parse(storedTokens);
+                    if (tokens && tokens.access_token) {
+                        handleGoogleLoginSuccess(tokens);
+                        localStorage.removeItem('oauth_tokens');
+                    }
+                } catch (e) {
+                    console.error("Failed to parse stored oauth tokens", e);
+                }
+            }
+        };
+        
+        checkStoredTokens();
+        
+        // Poll every second while waiting for login
+        const pollInterval = setInterval(checkStoredTokens, 1000);
+
+        return () => {
+            window.removeEventListener('message', handleMessage);
+            window.removeEventListener('storage', handleStorage);
+            clearInterval(pollInterval);
+        };
     }, []);
 
     const handleGoogleLoginSuccess = async (tokens: any) => {
