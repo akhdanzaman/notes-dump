@@ -188,8 +188,11 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
 
     // Reconcile with user-facing sheets
     if (batchData.valueRanges) {
+        console.log("Reconciling with valueRanges:", batchData.valueRanges.map((r: any) => r.range));
         const reconciledDb = reconcileSpreadsheetData(dbData, batchData.valueRanges);
-        if (JSON.stringify(reconciledDb.data) !== JSON.stringify(dbData.data)) {
+        console.log("Reconciled DB:", reconciledDb);
+        if (JSON.stringify(reconciledDb.data) !== JSON.stringify(dbData.data) || 
+            JSON.stringify(reconciledDb.budgetConfig) !== JSON.stringify(dbData.budgetConfig)) {
             dbData = reconciledDb;
             reconciled = true;
         }

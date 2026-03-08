@@ -398,7 +398,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const budgetSheet = valueRanges.find(r => r.range && r.range.includes('Budget Rules'));
+    console.log("Budget Sheet found:", !!budgetSheet);
     if (budgetSheet && budgetSheet.values) {
+        console.log("Budget Sheet values:", budgetSheet.values);
         const rows = budgetSheet.values.slice(1);
         if (!db.budgetConfig) db.budgetConfig = { monthlyIncome: 0, rules: [] };
         
@@ -406,12 +408,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         for (const row of rows) {
             const prop = row[0];
             const val = row[1];
+            console.log(`Processing budget row: prop=${prop}, val=${val}`);
             if (prop === 'Monthly Income') {
                 db.budgetConfig.monthlyIncome = parseFloat(val) || 0;
             } else if (prop && prop.startsWith('Rule: ')) {
                 const name = prop.replace('Rule: ', '');
                 // Parse "50% (ID: 123)"
                 const match = val ? val.match(/([\d.]+)%\s*\(ID:\s*(.+)\)/) : null;
+                console.log(`Rule match for ${name}:`, match);
                 if (match) {
                     newRules.push({
                         id: match[2],
