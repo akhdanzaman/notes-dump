@@ -6,7 +6,7 @@ import { BudgetConfig, Wallet as WalletType } from '../types';
 interface AddExpenseModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (amount: number, description: string, category: string, walletId: string, date: string) => void;
+    onSave: (amount: number, description: string, category: string, walletId: string, date: string, type: 'expense' | 'income' | 'transfer' | 'saving', toWalletId?: string) => void;
     wallets: WalletType[];
     budgetConfig: BudgetConfig;
 }
@@ -16,15 +16,20 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
     const [walletId, setWalletId] = useState('');
+    const [toWalletId, setToWalletId] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [transactionType, setTransactionType] = useState<'expense' | 'income' | 'transfer' | 'saving'>('expense');
 
     const handleSave = () => {
         if (!amount || !description || !walletId) return;
-        onSave(parseFloat(amount), description, category, walletId, date);
+        if (transactionType === 'transfer' && !toWalletId) return;
+        
+        onSave(parseFloat(amount), description, category, walletId, date, transactionType, toWalletId);
         setAmount('');
         setDescription('');
         setCategory('');
         setWalletId('');
+        setToWalletId('');
         onClose();
     };
 
@@ -41,8 +46,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                 >
                     <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center shrink-0">
                         <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                            <DollarSign className="w-5 h-5 text-red-500" />
-                            Add Expense
+                            <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-indigo-500'}`} />
+                            {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
                         </h3>
                         <button onClick={onClose} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full text-zinc-500 transition-colors">
                             <X className="w-5 h-5" />
@@ -50,6 +55,18 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                     </div>
 
                     <div className="p-6 space-y-4 overflow-y-auto">
+                        <div className="flex gap-2 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
+                            {(['expense', 'income', 'transfer', 'saving'] as const).map(type => (
+                                <button
+                                    key={type}
+                                    onClick={() => setTransactionType(type)}
+                                    className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-colors ${transactionType === type ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                                >
+                                    {type}
+                                </button>
+                            ))}
+                        </div>
+
                         <div>
                             <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Amount</label>
                             <div className="relative">
@@ -71,14 +88,14 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                 type="text"
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
-                                placeholder="What did you buy?"
+                                placeholder={transactionType === 'expense' ? "What did you buy?" : transactionType === 'income' ? "Source of income?" : "Description"}
                                 className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium"
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Wallet</label>
+                                <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
                                 <select 
                                     value={walletId}
                                     onChange={e => setWalletId(e.target.value)}
@@ -90,19 +107,35 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                     ))}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Category</label>
-                                <select 
-                                    value={category}
-                                    onChange={e => setCategory(e.target.value)}
-                                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
-                                >
-                                    <option value="">Uncategorized</option>
-                                    {budgetConfig.rules?.map(r => (
-                                        <option key={r.id} value={r.id}>{r.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            {transactionType === 'transfer' ? (
+                                <div>
+                                    <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">To</label>
+                                    <select 
+                                        value={toWalletId}
+                                        onChange={e => setToWalletId(e.target.value)}
+                                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                    >
+                                        <option value="">Select Wallet</option>
+                                        {wallets.filter(w => w.id !== walletId).map(w => (
+                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Category</label>
+                                    <select 
+                                        value={category}
+                                        onChange={e => setCategory(e.target.value)}
+                                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                    >
+                                        <option value="">Uncategorized</option>
+                                        {budgetConfig.rules?.map(r => (
+                                            <option key={r.id} value={r.id}>{r.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         <div>
@@ -119,11 +152,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                     <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-900">
                         <button 
                             onClick={handleSave}
-                            disabled={!amount || !description || !walletId}
+                            disabled={!amount || !description || !walletId || (transactionType === 'transfer' && !toWalletId)}
                             className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <Check className="w-5 h-5" />
-                            Save Expense
+                            Save {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
                         </button>
                     </div>
                 </motion.div>

@@ -4,7 +4,7 @@ import { ItemType, BrainDumpItem } from '../types';
 const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
 
 export const getGeminiKey = (): string => {
-  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.API_KEY || '';
+  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.GEMINI_API_KEY || '';
 };
 
 export const saveGeminiKey = (key: string) => {
@@ -15,8 +15,8 @@ export const saveGeminiKey = (key: string) => {
   }
 };
 
-// Updated to Gemini 2.5 Flash Lite as requested
-const modelName = 'gemini-2.5-flash';
+// Updated to Gemini 3 Flash Preview as requested
+const modelName = 'gemini-3-flash-preview';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 

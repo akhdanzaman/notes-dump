@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule } from '../types';
+import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet } from '../types';
 import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw } from 'lucide-react';
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
 
@@ -33,10 +33,11 @@ interface ShoppingItemProps {
   readonly?: boolean;
   handleUpdateItem?: any; // To match prop drilling, though we use onUpdate
   budgetRules?: BudgetRule[];
+  wallets?: Wallet[];
   onResetRoutine?: (id: string) => void;
 }
 
-const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], onResetRoutine }) => {
+const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], wallets = [], onResetRoutine }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { content, meta, status, completed_at } = item;
   
@@ -52,6 +53,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const [editRoutineMonthsOfYear, setEditRoutineMonthsOfYear] = useState<number[]>(meta.routineMonthsOfYear || []);
   const [editDate, setEditDate] = useState<string>('');
   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
+  const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
 
   // Sync state
   useEffect(() => {
@@ -65,6 +67,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       setEditRoutineDaysOfMonth(meta.routineDaysOfMonth || []);
       setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
       setEditBudgetCategory(meta.budgetCategory || '');
+      setEditPaymentMethod(meta.paymentMethod || '');
       
       // Date Init
       if (meta.date) {
@@ -97,7 +100,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           meta.tags || [],
           numAmount,
           finalDate, // Pass the new date
-          meta.paymentMethod,
+          editPaymentMethod,
           editBudgetCategory,
           meta.durationMinutes,
           meta.skillId,
@@ -314,6 +317,19 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                            </select>
                       </div>
                       <div>
+                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Payment Method</label>
+                           <select
+                                className="w-full bg-background border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
+                                value={editPaymentMethod}
+                                onChange={(e) => setEditPaymentMethod(e.target.value)}
+                           >
+                               <option value="">Select Wallet</option>
+                               {wallets.map(w => (
+                                   <option key={w.id} value={w.name}>{w.name}</option>
+                               ))}
+                           </select>
+                      </div>
+                      <div>
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Est. Cost</label>
                            <input 
                               type="number"
@@ -323,7 +339,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                               placeholder="0"
                            />
                       </div>
-                      <div>
+                      <div className="col-span-2">
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Date / Due</label>
                            <input
                                 type="datetime-local"

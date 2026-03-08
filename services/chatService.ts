@@ -4,10 +4,10 @@ import { BrainDumpItem, BudgetConfig, Skill, Wallet, ChatMessage } from '../type
 const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
 
 export const getGeminiKey = (): string => {
-  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.API_KEY || '';
+  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.GEMINI_API_KEY || '';
 };
 
-const modelName = 'gemini-2.5-flash';
+const modelName = 'gemini-3-flash-preview';
 
 export const generateChatResponse = async (
     message: string,

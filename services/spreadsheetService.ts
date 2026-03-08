@@ -1,5 +1,6 @@
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage } from "../types";
-import { SyncResult, mergeDbData } from "./githubService";
+import { SyncResult } from "./githubService";
+import { mergeDbData } from "../utils/mergeUtils";
 import { generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
 
@@ -24,22 +25,6 @@ export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
     const local = localStorage.getItem(SETTINGS_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      
-      // Try to sync with google session
-      const sessionStr = localStorage.getItem('braindump_google_session');
-      if (sessionStr) {
-          try {
-              const session = JSON.parse(sessionStr);
-              if (session.access_token && session.expires_at > Date.now()) {
-                  parsed.accessToken = session.access_token;
-                  parsed.tokenExpiresAt = session.expires_at;
-                  if (session.refresh_token) {
-                      parsed.refreshToken = session.refresh_token;
-                  }
-              }
-          } catch(e) {}
-      }
-
       if (parsed.spreadsheetId && parsed.accessToken) {
         return parsed;
       }
@@ -66,11 +51,6 @@ export const clearSpreadsheetConfig = () => {
   lastSnapshot = null;
 };
 
-export const forceHydrateSpreadsheet = () => {
-  isHydrated = true;
-  lastSnapshot = null;
-};
-
 const refreshAccessToken = async (config: SpreadsheetConfig): Promise<SpreadsheetConfig> => {
   if (!config.refreshToken) throw new Error("No refresh token available");
   
@@ -90,19 +70,6 @@ const refreshAccessToken = async (config: SpreadsheetConfig): Promise<Spreadshee
   };
   
   saveSpreadsheetConfig(newConfig);
-  
-  // Also update google session
-  try {
-      const sessionStr = localStorage.getItem('braindump_google_session');
-      if (sessionStr) {
-          const session = JSON.parse(sessionStr);
-          session.access_token = data.access_token;
-          session.expires_in = data.expires_in;
-          session.expires_at = Date.now() + (data.expires_in * 1000);
-          localStorage.setItem('braindump_google_session', JSON.stringify(session));
-      }
-  } catch(e) {}
-  
   return newConfig;
 };
 
@@ -128,7 +95,7 @@ const validateSchema = (data: any): DbSchema => {
   };
 };
 
-export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean; isNew: boolean }> => {
+export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
   const config = getSpreadsheetConfig();
   if (!config) throw new Error("No spreadsheet config");
 
@@ -159,7 +126,7 @@ export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ da
         const data = validateSchema(JSON.parse(local));
         isHydrated = true;
         lastSnapshot = local;
-        return { data, sha: 'local-sha', reconciled: false, isNew: false };
+        return { data, sha: 'local-sha', reconciled: false };
       }
     }
     throw error;
@@ -175,10 +142,19 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     const existingTitles = new Set((meta.sheets || []).map((s: any) => s.properties.title));
 
     const rangesToFetch = [];
-    if (existingTitles.has(SYSTEM_SHEET_NAME)) rangesToFetch.push(`${SYSTEM_SHEET_NAME}!A:A`);
-    else if (existingTitles.has('Sheet1')) rangesToFetch.push(`Sheet1!A:A`); // legacy
+    let systemSheetName = SYSTEM_SHEET_NAME;
 
-    const sheetsToSync = ['Transactions', 'Todos', 'Shopping', 'Events', 'Notes & Journals', 'Skill Logs'];
+    if (existingTitles.has(SYSTEM_SHEET_NAME)) {
+        rangesToFetch.push(`'${SYSTEM_SHEET_NAME}'!A:A`);
+    } else if (existingTitles.has('Sheet1')) {
+        systemSheetName = 'Sheet1';
+        rangesToFetch.push(`'Sheet1'!A:A`);
+    } else if (meta.sheets && meta.sheets.length > 0) {
+        systemSheetName = meta.sheets[0].properties.title;
+        rangesToFetch.push(`'${systemSheetName}'!A:A`);
+    }
+
+    const sheetsToSync = ['Transactions', 'Todos', 'Shopping', 'Events', 'Notes & Journals', 'Skill Logs', 'Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings'];
     for (const s of sheetsToSync) {
         if (existingTitles.has(s)) {
             if (s === 'Transactions') rangesToFetch.push(`'${s}'!A:I`);
@@ -187,6 +163,10 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
             else if (s === 'Events') rangesToFetch.push(`'${s}'!A:E`);
             else if (s === 'Notes & Journals') rangesToFetch.push(`'${s}'!A:E`);
             else if (s === 'Skill Logs') rangesToFetch.push(`'${s}'!A:F`);
+            else if (s === 'Wallets Config') rangesToFetch.push(`'${s}'!A:E`);
+            else if (s === 'Skills Config') rangesToFetch.push(`'${s}'!A:E`);
+            else if (s === 'Budget Rules') rangesToFetch.push(`'${s}'!A:B`);
+            else if (s === 'Themes & Settings') rangesToFetch.push(`'${s}'!A:C`);
         }
     }
 
@@ -201,11 +181,9 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     }
 
     // Find system sheet data
-    const systemSheet = batchData.valueRanges?.find((r: any) => r.range && (r.range.includes(SYSTEM_SHEET_NAME) || r.range.includes('Sheet1')));
+    const systemSheet = batchData.valueRanges?.find((r: any) => r.range && r.range.includes(systemSheetName));
     
-    const processed = processFetchResponse(systemSheet, skipLocalStorage);
-    let dbData = processed.data;
-    let isNew = processed.isNew;
+    let dbData = processFetchResponse(systemSheet, skipLocalStorage).data;
     let reconciled = false;
 
     // Reconcile with user-facing sheets
@@ -214,7 +192,6 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
         if (JSON.stringify(reconciledDb.data) !== JSON.stringify(dbData.data)) {
             dbData = reconciledDb;
             reconciled = true;
-            isNew = false; // If we reconciled data from other sheets, it's not new
         }
     }
 
@@ -222,20 +199,17 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     const jsonString = JSON.stringify(dbData);
     if (!skipLocalStorage) {
       localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+      isHydrated = true;
+      lastSnapshot = jsonString;
     }
     
-    isHydrated = true;
-    lastSnapshot = jsonString;
-    
-    return { data: dbData, sha: 'spreadsheet-sha', reconciled, isNew };
+    return { data: dbData, sha: 'spreadsheet-sha', reconciled };
 };
 
 const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
   let jsonString = '{"data":[]}';
-  let isNew = true;
   if (data && data.values && data.values.length > 0) {
     jsonString = data.values.map((row: any[]) => row[0] || '').join('');
-    isNew = false;
   }
   
   let rawData;
@@ -245,19 +219,17 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
     console.warn("Failed to parse spreadsheet data, initializing empty DB", e);
     rawData = { data: [] };
     jsonString = '{"data":[]}';
-    isNew = true;
   }
 
   const dbData = validateSchema(rawData);
   
   if (!skipLocalStorage) {
     localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+    isHydrated = true;
+    lastSnapshot = jsonString;
   }
   
-  isHydrated = true;
-  lastSnapshot = jsonString;
-  
-  return { data: dbData, sha: 'spreadsheet-sha', isNew }; 
+  return { data: dbData, sha: 'spreadsheet-sha' }; 
 };
 
 const performSync = async (
@@ -268,7 +240,8 @@ const performSync = async (
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
   appSettings?: AppSettings,
-  chatHistory?: ChatMessage[]
+  chatHistory?: ChatMessage[],
+  forceOverwrite = false
 ): Promise<SyncResult> => {
   const updatedDb: DbSchema = { 
     data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory
@@ -286,7 +259,7 @@ const performSync = async (
     return { success: false, method: 'skipped_not_hydrated' };
   }
 
-  if (lastSnapshot === jsonString) {
+  if (lastSnapshot === jsonString && !forceOverwrite) {
     return { success: true, method: 'skipped_no_changes' };
   }
 
@@ -301,19 +274,37 @@ const performSync = async (
   let reconciled = false;
 
   try {
+    if (!forceOverwrite) {
+        // 1. Fetch latest data from spreadsheet and merge
+        const { data: remoteDb } = await fetchSpreadsheetDb(true);
+        
+        let baseDb: DbSchema | undefined;
+        if (lastSnapshot) {
+            try {
+                baseDb = JSON.parse(lastSnapshot);
+            } catch (e) {
+                console.warn("Failed to parse lastSnapshot", e);
+            }
+        }
+        
+        finalDb = mergeDbData(updatedDb, remoteDb, baseDb);
+        finalItems = finalDb.data;
+        reconciled = true;
+    }
+
     const token = await getValidToken(config);
     
     const finalJsonString = JSON.stringify(finalDb);
 
-    // 1. Prepare Data
+    // 2. Prepare Data
     // Generate the user-facing sheets
     const exportSheets = generateExportData(
       finalItems, 
-      skills || [], 
-      wallets || [], 
-      budgetConfig || { monthlyIncome: 0, rules: [] }, 
-      monthlyThemes || {}, 
-      appSettings || { defaultCollapsed: false, hideMoney: false }
+      finalDb.skills || [], 
+      finalDb.wallets || [], 
+      finalDb.budgetConfig || { monthlyIncome: 0, rules: [] }, 
+      finalDb.monthlyThemes || {}, 
+      finalDb.appSettings || { defaultCollapsed: false, hideMoney: false }
     );
 
     // Add the system sheet for state persistence
@@ -420,9 +411,10 @@ export const syncSpreadsheetData = (
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
   appSettings?: AppSettings,
-  chatHistory?: ChatMessage[]
+  chatHistory?: ChatMessage[],
+  forceOverwrite = false
 ): Promise<SyncResult> => {
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory);
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, forceOverwrite);
   const queuedTask = syncQueue.then(() => task(), () => task());
   syncQueue = queuedTask;
   return queuedTask;

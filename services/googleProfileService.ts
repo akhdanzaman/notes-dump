@@ -1,3 +1,5 @@
+import { SpreadsheetConfig } from './spreadsheetService';
+
 export interface GoogleProfile {
   id: string;
   name: string;

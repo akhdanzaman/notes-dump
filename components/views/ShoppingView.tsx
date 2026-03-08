@@ -374,6 +374,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                             onDelete={handleDelete} 
                             handleUpdateItem={handleUpdateItem} 
                             budgetRules={budgetRules}
+                            wallets={wallets}
                             onResetRoutine={handleResetRoutine}
                         />
                         ))}

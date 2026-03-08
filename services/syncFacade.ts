@@ -1,5 +1,6 @@
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage } from "../types";
-import { fetchDb as fetchGithubDb, syncData as syncGithubData, getGithubConfig, isUsingLocalStorage as isGithubLocal, SyncResult, mergeDbData } from "./githubService";
+import { fetchDb as fetchGithubDb, syncData as syncGithubData, getGithubConfig, isUsingLocalStorage as isGithubLocal, SyncResult } from "./githubService";
+import { mergeDbData } from "../utils/mergeUtils";
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, clearSpreadsheetConfig } from "./spreadsheetService";
 
 export const getActiveSyncProviders = (): ('github' | 'spreadsheet')[] => {
@@ -30,33 +31,29 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
   for (const provider of providers) {
     try {
       if (provider === 'spreadsheet') {
-        const { data, sha, reconciled, isNew } = await fetchSpreadsheetDb(true); // skip local storage update
+        const { data, sha, reconciled } = await fetchSpreadsheetDb(true); // skip local storage update
         if (reconciled) hasChanges = true;
         if (!mergedData) {
-          mergedData = isNew && baseData ? baseData : data;
+          mergedData = data;
           finalSha = sha;
-          if (isNew && baseData) hasChanges = true; // We populated empty spreadsheet with local data
         } else {
           const prevData = mergedData;
-          mergedData = mergeDbData(mergedData, isNew && baseData ? baseData : data, baseData);
+          mergedData = mergeDbData(mergedData, data, baseData);
           if (JSON.stringify(mergedData.data) !== JSON.stringify(prevData.data)) {
             hasChanges = true;
           }
-          if (isNew) hasChanges = true;
         }
       } else if (provider === 'github') {
-        const { data, sha, isNew } = await fetchGithubDb(true); // skip local storage update
+        const { data, sha } = await fetchGithubDb(true); // skip local storage update
         if (!mergedData) {
-          mergedData = isNew && baseData ? baseData : data;
+          mergedData = data;
           finalSha = sha;
-          if (isNew && baseData) hasChanges = true;
         } else {
           const prevData = mergedData;
-          mergedData = mergeDbData(mergedData, isNew && baseData ? baseData : data, baseData);
+          mergedData = mergeDbData(mergedData, data, baseData);
           if (JSON.stringify(mergedData.data) !== JSON.stringify(prevData.data)) {
             hasChanges = true;
           }
-          if (isNew) hasChanges = true;
         }
       }
     } catch (e) {
@@ -97,14 +94,16 @@ export const syncData = async (
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
   appSettings?: AppSettings,
-  chatHistory?: ChatMessage[]
+  chatHistory?: ChatMessage[],
+  forceOverwrite = false
 ): Promise<SyncResult> => {
   const providers = getActiveSyncProviders();
   if (providers.length === 0) {
-    return syncGithubData(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory); // Fallback to local
+    return syncGithubData(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, forceOverwrite); // Fallback to local
   }
 
   let hasError = false;
+  let errorMessage: string | undefined;
   let currentItems = items;
   let currentBudgetConfig = budgetConfig;
   let currentPrompt = customPrompt;
@@ -119,12 +118,15 @@ export const syncData = async (
     try {
       let res: SyncResult;
       if (provider === 'spreadsheet') {
-        res = await syncSpreadsheetData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory);
+        res = await syncSpreadsheetData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory, forceOverwrite);
       } else {
-        res = await syncGithubData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory);
+        res = await syncGithubData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory, forceOverwrite);
       }
 
-      if (!res.success) hasError = true;
+      if (!res.success) {
+        hasError = true;
+        errorMessage = res.error;
+      }
       if (res.mergedData) {
         finalMergedData = res.mergedData;
         // Update current state for next provider in loop
@@ -140,13 +142,15 @@ export const syncData = async (
     } catch (e) {
       console.error(`Failed to sync to ${provider}`, e);
       hasError = true;
+      errorMessage = e instanceof Error ? e.message : 'Unknown error';
     }
   }
 
   return {
     success: !hasError,
     method: hasError ? 'error' : 'cloud',
-    mergedData: finalMergedData
+    mergedData: finalMergedData,
+    error: errorMessage
   };
 };
 

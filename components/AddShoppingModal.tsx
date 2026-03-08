@@ -17,7 +17,8 @@ interface AddShoppingModalProps {
         routineDaysOfWeek?: number[],
         routineDaysOfMonth?: number[],
         routineMonthsOfYear?: number[],
-        dedicatedWalletId?: string
+        dedicatedWalletId?: string,
+        paymentMethod?: string
     ) => void;
     initialCategory?: ShoppingCategory;
     budgetRules: BudgetRule[];
@@ -49,6 +50,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     const [budgetCategory, setBudgetCategory] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [dedicatedWalletId, setDedicatedWalletId] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState('');
     
     // Routine specific state
     const [interval, setInterval] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -96,7 +98,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
             category === 'routine' ? daysOfWeek : undefined,
             category === 'routine' ? daysOfMonth : undefined,
             category === 'routine' ? monthsOfYear : undefined,
-            category === 'saving' ? dedicatedWalletId : undefined
+            category === 'saving' ? dedicatedWalletId : undefined,
+            paymentMethod || undefined
         );
         
         setContent('');
@@ -105,6 +108,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         setBudgetCategory('');
         setDate(new Date().toISOString().split('T')[0]);
         setDedicatedWalletId('');
+        setPaymentMethod('');
         setInterval('weekly');
         setDaysOfWeek([]);
         setDaysOfMonth([]);
@@ -248,18 +252,33 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                         )}
 
                         {category !== 'saving' && (
-                            <div>
-                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Budget Category</label>
-                                <select 
-                                    value={budgetCategory}
-                                    onChange={e => setBudgetCategory(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
-                                >
-                                    <option value="">No Category</option>
-                                    {budgetRules.map(rule => (
-                                        <option key={rule.id} value={rule.id}>{rule.name}</option>
-                                    ))}
-                                </select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Budget Category</label>
+                                    <select 
+                                        value={budgetCategory}
+                                        onChange={e => setBudgetCategory(e.target.value)}
+                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                    >
+                                        <option value="">No Category</option>
+                                        {budgetRules.map(rule => (
+                                            <option key={rule.id} value={rule.id}>{rule.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Payment Method</label>
+                                    <select 
+                                        value={paymentMethod}
+                                        onChange={e => setPaymentMethod(e.target.value)}
+                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                    >
+                                        <option value="">Select Wallet</option>
+                                        {wallets.map(w => (
+                                            <option key={w.id} value={w.name}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         )}
 

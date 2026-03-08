@@ -113,7 +113,8 @@ export const useBrainDumpData = () => {
         newWallets?: Wallet[], 
         newThemes?: Record<string, string>, 
         newAppSettings?: AppSettings,
-        newChatHistory?: ChatMessage[]
+        newChatHistory?: ChatMessage[],
+        forceOverwrite = false
     ) => {
         const baseItems = itemsRef.current;
         setSaveStatus('saving');
@@ -127,10 +128,10 @@ export const useBrainDumpData = () => {
             const settingsToSave = newAppSettings || appSettingsRef.current;
             const chatHistoryToSave = newChatHistory || chatHistoryRef.current;
             
-            const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave, settingsToSave, chatHistoryToSave);
+            const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave, settingsToSave, chatHistoryToSave, forceOverwrite);
             
             if (!result.success) {
-                throw new Error("Sync failed, preserving local state.");
+                throw new Error(result.error || "Sync failed, preserving local state.");
             }
             
             if (result.mergedData) {
@@ -163,7 +164,7 @@ export const useBrainDumpData = () => {
         } catch (e) {
             console.error("Sync error:", e);
             setSaveStatus('error');
-            setError("Gagal menyimpan data ke cloud. Perubahan tetap tersimpan di perangkat.");
+            setError(`Gagal menyimpan data ke cloud: ${e instanceof Error ? e.message : 'Unknown error'}`);
         }
     }, []);
 
@@ -179,7 +180,7 @@ export const useBrainDumpData = () => {
           setFetchStatus('syncing');
           setError(null);
   
-          const { data, hasChanges } = await fetchDb();
+          const { data } = await fetchDb();
           if (data) {
             if (Array.isArray(data.data)) {
               const migratedData = data.data.map(item => ({
@@ -196,8 +197,8 @@ export const useBrainDumpData = () => {
               const checkedData = checkRoutineResets(migratedData);
               setItems(checkedData);
               
-              if (JSON.stringify(checkedData) !== JSON.stringify(data.data) || hasChanges) {
-                 await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings, data.chatHistory);
+              if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
+                 await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings);
               }
             }
             
@@ -660,7 +661,8 @@ export const useBrainDumpData = () => {
         routineDaysOfWeek?: number[],
         routineDaysOfMonth?: number[],
         routineMonthsOfYear?: number[],
-        dedicatedWalletId?: string
+        dedicatedWalletId?: string,
+        paymentMethod?: string
     ) => {
         const newItem: BrainDumpItem = {
             id: uuidv4(),
@@ -680,7 +682,8 @@ export const useBrainDumpData = () => {
                 routineDaysOfWeek: category === 'routine' ? routineDaysOfWeek : undefined,
                 routineDaysOfMonth: category === 'routine' ? routineDaysOfMonth : undefined,
                 routineMonthsOfYear: category === 'routine' ? routineMonthsOfYear : undefined,
-                dedicatedWalletId: category === 'saving' ? dedicatedWalletId : undefined
+                dedicatedWalletId: category === 'saving' ? dedicatedWalletId : undefined,
+                paymentMethod
             }
         };
 

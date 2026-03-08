@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, FocusSubTab, NotesSubTab, MoneyView, SortOrder, ItemType, ShoppingCategory } from './types';
 import { useBrainDumpData } from './hooks/useBrainDumpData';
 import { getShoppingItems } from './utils/selectors';
+import { clearSpreadsheetConfig } from './services/spreadsheetService';
+import { clearGithubConfig } from './services/githubService';
 
 import InputBar from './components/InputBar';
 import SkillModal from './components/SkillModal';
@@ -98,14 +100,6 @@ const App: React.FC = () => {
   const handleResetChat = () => {
       handleUpdateChatHistory([]);
   };
-
-  // --- Initialization Effect ---
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('google_auth')) {
-      setIsControlCenterOpen(true);
-    }
-  }, []);
 
   // --- Theme Effect ---
   useEffect(() => {
@@ -254,9 +248,12 @@ const App: React.FC = () => {
       reader.readAsText(file);
   };
 
-  const handleClearData = () => {
-      saveAndSync([], undefined, undefined, [], [], {}, undefined);
+  const handleClearData = async () => {
+      await saveAndSync([], undefined, undefined, [], [], {}, undefined, [], true);
+      clearSpreadsheetConfig();
+      clearGithubConfig();
       setIsControlCenterOpen(false);
+      window.location.reload();
   };
 
   // --- Skill & Wallet Modal Handlers ---
@@ -535,7 +532,7 @@ const App: React.FC = () => {
         onClose={() => setIsControlCenterOpen(false)}
         saveStatus={saveStatus}
         fetchStatus={fetchStatus}
-        onSyncClick={() => saveAndSync(items)}
+        onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
         onRefreshClick={() => loadData()}
         appSettings={appSettings}
         setAppSettings={setAppSettings}
@@ -613,11 +610,17 @@ const App: React.FC = () => {
       <AddExpenseModal
         isOpen={addExpenseModalOpen}
         onClose={() => setAddExpenseModalOpen(false)}
-        onSave={(amount, description, category, walletId, date) => {
+        onSave={(amount, description, category, walletId, date, type, toWalletId) => {
             const wallet = wallets.find(w => w.id === walletId);
             const walletName = wallet ? wallet.name : '';
             if (walletName) {
-                handleAddTransaction(description, amount, 'expense', walletName, category, undefined, date);
+                if (type === 'transfer') {
+                    const toWallet = wallets.find(w => w.id === toWalletId);
+                    const toWalletName = toWallet ? toWallet.name : '';
+                    handleAddTransaction(description, amount, type, walletName, category, toWalletName, date);
+                } else {
+                    handleAddTransaction(description, amount, type, walletName, category, undefined, date);
+                }
             }
         }}
         wallets={wallets}

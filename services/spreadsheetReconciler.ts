@@ -324,9 +324,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     // 6. Skill Logs
-    const skillSheet = valueRanges.find(r => r.range && r.range.includes('Skill Logs'));
-    if (skillSheet && skillSheet.values) {
-        const rows = skillSheet.values.slice(1);
+    const skillLogSheet = valueRanges.find(r => r.range && r.range.includes('Skill Logs'));
+    if (skillLogSheet && skillLogSheet.values) {
+        const rows = skillLogSheet.values.slice(1);
         for (const row of rows) {
             const [date, skill, durationStr, content, tagsStr, idStr] = row;
             if (!content && !date && !skill && !idStr) continue;
@@ -383,13 +383,96 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         }
     }
 
+    // 7. Settings Reconciliation
+    const walletSheet = valueRanges.find(r => r.range && r.range.includes('Wallets Config'));
+    if (walletSheet && walletSheet.values) {
+        const rows = walletSheet.values.slice(1);
+        db.wallets = rows.map(row => ({
+            id: row[0],
+            name: row[1],
+            type: row[2],
+            initialBalance: parseFloat(row[3]) || 0,
+            color: row[4]
+        }));
+        hasChanges = true;
+    }
+
+    const budgetSheet = valueRanges.find(r => r.range && r.range.includes('Budget Rules'));
+    if (budgetSheet && budgetSheet.values) {
+        const rows = budgetSheet.values.slice(1);
+        if (!db.budgetConfig) db.budgetConfig = { monthlyIncome: 0, rules: [] };
+        
+        const newRules: any[] = [];
+        for (const row of rows) {
+            const prop = row[0];
+            const val = row[1];
+            if (prop === 'Monthly Income') {
+                db.budgetConfig.monthlyIncome = parseFloat(val) || 0;
+            } else if (prop && prop.startsWith('Rule: ')) {
+                const name = prop.replace('Rule: ', '');
+                // Parse "50% (ID: 123)"
+                const match = val ? val.match(/([\d.]+)%\s*\(ID:\s*(.+)\)/) : null;
+                if (match) {
+                    newRules.push({
+                        id: match[2],
+                        name: name,
+                        percentage: parseFloat(match[1]) || 0,
+                        color: db.budgetConfig.rules.find(r => r.id === match[2])?.color || 'bg-gray-500'
+                    });
+                }
+            }
+        }
+        if (newRules.length > 0) {
+            db.budgetConfig.rules = newRules;
+        }
+        hasChanges = true;
+    }
+
+    const skillConfigSheet = valueRanges.find(r => r.range && r.range.includes('Skills Config'));
+    if (skillConfigSheet && skillConfigSheet.values) {
+        const rows = skillConfigSheet.values.slice(1);
+        db.skills = rows.map(row => ({
+            id: row[0],
+            name: row[1],
+            weeklyTargetMinutes: parseInt(row[2]) || 0,
+            created_at: row[3],
+            color: row[4]
+        }));
+        hasChanges = true;
+    }
+
+    const settingsSheet = valueRanges.find(r => r.range && r.range.includes('Themes & Settings'));
+    if (settingsSheet && settingsSheet.values) {
+        const rows = settingsSheet.values.slice(1);
+        if (!db.appSettings) db.appSettings = { defaultCollapsed: false, hideMoney: false };
+        if (!db.monthlyThemes) db.monthlyThemes = {};
+        
+        const newThemes: Record<string, string> = {};
+        for (const row of rows) {
+            if (row[0] === 'Setting') {
+                if (row[1] === 'Default Collapsed') db.appSettings.defaultCollapsed = row[2] === 'TRUE';
+                if (row[1] === 'Hide Money') db.appSettings.hideMoney = row[2] === 'TRUE';
+            } else if (row[0] === 'Theme') {
+                if (row[1] && row[2]) {
+                    newThemes[row[1]] = row[2];
+                }
+            }
+        }
+        db.monthlyThemes = newThemes;
+        hasChanges = true;
+    }
+
     const sheetsFetched = {
         tx: !!txSheet,
         todo: !!todoSheet,
         shop: !!shopSheet,
         event: !!eventSheet,
         notes: !!notesSheet,
-        skill: !!skillSheet
+        skillLog: !!skillLogSheet,
+        wallet: !!walletSheet,
+        budget: !!budgetSheet,
+        skillConfig: !!skillConfigSheet,
+        settings: !!settingsSheet
     };
 
     const finalItems = newItems.filter(item => {
@@ -406,7 +489,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;
         else if (item.type === ItemType.EVENT) sheetWasFetched = sheetsFetched.event;
         else if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) sheetWasFetched = sheetsFetched.notes;
-        else if (item.type === ItemType.SKILL_LOG) sheetWasFetched = sheetsFetched.skill;
+        else if (item.type === ItemType.SKILL_LOG) sheetWasFetched = sheetsFetched.skillLog;
 
         if (sheetWasFetched) {
             hasChanges = true;

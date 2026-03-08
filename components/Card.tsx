@@ -208,8 +208,8 @@ const Card: React.FC<CardProps> = ({
     setEditAmount(meta.amount ? meta.amount.toString() : '');
     setEditTags(meta.tags?.join(', ') || '');
     setEditFinanceType(meta.financeType || 'expense');
-    setEditPaymentMethod(meta.paymentMethod || '');
-    setEditToWallet(meta.toWallet || '');
+    setEditPaymentMethod(getWalletName(meta.paymentMethod) || '');
+    setEditToWallet(getWalletName(meta.toWallet) || '');
     setEditBudgetCategory(meta.budgetCategory || '');
     setEditDuration(meta.durationMinutes ? meta.durationMinutes.toString() : '');
     setEditSkillId(meta.skillId || '');
@@ -253,6 +253,7 @@ const Card: React.FC<CardProps> = ({
 
       const finalBudgetCategory = editBudgetCategory === '' ? undefined : editBudgetCategory;
       const finalSkillId = editSkillId === '' ? undefined : editSkillId;
+      const wallet = wallets.find(w => w.name === editToWallet);
       const finalToWallet = editFinanceType === 'transfer' && editToWallet ? editToWallet : undefined;
       const finalSavingGoalId = editFinanceType === 'saving' && editSavingGoalId ? editSavingGoalId : undefined;
 
@@ -416,8 +417,7 @@ const Card: React.FC<CardProps> = ({
       return w ? w.name : idOrName;
   };
 
-  // Helper to get normalized wallet options to avoid duplicates
-  const getWalletOptions = () => {
+  const getWalletNameOptions = () => {
     const unique = new Map<string, {name: string, id: string}>();
     
     // Add registered wallets
@@ -432,7 +432,7 @@ const Card: React.FC<CardProps> = ({
     }
 
     return Array.from(unique.values()).map(w => (
-        <option key={w.id} value={w.id}>{w.name}</option>
+        <option key={w.id} value={w.name}>{w.name}</option>
     ));
   };
 
@@ -809,7 +809,7 @@ const Card: React.FC<CardProps> = ({
                            {editFinanceType !== 'saving' && (
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">
-                                       {editFinanceType === 'transfer' ? 'From' : 'Method'}
+                                       {editFinanceType === 'transfer' ? 'From' : editFinanceType === 'income' ? 'To' : 'Wallet'}
                                    </label>
                                    <select
                                        className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
@@ -817,7 +817,7 @@ const Card: React.FC<CardProps> = ({
                                        onChange={(e) => setEditPaymentMethod(e.target.value)}
                                    >
                                        <option value="">Undefined</option>
-                                       {getWalletOptions()}
+                                       {getWalletNameOptions()}
                                    </select>
                                </div>
                            )}
@@ -831,7 +831,7 @@ const Card: React.FC<CardProps> = ({
                                        onChange={(e) => setEditToWallet(e.target.value)}
                                    >
                                        <option value="">Select...</option>
-                                       {getWalletOptions()}
+                                       {getWalletNameOptions()}
                                    </select>
                                </div>
                            ) : editFinanceType === 'saving' ? (

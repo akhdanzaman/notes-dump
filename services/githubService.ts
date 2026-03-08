@@ -1,6 +1,8 @@
 
 import { Octokit } from "@octokit/rest";
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage } from "../types";
+import { mergeDbData } from "../utils/mergeUtils";
+export { mergeDbData } from "../utils/mergeUtils";
 
 // --- Configuration & Constants ---
 
@@ -59,7 +61,7 @@ const fromBase64 = (str: string) => {
 };
 
 // Helper for merging data (3-way merge to handle deletions correctly)
-export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema): DbSchema => {
+export const mergeDbDataInternal = (local: DbSchema, remote: DbSchema, base?: DbSchema): DbSchema => {
     const baseItemIds = new Set(base?.data.map(i => i.id) || []);
     const localItemIds = new Set(local.data.map(i => i.id));
     const remoteItemIds = new Set(remote.data.map(i => i.id));
@@ -212,12 +214,6 @@ export const clearGithubConfig = () => {
     lastSnapshot = null;
 };
 
-export const forceHydrateGithub = () => {
-    isHydrated = true;
-    currentCloudSha = undefined;
-    lastSnapshot = null;
-};
-
 export const isUsingLocalStorage = () => !getGithubConfig();
 
 // --- Core Logic ---
@@ -237,7 +233,7 @@ const validateSchema = (data: any): DbSchema => {
     };
 };
 
-export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; isNew: boolean }> => {
+export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string }> => {
   const config = getGithubConfig();
 
   if (!config) {
@@ -247,7 +243,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
     isHydrated = true;
     lastSnapshot = JSON.stringify(data);
     
-    return { data, sha: 'local-sha', isNew: false };
+    return { data, sha: 'local-sha' };
   }
 
   const octokit = new Octokit({ auth: config.token });
@@ -279,7 +275,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
     currentCloudSha = sha;
     lastSnapshot = jsonString; 
 
-    return { data, sha, isNew: false };
+    return { data, sha };
 
   } catch (error: any) {
     console.warn("GitHub fetch failed:", error.status, error.message);
@@ -292,7 +288,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
             isHydrated = true; 
             lastSnapshot = local;
             
-            return { data, sha: error.status === 404 ? '' : 'local-sha', isNew: error.status === 404 };
+            return { data, sha: error.status === 404 ? '' : 'local-sha' };
         }
     }
 
@@ -304,7 +300,7 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
       currentCloudSha = undefined;
       lastSnapshot = JSON.stringify(emptyDb);
 
-      return { data: emptyDb, sha: '', isNew: true };
+      return { data: emptyDb, sha: '' };
     }
 
     throw error;
@@ -319,7 +315,8 @@ const performSync = async (
     wallets?: Wallet[],
     monthlyThemes?: Record<string, string>,
     appSettings?: AppSettings,
-    chatHistory?: ChatMessage[]
+    chatHistory?: ChatMessage[],
+    forceOverwrite = false
 ): Promise<SyncResult> => {
   if (!isHydrated) {
       console.warn("Blocked Sync: Database is not hydrated. This prevents overwriting cloud data with initial empty state.");
@@ -340,7 +337,7 @@ const performSync = async (
   
   const jsonString = JSON.stringify(updatedDb, null, 2);
 
-  if (lastSnapshot === jsonString) {
+  if (lastSnapshot === jsonString && !forceOverwrite) {
       return { success: true, method: 'skipped_no_changes' };
   }
 
@@ -375,7 +372,18 @@ const performSync = async (
 
   try {
       try {
-          const newSha = await executeWrite(currentCloudSha);
+          // If forcing overwrite, try to get latest SHA first to minimize 409s
+          let targetSha = currentCloudSha;
+          if (forceOverwrite) {
+              try {
+                  const { sha } = await fetchDb(true);
+                  targetSha = sha;
+              } catch (e) {
+                  // Ignore, maybe file doesn't exist
+              }
+          }
+
+          const newSha = await executeWrite(targetSha);
           
           currentCloudSha = newSha;
           lastSnapshot = jsonString;
@@ -384,11 +392,21 @@ const performSync = async (
 
       } catch (writeError: any) {
           if (writeError.status === 409) {
-              console.warn("Sync conflict (409). Fetching latest, merging, and retrying...");
+              console.warn("Sync conflict (409). Fetching latest...");
               
               // 1. Fetch remote data (skip local write to process merge in memory first)
               const { data: remoteData, sha: remoteSha } = await fetchDb(true); 
               
+              if (forceOverwrite) {
+                  // Retry write with new SHA, but SAME content (no merge)
+                  const newSha = await executeWrite(remoteSha, jsonString);
+                  currentCloudSha = newSha;
+                  lastSnapshot = jsonString;
+                  return { success: true, method: 'cloud' };
+              }
+
+              console.warn("Merging and retrying...");
+
               // 2. Merge local (pending save) with remote using lastSnapshot as base
               let baseData: DbSchema | undefined;
               if (lastSnapshot) {
@@ -431,9 +449,10 @@ export const syncData = (
     wallets?: Wallet[],
     monthlyThemes?: Record<string, string>,
     appSettings?: AppSettings,
-    chatHistory?: ChatMessage[]
+    chatHistory?: ChatMessage[],
+    forceOverwrite = false
 ): Promise<SyncResult> => {
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory);
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, forceOverwrite);
 
   const queuedTask = syncQueue.then(
       () => task(),

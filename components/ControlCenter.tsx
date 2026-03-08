@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Settings, RefreshCw, CloudCheck, CloudOff, Save, 
@@ -9,18 +9,15 @@ import {
     MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft
 } from 'lucide-react';
 import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
-import { getGithubConfig, saveGithubConfig, clearGithubConfig, forceHydrateGithub, GithubConfig } from '../services/githubService';
-import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, forceHydrateSpreadsheet, SpreadsheetConfig } from '../services/spreadsheetService';
-import { getGeminiKey, saveGeminiKey, DEFAULT_PROMPT } from '../services/geminiService';
-import { exportToExcel } from '../services/exportService';
-import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, getGoogleSession, clearGoogleSession, GoogleProfile, AppConfig } from '../services/googleProfileService';
+import { DEFAULT_PROMPT } from '../services/geminiService';
+import { useControlCenter } from '../hooks/useControlCenter';
 
 interface ControlCenterProps {
     isOpen: boolean;
     onClose: () => void;
     saveStatus: SyncStatus;
     fetchStatus: SyncStatus;
-    onSyncClick: () => void;
+    onSyncClick: (forceOverwrite?: boolean) => void;
     onRefreshClick?: () => void;
     
     // App State & Settings
@@ -85,514 +82,63 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     onImportData, onClearData
 }) => {
     
-    // --- Settings State ---
-    const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect'>('main');
-    const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
-    const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saved'>('idle');
+    const [syncMode, setSyncMode] = useState<'merge' | 'overwrite'>('merge');
 
-    type ConnectionAction = 'github' | 'spreadsheet';
-    const [connectionModal, setConnectionModal] = useState<{
-        isOpen: boolean;
-        provider: ConnectionAction;
-        config: any;
-    } | null>(null);
-
-    const handleTabChange = (tab: typeof activeTab) => {
-        if (tab === 'main') {
-            setDirection(-1);
-        } else {
-            setDirection(1);
-        }
-        setActiveTab(tab);
-    };
-
-    // GitHub
-    const [githubConfig, setGithubConfig] = useState<GithubConfig>({ token: '', owner: '', repo: '', path: 'db.json' });
-    
-    // Spreadsheet
-    const [spreadsheetLink, setSpreadsheetLink] = useState('');
-    const [spreadsheetConfig, setSpreadsheetConfig] = useState<SpreadsheetConfig | null>(null);
-    const [isConnectingSpreadsheet, setIsConnectingSpreadsheet] = useState(false);
-    
-    // Gemini
-    const [geminiKey, setGeminiKey] = useState('');
-    const [prompt, setPrompt] = useState('');
-    
-    // Google Calendar
-    const [gCalKey, setGCalKey] = useState('');
-    const [gCalId, setGCalId] = useState('');
-
-    // Budget
-    const [monthlyIncome, setMonthlyIncome] = useState<number>(0);
-    const [budgetRules, setBudgetRules] = useState<BudgetRule[]>([]);
-
-    // Local App Settings (buffered)
-    const [localAppSettings, setLocalAppSettings] = useState<AppSettings>(appSettings);
-
-    // Google Profile
-    const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
-    const [isSyncingProfile, setIsSyncingProfile] = useState(false);
-    const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [manualAuthUrl, setManualAuthUrl] = useState<string | null>(null);
-
-    const handleGoogleLoginSuccessRef = useRef<((tokens: any) => Promise<void>) | null>(null);
-
-    // --- Initialization ---
-    useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            // Validate origin is from AI Studio preview or localhost
-            const origin = event.origin;
-            if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
-                return;
-            }
-            if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.tokens) {
-                if (handleGoogleLoginSuccessRef.current) {
-                    handleGoogleLoginSuccessRef.current(event.data.tokens);
-                }
-            } else if (event.data?.type === 'OAUTH_AUTH_ERROR') {
-                alert(`Authentication failed: ${event.data.error}`);
-            }
-        };
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, []);
-
-    useEffect(() => {
-        if (isOpen) {
-            // Check for Google Auth redirect
-            const params = new URLSearchParams(window.location.search);
-            const googleAuth = params.get('google_auth');
-            
-            if (googleAuth) {
-                try {
-                    const tokens = JSON.parse(googleAuth);
-                    // Clear URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    
-                    // Handle tokens
-                    handleGoogleLoginSuccess(tokens);
-                } catch (e) {
-                    console.error("Failed to parse Google tokens", e);
-                }
-            } else {
-                // Check if already logged in
-                // 1. Try Spreadsheet Config
-                const ss = getSpreadsheetConfig();
-                if (ss && ss.accessToken) {
-                    fetchGoogleProfile(ss.accessToken).then(setGoogleProfile).catch(() => {
-                        // Token might be expired
-                    });
-                } else {
-                    // 2. Try Session
-                    const session = getGoogleSession();
-                    if (session) {
-                        fetchGoogleProfile(session.access_token).then(setGoogleProfile).catch(() => {
-                            clearGoogleSession();
-                        });
-                    }
-                }
-            }
-
-            // ... (rest of existing initialization)
-            // Load GitHub
-            const gh = getGithubConfig();
-            if (gh) setGithubConfig(gh);
-
-            // Load Spreadsheet
-            const ss = getSpreadsheetConfig();
-            if (ss) {
-                setSpreadsheetConfig(ss);
-                setSpreadsheetLink(ss.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${ss.spreadsheetId}/edit`);
-            }
-            
-            // ... (rest of initialization)
-        }
-    }, [isOpen]);
-
-    const handleGoogleLoginSuccess = async (tokens: any) => {
-        setIsSyncingProfile(true);
-        try {
-            // Save Session
-            saveGoogleSession(tokens);
-
-            // 1. Fetch Profile
-            const profile = await fetchGoogleProfile(tokens.access_token);
-            setGoogleProfile(profile);
-
-            // 2. Try to load config from Drive
-            const cloudConfig = await loadConfigFromDrive(tokens.access_token);
-            
-            if (cloudConfig) {
-                // Restore settings from cloud
-                if (cloudConfig.spreadsheetId) {
-                    const newConfig: SpreadsheetConfig = {
-                        spreadsheetId: cloudConfig.spreadsheetId,
-                        spreadsheetUrl: cloudConfig.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${cloudConfig.spreadsheetId}/edit`,
-                        accessToken: tokens.access_token,
-                        refreshToken: tokens.refresh_token,
-                        tokenExpiresAt: Date.now() + (tokens.expires_in * 1000)
-                    };
-                    saveSpreadsheetConfig(newConfig);
-                    setSpreadsheetConfig(newConfig);
-                    setSpreadsheetLink(newConfig.spreadsheetUrl);
-                    alert(`Welcome back, ${profile.name}! Settings synced from cloud.`);
-                }
-                
-                if (cloudConfig.theme) {
-                    const newSettings = { ...localAppSettings, theme: cloudConfig.theme };
-                    setLocalAppSettings(newSettings);
-                    setAppSettings(newSettings);
-                }
-            } else {
-                // No config found, this is a new login or first time using profile sync
-                // We don't overwrite local settings yet, but we save the token
-                // If we already have a spreadsheet link locally, we should save it to cloud now
-                if (spreadsheetLink) {
-                     const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                     const spreadsheetId = match ? match[1] : spreadsheetLink;
-                     
-                     const newConfig: SpreadsheetConfig = {
-                        spreadsheetId,
-                        spreadsheetUrl: spreadsheetLink,
-                        accessToken: tokens.access_token,
-                        refreshToken: tokens.refresh_token,
-                        tokenExpiresAt: Date.now() + (tokens.expires_in * 1000)
-                    };
-                    saveSpreadsheetConfig(newConfig);
-                    setSpreadsheetConfig(newConfig);
-                    
-                    // Save to Drive
-                    await saveConfigToDrive({
-                        spreadsheetId,
-                        spreadsheetUrl: spreadsheetLink,
-                        theme: localAppSettings.theme
-                    }, tokens.access_token);
-                } else {
-                    // Just save the token for future use (we need a dummy config or just store it separately)
-                    // For now, we wait for user to enter spreadsheet link
-                    alert(`Welcome, ${profile.name}! Please enter your spreadsheet link to finish setup.`);
-                }
-            }
-        } catch (error) {
-            console.error("Profile sync error:", error);
-            alert("Failed to sync profile data.");
-        } finally {
-            setIsSyncingProfile(false);
-            // Trigger refresh to update UI
-            if (onRefreshClick) onRefreshClick();
-        }
-    };
-
-    useEffect(() => {
-        handleGoogleLoginSuccessRef.current = handleGoogleLoginSuccess;
-    }, [handleGoogleLoginSuccess]);
-
-    const handleGoogleLogin = async () => {
-        try {
-            setIsLoggingIn(true);
-            setManualAuthUrl(null);
-            const origin = window.location.origin;
-            // Generate a random session ID for cross-browser login
-            const sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            
-            const response = await fetch(`/api/auth/google/url?origin=${encodeURIComponent(origin)}&sessionId=${sessionId}`);
-            if (!response.ok) throw new Error('Failed to get auth URL');
-            const { url } = await response.json();
-            
-            // Open popup
-            const width = 500;
-            const height = 600;
-            const left = window.screenX + (window.outerWidth - width) / 2;
-            const top = window.screenY + (window.outerHeight - height) / 2;
-            
-            const authWindow = window.open(
-                url,
-                'google_oauth',
-                `width=${width},height=${height},left=${left},top=${top},popup=1`
-            );
-
-            if (!authWindow || authWindow.closed || typeof authWindow.closed === 'undefined') {
-                // Popup blocked
-                setManualAuthUrl(url);
-            }
-
-            // Start polling for session status
-            const pollInterval = setInterval(async () => {
-                try {
-                    const statusRes = await fetch(`/api/auth/status?sessionId=${sessionId}`);
-                    if (!statusRes.ok) return;
-                    const statusData = await statusRes.json();
-                    
-                    if (statusData.status === 'success') {
-                        clearInterval(pollInterval);
-                        setIsLoggingIn(false);
-                        setManualAuthUrl(null);
-                        if (authWindow) authWindow.close();
-                        if (handleGoogleLoginSuccessRef.current) {
-                            handleGoogleLoginSuccessRef.current(statusData.tokens);
-                        }
-                    } else if (statusData.status === 'error') {
-                        clearInterval(pollInterval);
-                        setIsLoggingIn(false);
-                        setManualAuthUrl(null);
-                        if (authWindow) authWindow.close();
-                        alert(`Authentication failed: ${statusData.error}`);
-                    } else if (statusData.status === 'not_found') {
-                        // Session expired or not found
-                        // Don't stop polling immediately, maybe it hasn't been created yet?
-                    }
-                } catch (e) {
-                    // Ignore fetch errors during polling
-                }
-            }, 2000);
-
-            // Stop polling after 10 minutes
-            setTimeout(() => {
-                clearInterval(pollInterval);
-                setIsLoggingIn(false);
-                setManualAuthUrl(null);
-            }, 10 * 60 * 1000);
-
-        } catch (error) {
-            console.error('Login error:', error);
-            alert('Failed to start login process.');
-            setIsLoggingIn(false);
-        }
-    };
-    
-    // ... (rest of handlers)
-
-    const handleConnectSpreadsheet = async () => {
-        if (!spreadsheetLink) {
-            alert("Please enter a spreadsheet link first.");
-            return;
-        }
-        
-        const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
-        if (!match) {
-            alert("Invalid spreadsheet link. Please make sure it contains /d/SPREADSHEET_ID");
-            return;
-        }
-
-        // Check if we have a valid session
-        const session = getGoogleSession();
-        
-        if (!session) {
-            // If we have a profile but no session, something is wrong (likely expired)
-            if (googleProfile) {
-                alert("Your session has expired. Please sign in again to connect your spreadsheet.");
-            }
-            handleGoogleLogin();
-            return;
-        }
-
-        // We have a token, just save the config
-        const spreadsheetId = match[1];
-        const newConfig: SpreadsheetConfig = {
-            spreadsheetId,
-            spreadsheetUrl: spreadsheetLink,
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token,
-            tokenExpiresAt: session.expires_at
-        };
-        
-        saveSpreadsheetConfig(newConfig);
-        setSpreadsheetConfig(newConfig);
-        
-        // Sync to Drive
-        try {
-            await saveConfigToDrive({
-                spreadsheetId,
-                spreadsheetUrl: spreadsheetLink,
-                theme: localAppSettings.theme
-            }, session.access_token);
-            alert("Spreadsheet connected and settings saved to Google Drive.");
-        } catch (e) {
-            console.warn("Failed to sync to Drive", e);
-            alert("Spreadsheet connected locally, but failed to sync to Google Drive.");
-        }
-        
-        if (onRefreshClick) onRefreshClick();
-    };
-
-    const handleGoogleSignOut = () => {
-        if (window.confirm("Are you sure you want to sign out? This will disconnect your spreadsheet and clear your session.")) {
-            clearSpreadsheetConfig();
-            setSpreadsheetConfig(null);
-            setSpreadsheetLink('');
-            setGoogleProfile(null);
-            clearGoogleSession();
-            if (onRefreshClick) onRefreshClick();
-        }
-    };
-
-    const handleDisconnectSpreadsheetOnly = () => {
-        if (window.confirm("Are you sure you want to disconnect your spreadsheet? You will remain signed in to Google.")) {
-            clearSpreadsheetConfig();
-            setSpreadsheetConfig(null);
-            setSpreadsheetLink('');
-            if (onRefreshClick) onRefreshClick();
-        }
-    };
-
-    const handleSave = async () => {
-        // Check if GitHub is being newly connected
-        const currentGithub = getGithubConfig();
-        const isNewGithub = githubConfig.token && githubConfig.owner && githubConfig.repo && 
-            (!currentGithub || currentGithub.token !== githubConfig.token || currentGithub.repo !== githubConfig.repo);
-
-        if (isNewGithub) {
-            setConnectionModal({
-                isOpen: true,
-                provider: 'github',
-                config: githubConfig
-            });
-            return; // Stop save process, wait for modal choice
-        } else if (githubConfig.token && githubConfig.owner && githubConfig.repo) {
-            saveGithubConfig(githubConfig);
-        }
-
-        // Save Gemini
-        saveGeminiKey(geminiKey);
-
-        // Save GCal
-        localStorage.setItem('braindump_gcal_key', gCalKey);
-        localStorage.setItem('braindump_gcal_id', gCalId);
-
-        // Prepare Objects
-        const newBudgetConfig: BudgetConfig = { monthlyIncome, rules: budgetRules };
-
-        setSettingsSaveStatus('saved');
-        
-        // Propagate changes
-        onSave(newBudgetConfig, prompt, localAppSettings);
-        
-        // Save to Drive if connected
-        if (spreadsheetConfig && spreadsheetConfig.accessToken) {
-             try {
-                await saveConfigToDrive({
-                    spreadsheetId: spreadsheetConfig.spreadsheetId,
-                    spreadsheetUrl: spreadsheetConfig.spreadsheetUrl,
-                    theme: localAppSettings.theme
-                }, spreadsheetConfig.accessToken);
-             } catch (e) {
-                 console.warn("Failed to background sync to Drive", e);
-             }
-        }
-        
-        setTimeout(() => {
-            setSettingsSaveStatus('idle');
-        }, 2000);
-    };
-
-    const handleDisconnectGithub = () => {
-        clearGithubConfig();
-        setGithubConfig({ token: '', owner: '', repo: '', path: 'db.json' });
-        if (onRefreshClick) onRefreshClick();
-    };
-
-    const handleConnectionChoice = async (choice: 'merge' | 'overwrite_cloud' | 'overwrite_local') => {
-        if (!connectionModal) return;
-        
-        const { provider, config } = connectionModal;
-        
-        // Save the config
-        if (provider === 'spreadsheet') {
-            saveSpreadsheetConfig(config);
-            setSpreadsheetConfig(config);
-        } else if (provider === 'github') {
-            saveGithubConfig(config);
-        }
-        
-        setConnectionModal(null);
-        
-        // Trigger the action
-        if (choice === 'merge') {
-            if (onRefreshClick) onRefreshClick();
-            setTimeout(() => {
-                onSyncClick();
-            }, 1500);
-            alert(`Connected to ${provider} and merged data.`);
-        } else if (choice === 'overwrite_cloud') {
-            if (provider === 'spreadsheet') forceHydrateSpreadsheet();
-            if (provider === 'github') forceHydrateGithub();
-            onSyncClick();
-            alert(`Connected to ${provider} and overwrote cloud data.`);
-        } else if (choice === 'overwrite_local') {
-            localStorage.removeItem('braindump_db');
-            if (onRefreshClick) onRefreshClick();
-            alert(`Connected to ${provider} and overwrote local data.`);
-        }
-
-        // If it was github, we also need to finish the save process
-        if (provider === 'github') {
-            saveGeminiKey(geminiKey);
-            localStorage.setItem('braindump_gcal_key', gCalKey);
-            localStorage.setItem('braindump_gcal_id', gCalId);
-            const newBudgetConfig: BudgetConfig = { monthlyIncome, rules: budgetRules };
-            setSettingsSaveStatus('saved');
-            onSave(newBudgetConfig, prompt, localAppSettings);
-            setTimeout(() => {
-                setSettingsSaveStatus('idle');
-            }, 800);
-        }
-    };
-
-    const handleExportExcel = () => {
-        exportToExcel(
-            allItems, 
-            allSkills, 
-            allWallets, 
-            { monthlyIncome, rules: budgetRules }, 
-            monthlyThemes, 
-            localAppSettings
-        );
-    };
-
-    const handleExportJSON = () => {
-        const data = {
-            items: allItems,
-            skills: allSkills,
-            wallets: allWallets,
-            budgetConfig: { monthlyIncome, rules: budgetRules },
-            monthlyThemes,
-            appSettings: localAppSettings,
-            customPrompt: prompt
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `braindump-backup-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
-    // Budget Handlers
-    const handleAddRule = () => {
-        setBudgetRules([...budgetRules, { id: `cat-${Date.now()}`, name: 'New Category', percentage: 0, color: 'bg-gray-500' }]);
-    };
-    const handleRemoveRule = (index: number) => {
-        const newRules = [...budgetRules];
-        newRules.splice(index, 1);
-        setBudgetRules(newRules);
-    };
-    const handleUpdateRule = (index: number, field: keyof BudgetRule, value: any) => {
-        const newRules = [...budgetRules];
-        newRules[index] = { ...newRules[index], [field]: value };
-        setBudgetRules(newRules);
-    };
-    const totalPercentage = budgetRules.reduce((sum, r) => sum + r.percentage, 0);
-
-    const toggleTheme = () => {
-        const newTheme: 'light' | 'dark' = localAppSettings.theme === 'dark' ? 'light' : 'dark';
-        const newSettings = { ...localAppSettings, theme: newTheme };
-        setLocalAppSettings(newSettings);
-        setAppSettings(newSettings); // Apply immediately for instant feedback
-        onSave(undefined, undefined, newSettings); // Persist
-    };
+    const {
+        activeTab,
+        direction,
+        settingsSaveStatus,
+        connectionModal,
+        githubConfig,
+        spreadsheetLink,
+        spreadsheetConfig,
+        isConnectingSpreadsheet,
+        geminiKey,
+        prompt,
+        gCalKey,
+        gCalId,
+        monthlyIncome,
+        budgetRules,
+        localAppSettings,
+        googleProfile,
+        isSyncingProfile,
+        handleTabChange,
+        setGithubConfig,
+        setSpreadsheetLink,
+        setGeminiKey,
+        setPrompt,
+        setGCalKey,
+        setGCalId,
+        setMonthlyIncome,
+        setLocalAppSettings,
+        setConnectionModal,
+        handleGoogleLogin,
+        handleConnectSpreadsheet,
+        handleDisconnectSpreadsheet,
+        handleSave,
+        handleDisconnectGithub,
+        handleConnectionChoice,
+        handleExportExcel,
+        handleExportJSON,
+        handleAddRule,
+        handleRemoveRule,
+        handleUpdateRule,
+        totalPercentage,
+        toggleTheme
+    } = useControlCenter({
+        isOpen,
+        appSettings,
+        setAppSettings,
+        onSave,
+        onRefreshClick,
+        onSyncClick,
+        allItems,
+        allSkills,
+        allWallets,
+        monthlyThemes,
+        currentBudgetConfig,
+        currentPrompt
+    });
 
     const renderSyncStatus = () => {
         const activeStatus = saveStatus === 'saving' ? 'saving' 
@@ -699,34 +245,60 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {activeTab === 'main' && (
                                         <div className="space-y-6">
                                             {/* Status Card */}
-                                            <div className="bg-background border border-border rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                                                <div className="flex items-center gap-6">
-                                                    {pendingCount > 0 && (
-                                                        <div className="flex flex-col gap-1 border-r border-border pr-6">
-                                                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Pending</span>
-                                                            <div className="flex items-center gap-1.5 text-primary">
-                                                                <CloudOff className="w-3.5 h-3.5 text-amber-500" />
-                                                                <span className="font-bold text-sm">{pendingCount}</span>
+                                            <div className="bg-background border border-border rounded-2xl p-4 flex flex-col gap-4 shadow-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-6">
+                                                        {pendingCount > 0 && (
+                                                            <div className="flex flex-col gap-1 border-r border-border pr-6">
+                                                                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Pending</span>
+                                                                <div className="flex items-center gap-1.5 text-primary">
+                                                                    <CloudOff className="w-3.5 h-3.5 text-amber-500" />
+                                                                    <span className="font-bold text-sm">{pendingCount}</span>
+                                                                </div>
                                                             </div>
+                                                        )}
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">System Status</span>
+                                                            {renderSyncStatus()}
                                                         </div>
-                                                    )}
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-[10px] font-bold text-muted uppercase tracking-wider">System Status</span>
-                                                        {renderSyncStatus()}
+                                                    </div>
+                                                    
+                                                    <div className="flex gap-2">
+                                                        {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
+                                                            <button 
+                                                                onClick={() => onSyncClick(syncMode === 'overwrite')} 
+                                                                className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors"
+                                                                title={syncMode === 'overwrite' ? "Force Overwrite Cloud Data" : "Merge with Cloud Data"}
+                                                            >
+                                                                <RefreshCw className="w-5 h-5" />
+                                                            </button>
+                                                        )}
+                                                        {saveStatus === 'synced' && fetchStatus === 'synced' && onRefreshClick && (
+                                                            <button onClick={onRefreshClick} className="p-2 bg-surface border border-border text-muted hover:text-primary rounded-xl transition-colors">
+                                                                <RefreshCw className="w-5 h-5" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
-                                                        <button onClick={onSyncClick} className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors">
-                                                            <RefreshCw className="w-5 h-5" />
+
+                                                {/* Sync Mode Selector */}
+                                                {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
+                                                    <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden self-end">
+                                                        <button 
+                                                            onClick={() => setSyncMode('merge')}
+                                                            className={`px-3 py-1.5 text-xs font-medium transition-colors ${syncMode === 'merge' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-primary'}`}
+                                                        >
+                                                            Merge
                                                         </button>
-                                                    )}
-                                                    {saveStatus === 'synced' && fetchStatus === 'synced' && onRefreshClick && (
-                                                        <button onClick={onRefreshClick} className="p-2 bg-surface border border-border text-muted hover:text-primary rounded-xl transition-colors">
-                                                            <RefreshCw className="w-5 h-5" />
+                                                        <div className="w-px h-4 bg-border"></div>
+                                                        <button 
+                                                            onClick={() => setSyncMode('overwrite')}
+                                                            className={`px-3 py-1.5 text-xs font-medium transition-colors ${syncMode === 'overwrite' ? 'bg-red-500/10 text-red-500' : 'text-muted hover:text-red-500'}`}
+                                                        >
+                                                            Overwrite
                                                         </button>
-                                                    )}
-                                                </div>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {error && (
@@ -1086,7 +658,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 </div>
                                                             </div>
                                                             <button 
-                                                                onClick={handleGoogleSignOut}
+                                                                onClick={handleDisconnectSpreadsheet}
                                                                 className="text-xs text-red-500 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
                                                             >
                                                                 Sign Out
@@ -1095,49 +667,18 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     ) : (
                                                         <div className="text-center py-4">
                                                             <p className="text-sm text-muted mb-4">Sign in to sync your settings and connect your spreadsheet.</p>
-                                                            {isLoggingIn ? (
-                                                                <div className="space-y-4">
-                                                                    <div className="flex items-center justify-center gap-2 text-primary">
-                                                                        <RefreshCw className="w-5 h-5 animate-spin" />
-                                                                        <span className="font-medium">Waiting for login...</span>
-                                                                    </div>
-                                                                    {manualAuthUrl && (
-                                                                        <div className="bg-surface border border-border rounded-xl p-3 text-left">
-                                                                            <p className="text-xs text-muted mb-2">Popup blocked. Please copy this link and open it in your browser to login:</p>
-                                                                            <div className="flex gap-2">
-                                                                                <input 
-                                                                                    type="text" 
-                                                                                    readOnly 
-                                                                                    value={manualAuthUrl} 
-                                                                                    className="flex-1 bg-background border border-border rounded-lg px-2 py-1.5 text-xs text-primary focus:outline-none"
-                                                                                />
-                                                                                <button 
-                                                                                    onClick={() => {
-                                                                                        navigator.clipboard.writeText(manualAuthUrl);
-                                                                                        alert('Link copied!');
-                                                                                    }}
-                                                                                    className="px-3 py-1.5 bg-primary text-background text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
-                                                                                >
-                                                                                    Copy
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <button 
-                                                                    onClick={handleGoogleLogin}
-                                                                    className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                                                                >
-                                                                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                                                                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                                                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                                                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                                                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                                                                    </svg>
-                                                                    Sign in with Google
-                                                                </button>
-                                                            )}
+                                                            <button 
+                                                                onClick={handleGoogleLogin}
+                                                                className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                                                            >
+                                                                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                                                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                                                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                                                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                                                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                                                </svg>
+                                                                Sign in with Google
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1172,17 +713,26 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
 
-                                                        {!spreadsheetConfig ? (
+                                                        {!spreadsheetConfig && (
                                                             <button 
-                                                                onClick={handleConnectSpreadsheet}
+                                                                onClick={() => {
+                                                                    if (!spreadsheetLink) return;
+                                                                    const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                                                                    if (!match) {
+                                                                        alert("Invalid link");
+                                                                        return;
+                                                                    }
+                                                                    handleConnectSpreadsheet(); 
+                                                                }}
                                                                 disabled={!spreadsheetLink}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
                                                                 Connect Spreadsheet
                                                             </button>
-                                                        ) : (
+                                                        )}
+                                                        {spreadsheetConfig && (
                                                             <button 
-                                                                onClick={handleDisconnectSpreadsheetOnly}
+                                                                onClick={handleDisconnectSpreadsheet}
                                                                 className="w-full py-2.5 bg-red-500/10 text-red-500 font-medium rounded-xl hover:bg-red-500/20 transition-colors"
                                                             >
                                                                 Disconnect Spreadsheet
