@@ -90,22 +90,22 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
 
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-6 pt-16 space-y-6 no-scrollbar">
-                        {(!chatHistory || chatHistory.length === 0) && !isLoading && (
+                        {chatHistory.length === 0 && !isLoading && (
                             <div className="h-full flex items-center justify-center opacity-30">
                                 <p className="text-sm font-medium tracking-wide">ask me anything</p>
                             </div>
                         )}
-                        {(chatHistory || []).filter(Boolean).map((msg, idx) => (
-                            <div key={idx} className={`flex gap-3 ${msg?.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg?.role === 'user' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'}`}>
-                                    {msg?.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                        {chatHistory.map((msg, idx) => (
+                            <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'}`}>
+                                    {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                                 </div>
-                                <div className={`px-4 py-3 rounded-2xl max-w-[80%] text-sm leading-relaxed ${msg?.role === 'user' ? 'bg-emerald-500/10 text-emerald-100 rounded-tr-sm' : 'bg-white/5 text-primary rounded-tl-sm'}`}>
-                                    {msg?.role === 'user' ? (
-                                        msg?.text
+                                <div className={`px-4 py-3 rounded-2xl max-w-[80%] text-sm leading-relaxed ${msg.role === 'user' ? 'bg-emerald-500/10 text-emerald-100 rounded-tr-sm' : 'bg-white/5 text-primary rounded-tl-sm'}`}>
+                                    {msg.role === 'user' ? (
+                                        msg.text
                                     ) : (
                                         <div className="prose prose-invert prose-sm max-w-none">
-                                            <ReactMarkdown>{msg?.text || ''}</ReactMarkdown>
+                                            <ReactMarkdown>{msg.text}</ReactMarkdown>
                                         </div>
                                     )}
                                 </div>

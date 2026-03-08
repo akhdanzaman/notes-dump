@@ -29,7 +29,7 @@ export type SyncResult = {
 let isHydrated = false;
 let currentCloudSha: string | undefined = undefined;
 let lastSnapshot: string | null = null;
-let operationQueue: Promise<any> = Promise.resolve();
+let syncQueue: Promise<SyncResult> = Promise.resolve({ success: true, method: 'local' });
 
 // --- Helpers ---
 
@@ -157,7 +157,7 @@ export const mergeDbDataInternal = (local: DbSchema, remote: DbSchema, base?: Db
         skills: Array.from(skillMap.values()),
         wallets: Array.from(walletMap.values()),
         monthlyThemes: themes,
-        chatHistory: chatHistory.slice(-50)
+        chatHistory: chatHistory
     };
 };
 
@@ -225,10 +225,6 @@ export const isUsingLocalStorage = () => !getGithubConfig();
 const validateSchema = (data: any): DbSchema => {
     if (!data || typeof data !== 'object') return { data: [] };
     
-    const rawChatHistory = Array.isArray(data.chatHistory) ? data.chatHistory : [];
-    // Truncate to last 50 messages to prevent bloated database issues
-    const chatHistory = rawChatHistory.slice(-50);
-
     return {
         data: Array.isArray(data.data) ? data.data : [],
         budgetConfig: data.budgetConfig,
@@ -237,11 +233,11 @@ const validateSchema = (data: any): DbSchema => {
         skills: Array.isArray(data.skills) ? data.skills : [],
         wallets: Array.isArray(data.wallets) ? data.wallets : [],
         monthlyThemes: data.monthlyThemes || {},
-        chatHistory: chatHistory
+        chatHistory: Array.isArray(data.chatHistory) ? data.chatHistory : []
     };
 };
 
-const performFetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string }> => {
+export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string }> => {
   const config = getGithubConfig();
 
   if (!config) {
@@ -319,13 +315,6 @@ const performFetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
   }
 };
 
-export const fetchDb = (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string }> => {
-  const task = () => performFetchDb(skipLocalStorage);
-  const queuedTask = operationQueue.then(() => task(), () => task());
-  operationQueue = queuedTask;
-  return queuedTask;
-};
-
 const performSync = async (
     items: BrainDumpItem[], 
     budgetConfig?: BudgetConfig, 
@@ -395,7 +384,7 @@ const performSync = async (
           let targetSha = currentCloudSha;
           if (forceOverwrite) {
               try {
-                  const { sha } = await performFetchDb(true);
+                  const { sha } = await fetchDb(true);
                   targetSha = sha;
               } catch (e) {
                   // Ignore, maybe file doesn't exist
@@ -414,7 +403,7 @@ const performSync = async (
               console.warn("Sync conflict (409). Fetching latest...");
               
               // 1. Fetch remote data (skip local write to process merge in memory first)
-              const { data: remoteData, sha: remoteSha } = await performFetchDb(true); 
+              const { data: remoteData, sha: remoteSha } = await fetchDb(true); 
               
               if (forceOverwrite) {
                   // Retry write with new SHA, but SAME content (no merge)
@@ -477,11 +466,11 @@ export const syncData = (
 ): Promise<SyncResult> => {
   const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, forceOverwrite);
 
-  const queuedTask = operationQueue.then(
+  const queuedTask = syncQueue.then(
       () => task(),
       () => task() 
   );
 
-  operationQueue = queuedTask;
+  syncQueue = queuedTask;
   return queuedTask;
 };
