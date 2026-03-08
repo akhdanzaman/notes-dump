@@ -36,19 +36,9 @@ export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
 };
 
 export const saveSpreadsheetConfig = (config: SpreadsheetConfig) => {
-  const existingStr = localStorage.getItem(SETTINGS_KEY);
-  let existing = null;
-  if (existingStr) {
-      try { existing = JSON.parse(existingStr); } catch(e) {}
-  }
-  
-  const nextConfig = {
-      ...config,
-      refreshToken: config.refreshToken || (existing ? existing.refreshToken : undefined)
-  };
-
-  const next = JSON.stringify(nextConfig);
-  if (existingStr === next) return;
+  const existing = localStorage.getItem(SETTINGS_KEY);
+  const next = JSON.stringify(config);
+  if (existing === next) return;
 
   localStorage.setItem(SETTINGS_KEY, next);
   isHydrated = false;
@@ -70,10 +60,7 @@ const refreshAccessToken = async (config: SpreadsheetConfig): Promise<Spreadshee
     body: JSON.stringify({ refresh_token: config.refreshToken })
   });
   
-  if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Failed to refresh token: ${res.status} ${res.statusText} - ${errText}`);
-  }
+  if (!res.ok) throw new Error("Failed to refresh token");
   
   const data = await res.json();
   const newConfig = {
@@ -150,10 +137,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    if (!metaRes.ok) {
-        const errText = await metaRes.text();
-        throw new Error(`Failed to fetch metadata: ${metaRes.status} ${metaRes.statusText} - ${errText}`);
-    }
+    if (!metaRes.ok) throw new Error("Failed to fetch metadata");
     const meta = await metaRes.json();
     const existingTitles = new Set((meta.sheets || []).map((s: any) => s.properties.title));
 
@@ -181,7 +165,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
             else if (s === 'Skill Logs') rangesToFetch.push(`'${s}'!A:F`);
             else if (s === 'Wallets Config') rangesToFetch.push(`'${s}'!A:E`);
             else if (s === 'Skills Config') rangesToFetch.push(`'${s}'!A:E`);
-            else if (s === 'Budget Rules') rangesToFetch.push(`'${s}'!A:C`);
+            else if (s === 'Budget Rules') rangesToFetch.push(`'${s}'!A:B`);
             else if (s === 'Themes & Settings') rangesToFetch.push(`'${s}'!A:C`);
         }
     }
@@ -192,10 +176,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchGet?ranges=${rangesToFetch.map(encodeURIComponent).join('&ranges=')}`;
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         
-        if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`Failed to fetch batchGet: ${res.status} ${res.statusText} - ${errText}`);
-        }
+        if (!res.ok) throw new Error("Failed to fetch batchGet");
         batchData = await res.json();
     }
 
@@ -207,11 +188,8 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
 
     // Reconcile with user-facing sheets
     if (batchData.valueRanges) {
-        console.log("Reconciling with valueRanges:", batchData.valueRanges.map((r: any) => r.range));
         const reconciledDb = reconcileSpreadsheetData(dbData, batchData.valueRanges);
-        console.log("Reconciled DB:", reconciledDb);
-        if (JSON.stringify(reconciledDb.data) !== JSON.stringify(dbData.data) || 
-            JSON.stringify(reconciledDb.budgetConfig) !== JSON.stringify(dbData.budgetConfig)) {
+        if (JSON.stringify(reconciledDb.data) !== JSON.stringify(dbData.data)) {
             dbData = reconciledDb;
             reconciled = true;
         }
@@ -278,12 +256,7 @@ const performSync = async (
   }
 
   if (!isHydrated) {
-    try {
-      await fetchSpreadsheetDb(false);
-    } catch (e) {
-      console.warn("Failed to hydrate spreadsheet before sync", e);
-      return { success: false, method: 'skipped_not_hydrated' };
-    }
+    return { success: false, method: 'skipped_not_hydrated' };
   }
 
   if (lastSnapshot === jsonString && !forceOverwrite) {
@@ -303,7 +276,7 @@ const performSync = async (
   try {
     if (!forceOverwrite) {
         // 1. Fetch latest data from spreadsheet and merge
-        const { data: remoteDb } = await fetchSpreadsheetDb(false);
+        const { data: remoteDb } = await fetchSpreadsheetDb(true);
         
         let baseDb: DbSchema | undefined;
         if (lastSnapshot) {
@@ -358,7 +331,6 @@ const performSync = async (
     const existingSheetTitles = new Set((meta.sheets || []).map((s: any) => s.properties.title));
 
     // 3. Create missing sheets
-    console.log("Creating missing sheets...");
     const requests = [];
     for (const sheet of allSheets) {
       if (!existingSheetTitles.has(sheet.name)) {
@@ -379,12 +351,11 @@ const performSync = async (
         },
         body: JSON.stringify({ requests })
       });
-      if (!batchRes.ok) throw new Error(`Failed to create sheets: ${await batchRes.text()}`);
+      if (!batchRes.ok) throw new Error("Failed to create sheets");
     }
 
     // 4. Clear existing data in target sheets to avoid leftover rows
-    console.log("Clearing sheets...");
-    const rangesToClear = allSheets.map(s => `'${s.name}'`);
+    const rangesToClear = allSheets.map(s => `'${s.name}'!A:ZZ`);
     const clearRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchClear`, {
       method: 'POST',
       headers: { 
@@ -393,10 +364,9 @@ const performSync = async (
       },
       body: JSON.stringify({ ranges: rangesToClear })
     });
-    if (!clearRes.ok) throw new Error(`Failed to clear sheets: ${await clearRes.text()}`);
+    if (!clearRes.ok) throw new Error("Failed to clear sheets");
 
     // 5. Write new data
-    console.log("Writing new data...");
     const data = allSheets.map(sheet => ({
       range: `'${sheet.name}'!A1`,
       values: sheet.data
@@ -429,12 +399,7 @@ const performSync = async (
 
   } catch (error: any) {
     console.error("Failed to sync to Spreadsheet:", error);
-    if (error.response) {
-      try {
-          console.error("Error response:", await error.response.text());
-      } catch(e) {}
-    }
-    return { success: false, method: 'error', error: error.message || 'Unknown error during spreadsheet sync' }; 
+    return { success: false, method: 'error' }; 
   }
 };
 
