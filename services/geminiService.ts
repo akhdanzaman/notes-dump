@@ -24,10 +24,10 @@ export const DEFAULT_PROMPT = `Task: Split input into distinct items. Output MUS
 
 TYPE (pick one):
 - TODO: work/career/productivity actions.
-- SHOPPING: planned purchases/errands (future/plan). IMPORTANT: “Buy X 50k” => SHOPPING, not FINANCE. "Saving for X 100m" => SHOPPING with shoppingCategory "saving".
+- SHOPPING: planned purchases/errands (future/plan) OR any upcoming/unpaid financial transactions. IMPORTANT: “Buy X 50k” => SHOPPING, not FINANCE. "Saving for X 100m" => SHOPPING with shoppingCategory "saving". If a transaction is not yet done/paid, it MUST be SHOPPING with shoppingCategory "not_urgent".
 - NOTE: ideas/knowledge/random thoughts.
 - EVENT: scheduled dates/times.
-- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement OR adding funds to a saving goal.
+- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement OR adding funds to a saving goal. ALL FINANCE entries are considered DONE.
 - SKILL_LOG: time spent learning/practicing a skill.
 - JOURNAL: personal diary entries, feelings, daily recaps, "Dear Diary", or explicit "Log to journal".
 

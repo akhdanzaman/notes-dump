@@ -1,35 +1,46 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Wallet, Tag, Calendar, DollarSign } from 'lucide-react';
-import { BudgetConfig, Wallet as WalletType } from '../types';
+import { BudgetConfig, Wallet as WalletType, BrainDumpItem } from '../types';
 
 interface AddExpenseModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (amount: number, description: string, category: string, walletId: string, date: string, type: 'expense' | 'income' | 'transfer' | 'saving', toWalletId?: string) => void;
+    onSave: (amount: number, description: string, category: string, walletId: string, date: string, type: 'expense' | 'income' | 'transfer' | 'saving', toWalletId?: string, savingGoalId?: string, savingGoalName?: string) => void;
     wallets: WalletType[];
     budgetConfig: BudgetConfig;
+    savingGoals: BrainDumpItem[];
 }
 
-const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSave, wallets, budgetConfig }) => {
+const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSave, wallets, budgetConfig, savingGoals }) => {
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
     const [walletId, setWalletId] = useState('');
     const [toWalletId, setToWalletId] = useState('');
+    const [savingGoalId, setSavingGoalId] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [transactionType, setTransactionType] = useState<'expense' | 'income' | 'transfer' | 'saving'>('expense');
 
     const handleSave = () => {
-        if (!amount || !description || !walletId) return;
-        if (transactionType === 'transfer' && !toWalletId) return;
+        if (!amount) return;
+        if (transactionType !== 'saving' && !description) return;
+        if (transactionType === 'transfer' && (!walletId || !toWalletId)) return;
+        if (transactionType === 'saving' && !savingGoalId) return;
+        if (transactionType !== 'saving' && transactionType !== 'transfer' && !walletId) return;
         
-        onSave(parseFloat(amount), description, category, walletId, date, transactionType, toWalletId);
+        const goal = savingGoals.find(g => g.id === savingGoalId);
+        const goalName = goal ? goal.content : '';
+        const finalWalletId = transactionType === 'saving' ? (goal?.meta.dedicatedWalletId || walletId) : walletId;
+        const finalDescription = transactionType === 'saving' ? `Saved for: ${goalName}` : description;
+        
+        onSave(parseFloat(amount), finalDescription, category, finalWalletId, date, transactionType, toWalletId, savingGoalId, goalName);
         setAmount('');
         setDescription('');
         setCategory('');
         setWalletId('');
         setToWalletId('');
+        setSavingGoalId('');
         onClose();
     };
 
@@ -82,59 +93,115 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Description</label>
-                            <input 
-                                type="text"
-                                value={description}
-                                onChange={e => setDescription(e.target.value)}
-                                placeholder={transactionType === 'expense' ? "What did you buy?" : transactionType === 'income' ? "Source of income?" : "Description"}
-                                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium"
-                            />
-                        </div>
+                        {transactionType !== 'saving' && (
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Description</label>
+                                <input 
+                                    type="text"
+                                    value={description}
+                                    onChange={e => setDescription(e.target.value)}
+                                    placeholder={transactionType === 'expense' ? "What did you buy?" : transactionType === 'income' ? "Source of income?" : "Description"}
+                                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium"
+                                />
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
-                                <select 
-                                    value={walletId}
-                                    onChange={e => setWalletId(e.target.value)}
-                                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
-                                >
-                                    <option value="">Select Wallet</option>
-                                    {wallets.map(w => (
-                                        <option key={w.id} value={w.id}>{w.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            {transactionType === 'transfer' ? (
-                                <div>
-                                    <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">To</label>
-                                    <select 
-                                        value={toWalletId}
-                                        onChange={e => setToWalletId(e.target.value)}
-                                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
-                                    >
-                                        <option value="">Select Wallet</option>
-                                        {wallets.filter(w => w.id !== walletId).map(w => (
-                                            <option key={w.id} value={w.id}>{w.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                            {transactionType === 'saving' ? (
+                                <>
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Saving Goal</label>
+                                        <select 
+                                            value={savingGoalId}
+                                            onChange={e => {
+                                                setSavingGoalId(e.target.value);
+                                                const goal = savingGoals.find(g => g.id === e.target.value);
+                                                if (goal?.meta.dedicatedWalletId) {
+                                                    setWalletId(goal.meta.dedicatedWalletId);
+                                                }
+                                            }}
+                                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                        >
+                                            <option value="">Select Goal</option>
+                                            {savingGoals.map(g => (
+                                                <option key={g.id} value={g.id}>{g.content}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Wallet</label>
+                                        {(() => {
+                                            const goal = savingGoals.find(g => g.id === savingGoalId);
+                                            if (goal?.meta.dedicatedWalletId) {
+                                                const wallet = wallets.find(w => w.id === goal.meta.dedicatedWalletId);
+                                                return (
+                                                    <div className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-500 font-medium flex items-center gap-2">
+                                                        <Wallet className="w-4 h-4" />
+                                                        {wallet ? wallet.name : 'Linked to Goal'}
+                                                    </div>
+                                                );
+                                            } else {
+                                                return (
+                                                    <select 
+                                                        value={walletId}
+                                                        onChange={e => setWalletId(e.target.value)}
+                                                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                    >
+                                                        <option value="">Select Wallet</option>
+                                                        {wallets.map(w => (
+                                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                                        ))}
+                                                    </select>
+                                                );
+                                            }
+                                        })()}
+                                    </div>
+                                </>
                             ) : (
-                                <div>
-                                    <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Category</label>
-                                    <select 
-                                        value={category}
-                                        onChange={e => setCategory(e.target.value)}
-                                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
-                                    >
-                                        <option value="">Uncategorized</option>
-                                        {budgetConfig.rules?.map(r => (
-                                            <option key={r.id} value={r.id}>{r.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <>
+                                    <div>
+                                        <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
+                                        <select 
+                                            value={walletId}
+                                            onChange={e => setWalletId(e.target.value)}
+                                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                        >
+                                            <option value="">Select Wallet</option>
+                                            {wallets.map(w => (
+                                                <option key={w.id} value={w.id}>{w.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {transactionType === 'transfer' ? (
+                                        <div>
+                                            <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">To</label>
+                                            <select 
+                                                value={toWalletId}
+                                                onChange={e => setToWalletId(e.target.value)}
+                                                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                            >
+                                                <option value="">Select Wallet</option>
+                                                {wallets.filter(w => w.id !== walletId).map(w => (
+                                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Category</label>
+                                            <select 
+                                                value={category}
+                                                onChange={e => setCategory(e.target.value)}
+                                                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                            >
+                                                <option value="">Uncategorized</option>
+                                                {budgetConfig.rules?.map(r => (
+                                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
 
@@ -152,7 +219,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                     <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-900">
                         <button 
                             onClick={handleSave}
-                            disabled={!amount || !description || !walletId || (transactionType === 'transfer' && !toWalletId)}
+                            disabled={!amount || (transactionType !== 'saving' && !description) || (transactionType !== 'saving' && !walletId) || (transactionType === 'transfer' && !toWalletId) || (transactionType === 'saving' && !savingGoalId)}
                             className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <Check className="w-5 h-5" />

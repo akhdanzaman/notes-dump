@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, SyncStatus } from '../types';
 import { getGithubConfig, saveGithubConfig, clearGithubConfig, GithubConfig } from '../services/githubService';
 import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig } from '../services/spreadsheetService';
@@ -61,6 +61,9 @@ export const useControlCenter = ({
     
     // Spreadsheet
     const [spreadsheetLink, setSpreadsheetLink] = useState('');
+    const spreadsheetLinkRef = useRef(spreadsheetLink);
+    useEffect(() => { spreadsheetLinkRef.current = spreadsheetLink; }, [spreadsheetLink]);
+
     const [spreadsheetConfig, setSpreadsheetConfig] = useState<SpreadsheetConfig | null>(null);
     const [isConnectingSpreadsheet, setIsConnectingSpreadsheet] = useState(false);
     
@@ -78,6 +81,8 @@ export const useControlCenter = ({
 
     // Local App Settings (buffered)
     const [localAppSettings, setLocalAppSettings] = useState<AppSettings>(appSettings);
+    const localAppSettingsRef = useRef(localAppSettings);
+    useEffect(() => { localAppSettingsRef.current = localAppSettings; }, [localAppSettings]);
 
     // Google Profile
     const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
@@ -113,37 +118,20 @@ export const useControlCenter = ({
             setGCalKey(savedGCalKey);
             setGCalId(savedGCalId);
 
-            // Check for Google Auth redirect
-            const params = new URLSearchParams(window.location.search);
-            const googleAuth = params.get('google_auth');
-            
-            if (googleAuth) {
-                try {
-                    const tokens = JSON.parse(googleAuth);
-                    // Clear URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    
-                    // Handle tokens
-                    handleGoogleLoginSuccess(tokens);
-                } catch (e) {
-                    console.error("Failed to parse Google tokens", e);
-                }
+            // Check if already logged in
+            // 1. Try Spreadsheet Config
+            const ss = getSpreadsheetConfig();
+            if (ss && ss.accessToken) {
+                fetchGoogleProfile(ss.accessToken).then(setGoogleProfile).catch(() => {
+                    // Token might be expired
+                });
             } else {
-                // Check if already logged in
-                // 1. Try Spreadsheet Config
-                const ss = getSpreadsheetConfig();
-                if (ss && ss.accessToken) {
-                    fetchGoogleProfile(ss.accessToken).then(setGoogleProfile).catch(() => {
-                        // Token might be expired
+                // 2. Try Session
+                const session = getGoogleSession();
+                if (session) {
+                    fetchGoogleProfile(session.access_token).then(setGoogleProfile).catch(() => {
+                        clearGoogleSession();
                     });
-                } else {
-                    // 2. Try Session
-                    const session = getGoogleSession();
-                    if (session) {
-                        fetchGoogleProfile(session.access_token).then(setGoogleProfile).catch(() => {
-                            clearGoogleSession();
-                        });
-                    }
                 }
             }
 
@@ -152,13 +140,27 @@ export const useControlCenter = ({
             if (gh) setGithubConfig(gh);
 
             // Load Spreadsheet
-            const ss = getSpreadsheetConfig();
             if (ss) {
                 setSpreadsheetConfig(ss);
                 setSpreadsheetLink(ss.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${ss.spreadsheetId}/edit`);
             }
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            // Validate origin is from AI Studio preview or localhost
+            const origin = event.origin;
+            if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+                return;
+            }
+            if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data.tokens) {
+                handleGoogleLoginSuccess(event.data.tokens);
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     const handleGoogleLoginSuccess = async (tokens: any) => {
         setIsSyncingProfile(true);
@@ -190,7 +192,7 @@ export const useControlCenter = ({
                 }
                 
                 if (cloudConfig.theme) {
-                    const newSettings = { ...localAppSettings, theme: cloudConfig.theme };
+                    const newSettings = { ...localAppSettingsRef.current, theme: cloudConfig.theme };
                     setLocalAppSettings(newSettings);
                     setAppSettings(newSettings);
                 }
@@ -198,13 +200,14 @@ export const useControlCenter = ({
                 // No config found, this is a new login or first time using profile sync
                 // We don't overwrite local settings yet, but we save the token
                 // If we already have a spreadsheet link locally, we should save it to cloud now
-                if (spreadsheetLink) {
-                     const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                     const spreadsheetId = match ? match[1] : spreadsheetLink;
+                const currentSpreadsheetLink = spreadsheetLinkRef.current;
+                if (currentSpreadsheetLink) {
+                     const match = currentSpreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                     const spreadsheetId = match ? match[1] : currentSpreadsheetLink;
                      
                      const newConfig: SpreadsheetConfig = {
                         spreadsheetId,
-                        spreadsheetUrl: spreadsheetLink,
+                        spreadsheetUrl: currentSpreadsheetLink,
                         accessToken: tokens.access_token,
                         refreshToken: tokens.refresh_token,
                         tokenExpiresAt: Date.now() + (tokens.expires_in * 1000)
@@ -215,8 +218,8 @@ export const useControlCenter = ({
                     // Save to Drive
                     await saveConfigToDrive({
                         spreadsheetId,
-                        spreadsheetUrl: spreadsheetLink,
-                        theme: localAppSettings.theme
+                        spreadsheetUrl: currentSpreadsheetLink,
+                        theme: localAppSettingsRef.current.theme
                     }, tokens.access_token);
                 } else {
                     // Just save the token for future use (we need a dummy config or just store it separately)
@@ -241,8 +244,16 @@ export const useControlCenter = ({
             if (!response.ok) throw new Error('Failed to get auth URL');
             const { url } = await response.json();
             
-            // Redirect to Google Auth
-            window.location.href = url;
+            // Open Google Auth in a popup
+            const authWindow = window.open(
+                url,
+                'oauth_popup',
+                'width=600,height=700'
+            );
+
+            if (!authWindow) {
+                alert('Please allow popups for this site to connect your account.');
+            }
         } catch (error) {
             console.error('Login error:', error);
             alert('Failed to start login process.');

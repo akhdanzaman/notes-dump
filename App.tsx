@@ -610,21 +610,26 @@ const App: React.FC = () => {
       <AddExpenseModal
         isOpen={addExpenseModalOpen}
         onClose={() => setAddExpenseModalOpen(false)}
-        onSave={(amount, description, category, walletId, date, type, toWalletId) => {
-            const wallet = wallets.find(w => w.id === walletId);
-            const walletName = wallet ? wallet.name : '';
-            if (walletName) {
-                if (type === 'transfer') {
-                    const toWallet = wallets.find(w => w.id === toWalletId);
-                    const toWalletName = toWallet ? toWallet.name : '';
-                    handleAddTransaction(description, amount, type, walletName, category, toWalletName, date);
-                } else {
-                    handleAddTransaction(description, amount, type, walletName, category, undefined, date);
+        onSave={(amount, description, category, walletId, date, type, toWalletId, savingGoalId, savingGoalName) => {
+            if (type === 'saving' && savingGoalId && savingGoalName) {
+                handleAddSavingTransaction(amount, walletId, date, savingGoalId, savingGoalName);
+            } else {
+                const wallet = wallets.find(w => w.id === walletId);
+                const walletName = wallet ? wallet.name : '';
+                if (walletName) {
+                    if (type === 'transfer') {
+                        const toWallet = wallets.find(w => w.id === toWalletId);
+                        const toWalletName = toWallet ? toWallet.name : '';
+                        handleAddTransaction(description, amount, type, walletName, category, toWalletName, date);
+                    } else {
+                        handleAddTransaction(description, amount, type, walletName, category, undefined, date);
+                    }
                 }
             }
         }}
         wallets={wallets}
         budgetConfig={budgetConfig}
+        savingGoals={savingGoals}
       />
 
       <AddNoteModal

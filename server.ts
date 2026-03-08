@@ -85,13 +85,22 @@ async function startServer() {
         throw new Error(tokens.error_description || tokens.error);
       }
 
-      // Redirect to app with tokens in URL fragment
-      // We use the 'state' parameter as the origin to redirect back to
-      const appUrl = (state as string) || '/';
-      const redirectUrl = new URL(appUrl);
-      redirectUrl.searchParams.set('google_auth', JSON.stringify(tokens));
-      
-      res.redirect(302, redirectUrl.toString());
+      // Send success message to parent window and close popup
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', tokens: ${JSON.stringify(tokens)} }, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
+            </script>
+            <p>Authentication successful. This window should close automatically.</p>
+          </body>
+        </html>
+      `);
     } catch (error: any) {
       console.error("OAuth error:", error);
       res.status(500).send(`

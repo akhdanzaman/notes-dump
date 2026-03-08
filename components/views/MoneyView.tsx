@@ -46,6 +46,7 @@ interface MoneyViewProps {
         newDedicatedWalletId?: string,
         newPriority?: Priority
     ) => void;
+    handleToggleStatus: (id: string) => void;
     handleOpenEditWallet: (w: Wallet) => void;
     handleOpenAddWallet: () => void;
     setDeleteId: (id: string) => void;
@@ -69,7 +70,7 @@ interface MoneyViewProps {
 const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     items, wallets, budgetConfig, moneyView, setMoneyView,
     financeDate, setFinanceDate, showBalance, setShowBalance, appSettings,
-    handleDelete, handleUpdateItem, handleOpenEditWallet, handleOpenAddWallet,
+    handleDelete, handleUpdateItem, handleToggleStatus, handleOpenEditWallet, handleOpenAddWallet,
     setDeleteId, setDeleteType, setIsSettingsOpen,
     filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
     savingGoals, setActiveTab, onAddItem
@@ -173,6 +174,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const cardProps = {
         onUpdate: handleUpdateItem,
         onDelete: handleDelete,
+        onToggleStatus: handleToggleStatus,
         enableCollapse: true,
         defaultCollapsed: appSettings.defaultCollapsed,
         hideMoney: appSettings.hideMoney,
