@@ -76,7 +76,11 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
     }
 
     if (!skipLocalStorage) {
-        localStorage.setItem('braindump_db', JSON.stringify(mergedData));
+        try {
+            localStorage.setItem('braindump_db', JSON.stringify(mergedData));
+        } catch (e) {
+            console.warn("Failed to save to local storage (quota exceeded?)", e);
+        }
     }
 
     return { data: mergedData, sha: finalSha, hasChanges };

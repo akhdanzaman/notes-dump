@@ -1,5 +1,3 @@
-import { SpreadsheetConfig } from './spreadsheetService';
-
 export interface GoogleProfile {
   id: string;
   name: string;
@@ -143,12 +141,7 @@ export const getGoogleSession = () => {
     const session = localStorage.getItem('braindump_google_session');
     if (!session) return null;
     try {
-        const parsed = JSON.parse(session);
-        if (Date.now() > parsed.expires_at) {
-            // Token expired
-            return null;
-        }
-        return parsed;
+        return JSON.parse(session);
     } catch (e) {
         return null;
     }
@@ -156,4 +149,41 @@ export const getGoogleSession = () => {
 
 export const clearGoogleSession = () => {
     localStorage.removeItem('braindump_google_session');
+};
+
+export const getValidGoogleAccessToken = async (): Promise<string | null> => {
+    const session = getGoogleSession();
+    if (!session) return null;
+
+    if (session.expires_at && Date.now() > session.expires_at - 60000) {
+        if (!session.refresh_token) {
+            clearGoogleSession();
+            return null;
+        }
+        try {
+            const res = await fetch('/api/auth/google/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: session.refresh_token })
+            });
+            
+            if (!res.ok) {
+                throw new Error(`Failed to refresh token: ${res.status}`);
+            }
+            
+            const data = await res.json();
+            const newSession = {
+                ...session,
+                access_token: data.access_token,
+                expires_at: Date.now() + (data.expires_in * 1000)
+            };
+            saveGoogleSession(newSession);
+            return newSession.access_token;
+        } catch (e) {
+            console.error("Failed to refresh Google access token", e);
+            clearGoogleSession();
+            return null;
+        }
+    }
+    return session.access_token;
 };

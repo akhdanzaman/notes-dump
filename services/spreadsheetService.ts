@@ -3,6 +3,7 @@ import { SyncResult } from "./githubService";
 import { mergeDbData } from "../utils/mergeUtils";
 import { generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
+import { getValidGoogleAccessToken } from "./googleProfileService";
 
 const SETTINGS_KEY = 'braindump_spreadsheet_config';
 const LOCAL_STORAGE_KEY = 'braindump_db';
@@ -11,9 +12,6 @@ const SYSTEM_SHEET_NAME = 'App_State_Do_Not_Edit';
 export interface SpreadsheetConfig {
   spreadsheetId: string;
   spreadsheetUrl: string;
-  accessToken: string;
-  refreshToken?: string;
-  tokenExpiresAt?: number;
 }
 
 let isHydrated = false;
@@ -25,7 +23,7 @@ export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
     const local = localStorage.getItem(SETTINGS_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      if (parsed.spreadsheetId && parsed.accessToken) {
+      if (parsed.spreadsheetId) {
         return parsed;
       }
     }
@@ -43,8 +41,7 @@ export const saveSpreadsheetConfig = (config: SpreadsheetConfig) => {
   }
   
   const nextConfig = {
-      ...config,
-      refreshToken: config.refreshToken || (existing ? existing.refreshToken : undefined)
+      ...config
   };
 
   const next = JSON.stringify(nextConfig);
@@ -59,39 +56,6 @@ export const clearSpreadsheetConfig = () => {
   localStorage.removeItem(SETTINGS_KEY);
   isHydrated = false;
   lastSnapshot = null;
-};
-
-const refreshAccessToken = async (config: SpreadsheetConfig): Promise<SpreadsheetConfig> => {
-  if (!config.refreshToken) throw new Error("No refresh token available");
-  
-  const res = await fetch('/api/auth/google/refresh', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: config.refreshToken })
-  });
-  
-  if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Failed to refresh token: ${res.status} ${res.statusText} - ${errText}`);
-  }
-  
-  const data = await res.json();
-  const newConfig = {
-    ...config,
-    accessToken: data.access_token,
-    tokenExpiresAt: Date.now() + (data.expires_in * 1000)
-  };
-  
-  saveSpreadsheetConfig(newConfig);
-  return newConfig;
-};
-
-const getValidToken = async (config: SpreadsheetConfig): Promise<string> => {
-  if (config.tokenExpiresAt && Date.now() > config.tokenExpiresAt - 60000) {
-    const newConfig = await refreshAccessToken(config);
-    return newConfig.accessToken;
-  }
-  return config.accessToken;
 };
 
 const validateSchema = (data: any): DbSchema => {
@@ -113,7 +77,8 @@ export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ da
   if (!config) throw new Error("No spreadsheet config");
 
   try {
-    const token = await getValidToken(config);
+    const token = await getValidGoogleAccessToken();
+    if (!token) throw new Error("No valid Google access token available");
     
     // First, get metadata to see which sheets exist
     const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}`, {
@@ -122,9 +87,10 @@ export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ da
     
     if (!metaRes.ok) {
       if (metaRes.status === 401) {
-        // Try refresh once
-        const newConfig = await refreshAccessToken(config);
-        return fetchSpreadsheetDbWithToken(newConfig, newConfig.accessToken, skipLocalStorage);
+        // Token might have expired right after we got it, try to get a new one
+        const newToken = await getValidGoogleAccessToken();
+        if (!newToken) throw new Error("Failed to refresh Google access token");
+        return fetchSpreadsheetDbWithToken(config, newToken, skipLocalStorage);
       }
       throw new Error(`Google Sheets API error: ${metaRes.statusText}`);
     }
@@ -220,7 +186,11 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     // Update local storage with reconciled data
     const jsonString = JSON.stringify(dbData);
     if (!skipLocalStorage) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+      } catch (e) {
+        console.warn("Failed to save to local storage (quota exceeded?)", e);
+      }
       isHydrated = true;
       lastSnapshot = jsonString;
     }
@@ -246,7 +216,11 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
   const dbData = validateSchema(rawData);
   
   if (!skipLocalStorage) {
-    localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+    } catch (e) {
+      console.warn("Failed to save to local storage (quota exceeded?)", e);
+    }
     isHydrated = true;
     lastSnapshot = jsonString;
   }
@@ -274,7 +248,7 @@ const performSync = async (
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
   } catch (e) {
-    console.error("Local storage error", e);
+    console.warn("Local storage error (quota exceeded?)", e);
   }
 
   if (!isHydrated) {
@@ -319,7 +293,8 @@ const performSync = async (
         reconciled = true;
     }
 
-    const token = await getValidToken(config);
+    const token = await getValidGoogleAccessToken();
+    if (!token) throw new Error("No valid Google access token available");
     
     const finalJsonString = JSON.stringify(finalDb);
 
@@ -341,12 +316,14 @@ const performSync = async (
       jsonChunks.push([finalJsonString.substring(i, i + CHUNK_SIZE)]);
     }
 
-    const allSheets: SheetData[] = [
-      ...exportSheets,
-      {
+    const systemSheetData: SheetData = {
         name: SYSTEM_SHEET_NAME,
         data: jsonChunks
-      }
+    };
+
+    const allSheets: SheetData[] = [
+      ...exportSheets,
+      systemSheetData
     ];
 
     // 2. Get existing sheets to determine what needs to be created
@@ -395,14 +372,22 @@ const performSync = async (
     });
     if (!clearRes.ok) throw new Error(`Failed to clear sheets: ${await clearRes.text()}`);
 
-    // 5. Write new data
+    // 5. Write new data - Split into chunks to avoid payload limits
     console.log("Writing new data...");
-    const data = allSheets.map(sheet => ({
-      range: `'${sheet.name}'!A1`,
-      values: sheet.data
+    
+    // Split: System sheet vs User sheets
+    const systemData = [{
+        range: `'${systemSheetData.name}'!A1`,
+        values: systemSheetData.data
+    }];
+
+    const userSheetsData = exportSheets.map(sheet => ({
+        range: `'${sheet.name}'!A1`,
+        values: sheet.data
     }));
 
-    const updateRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchUpdate`, {
+    // Update System Sheet first (critical data)
+    const updateSystemRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchUpdate`, {
       method: 'POST',
       headers: { 
         Authorization: `Bearer ${token}`,
@@ -410,14 +395,34 @@ const performSync = async (
       },
       body: JSON.stringify({
         valueInputOption: 'RAW',
-        data: data
+        data: systemData
       })
     });
 
-    if (!updateRes.ok) {
-      const errorText = await updateRes.text();
-      console.error("Google Sheets API Error Body:", errorText);
-      throw new Error(`Google Sheets API error: ${updateRes.status} ${updateRes.statusText} - ${errorText}`);
+    if (!updateSystemRes.ok) {
+        const errorText = await updateSystemRes.text();
+        throw new Error(`Google Sheets API error (System Sheet): ${updateSystemRes.status} ${updateSystemRes.statusText} - ${errorText}`);
+    }
+
+    // Update User Sheets
+    if (userSheetsData.length > 0) {
+        const updateUserRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchUpdate`, {
+            method: 'POST',
+            headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                valueInputOption: 'RAW',
+                data: userSheetsData
+            })
+        });
+
+        if (!updateUserRes.ok) {
+            const errorText = await updateUserRes.text();
+            // Log error but don't fail the whole sync if user sheets fail (system sheet is safe)
+            console.error(`Google Sheets API error (User Sheets): ${updateUserRes.status} ${updateUserRes.statusText} - ${errorText}`);
+        }
     }
 
     lastSnapshot = finalJsonString;

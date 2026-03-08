@@ -201,7 +201,11 @@ export const saveGithubConfig = (config: GithubConfig) => {
     // This allows updating other settings (Budget, Prompt) without breaking the DB connection.
     if (existing === next) return;
 
-    localStorage.setItem(SETTINGS_KEY, next);
+    try {
+        localStorage.setItem(SETTINGS_KEY, next);
+    } catch (e) {
+        console.warn("Failed to save settings to local storage", e);
+    }
     isHydrated = false; 
     currentCloudSha = undefined;
     lastSnapshot = null;
@@ -268,7 +272,11 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
     const data = validateSchema(rawData);
     
     if (!skipLocalStorage) {
-        localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+        } catch (e) {
+            console.warn("Failed to save to local storage (quota exceeded?)", e);
+        }
     }
 
     isHydrated = true;
@@ -344,7 +352,7 @@ const performSync = async (
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
   } catch (e) {
-    console.error("Local storage error", e);
+    console.warn("Local storage error (quota exceeded?)", e);
   }
 
   const config = getGithubConfig();
@@ -416,7 +424,11 @@ const performSync = async (
               const mergedJson = JSON.stringify(mergedData, null, 2);
               
               // 3. Update Local Storage immediately to persist merge
-              localStorage.setItem(LOCAL_STORAGE_KEY, mergedJson);
+              try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, mergedJson);
+              } catch (e) {
+                console.warn("Failed to save to local storage (quota exceeded?)", e);
+              }
               lastSnapshot = mergedJson;
 
               // 4. Write merged data

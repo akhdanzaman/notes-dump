@@ -92,15 +92,18 @@ async function startServer() {
             <script>
               try {
                 const tokens = ${JSON.stringify(tokens)};
-                localStorage.setItem('oauth_tokens', JSON.stringify(tokens));
-                
-                // Redirect back to the app
-                window.location.href = '/';
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', tokens }, '*');
+                  window.close();
+                } else {
+                  localStorage.setItem('oauth_tokens', JSON.stringify(tokens));
+                  window.location.href = '/';
+                }
               } catch (e) {
                 document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
               }
             </script>
-            <p>Authentication successful. Redirecting...</p>
+            <p>Authentication successful. This window should close automatically.</p>
           </body>
         </html>
       `);

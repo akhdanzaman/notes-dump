@@ -4,7 +4,7 @@ import { getGithubConfig, saveGithubConfig, clearGithubConfig, GithubConfig } fr
 import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig } from '../services/spreadsheetService';
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
-import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, getGoogleSession, clearGoogleSession, GoogleProfile } from '../services/googleProfileService';
+import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, getGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
 
 export interface UseControlCenterProps {
     isOpen: boolean;
@@ -119,27 +119,20 @@ export const useControlCenter = ({
             setGCalId(savedGCalId);
 
             // Check if already logged in
-            // 1. Try Spreadsheet Config
-            const ss = getSpreadsheetConfig();
-            if (ss && ss.accessToken) {
-                fetchGoogleProfile(ss.accessToken).then(setGoogleProfile).catch(() => {
-                    // Token might be expired
-                });
-            } else {
-                // 2. Try Session
-                const session = getGoogleSession();
-                if (session) {
-                    fetchGoogleProfile(session.access_token).then(setGoogleProfile).catch(() => {
-                        clearGoogleSession();
+            getValidGoogleAccessToken().then(token => {
+                if (token) {
+                    fetchGoogleProfile(token).then(setGoogleProfile).catch(() => {
+                        // Token might be expired or invalid
                     });
                 }
-            }
+            });
 
             // Load GitHub
             const gh = getGithubConfig();
             if (gh) setGithubConfig(gh);
 
             // Load Spreadsheet
+            const ss = getSpreadsheetConfig();
             if (ss) {
                 setSpreadsheetConfig(ss);
                 setSpreadsheetLink(ss.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${ss.spreadsheetId}/edit`);
@@ -210,22 +203,24 @@ export const useControlCenter = ({
             // Save Session
             saveGoogleSession(tokens);
 
+            const token = await getValidGoogleAccessToken();
+            if (!token) {
+                throw new Error("Failed to get valid access token after login");
+            }
+
             // 1. Fetch Profile
-            const profile = await fetchGoogleProfile(tokens.access_token);
+            const profile = await fetchGoogleProfile(token);
             setGoogleProfile(profile);
 
             // 2. Try to load config from Drive
-            const cloudConfig = await loadConfigFromDrive(tokens.access_token);
+            const cloudConfig = await loadConfigFromDrive(token);
             
             if (cloudConfig) {
                 // Restore settings from cloud
                 if (cloudConfig.spreadsheetId) {
                     const newConfig: SpreadsheetConfig = {
                         spreadsheetId: cloudConfig.spreadsheetId,
-                        spreadsheetUrl: cloudConfig.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${cloudConfig.spreadsheetId}/edit`,
-                        accessToken: tokens.access_token,
-                        refreshToken: tokens.refresh_token,
-                        tokenExpiresAt: Date.now() + (tokens.expires_in * 1000)
+                        spreadsheetUrl: cloudConfig.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${cloudConfig.spreadsheetId}/edit`
                     };
                     saveSpreadsheetConfig(newConfig);
                     setSpreadsheetConfig(newConfig);
@@ -249,10 +244,7 @@ export const useControlCenter = ({
                      
                      const newConfig: SpreadsheetConfig = {
                         spreadsheetId,
-                        spreadsheetUrl: currentSpreadsheetLink,
-                        accessToken: tokens.access_token,
-                        refreshToken: tokens.refresh_token,
-                        tokenExpiresAt: Date.now() + (tokens.expires_in * 1000)
+                        spreadsheetUrl: currentSpreadsheetLink
                     };
                     saveSpreadsheetConfig(newConfig);
                     setSpreadsheetConfig(newConfig);
@@ -262,7 +254,7 @@ export const useControlCenter = ({
                         spreadsheetId,
                         spreadsheetUrl: currentSpreadsheetLink,
                         theme: localAppSettingsRef.current.theme
-                    }, tokens.access_token);
+                    }, token);
                 } else {
                     // Just save the token for future use (we need a dummy config or just store it separately)
                     // For now, we wait for user to enter spreadsheet link
@@ -286,8 +278,17 @@ export const useControlCenter = ({
             if (!response.ok) throw new Error('Failed to get auth URL');
             const { url } = await response.json();
             
-            // Redirect to Google Auth
-            window.location.href = url;
+            // Open the OAuth PROVIDER's URL directly in popup
+            const authWindow = window.open(
+                url,
+                'oauth_popup',
+                'width=600,height=700'
+            );
+
+            if (!authWindow) {
+                // Popup was blocked
+                alert('Please allow popups for this site to connect your account.');
+            }
         } catch (error) {
             console.error('Login error:', error);
             // alert('Failed to start login process.');
@@ -322,10 +323,7 @@ export const useControlCenter = ({
         const spreadsheetId = match[1];
         const newConfig: SpreadsheetConfig = {
             spreadsheetId,
-            spreadsheetUrl: spreadsheetLink,
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token,
-            tokenExpiresAt: session.expires_at
+            spreadsheetUrl: spreadsheetLink
         };
         
         saveSpreadsheetConfig(newConfig);
@@ -333,11 +331,14 @@ export const useControlCenter = ({
         
         // Sync to Drive
         try {
-            await saveConfigToDrive({
-                spreadsheetId,
-                spreadsheetUrl: spreadsheetLink,
-                theme: localAppSettings.theme
-            }, session.access_token);
+            const token = await getValidGoogleAccessToken();
+            if (token) {
+                await saveConfigToDrive({
+                    spreadsheetId,
+                    spreadsheetUrl: spreadsheetLink,
+                    theme: localAppSettings.theme
+                }, token);
+            }
             // alert("Spreadsheet connected and settings saved to Google Drive.");
         } catch (e) {
             console.warn("Failed to sync to Drive", e);
@@ -389,16 +390,18 @@ export const useControlCenter = ({
         onSave(newBudgetConfig, prompt, localAppSettings);
         
         // Save to Drive if connected
-        if (spreadsheetConfig && spreadsheetConfig.accessToken) {
-             try {
-                await saveConfigToDrive({
-                    spreadsheetId: spreadsheetConfig.spreadsheetId,
-                    spreadsheetUrl: spreadsheetConfig.spreadsheetUrl,
-                    theme: localAppSettings.theme
-                }, spreadsheetConfig.accessToken);
-             } catch (e) {
-                 console.warn("Failed to background sync to Drive", e);
-             }
+        if (spreadsheetConfig) {
+             getValidGoogleAccessToken().then(token => {
+                 if (token) {
+                     saveConfigToDrive({
+                         spreadsheetId: spreadsheetConfig.spreadsheetId,
+                         spreadsheetUrl: spreadsheetConfig.spreadsheetUrl,
+                         theme: localAppSettings.theme
+                     }, token).catch(e => {
+                         console.warn("Failed to background sync to Drive", e);
+                     });
+                 }
+             });
         }
         
         setTimeout(() => {

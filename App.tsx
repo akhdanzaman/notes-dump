@@ -455,6 +455,7 @@ const App: React.FC = () => {
                           appSettings={appSettings}
                           handleDelete={requestDeleteItem}
                           handleUpdateItem={handleUpdateItem}
+                          handleToggleStatus={handleToggleStatus}
                           handleOpenEditWallet={handleOpenEditWallet} handleOpenAddWallet={handleOpenAddWallet}
                           setDeleteId={setDeleteId} setDeleteType={setDeleteType} setIsSettingsOpen={setIsControlCenterOpen}
                           filterWallet={filterWallet} filterTransactionType={filterTransactionType}
