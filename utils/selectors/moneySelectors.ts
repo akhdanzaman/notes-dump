@@ -259,11 +259,13 @@ export const getFinanceItems = (
 
         if (type === 'income') {
             if (isDone) totalIncome += amount;
-        } else if (type === 'saving') {
-            if (isDone) totalSavings += amount;
-        } else if (type === 'expense' || type === 'transfer') {
-            // Only count actual expenses, not transfers between own wallets
+        } else if (type === 'expense' || type === 'transfer' || type === 'saving') {
+            // Only count actual expenses and savings, not transfers between own wallets
             if (type === 'transfer') return;
+
+            if (type === 'saving' && isDone) {
+                totalSavings += amount;
+            }
 
             if (isDone) {
                 totalExpense += amount;

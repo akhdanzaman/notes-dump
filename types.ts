@@ -29,6 +29,7 @@ export interface AppSettings {
   defaultCollapsed: boolean;
   hideMoney: boolean;
   theme?: 'light' | 'dark';
+  enableDailyInsight?: boolean;
 }
 
 export interface Skill {

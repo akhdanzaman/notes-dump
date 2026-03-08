@@ -348,7 +348,7 @@ const App: React.FC = () => {
               <div className="w-full">
                   {activeTab === 'summary' && (
                       <SummaryView 
-                          items={items} skills={skills} wallets={wallets} budgetConfig={budgetConfig}
+                          items={items} skills={skills} wallets={wallets} budgetConfig={budgetConfig} appSettings={appSettings}
                           themeNavDate={themeNavDate} setThemeNavDate={setThemeNavDate}
                           monthlyThemes={monthlyThemes}
                           onThemeEdit={(content) => { setTempThemeContent(content); setThemeEditMode(true); }}

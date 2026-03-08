@@ -19,6 +19,7 @@ interface SummaryViewProps {
     skills: Skill[];
     wallets: Wallet[];
     budgetConfig: BudgetConfig;
+    appSettings: AppSettings;
     themeNavDate: Date;
     setThemeNavDate: (d: Date) => void;
     monthlyThemes: Record<string, string>;
@@ -64,7 +65,7 @@ interface SummaryViewProps {
 }
 
 const SummaryView: React.FC<SummaryViewProps> = ({
-    items, skills, wallets, budgetConfig,
+    items, skills, wallets, budgetConfig, appSettings,
     themeNavDate, setThemeNavDate, monthlyThemes, onThemeEdit,
     handleToggleStatus, setActiveTab, setFocusSubTab,
     showBalance, setShowBalance,
@@ -215,7 +216,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         const lastFetched = localStorage.getItem('braindump_ai_insights_date');
         const today = new Date().toDateString();
         
-        if (!force && lastFetched === today) {
+        if (!force && (!appSettings.enableDailyInsight || lastFetched === today)) {
             return;
         }
 
@@ -243,7 +244,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         }, 60 * 60 * 1000);
 
         return () => clearInterval(intervalId);
-    }, [items.length, budgetConfig, wallets, skills]);
+    }, [items.length, budgetConfig, wallets, skills, appSettings.enableDailyInsight]);
 
     const displayInsights = aiInsights.length > 0 ? aiInsights : localInsights;
 

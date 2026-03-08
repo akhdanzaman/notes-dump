@@ -156,6 +156,19 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                             }
                                         })()}
                                     </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Category</label>
+                                        <select 
+                                            value={category}
+                                            onChange={e => setCategory(e.target.value)}
+                                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                        >
+                                            <option value="">Uncategorized</option>
+                                            {budgetConfig.rules?.map(r => (
+                                                <option key={r.id} value={r.id}>{r.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </>
                             ) : (
                                 <>

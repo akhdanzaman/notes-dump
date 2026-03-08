@@ -100,6 +100,8 @@ FINANCE META:
     - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.
 - saving: adding funds to an existing saving goal (e.g., "saved 500k for car from BCA").
     - IF saving: set 'paymentMethod' = Source Wallet, 'financeType' = 'saving'.
+- IMPORTANT: You MUST ALWAYS set 'budgetCategory' for 'expense' and 'saving' transactions.
+  - For 'saving', choose the category based on the goal (e.g. saving for emergency fund -> 'savings', saving for a new car -> 'wants').
 
 SKILL_LOG META:
 - content MUST be summary/key takeaways (not raw duration sentence)
@@ -186,7 +188,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
                   financeType: { type: Type.STRING },
                   paymentMethod: { type: Type.STRING, description: "Source Wallet / Method" },
                   toWallet: { type: Type.STRING, description: "Destination Wallet for transfers" },
-                  budgetCategory: { type: Type.STRING },
+                  budgetCategory: { type: Type.STRING, description: "Classification of expense budget category"  },
                   commodity: { type: Type.STRING, description: "Main expenditure category" },
                   subcommodity: { type: Type.STRING, description: "Detailed sub-category" },
                   merchant: { type: Type.STRING, description: "Merchant/Vendor name" },

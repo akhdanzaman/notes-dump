@@ -437,6 +437,27 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                                     <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
                                                         <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
+                                                                <Sparkles className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Daily AI Insights</div>
+                                                                <div className="text-xs text-muted">Automatically generate insights daily</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="sr-only peer"
+                                                                checked={localAppSettings.enableDailyInsight ?? false}
+                                                                onChange={(e) => setLocalAppSettings({ ...localAppSettings, enableDailyInsight: e.target.checked })}
+                                                            />
+                                                            <div className="relative w-11 h-6 bg-muted/30 peer-focus:outline-none rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                                                        </label>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
                                                                 <Layout className="w-5 h-5" />
                                                             </div>
