@@ -227,17 +227,18 @@ export const generateExportData = (
 
   // --- Sheet 10: Budget Config ---
   const budgetData = [
-    { Property: 'Monthly Income', Value: budgetConfig.monthlyIncome },
+    { Property: 'Monthly Income', Value: budgetConfig.monthlyIncome, Color: '' },
     ...budgetConfig.rules.map(r => ({
       Property: `Rule: ${r.name}`,
-      Value: `${r.percentage}% (ID: ${r.id})`
+      Value: `${r.percentage}% (ID: ${r.id})`,
+      Color: r.color || 'bg-gray-500'
     }))
   ];
   sheets.push({
     name: "Budget Rules",
     data: [
-      ["Property", "Value"],
-      ...budgetData.map(b => [b.Property, b.Value])
+      ["Property", "Value", "Color"],
+      ...budgetData.map(b => [b.Property, b.Value, b.Color])
     ]
   });
 

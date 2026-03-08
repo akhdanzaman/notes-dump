@@ -408,7 +408,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         for (const row of rows) {
             const prop = row[0];
             const val = row[1];
-            console.log(`Processing budget row: prop=${prop}, val=${val}`);
+            const color = row[2];
+            console.log(`Processing budget row: prop=${prop}, val=${val}, color=${color}`);
             if (prop === 'Monthly Income') {
                 db.budgetConfig.monthlyIncome = parseFloat(val) || 0;
             } else if (prop && prop.startsWith('Rule: ')) {
@@ -421,7 +422,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         id: match[2],
                         name: name,
                         percentage: parseFloat(match[1]) || 0,
-                        color: db.budgetConfig.rules.find(r => r.id === match[2])?.color || 'bg-gray-500'
+                        color: color || db.budgetConfig.rules.find(r => r.id === match[2])?.color || 'bg-gray-500'
                     });
                 }
             }
