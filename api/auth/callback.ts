@@ -40,20 +40,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error(tokens.error_description || tokens.error);
     }
 
-    // Redirect to app with tokens in URL fragment
-    // We use the 'state' parameter as the origin to redirect back to
-    const appUrl = (state as string) || '/';
-    let redirectUrl;
-    try {
-        redirectUrl = new URL(appUrl);
-    } catch (e) {
-        // If appUrl is relative, use current host as base
-        redirectUrl = new URL(appUrl, `${protocol}://${host}`);
-    }
-    
-    redirectUrl.searchParams.set('google_auth', JSON.stringify(tokens));
-    
-    res.redirect(302, redirectUrl.toString());
+    // Send success message to parent window and close popup
+    res.setHeader('Content-Type', 'text/html');
+    res.status(200).send(`
+      <html>
+        <body>
+          <script>
+            try {
+              const tokens = ${JSON.stringify(tokens)};
+              localStorage.setItem('oauth_tokens', JSON.stringify(tokens));
+              
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', tokens: tokens }, '*');
+              }
+              
+              window.close();
+              
+              setTimeout(() => {
+                document.body.innerHTML = '<div style="font-family: sans-serif; padding: 20px; text-align: center;"><h3>Authentication successful!</h3><p>You can close this window now and return to the app.</p></div>';
+              }, 1000);
+            } catch (e) {
+              document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
+            }
+          </script>
+          <p>Authentication successful. Processing...</p>
+        </body>
+      </html>
+    `);
   } catch (error: any) {
     console.error("OAuth error:", error);
     res.setHeader('Content-Type', 'text/html');

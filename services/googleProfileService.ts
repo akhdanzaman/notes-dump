@@ -49,17 +49,33 @@ export const createConfigFile = async (config: AppConfig, accessToken: string): 
     mimeType: 'application/json',
   };
   
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-  form.append('file', new Blob([JSON.stringify(config)], { type: 'application/json' }));
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\\r\\n--" + boundary + "\\r\\n";
+  const close_delim = "\\r\\n--" + boundary + "--";
+
+  const multipartRequestBody =
+    delimiter +
+    'Content-Type: application/json\\r\\n\\r\\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    'Content-Type: application/json\\r\\n\\r\\n' +
+    JSON.stringify(config) +
+    close_delim;
 
   const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: form,
+    headers: { 
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': `multipart/related; boundary=${boundary}`
+    },
+    body: multipartRequestBody,
   });
   
-  if (!res.ok) throw new Error('Failed to create config file');
+  if (!res.ok) {
+      const err = await res.text();
+      console.error("Drive upload error:", err);
+      throw new Error('Failed to create config file');
+  }
   const data = await res.json();
   return data.id;
 };
@@ -103,6 +119,14 @@ export const loadConfigFromDrive = async (accessToken: string): Promise<AppConfi
 };
 
 export const saveGoogleSession = (tokens: any) => {
+    const existingStr = localStorage.getItem('braindump_google_session');
+    let existing = null;
+    if (existingStr) {
+        try { existing = JSON.parse(existingStr); } catch(e) {}
+    }
+    
+    const refreshToken = tokens.refresh_token || (existing ? existing.refresh_token : undefined);
+
     // Default to 1 hour if expires_in is missing or invalid
     const expiresIn = (typeof tokens.expires_in === 'number' && tokens.expires_in > 0) 
         ? tokens.expires_in 
@@ -110,6 +134,7 @@ export const saveGoogleSession = (tokens: any) => {
         
     localStorage.setItem('braindump_google_session', JSON.stringify({
         ...tokens,
+        refresh_token: refreshToken,
         expires_at: Date.now() + (expiresIn * 1000)
     }));
 };

@@ -352,7 +352,7 @@ export const useControlCenter = ({
             alert("Spreadsheet connected locally, but failed to sync to Google Drive.");
         }
         
-        if (onRefreshClick) onRefreshClick();
+        onSyncClick(false);
     };
 
     const handleDisconnectSpreadsheet = () => {
