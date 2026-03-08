@@ -83,9 +83,36 @@ export const useControlCenter = ({
     const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
     const [isSyncingProfile, setIsSyncingProfile] = useState(false);
 
+    useEffect(() => {
+        if (currentBudgetConfig) {
+            setMonthlyIncome(currentBudgetConfig.monthlyIncome || 0);
+            setBudgetRules(currentBudgetConfig.rules || []);
+        }
+    }, [currentBudgetConfig]);
+
+    useEffect(() => {
+        if (currentPrompt) {
+            setPrompt(currentPrompt);
+        }
+    }, [currentPrompt]);
+
+    useEffect(() => {
+        setLocalAppSettings(appSettings);
+    }, [appSettings]);
+
     // --- Initialization ---
     useEffect(() => {
         if (isOpen) {
+            // Load Gemini Key
+            const savedGeminiKey = localStorage.getItem('braindump_gemini_key') || '';
+            setGeminiKey(savedGeminiKey);
+
+            // Load GCal Keys
+            const savedGCalKey = localStorage.getItem('braindump_gcal_key') || '';
+            const savedGCalId = localStorage.getItem('braindump_gcal_id') || '';
+            setGCalKey(savedGCalKey);
+            setGCalId(savedGCalId);
+
             // Check for Google Auth redirect
             const params = new URLSearchParams(window.location.search);
             const googleAuth = params.get('google_auth');
