@@ -16,7 +16,7 @@ export interface SpreadsheetConfig {
 
 let isHydrated = false;
 let lastSnapshot: string | null = null;
-let syncQueue: Promise<SyncResult> = Promise.resolve({ success: true, method: 'local' });
+let operationQueue: Promise<any> = Promise.resolve();
 
 export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
   try {
@@ -60,6 +60,11 @@ export const clearSpreadsheetConfig = () => {
 
 const validateSchema = (data: any): DbSchema => {
   if (!data || typeof data !== 'object') return { data: [] };
+  
+  const rawChatHistory = Array.isArray(data.chatHistory) ? data.chatHistory : [];
+  // Truncate to last 50 messages to prevent bloated database issues
+  const chatHistory = rawChatHistory.slice(-50);
+
   return {
       data: Array.isArray(data.data) ? data.data : [],
       budgetConfig: data.budgetConfig,
@@ -68,11 +73,11 @@ const validateSchema = (data: any): DbSchema => {
       skills: Array.isArray(data.skills) ? data.skills : [],
       wallets: Array.isArray(data.wallets) ? data.wallets : [],
       monthlyThemes: data.monthlyThemes || {},
-      chatHistory: Array.isArray(data.chatHistory) ? data.chatHistory : []
+      chatHistory: chatHistory
   };
 };
 
-export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
+const performFetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
   const config = getSpreadsheetConfig();
   if (!config) throw new Error("No spreadsheet config");
 
@@ -112,6 +117,13 @@ export const fetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ da
   }
 };
 
+export const fetchSpreadsheetDb = (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
+  const task = () => performFetchSpreadsheetDb(skipLocalStorage);
+  const queuedTask = operationQueue.then(() => task(), () => task());
+  operationQueue = queuedTask;
+  return queuedTask;
+};
+
 const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: string, skipLocalStorage: boolean) => {
     const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -135,6 +147,8 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
         systemSheetName = meta.sheets[0].properties.title;
         rangesToFetch.push(`'${systemSheetName}'!A:A`);
     }
+
+    let isNewSpreadsheet = !existingTitles.has(SYSTEM_SHEET_NAME);
 
     const sheetsToSync = ['Transactions', 'Todos', 'Shopping', 'Events', 'Notes & Journals', 'Skill Logs', 'Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings'];
     for (const s of sheetsToSync) {
@@ -168,7 +182,15 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     // Find system sheet data
     const systemSheet = batchData.valueRanges?.find((r: any) => r.range && r.range.includes(systemSheetName));
     
-    let dbData = processFetchResponse(systemSheet, skipLocalStorage).data;
+    let dbData;
+    if (isNewSpreadsheet) {
+        console.log("New spreadsheet detected, returning local data to avoid wiping.");
+        const local = localStorage.getItem(LOCAL_STORAGE_KEY);
+        dbData = local ? validateSchema(JSON.parse(local)) : { data: [] };
+    } else {
+        dbData = processFetchResponse(systemSheet, skipLocalStorage).data;
+    }
+    
     let reconciled = false;
 
     // Reconcile with user-facing sheets
@@ -253,7 +275,7 @@ const performSync = async (
 
   if (!isHydrated) {
     try {
-      await fetchSpreadsheetDb(false);
+      await performFetchSpreadsheetDb(false);
     } catch (e) {
       console.warn("Failed to hydrate spreadsheet before sync", e);
       return { success: false, method: 'skipped_not_hydrated' };
@@ -277,7 +299,7 @@ const performSync = async (
   try {
     if (!forceOverwrite) {
         // 1. Fetch latest data from spreadsheet and merge
-        const { data: remoteDb } = await fetchSpreadsheetDb(false);
+        const { data: remoteDb } = await performFetchSpreadsheetDb(false);
         
         let baseDb: DbSchema | undefined;
         if (lastSnapshot) {
@@ -455,7 +477,7 @@ export const syncSpreadsheetData = (
   forceOverwrite = false
 ): Promise<SyncResult> => {
   const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, forceOverwrite);
-  const queuedTask = syncQueue.then(() => task(), () => task());
-  syncQueue = queuedTask;
+  const queuedTask = operationQueue.then(() => task(), () => task());
+  operationQueue = queuedTask;
   return queuedTask;
 };

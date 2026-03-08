@@ -86,6 +86,10 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     // Add remote rules first, then local rules to overwrite
     [...remoteRules, ...localRules].forEach(r => ruleMap.set(r.id, r));
 
+    const localChat = local.chatHistory || [];
+    const remoteChat = remote.chatHistory || [];
+    const chatHistory = localChat.length >= remoteChat.length ? localChat : remoteChat;
+
     return {
         data: Array.from(itemMap.values()),
         budgetConfig: {
@@ -97,6 +101,6 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
         skills: Array.from(skillMap.values()),
         wallets: Array.from(walletMap.values()),
         monthlyThemes: { ...remote.monthlyThemes, ...local.monthlyThemes },
-        chatHistory: [...(remote.chatHistory || []), ...(local.chatHistory || [])] // Simplified merge for chat
+        chatHistory: chatHistory.slice(-50)
     };
 };

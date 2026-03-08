@@ -24,6 +24,9 @@ export const generateChatResponse = async (
 
     const ai = new GoogleGenAI({ apiKey });
 
+    // Truncate items to the last 200 to prevent massive payloads
+    const recentItems = items.slice(-200);
+
     const systemInstruction = `
 You are an intelligent assistant for a personal productivity and finance app called BrainDump AI.
 You have access to the user's data, including their notes, todos, finances, skills, and wallets.
@@ -33,8 +36,8 @@ If the user asks about something not in the data, answer generally but remind th
 
 Here is the user's current data context (in JSON format):
 ---
-ITEMS:
-${JSON.stringify(items.map(i => ({ type: i.type, content: i.content, status: i.status, meta: i.meta, created_at: i.created_at, completed_at: i.completed_at })), null, 2)}
+ITEMS (Last 200):
+${JSON.stringify(recentItems.map(i => ({ type: i.type, content: i.content, status: i.status, meta: i.meta, created_at: i.created_at, completed_at: i.completed_at })), null, 2)}
 
 BUDGET CONFIG:
 ${JSON.stringify(budgetConfig, null, 2)}
