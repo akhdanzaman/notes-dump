@@ -2,7 +2,7 @@ import { BrainDumpItem, DbSchema, Skill, Wallet } from '../types';
 
 // Helper for merging data (3-way merge to handle deletions correctly)
 export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema): DbSchema => {
-    const baseItemIds = new Set(base?.data?.map(i => i.id) || []);
+    const baseItemIds = new Set(base?.data.map(i => i.id) || []);
     const localItemIds = new Set(local.data.map(i => i.id));
     const remoteItemIds = new Set(remote.data.map(i => i.id));
 
@@ -79,9 +79,19 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     });
 
     // 3. Merge other properties (LWW)
+    // Merge budgetConfig rules
+    const localRules = local.budgetConfig?.rules || [];
+    const remoteRules = remote.budgetConfig?.rules || [];
+    const ruleMap = new Map<string, any>();
+    // Add remote rules first, then local rules to overwrite
+    [...remoteRules, ...localRules].forEach(r => ruleMap.set(r.id, r));
+
     return {
         data: Array.from(itemMap.values()),
-        budgetConfig: local.budgetConfig || remote.budgetConfig,
+        budgetConfig: {
+            monthlyIncome: local.budgetConfig?.monthlyIncome || remote.budgetConfig?.monthlyIncome || 0,
+            rules: Array.from(ruleMap.values())
+        },
         appSettings: local.appSettings || remote.appSettings,
         customPrompt: local.customPrompt || remote.customPrompt,
         skills: Array.from(skillMap.values()),
