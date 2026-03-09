@@ -21,7 +21,14 @@ export const useBrainDumpData = () => {
     const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
     const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
     const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: false, hideMoney: false });
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
+        const local = localStorage.getItem('braindump_chat_history');
+        return local ? JSON.parse(local) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('braindump_chat_history', JSON.stringify(chatHistory));
+    }, [chatHistory]);
 
     const [loading, setLoading] = useState(true);
     const [pendingCount, setPendingCount] = useState(0); 
@@ -113,7 +120,6 @@ export const useBrainDumpData = () => {
         newWallets?: Wallet[], 
         newThemes?: Record<string, string>, 
         newAppSettings?: AppSettings,
-        newChatHistory?: ChatMessage[],
         forceOverwrite = false
     ) => {
         const baseItems = itemsRef.current;
@@ -126,9 +132,8 @@ export const useBrainDumpData = () => {
             const walletsToSave = newWallets || walletsRef.current;
             const themesToSave = newThemes || monthlyThemesRef.current;
             const settingsToSave = newAppSettings || appSettingsRef.current;
-            const chatHistoryToSave = newChatHistory || chatHistoryRef.current;
             
-            const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave, settingsToSave, chatHistoryToSave, forceOverwrite);
+            const result: SyncResult = await syncData(newItems, configToSave, promptToSave, skillsToSave, walletsToSave, themesToSave, settingsToSave, undefined, forceOverwrite);
             
             if (!result.success) {
                 throw new Error(result.error || "Sync failed, preserving local state.");
@@ -139,7 +144,7 @@ export const useBrainDumpData = () => {
                 
                 setItems(currentItems => {
                    const merged = mergeDbData(
-                       { data: currentItems, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, chatHistory: chatHistoryRef.current } as DbSchema, 
+                       { data: currentItems, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema, 
                        remoteSchema,
                        { data: baseItems } as DbSchema
                    );
@@ -157,7 +162,6 @@ export const useBrainDumpData = () => {
                 });
 
                 if (remoteSchema.monthlyThemes) setMonthlyThemes(prev => ({ ...remoteSchema.monthlyThemes, ...prev }));
-                if (remoteSchema.chatHistory) setChatHistory(remoteSchema.chatHistory);
             }
             
             setSaveStatus('synced');
@@ -224,7 +228,6 @@ export const useBrainDumpData = () => {
   
             if (data.monthlyThemes) setMonthlyThemes(data.monthlyThemes);
             if (data.appSettings) setAppSettings(data.appSettings);
-            if (data.chatHistory) setChatHistory(data.chatHistory);
           }
         } catch (err) {
           console.error(err);

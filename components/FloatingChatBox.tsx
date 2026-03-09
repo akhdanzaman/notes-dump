@@ -12,6 +12,7 @@ interface FloatingChatBoxProps {
     budgetConfig: BudgetConfig;
     wallets: Wallet[];
     skills: Skill[];
+    monthlyThemes: Record<string, string>;
     newMessage: { text: string; id: string } | null;
     chatHistory: ChatMessage[];
     onUpdateHistory: (newHistory: ChatMessage[]) => void;
@@ -19,7 +20,7 @@ interface FloatingChatBoxProps {
     chatModel?: string;
 }
 
-const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, items, budgetConfig, wallets, skills, newMessage, chatHistory, onUpdateHistory, onResetChat, chatModel }) => {
+const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, items, budgetConfig, wallets, skills, monthlyThemes, newMessage, chatHistory, onUpdateHistory, onResetChat, chatModel }) => {
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -30,8 +31,11 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [chatHistory, isLoading]);
+        if (isOpen) {
+            // Use setTimeout to ensure the DOM has updated and the modal is visible before scrolling
+            setTimeout(scrollToBottom, 100);
+        }
+    }, [chatHistory, isLoading, isOpen]);
 
     useEffect(() => {
         if (isOpen && newMessage && newMessage.id !== lastProcessedId) {
@@ -49,7 +53,7 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
         setIsLoading(true);
 
         try {
-            const responseText = await generateChatResponse(text, updatedHistory, items, budgetConfig, wallets, skills, chatModel);
+            const responseText = await generateChatResponse(text, updatedHistory, items, budgetConfig, wallets, skills, monthlyThemes, chatModel);
             const modelMsg: ChatMessage = { role: 'model', text: responseText };
             onUpdateHistory([...updatedHistory, modelMsg]);
         } catch (error) {

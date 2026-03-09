@@ -48,15 +48,15 @@ export const createConfigFile = async (config: AppConfig, accessToken: string): 
   };
   
   const boundary = '-------314159265358979323846';
-  const delimiter = "\\r\\n--" + boundary + "\\r\\n";
-  const close_delim = "\\r\\n--" + boundary + "--";
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
 
   const multipartRequestBody =
     delimiter +
-    'Content-Type: application/json\\r\\n\\r\\n' +
+    'Content-Type: application/json\r\n\r\n' +
     JSON.stringify(metadata) +
     delimiter +
-    'Content-Type: application/json\\r\\n\\r\\n' +
+    'Content-Type: application/json\r\n\r\n' +
     JSON.stringify(config) +
     close_delim;
 

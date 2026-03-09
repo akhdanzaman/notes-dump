@@ -94,7 +94,6 @@ const App: React.FC = () => {
 
   const handleUpdateChatHistory = (newHistory: import('./types').ChatMessage[]) => {
       setChatHistory(newHistory);
-      saveAndSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, newHistory);
   };
 
   const handleResetChat = () => {
@@ -249,7 +248,7 @@ const App: React.FC = () => {
   };
 
   const handleClearData = async () => {
-      await saveAndSync([], undefined, undefined, [], [], {}, undefined, [], true);
+      await saveAndSync([], undefined, undefined, [], [], {}, undefined, true);
       clearSpreadsheetConfig();
       clearGithubConfig();
       setIsControlCenterOpen(false);
@@ -483,6 +482,7 @@ const App: React.FC = () => {
               budgetConfig={budgetConfig} 
               wallets={wallets} 
               skills={skills} 
+              monthlyThemes={monthlyThemes}
               newMessage={newChatMessage} 
               chatHistory={chatHistory}
               onUpdateHistory={handleUpdateChatHistory}
@@ -534,7 +534,7 @@ const App: React.FC = () => {
         onClose={() => setIsControlCenterOpen(false)}
         saveStatus={saveStatus}
         fetchStatus={fetchStatus}
-        onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
+        onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
         onRefreshClick={() => loadData()}
         appSettings={appSettings}
         setAppSettings={setAppSettings}

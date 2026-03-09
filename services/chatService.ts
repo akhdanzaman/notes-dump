@@ -16,6 +16,7 @@ export const generateChatResponse = async (
     budgetConfig: BudgetConfig,
     wallets: Wallet[],
     skills: Skill[],
+    monthlyThemes: Record<string, string>,
     chatModel?: string
 ): Promise<string> => {
     const apiKey = getGeminiKey();
@@ -31,13 +32,16 @@ export const generateChatResponse = async (
 
     const systemInstruction = `
 You are an intelligent assistant for a personal productivity and finance app called BrainDump AI.
-You have access to the user's data, including their notes, todos, finances, skills, and wallets.
+You have access to the user's data, including their notes, todos, finances, skills, wallets, and monthly themes.
 Answer the user's questions based on this data. Be concise, helpful, and friendly.
-If the user asks for advice or suggestions, provide them based on their data.
+If the user asks for advice or suggestions, provide them based on their data. Pay special attention to their monthly themes, as they represent the user's overarching goals and focus for each month. Use these themes to guide your advice and insights.
 If the user asks about something not in the data, answer generally but remind them you are looking at their app data.
 
 Here is the user's current data context (in JSON format):
 ---
+MONTHLY THEMES:
+${JSON.stringify(monthlyThemes, null, 2)}
+
 ITEMS (Last 200):
 ${JSON.stringify(recentItems.map(i => ({ type: i.type, content: i.content, status: i.status, meta: i.meta, created_at: i.created_at, completed_at: i.completed_at })), null, 2)}
 

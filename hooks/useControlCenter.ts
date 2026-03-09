@@ -142,11 +142,6 @@ export const useControlCenter = ({
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            // Validate origin is from AI Studio preview or localhost
-            const origin = event.origin;
-            if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
-                return;
-            }
             if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data.tokens) {
                 handleGoogleLoginSuccess(event.data.tokens);
             }
@@ -225,7 +220,7 @@ export const useControlCenter = ({
                     saveSpreadsheetConfig(newConfig);
                     setSpreadsheetConfig(newConfig);
                     setSpreadsheetLink(newConfig.spreadsheetUrl);
-                    // alert(`Welcome back, ${profile.name}! Settings synced from cloud.`);
+                    alert(`Welcome back, ${profile.name}! Settings synced from cloud.`);
                 }
                 
                 if (cloudConfig.theme) {
@@ -255,15 +250,16 @@ export const useControlCenter = ({
                         spreadsheetUrl: currentSpreadsheetLink,
                         theme: localAppSettingsRef.current.theme
                     }, token);
+                    alert(`Welcome, ${profile.name}! Your current spreadsheet has been linked to your account.`);
                 } else {
                     // Just save the token for future use (we need a dummy config or just store it separately)
                     // For now, we wait for user to enter spreadsheet link
-                    // alert(`Welcome, ${profile.name}! Please enter your spreadsheet link to finish setup.`);
+                    alert(`Welcome, ${profile.name}! Please enter your spreadsheet link below to finish setup.`);
                 }
             }
         } catch (error) {
             console.error("Profile sync error:", error);
-            // alert("Failed to sync profile data.");
+            alert("Failed to sync profile data. Please check your connection or try again.");
         } finally {
             setIsSyncingProfile(false);
             // Trigger refresh to update UI
@@ -291,19 +287,19 @@ export const useControlCenter = ({
             }
         } catch (error) {
             console.error('Login error:', error);
-            // alert('Failed to start login process.');
+            alert('Failed to start login process.');
         }
     };
 
     const handleConnectSpreadsheet = async () => {
         if (!spreadsheetLink) {
-            // alert("Please enter a spreadsheet link first.");
+            alert("Please enter a spreadsheet link first.");
             return;
         }
         
         const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
         if (!match) {
-            // alert("Invalid spreadsheet link. Please make sure it contains /d/SPREADSHEET_ID");
+            alert("Invalid spreadsheet link. Please make sure it contains /d/SPREADSHEET_ID");
             return;
         }
 
@@ -313,7 +309,7 @@ export const useControlCenter = ({
         if (!session) {
             // If we have a profile but no session, something is wrong (likely expired)
             if (googleProfile) {
-                // alert("Your session has expired. Please sign in again to connect your spreadsheet.");
+                alert("Your session has expired. Please sign in again to connect your spreadsheet.");
             }
             handleGoogleLogin();
             return;
@@ -339,10 +335,10 @@ export const useControlCenter = ({
                     theme: localAppSettings.theme
                 }, token);
             }
-            // alert("Spreadsheet connected and settings saved to Google Drive.");
+            alert("Spreadsheet connected and settings saved to Google Drive.");
         } catch (e) {
             console.warn("Failed to sync to Drive", e);
-            // alert("Spreadsheet connected locally, but failed to sync to Google Drive.");
+            alert("Spreadsheet connected locally, but failed to sync to Google Drive.");
         }
         
         onSyncClick(false);
