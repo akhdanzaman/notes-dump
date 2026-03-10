@@ -149,32 +149,33 @@ const App: React.FC = () => {
   }, [appSettings.theme]);
 
   // --- Keyboard Detection Effect ---
-  useEffect(() => {
-    // We assume the initial height is the "keyboard closed" state
-    const initialHeight = window.innerHeight;
-    
-    const handleResize = () => {
-        // Only trigger if an input is focused (simple optimization to avoid calc on scroll-hide address bars)
-        const isFocused = document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT';
-        
-        if (!isFocused) {
-            setIsMobileKeyboardOpen(false);
-            return;
-        }
+  const [viewportOffset, setViewportOffset] = useState(0);
 
-        const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        // If height is reduced by more than 150px (typical virtual keyboard height), assume it's open
-        const isKeyboardOpen = currentHeight < (initialHeight - 150);
-        
-        setIsMobileKeyboardOpen(isKeyboardOpen);
+  useEffect(() => {
+    const handleResize = () => {
+        if (window.visualViewport) {
+            // Calculate how much the visual viewport has been offset from the bottom of the layout viewport
+            // This happens when the keyboard pushes the visual viewport up, but the layout viewport remains the same height
+            const offset = window.innerHeight - (window.visualViewport.height + window.visualViewport.offsetTop);
+            setViewportOffset(Math.max(0, offset));
+            
+            // Also update keyboard open state based on visual viewport height vs screen height
+            const isKeyboardOpen = window.visualViewport.height < window.screen.height * 0.75;
+            setIsMobileKeyboardOpen(isKeyboardOpen);
+        }
     };
 
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', handleResize);
-    window.addEventListener('resize', handleResize);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', handleResize);
+        window.visualViewport.addEventListener('scroll', handleResize);
+        handleResize(); // Initial check
+    }
     
     return () => {
-        if (window.visualViewport) window.visualViewport.removeEventListener('resize', handleResize);
-        window.removeEventListener('resize', handleResize);
+        if (window.visualViewport) {
+            window.visualViewport.removeEventListener('resize', handleResize);
+            window.visualViewport.removeEventListener('scroll', handleResize);
+        }
     };
   }, []);
 
@@ -570,7 +571,10 @@ const App: React.FC = () => {
       </main>
 
       {/* Fixed Bottom Layout */}
-      <div className="fixed bottom-0 w-full z-40 bg-transparent pointer-events-none">
+      <div 
+        className="fixed bottom-0 w-full z-40 bg-transparent pointer-events-none"
+        style={{ bottom: `${viewportOffset}px` }}
+      >
           <FloatingChatBox 
               isOpen={isChatOpen} 
               onClose={() => setIsChatOpen(false)} 
