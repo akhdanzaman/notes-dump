@@ -1,4 +1,3 @@
-
 export enum ItemType {
   TODO = 'TODO',
   SHOPPING = 'SHOPPING',
@@ -17,12 +16,21 @@ export interface BudgetRule {
   id: string;
   name: string;
   percentage: number;
-  color: string; // tailwind color class e.g. 'bg-blue-500'
+  color: string;
 }
 
 export interface BudgetConfig {
   monthlyIncome: number;
   rules: BudgetRule[];
+}
+
+export interface ParsingTask {
+  id: string;
+  text: string;
+  status: 'pending' | 'failed' | 'success';
+  stage?: 'stage1' | 'stage2' | 'legacy';
+  error?: string;
+  createdAt: number;
 }
 
 export interface AppSettings {
@@ -33,6 +41,7 @@ export interface AppSettings {
   parsingModel?: string;
   chatModel?: string;
   insightModel?: string;
+  useProParser?: boolean;
 }
 
 export interface Skill {
@@ -40,7 +49,7 @@ export interface Skill {
   name: string;
   color: string;
   created_at: string;
-  weeklyTargetMinutes?: number; // Target in minutes per week
+  weeklyTargetMinutes?: number;
 }
 
 export interface Wallet {
@@ -53,48 +62,56 @@ export interface Wallet {
 
 export interface ItemMeta {
   date?: string;
+  dateTime?: string;
+  when?: 'today' | 'tomorrow' | 'yesterday' | 'next_weekday' | 'specific_date' | 'unspecified';
+
   tags?: string[];
-  quantity?: string; // specific for shopping
+  quantity?: string;
   shoppingCategory?: ShoppingCategory;
-  recurrenceDays?: number; // Number of days for routine items
-  targetDay?: string; // e.g. "Monday", "Sunday"
-  
-  // Routine Task specific
+  recurrenceDays?: number;
+  targetDay?: string;
+
   isRoutine?: boolean;
   routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  routineDaysOfWeek?: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
-  routineDaysOfMonth?: number[]; // 1-31
-  routineMonthsOfYear?: number[]; // 0-11
-  
-  // Finance specific
+  routineDaysOfWeek?: number[];
+  routineDaysOfMonth?: number[];
+  routineMonthsOfYear?: number[];
+
   amount?: number;
   currency?: string;
   financeType?: FinanceType;
-  paymentMethod?: string; // e.g., 'cash', 'paylater', 'transfer', 'QRIS BNI'
-  toWallet?: string; // Destination wallet for transfers
-  budgetCategory?: string; // Custom category ID or Name
-  commodity?: string; // Main expenditure category
-  subcommodity?: string; // Detailed sub-category
-  merchant?: string; // Merchant/Vendor name
+  paymentMethod?: string;
+  toWallet?: string;
+  budgetCategory?: string;
+  commodity?: string;
+  subcommodity?: string;
+  merchant?: string;
 
-  // Skill Growth specific
   durationMinutes?: number;
-  skillId?: string; // ID of the Skill
-  skillName?: string; // Temporary field for AI matching
+  skillId?: string;
+  skillName?: string;
 
-  // Task Progress specific
-  progress?: number; // 0-100
+  progress?: number;
   progressNotes?: string;
 
-  // Savings specific
   savedAmount?: number;
   savingGoalId?: string;
   dedicatedWalletId?: string;
 
-  // Routine History Tracking
   lastGeneratedHistoryId?: string;
   priority?: Priority;
   parsingError?: string;
+
+  // legacy compat
+  intent?: string;
+  targetId?: string;
+
+  // parser review
+  parserAction?: ParserAction;
+  parserEntityType?: ParserEntityType;
+  parserConfidence?: ParserConfidence;
+  parserNeedsReview?: boolean;
+  parserReviewReason?: string;
 }
 
 export interface BrainDumpItem {
@@ -105,12 +122,12 @@ export interface BrainDumpItem {
   created_at: string;
   completed_at?: string;
   meta: ItemMeta;
-  isOptimistic?: boolean; // For UI state only, not saved to DB
+  isOptimistic?: boolean;
 }
 
 export interface ChatMessage {
-    role: 'user' | 'model';
-    text: string;
+  role: 'user' | 'model';
+  text: string;
 }
 
 export interface DbSchema {
@@ -120,21 +137,283 @@ export interface DbSchema {
   customPrompt?: string;
   skills?: Skill[];
   wallets?: Wallet[];
-  monthlyThemes?: Record<string, string>; // Key: "YYYY-MM", Value: "Theme Content"
+  monthlyThemes?: Record<string, string>;
   chatHistory?: ChatMessage[];
 }
 
-// For Github API responses
 export interface GitHubFileResponse {
   content: string;
   sha: string;
   encoding: string;
 }
 
-// --- UI Types moved from App.tsx ---
 export type Tab = 'summary' | 'focus' | 'shopping' | 'notes' | 'money';
 export type FocusSubTab = 'tasks' | 'skills';
 export type NotesSubTab = 'general' | 'skills' | 'journal';
 export type SyncStatus = 'synced' | 'syncing' | 'saving' | 'error' | 'local';
 export type MoneyView = 'transactions' | 'budget' | 'wallets';
 export type SortOrder = 'newest' | 'oldest' | 'highest_amount' | 'lowest_amount';
+
+/* =========================================================
+   Native Parser V2 Types
+   ========================================================= */
+
+export type ParsedItemType =
+  | 'TODO'
+  | 'SHOPPING'
+  | 'NOTE'
+  | 'EVENT'
+  | 'FINANCE'
+  | 'SKILL_LOG'
+  | 'JOURNAL';
+
+export type ParsedWalletType = 'cash' | 'bank' | 'ewallet' | 'cc' | 'other';
+
+export type ParserAction =
+  | 'create_item'
+  | 'update_item'
+  | 'complete_item'
+  | 'delete_item'
+  | 'create_skill'
+  | 'update_skill'
+  | 'create_wallet'
+  | 'update_wallet'
+  | 'create_theme'
+  | 'update_theme'
+  | 'transfer_money'
+  | 'add_saving_funds'
+  | 'query_only'
+  | 'unknown';
+
+export type ParserEntityType =
+  | 'todo'
+  | 'shopping'
+  | 'note'
+  | 'event'
+  | 'finance'
+  | 'skill_log'
+  | 'journal'
+  | 'skill'
+  | 'wallet'
+  | 'theme'
+  | 'saving_goal'
+  | 'unknown';
+
+export type ParserConfidence = 'low' | 'medium' | 'high';
+
+export interface ParserEntityRefs {
+  itemId?: string;
+  itemName?: string;
+  walletId?: string;
+  walletName?: string;
+  toWalletId?: string;
+  toWalletName?: string;
+  skillId?: string;
+  skillName?: string;
+  savingGoalId?: string;
+  savingGoalName?: string;
+  themeMonthKey?: string;
+}
+
+export interface ParsedItemMetaV2 {
+  date?: string;
+  dateTime?: string;
+  when?: 'today' | 'tomorrow' | 'yesterday' | 'next_weekday' | 'specific_date' | 'unspecified';
+
+  tags?: string[];
+  quantity?: string;
+  priority?: Priority;
+
+  shoppingCategory?: ShoppingCategory;
+
+  amount?: number;
+  currency?: string;
+
+  financeType?: FinanceType;
+  paymentMethod?: string;
+  toWallet?: string;
+  budgetCategory?: string;
+  commodity?: string;
+  subcommodity?: string;
+  merchant?: string;
+
+  durationMinutes?: number;
+  skillName?: string;
+  skillId?: string;
+
+  progress?: number;
+  progressNotes?: string;
+
+  savingGoalId?: string;
+  savingGoalName?: string;
+  dedicatedWalletId?: string;
+  dedicatedWalletName?: string;
+  savedAmount?: number;
+
+  isRoutine?: boolean;
+  routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  routineDaysOfWeek?: number[];
+  routineDaysOfMonth?: number[];
+  routineMonthsOfYear?: number[];
+  recurrenceDays?: number;
+  targetDay?: string;
+}
+
+export interface CreateItemPayload {
+  itemType: ParsedItemType;
+  content: string;
+  status?: 'pending' | 'done';
+  meta: ParsedItemMetaV2;
+}
+
+export interface UpdateItemPayload {
+  match?: {
+    itemId?: string;
+    itemName?: string;
+  };
+  changes?: Partial<{
+    content: string;
+    status: 'pending' | 'done';
+    priority: Priority;
+    date: string;
+    amount: number;
+    tags: string[];
+    shoppingCategory: ShoppingCategory;
+    financeType: FinanceType;
+    paymentMethod: string;
+    toWallet: string;
+    budgetCategory: string;
+    commodity: string;
+    subcommodity: string;
+    merchant: string;
+    quantity: string;
+    durationMinutes: number;
+    skillName: string;
+    progress: number;
+    progressNotes: string;
+    isRoutine: boolean;
+    routineInterval: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    routineDaysOfWeek: number[];
+    routineDaysOfMonth: number[];
+    routineMonthsOfYear: number[];
+    recurrenceDays: number;
+    targetDay: string;
+  }>;
+}
+
+export interface CompleteItemPayload {
+  match?: {
+    itemId?: string;
+    itemName?: string;
+  };
+  completedAt?: string;
+}
+
+export interface DeleteItemPayload {
+  match?: {
+    itemId?: string;
+    itemName?: string;
+  };
+}
+
+export interface CreateSkillPayload {
+  name?: string;
+  targetHours?: number;
+  targetMinutes?: number;
+  period?: 'daily' | 'weekly' | 'monthly';
+  tags?: string[];
+  notes?: string;
+}
+
+export interface UpdateSkillPayload {
+  match?: {
+    skillId?: string;
+    skillName?: string;
+  };
+  changes?: Partial<{
+    name: string;
+    targetHours: number;
+    targetMinutes: number;
+    period: 'daily' | 'weekly' | 'monthly';
+    tags: string[];
+    notes: string;
+  }>;
+}
+
+export interface CreateWalletPayload {
+  name?: string;
+  walletType?: ParsedWalletType;
+  initialBalance?: number;
+  currency?: string;
+  isDebtAccount?: boolean;
+  notes?: string;
+}
+
+export interface UpdateWalletPayload {
+  match?: {
+    walletId?: string;
+    walletName?: string;
+  };
+  changes?: Partial<{
+    name: string;
+    walletType: ParsedWalletType;
+    initialBalance: number;
+    currency: string;
+    isDebtAccount: boolean;
+    notes: string;
+  }>;
+}
+
+export interface ThemePayload {
+  monthKey?: string;
+  content?: string;
+}
+
+export interface TransferMoneyPayload {
+  amount?: number;
+  fromWallet?: string;
+  toWallet?: string;
+  date?: string;
+  note?: string;
+}
+
+export interface AddSavingFundsPayload {
+  savingGoalName?: string;
+  savingGoalId?: string;
+  amount?: number;
+  fromWallet?: string;
+  date?: string;
+  note?: string;
+  budgetCategory?: string;
+}
+
+export interface QueryOnlyPayload {
+  question?: string;
+  scope?: 'dashboard' | 'focus' | 'money' | 'notes' | 'shopping' | 'skills' | 'general';
+}
+
+export type ParserPayloadV2 =
+  | CreateItemPayload
+  | UpdateItemPayload
+  | CompleteItemPayload
+  | DeleteItemPayload
+  | CreateSkillPayload
+  | UpdateSkillPayload
+  | CreateWalletPayload
+  | UpdateWalletPayload
+  | ThemePayload
+  | TransferMoneyPayload
+  | AddSavingFundsPayload
+  | QueryOnlyPayload;
+
+export interface ParserResultV2 {
+  action: ParserAction;
+  entityType: ParserEntityType;
+  content?: string;
+  targetText?: string;
+  confidence: ParserConfidence;
+  needsReview: boolean;
+  reviewReason?: string;
+  entityRefs?: ParserEntityRefs;
+  payload?: ParserPayloadV2;
+}

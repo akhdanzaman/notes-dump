@@ -28,7 +28,7 @@ export const generateAIInsights = async (
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const activeModel = insightModel || 'gemini-3.1-flash-preview';
+  const activeModel = insightModel || 'gemini-3-flash-preview';
   
   // Aggregate data
   const now = new Date();

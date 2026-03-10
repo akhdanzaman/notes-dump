@@ -37,8 +37,8 @@ const App: React.FC = () => {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
-      loading, error, pendingCount, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote
+      loading, error, pendingCount, parsingTasks, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
+      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing
   } = useBrainDumpData();
 
   // --- UI State ---
@@ -640,6 +640,8 @@ const App: React.FC = () => {
         setAppSettings={setAppSettings}
         error={error}
         pendingCount={pendingCount}
+        parsingTasks={parsingTasks}
+        retryParsing={retryParsing}
         onSave={handleSettingsSaved}
         currentBudgetConfig={budgetConfig}
         currentPrompt={customPrompt}
