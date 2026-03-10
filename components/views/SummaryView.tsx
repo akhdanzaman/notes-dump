@@ -1,14 +1,44 @@
-
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    ChevronLeft, ChevronRight, Pencil, Target, CheckCircle2, 
-    ShoppingCart, AlertTriangle, ArrowRight, Wallet as WalletIcon, 
-    EyeOff, Eye, ArrowUpRight, ArrowDownRight, Sprout, StickyNote,
-    Plus, Zap, Coffee, TrendingUp, RefreshCw, ChevronDown
+import { createPortal } from 'react-dom';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Pencil,
+    Target,
+    CheckCircle2,
+    ShoppingCart,
+    AlertTriangle,
+    ArrowRight,
+    Wallet as WalletIcon,
+    EyeOff,
+    Eye,
+    Sprout,
+    StickyNote,
+    Plus,
+    Zap,
+    Coffee,
+    RefreshCw,
+    ChevronDown
 } from 'lucide-react';
-import { BrainDumpItem, Skill, Wallet, BudgetConfig, ItemType, Tab, FinanceType, Priority, ShoppingCategory, AppSettings } from '../../types';
-import { getFocusMonthData, getSkillItems, getShoppingItems, getWalletStats, getFinanceItems, generateInsights } from '../../utils/selectors';
+import {
+    BrainDumpItem,
+    Skill,
+    Wallet,
+    BudgetConfig,
+    Tab,
+    FinanceType,
+    Priority,
+    ShoppingCategory,
+    AppSettings
+} from '../../types';
+import {
+    getFocusMonthData,
+    getShoppingItems,
+    getWalletStats,
+    getFinanceItems,
+    generateInsights
+} from '../../utils/selectors';
 import { generateAIInsights, Insight } from '../../services/insightService';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
@@ -29,33 +59,32 @@ interface SummaryViewProps {
     setFocusSubTab: (tab: any) => void;
     showBalance: boolean;
     setShowBalance: (val: boolean) => void;
-    
-    // Handlers for Quick Actions
+
     handleOpenAddTask: (date?: string) => void;
     handleOpenAddShopping: (category?: ShoppingCategory) => void;
     handleOpenAddExpense: () => void;
     handleOpenAddNote: () => void;
     handleUpdateItem: (
-        id: string, 
-        content: string, 
-        tags: string[], 
-        amount?: number, 
-        date?: string, 
-        paymentMethod?: string, 
-        budgetCategory?: string, 
-        duration?: number, 
-        skillId?: string, 
-        toWallet?: string, 
-        financeType?: FinanceType, 
-        progress?: number, 
-        progressNotes?: string, 
-        shoppingCategory?: any, 
-        recurrenceDays?: number, 
-        quantity?: string, 
-        isRoutine?: boolean, 
-        routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly', 
-        routineDaysOfWeek?: number[], 
-        routineDaysOfMonth?: number[], 
+        id: string,
+        content: string,
+        tags: string[],
+        amount?: number,
+        date?: string,
+        paymentMethod?: string,
+        budgetCategory?: string,
+        duration?: number,
+        skillId?: string,
+        toWallet?: string,
+        financeType?: FinanceType,
+        progress?: number,
+        progressNotes?: string,
+        shoppingCategory?: any,
+        recurrenceDays?: number,
+        quantity?: string,
+        isRoutine?: boolean,
+        routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+        routineDaysOfWeek?: number[],
+        routineDaysOfMonth?: number[],
         routineMonthsOfYear?: number[],
         savingGoalId?: string,
         dedicatedWalletId?: string,
@@ -64,18 +93,37 @@ interface SummaryViewProps {
     handleDelete: (id: string) => void;
 }
 
+type PopupPosition = {
+    top: number;
+    left: number;
+    width: number;
+    transformOrigin: string;
+};
+
 const SummaryView: React.FC<SummaryViewProps> = ({
-    items, skills, wallets, budgetConfig, appSettings,
-    themeNavDate, setThemeNavDate, monthlyThemes, onThemeEdit,
-    handleToggleStatus, setActiveTab, setFocusSubTab,
-    showBalance, setShowBalance,
-    handleOpenAddTask, handleOpenAddShopping, handleOpenAddExpense, handleOpenAddNote,
-    handleUpdateItem, handleDelete
+    items,
+    skills,
+    wallets,
+    budgetConfig,
+    appSettings,
+    themeNavDate,
+    setThemeNavDate,
+    monthlyThemes,
+    onThemeEdit,
+    handleToggleStatus,
+    setActiveTab,
+    setFocusSubTab,
+    showBalance,
+    setShowBalance,
+    handleOpenAddTask,
+    handleOpenAddShopping,
+    handleOpenAddExpense,
+    handleOpenAddNote,
+    handleUpdateItem,
+    handleDelete
 }) => {
-    // Swipe Logic
     const swipeHandlers = useSwipeTabs('summary', setActiveTab);
 
-    // Date Swipe Logic
     const changeThemeMonth = (offset: number) => {
         const newDate = new Date(themeNavDate);
         newDate.setMonth(newDate.getMonth() + offset);
@@ -87,104 +135,107 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         () => changeThemeMonth(1)
     );
 
-    // --- Data Calculation ---
-    
-    // 1. Main Display Logic (Fallback Priority)
     const todayDate = new Date();
     const { pendingGroups } = getFocusMonthData(items, todayDate, '', '');
     const { urgent } = getShoppingItems(items);
-    
-    const { displayItems, displayTitle, displaySubtitle, isDoneState, icon: DisplayIcon } = useMemo(() => {
-        // 1. Today's Focus (Tasks + Urgent Shopping)
+
+    const { displayItems, displayTitle, displaySubtitle, isDoneState } = useMemo(() => {
         const todayItems = [
             ...urgent.map(i => ({ ...i, _isUrgentShopping: true })),
             ...pendingGroups.today
         ];
+
         if (todayItems.length > 0) {
-            return { 
-                displayItems: todayItems.slice(0, 5), 
+            return {
+                displayItems: todayItems.slice(0, 5),
                 displayTitle: "Today's Focus",
                 displaySubtitle: null,
-                isDoneState: false,
-                icon: <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
+                isDoneState: false
             };
         }
 
-        // 2. Tomorrow
         if (pendingGroups.tomorrow.length > 0) {
-            return { 
-                displayItems: pendingGroups.tomorrow.slice(0, 5), 
-                displayTitle: "Tomorrow",
+            return {
+                displayItems: pendingGroups.tomorrow.slice(0, 5),
+                displayTitle: 'Tomorrow',
                 displaySubtitle: "Get a head start on tomorrow's tasks.",
-                isDoneState: false,
-                icon: <ArrowRight className="w-5 h-5 text-blue-500" />
+                isDoneState: false
             };
         }
 
-        // 3. Routine
         const pendingRoutines = pendingGroups.routines.filter(r => r.status === 'pending');
         if (pendingRoutines.length > 0) {
-            return { 
-                displayItems: pendingRoutines.slice(0, 5), 
-                displayTitle: "Daily Rituals",
-                displaySubtitle: "Keep your momentum going.",
-                isDoneState: false,
-                icon: <Coffee className="w-5 h-5 text-indigo-500" />
+            return {
+                displayItems: pendingRoutines.slice(0, 5),
+                displayTitle: 'Daily Rituals',
+                displaySubtitle: 'Keep your momentum going.',
+                isDoneState: false
             };
         }
 
-        // 4. Later
         if (pendingGroups.later.length > 0) {
-            return { 
-                displayItems: pendingGroups.later.slice(0, 5), 
-                displayTitle: "Upcoming",
-                displaySubtitle: "Tasks waiting for your attention.",
-                isDoneState: false,
-                icon: <Target className="w-5 h-5 text-purple-500" />
+            return {
+                displayItems: pendingGroups.later.slice(0, 5),
+                displayTitle: 'Upcoming',
+                displaySubtitle: 'Tasks waiting for your attention.',
+                isDoneState: false
             };
         }
 
-        // 5. Recent Done
         const recentDone = items
             .filter(i => i.type === 'TODO' && i.status === 'done' && i.completed_at)
             .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
             .slice(0, 3);
-            
+
         if (recentDone.length > 0) {
-            return { 
-                displayItems: recentDone, 
-                displayTitle: "Recently Completed",
+            return {
+                displayItems: recentDone,
+                displayTitle: 'Recently Completed',
                 displaySubtitle: "Great job! You're all caught up.",
-                isDoneState: true,
-                icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                isDoneState: true
             };
         }
 
-        return { 
-            displayItems: [], 
-            displayTitle: "All Clear",
-            displaySubtitle: "Take a break or plan ahead.",
-            isDoneState: false,
-            icon: <CheckCircle2 className="w-5 h-5 text-zinc-400" />
+        return {
+            displayItems: [],
+            displayTitle: 'All Clear',
+            displaySubtitle: 'Take a break or plan ahead.',
+            isDoneState: false
         };
     }, [items, pendingGroups, urgent]);
 
-    // 2. Daily Rituals (Routines) - Only show if not already displayed in the main list
     const pendingRoutines = pendingGroups.routines.filter(r => r.status === 'pending');
-    const showRitualsSection = pendingRoutines.length > 0 && displayTitle !== "Daily Rituals";
+    const showRitualsSection = pendingRoutines.length > 0 && displayTitle !== 'Daily Rituals';
 
-    // 3. Financial Snapshot
-    // Use current month for financial snapshot
-    const { totalExpense } = getFinanceItems(items, todayDate, budgetConfig, '', '', '', '', '', '', '', 'newest');
+    const { totalExpense } = getFinanceItems(
+        items,
+        todayDate,
+        budgetConfig,
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        'newest'
+    );
     const { totalNetWorth } = getWalletStats(items, wallets);
-    
-    // Calculate Total Budget Limits based on Rules
-    const totalLimits = budgetConfig.rules.reduce((acc, rule) => acc + (rule.percentage / 100) * budgetConfig.monthlyIncome, 0);
 
-    const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+    const totalLimits = budgetConfig.rules.reduce(
+        (acc, rule) => acc + (rule.percentage / 100) * budgetConfig.monthlyIncome,
+        0
+    );
+
+    const fmt = (n: number) =>
+        new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            maximumFractionDigits: 0
+        }).format(n);
+
     const budgetPercent = totalLimits > 0 ? Math.min(100, (totalExpense / totalLimits) * 100) : 0;
 
-    // 4. Theme Data
     const getThemeForDate = (date: Date) => {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -193,50 +244,145 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     };
 
     const { content: themeContent } = getThemeForDate(themeNavDate);
-    
-    // 5. Insights
-    const localInsights = useMemo(() => generateInsights(items, budgetConfig, wallets, skills), [items, budgetConfig, wallets, skills]);
-    
+
+    const localInsights = useMemo(
+        () => generateInsights(items, budgetConfig, wallets, skills),
+        [items, budgetConfig, wallets, skills]
+    );
+
     const [aiInsights, setAiInsights] = useState<Insight[]>(() => {
         const saved = localStorage.getItem('braindump_ai_insights');
         if (saved) {
             try {
                 return JSON.parse(saved);
-            } catch (e) {
+            } catch {
                 return [];
             }
         }
         return [];
     });
+
     const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-    const [isInsightsCollapsed, setIsInsightsCollapsed] = useState(true);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [hasNewNotification, setHasNewNotification] = useState(() => {
+        return localStorage.getItem('braindump_has_new_notification') === 'true';
+    });
+
+    const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
+    const popupRef = useRef<HTMLDivElement | null>(null);
+
+    const [popupPosition, setPopupPosition] = useState<PopupPosition>({
+        top: 72,
+        left: 16,
+        width: 380,
+        transformOrigin: 'top right'
+    });
+
+    const updatePopupPosition = () => {
+        const buttonEl = notificationButtonRef.current;
+        if (!buttonEl) return;
+
+        const rect = buttonEl.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        const horizontalMargin = 16;
+        const verticalGap = 8;
+        const popupOffsetY = -6;
+        const preferredWidth = 380;
+        const minWidth = 280;
+
+        const width = Math.min(
+            preferredWidth,
+            Math.max(minWidth, viewportWidth - horizontalMargin * 2)
+        );
+
+        let left = rect.right - width;
+        left = Math.max(horizontalMargin, left);
+        left = Math.min(left, viewportWidth - width - horizontalMargin);
+
+        const estimatedHeight = Math.min(480, viewportHeight * 0.6);
+
+
+        let top = rect.bottom + verticalGap + popupOffsetY;
+
+        if (top + estimatedHeight > viewportHeight - 16) {
+            top = Math.max(16, rect.top - estimatedHeight - verticalGap);
+        }
+
+        const originX = Math.min(width - 24, Math.max(24, rect.right - left - rect.width / 2));
+        const originY = top > rect.top ? 0 : estimatedHeight;
+
+        setPopupPosition({
+            top,
+            left,
+            width,
+            transformOrigin: `${originX}px ${originY}px`
+        });
+    };
 
     const fetchAIInsights = async (force = false) => {
-        // Check if we already fetched today
         const lastFetched = localStorage.getItem('braindump_ai_insights_date');
         const today = new Date().toDateString();
-        
+
         if (!force && (!appSettings.enableDailyInsight || lastFetched === today)) {
             return;
         }
 
         setIsLoadingInsights(true);
-        const generated = await generateAIInsights(items, budgetConfig, wallets, skills, appSettings.insightModel);
+        const generated = await generateAIInsights(
+            items,
+            budgetConfig,
+            wallets,
+            skills,
+            appSettings.insightModel
+        );
+
         if (generated.length > 0) {
             setAiInsights(generated);
             localStorage.setItem('braindump_ai_insights', JSON.stringify(generated));
             localStorage.setItem('braindump_ai_insights_date', today);
+            setHasNewNotification(true);
+            localStorage.setItem('braindump_has_new_notification', 'true');
         }
+
         setIsLoadingInsights(false);
     };
 
+    const handleOpenNotification = () => {
+        updatePopupPosition();
+        setIsNotificationOpen(true);
+        setHasNewNotification(false);
+        localStorage.setItem('braindump_has_new_notification', 'false');
+    };
+
+    const handleCloseNotification = () => {
+        setIsNotificationOpen(false);
+    };
+
+    useLayoutEffect(() => {
+        if (!isNotificationOpen) return;
+
+        updatePopupPosition();
+
+        const handleWindowChange = () => {
+            updatePopupPosition();
+        };
+
+        window.addEventListener('resize', handleWindowChange);
+        window.addEventListener('scroll', handleWindowChange, true);
+
+        return () => {
+            window.removeEventListener('resize', handleWindowChange);
+            window.removeEventListener('scroll', handleWindowChange, true);
+        };
+    }, [isNotificationOpen]);
+
     useEffect(() => {
-        // Only fetch if there are items to analyze
         if (items.length > 0) {
             fetchAIInsights();
         }
 
-        // Check for day change periodically (every 1 hour)
         const intervalId = setInterval(() => {
             if (items.length > 0) {
                 fetchAIInsights();
@@ -248,7 +394,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     const displayInsights = aiInsights.length > 0 ? aiInsights : localInsights;
 
-    // Card Props for reuse
     const cardProps = {
         onToggleStatus: handleToggleStatus,
         onUpdate: handleUpdateItem,
@@ -258,16 +403,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         skills,
         wallets,
         budgetRules: budgetConfig.rules,
-        onResetRoutine: (id: string) => {} // Not needed for simple view
+        onResetRoutine: (id: string) => {}
     };
 
     return (
         <div className="pb-24">
-            {/* Top Container (Theme & Date) */}
-            <motion.div 
+            <motion.div
                 layoutId="top-container"
                 className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-6 touch-pan-y"
-                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
                 onTouchEnd={swipeHandlers.onTouchEnd}
@@ -277,42 +421,89 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2, ease: "linear" }}
+                    transition={{ duration: 0.2, ease: 'linear' }}
                 >
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2 text-sm font-bold opacity-60 uppercase tracking-wider">
                             <div className="w-2 h-2 rounded-full bg-black"></div>
                             Dashboard
                         </div>
-                        <div 
-                            className="flex items-center bg-black/5 rounded-full p-1 touch-pan-y"
-                            onTouchStart={dateSwipeHandlers.onTouchStart}
-                            onTouchMove={dateSwipeHandlers.onTouchMove}
-                            onTouchEnd={dateSwipeHandlers.onTouchEnd}
-                        >
-                            <button onClick={() => changeThemeMonth(-1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronLeft className="w-4 h-4" /></button>
-                            <AnimatePresence mode="wait">
-                                <motion.span 
-                                    key={themeNavDate.toISOString()}
-                                    initial={{ opacity: 0, x: 10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -10 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="px-2 text-sm font-bold min-w-[80px] text-center"
+
+                        <div className="flex items-center gap-2">
+                            <div
+                                className="flex items-center bg-black/5 rounded-full p-1 touch-pan-y"
+                                onTouchStart={dateSwipeHandlers.onTouchStart}
+                                onTouchMove={dateSwipeHandlers.onTouchMove}
+                                onTouchEnd={dateSwipeHandlers.onTouchEnd}
+                            >
+                                <button
+                                    onClick={() => changeThemeMonth(-1)}
+                                    className="p-2 hover:bg-black/5 rounded-full"
                                 >
-                                    {themeNavDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-                                </motion.span>
-                            </AnimatePresence>
-                            <button onClick={() => changeThemeMonth(1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronRight className="w-4 h-4" /></button>
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+
+                                <AnimatePresence mode="wait">
+                                    <motion.span
+                                        key={themeNavDate.toISOString()}
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -10 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="px-2 text-sm font-bold min-w-[80px] text-center"
+                                    >
+                                        {themeNavDate.toLocaleDateString(undefined, {
+                                            month: 'short',
+                                            year: 'numeric'
+                                        })}
+                                    </motion.span>
+                                </AnimatePresence>
+
+                                <button
+                                    onClick={() => changeThemeMonth(1)}
+                                    className="p-2 hover:bg-black/5 rounded-full"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <button
+                                ref={notificationButtonRef}
+                                onClick={handleOpenNotification}
+                                className="relative flex items-center justify-center bg-black/5 rounded-full h-[36px] w-[36px] hover:bg-black/10 transition-colors"
+                                aria-label="Open notifications"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                                </svg>
+
+                                {hasNewNotification && (
+                                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-zinc-100"></span>
+                                )}
+                            </button>
                         </div>
                     </div>
-                    
+
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                             <h1 className="text-3xl font-bold mb-1 tracking-tight leading-tight">
-                                {themeContent ? `"${themeContent}"` : "Set a theme..."}
+                                {themeContent ? `"${themeContent}"` : 'Set a theme...'}
                             </h1>
-                            <button onClick={() => onThemeEdit(themeContent)} className="text-sm font-medium opacity-50 hover:opacity-100 flex items-center gap-1 mt-2">
+                            <button
+                                onClick={() => onThemeEdit(themeContent)}
+                                className="text-sm font-medium opacity-50 hover:opacity-100 flex items-center gap-1 mt-2"
+                            >
                                 <Pencil className="w-3 h-3" /> Edit Theme
                             </button>
                         </div>
@@ -320,34 +511,48 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 </motion.div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
                 className="px-4 space-y-8"
             >
-                {/* 1. Quick Actions */}
                 <section>
                     <div className="grid grid-cols-4 gap-3">
-                        <button onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} className="flex flex-col items-center gap-2 group">
+                        <button
+                            onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
+                            className="flex flex-col items-center gap-2 group"
+                        >
                             <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center shadow-lg shadow-black/20 group-active:scale-95 transition-transform">
                                 <Plus className="w-6 h-6" />
                             </div>
                             <span className="text-xs font-medium opacity-70">Task</span>
                         </button>
-                        <button onClick={() => handleOpenAddShopping()} className="flex flex-col items-center gap-2 group">
+
+                        <button
+                            onClick={() => handleOpenAddShopping()}
+                            className="flex flex-col items-center gap-2 group"
+                        >
                             <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
                                 <ShoppingCart className="w-6 h-6" />
                             </div>
                             <span className="text-xs font-medium opacity-70">Buy</span>
                         </button>
-                        <button onClick={handleOpenAddNote} className="flex flex-col items-center gap-2 group">
+
+                        <button
+                            onClick={handleOpenAddNote}
+                            className="flex flex-col items-center gap-2 group"
+                        >
                             <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
                                 <StickyNote className="w-6 h-6" />
                             </div>
                             <span className="text-xs font-medium opacity-70">Note</span>
                         </button>
-                        <button onClick={handleOpenAddExpense} className="flex flex-col items-center gap-2 group">
+
+                        <button
+                            onClick={handleOpenAddExpense}
+                            className="flex flex-col items-center gap-2 group"
+                        >
                             <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
                                 <WalletIcon className="w-6 h-6" />
                             </div>
@@ -356,7 +561,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
                 </section>
 
-                {/* 2. Dynamic Focus Section */}
                 <section>
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex flex-col">
@@ -364,14 +568,20 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                 {displayTitle}
                             </h2>
                             {displaySubtitle && (
-                                <p className="text-xs opacity-50 font-medium mt-0.5">{displaySubtitle}</p>
+                                <p className="text-xs opacity-50 font-medium mt-0.5">
+                                    {displaySubtitle}
+                                </p>
                             )}
                         </div>
-                        <button onClick={() => setActiveTab('focus')} className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider">
+
+                        <button
+                            onClick={() => setActiveTab('focus')}
+                            className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider"
+                        >
                             View All
                         </button>
                     </div>
-                    
+
                     {displayItems.length > 0 ? (
                         <div className={`space-y-3 ${isDoneState ? 'opacity-60 grayscale' : ''}`}>
                             {displayItems.map(item => (
@@ -386,17 +596,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     )}
                 </section>
 
-                {/* 3. Daily Rituals (Horizontal Scroll) */}
                 {showRitualsSection && (
                     <section>
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold flex items-center gap-2">
-                                Rituals
-                            </h2>
+                            <h2 className="text-lg font-bold flex items-center gap-2">Rituals</h2>
                         </div>
+
                         <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
                             {pendingRoutines.map(routine => (
-                                <button 
+                                <button
                                     key={routine.id}
                                     onClick={() => handleToggleStatus(routine.id)}
                                     className="flex-shrink-0 flex flex-col items-center gap-2 min-w-[72px]"
@@ -413,7 +621,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </section>
                 )}
 
-                {/* 4. Financial Snapshot */}
                 <section onClick={() => setActiveTab('money')} className="cursor-pointer group">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold flex items-center gap-2">
@@ -421,20 +628,30 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         </h2>
                         <ArrowRight className="w-4 h-4 opacity-30 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    
+
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white rounded-[24px] p-5 relative overflow-hidden shadow-sm">
                         <div className="absolute top-0 right-0 p-5 opacity-5 dark:opacity-10">
                             <WalletIcon className="w-24 h-24" />
                         </div>
-                        
+
                         <div className="relative z-10">
                             <div className="flex justify-between items-end mb-2">
                                 <div>
                                     <p className="text-sm font-medium opacity-60 mb-1">Net Worth</p>
                                     <div className="text-2xl font-bold flex items-center gap-2">
                                         {showBalance ? fmt(totalNetWorth) : '••••••••'}
-                                        <button onClick={(e) => { e.stopPropagation(); setShowBalance(!showBalance); }} className="opacity-50 hover:opacity-100">
-                                            {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        <button
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setShowBalance(!showBalance);
+                                            }}
+                                            className="opacity-50 hover:opacity-100"
+                                        >
+                                            {showBalance ? (
+                                                <EyeOff className="w-4 h-4" />
+                                            ) : (
+                                                <Eye className="w-4 h-4" />
+                                            )}
                                         </button>
                                     </div>
                                 </div>
@@ -446,10 +663,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                     <span>{budgetPercent.toFixed(0)}% of Budget</span>
                                 </div>
                                 <div className="h-2 bg-zinc-100 dark:bg-white/10 rounded-full overflow-hidden">
-                                    <div 
-                                        className={`h-full ${budgetPercent > 100 ? 'bg-red-500' : 'bg-emerald-500'}`} 
+                                    <div
+                                        className={`h-full ${
+                                            budgetPercent > 100 ? 'bg-red-500' : 'bg-emerald-500'
+                                        }`}
                                         style={{ width: `${budgetPercent}%` }}
-                                    ></div>
+                                    />
                                 </div>
                                 <div className="flex justify-between text-[10px] mt-1 opacity-50">
                                     <span>{fmt(totalExpense)}</span>
@@ -460,81 +679,116 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
                 </section>
 
-                {/* 5. Information */}
-                {displayInsights.length > 0 && (
-                    <section>
-                        <div className="flex items-center justify-between mb-4">
-                            <button 
-                                onClick={() => setIsInsightsCollapsed(!isInsightsCollapsed)}
-                                className="flex items-center gap-2 group"
-                            >
-                                <h2 className="text-lg font-bold flex items-center gap-2">
-                                    Information
-                                </h2>
-                                <motion.div
-                                    animate={{ rotate: isInsightsCollapsed ? -90 : 0 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <ChevronDown className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
-                                </motion.div>
-                            </button>
-                            <button 
-                                onClick={() => fetchAIInsights(true)} 
-                                disabled={isLoadingInsights}
-                                className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider flex items-center gap-1 disabled:opacity-30"
-                            >
-                                <RefreshCw className={`w-3 h-3 ${isLoadingInsights ? 'animate-spin' : ''}`} />
-                                {isLoadingInsights ? 'Refreshing...' : 'Refresh'}
-                            </button>
-                        </div>
-                        <AnimatePresence initial={false}>
-                            {!isInsightsCollapsed && (
-                                <motion.div 
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="space-y-3 pb-2">
-                                        {displayInsights?.map((insight, idx) => {
-                                            let bgColor = 'bg-zinc-100 dark:bg-zinc-800';
-                                            let iconColor = 'text-zinc-500';
-                                            let Icon = AlertTriangle;
+                {typeof window !== 'undefined' &&
+                    createPortal(
+                        <AnimatePresence>
+                            {isNotificationOpen && (
+                                <>
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={handleCloseNotification}
+                                        className="fixed inset-0 bg-black/30 z-[9998]"
+                                    />
 
-                                            if (insight.type === 'warning') {
-                                                bgColor = 'bg-red-50 dark:bg-red-900/20';
-                                                iconColor = 'text-red-500';
-                                                Icon = AlertTriangle;
-                                            } else if (insight.type === 'success') {
-                                                bgColor = 'bg-emerald-50 dark:bg-emerald-900/20';
-                                                iconColor = 'text-emerald-500';
-                                                Icon = CheckCircle2;
-                                            } else {
-                                                bgColor = 'bg-blue-50 dark:bg-blue-900/20';
-                                                iconColor = 'text-blue-500';
-                                                if (insight.iconType === 'task') Icon = Target;
-                                                else if (insight.iconType === 'finance') Icon = WalletIcon;
-                                                else if (insight.iconType === 'shopping') Icon = ShoppingCart;
-                                                else if (insight.iconType === 'skill') Icon = Sprout;
-                                            }
+                                    <motion.div
+                                        ref={popupRef}
+                                        initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                                        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                                        className="fixed bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl z-[9999] overflow-hidden flex flex-col max-h-[60vh]"
+                                        style={{
+                                            top: popupPosition.top,
+                                            left: popupPosition.left,
+                                            width: popupPosition.width,
+                                            transformOrigin: popupPosition.transformOrigin
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800">
+                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                                                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                                                </svg>
+                                                Notifications
+                                            </h3>
 
-                                            return (
-                                                <div key={idx} className={`p-4 rounded-2xl flex items-start gap-3 ${bgColor}`}>
-                                                    <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${iconColor}`} />
-                                                    <div>
-                                                        <h3 className="text-sm font-bold mb-0.5">{insight.title}</h3>
-                                                        <p className="text-xs opacity-70 leading-relaxed">{insight.message}</p>
-                                                    </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => fetchAIInsights(true)}
+                                                    disabled={isLoadingInsights}
+                                                    className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors disabled:opacity-50"
+                                                >
+                                                    <RefreshCw className={`w-4 h-4 ${isLoadingInsights ? 'animate-spin' : ''}`} />
+                                                </button>
+
+                                                <button
+                                                    onClick={handleCloseNotification}
+                                                    className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                                                >
+                                                    <ChevronDown className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 overflow-y-auto space-y-3">
+                                            {displayInsights.length > 0 ? (
+                                                displayInsights.map((insight, idx) => {
+                                                    let bgColor = 'bg-zinc-100 dark:bg-zinc-800';
+                                                    let iconColor = 'text-zinc-500';
+                                                    let Icon = AlertTriangle;
+
+                                                    if (insight.type === 'warning') {
+                                                        bgColor = 'bg-red-50 dark:bg-red-900/20';
+                                                        iconColor = 'text-red-500';
+                                                        Icon = AlertTriangle;
+                                                    } else if (insight.type === 'success') {
+                                                        bgColor = 'bg-emerald-50 dark:bg-emerald-900/20';
+                                                        iconColor = 'text-emerald-500';
+                                                        Icon = CheckCircle2;
+                                                    } else {
+                                                        bgColor = 'bg-blue-50 dark:bg-blue-900/20';
+                                                        iconColor = 'text-blue-500';
+                                                        if (insight.iconType === 'task') Icon = Target;
+                                                        else if (insight.iconType === 'finance') Icon = WalletIcon;
+                                                        else if (insight.iconType === 'shopping') Icon = ShoppingCart;
+                                                        else if (insight.iconType === 'skill') Icon = Sprout;
+                                                    }
+
+                                                    return (
+                                                        <div key={idx} className={`p-4 rounded-2xl flex items-start gap-3 ${bgColor}`}>
+                                                            <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${iconColor}`} />
+                                                            <div>
+                                                                <h3 className="text-sm font-bold mb-0.5">{insight.title}</h3>
+                                                                <p className="text-xs opacity-70 leading-relaxed">{insight.message}</p>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="text-center py-8 opacity-50">
+                                                    <p className="text-sm">No new notifications</p>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                </motion.div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                </>
                             )}
-                        </AnimatePresence>
-                    </section>
-                )}
+                        </AnimatePresence>,
+                        document.body
+                    )}
             </motion.div>
         </div>
     );
