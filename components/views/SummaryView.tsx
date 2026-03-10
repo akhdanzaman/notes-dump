@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
+import { BackHandler } from '../../utils/backHandler';
 import {
     ChevronLeft,
     ChevronRight,
@@ -267,6 +268,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const [hasNewNotification, setHasNewNotification] = useState(() => {
         return localStorage.getItem('braindump_has_new_notification') === 'true';
     });
+
+    useEffect(() => {
+        if (isNotificationOpen) {
+            return BackHandler.register(() => {
+                setIsNotificationOpen(false);
+                return true;
+            });
+        }
+    }, [isNotificationOpen]);
 
     const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
     const popupRef = useRef<HTMLDivElement | null>(null);

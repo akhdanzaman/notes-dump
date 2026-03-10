@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,6 +7,7 @@ import { useBrainDumpData } from './hooks/useBrainDumpData';
 import { getShoppingItems } from './utils/selectors';
 import { clearSpreadsheetConfig } from './services/spreadsheetService';
 import { clearGithubConfig } from './services/githubService';
+import { BackHandler } from './utils/backHandler';
 
 import InputBar from './components/InputBar';
 import SkillModal from './components/SkillModal';
@@ -176,6 +177,65 @@ const App: React.FC = () => {
         window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  // --- Back Handler Logic ---
+  const exitWarningRef = useRef(false);
+  const [showExitToast, setShowExitToast] = useState(false);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const handled = BackHandler.handle();
+      if (handled) {
+        window.history.pushState({ page: 'app' }, '', window.location.href);
+      } else {
+        if (!exitWarningRef.current) {
+          exitWarningRef.current = true;
+          setShowExitToast(true);
+          window.history.pushState({ page: 'app' }, '', window.location.href);
+          setTimeout(() => {
+            exitWarningRef.current = false;
+            setShowExitToast(false);
+          }, 2000);
+        } else {
+          window.history.back();
+        }
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        BackHandler.handle();
+      }
+    };
+
+    window.history.pushState({ page: 'app' }, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => { if (deleteId) return BackHandler.register(() => { setDeleteId(null); setDeleteType(null); return true; }); }, [deleteId]);
+  useEffect(() => { if (themeEditMode) return BackHandler.register(() => { setThemeEditMode(false); return true; }); }, [themeEditMode]);
+  useEffect(() => { if (skillModal.isOpen) return BackHandler.register(() => { setSkillModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [skillModal.isOpen]);
+  useEffect(() => { if (walletModal.isOpen) return BackHandler.register(() => { setWalletModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [walletModal.isOpen]);
+  useEffect(() => { if (routineModalOpen) return BackHandler.register(() => { setRoutineModalOpen(false); return true; }); }, [routineModalOpen]);
+  useEffect(() => { if (addTaskModal.isOpen) return BackHandler.register(() => { setAddTaskModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [addTaskModal.isOpen]);
+  useEffect(() => { if (addShoppingModal.isOpen) return BackHandler.register(() => { setAddShoppingModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [addShoppingModal.isOpen]);
+  useEffect(() => { if (addExpenseModalOpen) return BackHandler.register(() => { setAddExpenseModalOpen(false); return true; }); }, [addExpenseModalOpen]);
+  useEffect(() => { if (addNoteModalOpen) return BackHandler.register(() => { setAddNoteModalOpen(false); return true; }); }, [addNoteModalOpen]);
+  useEffect(() => { if (isControlCenterOpen) return BackHandler.register(() => { setIsControlCenterOpen(false); return true; }); }, [isControlCenterOpen]);
+  useEffect(() => { if (isChatOpen) return BackHandler.register(() => { setIsChatOpen(false); return true; }); }, [isChatOpen]);
+  useEffect(() => { if (isSearchExpanded) return BackHandler.register(() => { setIsSearchExpanded(false); return true; }); }, [isSearchExpanded]);
+
+  useEffect(() => { if (activeTab === 'money' && moneyView !== 'transactions') return BackHandler.register(() => { setMoneyView('transactions'); return true; }); }, [activeTab, moneyView]);
+  useEffect(() => { if (activeTab === 'focus' && focusSubTab !== 'tasks') return BackHandler.register(() => { setFocusSubTab('tasks'); return true; }); }, [activeTab, focusSubTab]);
+  useEffect(() => { if (activeTab === 'notes' && notesSubTab !== 'general') return BackHandler.register(() => { setNotesSubTab('general'); return true; }); }, [activeTab, notesSubTab]);
+  useEffect(() => { if (activeTab === 'shopping' && shoppingSubTab !== 'shopping') return BackHandler.register(() => { setShoppingSubTab('shopping'); return true; }); }, [activeTab, shoppingSubTab]);
+  useEffect(() => { if (activeTab !== 'summary') return BackHandler.register(() => { setActiveTab('summary'); return true; }); }, [activeTab]);
 
   // --- Handlers ---
 
@@ -605,6 +665,20 @@ const App: React.FC = () => {
              </div>
           </div>
       )}
+
+      {/* Exit Warning Toast */}
+      <AnimatePresence>
+        {showExitToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 50, x: '-50%' }}
+            className="fixed bottom-24 left-1/2 z-[100] bg-zinc-800 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium whitespace-nowrap"
+          >
+            Press back button once more to exit
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <SkillModal 
         isOpen={skillModal.isOpen} 
