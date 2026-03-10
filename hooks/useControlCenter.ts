@@ -5,6 +5,7 @@ import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, Sp
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
 import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, getGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
+import { BackHandler } from '../utils/backHandler';
 
 export interface UseControlCenterProps {
     isOpen: boolean;
@@ -40,12 +41,30 @@ export const useControlCenter = ({
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
     const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saved'>('idle');
 
+    useEffect(() => {
+        if (isOpen && activeTab !== 'main') {
+            return BackHandler.register(() => {
+                handleTabChange('main');
+                return true;
+            });
+        }
+    }, [isOpen, activeTab]);
+
     type ConnectionAction = 'github' | 'spreadsheet';
     const [connectionModal, setConnectionModal] = useState<{
         isOpen: boolean;
         provider: ConnectionAction;
         config: any;
     } | null>(null);
+
+    useEffect(() => {
+        if (isOpen && connectionModal?.isOpen) {
+            return BackHandler.register(() => {
+                setConnectionModal(null);
+                return true;
+            });
+        }
+    }, [isOpen, connectionModal?.isOpen]);
 
     const handleTabChange = (tab: typeof activeTab) => {
         if (tab === 'main') {
