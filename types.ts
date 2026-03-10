@@ -94,6 +94,7 @@ export interface ItemMeta {
   // Routine History Tracking
   lastGeneratedHistoryId?: string;
   priority?: Priority;
+  parsingError?: string;
 }
 
 export interface BrainDumpItem {

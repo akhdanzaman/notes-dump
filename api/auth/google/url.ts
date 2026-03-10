@@ -11,7 +11,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   const protocol = req.headers['x-forwarded-proto'] || 'https';
   const host = req.headers['host'];
   const origin = req.query.origin as string || `${protocol}://${host}`;
-  const redirectUri = `${origin}/api/auth/callback`;
+  const redirectUri = `${origin}/auth/callback`;
   
   // Construct the OAuth provider's authorization URL
   const params = new URLSearchParams({

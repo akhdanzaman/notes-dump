@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import CallbackPage from './components/CallbackPage';
 import { registerSW } from 'virtual:pwa-register';
 
 // Register PWA service worker
@@ -15,8 +16,16 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+
+const RootComponent = () => {
+  if (window.location.pathname === '/auth/callback') {
+    return <CallbackPage />;
+  }
+  return <App />;
+};
+
 root.render(
   <React.StrictMode>
-    <App />
+    <RootComponent />
   </React.StrictMode>
 );

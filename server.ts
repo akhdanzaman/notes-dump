@@ -30,7 +30,7 @@ async function startServer() {
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
     const origin = req.query.origin as string || `${protocol}://${host}`;
-    const redirectUri = `${origin}/api/auth/callback`;
+    const redirectUri = `${origin}/auth/callback`;
     
     // Construct the OAuth provider's authorization URL
     const params = new URLSearchParams({
@@ -47,11 +47,11 @@ async function startServer() {
     res.json({ url: authUrl });
   });
 
-  app.get("/api/auth/callback", async (req, res) => {
-    const { code, state } = req.query;
+  app.post("/api/auth/google/exchange", async (req, res) => {
+    const { code, state } = req.body;
     // Use state as origin if available, otherwise fallback to request host
     const origin = (state as string) || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
-    const redirectUri = `${origin}/api/auth/callback`;
+    const redirectUri = `${origin}/auth/callback`;
 
     try {
       const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -85,38 +85,10 @@ async function startServer() {
         throw new Error(tokens.error_description || tokens.error);
       }
 
-      // Send success message to parent window and close popup
-      res.send(`
-        <html>
-          <body>
-            <script>
-              try {
-                const tokens = ${JSON.stringify(tokens)};
-                if (window.opener) {
-                  window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', tokens }, '*');
-                  window.close();
-                } else {
-                  localStorage.setItem('oauth_tokens', JSON.stringify(tokens));
-                  window.location.href = '/';
-                }
-              } catch (e) {
-                document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
-              }
-            </script>
-            <p>Authentication successful. This window should close automatically.</p>
-          </body>
-        </html>
-      `);
+      res.json(tokens);
     } catch (error: any) {
       console.error("OAuth error:", error);
-      res.status(500).send(`
-        <html>
-          <body>
-            <p>Authentication failed: ${error.message}</p>
-            <a href="/">Return to App</a>
-          </body>
-        </html>
-      `);
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -158,6 +130,12 @@ async function startServer() {
   } else {
     // Serve static files in production
     app.use(express.static('dist'));
+    
+    // SPA fallback
+    const path = await import('path');
+    app.get('*', (req, res) => {
+      res.sendFile(path.resolve('dist/index.html'));
+    });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
