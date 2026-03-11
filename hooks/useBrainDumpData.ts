@@ -25,7 +25,8 @@ import {
     CreateWalletPayload,
     ThemePayload,
     TransferMoneyPayload,
-    AddSavingFundsPayload
+    AddSavingFundsPayload,
+    ParsingTask
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult, mergeDbData } from '../services/githubService';

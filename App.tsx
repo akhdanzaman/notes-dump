@@ -88,6 +88,7 @@ const App: React.FC = () => {
 
   // Input Focus State
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false);
+  const fixedBottomRef = useRef<HTMLDivElement>(null);
 
   // Chat State
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -149,15 +150,18 @@ const App: React.FC = () => {
   }, [appSettings.theme]);
 
   // --- Keyboard Detection Effect ---
-  const [viewportOffset, setViewportOffset] = useState(0);
-
   useEffect(() => {
     const handleResize = () => {
         if (window.visualViewport) {
             // Calculate how much the visual viewport has been offset from the bottom of the layout viewport
             // This happens when the keyboard pushes the visual viewport up, but the layout viewport remains the same height
             const offset = window.innerHeight - (window.visualViewport.height + window.visualViewport.offsetTop);
-            setViewportOffset(Math.max(0, offset));
+            const safeOffset = Math.max(0, offset);
+            
+            if (fixedBottomRef.current) {
+                // Apply directly to DOM to avoid React state batching delays during fast scrolling
+                fixedBottomRef.current.style.transform = `translateY(-${safeOffset}px)`;
+            }
             
             // Also update keyboard open state based on visual viewport height vs screen height
             const isKeyboardOpen = window.visualViewport.height < window.screen.height * 0.75;
@@ -572,8 +576,8 @@ const App: React.FC = () => {
 
       {/* Fixed Bottom Layout */}
       <div 
+        ref={fixedBottomRef}
         className="fixed bottom-0 w-full z-40 bg-transparent pointer-events-none"
-        style={{ bottom: `${viewportOffset}px` }}
       >
           <FloatingChatBox 
               isOpen={isChatOpen} 
