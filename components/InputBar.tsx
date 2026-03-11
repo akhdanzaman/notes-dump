@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, ReactNode } from 'react';
+import React, { useState, useRef, useEffect, ReactNode } from "react";
 import {
   SendHorizonal,
   TrendingDown,
@@ -8,9 +8,9 @@ import {
   StickyNote,
   PiggyBank,
   Loader2,
-  MessageSquareText
-} from 'lucide-react';
-import { SyncStatus } from '../types';
+  MessageSquareText,
+} from "lucide-react";
+import { SyncStatus } from "../types";
 
 interface InputBarProps {
   onSend: (text: string) => void;
@@ -25,12 +25,36 @@ interface InputBarProps {
 }
 
 const SUGGESTIONS = [
-  { label: 'Expense', value: 'Expense:', icon: <TrendingDown className="w-3 h-3 text-red-400" /> },
-  { label: 'Income', value: 'Income:', icon: <TrendingUp className="w-3 h-3 text-emerald-400" /> },
-  { label: 'Saving', value: 'Saving:', icon: <PiggyBank className="w-3 h-3 text-indigo-400" /> },
-  { label: 'Focus', value: 'Focus:', icon: <Target className="w-3 h-3 text-blue-400" /> },
-  { label: 'Shopping', value: 'shopping:', icon: <ShoppingCart className="w-3 h-3 text-purple-400" /> },
-  { label: 'Notes', value: 'notes:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
+  {
+    label: "Expense",
+    value: "Expense:",
+    icon: <TrendingDown className="w-3 h-3 text-red-400" />,
+  },
+  {
+    label: "Income",
+    value: "Income:",
+    icon: <TrendingUp className="w-3 h-3 text-emerald-400" />,
+  },
+  {
+    label: "Saving",
+    value: "Saving:",
+    icon: <PiggyBank className="w-3 h-3 text-indigo-400" />,
+  },
+  {
+    label: "Focus",
+    value: "Focus:",
+    icon: <Target className="w-3 h-3 text-blue-400" />,
+  },
+  {
+    label: "Shopping",
+    value: "shopping:",
+    icon: <ShoppingCart className="w-3 h-3 text-purple-400" />,
+  },
+  {
+    label: "Notes",
+    value: "notes:",
+    icon: <StickyNote className="w-3 h-3 text-amber-400" />,
+  },
 ];
 
 const InputBar: React.FC<InputBarProps> = ({
@@ -42,15 +66,15 @@ const InputBar: React.FC<InputBarProps> = ({
   fetchStatus,
   pendingCount,
   isChatOpen,
-  onOpenChat
+  onOpenChat,
 }) => {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
     }
   }, [input]);
@@ -59,12 +83,12 @@ const InputBar: React.FC<InputBarProps> = ({
     if (e) e.preventDefault();
     if (!input.trim()) return;
     onSend(input);
-    setInput('');
+    setInput("");
     textareaRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
@@ -81,10 +105,10 @@ const InputBar: React.FC<InputBarProps> = ({
   };
 
   const addTemplate = (template: string) => {
-    setInput(prev => {
+    setInput((prev) => {
       const trimmed = prev.trim();
       if (!trimmed) return `${template} `;
-      if (trimmed.endsWith(';')) return `${trimmed} ${template} `;
+      if (trimmed.endsWith(";")) return `${trimmed} ${template} `;
       return `${trimmed}; ${template} `;
     });
 
@@ -94,8 +118,8 @@ const InputBar: React.FC<InputBarProps> = ({
   const isPopupVisible =
     showSuggestions ||
     !!startAction ||
-    saveStatus === 'saving' ||
-    fetchStatus === 'syncing' ||
+    saveStatus === "saving" ||
+    fetchStatus === "syncing" ||
     (pendingCount !== undefined && pendingCount > 0);
 
   return (
@@ -106,8 +130,8 @@ const InputBar: React.FC<InputBarProps> = ({
           <div
             className={`absolute bottom-full left-0 w-full mb-3 transition-all duration-300 ease-out origin-bottom ${
               isPopupVisible
-                ? 'opacity-100 scale-100 translate-y-0'
-                : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
+                ? "opacity-100 scale-100 translate-y-0"
+                : "opacity-0 scale-95 translate-y-2 pointer-events-none"
             } pointer-events-none`}
           >
             <div className="flex items-center justify-between gap-2 px-1 py-1 w-full pointer-events-none">
@@ -140,30 +164,30 @@ const InputBar: React.FC<InputBarProps> = ({
               </div>
 
               {/* Syncing Animation */}
-              {(saveStatus === 'saving' || fetchStatus === 'syncing') && (
+              {(saveStatus === "saving" || fetchStatus === "syncing") && (
                 <div className="shrink-0 z-20 pointer-events-none">
                   <div
                     className={`w-10 h-10 rounded-full ${
-                      saveStatus === 'saving'
-                        ? 'bg-amber-500/20 border-amber-500/40'
-                        : fetchStatus === 'syncing'
-                        ? 'bg-blue-500/20 border-blue-500/40'
-                        : 'bg-purple-500/20 border-purple-500/40'
+                      saveStatus === "saving"
+                        ? "bg-amber-500/20 border-amber-500/40"
+                        : fetchStatus === "syncing"
+                          ? "bg-blue-500/20 border-blue-500/40"
+                          : "bg-purple-500/20 border-purple-500/40"
                     } backdrop-blur-xl border flex items-center justify-center shadow-xl ${
-                      saveStatus === 'saving'
-                        ? 'shadow-amber-500/20'
-                        : fetchStatus === 'syncing'
-                        ? 'shadow-blue-500/20'
-                        : 'shadow-purple-500/20'
+                      saveStatus === "saving"
+                        ? "shadow-amber-500/20"
+                        : fetchStatus === "syncing"
+                          ? "shadow-blue-500/20"
+                          : "shadow-purple-500/20"
                     } animate-pulse`}
                   >
                     <Loader2
                       className={`w-5 h-5 ${
-                        saveStatus === 'saving'
-                          ? 'text-amber-400'
-                          : fetchStatus === 'syncing'
-                          ? 'text-blue-400'
-                          : 'text-purple-400'
+                        saveStatus === "saving"
+                          ? "text-amber-400"
+                          : fetchStatus === "syncing"
+                            ? "text-blue-400"
+                            : "text-purple-400"
                       } animate-spin`}
                     />
                   </div>
@@ -180,7 +204,9 @@ const InputBar: React.FC<InputBarProps> = ({
             <button
               onClick={onOpenChat}
               className={`p-4 mb-0.5 transition-colors ${
-                isChatOpen ? 'text-indigo-500' : 'text-muted hover:text-indigo-500'
+                isChatOpen
+                  ? "text-indigo-500"
+                  : "text-muted hover:text-indigo-500"
               }`}
               title="Open AI Chat"
             >
@@ -194,7 +220,11 @@ const InputBar: React.FC<InputBarProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              placeholder={isChatOpen ? 'Ask a follow-up question...' : 'Dump your brain here...'}
+              placeholder={
+                isChatOpen
+                  ? "Ask a follow-up question..."
+                  : "Dump your brain here..."
+              }
               className="flex-1 bg-transparent py-4 text-primary placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
               rows={1}
             />
