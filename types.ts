@@ -4,7 +4,6 @@ export enum ItemType {
   NOTE = 'NOTE',
   EVENT = 'EVENT',
   FINANCE = 'FINANCE',
-  SKILL_LOG = 'SKILL_LOG',
   JOURNAL = 'JOURNAL'
 }
 
@@ -38,6 +37,12 @@ export interface AppSettings {
   hideMoney: boolean;
   theme?: 'light' | 'dark';
   enableDailyInsight?: boolean;
+  enableDraftReview?: boolean;
+  notifyBehavior?: boolean;
+  notifyInsights?: boolean;
+  notifyReminders?: boolean;
+  notificationMode?: 'sound' | 'vibrate' | 'both' | 'silent';
+  persistentNotification?: boolean;
   parsingModel?: string;
   chatModel?: string;
   insightModel?: string;
@@ -147,9 +152,11 @@ export interface GitHubFileResponse {
   encoding: string;
 }
 
-export type Tab = 'summary' | 'focus' | 'shopping' | 'notes' | 'money';
-export type FocusSubTab = 'tasks' | 'skills';
-export type NotesSubTab = 'general' | 'skills' | 'journal';
+export type Tab = 'summary' | 'plan' | 'library' | 'money';
+export type PlanSubTab = 'tasks' | 'shopping' | 'savings';
+export type FocusSubTab = PlanSubTab;
+export type LibrarySubTab = 'general' | 'skills' | 'journal';
+export type NotesSubTab = LibrarySubTab;
 export type SyncStatus = 'synced' | 'syncing' | 'saving' | 'error' | 'local';
 export type MoneyView = 'transactions' | 'budget' | 'wallets';
 export type SortOrder = 'newest' | 'oldest' | 'highest_amount' | 'lowest_amount';
@@ -164,7 +171,6 @@ export type ParsedItemType =
   | 'NOTE'
   | 'EVENT'
   | 'FINANCE'
-  | 'SKILL_LOG'
   | 'JOURNAL';
 
 export type ParsedWalletType = 'cash' | 'bank' | 'ewallet' | 'cc' | 'other';
@@ -191,7 +197,6 @@ export type ParserEntityType =
   | 'note'
   | 'event'
   | 'finance'
-  | 'skill_log'
   | 'journal'
   | 'skill'
   | 'wallet'

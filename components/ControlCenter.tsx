@@ -6,7 +6,7 @@ import {
     Moon, Sun, X, AlertTriangle, Github,
     Monitor, Layout, Eye, EyeOff, Database, Download, Upload, Trash2,
     Check, Smartphone, WifiOff, CheckCircle2, PieChart, Plus, Sparkles,
-    MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft
+    MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History
 } from 'lucide-react';
 import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
 import { DEFAULT_PROMPT } from '../services/geminiService';
@@ -168,9 +168,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const menuItems = [
         { id: 'appearance', label: 'Appearance', icon: <Monitor className="w-5 h-5" />, desc: 'Theme, UI options' },
         { id: 'behavior', label: 'Behavior', icon: <Smartphone className="w-5 h-5" />, desc: 'Prompts, defaults' },
+        { id: 'notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" />, desc: 'Alerts, reminders' },
         { id: 'budget', label: 'Budget', icon: <PieChart className="w-5 h-5" />, desc: 'Income, categories' },
         { id: 'data', label: 'Data', icon: <Database className="w-5 h-5" />, desc: 'Export, import, reset' },
         { id: 'connect', label: 'Connect', icon: <Layout className="w-5 h-5" />, desc: 'GitHub, Gemini, APIs' },
+        { id: 'changelog', label: 'Changelog', icon: <History className="w-5 h-5" />, desc: 'Recent updates' },
     ];
 
     return (
@@ -555,25 +557,48 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         <div className="space-y-6">
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Parsing Mode</h3>
-                                                <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
-                                                            <Sparkles className="w-5 h-5" />
+                                                <div className="flex flex-col gap-3">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
+                                                                <Sparkles className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Pro Parsing Mode</div>
+                                                                <div className="text-xs text-muted">Use 3-stage parsing for better accuracy</div>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <div className="font-medium text-primary text-sm">Pro Parsing Mode</div>
-                                                            <div className="text-xs text-muted">Use 3-stage parsing for better accuracy</div>
-                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="sr-only peer"
+                                                                checked={localAppSettings.useProParser ?? false}
+                                                                onChange={(e) => setLocalAppSettings({ ...localAppSettings, useProParser: e.target.checked })}
+                                                            />
+                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
                                                     </div>
-                                                    <label className="relative inline-flex items-center cursor-pointer">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            className="sr-only peer"
-                                                            checked={localAppSettings.useProParser ?? false}
-                                                            onChange={(e) => setLocalAppSettings({ ...localAppSettings, useProParser: e.target.checked })}
-                                                        />
-                                                        <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
-                                                    </label>
+
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500">
+                                                                <CheckSquare className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Enable AI Draft Review</div>
+                                                                <div className="text-xs text-muted">Review AI parsing results before saving</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="sr-only peer"
+                                                                checked={localAppSettings.enableDraftReview ?? false}
+                                                                onChange={(e) => setLocalAppSettings({ ...localAppSettings, enableDraftReview: e.target.checked })}
+                                                            />
+                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             </section>
                                             <section>
@@ -664,6 +689,157 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         </div>
                                     )}
 
+                                    {/* NOTIFICATIONS TAB */}
+                                    {activeTab === 'notifications' && (
+                                        <div className="space-y-6">
+                                            <section>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">System Permission</h3>
+                                                <div className="bg-background border border-border rounded-2xl p-4">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500 shrink-0">
+                                                                <Bell className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Browser Notifications</div>
+                                                                <div className="text-xs text-muted mb-3">Allow BrainDump to send you desktop and mobile notifications.</div>
+                                                                <div className="flex gap-2">
+                                                                    <button 
+                                                                        onClick={async () => {
+                                                                            const { requestNotificationPermission } = await import('../utils/notificationHandler');
+                                                                            const granted = await requestNotificationPermission();
+                                                                            if (granted) {
+                                                                                alert('Permission granted!');
+                                                                            } else {
+                                                                                alert('Permission denied or not supported.');
+                                                                            }
+                                                                        }}
+                                                                        className="px-3 py-1.5 bg-indigo-500 text-white text-xs font-medium rounded-lg hover:bg-indigo-600 transition-colors"
+                                                                    >
+                                                                        Request Permission
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={async () => {
+                                                                            const { sendTestNotification } = await import('../utils/notificationHandler');
+                                                                            sendTestNotification();
+                                                                        }}
+                                                                        className="px-3 py-1.5 bg-surface border border-border text-primary text-xs font-medium rounded-lg hover:bg-muted/10 transition-colors"
+                                                                    >
+                                                                        Test Notification
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Notification Types</h3>
+                                                <div className="flex flex-col gap-3">
+                                                    <div className="flex flex-col gap-2 p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="font-medium text-primary text-sm">Notification Mode</div>
+                                                        <div className="text-xs text-muted mb-2">Choose how notifications alert you</div>
+                                                        <select
+                                                            className="w-full bg-surface border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-indigo-500 transition-colors"
+                                                            value={localAppSettings.notificationMode || 'both'}
+                                                            onChange={(e) => setLocalAppSettings({ ...localAppSettings, notificationMode: e.target.value as any })}
+                                                        >
+                                                            <option value="both">Sound & Vibrate</option>
+                                                            <option value="sound">Sound Only</option>
+                                                            <option value="vibrate">Vibrate Only</option>
+                                                            <option value="silent">Silent</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500">
+                                                                <MessageSquare className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Persistent Quick Input</div>
+                                                                <div className="text-xs text-muted">Keep a notification active for quick thought entry</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="sr-only peer"
+                                                                checked={localAppSettings.persistentNotification ?? false}
+                                                                onChange={(e) => setLocalAppSettings({ ...localAppSettings, persistentNotification: e.target.checked })}
+                                                            />
+                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
+                                                                <Sparkles className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Smart Behavior Prompts</div>
+                                                                <div className="text-xs text-muted">Notify based on your usual input times</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="sr-only peer"
+                                                                checked={localAppSettings.notifyBehavior ?? false}
+                                                                onChange={(e) => setLocalAppSettings({ ...localAppSettings, notifyBehavior: e.target.checked })}
+                                                            />
+                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
+                                                                <Sparkles className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">AI Insights</div>
+                                                                <div className="text-xs text-muted">Get notified when new daily insights are ready</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="sr-only peer"
+                                                                checked={localAppSettings.notifyInsights ?? false}
+                                                                onChange={(e) => setLocalAppSettings({ ...localAppSettings, notifyInsights: e.target.checked })}
+                                                            />
+                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-amber-500/10 rounded-xl text-amber-500">
+                                                                <Calendar className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Reminders</div>
+                                                                <div className="text-xs text-muted">Get notified for scheduled tasks and events</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="sr-only peer"
+                                                                checked={localAppSettings.notifyReminders ?? false}
+                                                                onChange={(e) => setLocalAppSettings({ ...localAppSettings, notifyReminders: e.target.checked })}
+                                                            />
+                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        </div>
+                                    )}
+
                                     {/* BUDGET TAB */}
                                     {activeTab === 'budget' && (
                                         <div className="space-y-6">
@@ -722,7 +898,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                     type="number" 
                                                                     value={rule.percentage}
                                                                     onChange={(e) => handleUpdateRule(idx, 'percentage', parseFloat(e.target.value) || 0)}
-                                                                    className="w-12 bg-black/10 dark:bg-black/20 text-xs text-right text-primary rounded p-1 focus:outline-none"
+                                                                    className="w-12 bg-black/10 dark:bg-white/10 text-xs text-right text-primary rounded p-1 focus:outline-none"
                                                                 />
                                                                 <span className="text-xs text-muted">%</span>
                                                             </div>
@@ -785,8 +961,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <Trash2 className="w-5 h-5" />
                                                         </div>
                                                         <div>
-                                                            <div className="font-bold text-red-600 dark:text-red-400 text-sm">Clear All Data</div>
-                                                            <div className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">
+                                                            <div className="font-bold text-red-500 text-sm">Clear All Data</div>
+                                                            <div className="text-xs text-red-500/70 mt-1">
                                                                 This will permanently delete all your items, wallets, and settings. This action cannot be undone.
                                                             </div>
                                                         </div>
@@ -1018,6 +1194,54 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             onChange={(e) => setGCalId(e.target.value)}
                                                             placeholder="Calendar ID (e.g. primary or email)"
                                                         />
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        </div>
+                                    )}
+                                    {/* CHANGELOG TAB */}
+                                    {activeTab === 'changelog' && (
+                                        <div className="space-y-6">
+                                            <section>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Version History</h3>
+                                                <div className="space-y-4">
+                                                    <div className="bg-background border border-border rounded-2xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-primary">v0.3.0</div>
+                                                            <div className="text-xs text-muted">April 2026</div>
+                                                        </div>
+                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                            <li>Fixed wiggly animations when switching sub-tabs.</li>
+                                                            <li>Enhanced summary numbers in Focus and Notes tabs.</li>
+                                                            <li>Fixed navigation bar expansion on sub-tabs.</li>
+                                                            <li>Improved dark and light mode theme consistency.</li>
+                                                            <li>Fixed navbar width consistency.</li>
+                                                            <li>Set AI draft review disabled by default.</li>
+                                                            <li>Set collapsed card view enabled by default.</li>
+                                                        </ul>
+                                                    </div>
+                                                    <div className="bg-background border border-border rounded-2xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-primary">v0.2.0</div>
+                                                            <div className="text-xs text-muted">April 2026</div>
+                                                        </div>
+                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                            <li>Added Changelog section to Control Center.</li>
+                                                            <li>Refined UI theme for light mode consistency.</li>
+                                                            <li>Fixed navbar background color in light mode.</li>
+                                                            <li>Removed "Life" tab from navigation.</li>
+                                                        </ul>
+                                                    </div>
+                                                    <div className="bg-background border border-border rounded-2xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-primary">v0.1.0</div>
+                                                            <div className="text-xs text-muted">Initial Release</div>
+                                                        </div>
+                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                            <li>Initial BrainDump AI release.</li>
+                                                            <li>Added Gemini parsing support.</li>
+                                                            <li>Added Budget and Money tracking.</li>
+                                                        </ul>
                                                     </div>
                                                 </div>
                                             </section>

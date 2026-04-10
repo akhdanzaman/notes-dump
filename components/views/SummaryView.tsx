@@ -57,7 +57,7 @@ interface SummaryViewProps {
     onThemeEdit: (content: string) => void;
     handleToggleStatus: (id: string) => void;
     setActiveTab: (tab: Tab) => void;
-    setFocusSubTab: (tab: any) => void;
+    setPlanSubTab: (tab: any) => void;
     showBalance: boolean;
     setShowBalance: (val: boolean) => void;
 
@@ -113,7 +113,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     onThemeEdit,
     handleToggleStatus,
     setActiveTab,
-    setFocusSubTab,
+    setPlanSubTab,
     showBalance,
     setShowBalance,
     handleOpenAddTask,
@@ -420,7 +420,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <div className="pb-24">
             <motion.div
                 layoutId="top-container"
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-6 touch-pan-y"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 shadow-sm mb-6 touch-pan-y"
                 transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -499,7 +499,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                 </svg>
 
                                 {hasNewNotification && (
-                                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-zinc-100"></span>
+                                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-surface"></span>
                                 )}
                             </button>
                         </div>
@@ -585,7 +585,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         </div>
 
                         <button
-                            onClick={() => setActiveTab('focus')}
+                            onClick={() => setActiveTab('plan')}
                             className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider"
                         >
                             View All
@@ -619,7 +619,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                     onClick={() => handleToggleStatus(routine.id)}
                                     className="flex-shrink-0 flex flex-col items-center gap-2 min-w-[72px]"
                                 >
-                                    <div className="w-16 h-16 bg-white dark:bg-zinc-800 border-2 border-indigo-500/20 rounded-full flex items-center justify-center transition-all hover:border-indigo-500 hover:bg-indigo-500/10">
+                                    <div className="w-16 h-16 bg-surface border-2 border-indigo-500/20 rounded-full flex items-center justify-center transition-all hover:border-indigo-500 hover:bg-indigo-500/10">
                                         <CheckCircle2 className="w-6 h-6 text-indigo-500 opacity-50" />
                                     </div>
                                     <span className="text-[10px] font-medium text-center line-clamp-2 w-full opacity-70 leading-tight">
@@ -639,8 +639,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         <ArrowRight className="w-4 h-4 opacity-30 group-hover:opacity-100 transition-opacity" />
                     </div>
 
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white rounded-[24px] p-5 relative overflow-hidden shadow-sm">
-                        <div className="absolute top-0 right-0 p-5 opacity-5 dark:opacity-10">
+                    <div className="bg-surface border border-border text-primary rounded-[24px] p-5 relative overflow-hidden shadow-sm">
+                        <div className="absolute top-0 right-0 p-5 opacity-5">
                             <WalletIcon className="w-24 h-24" />
                         </div>
 
@@ -672,7 +672,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                     <span>Monthly Spending</span>
                                     <span>{budgetPercent.toFixed(0)}% of Budget</span>
                                 </div>
-                                <div className="h-2 bg-zinc-100 dark:bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-2 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full ${
                                             budgetPercent > 100 ? 'bg-red-500' : 'bg-emerald-500'
@@ -708,7 +708,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.92, y: -8 }}
                                         transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                                        className="fixed bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl z-[9999] overflow-hidden flex flex-col max-h-[60vh]"
+                                        className="fixed bg-surface border border-border rounded-3xl shadow-2xl z-[9999] overflow-hidden flex flex-col max-h-[60vh]"
                                         style={{
                                             top: popupPosition.top,
                                             left: popupPosition.left,
@@ -716,7 +716,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                             transformOrigin: popupPosition.transformOrigin
                                         }}
                                     >
-                                        <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800">
+                                        <div className="flex items-center justify-between p-4 border-b border-border">
                                             <h3 className="font-bold text-lg flex items-center gap-2">
                                                 <svg
                                                     xmlns="http://www.w3.org/2000/svg"
@@ -739,14 +739,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                                 <button
                                                     onClick={() => fetchAIInsights(true)}
                                                     disabled={isLoadingInsights}
-                                                    className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors disabled:opacity-50"
+                                                    className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
                                                 >
                                                     <RefreshCw className={`w-4 h-4 ${isLoadingInsights ? 'animate-spin' : ''}`} />
                                                 </button>
 
                                                 <button
                                                     onClick={handleCloseNotification}
-                                                    className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                                                    className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
                                                 >
                                                     <ChevronDown className="w-5 h-5" />
                                                 </button>
@@ -756,20 +756,20 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                         <div className="p-4 overflow-y-auto space-y-3">
                                             {displayInsights.length > 0 ? (
                                                 displayInsights.map((insight, idx) => {
-                                                    let bgColor = 'bg-zinc-100 dark:bg-zinc-800';
+                                                    let bgColor = 'bg-black/5 dark:bg-white/10';
                                                     let iconColor = 'text-zinc-500';
                                                     let Icon = AlertTriangle;
 
                                                     if (insight.type === 'warning') {
-                                                        bgColor = 'bg-red-50 dark:bg-red-900/20';
+                                                        bgColor = 'bg-red-500/10 border border-red-500/20';
                                                         iconColor = 'text-red-500';
                                                         Icon = AlertTriangle;
                                                     } else if (insight.type === 'success') {
-                                                        bgColor = 'bg-emerald-50 dark:bg-emerald-900/20';
+                                                        bgColor = 'bg-emerald-500/10 border border-emerald-500/20';
                                                         iconColor = 'text-emerald-500';
                                                         Icon = CheckCircle2;
                                                     } else {
-                                                        bgColor = 'bg-blue-50 dark:bg-blue-900/20';
+                                                        bgColor = 'bg-blue-500/10 border border-blue-500/20';
                                                         iconColor = 'text-blue-500';
                                                         if (insight.iconType === 'task') Icon = Target;
                                                         else if (insight.iconType === 'finance') Icon = WalletIcon;

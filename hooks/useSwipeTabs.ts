@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Tab } from '../types';
 
 export const useSwipeTabs = (activeTab: Tab, setActiveTab: (tab: Tab) => void) => {
-    const tabs: Tab[] = ['summary', 'focus', 'shopping', 'notes', 'money'];
+    const tabs: Tab[] = ['summary', 'plan', 'library', 'money'];
     const activeIndex = tabs.indexOf(activeTab);
 
     const [dragOffset, setDragOffset] = useState(0);

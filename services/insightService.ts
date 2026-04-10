@@ -117,6 +117,7 @@ export const generateAIInsights = async (
 
   // Daily and Weekly data
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - (24 * 60 * 60 * 1000);
   const sevenDaysAgo = todayStart - (7 * 24 * 60 * 60 * 1000);
 
   const recentItems = items.filter(i => {
@@ -124,7 +125,10 @@ export const generateAIInsights = async (
       return d >= sevenDaysAgo;
   });
 
-  const todayItems = recentItems.filter(i => new Date(i.created_at).getTime() >= todayStart);
+  const yesterdayItems = recentItems.filter(i => {
+      const d = new Date(i.created_at).getTime();
+      return d >= yesterdayStart && d < todayStart;
+  });
 
   const getSummaryStats = (arr: BrainDumpItem[]) => {
       return {
@@ -140,26 +144,11 @@ export const generateAIInsights = async (
 
   // Skill Progress
   const skillProgress = skills.map(s => {
-      // Calculate weekly progress
-      const startOfWeek = new Date();
-      const day = startOfWeek.getDay();
-      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-      startOfWeek.setHours(0, 0, 0, 0);
-      startOfWeek.setDate(diff);
-
-      const weeklyMinutes = items
-          .filter(i => i.type === ItemType.SKILL_LOG && i.meta.skillId === s.id)
-          .filter(i => {
-              const d = new Date(i.meta.date || i.created_at);
-              return d >= startOfWeek;
-          })
-          .reduce((sum, i) => sum + (i.meta.durationMinutes || 0), 0);
-
       return {
           name: s.name,
-          current: weeklyMinutes,
+          current: 0,
           target: s.weeklyTargetMinutes || 0,
-          percentage: s.weeklyTargetMinutes ? Math.round((weeklyMinutes / s.weeklyTargetMinutes) * 100) : 0
+          percentage: 0
       };
   });
 
@@ -180,7 +169,7 @@ export const generateAIInsights = async (
       });
 
   const dataSummary = {
-    today: getSummaryStats(todayItems),
+    yesterday: getSummaryStats(yesterdayItems),
     past7Days: getSummaryStats(recentItems),
     currentMonth: {
       daysElapsed: currentDay,
@@ -213,7 +202,7 @@ export const generateAIInsights = async (
     Provide exactly 4 short, punchy, and actionable reviews based on the provided data.
     
     The 4 reviews MUST be:
-    1. "Daily Review": Focus on today's or recent daily averages (budget, focus, goals, shopping, journal).
+    1. "Daily Review": Focus on yesterday's daily averages (budget, focus, goals, shopping, journal).
     2. "Weekly Review": Focus on the past 7 days trend.
     3. "Month over Month Review": Compare the current month's data (up to today) with last month's data (up to the same day).
     4. "General Review": A holistic overview or advice covering budget, focus, goals, shopping, journal, etc.

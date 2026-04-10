@@ -28,7 +28,6 @@ TYPE (pick one):
 - NOTE: ideas/knowledge/random thoughts.
 - EVENT: scheduled dates/times.
 - FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement OR adding funds to a saving goal. ALL FINANCE entries are considered DONE.
-- SKILL_LOG: time spent learning/practicing a skill.
 - JOURNAL: personal diary entries, feelings, daily recaps, "Dear Diary", or explicit "Log to journal".
 
 COMMON EXTRACTION:
@@ -103,12 +102,6 @@ FINANCE META:
 - IMPORTANT: You MUST ALWAYS set 'budgetCategory' for 'expense' and 'saving' transactions.
   - For 'saving', choose the category based on the goal (e.g. saving for emergency fund -> 'savings', saving for a new car -> 'wants').
 
-SKILL_LOG META:
-- content MUST be summary/key takeaways (not raw duration sentence)
-  Example: "Belajar React 1 jam tentang Hooks" => content "Belajar React tentang Hooks"
-- durationMinutes: NUMBER (convert hours→minutes)
-- skillName: infer from context; match known skills if provided
-
 TAG RULES (STRICT):
 - Max 2 tags.
 - Do NOT duplicate values from budgetCategory, commodity, subcommodity, or paymentMethod.
@@ -170,7 +163,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
             properties: {
               type: {
                 type: Type.STRING,
-                description: "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG, JOURNAL",
+                description: "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, JOURNAL",
               },
               content: {
                 type: Type.STRING,
@@ -193,8 +186,6 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
                   commodity: { type: Type.STRING, description: "Main expenditure category" },
                   subcommodity: { type: Type.STRING, description: "Detailed sub-category" },
                   merchant: { type: Type.STRING, description: "Merchant/Vendor name" },
-                  durationMinutes: { type: Type.NUMBER, description: "Duration in minutes for SKILL_LOG" },
-                  skillName: { type: Type.STRING, description: "Name of the skill practiced" },
                   priority: { type: Type.STRING, description: "Priority level: low, normal, high" }
                 }
               }

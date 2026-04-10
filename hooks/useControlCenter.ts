@@ -37,7 +37,7 @@ export const useControlCenter = ({
     currentPrompt
 }: UseControlCenterProps) => {
     // --- Settings State ---
-    const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect'>('main');
+    const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect' | 'notifications' | 'changelog'>('main');
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
     const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saved'>('idle');
 

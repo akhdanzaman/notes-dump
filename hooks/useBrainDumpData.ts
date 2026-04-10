@@ -82,7 +82,6 @@ const mapEntityTypeToItemType = (entityType: ParserEntityType, fallback: ItemTyp
         case 'note': return ItemType.NOTE;
         case 'event': return ItemType.EVENT;
         case 'finance': return ItemType.FINANCE;
-        case 'skill_log': return ItemType.SKILL_LOG;
         case 'journal': return ItemType.JOURNAL;
         case 'saving_goal': return ItemType.SHOPPING;
         default: return fallback;
@@ -102,7 +101,6 @@ const convertLegacyResultsToNative = (legacyResults: Partial<BrainDumpItem>[], o
                 type === ItemType.NOTE ? 'note' :
                 type === ItemType.EVENT ? 'event' :
                 type === ItemType.FINANCE ? 'finance' :
-                type === ItemType.SKILL_LOG ? 'skill_log' :
                 type === ItemType.JOURNAL ? 'journal' :
                 'unknown',
             content: partial.content || originalText,
@@ -164,7 +162,7 @@ export const useBrainDumpData = () => {
     const [wallets, setWallets] = useState<Wallet[]>([]);
     const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
     const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
-    const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: false, hideMoney: false });
+    const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: true, hideMoney: false, enableDraftReview: false });
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
         const local = localStorage.getItem('braindump_chat_history');
         return local ? JSON.parse(local) : [];
@@ -180,6 +178,7 @@ export const useBrainDumpData = () => {
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<SyncStatus>('synced');
     const [fetchStatus, setFetchStatus] = useState<SyncStatus>('synced');
+    const [pendingReviews, setPendingReviews] = useState<{ id: string; text: string; results: ParserResultV2[] }[]>([]);
 
     const itemsRef = useRef(items);
     itemsRef.current = items;
@@ -333,8 +332,7 @@ export const useBrainDumpData = () => {
             setFetchStatus('syncing');
             setError(null);
 
-            const { data } = await fetchDb();
-            if (data) {
+            const applyData = (data: DbSchema) => {
                 if (Array.isArray(data.data)) {
                     const migratedData = data.data.map(item => ({
                         ...item,
@@ -351,7 +349,7 @@ export const useBrainDumpData = () => {
                     setItems(checkedData);
 
                     if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-                        await saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings);
+                        saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings);
                     }
                 }
 
@@ -371,6 +369,23 @@ export const useBrainDumpData = () => {
                 if (data.monthlyThemes) setMonthlyThemes(data.monthlyThemes);
                 if (data.appSettings) setAppSettings(data.appSettings);
                 if (data.chatHistory) setChatHistory(data.chatHistory);
+            };
+
+            // Load local data first for instant display
+            try {
+                const localDataStr = localStorage.getItem('braindump_db');
+                if (localDataStr) {
+                    const localData = JSON.parse(localDataStr) as DbSchema;
+                    applyData(localData);
+                    setLoading(false); // Stop loading spinner if we have local data
+                }
+            } catch (e) {
+                console.warn("Failed to load local data initially", e);
+            }
+
+            const { data } = await fetchDb();
+            if (data) {
+                applyData(data);
             }
 
             setFetchStatus(isUsingLocalStorage() ? 'local' : 'synced');
@@ -437,7 +452,7 @@ export const useBrainDumpData = () => {
         sourceText: string
     ): BrainDumpItem => {
         const type = mapEntityTypeToItemType(result.entityType, payload.itemType as ItemType);
-        const isRecord = type === ItemType.FINANCE || type === ItemType.SKILL_LOG || type === ItemType.JOURNAL;
+        const isRecord = type === ItemType.FINANCE || type === ItemType.JOURNAL;
 
         const meta = buildMetaFromParsed(
             payload.meta,
@@ -853,7 +868,14 @@ export const useBrainDumpData = () => {
                 parsedResults = convertLegacyResultsToNative(legacy, text);
             }
 
-            executeParserResults(parsedResults, text, tempId);
+            const enableDraftReview = appSettingsRef.current.enableDraftReview ?? false;
+            
+            if (enableDraftReview) {
+                setPendingReviews(prev => [{ id: tempId, text, results: parsedResults }, ...prev]);
+            } else {
+                executeParserResults(parsedResults, text, tempId);
+            }
+
             setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'success' } : t));
             setTimeout(() => {
                 setParsingTasks(prev => prev.filter(t => t.id !== tempId));
@@ -885,6 +907,23 @@ export const useBrainDumpData = () => {
         });
         
         processItemInBackground(task.text, taskId);
+    };
+
+    const handleApproveReview = (id: string, updatedResults: ParserResultV2[]) => {
+        const review = pendingReviews.find(r => r.id === id);
+        if (!review) return;
+        
+        executeParserResults(updatedResults, review.text, id);
+        setPendingReviews(prev => prev.filter(r => r.id !== id));
+    };
+
+    const handleRejectReview = (id: string) => {
+        setPendingReviews(prev => prev.filter(r => r.id !== id));
+        setItems(prev => {
+            const updated = prev.filter(i => i.id !== id);
+            saveAndSync(updated);
+            return updated;
+        });
     };
 
     const handleSend = async (text: string) => {
@@ -1329,12 +1368,15 @@ export const useBrainDumpData = () => {
         error,
         pendingCount,
         parsingTasks,
+        pendingReviews,
         saveStatus,
         fetchStatus,
         loadData,
         saveAndSync,
         handleSend,
         retryParsing,
+        handleApproveReview,
+        handleRejectReview,
         handleToggleStatus,
         handleDelete,
         handleUpdateItem,

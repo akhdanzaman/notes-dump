@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, FocusSubTab, NotesSubTab, MoneyView, SortOrder, ItemType, ShoppingCategory } from './types';
+import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, PlanSubTab, LibrarySubTab, MoneyView, SortOrder, ItemType, ShoppingCategory } from './types';
 import { useBrainDumpData } from './hooks/useBrainDumpData';
 import { getShoppingItems } from './utils/selectors';
 import { clearSpreadsheetConfig } from './services/spreadsheetService';
@@ -19,9 +19,8 @@ import FloatingSearch from './components/FloatingSearch';
 import ControlCenter from './components/ControlCenter';
 
 import SummaryView from './components/views/SummaryView';
-import FocusView from './components/views/FocusView';
-import ShoppingView from './components/views/ShoppingView';
-import NotesView from './components/views/NotesView';
+import PlanView from './components/views/PlanView';
+import LibraryView from './components/views/LibraryView';
 import MoneyViewComponent from './components/views/MoneyView';
 import RoutineTaskModal from './components/RoutineTaskModal';
 import AddTaskModal from './components/AddTaskModal';
@@ -29,6 +28,8 @@ import AddShoppingModal from './components/AddShoppingModal';
 import AddExpenseModal from './components/AddExpenseModal';
 import AddNoteModal from './components/AddNoteModal';
 import FloatingChatBox from './components/FloatingChatBox';
+import PendingReviewList from './components/PendingReviewList';
+import Onboarding from './components/Onboarding';
 import { Brain } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -37,15 +38,19 @@ const App: React.FC = () => {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
-      loading, error, pendingCount, parsingTasks, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing
+      loading, error, pendingCount, parsingTasks, pendingReviews, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
+      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
+
+  // Onboarding State
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return localStorage.getItem('braindump_onboarding_completed') !== 'true';
+  });
 
   // --- UI State ---
   const [activeTab, setActiveTab] = useState<Tab>('summary');
-  const [focusSubTab, setFocusSubTab] = useState<FocusSubTab>('tasks');
-  const [notesSubTab, setNotesSubTab] = useState<NotesSubTab>('general');
-  const [shoppingSubTab, setShoppingSubTab] = useState<'shopping' | 'savings'>('shopping');
+  const [planSubTab, setPlanSubTab] = useState<'tasks' | 'shopping' | 'savings'>('tasks');
+  const [librarySubTab, setLibrarySubTab] = useState<'general' | 'skills' | 'journal'>('general');
   const [showBalance, setShowBalance] = useState(false);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [themeNavDate, setThemeNavDate] = useState(new Date());
@@ -102,6 +107,30 @@ const App: React.FC = () => {
       handleUpdateChatHistory([]);
   };
 
+  const handleSendRef = useRef(handleSend);
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  }, [handleSend]);
+
+  useEffect(() => {
+    const handleSWMessage = (event: MessageEvent) => {
+      const { type, text } = event.data || {};
+      if (type === 'NOTIFICATION_REPLY' && text) {
+        handleSendRef.current(text);
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    }
+
+    return () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      }
+    };
+  }, []);
+
   useEffect(() => {
   const handleMessage = async (event: MessageEvent) => {
     if (event.origin !== window.location.origin) return;
@@ -137,6 +166,28 @@ const App: React.FC = () => {
   window.addEventListener('message', handleMessage);
   return () => window.removeEventListener('message', handleMessage);
 }, [loadData]);
+
+  // --- Persistent Notification Effect ---
+  useEffect(() => {
+    import('./utils/notificationHandler').then(({ updatePersistentNotification }) => {
+      updatePersistentNotification(!!appSettings.persistentNotification);
+    });
+  }, [appSettings.persistentNotification]);
+
+  // --- Handle Reply from URL ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const replyText = params.get('reply');
+    if (replyText) {
+      // Small delay to ensure everything is loaded
+      setTimeout(() => {
+        handleSendRef.current(replyText);
+      }, 500);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- Theme Effect ---
   useEffect(() => {
@@ -237,9 +288,8 @@ const App: React.FC = () => {
   useEffect(() => { if (isSearchExpanded) return BackHandler.register(() => { setIsSearchExpanded(false); return true; }); }, [isSearchExpanded]);
 
   useEffect(() => { if (activeTab === 'money' && moneyView !== 'transactions') return BackHandler.register(() => { setMoneyView('transactions'); return true; }); }, [activeTab, moneyView]);
-  useEffect(() => { if (activeTab === 'focus' && focusSubTab !== 'tasks') return BackHandler.register(() => { setFocusSubTab('tasks'); return true; }); }, [activeTab, focusSubTab]);
-  useEffect(() => { if (activeTab === 'notes' && notesSubTab !== 'general') return BackHandler.register(() => { setNotesSubTab('general'); return true; }); }, [activeTab, notesSubTab]);
-  useEffect(() => { if (activeTab === 'shopping' && shoppingSubTab !== 'shopping') return BackHandler.register(() => { setShoppingSubTab('shopping'); return true; }); }, [activeTab, shoppingSubTab]);
+  useEffect(() => { if (activeTab === 'plan' && planSubTab !== 'tasks') return BackHandler.register(() => { setPlanSubTab('tasks'); return true; }); }, [activeTab, planSubTab]);
+  useEffect(() => { if (activeTab === 'library' && librarySubTab !== 'general') return BackHandler.register(() => { setLibrarySubTab('general'); return true; }); }, [activeTab, librarySubTab]);
   useEffect(() => { if (activeTab !== 'summary') return BackHandler.register(() => { setActiveTab('summary'); return true; }); }, [activeTab]);
 
   // --- Handlers ---
@@ -403,19 +453,19 @@ const App: React.FC = () => {
             (i.type === 'FINANCE' && (i.status === 'done' || i.status === 'pending') && (i.meta.amount || 0) > 0) || 
             ((i.type === 'SHOPPING' || i.type === 'TODO') && i.status === 'done' && (i.meta.amount || 0) > 0)
         );
-    } else if (activeTab === 'notes') {
-        if (notesSubTab === 'general') {
+    } else if (activeTab === 'library') {
+        if (librarySubTab === 'general') {
             targetItems = items.filter(i => i.type === ItemType.NOTE);
-        } else if (notesSubTab === 'skills') {
-            targetItems = items.filter(i => i.type === ItemType.SKILL_LOG);
+        } else if (librarySubTab === 'skills') {
+            targetItems = [];
         } else {
             targetItems = items.filter(i => 
                 i.type === 'JOURNAL' || 
                 (i.type === ItemType.TODO && i.status === 'done')
             );
         }
-    } else if (activeTab === 'focus') {
-         targetItems = items.filter(i => i.type === 'TODO' || i.type === 'EVENT');
+    } else if (activeTab === 'plan') {
+         targetItems = items.filter(i => i.type === 'TODO' || i.type === 'EVENT' || i.type === 'SHOPPING');
     } else {
         targetItems = items;
     }
@@ -425,12 +475,77 @@ const App: React.FC = () => {
     }));
     
     return Array.from(tags).sort();
-  }, [items, activeTab, notesSubTab]);
+  }, [items, activeTab, librarySubTab]);
 
   const savingGoals = useMemo(() => {
       const { savings } = getShoppingItems(items);
       return savings;
   }, [items]);
+
+  const handleOnboardingComplete = (
+    settings: AppSettings, 
+    wallet: Wallet | null, 
+    budget: BudgetConfig | null, 
+    sampleItems: any[]
+  ) => {
+    localStorage.setItem('braindump_onboarding_completed', 'true');
+    setShowOnboarding(false);
+    
+    setAppSettings(settings);
+    
+    const newWallets = wallet ? [wallet] : [];
+    if (wallet) setWallets(newWallets);
+    
+    if (budget) setBudgetConfig(budget);
+    
+    saveAndSync(
+      sampleItems.length > 0 ? [...items, ...sampleItems] : items,
+      budget || budgetConfig,
+      customPrompt,
+      skills,
+      newWallets.length > 0 ? newWallets : wallets,
+      monthlyThemes,
+      settings,
+      true // force overwrite
+    );
+  };
+
+  const handleOnboardingTestParsing = async (text: string) => {
+    // We can use the existing parseInput logic from useBrainDumpData, 
+    // but since it's not exported directly, we can just simulate it or use the API directly.
+    // For simplicity, we'll just use the API directly here.
+    const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
+    if (!apiKey) throw new Error("API key not found");
+    
+    const { GoogleGenAI, Type } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Parse this text: "${text}". Return a JSON object with "type" (FINANCE, NOTE, TASK) and "data" containing the parsed details.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING },
+            data: { type: Type.OBJECT }
+          }
+        }
+      }
+    });
+    
+    return JSON.parse(response.text || "{}");
+  };
+
+  if (showOnboarding) {
+    return (
+      <Onboarding 
+        onComplete={handleOnboardingComplete} 
+        onTestParsing={handleOnboardingTestParsing} 
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-primary font-sans transition-colors duration-300 selection:bg-indigo-500/30">
@@ -454,7 +569,7 @@ const App: React.FC = () => {
                           onThemeEdit={(content) => { setTempThemeContent(content); setThemeEditMode(true); }}
                           handleToggleStatus={handleToggleStatus}
                           setActiveTab={setActiveTab}
-                          setFocusSubTab={setFocusSubTab}
+                          setPlanSubTab={setPlanSubTab}
                           showBalance={showBalance} setShowBalance={setShowBalance}
                           handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}
                           handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
@@ -465,36 +580,22 @@ const App: React.FC = () => {
                       />
                   )}
 
-                  {activeTab === 'focus' && (
-                      <FocusView 
+                  {activeTab === 'plan' && (
+                      <PlanView 
                           items={items} skills={skills}
-                          focusSubTab={focusSubTab} setFocusSubTab={setFocusSubTab}
+                          planSubTab={planSubTab} setPlanSubTab={setPlanSubTab}
                           focusDate={focusDate} setFocusDate={setFocusDate}
                           appSettings={appSettings}
                           handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
                           handleUpdateItem={handleUpdateItem}
                           handleOpenAddRoutine={() => setRoutineModalOpen(true)}
                           handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}
+                          handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
                           handleOpenEditSkill={handleOpenEditSkill} handleOpenAddSkill={handleOpenAddSkill}
                           setDeleteId={setDeleteId} setDeleteType={setDeleteType}
                           searchQuery={searchQuery} selectedTag={selectedTag}
                           wallets={wallets} budgetRules={budgetConfig.rules}
                           handleResetRoutine={handleResetRoutine}
-                          setActiveTab={setActiveTab}
-                      />
-                  )}
-
-                  {activeTab === 'shopping' && (
-                      <ShoppingView 
-                          items={items}
-                          handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
-                          handleUpdateItem={handleUpdateItem}
-                          budgetRules={budgetConfig.rules}
-                          handleResetRoutine={handleResetRoutine}
-                          handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
-                          shoppingSubTab={shoppingSubTab}
-                          setShoppingSubTab={setShoppingSubTab}
-                          wallets={wallets}
                           onAddFunds={handleAddSavingTransaction}
                           onCompleteGoal={(goal) => {
                               if (confirm(`Complete goal "${goal.content}"? This will deduct ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(goal.meta.savedAmount || 0)} from your wallet.`)) {
@@ -516,29 +617,19 @@ const App: React.FC = () => {
                       />
                   )}
 
-                  {activeTab === 'notes' && (
-                      <NotesView 
+                  {activeTab === 'library' && (
+                      <LibraryView 
                           items={items} skills={skills}
-                          notesSubTab={notesSubTab} setNotesSubTab={setNotesSubTab}
+                          librarySubTab={librarySubTab} setLibrarySubTab={setLibrarySubTab}
                           appSettings={appSettings}
                           handleDelete={requestDeleteItem}
                           handleUpdateItem={handleUpdateItem}
+                          handleOpenEditSkill={handleOpenEditSkill} handleOpenAddSkill={handleOpenAddSkill}
+                          setDeleteId={setDeleteId} setDeleteType={setDeleteType}
                           selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
                           setActiveTab={setActiveTab}
                           onAddItem={(type) => {
                               if (type === ItemType.NOTE) setAddNoteModalOpen(true);
-                              // For Journal and Skill Logs, we might need specific modals or just use the generic note modal with pre-filled type
-                              // Currently AddNoteModal handles basic notes. 
-                              // If we want to add specific types, we might need to update AddNoteModal or use different ones.
-                              // For now, let's open AddNoteModal and we can enhance it later if needed, 
-                              // OR we can just use the InputBar logic if we want to keep it simple.
-                              // Actually, let's use the existing modals if available.
-                              if (type === ItemType.SKILL_LOG) {
-                                  // We don't have a dedicated "Add Skill Log" modal that is separate from the main input flow usually.
-                                  // But we can open the AddTaskModal or similar if adapted.
-                                  // For now, let's just open the AddNoteModal which is generic enough.
-                                  setAddNoteModalOpen(true); 
-                              }
                               if (type === ItemType.JOURNAL) {
                                   setAddNoteModalOpen(true);
                               }
@@ -593,7 +684,7 @@ const App: React.FC = () => {
               onResetChat={handleResetChat}
               chatModel={appSettings.chatModel}
           />
-          <div className="pointer-events-auto">
+          <div className="pointer-events-none flex flex-col items-center w-full">
             <InputBar 
                 onSend={handleAppSend} 
                 onFocus={() => { setIsSearchExpanded(false); }} 
@@ -602,9 +693,16 @@ const App: React.FC = () => {
                 pendingCount={pendingCount}
                 isChatOpen={isChatOpen}
                 onOpenChat={() => setIsChatOpen(!isChatOpen)}
-                startAction={(activeTab === 'notes' || activeTab === 'money') ? (
+                topContent={
+                  <PendingReviewList 
+                      reviews={pendingReviews} 
+                      onApprove={handleApproveReview} 
+                      onReject={handleRejectReview} 
+                  />
+                }
+                startAction={(activeTab === 'library' || activeTab === 'money') ? (
                     <FloatingSearch 
-                        activeTab={activeTab} notesSubTab={notesSubTab} moneyView={moneyView}
+                        activeTab={activeTab} librarySubTab={librarySubTab} moneyView={moneyView}
                         isSearchExpanded={isSearchExpanded} setIsSearchExpanded={setIsSearchExpanded}
                         searchQuery={searchQuery} setSearchQuery={setSearchQuery}
                         selectedTag={selectedTag} setSelectedTag={setSelectedTag}
@@ -627,6 +725,10 @@ const App: React.FC = () => {
              <BottomNav 
                 activeTab={activeTab} 
                 setActiveTab={setActiveTab} 
+                planSubTab={planSubTab}
+                setPlanSubTab={setPlanSubTab}
+                librarySubTab={librarySubTab}
+                setLibrarySubTab={setLibrarySubTab}
                 onMenuClick={() => setIsControlCenterOpen(true)}
              />
           </div>

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import {
     Tab,
-    NotesSubTab,
+    LibrarySubTab,
     MoneyView,
     Wallet,
     SortOrder,
@@ -19,7 +19,7 @@ import {
 
 interface FloatingSearchProps {
     activeTab: Tab;
-    notesSubTab: NotesSubTab;
+    librarySubTab: LibrarySubTab;
     moneyView: MoneyView;
     isSearchExpanded: boolean;
     setIsSearchExpanded: (val: boolean) => void;
@@ -54,7 +54,7 @@ interface FloatingSearchProps {
 
 const FloatingSearch: React.FC<FloatingSearchProps> = ({
     activeTab,
-    notesSubTab,
+    librarySubTab,
     moneyView,
     isSearchExpanded,
     setIsSearchExpanded,
@@ -83,8 +83,8 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
     budgetConfig,
     savingGoals = []
 }) => {
-    if (activeTab !== 'notes' && activeTab !== 'money') return null;
-    if (activeTab === 'notes' && notesSubTab === 'journal') return null;
+    if (activeTab !== 'library' && activeTab !== 'money') return null;
+    if (activeTab === 'library' && librarySubTab === 'journal') return null;
 
     const isMoney = activeTab === 'money';
     const isTransactions = moneyView === 'transactions';

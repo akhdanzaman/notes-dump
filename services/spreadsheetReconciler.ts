@@ -323,65 +323,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         }
     }
 
-    // 6. Skill Logs
-    const skillLogSheet = valueRanges.find(r => r.range && r.range.includes('Skill Logs'));
-    if (skillLogSheet && skillLogSheet.values) {
-        const rows = skillLogSheet.values.slice(1);
-        for (const row of rows) {
-            const [date, skill, durationStr, content, tagsStr, idStr] = row;
-            if (!content && !date && !skill && !idStr) continue;
-            const duration = parseInt(durationStr) || 0;
-            
-            const match = newItems.find(i => 
-                (idStr && i.id === idStr) ||
-                (!idStr && i.type === ItemType.SKILL_LOG &&
-                i.content === content &&
-                fmtDate(i.meta.date || i.created_at) === date)
-            );
-
-            if (match) {
-                seenItemIds.add(match.id);
-                let updated = false;
-                if (match.content !== content) { match.content = content; updated = true; }
-                if (match.meta.durationMinutes !== duration) { match.meta.durationMinutes = duration; updated = true; }
-                if (skill !== undefined && match.meta.skillName !== skill) {
-                    match.meta.skillName = skill;
-                    match.meta.skillId = getSkillId(skill);
-                    updated = true;
-                }
-                const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
-                if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
-                
-                const parsedDate = new Date(date);
-                if (!isNaN(parsedDate.getTime())) {
-                    const isoDate = parsedDate.toISOString();
-                    if (match.meta.date !== isoDate) { match.meta.date = isoDate; updated = true; }
-                }
-                
-                if (updated) hasChanges = true;
-            } else {
-                const parsedDate = new Date(date);
-                const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
-                const newId = uuidv4();
-                newItems.push({
-                    id: newId,
-                    type: ItemType.SKILL_LOG,
-                    content: content || 'Manual Skill Log',
-                    status: 'done',
-                    created_at: isoDate,
-                    meta: {
-                        date: isoDate,
-                        skillName: skill,
-                        skillId: getSkillId(skill),
-                        durationMinutes: duration,
-                        tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : []
-                    }
-                });
-                seenItemIds.add(newId);
-                hasChanges = true;
-            }
-        }
-    }
+    // 6. Skill Logs (Removed)
 
     // 7. Settings Reconciliation
     const walletSheet = valueRanges.find(r => r.range && r.range.includes('Wallets Config'));
@@ -473,7 +415,6 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         shop: !!shopSheet,
         event: !!eventSheet,
         notes: !!notesSheet,
-        skillLog: !!skillLogSheet,
         wallet: !!walletSheet,
         budget: !!budgetSheet,
         skillConfig: !!skillConfigSheet,
@@ -494,7 +435,6 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;
         else if (item.type === ItemType.EVENT) sheetWasFetched = sheetsFetched.event;
         else if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) sheetWasFetched = sheetsFetched.notes;
-        else if (item.type === ItemType.SKILL_LOG) sheetWasFetched = sheetsFetched.skillLog;
 
         if (sheetWasFetched) {
             hasChanges = true;

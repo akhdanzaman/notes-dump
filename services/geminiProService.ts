@@ -84,7 +84,6 @@ function isValidItemType(value: unknown): value is ParsedItemType {
     'NOTE',
     'EVENT',
     'FINANCE',
-    'SKILL_LOG',
     'JOURNAL'
   ].includes(value);
 }
@@ -138,7 +137,6 @@ function sanitizeEntityType(value: unknown): ParserEntityType {
     'note',
     'event',
     'finance',
-    'skill_log',
     'journal',
     'skill',
     'wallet',
@@ -158,7 +156,6 @@ function mapEntityTypeToItemType(entityType: ParserEntityType, fallback: ParsedI
     case 'note': return 'NOTE';
     case 'event': return 'EVENT';
     case 'finance': return 'FINANCE';
-    case 'skill_log': return 'SKILL_LOG';
     case 'journal': return 'JOURNAL';
     case 'saving_goal': return 'SHOPPING';
     default: return fallback;
@@ -373,7 +370,6 @@ Allowed entityType:
 - note
 - event
 - finance
-- skill_log
 - journal
 - skill
 - wallet
@@ -400,7 +396,6 @@ Entity hints:
 - todo = focus/task/routine action
 - shopping = planned purchase, errand, shopping list, saving goal target
 - finance = already happened transaction, income, expense, transfer, saving funding
-- skill_log = time spent practicing/learning
 - journal = diary/feelings/recap
 - skill = skill master entry
 - wallet = wallet/account master entry
@@ -549,8 +544,6 @@ const stage2Schema = {
               subcommodity: { type: Type.STRING },
               merchant: { type: Type.STRING },
               quantity: { type: Type.STRING },
-              durationMinutes: { type: Type.NUMBER },
-              skillName: { type: Type.STRING },
               progress: { type: Type.NUMBER },
               progressNotes: { type: Type.STRING },
               isRoutine: { type: Type.BOOLEAN },
@@ -584,10 +577,6 @@ const stage2Schema = {
               commodity: { type: Type.STRING },
               subcommodity: { type: Type.STRING },
               merchant: { type: Type.STRING },
-
-              durationMinutes: { type: Type.NUMBER },
-              skillName: { type: Type.STRING },
-              skillId: { type: Type.STRING },
 
               progress: { type: Type.NUMBER },
               progressNotes: { type: Type.STRING },
@@ -649,7 +638,6 @@ async function parseStage1(
       `Examples:
 - "beli susu besok 12rb" => create_item + shopping
 - "makan sahur 10rb cash" => create_item + finance
-- "belajar React 45 menit hooks" => create_item + skill_log
 - "buat skill English target 5 jam per minggu" => create_skill + skill
 - "buat wallet OVO saldo awal 15000" => create_wallet + wallet
 - "tema bulan ini discipline" => create_theme + theme
@@ -698,11 +686,10 @@ function buildFeaturePrompt(
 Extraction rules by action:
 
 1) create_item
-- itemType must be one of TODO, SHOPPING, NOTE, EVENT, FINANCE, SKILL_LOG, JOURNAL
+- itemType must be one of TODO, SHOPPING, NOTE, EVENT, FINANCE, JOURNAL
 - future unpaid purchase => SHOPPING
 - completed expense/income => FINANCE
 - diary/feeling/recap => JOURNAL
-- learning session with duration => SKILL_LOG
 - saving target like "nabung buat laptop 15jt" => SHOPPING + shoppingCategory=saving
 
 2) update_item

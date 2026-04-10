@@ -53,25 +53,25 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                     initial={{ opacity: 0, y: 100 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 100 }}
-                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-t-[32px] sm:rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                    className="bg-surface border border-border rounded-t-[32px] sm:rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                 >
-                    <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center shrink-0">
-                        <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
+                        <h3 className="text-xl font-bold text-primary flex items-center gap-2">
                             <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-indigo-500'}`} />
                             {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
                         </h3>
-                        <button onClick={onClose} className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full text-zinc-500 transition-colors">
+                        <button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full text-muted transition-colors">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
                     <div className="p-6 space-y-4 overflow-y-auto">
-                        <div className="flex gap-2 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
+                        <div className="flex gap-2 p-1 bg-black/5 dark:bg-white/5 rounded-xl">
                             {(['expense', 'income', 'transfer', 'saving'] as const).map(type => (
                                 <button
                                     key={type}
                                     onClick={() => setTransactionType(type)}
-                                    className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-colors ${transactionType === type ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                                    className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-colors ${transactionType === type ? 'bg-surface text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
                                 >
                                     {type}
                                 </button>
@@ -79,29 +79,29 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Amount</label>
+                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Amount</label>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">Rp</span>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-bold">Rp</span>
                                 <input 
                                     type="number"
                                     autoFocus
                                     value={amount}
                                     onChange={e => setAmount(e.target.value)}
                                     placeholder="0"
-                                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 pl-12 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-bold text-lg"
+                                    className="w-full bg-background border border-border rounded-2xl p-4 pl-12 text-primary focus:outline-none focus:border-indigo-500 font-bold text-lg"
                                 />
                             </div>
                         </div>
 
                         {transactionType !== 'saving' && (
                             <div>
-                                <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Description</label>
+                                <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Description</label>
                                 <input 
                                     type="text"
                                     value={description}
                                     onChange={e => setDescription(e.target.value)}
                                     placeholder={transactionType === 'expense' ? "What did you buy?" : transactionType === 'income' ? "Source of income?" : "Description"}
-                                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium"
+                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
                                 />
                             </div>
                         )}
@@ -110,7 +110,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                             {transactionType === 'saving' ? (
                                 <>
                                     <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Saving Goal</label>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Saving Goal</label>
                                         <select 
                                             value={savingGoalId}
                                             onChange={e => {
@@ -120,7 +120,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                                     setWalletId(goal.meta.dedicatedWalletId);
                                                 }
                                             }}
-                                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                         >
                                             <option value="">Select Goal</option>
                                             {savingGoals.map(g => (
@@ -129,13 +129,13 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                         </select>
                                     </div>
                                     <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Wallet</label>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Wallet</label>
                                         {(() => {
                                             const goal = savingGoals.find(g => g.id === savingGoalId);
                                             if (goal?.meta.dedicatedWalletId) {
                                                 const wallet = wallets.find(w => w.id === goal.meta.dedicatedWalletId);
                                                 return (
-                                                    <div className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-500 font-medium flex items-center gap-2">
+                                                    <div className="w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium flex items-center gap-2">
                                                         <Wallet className="w-4 h-4" />
                                                         {wallet ? wallet.name : 'Linked to Goal'}
                                                     </div>
@@ -145,7 +145,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                                     <select 
                                                         value={walletId}
                                                         onChange={e => setWalletId(e.target.value)}
-                                                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                                     >
                                                         <option value="">Select Wallet</option>
                                                         {wallets.map(w => (
@@ -157,11 +157,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                         })()}
                                     </div>
                                     <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Category</label>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Category</label>
                                         <select 
                                             value={category}
                                             onChange={e => setCategory(e.target.value)}
-                                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                         >
                                             <option value="">Uncategorized</option>
                                             {budgetConfig.rules?.map(r => (
@@ -173,11 +173,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                             ) : (
                                 <>
                                     <div>
-                                        <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
                                         <select 
                                             value={walletId}
                                             onChange={e => setWalletId(e.target.value)}
-                                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                         >
                                             <option value="">Select Wallet</option>
                                             {wallets.map(w => (
@@ -187,11 +187,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                     </div>
                                     {transactionType === 'transfer' ? (
                                         <div>
-                                            <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">To</label>
+                                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">To</label>
                                             <select 
                                                 value={toWalletId}
                                                 onChange={e => setToWalletId(e.target.value)}
-                                                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                             >
                                                 <option value="">Select Wallet</option>
                                                 {wallets.filter(w => w.id !== walletId).map(w => (
@@ -201,11 +201,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                         </div>
                                     ) : (
                                         <div>
-                                            <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Category</label>
+                                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Category</label>
                                             <select 
                                                 value={category}
                                                 onChange={e => setCategory(e.target.value)}
-                                                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                             >
                                                 <option value="">Uncategorized</option>
                                                 {budgetConfig.rules?.map(r => (
@@ -219,17 +219,17 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Date</label>
+                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Date</label>
                             <input 
                                 type="date"
                                 value={date}
                                 onChange={e => setDate(e.target.value)}
-                                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium"
+                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
                             />
                         </div>
                     </div>
 
-                    <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-900">
+                    <div className="p-6 border-t border-border shrink-0 bg-surface">
                         <button 
                             onClick={handleSave}
                             disabled={!amount || (transactionType !== 'saving' && !description) || (transactionType !== 'saving' && !walletId) || (transactionType === 'transfer' && !toWalletId) || (transactionType === 'saving' && !savingGoalId)}

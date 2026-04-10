@@ -190,7 +190,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -203,12 +203,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div className="flex bg-black/5 rounded-2xl p-1 mb-6">
+                    <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
                         {tabs.map(tab => (
                             <button 
                                 key={tab}
                                 onClick={() => setMoneyView(tab)}
-                                className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${moneyView === tab ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' : 'text-black/40 hover:text-black'}`}
+                                className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${moneyView === tab ? 'bg-surface text-primary shadow-sm' : 'text-primary/40 hover:text-primary'}`}
                             >
                                 {tab === 'wallets' && <WalletIcon className="w-4 h-4" />}
                                 {tab === 'transactions' && <List className="w-4 h-4" />}
@@ -264,7 +264,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                         </div>
                         
-                        <div className="flex flex-wrap gap-4 pt-4 border-t border-black/10 dark:border-white/10 items-center justify-between">
+                        <div className="flex flex-wrap gap-4 pt-4 border-t border-border items-center justify-between">
                             <div className="flex gap-4">
                                 <div className="text-sm font-medium opacity-80">
                                 Assets: <span className="text-emerald-600 dark:text-emerald-500 font-bold">{showBalance ? fmt(totalAssets) : '••'}</span>
@@ -433,7 +433,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </button>
                             </div>
                         ) : (
-                            <div className="bg-white dark:bg-[#222224] border border-zinc-200 dark:border-none rounded-[32px] p-6 text-zinc-900 dark:text-white shadow-xl">
+                            <div className="bg-surface border border-border rounded-[32px] p-6 text-primary shadow-xl">
                                 {/* Header */}
                                 <div className="flex justify-between items-center mb-8">
                                     <h2 className="text-3xl font-bold tracking-tight">
@@ -456,15 +456,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </div>
 
                                 {/* Basis Fixed Income & Planned Spending */}
-                                <div className="flex justify-between items-end mb-8 pb-6 border-b border-zinc-100 dark:border-white/10">
+                                <div className="flex justify-between items-end mb-8 pb-6 border-b border-border">
                                     <div>
-                                        <div className="text-zinc-500 dark:text-white/60 text-sm mb-1 font-medium">Basis: {incomeLabel}</div>
+                                        <div className="text-muted text-sm mb-1 font-medium">Basis: {incomeLabel}</div>
                                         <div className="text-xl font-bold">{showBalance ? fmt(effectiveIncome) : '••••'}</div>
                                     </div>
                                     {projectedExpense > 0 && (
                                         <div className="text-right">
-                                            <div className="text-zinc-500 dark:text-white/60 text-sm mb-1 font-medium">Planned</div>
-                                            <div className="text-xl font-bold text-amber-600 dark:text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</div>
+                                            <div className="text-muted text-sm mb-1 font-medium">Planned</div>
+                                            <div className="text-xl font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</div>
                                         </div>
                                     )}
                                 </div>
@@ -493,15 +493,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                 </div>
                                                 <div className={`text-sm font-bold mb-2 ${textColorClass} flex items-center justify-between`}>
                                                     <div>
-                                                        {percentageOfCategorySpent.toFixed(1)} % <span className="text-zinc-400 dark:text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
+                                                        {percentageOfCategorySpent.toFixed(1)} % <span className="text-muted font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
                                                     </div>
                                                     {planned > 0 && (
-                                                        <div className="text-amber-600 dark:text-amber-500 font-medium text-[10px] uppercase tracking-wider">
+                                                        <div className="text-amber-500 font-medium text-[10px] uppercase tracking-wider">
                                                             Planned: {showBalance ? fmt(planned) : '•••'}
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="h-3 w-full bg-zinc-100 dark:bg-white/20 rounded-full overflow-hidden flex relative">
+                                                <div className="h-3 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden flex relative">
                                                     <div className={`h-full ${rule.color || 'bg-gray-500'}`} style={{ width: `${Math.min(percentageOfTotalSpent, 100)}%` }}></div>
                                                     {planned > 0 && (
                                                         <div className={`h-full ${rule.color || 'bg-gray-500'} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`} style={{ width: `${Math.min(percentageOfTotalPlanned, 100 - Math.min(percentageOfTotalSpent, 100))}%` }}></div>
@@ -518,22 +518,22 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                                     {/* Uncategorized */}
                                     {(uncategorized > 0 || projectedUncategorized > 0) && (
-                                        <div className="pt-4 border-t border-zinc-100 dark:border-white/10 mt-4">
+                                        <div className="pt-4 border-t border-border mt-4">
                                             <div className="flex items-center gap-2 text-sm font-semibold mb-1 text-gray-400">
                                                 <div className="w-2 h-2 rounded-full bg-gray-400"></div>
                                                 Other
                                             </div>
                                             <div className="text-sm font-bold mb-2 text-gray-400 flex items-center justify-between">
                                                 <div>
-                                                    {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-zinc-400 dark:text-white/40 font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
+                                                    {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-muted font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
                                                 </div>
                                                 {projectedUncategorized > 0 && (
-                                                    <div className="text-amber-600 dark:text-amber-500 font-medium text-[10px] uppercase tracking-wider">
+                                                    <div className="text-amber-500 font-medium text-[10px] uppercase tracking-wider">
                                                         Planned: {showBalance ? fmt(projectedUncategorized) : '•••'}
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="h-3 w-full bg-zinc-100 dark:bg-white/20 rounded-full overflow-hidden flex">
+                                            <div className="h-3 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden flex">
                                                 <div className="h-full bg-gray-400" style={{ width: `${Math.min((uncategorized / effectiveIncome) * 100, 100)}%` }}></div>
                                                 {projectedUncategorized > 0 && (
                                                     <div className="h-full bg-gray-400 opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]" style={{ width: `${Math.min((projectedUncategorized / effectiveIncome) * 100, 100 - Math.min((uncategorized / effectiveIncome) * 100, 100))}%` }}></div>

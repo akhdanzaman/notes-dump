@@ -143,25 +143,6 @@ export const generateExportData = (
     });
   }
 
-  // --- Sheet 6: Skill Logs ---
-  const skillLogs = items.filter(i => i.type === ItemType.SKILL_LOG).map(item => ({
-      Date: fmtDate(item.meta.date || item.created_at),
-      Skill: item.meta.skillName || '',
-      Duration_Minutes: item.meta.durationMinutes || 0,
-      Content: item.content,
-      Tags: item.meta.tags?.join(', ') || '',
-      ID: item.id
-  }));
-  if (skillLogs.length > 0) {
-    sheets.push({
-      name: "Skill Logs",
-      data: [
-        ["Date", "Skill", "Duration_Minutes", "Content", "Tags", "ID"],
-        ...skillLogs.map(s => [s.Date, s.Skill, s.Duration_Minutes, s.Content, s.Tags, s.ID])
-      ]
-    });
-  }
-
   // --- Sheet 7: All Items (Backup) ---
   const itemsData = items.map(item => ({
     ID: item.id,

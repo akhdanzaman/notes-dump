@@ -292,7 +292,7 @@ const Card: React.FC<CardProps> = ({
       }
   };
 
-  const shouldStrike = status === 'done' && !noStrikethrough && type !== ItemType.SKILL_LOG;
+  const shouldStrike = status === 'done' && !noStrikethrough && type !== ItemType.JOURNAL;
 
   const toggleCollapse = () => {
       if (enableCollapse) setIsCollapsed(!isCollapsed);
@@ -312,8 +312,6 @@ const Card: React.FC<CardProps> = ({
         return { textColor: 'text-purple-500', bg: 'bg-surface' };
       case ItemType.EVENT:
         return { textColor: 'text-acc-event', bg: 'bg-surface' };
-      case ItemType.SKILL_LOG:
-        return { textColor: 'text-indigo-500', bg: 'bg-surface' };
       case ItemType.JOURNAL:
         return { textColor: 'text-fuchsia-400', bg: 'bg-surface' };
       case ItemType.FINANCE:
@@ -399,11 +397,11 @@ const Card: React.FC<CardProps> = ({
   const displayAmount = type !== ItemType.TODO ? formatMoney(meta?.amount) : null;
 
   // Field visibilities
-  const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL || type === ItemType.SKILL_LOG;
+  const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL;
   const showAmountField = type === ItemType.FINANCE || type === ItemType.SHOPPING;
-  const showDateField = type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING || type === ItemType.FINANCE || type === ItemType.SKILL_LOG || type === ItemType.JOURNAL;
+  const showDateField = type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING || type === ItemType.FINANCE || type === ItemType.JOURNAL;
   const showFinanceExtras = type === ItemType.FINANCE || (type === ItemType.SHOPPING && showAmountField);
-  const showSkillExtras = type === ItemType.SKILL_LOG;
+  const showSkillExtras = false;
   const showProgress = type === ItemType.TODO && status === 'pending';
 
   // Read More Logic
@@ -446,12 +444,12 @@ const Card: React.FC<CardProps> = ({
   const isRoutineDone = meta.isRoutine && status === 'done';
   const isParsingFailed = meta.tags?.includes('parsing_failed');
   
-  const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed);
+  const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
 
   return (
     <div 
-        className={`${bgClass} rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        className={`${bgClass} border border-border rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
