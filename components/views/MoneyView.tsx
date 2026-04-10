@@ -190,7 +190,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -208,7 +208,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             <button 
                                 key={tab}
                                 onClick={() => setMoneyView(tab)}
-                                className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${moneyView === tab ? 'bg-surface text-primary shadow-sm' : 'text-primary/40 hover:text-primary'}`}
+                                className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${moneyView === tab ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                             >
                                 {tab === 'wallets' && <WalletIcon className="w-4 h-4" />}
                                 {tab === 'transactions' && <List className="w-4 h-4" />}
@@ -278,7 +278,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                             <button 
                                 onClick={() => onAddItem(ItemType.FINANCE)}
-                                className="w-10 h-10 flex items-center justify-center bg-black dark:bg-zinc-800 text-white dark:text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all"
+                                className="w-10 h-10 flex items-center justify-center bg-black dark:bg-zinc-800 text-white dark:text-white rounded-full hover:scale-110 active:scale-95 transition-all"
                             >
                                 <Plus className="w-6 h-6" />
                             </button>
@@ -313,7 +313,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             {walletStats.map(wallet => (
                                 <div 
                                     key={wallet.id} 
-                                    className="bg-surface rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 relative group"
+                                    className="bg-surface rounded-[24px] p-4 transition-all hover:bg-surface/80 relative group"
                                 >
                                     <div className="flex flex-col gap-1">
                                         {/* Header */}
@@ -433,7 +433,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </button>
                             </div>
                         ) : (
-                            <div className="bg-surface border border-border rounded-[32px] p-6 text-primary shadow-xl">
+                            <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
                                 {/* Header */}
                                 <div className="flex justify-between items-center mb-8">
                                     <h2 className="text-3xl font-bold tracking-tight">
@@ -508,7 +508,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                     )}
                                                     {/* Limit Marker at the rule's percentage of total */}
                                                     <div 
-                                                        className="h-full w-0.5 bg-zinc-400 dark:bg-white z-20 absolute top-0 shadow-[0_0_4px_rgba(0,0,0,0.2)]"
+                                                        className="h-full w-0.5 bg-zinc-400 dark:bg-white z-20 absolute top-0"
                                                         style={{ left: `${rule.percentage}%` }}
                                                     ></div>
                                                 </div>

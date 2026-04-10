@@ -48,7 +48,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface border border-border rounded-xl w-full max-w-sm shadow-2xl p-6">
+      <div className="bg-surface rounded-xl w-full max-w-sm shadow-2xl p-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-bold text-primary">{mode === 'add' ? 'Add Wallet' : 'Edit Wallet'}</h3>
           <button onClick={onClose} className="text-muted hover:text-primary">

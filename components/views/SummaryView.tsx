@@ -420,7 +420,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <div className="pb-24">
             <motion.div
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 shadow-sm mb-6 touch-pan-y"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-6 touch-pan-y"
                 transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -533,7 +533,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
                             className="flex flex-col items-center gap-2 group"
                         >
-                            <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center shadow-lg shadow-black/20 group-active:scale-95 transition-transform">
+                            <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
                                 <Plus className="w-6 h-6" />
                             </div>
                             <span className="text-xs font-medium opacity-70">Task</span>
@@ -543,7 +543,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             onClick={() => handleOpenAddShopping()}
                             className="flex flex-col items-center gap-2 group"
                         >
-                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
                                 <ShoppingCart className="w-6 h-6" />
                             </div>
                             <span className="text-xs font-medium opacity-70">Buy</span>
@@ -553,7 +553,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             onClick={handleOpenAddNote}
                             className="flex flex-col items-center gap-2 group"
                         >
-                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
                                 <StickyNote className="w-6 h-6" />
                             </div>
                             <span className="text-xs font-medium opacity-70">Note</span>
@@ -563,7 +563,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             onClick={handleOpenAddExpense}
                             className="flex flex-col items-center gap-2 group"
                         >
-                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
                                 <WalletIcon className="w-6 h-6" />
                             </div>
                             <span className="text-xs font-medium opacity-70">Expense</span>
@@ -639,7 +639,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         <ArrowRight className="w-4 h-4 opacity-30 group-hover:opacity-100 transition-opacity" />
                     </div>
 
-                    <div className="bg-surface border border-border text-primary rounded-[24px] p-5 relative overflow-hidden shadow-sm">
+                    <div className="bg-surface text-primary rounded-[24px] p-5 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-5 opacity-5">
                             <WalletIcon className="w-24 h-24" />
                         </div>
@@ -708,7 +708,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.92, y: -8 }}
                                         transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                                        className="fixed bg-surface border border-border rounded-3xl shadow-2xl z-[9999] overflow-hidden flex flex-col max-h-[60vh]"
+                                        className="fixed bg-surface border border-border rounded-3xl z-[9999] overflow-hidden flex flex-col max-h-[60vh]"
                                         style={{
                                             top: popupPosition.top,
                                             left: popupPosition.left,

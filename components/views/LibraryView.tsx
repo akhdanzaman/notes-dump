@@ -258,7 +258,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -274,19 +274,19 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
                         <button 
                             onClick={() => setLibrarySubTab('general')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'general' ? 'bg-surface text-primary shadow-sm' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'general' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
                             <Library className="w-4 h-4" /> Notes
                         </button>
                         <button 
                             onClick={() => setLibrarySubTab('skills')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'skills' ? 'bg-surface text-primary shadow-sm' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'skills' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
                             <Target className="w-4 h-4" /> Skills
                         </button>
                         <button 
                             onClick={() => setLibrarySubTab('journal')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'journal' ? 'bg-surface text-primary shadow-sm' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'journal' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
                             <BookText className="w-4 h-4" /> Journal
                         </button>

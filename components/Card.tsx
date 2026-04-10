@@ -449,7 +449,7 @@ const Card: React.FC<CardProps> = ({
 
   return (
     <div 
-        className={`${bgClass} border border-border rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        className={`${bgClass} rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">

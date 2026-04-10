@@ -217,7 +217,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 layout={!isDragging}
                 transition={{ type: "tween", duration: 0.3 }}
                 key={goal.id} 
-                className={`bg-surface border border-border rounded-[24px] overflow-hidden ${isDone ? 'opacity-60' : ''}`}
+                className={`bg-surface rounded-[24px] overflow-hidden ${isDone ? 'opacity-60' : ''}`}
             >
                 <div 
                     className="p-5 cursor-pointer"
@@ -264,7 +264,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     {progress >= 100 && (
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); onCompleteGoal(goal); }}
-                                            className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
+                                            className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
                                         >
                                             <CheckCircle2 className="w-5 h-5" />
                                         </button>
@@ -384,7 +384,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -400,19 +400,19 @@ const PlanView: React.FC<PlanViewProps> = ({
                     <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
                         <button 
                             onClick={() => setPlanSubTab('tasks')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'tasks' ? 'bg-surface text-primary shadow-sm' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'tasks' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
                             <CheckCircle2 className="w-4 h-4" /> Tasks
                         </button>
                         <button 
                             onClick={() => setPlanSubTab('shopping')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'shopping' ? 'bg-surface text-primary shadow-sm' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'shopping' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
                             <ShoppingCart className="w-4 h-4" /> Shopping
                         </button>
                         <button 
                             onClick={() => setPlanSubTab('savings')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'savings' ? 'bg-surface text-primary shadow-sm' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'savings' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
                             <PiggyBank className="w-4 h-4" /> Goals
                         </button>
@@ -731,7 +731,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             initial={{ opacity: 0, y: 100 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 100 }}
-                            className="bg-surface border border-border rounded-t-[32px] sm:rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col"
+                            className="bg-surface border border-border rounded-t-[32px] sm:rounded-[32px] w-full max-w-md overflow-hidden flex flex-col"
                         >
                             <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                                 <h3 className="text-xl font-bold text-primary flex items-center gap-2">

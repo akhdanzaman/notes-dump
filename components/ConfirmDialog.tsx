@@ -15,7 +15,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, title, message, o
   
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface border border-border rounded-xl w-full max-w-xs shadow-2xl p-6 text-center">
+      <div className="bg-surface rounded-xl w-full max-w-xs shadow-2xl p-6 text-center">
         <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
             <AlertTriangle className="w-6 h-6" />
         </div>
