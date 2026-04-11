@@ -67,7 +67,10 @@ const validateSchema = (data: any): DbSchema => {
 
   return {
       data: Array.isArray(data.data) ? data.data : [],
-      budgetConfig: data.budgetConfig,
+      budgetConfig: data.budgetConfig ? {
+          ...data.budgetConfig,
+          rules: Array.isArray(data.budgetConfig.rules) ? data.budgetConfig.rules : []
+      } : undefined,
       appSettings: data.appSettings,
       customPrompt: data.customPrompt,
       skills: Array.isArray(data.skills) ? data.skills : [],
@@ -276,9 +279,9 @@ const performSync = async (
   if (!isHydrated) {
     try {
       await performFetchSpreadsheetDb(false);
-    } catch (e) {
+    } catch (e: any) {
       console.warn("Failed to hydrate spreadsheet before sync", e);
-      return { success: false, method: 'skipped_not_hydrated' };
+      return { success: false, method: 'skipped_not_hydrated', error: 'Spreadsheet not hydrated and fetch failed: ' + e.message };
     }
   }
 

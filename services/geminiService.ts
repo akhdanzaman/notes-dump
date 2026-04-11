@@ -1,6 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ItemType, BrainDumpItem } from '../types';
 
+import { getLocalISOString } from '../utils/selectors/dateUtils';
+
 const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
 
 export const getGeminiKey = (): string => {
@@ -36,14 +38,10 @@ COMMON EXTRACTION:
 - tags: max 2, see TAG RULES below.
 
 DATE (STRICT):
-- Always resolve meta.dateISO = YYYY-MM-DD when any time reference exists.
-- Set meta.when if relative/weekday-based:
-  - today/hari ini => when="today"
-  - tomorrow/besok => when="tomorrow"
-  - yesterday/kemarin => when="yesterday" (Important for FINANCE/JOURNAL)
-  - weekday mentioned => NEXT occurrence after current date, when="next_weekday"
-  - explicit calendar date => when="specific_date"
-- FOR JOURNAL: Default date to TODAY if not specified. "Journal for yesterday..." => date=yesterday.
+- ALWAYS output \`meta.date\` as a full ISO 8601 string including the local timezone offset (e.g., "YYYY-MM-DDTHH:mm:ss.sss±hh:mm").
+- Calculate the exact date and time based on the "Current Date context" provided. If the user specifies a relative day (e.g., "yesterday", "tomorrow"), calculate that exact date and return it with the current local time and timezone offset.
+- Do NOT output just "YYYY-MM-DD". Always include the time and timezone to prevent timezone shifting bugs.
+- FOR JOURNAL: Default date to the exact current local time if not specified. "Journal for yesterday..." => date=yesterday at current time.
 
 SHOPPING META:
 - shoppingCategory ∈ {urgent, routine, not_urgent, saving}
@@ -137,8 +135,9 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const currentDate = new Date().toISOString();
-  const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const now = new Date();
+  const currentDate = getLocalISOString(now);
+  const currentDayName = now.toLocaleDateString('en-US', { weekday: 'long' });
   const tagsContext = existingTags.length > 0 ? `Existing tags context: ${existingTags.join(', ')}` : '';
   const skillsContext = availableSkills.length > 0 ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(', ')}` : '';
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority } from '../types';
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
@@ -151,7 +152,7 @@ const Card: React.FC<CardProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [showFullText, setShowFullText] = useState(false);
-  const { type, content, meta, isOptimistic, status, created_at, completed_at } = item;
+  const { type, content = '', meta = {}, isOptimistic, status, created_at, completed_at } = item;
   
   // --- Edit State ---
   const [editContent, setEditContent] = useState(content);
@@ -179,6 +180,15 @@ const Card: React.FC<CardProps> = ({
   const [editProgress, setEditProgress] = useState(meta.progress || 0);
   const [editProgressNotes, setEditProgressNotes] = useState(meta.progressNotes || '');
   const [editPriority, setEditPriority] = useState<Priority>(meta.priority || 'normal');
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [editContent, isCollapsed]);
 
   const updateDateFromSchedule = (
     int: 'daily' | 'weekly' | 'monthly' | 'yearly',
@@ -448,8 +458,11 @@ const Card: React.FC<CardProps> = ({
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
 
   return (
-    <div 
-        className={`${bgClass} rounded-[24px] p-4 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+    <motion.div 
+        initial={{ scale: 1 }}
+        animate={{ scale: !isCollapsed ? 1.02 : 1 }}
+        transition={{ type: "tween", ease: "easeInOut", duration: 0.2 }}
+        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-lg' : ''} rounded-[16px] p-3 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
@@ -515,8 +528,23 @@ const Card: React.FC<CardProps> = ({
               </div>
           </div>
           
-          <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
-              {displayDate ? displayDate.split('•')[0].trim() : ''}
+          <div className="flex items-center gap-2">
+            {validTags.map(tag => {
+                if (tag === 'parsing_failed' && meta.parsingError) {
+                    return (
+                        <span key={tag} className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 flex items-center gap-1 text-[10px]" title={meta.parsingError}>
+                            <AlertCircle className="w-3 h-3" />
+                            Parsing Failed
+                        </span>
+                    );
+                }
+                return (
+                    <span key={tag} className="px-1.5 py-0.5 rounded bg-muted/10 text-[10px] text-muted">#{tag}</span>
+                );
+            })}
+            <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                {displayDate ? displayDate.split('•')[0].trim() : ''}
+            </div>
           </div>
         </div>
         
@@ -524,12 +552,12 @@ const Card: React.FC<CardProps> = ({
         {enableCollapse && isCollapsed ? (
             <div className="flex justify-between items-start gap-4 mt-1">
                 <div className="flex flex-col min-w-0 flex-1">
-                    <div className={`text-base font-medium text-primary ${isNote ? 'line-clamp-3' : 'line-clamp-2'} ${shouldStrike ? 'line-through text-muted' : ''}`}>
-                        {content}
+                    <div className={`text-base font-medium text-primary ${isNote ? 'line-clamp-1' : 'line-clamp-2'} ${shouldStrike ? 'line-through text-muted' : ''}`}>
+                        {isNote ? content.split('\n')[0] : content}
                     </div>
                     
                     {/* Extra Metadata Row */}
-                    {(meta.paymentMethod || meta.toWallet || validTags.length > 0 || skillName) && (
+                    {(meta.paymentMethod || meta.toWallet || skillName) && (
                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
                             {(meta.paymentMethod || meta.toWallet || (meta.financeType === 'saving' && meta.savingGoalId)) && (
                                 <span className="flex items-center gap-0.5">
@@ -551,19 +579,6 @@ const Card: React.FC<CardProps> = ({
                             {skillName && (
                                 <span className="text-indigo-500">{skillName}</span>
                             )}
-                            {validTags.map(tag => {
-                                if (tag === 'parsing_failed' && meta.parsingError) {
-                                    return (
-                                        <span key={tag} className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 flex items-center gap-1" title={meta.parsingError}>
-                                            <AlertCircle className="w-3 h-3" />
-                                            Parsing Failed: {meta.parsingError}
-                                        </span>
-                                    );
-                                }
-                                return (
-                                    <span key={tag} className="px-1.5 py-0.5 rounded bg-muted/10">#{tag}</span>
-                                );
-                            })}
                         </div>
                     )}
                     
@@ -588,11 +603,16 @@ const Card: React.FC<CardProps> = ({
 
       {/* EXPANDED EDIT BODY */}
       {(!enableCollapse || !isCollapsed) && (
-          <div className="pt-4 mt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+          <div className={`${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
                
                {/* Content Edit */}
                <textarea
-                   className={`w-full bg-background border border-border rounded-2xl p-3 text-sm text-primary focus:outline-none focus:border-primary mb-3 resize-none ${isNote ? 'h-48' : 'h-20'}`}
+                   ref={textareaRef}
+                   className={`w-full text-primary focus:outline-none mb-3 resize-none overflow-hidden ${
+                       isNote 
+                           ? 'text-base bg-transparent border-none p-0 min-h-[120px] leading-relaxed' 
+                           : 'text-sm bg-background border border-border rounded-2xl p-3 focus:border-primary min-h-[80px]'
+                   }`}
                    value={editContent}
                    onChange={(e) => setEditContent(e.target.value)}
                    placeholder="Content..."
@@ -960,7 +980,7 @@ const Card: React.FC<CardProps> = ({
                </div>
           </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

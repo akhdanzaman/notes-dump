@@ -231,7 +231,10 @@ const validateSchema = (data: any): DbSchema => {
 
     return {
         data: Array.isArray(data.data) ? data.data : [],
-        budgetConfig: data.budgetConfig,
+        budgetConfig: data.budgetConfig ? {
+            ...data.budgetConfig,
+            rules: Array.isArray(data.budgetConfig.rules) ? data.budgetConfig.rules : []
+        } : undefined,
         appSettings: data.appSettings,
         customPrompt: data.customPrompt,
         skills: Array.isArray(data.skills) ? data.skills : [],
@@ -338,8 +341,17 @@ const performSync = async (
     forceOverwrite = false
 ): Promise<SyncResult> => {
   if (!isHydrated) {
-      console.warn("Blocked Sync: Database is not hydrated. This prevents overwriting cloud data with initial empty state.");
-      return { success: false, method: 'skipped_not_hydrated' };
+      console.warn("Database is not hydrated. Attempting to hydrate before sync...");
+      try {
+          await performFetchDb(false);
+      } catch (e: any) {
+          console.warn("Failed to hydrate database before sync", e);
+          return { success: false, method: 'skipped_not_hydrated', error: 'Database is not hydrated and fetch failed: ' + e.message };
+      }
+      
+      if (!isHydrated) {
+          return { success: false, method: 'skipped_not_hydrated', error: 'Database failed to hydrate.' };
+      }
   }
 
   // Ensure we persist ALL fields
@@ -458,9 +470,9 @@ const performSync = async (
           }
       }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to sync to GitHub:", error);
-    return { success: false, method: 'error' }; 
+    return { success: false, method: 'error', error: error.message || 'Unknown error during github sync' }; 
   }
 };
 
