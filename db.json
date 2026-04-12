@@ -2895,6 +2895,44 @@
       },
       "isOptimistic": false,
       "completed_at": "2026-02-14T16:48:00.145Z"
+    },
+    {
+      "id": "5eaa2b2e-4c21-442f-87a9-188c01aae012",
+      "type": "FINANCE",
+      "rawText": "Sample: Groceries 150k",
+      "created_at": "2026-04-12T15:03:56.105Z",
+      "finance": {
+        "type": "expense",
+        "amount": 150000,
+        "category": "Food",
+        "walletId": "e6de310e-d42d-420d-a1af-125b30b71d08",
+        "date": "2026-04-12T15:03:56.109Z"
+      }
+    },
+    {
+      "id": "690a4cc5-e0b1-4532-86ef-94426bc24510",
+      "type": "NOTE",
+      "rawText": "Sample: Read a book for 30 mins",
+      "created_at": "2026-04-12T14:03:56.109Z",
+      "note": {
+        "summary": "Read a book for 30 mins",
+        "tags": [
+          "habit",
+          "reading"
+        ]
+      }
+    },
+    {
+      "id": "e72dbe48-ac2d-4fff-83a0-984c1d1142f0",
+      "type": "TODO",
+      "rawText": "Sample: Buy milk tomorrow",
+      "created_at": "2026-04-12T13:03:56.109Z",
+      "task": {
+        "title": "Buy milk",
+        "dueDate": "2026-04-13T15:03:56.109Z",
+        "priority": "medium",
+        "completed": false
+      }
     }
   ],
   "budgetConfig": {
@@ -2957,46 +2995,11 @@
   ],
   "wallets": [
     {
-      "id": "w-1",
-      "name": "Cash",
-      "type": "cash",
-      "initialBalance": 143000,
-      "color": "bg-emerald-500"
-    },
-    {
-      "id": "8f9ae5da-ffd0-4f10-902e-5edac9668e11",
-      "name": "BCA",
+      "id": "e6de310e-d42d-420d-a1af-125b30b71d08",
+      "name": "Main Bank",
       "type": "bank",
-      "initialBalance": 2521000,
-      "color": "bg-blue-500"
-    },
-    {
-      "id": "706600d1-164c-4f14-b23d-e738add0f1f2",
-      "name": "Gopay",
-      "type": "ewallet",
-      "initialBalance": 20000,
-      "color": "bg-blue-500"
-    },
-    {
-      "id": "7474b330-c25e-47a4-9633-7217b2a82e03",
-      "name": "BNI",
-      "type": "bank",
-      "initialBalance": 438000,
-      "color": "bg-blue-500"
-    },
-    {
-      "id": "46cbb5b6-c53d-4a98-9c54-ec60b4cb31be",
-      "name": "gopay later",
-      "type": "cc",
-      "initialBalance": 530000,
-      "color": "bg-blue-500"
-    },
-    {
-      "id": "189ee73e-79b3-4ea5-bcaf-153f92bf05dc",
-      "name": "tapcash",
-      "type": "ewallet",
-      "initialBalance": 33000,
-      "color": "bg-blue-500"
+      "initialBalance": 0,
+      "color": "indigo-500"
     }
   ],
   "monthlyThemes": {
@@ -3005,8 +3008,8 @@
     "2026-04": "Family and Happiness"
   },
   "appSettings": {
-    "defaultCollapsed": true,
+    "defaultCollapsed": false,
     "hideMoney": false,
-    "theme": "light"
+    "theme": "dark"
   }
 }
