@@ -8,6 +8,7 @@ import { getValidGoogleAccessToken } from "./googleProfileService";
 const SETTINGS_KEY = 'braindump_spreadsheet_config';
 const LOCAL_STORAGE_KEY = 'braindump_db';
 const SYSTEM_SHEET_NAME = 'App_State_Do_Not_Edit';
+const HISTORY_SHEET_NAME = 'App_State_History';
 
 export interface SpreadsheetConfig {
   spreadsheetId: string;
@@ -371,6 +372,15 @@ const performSync = async (
         });
       }
     }
+    
+    // Also create history sheet if missing
+    if (!existingSheetTitles.has(HISTORY_SHEET_NAME)) {
+        requests.push({
+          addSheet: {
+            properties: { title: HISTORY_SHEET_NAME }
+          }
+        });
+    }
 
     if (requests.length > 0) {
       const batchRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}:batchUpdate`, {
@@ -450,6 +460,36 @@ const performSync = async (
         }
     }
 
+    // 6. Append to History Sheet if needed (forceOverwrite or > 24 hours)
+    const lastBackupTimeStr = localStorage.getItem('braindump_last_backup_time');
+    const lastBackupTime = lastBackupTimeStr ? parseInt(lastBackupTimeStr, 10) : 0;
+    const now = Date.now();
+    
+    if (forceOverwrite || now - lastBackupTime > 24 * 60 * 60 * 1000) {
+        try {
+            const historyRow = [new Date().toISOString(), ...jsonChunks.map(c => c[0])];
+            const appendRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values/'${HISTORY_SHEET_NAME}'!A:A:append?valueInputOption=RAW`, {
+                method: 'POST',
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    values: [historyRow]
+                })
+            });
+            
+            if (appendRes.ok) {
+                localStorage.setItem('braindump_last_backup_time', now.toString());
+                console.log("Appended new version to history sheet.");
+            } else {
+                console.warn("Failed to append to history sheet:", await appendRes.text());
+            }
+        } catch (e) {
+            console.warn("Error appending to history sheet:", e);
+        }
+    }
+
     lastSnapshot = finalJsonString;
     return { 
       success: true, 
@@ -483,4 +523,51 @@ export const syncSpreadsheetData = (
   const queuedTask = operationQueue.then(() => task(), () => task());
   operationQueue = queuedTask;
   return queuedTask;
+};
+
+export interface SpreadsheetHistoryEntry {
+    timestamp: string;
+    data: DbSchema;
+}
+
+export const getSpreadsheetHistory = async (): Promise<SpreadsheetHistoryEntry[]> => {
+    const config = getSpreadsheetConfig();
+    if (!config) throw new Error("No spreadsheet config");
+
+    const token = await getValidGoogleAccessToken();
+    if (!token) throw new Error("No valid Google access token available");
+
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values/'${HISTORY_SHEET_NAME}'!A:Z`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!res.ok) {
+        if (res.status === 400) {
+            // Sheet might not exist yet
+            return [];
+        }
+        throw new Error(`Failed to fetch history: ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    if (!data.values || data.values.length === 0) return [];
+
+    const history: SpreadsheetHistoryEntry[] = [];
+    for (const row of data.values) {
+        if (row.length < 2) continue;
+        const timestamp = row[0];
+        const jsonString = row.slice(1).join('');
+        try {
+            const parsed = JSON.parse(jsonString);
+            history.push({
+                timestamp,
+                data: validateSchema(parsed)
+            });
+        } catch (e) {
+            console.warn("Failed to parse history row", timestamp);
+        }
+    }
+
+    // Return newest first
+    return history.reverse();
 };

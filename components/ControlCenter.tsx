@@ -11,6 +11,8 @@ import {
 import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
 import { DEFAULT_PROMPT } from '../services/geminiService';
 import { useControlCenter } from '../hooks/useControlCenter';
+import { getDatabaseHistory } from '../services/syncFacade';
+import { SpreadsheetHistoryEntry } from '../services/spreadsheetService';
 
 interface ControlCenterProps {
     isOpen: boolean;
@@ -86,6 +88,40 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     
     const [syncMode, setSyncMode] = useState<'merge' | 'overwrite'>('merge');
     const [isParsingTasksExpanded, setIsParsingTasksExpanded] = useState(false);
+    const [history, setHistory] = useState<SpreadsheetHistoryEntry[]>([]);
+    const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+    const [historyError, setHistoryError] = useState<string | null>(null);
+
+    const fetchHistory = async () => {
+        setIsFetchingHistory(true);
+        setHistoryError(null);
+        try {
+            const hist = await getDatabaseHistory();
+            setHistory(hist);
+        } catch (e: any) {
+            setHistoryError(e.message || 'Failed to fetch history');
+        } finally {
+            setIsFetchingHistory(false);
+        }
+    };
+
+    const handleRestoreHistory = (entry: SpreadsheetHistoryEntry) => {
+        if (window.confirm(`Are you sure you want to restore the database to the version from ${new Date(entry.timestamp).toLocaleString()}? This will overwrite your current data.`)) {
+            // Create a Blob from the JSON string
+            const jsonString = JSON.stringify(entry.data);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            // Create a fake File object
+            const file = new File([blob], 'backup.json', { type: 'application/json' });
+            // Create a fake event
+            const event = {
+                target: {
+                    files: [file]
+                }
+            } as unknown as React.ChangeEvent<HTMLInputElement>;
+            
+            onImportData(event);
+        }
+    };
 
     const {
         activeTab,
@@ -142,6 +178,12 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         currentBudgetConfig,
         currentPrompt
     });
+
+    useEffect(() => {
+        if (activeTab === 'data' && spreadsheetConfig) {
+            fetchHistory();
+        }
+    }, [activeTab, spreadsheetConfig]);
 
     const renderSyncStatus = () => {
         const activeStatus = saveStatus === 'saving' ? 'saving' 
@@ -952,6 +994,75 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     </label>
                                                 </div>
                                             </section>
+
+                                            {spreadsheetConfig && (
+                                                <section>
+                                                    <div className="flex items-center justify-between mb-3 ml-1">
+                                                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Database History</h3>
+                                                        <div className="flex items-center gap-3">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    if (window.confirm('Create a new backup version now?')) {
+                                                                        onSyncClick(true);
+                                                                        setTimeout(fetchHistory, 2000);
+                                                                    }
+                                                                }}
+                                                                className="text-xs text-emerald-500 hover:text-emerald-400 flex items-center gap-1"
+                                                            >
+                                                                <Save className="w-3 h-3" />
+                                                                Backup Now
+                                                            </button>
+                                                            <button 
+                                                                onClick={fetchHistory}
+                                                                disabled={isFetchingHistory}
+                                                                className="text-xs text-indigo-500 hover:text-indigo-400 flex items-center gap-1"
+                                                            >
+                                                                <RefreshCw className={`w-3 h-3 ${isFetchingHistory ? 'animate-spin' : ''}`} />
+                                                                Refresh
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="bg-background border border-border rounded-2xl overflow-hidden">
+                                                        {isFetchingHistory && history.length === 0 ? (
+                                                            <div className="p-6 text-center text-muted text-sm">Loading history...</div>
+                                                        ) : historyError ? (
+                                                            <div className="p-6 text-center text-red-500 text-sm flex flex-col items-center gap-2">
+                                                                <AlertCircle className="w-5 h-5" />
+                                                                {historyError}
+                                                            </div>
+                                                        ) : history.length === 0 ? (
+                                                            <div className="p-6 text-center text-muted text-sm">No history available yet. Backups are created daily.</div>
+                                                        ) : (
+                                                            <div className="divide-y divide-border max-h-[250px] overflow-y-auto custom-scrollbar">
+                                                                {history.map((entry, idx) => (
+                                                                    <div key={idx} className="p-3 flex items-center justify-between hover:bg-muted/5 transition-colors">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500">
+                                                                                <History className="w-4 h-4" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="text-sm font-medium text-primary">
+                                                                                    {new Date(entry.timestamp).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                                                                                </div>
+                                                                                <div className="text-xs text-muted">
+                                                                                    {new Date(entry.timestamp).toLocaleTimeString()} • {entry.data.data?.length || 0} items
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => handleRestoreHistory(entry)}
+                                                                            className="px-3 py-1.5 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 rounded-lg text-xs font-medium transition-colors"
+                                                                        >
+                                                                            Restore
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </section>
+                                            )}
 
                                             <section>
                                                 <h3 className="text-xs font-bold text-red-500 uppercase tracking-wider mb-3 ml-1">Danger Zone</h3>

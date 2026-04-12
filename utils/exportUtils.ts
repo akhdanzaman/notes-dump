@@ -70,6 +70,7 @@ export const generateExportData = (
       Status: item.status,
       Priority: item.meta.priority || 'normal',
       Content: item.content,
+      Due_Date: fmtDate(item.meta.date || item.meta.dateTime),
       Tags: item.meta.tags?.join(', ') || '',
       Created_At: fmtDate(item.created_at),
       Completed_At: fmtDate(item.completed_at),
@@ -81,8 +82,8 @@ export const generateExportData = (
     sheets.push({
       name: "Todos",
       data: [
-        ["Status", "Priority", "Content", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID"],
-        ...todos.map(t => [t.Status, t.Priority, t.Content, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID])
+        ["Status", "Priority", "Content", "Due_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID"],
+        ...todos.map(t => [t.Status, t.Priority, t.Content, t.Due_Date, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID])
       ]
     });
   }
@@ -94,6 +95,7 @@ export const generateExportData = (
       Amount: item.meta.amount || 0,
       Category: item.meta.shoppingCategory || '',
       Quantity: item.meta.quantity || '',
+      Due_Date: fmtDate(item.meta.date || item.meta.dateTime),
       Tags: item.meta.tags?.join(', ') || '',
       ID: item.id
   }));
@@ -101,8 +103,8 @@ export const generateExportData = (
     sheets.push({
       name: "Shopping",
       data: [
-        ["Status", "Item", "Amount", "Category", "Quantity", "Tags", "ID"],
-        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Tags, s.ID])
+        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Tags", "ID"],
+        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Tags, s.ID])
       ]
     });
   }

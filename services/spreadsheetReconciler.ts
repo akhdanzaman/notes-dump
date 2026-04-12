@@ -97,9 +97,18 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     // 2. Todos
     const todoSheet = valueRanges.find(r => r.range && r.range.includes('Todos'));
     if (todoSheet && todoSheet.values) {
+        const headers = todoSheet.values[0] || [];
+        const hasDueDate = headers.includes("Due_Date");
         const rows = todoSheet.values.slice(1);
         for (const row of rows) {
-            const [status, priority, content, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr] = row;
+            let status, priority, content, dueDateStr, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr;
+            if (hasDueDate) {
+                [status, priority, content, dueDateStr, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr] = row;
+            } else {
+                [status, priority, content, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr] = row;
+                dueDateStr = '';
+            }
+            
             if (!content && !createdAt && !idStr) continue;
             
             const match = newItems.find(i => 
@@ -133,10 +142,33 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
+                if (dueDateStr) {
+                    const parsedDueDate = new Date(dueDateStr);
+                    if (!isNaN(parsedDueDate.getTime())) {
+                        const isoDueDate = parsedDueDate.toISOString();
+                        if (match.meta.date !== isoDueDate) {
+                            match.meta.date = isoDueDate;
+                            updated = true;
+                        }
+                    }
+                } else if (match.meta.date) {
+                    match.meta.date = undefined;
+                    updated = true;
+                }
+                
                 if (updated) hasChanges = true;
             } else {
                 const parsedDate = new Date(createdAt);
                 const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
+                
+                let isoDueDate = undefined;
+                if (dueDateStr) {
+                    const parsedDueDate = new Date(dueDateStr);
+                    if (!isNaN(parsedDueDate.getTime())) {
+                        isoDueDate = parsedDueDate.toISOString();
+                    }
+                }
+
                 const newId = uuidv4();
                 newItems.push({
                     id: newId,
@@ -148,7 +180,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         priority: priority || 'normal',
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [],
                         progress: parseInt((progressStr || '').replace('%', '')) || 0,
-                        progressNotes: progressNotes || ''
+                        progressNotes: progressNotes || '',
+                        date: isoDueDate
                     }
                 });
                 seenItemIds.add(newId);
@@ -160,9 +193,18 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     // 3. Shopping
     const shopSheet = valueRanges.find(r => r.range && r.range.includes('Shopping'));
     if (shopSheet && shopSheet.values) {
+        const headers = shopSheet.values[0] || [];
+        const hasDueDate = headers.includes("Due_Date");
         const rows = shopSheet.values.slice(1);
         for (const row of rows) {
-            const [status, item, amountStr, category, quantity, tagsStr, idStr] = row;
+            let status, item, amountStr, category, quantity, dueDateStr, tagsStr, idStr;
+            if (hasDueDate) {
+                [status, item, amountStr, category, quantity, dueDateStr, tagsStr, idStr] = row;
+            } else {
+                [status, item, amountStr, category, quantity, tagsStr, idStr] = row;
+                dueDateStr = '';
+            }
+            
             if (!item && !amountStr && !idStr) continue;
             const amount = parseFloat(amountStr) || 0;
             
@@ -193,8 +235,30 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
+                if (dueDateStr) {
+                    const parsedDueDate = new Date(dueDateStr);
+                    if (!isNaN(parsedDueDate.getTime())) {
+                        const isoDueDate = parsedDueDate.toISOString();
+                        if (match.meta.date !== isoDueDate) {
+                            match.meta.date = isoDueDate;
+                            updated = true;
+                        }
+                    }
+                } else if (match.meta.date) {
+                    match.meta.date = undefined;
+                    updated = true;
+                }
+                
                 if (updated) hasChanges = true;
             } else {
+                let isoDueDate = undefined;
+                if (dueDateStr) {
+                    const parsedDueDate = new Date(dueDateStr);
+                    if (!isNaN(parsedDueDate.getTime())) {
+                        isoDueDate = parsedDueDate.toISOString();
+                    }
+                }
+
                 const newId = uuidv4();
                 newItems.push({
                     id: newId,
@@ -206,7 +270,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         amount: amount,
                         shoppingCategory: category || 'not_urgent',
                         quantity: quantity || '',
-                        tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : []
+                        tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [],
+                        date: isoDueDate
                     }
                 });
                 seenItemIds.add(newId);

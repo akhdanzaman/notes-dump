@@ -1,7 +1,7 @@
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage } from "../types";
 import { fetchDb as fetchGithubDb, syncData as syncGithubData, getGithubConfig, isUsingLocalStorage as isGithubLocal, SyncResult } from "./githubService";
 import { mergeDbData } from "../utils/mergeUtils";
-import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, clearSpreadsheetConfig } from "./spreadsheetService";
+import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, clearSpreadsheetConfig, getSpreadsheetHistory, SpreadsheetHistoryEntry } from "./spreadsheetService";
 
 export const getActiveSyncProviders = (): ('github' | 'spreadsheet')[] => {
   const providers: ('github' | 'spreadsheet')[] = [];
@@ -159,3 +159,12 @@ export const syncData = async (
 };
 
 export const isUsingLocalStorage = () => getActiveSyncProviders().length === 0;
+
+export const getDatabaseHistory = async (): Promise<SpreadsheetHistoryEntry[]> => {
+    const providers = getActiveSyncProviders();
+    if (providers.includes('spreadsheet')) {
+        return await getSpreadsheetHistory();
+    }
+    // For GitHub or Local, we don't have history implemented yet
+    return [];
+};
