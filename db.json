@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 2,
   "data": [
     {
       "id": "c7d2ff95-c84c-49a7-b6a3-889db6d53e8b",
@@ -2907,6 +2908,9 @@
         "category": "Food",
         "walletId": "e6de310e-d42d-420d-a1af-125b30b71d08",
         "date": "2026-04-12T15:03:56.109Z"
+      },
+      "meta": {
+        "tags": []
       }
     },
     {
@@ -2920,6 +2924,9 @@
           "habit",
           "reading"
         ]
+      },
+      "meta": {
+        "tags": []
       }
     },
     {
@@ -2932,6 +2939,9 @@
         "dueDate": "2026-04-13T15:03:56.109Z",
         "priority": "medium",
         "completed": false
+      },
+      "meta": {
+        "tags": []
       }
     }
   ],
@@ -2976,6 +2986,11 @@
       }
     ]
   },
+  "appSettings": {
+    "defaultCollapsed": false,
+    "hideMoney": false,
+    "theme": "dark"
+  },
   "customPrompt": "Task: Split the input into distinct items. If the user lists multiple things(separated by ';'), split them.\nOutput MUST be a JSON ARRAY of objects.\n\nTYPE (pick one):\n- TODO: work/career/productivity actions.\n- SHOPPING: planned purchases / life admin / chores / errands (future/plan).\n  IMPORTANT: “Buy X 50k” => SHOPPING (plan), NOT FINANCE.\n- NOTE: ideas/knowledge/random thoughts.\n- EVENT: scheduled dates/times.\n- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement (transfer/topup/withdraw).\n- SKILL_LOG: time spent learning/practicing a skill.\n- JOURNAL: personal diary entries, feelings, daily recaps, “Dear Diary”, or explicit “Log to journal”.\n\nOUTPUT FORMAT (STRICT):\nReturn ONLY a JSON ARRAY of objects.\nEach object must have:\n- type: TODO | SHOPPING | NOTE | EVENT | FINANCE | SKILL_LOG | JOURNAL\n- content: string\n- meta: object (optional fields as needed)\n\nCOMMON EXTRACTION (apply to all items):\n- content: clean, concise item text\n  - for SKILL_LOG: content MUST be summary/key takeaways (see SKILL_LOG RULES)\n  - for JOURNAL: content is the diary text cleaned up (remove “journal:” prefix etc)\n- tags: max 3 (see TAG RULES)\n- amount: NUMBER only when money is present (strip currency symbols + thousand separators)\n- targetDay: day name if mentioned (Senin/Monday, Minggu/Sunday, etc)\n\nDATE RESOLUTION (STRICT):\n- If ANY time reference exists (today/tomorrow/yesterday/weekday/date/time), you MUST set meta.date in YYYY-MM-DD.\n- Also set meta.when for relative/weekday-based references:\n  - today/hari ini => meta.when=\"today\", meta.date = current date (YYYY-MM-DD)\n  - tomorrow/besok => meta.when=\"tomorrow\", meta.date = current date + 1 day\n  - yesterday/kemarin => meta.when=\"yesterday\", meta.date = current date - 1 day\n  - weekday mentioned => resolve to NEXT occurrence after current date, meta.when=\"next_weekday\"\n  - explicit calendar date => meta.when=\"specific_date\", meta.date = that date (YYYY-MM-DD)\n- If NO time reference exists:\n  - For JOURNAL: default meta.date = TODAY (YYYY-MM-DD)\n  - For others: omit meta.date entirely\n\nSHOPPING RULES:\n- meta.shoppingCategory ∈ {\"urgent\",\"routine\",\"not_urgent\"}\n- Set shoppingCategory=\"routine\" ONLY IF repetition is explicit:\n  repetition keywords: \"setiap|tiap|per minggu|weekly|every|rutin|berkala|langganan\"\n  OR meta.recurrenceDays is explicitly mentioned.\n- If weekday/date mentioned WITHOUT repetition words => NOT routine.\n  Treat it as one-time scheduled purchase: shoppingCategory=\"urgent\" and include targetDay/date as applicable.\n- routine => include recurrenceDays (if stated) + targetDay (if stated)\n- urgent => include targetDay (if stated)\n- default => not_urgent\n- IMPORTANT: “Buy X 50k” is SHOPPING. FINANCE only if it already happened (“barusan beli”, “tadi bayar”, “sudah transfer”, etc).\n\nMONEY META (FINANCE + money-related SHOPPING):\n- meta.paymentMethod: EXACT text from user as Source Wallet/Method (e.g. \"QRIS BNI\", \"Cash\", \"Gopay Later\", \"CC BCA\", \"BCA\"). If not specified, \"\".\n- meta.budgetCategory ∈ {\"needs\",\"wants\",\"savings\",\"sedekah\"}\n  - fixed: rent/electricity/internet/insurance/tuition\n  - needs: transportation/groceries/health/stationary/breakfast/dinner\n  - wants: fancy dining/hobby/entertainment/subscription entertainment/snacks/foods\n  - savings: investment/emergency/debt repayment\n  - sedekah: charity/giving/donation/tips/helping others\n\nFINANCE RULES:\n- meta.financeType ∈ {\"expense\",\"income\",\"lending\",\"reimbursement\",\"transfer\"}\n  - expense: money spent\n  - income: money received (salary, refund received, etc)\n  - lending: money given as a loan\n  - reimbursement: paid by you but will be repaid / reimbursed\n  - transfer: moving money between your own accounts/wallets (withdraw, deposit, topup, pindah buku, tarik tunai)\n- IF financeType=\"transfer\":\n  - meta.paymentMethod = Source Wallet (EXACT text)\n  - meta.toWallet = Destination Wallet (e.g. \"Cash\", \"Gopay\", \"OVO\", \"BCA\", etc)\n  - amount must be extracted as NUMBER\n\nSKILL_LOG RULES:\n- CRITICAL: content MUST be summary/key takeaways, not the raw duration sentence\n  Example: \"Belajar React 1 jam tentang Hooks\" => content \"Belajar React tentang Hooks\"\n- meta.durationMinutes: NUMBER (convert hours→minutes)\n- meta.skillName: infer from context; if known skills list is provided, match skillName to one of them when possible\n\nJOURNAL RULES:\n- JOURNAL is for feelings, daily recap, reflections, “Dear Diary”, or explicit logging.\n- Default meta.date = TODAY if not specified.\n- If “Journal kemarin …” or “yesterday …” => meta.when=\"yesterday\" and meta.date resolved accordingly.\n- If the text includes both “I feel …” and action items, SPLIT:\n  - feelings/recap => JOURNAL\n  - action tasks => TODO/SHOPPING/EVENT etc\n\nTAG RULES (STRICT):\n- Priority: intent > context > object\n- Avoid generic tags like \"people\", \"purchase\" unless no better option exists\n- Prefer semantic tags: charity, donation, tip, assistance, food, transport, loss, delivery, subscription, education\n- Max 3 tags per item\n\nExamples:\n- \"Gave money to street musician 5000\" => FINANCE expense, tags [\"charity\",\"donation\"], budgetCategory \"sedekah\", amount 5000\n- \"tip driver gojek 10000\" => FINANCE expense, tags [\"tip\",\"transport\"], amount 10000\n- \"Breakfast 14000\" => FINANCE expense, tags [\"food\"], amount 14000\n- \"Kirim dompet\" => TODO or NOTE depending on phrasing, tags [\"assistance\",\"delivery\"]\n- \"beli susu besok hari senin 12000\" => SHOPPING urgent + targetDay Monday + amount 12000 + meta.date resolved\n- \"beli susu setiap senin 12000\" => SHOPPING routine + targetDay Monday + amount 12000 (+ recurrenceDays if stated)\n- \"Tarik tunai BCA 500rb\" => FINANCE transfer, paymentMethod \"BCA\", toWallet \"Cash\", amount 500000\n- \"Topup Gopay dari Mandiri 100k\" => FINANCE transfer, paymentMethod \"Mandiri\", toWallet \"Gopay\", amount 100000\n- \"I felt really productive today because I finished the project\" => JOURNAL, meta.when=\"today\", meta.date=TODAY\n- \"Journal kemarin: pergi ke pantai sama keluarga\" => JOURNAL, content=\"Pergi ke pantai sama keluarga\", meta.when=\"yesterday\", meta.date=YESTERDAY\n\nAlways write context into bahasa indonesia\n\n",
   "skills": [
     {
@@ -3007,9 +3022,9 @@
     "2026-03": "Self love and self grooming",
     "2026-04": "Family and Happiness"
   },
-  "appSettings": {
-    "defaultCollapsed": false,
-    "hideMoney": false,
-    "theme": "dark"
+  "chatHistory": [],
+  "syncMetadata": {
+    "sourceOfTruth": "github",
+    "lastSyncedAt": "2026-04-12T21:17:26.347Z"
   }
 }
