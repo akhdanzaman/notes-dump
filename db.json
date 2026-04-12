@@ -2,15 +2,21 @@
   "schemaVersion": 2,
   "data": [
     {
-      "id": "a63e6222-e721-49b8-a675-4623abdffa92",
+      "id": "fe5f4514-757c-4b6f-899f-3b1c42758e62",
       "type": "NOTE",
       "content": "Expense: cilokn 5000 cash",
       "status": "pending",
-      "created_at": "2026-04-12T22:41:52.456Z",
+      "created_at": "2026-04-12T22:41:52.499Z",
       "meta": {
-        "tags": []
+        "tags": [
+          "missing-api-key"
+        ],
+        "parserAction": "create_item",
+        "parserEntityType": "note",
+        "parserConfidence": "medium",
+        "parserNeedsReview": false
       },
-      "isOptimistic": true
+      "isOptimistic": false
     },
     {
       "id": "c7d2ff95-c84c-49a7-b6a3-889db6d53e8b",
@@ -3036,6 +3042,6 @@
   "chatHistory": [],
   "syncMetadata": {
     "sourceOfTruth": "github",
-    "lastSyncedAt": "2026-04-12T22:41:52.492Z"
+    "lastSyncedAt": "2026-04-12T22:41:54.365Z"
   }
 }
