@@ -22,6 +22,7 @@ import SummaryView from './components/views/SummaryView';
 import PlanView from './components/views/PlanView';
 import LibraryView from './components/views/LibraryView';
 import MoneyViewComponent from './components/views/MoneyView';
+import CalendarView from './components/views/CalendarView';
 import RoutineTaskModal from './components/RoutineTaskModal';
 import AddTaskModal from './components/AddTaskModal';
 import AddShoppingModal from './components/AddShoppingModal';
@@ -658,6 +659,15 @@ const App: React.FC = () => {
                           onAddItem={(type) => {
                               if (type === ItemType.FINANCE) setAddExpenseModalOpen(true);
                           }}
+                      />
+                  )}
+
+                  {activeTab === 'calendar' && (
+                      <CalendarView 
+                          items={items}
+                          handleToggleStatus={handleToggleStatus}
+                          handleDelete={requestDeleteItem}
+                          appSettings={appSettings}
                       />
                   )}
               </div>

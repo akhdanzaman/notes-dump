@@ -8,7 +8,8 @@ import {
   Menu,
   PiggyBank,
   Book,
-  Wrench
+  Wrench,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { Tab, PlanSubTab, LibrarySubTab } from '../types';
 
@@ -55,6 +56,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'plan', icon: planTabInfo.icon, label: planTabInfo.label, subTab: 'tasks' },
     { id: 'library', icon: libraryTabInfo.icon, label: libraryTabInfo.label, subTab: 'general' },
     { id: 'money', icon: WalletIcon, label: 'Money' },
+    { id: 'calendar', icon: CalendarIcon, label: 'Calendar' },
   ];
 
   return (

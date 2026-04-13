@@ -460,34 +460,30 @@ const performSync = async (
         }
     }
 
-    // 6. Append to History Sheet if needed (forceOverwrite or > 24 hours)
-    const lastBackupTimeStr = localStorage.getItem('braindump_last_backup_time');
-    const lastBackupTime = lastBackupTimeStr ? parseInt(lastBackupTimeStr, 10) : 0;
+    // 6. Append to History Sheet on every change
     const now = Date.now();
     
-    if (forceOverwrite || now - lastBackupTime > 24 * 60 * 60 * 1000) {
-        try {
-            const historyRow = [new Date().toISOString(), ...jsonChunks.map(c => c[0])];
-            const appendRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values/'${HISTORY_SHEET_NAME}'!A:A:append?valueInputOption=RAW`, {
-                method: 'POST',
-                headers: { 
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    values: [historyRow]
-                })
-            });
-            
-            if (appendRes.ok) {
-                localStorage.setItem('braindump_last_backup_time', now.toString());
-                console.log("Appended new version to history sheet.");
-            } else {
-                console.warn("Failed to append to history sheet:", await appendRes.text());
-            }
-        } catch (e) {
-            console.warn("Error appending to history sheet:", e);
+    try {
+        const historyRow = [new Date().toISOString(), ...jsonChunks.map(c => c[0])];
+        const appendRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values/'${HISTORY_SHEET_NAME}'!A:A:append?valueInputOption=RAW`, {
+            method: 'POST',
+            headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                values: [historyRow]
+            })
+        });
+        
+        if (appendRes.ok) {
+            localStorage.setItem('braindump_last_backup_time', now.toString());
+            console.log("Appended new version to history sheet.");
+        } else {
+            console.warn("Failed to append to history sheet:", await appendRes.text());
         }
+    } catch (e) {
+        console.warn("Error appending to history sheet:", e);
     }
 
     lastSnapshot = finalJsonString;

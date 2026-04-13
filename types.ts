@@ -152,7 +152,7 @@ export interface GitHubFileResponse {
   encoding: string;
 }
 
-export type Tab = 'summary' | 'plan' | 'library' | 'money';
+export type Tab = 'summary' | 'plan' | 'library' | 'money' | 'calendar';
 export type PlanSubTab = 'tasks' | 'shopping' | 'savings';
 export type FocusSubTab = PlanSubTab;
 export type LibrarySubTab = 'general' | 'skills' | 'journal';
