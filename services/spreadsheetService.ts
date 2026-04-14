@@ -10,6 +10,19 @@ const LOCAL_STORAGE_KEY = 'braindump_db';
 const SYSTEM_SHEET_NAME = 'App_State_Do_Not_Edit';
 const HISTORY_SHEET_NAME = 'App_State_History';
 
+export const SPREADSHEET_FETCH_RANGES = {
+  Transactions: "A:I",
+  Todos: "A:M",
+  Shopping: "A:I",
+  Events: "A:H",
+  "Notes & Journals": "A:E",
+  "Skill Logs": "A:F",
+  "Wallets Config": "A:E",
+  "Skills Config": "A:E",
+  "Budget Rules": "A:C",
+  "Themes & Settings": "A:C",
+} as const;
+
 export interface SpreadsheetConfig {
   spreadsheetId: string;
   spreadsheetUrl: string;
@@ -154,19 +167,10 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
 
     let isNewSpreadsheet = !existingTitles.has(SYSTEM_SHEET_NAME);
 
-    const sheetsToSync = ['Transactions', 'Todos', 'Shopping', 'Events', 'Notes & Journals', 'Skill Logs', 'Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings'];
+    const sheetsToSync = ['Transactions', 'Todos', 'Shopping', 'Events', 'Notes & Journals', 'Skill Logs', 'Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings'] as const;
     for (const s of sheetsToSync) {
         if (existingTitles.has(s)) {
-            if (s === 'Transactions') rangesToFetch.push(`'${s}'!A:I`);
-            else if (s === 'Todos') rangesToFetch.push(`'${s}'!A:M`);
-            else if (s === 'Shopping') rangesToFetch.push(`'${s}'!A:I`);
-            else if (s === 'Events') rangesToFetch.push(`'${s}'!A:H`);
-            else if (s === 'Notes & Journals') rangesToFetch.push(`'${s}'!A:E`);
-            else if (s === 'Skill Logs') rangesToFetch.push(`'${s}'!A:F`);
-            else if (s === 'Wallets Config') rangesToFetch.push(`'${s}'!A:E`);
-            else if (s === 'Skills Config') rangesToFetch.push(`'${s}'!A:E`);
-            else if (s === 'Budget Rules') rangesToFetch.push(`'${s}'!A:C`);
-            else if (s === 'Themes & Settings') rangesToFetch.push(`'${s}'!A:C`);
+            rangesToFetch.push(`'${s}'!${SPREADSHEET_FETCH_RANGES[s]}`);
         }
     }
 
