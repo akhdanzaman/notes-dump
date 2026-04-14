@@ -110,7 +110,10 @@ interface CardProps {
     newRoutineMonthsOfYear?: number[],
     newSavingGoalId?: string,
     newDedicatedWalletId?: string,
-    newPriority?: Priority
+    newPriority?: Priority,
+    newStart?: string,
+    newEnd?: string,
+    newHideFromCalendar?: boolean
   ) => void;
   onResetRoutine?: (id: string) => void;
   readonly?: boolean;
@@ -159,6 +162,9 @@ const Card: React.FC<CardProps> = ({
   const [editAmount, setEditAmount] = useState<string>(meta.amount ? meta.amount.toString() : '');
   const [editTags, setEditTags] = useState(meta.tags?.join(', ') || '');
   const [editDate, setEditDate] = useState<string>('');
+  const [editStart, setEditStart] = useState<string>('');
+  const [editEnd, setEditEnd] = useState<string>('');
+  const [editHideFromCalendar, setEditHideFromCalendar] = useState<boolean>(meta.hideFromCalendar || false);
   
   // Specifics
   const [editFinanceType, setEditFinanceType] = useState<FinanceType>(meta.financeType || 'expense');
@@ -233,6 +239,7 @@ const Card: React.FC<CardProps> = ({
     setEditRoutineDaysOfMonth(meta.routineDaysOfMonth || []);
     setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
     setEditPriority(meta.priority || 'normal');
+    setEditHideFromCalendar(meta.hideFromCalendar || false);
     
     // Date Init
     const isoDate = (meta.date && meta.date !== 'null') ? meta.date : (completed_at || created_at);
@@ -249,6 +256,32 @@ const Card: React.FC<CardProps> = ({
         setEditDate('');
     }
 
+    if (meta.start) {
+        const startObj = new Date(meta.start);
+        if (!isNaN(startObj.getTime())) {
+            const offset = startObj.getTimezoneOffset() * 60000;
+            const localStart = new Date(startObj.getTime() - offset);
+            setEditStart(localStart.toISOString().slice(0, 16));
+        } else {
+            setEditStart('');
+        }
+    } else {
+        setEditStart('');
+    }
+
+    if (meta.end) {
+        const endObj = new Date(meta.end);
+        if (!isNaN(endObj.getTime())) {
+            const offset = endObj.getTimezoneOffset() * 60000;
+            const localEnd = new Date(endObj.getTime() - offset);
+            setEditEnd(localEnd.toISOString().slice(0, 16));
+        } else {
+            setEditEnd('');
+        }
+    } else {
+        setEditEnd('');
+    }
+
   }, [item, isCollapsed]); // Reset when collapsing/expanding or item changes
 
   const handleSave = () => {
@@ -260,6 +293,12 @@ const Card: React.FC<CardProps> = ({
       
       let finalDate: string | undefined = undefined;
       if (editDate) finalDate = new Date(editDate).toISOString();
+
+      let finalStart: string | undefined = undefined;
+      if (editStart) finalStart = new Date(editStart).toISOString();
+
+      let finalEnd: string | undefined = undefined;
+      if (editEnd) finalEnd = new Date(editEnd).toISOString();
 
       const finalBudgetCategory = editBudgetCategory === '' ? undefined : editBudgetCategory;
       const finalSkillId = editSkillId === '' ? undefined : editSkillId;
@@ -294,7 +333,10 @@ const Card: React.FC<CardProps> = ({
           editRoutineMonthsOfYear,
           finalSavingGoalId,
           undefined, // newDedicatedWalletId
-          editPriority
+          editPriority,
+          finalStart,
+          finalEnd,
+          editHideFromCalendar
       );
       
       if (enableCollapse) {
@@ -542,6 +584,13 @@ const Card: React.FC<CardProps> = ({
                     <span key={tag} className="px-1.5 py-0.5 rounded bg-muted/10 text-[10px] text-muted">#{tag}</span>
                 );
             })}
+            {(meta.start || meta.end) && (
+                <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                    {meta.start ? new Date(meta.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
+                    {meta.start && meta.end ? ' - ' : ''}
+                    {meta.end ? new Date(meta.end).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
+                </div>
+            )}
             <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
                 {displayDate ? displayDate.split('•')[0].trim() : ''}
             </div>
@@ -668,6 +717,36 @@ const Card: React.FC<CardProps> = ({
                         </div>
                    )}
 
+                   {/* Start and End */}
+                   {(type === ItemType.TODO || type === ItemType.EVENT) && !meta.isRoutine && (
+                       <>
+                           <div>
+                               <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Start Time</label>
+                               <div className="relative">
+                                   <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
+                                   <input
+                                       type="datetime-local"
+                                       className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                       value={editStart}
+                                       onChange={(e) => setEditStart(e.target.value)}
+                                   />
+                               </div>
+                           </div>
+                           <div>
+                               <label className="text-[10px] uppercase text-muted font-bold mb-1 block">End Time</label>
+                               <div className="relative">
+                                   <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
+                                   <input
+                                       type="datetime-local"
+                                       className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                       value={editEnd}
+                                       onChange={(e) => setEditEnd(e.target.value)}
+                                   />
+                               </div>
+                           </div>
+                       </>
+                   )}
+
                    {/* Priority */}
                    {(type === ItemType.TODO || type === ItemType.EVENT) && (
                        <div className="col-span-2">
@@ -687,6 +766,22 @@ const Card: React.FC<CardProps> = ({
                                    </button>
                                ))}
                            </div>
+                       </div>
+                   )}
+
+                   {/* Hide from Calendar */}
+                   {(type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING) && (
+                       <div className="col-span-2 flex items-center gap-2 mt-1">
+                           <input 
+                               type="checkbox" 
+                               id={`hideFromCalendar-${item.id}`}
+                               checked={editHideFromCalendar}
+                               onChange={(e) => setEditHideFromCalendar(e.target.checked)}
+                               className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                           />
+                           <label htmlFor={`hideFromCalendar-${item.id}`} className="text-xs font-medium text-primary">
+                               Hide from Calendar
+                           </label>
                        </div>
                    )}
 

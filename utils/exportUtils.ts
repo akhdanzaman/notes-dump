@@ -67,10 +67,13 @@ export const generateExportData = (
 
   // --- Sheet 2: Todos ---
   const todos = items.filter(i => i.type === ItemType.TODO).map(item => ({
+      Type: item.type,
       Status: item.status,
       Priority: item.meta.priority || 'normal',
       Content: item.content,
       Due_Date: fmtDate(item.meta.date || item.meta.dateTime),
+      Start_Date: fmtDate(item.meta.start),
+      End_Date: fmtDate(item.meta.end),
       Tags: item.meta.tags?.join(', ') || '',
       Created_At: fmtDate(item.created_at),
       Completed_At: fmtDate(item.completed_at),
@@ -82,8 +85,8 @@ export const generateExportData = (
     sheets.push({
       name: "Todos",
       data: [
-        ["Status", "Priority", "Content", "Due_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID"],
-        ...todos.map(t => [t.Status, t.Priority, t.Content, t.Due_Date, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID])
+        ["Type", "Status", "Priority", "Content", "Due_Date", "Start_Date", "End_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID"],
+        ...todos.map(t => [t.Type, t.Status, t.Priority, t.Content, t.Due_Date, t.Start_Date, t.End_Date, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID])
       ]
     });
   }
@@ -111,7 +114,10 @@ export const generateExportData = (
 
   // --- Sheet 4: Events ---
   const events = items.filter(i => i.type === ItemType.EVENT).map(item => ({
+      Type: item.type,
       Date: fmtDate(item.meta.date),
+      Start_Date: fmtDate(item.meta.start),
+      End_Date: fmtDate(item.meta.end),
       Priority: item.meta.priority || 'normal',
       Event: item.content,
       Tags: item.meta.tags?.join(', ') || '',
@@ -121,8 +127,8 @@ export const generateExportData = (
     sheets.push({
       name: "Events",
       data: [
-        ["Date", "Priority", "Event", "Tags", "ID"],
-        ...events.map(e => [e.Date, e.Priority, e.Event, e.Tags, e.ID])
+        ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "ID"],
+        ...events.map(e => [e.Type, e.Date, e.Start_Date, e.End_Date, e.Priority, e.Event, e.Tags, e.ID])
       ]
     });
   }

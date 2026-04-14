@@ -158,9 +158,9 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     for (const s of sheetsToSync) {
         if (existingTitles.has(s)) {
             if (s === 'Transactions') rangesToFetch.push(`'${s}'!A:I`);
-            else if (s === 'Todos') rangesToFetch.push(`'${s}'!A:I`);
+            else if (s === 'Todos') rangesToFetch.push(`'${s}'!A:M`);
             else if (s === 'Shopping') rangesToFetch.push(`'${s}'!A:G`);
-            else if (s === 'Events') rangesToFetch.push(`'${s}'!A:E`);
+            else if (s === 'Events') rangesToFetch.push(`'${s}'!A:H`);
             else if (s === 'Notes & Journals') rangesToFetch.push(`'${s}'!A:E`);
             else if (s === 'Skill Logs') rangesToFetch.push(`'${s}'!A:F`);
             else if (s === 'Wallets Config') rangesToFetch.push(`'${s}'!A:E`);

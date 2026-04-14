@@ -1139,7 +1139,10 @@ export const useBrainDumpData = () => {
         newRoutineMonthsOfYear?: number[],
         newSavingGoalId?: string,
         newDedicatedWalletId?: string,
-        newPriority?: Priority
+        newPriority?: Priority,
+        newStart?: string,
+        newEnd?: string,
+        newHideFromCalendar?: boolean
     ) => {
         const updatedItems = itemsRef.current.map(item => {
             if (item.id !== id) return item;
@@ -1189,6 +1192,9 @@ export const useBrainDumpData = () => {
                     tags: newTags,
                     amount: newAmount,
                     date: finalDate,
+                    start: newStart !== undefined ? newStart : item.meta.start,
+                    end: newEnd !== undefined ? newEnd : item.meta.end,
+                    hideFromCalendar: newHideFromCalendar !== undefined ? newHideFromCalendar : item.meta.hideFromCalendar,
                     paymentMethod: newPaymentMethod,
                     budgetCategory: newBudgetCategory,
                     durationMinutes: newDuration,
@@ -1216,7 +1222,7 @@ export const useBrainDumpData = () => {
         saveAndSync(updatedItems);
     };
 
-    const handleAddTask = async (content: string, date: string, priority: Priority = 'normal') => {
+    const handleAddTask = async (content: string, date: string, priority: Priority = 'normal', start?: string, end?: string, hideFromCalendar?: boolean) => {
         const newItem: BrainDumpItem = {
             id: uuidv4(),
             type: ItemType.TODO,
@@ -1226,7 +1232,10 @@ export const useBrainDumpData = () => {
             meta: {
                 tags: [],
                 date,
-                priority
+                priority,
+                start,
+                end,
+                hideFromCalendar
             }
         };
 
@@ -1247,7 +1256,8 @@ export const useBrainDumpData = () => {
         routineDaysOfMonth?: number[],
         routineMonthsOfYear?: number[],
         dedicatedWalletId?: string,
-        paymentMethod?: string
+        paymentMethod?: string,
+        hideFromCalendar?: boolean
     ) => {
         const newItem: BrainDumpItem = {
             id: uuidv4(),
@@ -1268,7 +1278,8 @@ export const useBrainDumpData = () => {
                 routineDaysOfMonth: category === 'routine' ? routineDaysOfMonth : undefined,
                 routineMonthsOfYear: category === 'routine' ? routineMonthsOfYear : undefined,
                 dedicatedWalletId: category === 'saving' ? dedicatedWalletId : undefined,
-                paymentMethod
+                paymentMethod,
+                hideFromCalendar
             }
         };
 

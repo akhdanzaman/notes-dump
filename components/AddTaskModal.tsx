@@ -6,20 +6,31 @@ import { Priority } from '../types';
 interface AddTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (content: string, date: string, priority: Priority) => void;
+    onSave: (content: string, date: string, priority: Priority, start?: string, end?: string, hideFromCalendar?: boolean) => void;
     initialDate?: string;
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, initialDate }) => {
     const [content, setContent] = useState('');
     const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
+    const [start, setStart] = useState('');
+    const [end, setEnd] = useState('');
     const [priority, setPriority] = useState<Priority>('normal');
+    const [hideFromCalendar, setHideFromCalendar] = useState(false);
 
     const handleSave = () => {
         if (!content.trim()) return;
-        onSave(content, new Date(date).toISOString(), priority);
+        
+        let startIso, endIso;
+        if (start) startIso = new Date(start).toISOString();
+        if (end) endIso = new Date(end).toISOString();
+
+        onSave(content, new Date(date).toISOString(), priority, startIso, endIso, hideFromCalendar);
         setContent('');
+        setStart('');
+        setEnd('');
         setPriority('normal');
+        setHideFromCalendar(false);
         onClose();
     };
 
@@ -67,6 +78,27 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                             />
                         </div>
 
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Start Time</label>
+                                <input 
+                                    type="datetime-local"
+                                    value={start}
+                                    onChange={e => setStart(e.target.value)}
+                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">End Time</label>
+                                <input 
+                                    type="datetime-local"
+                                    value={end}
+                                    onChange={e => setEnd(e.target.value)}
+                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                />
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Priority</label>
                             <div className="grid grid-cols-3 gap-2">
@@ -84,6 +116,19 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                                     </button>
                                 ))}
                             </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <input 
+                                type="checkbox" 
+                                id="hideFromCalendarTask" 
+                                checked={hideFromCalendar}
+                                onChange={(e) => setHideFromCalendar(e.target.checked)}
+                                className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <label htmlFor="hideFromCalendarTask" className="text-sm font-medium text-primary">
+                                Hide from Calendar
+                            </label>
                         </div>
                     </div>
 

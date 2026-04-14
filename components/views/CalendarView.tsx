@@ -64,6 +64,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 return false;
             }
 
+            if (item.meta.hideFromCalendar) {
+                return false;
+            }
+
             // Handle routine items
             if (item.meta.isRoutine || item.meta.shoppingCategory === 'routine') {
                 const interval = item.meta.routineInterval;
@@ -80,7 +84,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 }
                 // Fallback for routine items without specific interval details
                 if (!interval) {
-                    const itemDateStr = item.meta.date || item.meta.dateTime || item.created_at;
+                    const itemDateStr = item.meta.start || item.meta.date || item.meta.dateTime;
                     if (itemDateStr) {
                         const itemDate = new Date(itemDateStr);
                         return itemDate.getDate() === date.getDate() &&
@@ -91,20 +95,27 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 return false;
             }
 
-            // Handle regular items with specific dates
-            const itemDateStr = item.meta.date || item.meta.dateTime;
-            if (itemDateStr) {
-                const itemDate = new Date(itemDateStr);
-                return itemDate.getDate() === date.getDate() &&
-                       itemDate.getMonth() === date.getMonth() &&
-                       itemDate.getFullYear() === date.getFullYear();
-            }
+            // Handle regular items with specific dates (Priority: start-end > due date)
+            const startStr = item.meta.start;
+            const endStr = item.meta.end;
+            const dateStr = item.meta.date || item.meta.dateTime;
 
-            // If no date specified, maybe don't show it on the calendar to avoid cluttering the created_at date?
-            // The user said "menampikan seluruh planning to do, event, dan shopping".
-            // Let's show items without a specific date on their created_at date.
-            if (item.created_at) {
-                const itemDate = new Date(item.created_at);
+            if (startStr) {
+                const startDate = new Date(startStr);
+                startDate.setHours(0, 0, 0, 0);
+                
+                let endDate = new Date(startStr);
+                if (endStr) {
+                    endDate = new Date(endStr);
+                }
+                endDate.setHours(23, 59, 59, 999);
+
+                const compareDate = new Date(date);
+                compareDate.setHours(12, 0, 0, 0);
+
+                return compareDate >= startDate && compareDate <= endDate;
+            } else if (dateStr) {
+                const itemDate = new Date(dateStr);
                 return itemDate.getDate() === date.getDate() &&
                        itemDate.getMonth() === date.getMonth() &&
                        itemDate.getFullYear() === date.getFullYear();
@@ -177,7 +188,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         <div 
                                             key={item.id}
                                             onClick={() => setSelectedItem(item)}
-                                            className={`text-[7px] leading-tight p-0.5 rounded-sm cursor-pointer truncate ${getItemColor(item.type)} ${
+                                            className={`text-[10.5px] leading-tight p-0.5 rounded-sm cursor-pointer line-clamp-2 ${getItemColor(item.type)} ${
                                                 item.status === 'done' ? 'opacity-50 line-through' : 'opacity-100'
                                             }`}
                                             title={item.content}

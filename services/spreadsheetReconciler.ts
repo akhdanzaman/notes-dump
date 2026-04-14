@@ -99,12 +99,20 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     if (todoSheet && todoSheet.values) {
         const headers = todoSheet.values[0] || [];
         const hasDueDate = headers.includes("Due_Date");
+        const hasType = headers.includes("Type");
+        const hasStartDate = headers.includes("Start_Date");
         const rows = todoSheet.values.slice(1);
         for (const row of rows) {
-            let status, priority, content, dueDateStr, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr;
-            if (hasDueDate) {
+            let typeStr, status, priority, content, dueDateStr, startDateStr, endDateStr, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr;
+            
+            if (hasType && hasStartDate) {
+                // New format: ["Type", "Status", "Priority", "Content", "Due_Date", "Start_Date", "End_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID"]
+                [typeStr, status, priority, content, dueDateStr, startDateStr, endDateStr, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr] = row;
+            } else if (hasDueDate) {
+                // Old format 1: ["Status", "Priority", "Content", "Due_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID"]
                 [status, priority, content, dueDateStr, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr] = row;
             } else {
+                // Old format 2
                 [status, priority, content, tagsStr, createdAt, completedAt, progressStr, progressNotes, idStr] = row;
                 dueDateStr = '';
             }
@@ -155,6 +163,34 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     match.meta.date = undefined;
                     updated = true;
                 }
+
+                if (startDateStr) {
+                    const parsedStart = new Date(startDateStr);
+                    if (!isNaN(parsedStart.getTime())) {
+                        const isoStart = parsedStart.toISOString();
+                        if (match.meta.start !== isoStart) {
+                            match.meta.start = isoStart;
+                            updated = true;
+                        }
+                    }
+                } else if (match.meta.start) {
+                    match.meta.start = undefined;
+                    updated = true;
+                }
+
+                if (endDateStr) {
+                    const parsedEnd = new Date(endDateStr);
+                    if (!isNaN(parsedEnd.getTime())) {
+                        const isoEnd = parsedEnd.toISOString();
+                        if (match.meta.end !== isoEnd) {
+                            match.meta.end = isoEnd;
+                            updated = true;
+                        }
+                    }
+                } else if (match.meta.end) {
+                    match.meta.end = undefined;
+                    updated = true;
+                }
                 
                 if (updated) hasChanges = true;
             } else {
@@ -166,6 +202,22 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     const parsedDueDate = new Date(dueDateStr);
                     if (!isNaN(parsedDueDate.getTime())) {
                         isoDueDate = parsedDueDate.toISOString();
+                    }
+                }
+
+                let isoStart = undefined;
+                if (startDateStr) {
+                    const parsedStart = new Date(startDateStr);
+                    if (!isNaN(parsedStart.getTime())) {
+                        isoStart = parsedStart.toISOString();
+                    }
+                }
+
+                let isoEnd = undefined;
+                if (endDateStr) {
+                    const parsedEnd = new Date(endDateStr);
+                    if (!isNaN(parsedEnd.getTime())) {
+                        isoEnd = parsedEnd.toISOString();
                     }
                 }
 
@@ -181,7 +233,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [],
                         progress: parseInt((progressStr || '').replace('%', '')) || 0,
                         progressNotes: progressNotes || '',
-                        date: isoDueDate
+                        date: isoDueDate,
+                        start: isoStart,
+                        end: isoEnd
                     }
                 });
                 seenItemIds.add(newId);
@@ -283,9 +337,21 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     // 4. Events
     const eventSheet = valueRanges.find(r => r.range && r.range.includes('Events'));
     if (eventSheet && eventSheet.values) {
+        const headers = eventSheet.values[0] || [];
+        const hasType = headers.includes("Type");
+        const hasStartDate = headers.includes("Start_Date");
         const rows = eventSheet.values.slice(1);
         for (const row of rows) {
-            const [date, priority, event, tagsStr, idStr] = row;
+            let typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, idStr;
+            
+            if (hasType && hasStartDate) {
+                // New format: ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "ID"]
+                [typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, idStr] = row;
+            } else {
+                // Old format: ["Date", "Priority", "Event", "Tags", "ID"]
+                [date, priority, event, tagsStr, idStr] = row;
+            }
+            
             if (!event && !date && !idStr) continue;
             
             const match = newItems.find(i => 
@@ -311,11 +377,56 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     const isoDate = parsedDate.toISOString();
                     if (match.meta.date !== isoDate) { match.meta.date = isoDate; updated = true; }
                 }
+
+                if (startDateStr) {
+                    const parsedStart = new Date(startDateStr);
+                    if (!isNaN(parsedStart.getTime())) {
+                        const isoStart = parsedStart.toISOString();
+                        if (match.meta.start !== isoStart) {
+                            match.meta.start = isoStart;
+                            updated = true;
+                        }
+                    }
+                } else if (match.meta.start) {
+                    match.meta.start = undefined;
+                    updated = true;
+                }
+
+                if (endDateStr) {
+                    const parsedEnd = new Date(endDateStr);
+                    if (!isNaN(parsedEnd.getTime())) {
+                        const isoEnd = parsedEnd.toISOString();
+                        if (match.meta.end !== isoEnd) {
+                            match.meta.end = isoEnd;
+                            updated = true;
+                        }
+                    }
+                } else if (match.meta.end) {
+                    match.meta.end = undefined;
+                    updated = true;
+                }
                 
                 if (updated) hasChanges = true;
             } else {
                 const parsedDate = new Date(date);
                 const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
+                
+                let isoStart = undefined;
+                if (startDateStr) {
+                    const parsedStart = new Date(startDateStr);
+                    if (!isNaN(parsedStart.getTime())) {
+                        isoStart = parsedStart.toISOString();
+                    }
+                }
+
+                let isoEnd = undefined;
+                if (endDateStr) {
+                    const parsedEnd = new Date(endDateStr);
+                    if (!isNaN(parsedEnd.getTime())) {
+                        isoEnd = parsedEnd.toISOString();
+                    }
+                }
+
                 const newId = uuidv4();
                 newItems.push({
                     id: newId,
@@ -325,6 +436,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     created_at: new Date().toISOString(),
                     meta: {
                         date: isoDate,
+                        start: isoStart,
+                        end: isoEnd,
                         priority: priority || 'normal',
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : []
                     }

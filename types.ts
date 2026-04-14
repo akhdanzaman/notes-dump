@@ -68,6 +68,8 @@ export interface Wallet {
 export interface ItemMeta {
   date?: string;
   dateTime?: string;
+  start?: string;
+  end?: string;
   when?: 'today' | 'tomorrow' | 'yesterday' | 'next_weekday' | 'specific_date' | 'unspecified';
 
   tags?: string[];
@@ -106,6 +108,7 @@ export interface ItemMeta {
   lastGeneratedHistoryId?: string;
   priority?: Priority;
   parsingError?: string;
+  hideFromCalendar?: boolean;
 
   // legacy compat
   intent?: string;
@@ -223,11 +226,14 @@ export interface ParserEntityRefs {
 export interface ParsedItemMetaV2 {
   date?: string;
   dateTime?: string;
+  start?: string;
+  end?: string;
   when?: 'today' | 'tomorrow' | 'yesterday' | 'next_weekday' | 'specific_date' | 'unspecified';
 
   tags?: string[];
   quantity?: string;
   priority?: Priority;
+  hideFromCalendar?: boolean;
 
   shoppingCategory?: ShoppingCategory;
 
@@ -281,6 +287,8 @@ export interface UpdateItemPayload {
     status: 'pending' | 'done';
     priority: Priority;
     date: string;
+    start: string;
+    end: string;
     amount: number;
     tags: string[];
     shoppingCategory: ShoppingCategory;

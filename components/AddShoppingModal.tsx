@@ -18,7 +18,8 @@ interface AddShoppingModalProps {
         routineDaysOfMonth?: number[],
         routineMonthsOfYear?: number[],
         dedicatedWalletId?: string,
-        paymentMethod?: string
+        paymentMethod?: string,
+        hideFromCalendar?: boolean
     ) => void;
     initialCategory?: ShoppingCategory;
     budgetRules: BudgetRule[];
@@ -51,6 +52,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [dedicatedWalletId, setDedicatedWalletId] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('');
+    const [hideFromCalendar, setHideFromCalendar] = useState(false);
     
     // Routine specific state
     const [interval, setInterval] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -99,7 +101,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
             category === 'routine' ? daysOfMonth : undefined,
             category === 'routine' ? monthsOfYear : undefined,
             category === 'saving' ? dedicatedWalletId : undefined,
-            paymentMethod || undefined
+            paymentMethod || undefined,
+            hideFromCalendar
         );
         
         setContent('');
@@ -113,6 +116,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         setDaysOfWeek([]);
         setDaysOfMonth([]);
         setMonthsOfYear([]);
+        setHideFromCalendar(false);
         onClose();
     };
 
@@ -355,6 +359,19 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 )}
                             </div>
                         )}
+                        
+                        <div className="flex items-center gap-2 mt-4">
+                            <input 
+                                type="checkbox" 
+                                id="hideFromCalendarShopping" 
+                                checked={hideFromCalendar}
+                                onChange={(e) => setHideFromCalendar(e.target.checked)}
+                                className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <label htmlFor="hideFromCalendarShopping" className="text-sm font-medium text-primary">
+                                Hide from Calendar
+                            </label>
+                        </div>
                     </div>
 
                     <div className="p-6 border-t border-border shrink-0">
