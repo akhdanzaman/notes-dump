@@ -249,10 +249,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     if (shopSheet && shopSheet.values) {
         const headers = shopSheet.values[0] || [];
         const hasDueDate = headers.includes("Due_Date");
+        const hasCompletedAt = headers.includes("Completed_At");
         const rows = shopSheet.values.slice(1);
         for (const row of rows) {
-            let status, item, amountStr, category, quantity, dueDateStr, tagsStr, idStr;
-            if (hasDueDate) {
+            let status, item, amountStr, category, quantity, dueDateStr, tagsStr, completedAtStr, idStr;
+            
+            if (hasDueDate && hasCompletedAt) {
+                [status, item, amountStr, category, quantity, dueDateStr, tagsStr, completedAtStr, idStr] = row;
+            } else if (hasDueDate) {
                 [status, item, amountStr, category, quantity, dueDateStr, tagsStr, idStr] = row;
             } else {
                 [status, item, amountStr, category, quantity, tagsStr, idStr] = row;
@@ -302,6 +306,20 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     match.meta.date = undefined;
                     updated = true;
                 }
+
+                if (completedAtStr) {
+                    const parsedCompletedAt = new Date(completedAtStr);
+                    if (!isNaN(parsedCompletedAt.getTime())) {
+                        const isoCompletedAt = parsedCompletedAt.toISOString();
+                        if (match.completed_at !== isoCompletedAt) {
+                            match.completed_at = isoCompletedAt;
+                            updated = true;
+                        }
+                    }
+                } else if (status === 'pending' && match.completed_at) {
+                    match.completed_at = undefined;
+                    updated = true;
+                }
                 
                 if (updated) hasChanges = true;
             } else {
@@ -313,6 +331,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     }
                 }
 
+                let isoCompletedAt = undefined;
+                if (completedAtStr) {
+                    const parsedCompletedAt = new Date(completedAtStr);
+                    if (!isNaN(parsedCompletedAt.getTime())) {
+                        isoCompletedAt = parsedCompletedAt.toISOString();
+                    }
+                }
+
                 const newId = uuidv4();
                 newItems.push({
                     id: newId,
@@ -320,6 +346,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     content: item || 'Manual Item',
                     status: (status === 'done' ? 'done' : 'pending'),
                     created_at: new Date().toISOString(),
+                    completed_at: isoCompletedAt,
                     meta: {
                         amount: amount,
                         shoppingCategory: category || 'not_urgent',

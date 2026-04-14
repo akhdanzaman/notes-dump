@@ -100,14 +100,15 @@ export const generateExportData = (
       Quantity: item.meta.quantity || '',
       Due_Date: fmtDate(item.meta.date || item.meta.dateTime),
       Tags: item.meta.tags?.join(', ') || '',
+      Completed_At: fmtDate(item.completed_at),
       ID: item.id
   }));
   if (shopping.length > 0) {
     sheets.push({
       name: "Shopping",
       data: [
-        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Tags", "ID"],
-        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Tags, s.ID])
+        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Tags", "Completed_At", "ID"],
+        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Tags, s.Completed_At, s.ID])
       ]
     });
   }
