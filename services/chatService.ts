@@ -1,5 +1,6 @@
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, ChatMessage } from '../types';
 import { createGeminiClient, DEFAULT_FLASH_MODEL } from './aiService';
+import { formatBudgetRuleContext } from './budgetCategoryService';
 
 export const generateChatResponse = async (
     message: string,
@@ -26,6 +27,7 @@ You have access to the user's data, including their notes, todos, finances, skil
 Answer the user's questions based on this data. Be concise, helpful, and friendly.
 If the user asks for advice or suggestions, provide them based on their data. Pay special attention to their monthly themes, as they represent the user's overarching goals and focus for each month. Use these themes to guide your advice and insights.
 If the user asks about something not in the data, answer generally but remind them you are looking at their app data.
+When discussing or classifying spending, always use the user's configured budget categories as the source of truth. Do not invent categories outside their configured budget list.
 
 Here is the user's current data context (in JSON format):
 ---
@@ -37,6 +39,9 @@ ${JSON.stringify(recentItems.map(i => ({ type: i.type, content: i.content, statu
 
 BUDGET CONFIG:
 ${JSON.stringify(budgetConfig, null, 2)}
+
+BUDGET CATEGORY RULES:
+${formatBudgetRuleContext(budgetConfig)}
 
 WALLETS:
 ${JSON.stringify(wallets, null, 2)}

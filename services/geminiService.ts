@@ -1,8 +1,9 @@
 import { Type } from "@google/genai";
-import { ItemType, BrainDumpItem } from '../types';
+import { ItemType, BrainDumpItem, BudgetConfig } from '../types';
 
 import { getLocalISOString } from '../utils/selectors/dateUtils';
 import { createGeminiClient, DEFAULT_FLASH_MODEL, getGeminiKey, parseJsonResponse, saveGeminiKey } from './aiService';
+import { formatBudgetRuleContext, resolveBudgetCategoryId } from './budgetCategoryService';
 
 export { getGeminiKey, saveGeminiKey } from './aiService';
 
@@ -46,13 +47,7 @@ PRIORITY (TODO/EVENT ONLY):
 
 MONEY META (FINANCE + money-related SHOPPING):
 - financeType ∈ {expense, income, transfer, saving}
-- budgetCategory ∈ {needs, wants, savings, sedekah, fixed, unintend}
-  - needs: groceries/electricity/health
-  - wants: dining/hobby/entertainment/subscription entertainment
-  - savings: investment/emergency/debt repayment
-  - sedekah: charity/giving/donation
-  - fixed: rent/laundry/internet/electricity/parking
-  - unintend: miss/extra charge/penalty/lost
+- budgetCategory must come from the configured budget category list provided in context. Use the exact configured category id, never invent a new category.
 - commodity ∈ {food, transport, utilities, health, education, shopping, housing, personal_care, digital, social, other}
 - subcommodity: detailed sub-category.
   - food: breakfast, lunch, dinner, snack, drink, groceries
@@ -83,8 +78,7 @@ FINANCE META:
     - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.
 - saving: adding funds to an existing saving goal (e.g., "saved 500k for car from BCA").
     - IF saving: set 'paymentMethod' = Source Wallet, 'financeType' = 'saving'.
-- IMPORTANT: You MUST ALWAYS set 'budgetCategory' for 'expense' and 'saving' transactions.
-  - For 'saving', choose the category based on the goal (e.g. saving for emergency fund -> 'savings', saving for a new car -> 'wants').
+- IMPORTANT: You MUST ALWAYS set 'budgetCategory' for 'expense' and 'saving' transactions using one of the configured categories from context.
 
 TAG RULES (STRICT):
 - Max 2 tags.
@@ -92,9 +86,9 @@ TAG RULES (STRICT):
 - Use for specific context not covered above (e.g. "trip to bali", "birthday").
 
 Examples:
-- "Gave money to street musician 5000" => financeType "expense", budgetCategory "sedekah", commodity "social", subcommodity "donation", amount 5000
-- "tip driver gojek 10000" => financeType "expense", budgetCategory "wants", commodity "transport", subcommodity "tip", amount 10000
-- "Breakfast 14000" => financeType "expense", budgetCategory "needs", commodity "food", subcommodity "breakfast", amount 14000
+- "Gave money to street musician 5000" => financeType "expense", budgetCategory should map to the configured charity/giving category, commodity "social", subcommodity "donation", amount 5000
+- "tip driver gojek 10000" => financeType "expense", budgetCategory should map to the configured discretionary/leisure category, commodity "transport", subcommodity "tip", amount 10000
+- "Breakfast 14000" => financeType "expense", budgetCategory should map to the configured essentials/needs category, commodity "food", subcommodity "breakfast", amount 14000
 - "Kirim dompet" => tags ["assistance","delivery"]
 - "beli susu besok hari senin 12000" => SHOPPING urgent + targetDay Monday + amount 12000
 - "beli susu setiap senin 12000" => SHOPPING routine + targetDay Monday + amount 12000
@@ -107,7 +101,7 @@ Examples:
 `;
 
 // CHANGED: Added availableSkills to prompt context
-export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string, parsingModel?: string): Promise<Partial<BrainDumpItem>[]> => {
+export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string, parsingModel?: string, budgetConfig?: BudgetConfig): Promise<Partial<BrainDumpItem>[]> => {
   const apiKey = getGeminiKey();
   
   if (!apiKey) {
@@ -133,6 +127,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
   const currentDayName = now.toLocaleDateString('en-US', { weekday: 'long' });
   const tagsContext = existingTags.length > 0 ? `Existing tags context: ${existingTags.join(', ')}` : '';
   const skillsContext = availableSkills.length > 0 ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(', ')}` : '';
+  const budgetContext = formatBudgetRuleContext(budgetConfig);
 
   const promptToUse = customPrompt || DEFAULT_PROMPT;
   const activeModel = parsingModel || DEFAULT_FLASH_MODEL;
@@ -144,6 +139,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
       Current Date context: ${currentDate} (${currentDayName}).
       ${tagsContext}
       ${skillsContext}
+      ${budgetContext}
       
       ${promptToUse}`,
       config: {
@@ -213,6 +209,10 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
              result.meta.date = new Date().toISOString();
         }
 
+        if (matchedType === ItemType.FINANCE && result.meta?.budgetCategory) {
+            result.meta.budgetCategory = resolveBudgetCategoryId(result.meta.budgetCategory, budgetConfig) || result.meta.budgetCategory;
+        }
+
         return {
           type: matchedType,
           content: result.content || text,
@@ -226,7 +226,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
     if (retryCount < 2 && (status === 429 || status >= 500)) {
         const delay = Math.pow(2, retryCount) * 1000;
         await wait(delay);
-        return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt, parsingModel);
+        return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt, parsingModel, budgetConfig);
     }
 
     console.error("Gemini classification failed:", error);

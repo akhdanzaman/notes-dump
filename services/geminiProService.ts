@@ -4,6 +4,7 @@ import {
   BrainDumpItem,
   Wallet,
   Skill,
+  BudgetConfig,
   FinanceType,
   Priority,
   ParserResultV2,
@@ -27,6 +28,7 @@ import {
 import { createGeminiClient, DEFAULT_PRO_MODEL } from './aiService';
 import { getGeminiKey, DEFAULT_PROMPT } from './geminiService';
 import { getLocalISOString } from '../utils/selectors/dateUtils';
+import { formatBudgetRuleContext, resolveBudgetCategoryId } from './budgetCategoryService';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -35,6 +37,7 @@ interface ParserContext {
   availableSkills: Skill[];
   availableWallets: Wallet[];
   existingItems: BrainDumpItem[];
+  budgetConfig?: BudgetConfig;
   currentDateISO: string;
   currentDayName: string;
   currentMonthKey: string;
@@ -166,7 +169,8 @@ function buildContext(
   existingTags: string[],
   availableSkills: Skill[],
   availableWallets: Wallet[],
-  existingItems: BrainDumpItem[]
+  existingItems: BrainDumpItem[],
+  budgetConfig?: BudgetConfig
 ): ParserContext {
   const now = new Date();
   return {
@@ -174,6 +178,7 @@ function buildContext(
     availableSkills,
     availableWallets,
     existingItems,
+    budgetConfig,
     currentDateISO: getLocalISOString(now),
     currentDayName: now.toLocaleDateString('en-US', { weekday: 'long' }),
     currentMonthKey: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -200,6 +205,7 @@ function buildContextText(ctx: ParserContext): string {
     ctx.availableWallets.length
       ? `Known wallets: ${ctx.availableWallets.map(w => `${w.name} [${w.id}] type=${w.type}`).join(', ')}`
       : `Known wallets: none`,
+    formatBudgetRuleContext(ctx.budgetConfig),
     savingGoals.length
       ? `Known saving goals: ${savingGoals.join(', ')}`
       : `Known saving goals: none`,
@@ -282,7 +288,7 @@ function resolveMonthKey(input?: string, fallbackISO?: string): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function normalizeMeta(meta: any): ParsedItemMetaV2 {
+function normalizeMeta(meta: any, budgetConfig?: BudgetConfig): ParsedItemMetaV2 {
   if (!meta || typeof meta !== 'object') return {};
 
   const normalized: ParsedItemMetaV2 = {
@@ -302,7 +308,9 @@ function normalizeMeta(meta: any): ParsedItemMetaV2 {
     financeType: isValidFinanceType(meta.financeType) ? meta.financeType : undefined,
     paymentMethod: typeof meta.paymentMethod === 'string' ? normalizeWhitespace(meta.paymentMethod) : undefined,
     toWallet: typeof meta.toWallet === 'string' ? normalizeWhitespace(meta.toWallet) : undefined,
-    budgetCategory: typeof meta.budgetCategory === 'string' ? normalizeWhitespace(meta.budgetCategory) : undefined,
+    budgetCategory: typeof meta.budgetCategory === 'string'
+      ? (resolveBudgetCategoryId(normalizeWhitespace(meta.budgetCategory), budgetConfig) || normalizeWhitespace(meta.budgetCategory))
+      : undefined,
     commodity: typeof meta.commodity === 'string' ? normalizeWhitespace(meta.commodity) : undefined,
     subcommodity: typeof meta.subcommodity === 'string' ? normalizeWhitespace(meta.subcommodity) : undefined,
     merchant: typeof meta.merchant === 'string' ? normalizeWhitespace(meta.merchant) : undefined,
@@ -433,6 +441,7 @@ Finance rules:
 - saving = adding money to an existing saving goal
 - paymentMethod = source wallet
 - toWallet = destination wallet
+- budgetCategory must use one of the configured budget category ids from context
 
 Journal rules:
 - if no date is specified, default to today
@@ -814,7 +823,7 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         ? payload.itemType
         : mapEntityTypeToItemType(resolved.entityType);
 
-      const meta = normalizeMeta(payload.meta || {});
+      const meta = normalizeMeta(payload.meta || {}, ctx.budgetConfig);
       const content = normalizeWhitespace(payload.content || resolved.content || '');
 
       if (itemType === 'SHOPPING' && !meta.shoppingCategory) {
@@ -886,7 +895,9 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         financeType: isValidFinanceType(changes.financeType) ? changes.financeType : undefined,
         paymentMethod: typeof changes.paymentMethod === 'string' ? normalizeWhitespace(changes.paymentMethod) : undefined,
         toWallet: typeof changes.toWallet === 'string' ? normalizeWhitespace(changes.toWallet) : undefined,
-        budgetCategory: typeof changes.budgetCategory === 'string' ? normalizeWhitespace(changes.budgetCategory) : undefined,
+        budgetCategory: typeof changes.budgetCategory === 'string'
+          ? (resolveBudgetCategoryId(normalizeWhitespace(changes.budgetCategory), ctx.budgetConfig) || normalizeWhitespace(changes.budgetCategory))
+          : undefined,
         commodity: typeof changes.commodity === 'string' ? normalizeWhitespace(changes.commodity) : undefined,
         subcommodity: typeof changes.subcommodity === 'string' ? normalizeWhitespace(changes.subcommodity) : undefined,
         merchant: typeof changes.merchant === 'string' ? normalizeWhitespace(changes.merchant) : undefined,
@@ -1146,7 +1157,9 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         fromWallet: fromWallet || undefined,
         date: typeof payload.date === 'string' ? payload.date : undefined,
         note: typeof payload.note === 'string' ? normalizeWhitespace(payload.note) : undefined,
-        budgetCategory: typeof payload.budgetCategory === 'string' ? normalizeWhitespace(payload.budgetCategory) : undefined
+        budgetCategory: typeof payload.budgetCategory === 'string'
+          ? (resolveBudgetCategoryId(normalizeWhitespace(payload.budgetCategory), ctx.budgetConfig) || normalizeWhitespace(payload.budgetCategory))
+          : undefined
       } satisfies AddSavingFundsPayload;
 
       if (!amount || !goalName) {
@@ -1171,7 +1184,8 @@ export const parsePro = async (
   customPrompt?: string,
   parsingModel?: string,
   retryCount = 0,
-  onProgress?: (stage: 'stage1' | 'stage2') => void
+  onProgress?: (stage: 'stage1' | 'stage2') => void,
+  budgetConfig?: BudgetConfig
 ): Promise<ParserResultV2[]> => {
   const apiKey = getGeminiKey();
 
@@ -1198,7 +1212,7 @@ export const parsePro = async (
     }];
   }
   const activeModel = parsingModel || DEFAULT_PRO_MODEL;
-  const ctx = buildContext(existingTags, availableSkills, availableWallets, existingItems);
+  const ctx = buildContext(existingTags, availableSkills, availableWallets, existingItems, budgetConfig);
 
   try {
     onProgress?.('stage1');
@@ -1224,7 +1238,8 @@ export const parsePro = async (
         customPrompt,
         parsingModel,
         retryCount + 1,
-        onProgress
+        onProgress,
+        budgetConfig
       );
     }
 

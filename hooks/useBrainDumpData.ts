@@ -854,7 +854,8 @@ export const useBrainDumpData = () => {
                     0,
                     (stage) => {
                         setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage } : t));
-                    }
+                    },
+                    budgetConfigRef.current
                 );
             } else {
                 setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'legacy' } : t));
@@ -864,7 +865,8 @@ export const useBrainDumpData = () => {
                     skillsRef.current.map(s => s.name),
                     0,
                     customPromptRef.current,
-                    appSettingsRef.current.parsingModel
+                    appSettingsRef.current.parsingModel,
+                    budgetConfigRef.current
                 );
                 parsedResults = convertLegacyResultsToNative(legacy, text);
             }
