@@ -1,24 +1,10 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { ItemType, BrainDumpItem } from '../types';
 
 import { getLocalISOString } from '../utils/selectors/dateUtils';
+import { createGeminiClient, DEFAULT_FLASH_MODEL, getGeminiKey, parseJsonResponse, saveGeminiKey } from './aiService';
 
-const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
-
-export const getGeminiKey = (): string => {
-  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.GEMINI_API_KEY || '';
-};
-
-export const saveGeminiKey = (key: string) => {
-  if (key) {
-      localStorage.setItem(GEMINI_SETTINGS_KEY, key);
-  } else {
-      localStorage.removeItem(GEMINI_SETTINGS_KEY);
-  }
-};
-
-// Updated to Gemini 3 Flash Preview as requested
-const modelName = 'gemini-3-flash-preview';
+export { getGeminiKey, saveGeminiKey } from './aiService';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -133,7 +119,14 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
       }];
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = createGeminiClient();
+  if (!ai) {
+      return [{
+        type: ItemType.NOTE,
+        content: text,
+        meta: { tags: ['missing-api-key'] }
+      }];
+  }
 
   const now = new Date();
   const currentDate = getLocalISOString(now);
@@ -142,7 +135,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
   const skillsContext = availableSkills.length > 0 ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(', ')}` : '';
 
   const promptToUse = customPrompt || DEFAULT_PROMPT;
-  const activeModel = parsingModel || modelName;
+  const activeModel = parsingModel || DEFAULT_FLASH_MODEL;
 
   try {
     const response = await ai.models.generateContent({
@@ -195,7 +188,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
       },
     });
 
-    const parsed = JSON.parse(response.text || "[]");
+    const parsed = parseJsonResponse<any>(response.text, []);
     
     // Ensure result is an array
     const resultsArray = Array.isArray(parsed) ? parsed : [parsed];

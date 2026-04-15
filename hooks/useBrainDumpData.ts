@@ -464,11 +464,12 @@ export const useBrainDumpData = () => {
         );
 
         let status: 'pending' | 'done' = isRecord ? 'done' : 'pending';
-        let completedAt: string | undefined = isRecord ? new Date().toISOString() : undefined;
+        const parsedEffectiveDate = meta.date || meta.dateTime;
+        let completedAt: string | undefined = isRecord ? (parsedEffectiveDate || new Date().toISOString()) : undefined;
 
         if (payload.status === 'done') {
             status = 'done';
-            completedAt = new Date().toISOString();
+            completedAt = parsedEffectiveDate || new Date().toISOString();
         }
 
         if (type === ItemType.TODO || type === ItemType.EVENT) {

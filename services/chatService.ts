@@ -1,13 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, ChatMessage } from '../types';
-
-const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
-
-export const getGeminiKey = (): string => {
-  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.GEMINI_API_KEY || '';
-};
-
-const modelName = 'gemini-3-flash-preview';
+import { createGeminiClient, DEFAULT_FLASH_MODEL } from './aiService';
 
 export const generateChatResponse = async (
     message: string,
@@ -19,13 +11,11 @@ export const generateChatResponse = async (
     monthlyThemes: Record<string, string>,
     chatModel?: string
 ): Promise<string> => {
-    const apiKey = getGeminiKey();
-    if (!apiKey) {
+    const ai = createGeminiClient();
+    if (!ai) {
         return "Please configure your Gemini API key in the settings to use the chat feature.";
     }
-
-    const ai = new GoogleGenAI({ apiKey });
-    const activeModel = chatModel || modelName;
+    const activeModel = chatModel || DEFAULT_FLASH_MODEL;
 
     // Truncate items to the last 200 to prevent massive payloads
     const recentItems = items.slice(-200);

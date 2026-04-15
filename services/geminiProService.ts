@@ -24,7 +24,9 @@ import {
   ParsedWalletType,
   ParsedItemType
 } from '../types';
+import { createGeminiClient, DEFAULT_PRO_MODEL } from './aiService';
 import { getGeminiKey, DEFAULT_PROMPT } from './geminiService';
+import { getLocalISOString } from '../utils/selectors/dateUtils';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -115,9 +117,7 @@ function sanitizeAction(value: unknown): ParserAction {
     'complete_item',
     'delete_item',
     'create_skill',
-    'update_skill',
     'create_wallet',
-    'update_wallet',
     'create_theme',
     'update_theme',
     'transfer_money',
@@ -174,7 +174,7 @@ function buildContext(
     availableSkills,
     availableWallets,
     existingItems,
-    currentDateISO: now.toISOString(),
+    currentDateISO: getLocalISOString(now),
     currentDayName: now.toLocaleDateString('en-US', { weekday: 'long' }),
     currentMonthKey: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   };
@@ -354,9 +354,7 @@ Allowed actions:
 - complete_item
 - delete_item
 - create_skill
-- update_skill
 - create_wallet
-- update_wallet
 - create_theme
 - update_theme
 - transfer_money
@@ -381,7 +379,7 @@ Rules:
 1. One action object per distinct action.
 2. New task/note/shopping/finance/journal/skill log => create_item.
 3. Mark existing task/routine done => complete_item.
-4. Edit existing data => update_item / update_skill / update_wallet / update_theme.
+4. Edit existing items/themes only => update_item / update_theme.
 5. Delete existing data => delete_item.
 6. Create new skill target/master entry => create_skill.
 7. Create new wallet/account => create_wallet.
@@ -1188,8 +1186,18 @@ export const parsePro = async (
     }];
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-  const activeModel = parsingModel || 'gemini-3.1-pro-preview';
+  const ai = createGeminiClient();
+  if (!ai) {
+    return [{
+      action: 'unknown',
+      entityType: 'note',
+      content: text,
+      confidence: 'low',
+      needsReview: true,
+      reviewReason: 'Missing Gemini API key'
+    }];
+  }
+  const activeModel = parsingModel || DEFAULT_PRO_MODEL;
   const ctx = buildContext(existingTags, availableSkills, availableWallets, existingItems);
 
   try {
