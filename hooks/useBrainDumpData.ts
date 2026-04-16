@@ -464,11 +464,12 @@ export const useBrainDumpData = () => {
         );
 
         let status: 'pending' | 'done' = isRecord ? 'done' : 'pending';
-        let completedAt: string | undefined = isRecord ? new Date().toISOString() : undefined;
+        const parsedEffectiveDate = meta.date || meta.dateTime;
+        let completedAt: string | undefined = isRecord ? (parsedEffectiveDate || new Date().toISOString()) : undefined;
 
         if (payload.status === 'done') {
             status = 'done';
-            completedAt = new Date().toISOString();
+            completedAt = parsedEffectiveDate || new Date().toISOString();
         }
 
         if (type === ItemType.TODO || type === ItemType.EVENT) {
@@ -853,7 +854,8 @@ export const useBrainDumpData = () => {
                     0,
                     (stage) => {
                         setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage } : t));
-                    }
+                    },
+                    budgetConfigRef.current
                 );
             } else {
                 setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'legacy' } : t));
@@ -863,7 +865,8 @@ export const useBrainDumpData = () => {
                     skillsRef.current.map(s => s.name),
                     0,
                     customPromptRef.current,
-                    appSettingsRef.current.parsingModel
+                    appSettingsRef.current.parsingModel,
+                    budgetConfigRef.current
                 );
                 parsedResults = convertLegacyResultsToNative(legacy, text);
             }
