@@ -1,6 +1,6 @@
-import { Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { BrainDumpItem, BudgetConfig, Wallet, Skill, ItemType } from '../types';
-import { createGeminiClient, DEFAULT_FLASH_MODEL, getGeminiKey, parseJsonResponse } from './aiService';
+import { getGeminiKey } from './geminiService';
 import { getFinanceItems } from '../utils/selectors';
 
 export interface Insight {
@@ -9,12 +9,6 @@ export interface Insight {
   message: string;
   iconType: 'finance' | 'task' | 'shopping' | 'skill';
 }
-
-export const getEffectiveInsightTime = (item: BrainDumpItem): number => {
-  const effectiveDate = item.completed_at || item.meta.date || item.created_at;
-  const parsed = new Date(effectiveDate).getTime();
-  return Number.isNaN(parsed) ? new Date(item.created_at).getTime() : parsed;
-};
 
 export const generateAIInsights = async (
   items: BrainDumpItem[],
@@ -33,16 +27,8 @@ export const generateAIInsights = async (
     }];
   }
 
-  const ai = createGeminiClient();
-  if (!ai) {
-    return [{
-      type: 'warning',
-      title: 'API Key Missing',
-      message: 'Please configure your Gemini API key to get AI insights.',
-      iconType: 'finance'
-    }];
-  }
-  const activeModel = insightModel || DEFAULT_FLASH_MODEL;
+  const ai = new GoogleGenAI({ apiKey });
+  const activeModel = insightModel || 'gemini-3-flash-preview';
   
   // Aggregate data
   const now = new Date();
@@ -135,12 +121,12 @@ export const generateAIInsights = async (
   const sevenDaysAgo = todayStart - (7 * 24 * 60 * 60 * 1000);
 
   const recentItems = items.filter(i => {
-      const d = getEffectiveInsightTime(i);
+      const d = new Date(i.created_at).getTime();
       return d >= sevenDaysAgo;
   });
 
   const yesterdayItems = recentItems.filter(i => {
-      const d = getEffectiveInsightTime(i);
+      const d = new Date(i.created_at).getTime();
       return d >= yesterdayStart && d < todayStart;
   });
 
@@ -253,7 +239,7 @@ export const generateAIInsights = async (
       }
     });
 
-    const parsed = parseJsonResponse<any>(response.text, []);
+    const parsed = JSON.parse(response.text || "[]");
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     console.error("Failed to generate AI insights:", error);

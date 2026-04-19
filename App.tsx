@@ -32,7 +32,6 @@ import FloatingChatBox from './components/FloatingChatBox';
 import PendingReviewList from './components/PendingReviewList';
 import Onboarding from './components/Onboarding';
 import { Brain } from 'lucide-react';
-import { createGeminiClient, DEFAULT_FLASH_MODEL, getGeminiKey, parseJsonResponse } from './services/aiService';
 
 const App: React.FC = () => {
   // Data Logic Hook
@@ -513,15 +512,17 @@ const App: React.FC = () => {
   };
 
   const handleOnboardingTestParsing = async (text: string) => {
-    const apiKey = getGeminiKey();
+    // We can use the existing parseInput logic from useBrainDumpData, 
+    // but since it's not exported directly, we can just simulate it or use the API directly.
+    // For simplicity, we'll just use the API directly here.
+    const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
     if (!apiKey) throw new Error("API key not found");
-
-    const ai = createGeminiClient();
-    if (!ai) throw new Error("API client not available");
-    const { Type } = await import("@google/genai");
+    
+    const { GoogleGenAI, Type } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
-      model: DEFAULT_FLASH_MODEL,
+      model: "gemini-3-flash-preview",
       contents: `Parse this text: "${text}". Return a JSON object with "type" (FINANCE, NOTE, TASK) and "data" containing the parsed details.`,
       config: {
         responseMimeType: "application/json",
@@ -535,7 +536,7 @@ const App: React.FC = () => {
       }
     });
     
-    return parseJsonResponse<Record<string, unknown>>(response.text, {});
+    return JSON.parse(response.text || "{}");
   };
 
   if (showOnboarding) {

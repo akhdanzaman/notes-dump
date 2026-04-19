@@ -1,6 +1,13 @@
+import { GoogleGenAI } from "@google/genai";
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, ChatMessage } from '../types';
-import { createGeminiClient, DEFAULT_FLASH_MODEL } from './aiService';
-import { formatBudgetRuleContext } from './budgetCategoryService';
+
+const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
+
+export const getGeminiKey = (): string => {
+  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.GEMINI_API_KEY || '';
+};
+
+const modelName = 'gemini-3-flash-preview';
 
 export const generateChatResponse = async (
     message: string,
@@ -12,11 +19,13 @@ export const generateChatResponse = async (
     monthlyThemes: Record<string, string>,
     chatModel?: string
 ): Promise<string> => {
-    const ai = createGeminiClient();
-    if (!ai) {
+    const apiKey = getGeminiKey();
+    if (!apiKey) {
         return "Please configure your Gemini API key in the settings to use the chat feature.";
     }
-    const activeModel = chatModel || DEFAULT_FLASH_MODEL;
+
+    const ai = new GoogleGenAI({ apiKey });
+    const activeModel = chatModel || modelName;
 
     // Truncate items to the last 200 to prevent massive payloads
     const recentItems = items.slice(-200);
@@ -27,7 +36,6 @@ You have access to the user's data, including their notes, todos, finances, skil
 Answer the user's questions based on this data. Be concise, helpful, and friendly.
 If the user asks for advice or suggestions, provide them based on their data. Pay special attention to their monthly themes, as they represent the user's overarching goals and focus for each month. Use these themes to guide your advice and insights.
 If the user asks about something not in the data, answer generally but remind them you are looking at their app data.
-When discussing or classifying spending, always use the user's configured budget categories as the source of truth. Do not invent categories outside their configured budget list.
 
 Here is the user's current data context (in JSON format):
 ---
@@ -39,9 +47,6 @@ ${JSON.stringify(recentItems.map(i => ({ type: i.type, content: i.content, statu
 
 BUDGET CONFIG:
 ${JSON.stringify(budgetConfig, null, 2)}
-
-BUDGET CATEGORY RULES:
-${formatBudgetRuleContext(budgetConfig)}
 
 WALLETS:
 ${JSON.stringify(wallets, null, 2)}
