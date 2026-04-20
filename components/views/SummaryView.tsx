@@ -20,7 +20,8 @@ import {
     Zap,
     Coffee,
     RefreshCw,
-    ChevronDown
+    ChevronDown,
+    ClipboardCheck
 } from 'lucide-react';
 import {
     BrainDumpItem,
@@ -44,6 +45,7 @@ import { generateAIInsights, Insight } from '../../services/insightService';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import Card from '../Card';
+import PendingReviewList from '../PendingReviewList';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -92,6 +94,9 @@ interface SummaryViewProps {
         priority?: Priority
     ) => void;
     handleDelete: (id: string) => void;
+    pendingReviews?: { id: string; text: string; results: any[] }[];
+    handleApproveReview?: (id: string, updatedResults: any[]) => void;
+    handleRejectReview?: (id: string) => void;
 }
 
 type PopupPosition = {
@@ -121,7 +126,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     handleOpenAddExpense,
     handleOpenAddNote,
     handleUpdateItem,
-    handleDelete
+    handleDelete,
+    pendingReviews = [],
+    handleApproveReview,
+    handleRejectReview
 }) => {
     const swipeHandlers = useSwipeTabs('summary', setActiveTab);
 
@@ -269,6 +277,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         return localStorage.getItem('braindump_has_new_notification') === 'true';
     });
 
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+
     useEffect(() => {
         if (isNotificationOpen) {
             return BackHandler.register(() => {
@@ -278,13 +288,31 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         }
     }, [isNotificationOpen]);
 
+    useEffect(() => {
+        if (isReviewOpen) {
+            return BackHandler.register(() => {
+                setIsReviewOpen(false);
+                return true;
+            });
+        }
+    }, [isReviewOpen]);
+
     const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
+    const reviewButtonRef = useRef<HTMLButtonElement | null>(null);
     const popupRef = useRef<HTMLDivElement | null>(null);
+    const reviewPopupRef = useRef<HTMLDivElement | null>(null);
 
     const [popupPosition, setPopupPosition] = useState<PopupPosition>({
         top: 72,
         left: 16,
         width: 380,
+        transformOrigin: 'top right'
+    });
+
+    const [reviewPopupPosition, setReviewPopupPosition] = useState<PopupPosition>({
+        top: 72,
+        left: 16,
+        width: 500,
         transformOrigin: 'top right'
     });
 
@@ -331,6 +359,48 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         });
     };
 
+    const updateReviewPopupPosition = () => {
+        const buttonEl = reviewButtonRef.current;
+        if (!buttonEl) return;
+
+        const rect = buttonEl.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        const horizontalMargin = 16;
+        const verticalGap = 8;
+        const popupOffsetY = -6;
+        const preferredWidth = 500;
+        const minWidth = 320;
+
+        const width = Math.min(
+            preferredWidth,
+            Math.max(minWidth, viewportWidth - horizontalMargin * 2)
+        );
+
+        let left = rect.right - width;
+        left = Math.max(horizontalMargin, left);
+        left = Math.min(left, viewportWidth - width - horizontalMargin);
+
+        const estimatedHeight = Math.min(600, viewportHeight * 0.7);
+
+        let top = rect.bottom + verticalGap + popupOffsetY;
+
+        if (top + estimatedHeight > viewportHeight - 16) {
+            top = Math.max(16, rect.top - estimatedHeight - verticalGap);
+        }
+
+        const originX = Math.min(width - 24, Math.max(24, rect.right - left - rect.width / 2));
+        const originY = top > rect.top ? 0 : estimatedHeight;
+
+        setReviewPopupPosition({
+            top,
+            left,
+            width,
+            transformOrigin: `${originX}px ${originY}px`
+        });
+    };
+
     const fetchAIInsights = async (force = false) => {
         const lastFetched = localStorage.getItem('braindump_ai_insights_date');
         const today = new Date().toDateString();
@@ -370,6 +440,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         setIsNotificationOpen(false);
     };
 
+    const handleOpenReview = () => {
+        updateReviewPopupPosition();
+        setIsReviewOpen(true);
+    };
+
+    const handleCloseReview = () => {
+        setIsReviewOpen(false);
+    };
+
     useLayoutEffect(() => {
         if (!isNotificationOpen) return;
 
@@ -387,6 +466,24 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             window.removeEventListener('scroll', handleWindowChange, true);
         };
     }, [isNotificationOpen]);
+
+    useLayoutEffect(() => {
+        if (!isReviewOpen) return;
+
+        updateReviewPopupPosition();
+
+        const handleWindowChange = () => {
+            updateReviewPopupPosition();
+        };
+
+        window.addEventListener('resize', handleWindowChange);
+        window.addEventListener('scroll', handleWindowChange, true);
+
+        return () => {
+            window.removeEventListener('resize', handleWindowChange);
+            window.removeEventListener('scroll', handleWindowChange, true);
+        };
+    }, [isReviewOpen]);
 
     useEffect(() => {
         if (items.length > 0) {
@@ -476,6 +573,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
+
+                            <button
+                                ref={reviewButtonRef}
+                                onClick={handleOpenReview}
+                                className="relative flex items-center justify-center bg-black/5 rounded-full h-[36px] w-[36px] hover:bg-black/10 transition-colors"
+                                aria-label="Open review center"
+                            >
+                                <ClipboardCheck className="w-[18px] h-[18px]" strokeWidth={2} />
+                                {pendingReviews && pendingReviews.length > 0 && (
+                                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-indigo-500 rounded-full border border-surface"></span>
+                                )}
+                            </button>
 
                             <button
                                 ref={notificationButtonRef}
@@ -790,6 +899,76 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                             ) : (
                                                 <div className="text-center py-8 opacity-50">
                                                     <p className="text-sm">No new notifications</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                            
+                            {isReviewOpen && (
+                                <>
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={handleCloseReview}
+                                        className="fixed inset-0 bg-black/30 z-[9998]"
+                                    />
+
+                                    <motion.div
+                                        ref={reviewPopupRef}
+                                        initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                                        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                                        className="fixed bg-surface border border-border rounded-3xl z-[9999] overflow-hidden flex flex-col max-h-[70vh] shadow-2xl"
+                                        style={{
+                                            top: reviewPopupPosition.top,
+                                            left: reviewPopupPosition.left,
+                                            width: reviewPopupPosition.width,
+                                            transformOrigin: reviewPopupPosition.transformOrigin
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between p-4 border-b border-border bg-surface shrink-0 z-10">
+                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                <ClipboardCheck className="w-5 h-5 text-indigo-500" />
+                                                Review Center
+                                            </h3>
+
+                                            <div className="flex items-center gap-2">
+                                                {pendingReviews && pendingReviews.length > 0 && (
+                                                    <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
+                                                        {pendingReviews.length} Pending
+                                                    </span>
+                                                )}
+                                                <button
+                                                    onClick={handleCloseReview}
+                                                    className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors ml-2"
+                                                >
+                                                    <ChevronDown className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="overflow-y-auto px-4 py-4 bg-background">
+                                            {pendingReviews && pendingReviews.length > 0 ? (
+                                                <PendingReviewList 
+                                                    reviews={pendingReviews} 
+                                                    onApprove={(id, res) => {
+                                                        if (handleApproveReview) handleApproveReview(id, res);
+                                                    }} 
+                                                    onReject={(id) => {
+                                                        if (handleRejectReview) handleRejectReview(id);
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
+                                                    <div className="w-12 h-12 rounded-full border border-current flex items-center justify-center mb-3">
+                                                        <CheckCircle2 className="w-6 h-6" />
+                                                    </div>
+                                                    <p className="text-sm font-bold">All caught up!</p>
+                                                    <p className="text-xs mt-1">No entries awaiting review.</p>
                                                 </div>
                                             )}
                                         </div>

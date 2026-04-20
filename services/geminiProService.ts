@@ -4,6 +4,7 @@ import {
   BrainDumpItem,
   Wallet,
   Skill,
+  BudgetRule,
   FinanceType,
   Priority,
   ParserResultV2,
@@ -32,6 +33,7 @@ interface ParserContext {
   existingTags: string[];
   availableSkills: Skill[];
   availableWallets: Wallet[];
+  availableBudgetRules: BudgetRule[];
   existingItems: BrainDumpItem[];
   currentDateISO: string;
   currentDayName: string;
@@ -166,6 +168,7 @@ function buildContext(
   existingTags: string[],
   availableSkills: Skill[],
   availableWallets: Wallet[],
+  availableBudgetRules: BudgetRule[],
   existingItems: BrainDumpItem[]
 ): ParserContext {
   const now = new Date();
@@ -173,6 +176,7 @@ function buildContext(
     existingTags,
     availableSkills,
     availableWallets,
+    availableBudgetRules,
     existingItems,
     currentDateISO: now.toISOString(),
     currentDayName: now.toLocaleDateString('en-US', { weekday: 'long' }),
@@ -200,6 +204,9 @@ function buildContextText(ctx: ParserContext): string {
     ctx.availableWallets.length
       ? `Known wallets: ${ctx.availableWallets.map(w => `${w.name} [${w.id}] type=${w.type}`).join(', ')}`
       : `Known wallets: none`,
+    ctx.availableBudgetRules.length
+      ? `Known budget categories: ${ctx.availableBudgetRules.map(b => `${b.name} [${b.id}]`).join(', ')}`
+      : `Known budget categories: none`,
     savingGoals.length
       ? `Known saving goals: ${savingGoals.join(', ')}`
       : `Known saving goals: none`,
@@ -691,6 +698,7 @@ Extraction rules by action:
 - completed expense/income => FINANCE
 - diary/feeling/recap => JOURNAL
 - saving target like "nabung buat laptop 15jt" => SHOPPING + shoppingCategory=saving
+- IMPORTANT: For 'budgetCategory', 'paymentMethod', and 'toWallet' (or when updating), STRICTLY use an ID or Name from the provided Context (Known wallets / Known budget categories) if at all possible. Do not make up arbitrary wallets or categories.
 
 2) update_item
 - fill payload.match.itemName if exact id unknown
@@ -840,6 +848,10 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         const walletId = findClosestMatch(meta.toWallet, ctx.availableWallets);
         if (walletId) meta.toWallet = walletId;
       }
+      if (meta.budgetCategory) {
+        const bgId = findClosestMatch(meta.budgetCategory, ctx.availableBudgetRules);
+        if (bgId) meta.budgetCategory = bgId;
+      }
       if (meta.skillName && !meta.skillId) {
         const skillId = findClosestMatch(meta.skillName, ctx.availableSkills);
         if (skillId) meta.skillId = skillId;
@@ -913,6 +925,10 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
       if (normalizedChanges.toWallet) {
         const walletId = findClosestMatch(normalizedChanges.toWallet, ctx.availableWallets);
         if (walletId) normalizedChanges.toWallet = walletId;
+      }
+      if (normalizedChanges.budgetCategory) {
+        const bgId = findClosestMatch(normalizedChanges.budgetCategory, ctx.availableBudgetRules);
+        if (bgId) normalizedChanges.budgetCategory = bgId;
       }
 
       resolved.entityRefs = stripUndefined({
@@ -1100,8 +1116,8 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
 
       resolved.payload = {
         amount,
-        fromWallet: fromWallet || undefined,
-        toWallet: toWallet || undefined,
+        fromWallet: fromWalletId || fromWallet || undefined,
+        toWallet: toWalletId || toWallet || undefined,
         date: typeof payload.date === 'string' ? payload.date : undefined,
         note: typeof payload.note === 'string' ? normalizeWhitespace(payload.note) : undefined
       } satisfies TransferMoneyPayload;
@@ -1145,11 +1161,16 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         savingGoalId: goalId,
         savingGoalName: goalName || undefined,
         amount,
-        fromWallet: fromWallet || undefined,
+        fromWallet: fromWalletId || fromWallet || undefined,
         date: typeof payload.date === 'string' ? payload.date : undefined,
         note: typeof payload.note === 'string' ? normalizeWhitespace(payload.note) : undefined,
         budgetCategory: typeof payload.budgetCategory === 'string' ? normalizeWhitespace(payload.budgetCategory) : undefined
       } satisfies AddSavingFundsPayload;
+
+      if (resolved.payload.budgetCategory) {
+        const bgId = findClosestMatch(resolved.payload.budgetCategory, ctx.availableBudgetRules);
+        if (bgId) resolved.payload.budgetCategory = bgId;
+      }
 
       if (!amount || !goalName) {
         resolved.needsReview = true;
@@ -1169,6 +1190,7 @@ export const parsePro = async (
   existingTags: string[] = [],
   availableSkills: Skill[] = [],
   availableWallets: Wallet[] = [],
+  availableBudgetRules: BudgetRule[] = [],
   existingItems: BrainDumpItem[] = [],
   customPrompt?: string,
   parsingModel?: string,
@@ -1190,7 +1212,7 @@ export const parsePro = async (
 
   const ai = new GoogleGenAI({ apiKey });
   const activeModel = parsingModel || 'gemini-3.1-pro-preview';
-  const ctx = buildContext(existingTags, availableSkills, availableWallets, existingItems);
+  const ctx = buildContext(existingTags, availableSkills, availableWallets, availableBudgetRules, existingItems);
 
   try {
     onProgress?.('stage1');
@@ -1212,6 +1234,7 @@ export const parsePro = async (
         existingTags,
         availableSkills,
         availableWallets,
+        availableBudgetRules,
         existingItems,
         customPrompt,
         parsingModel,

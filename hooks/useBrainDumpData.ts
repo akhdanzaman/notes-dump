@@ -847,6 +847,7 @@ export const useBrainDumpData = () => {
                     Array.from(currentTags),
                     skillsRef.current,
                     walletsRef.current,
+                    budgetConfigRef.current?.rules || [],
                     itemsRef.current,
                     customPromptRef.current,
                     appSettingsRef.current.parsingModel,
@@ -863,7 +864,9 @@ export const useBrainDumpData = () => {
                     skillsRef.current.map(s => s.name),
                     0,
                     customPromptRef.current,
-                    appSettingsRef.current.parsingModel
+                    appSettingsRef.current.parsingModel,
+                    walletsRef.current,
+                    budgetConfigRef.current?.rules || []
                 );
                 parsedResults = convertLegacyResultsToNative(legacy, text);
             }

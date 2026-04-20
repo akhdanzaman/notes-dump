@@ -121,7 +121,7 @@ Examples:
 `;
 
 // CHANGED: Added availableSkills to prompt context
-export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string, parsingModel?: string): Promise<Partial<BrainDumpItem>[]> => {
+export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string, parsingModel?: string, availableWallets: {id: string, name: string}[] = [], availableBudgetRules: {id: string, name: string}[] = []): Promise<Partial<BrainDumpItem>[]> => {
   const apiKey = getGeminiKey();
   
   if (!apiKey) {
@@ -140,6 +140,8 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
   const currentDayName = now.toLocaleDateString('en-US', { weekday: 'long' });
   const tagsContext = existingTags.length > 0 ? `Existing tags context: ${existingTags.join(', ')}` : '';
   const skillsContext = availableSkills.length > 0 ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(', ')}` : '';
+  const walletsContext = availableWallets.length > 0 ? `Known Wallets (for paymentMethod/toWallet): ${availableWallets.map(w => `${w.name} [ID: ${w.id}]`).join(', ')}` : '';
+  const budgetContext = availableBudgetRules.length > 0 ? `Known Budget Categories (for budgetCategory): ${availableBudgetRules.map(b => `${b.name} [ID: ${b.id}]`).join(', ')}` : '';
 
   const promptToUse = customPrompt || DEFAULT_PROMPT;
   const activeModel = parsingModel || modelName;
@@ -151,7 +153,11 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
       Current Date context: ${currentDate} (${currentDayName}).
       ${tagsContext}
       ${skillsContext}
+      ${walletsContext}
+      ${budgetContext}
       
+      ***CRITICAL***: For budgetCategory, paymentMethod, and toWallet, you MUST try to map against Known Budget Categories and Known Wallets and then output ONLY the exact matched ID (e.g., bg-1, w-123). Do not output the name.
+
       ${promptToUse}`,
       config: {
         responseMimeType: "application/json",
@@ -233,7 +239,7 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
     if (retryCount < 2 && (status === 429 || status >= 500)) {
         const delay = Math.pow(2, retryCount) * 1000;
         await wait(delay);
-        return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt, parsingModel);
+        return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt, parsingModel, availableWallets, availableBudgetRules);
     }
 
     console.error("Gemini classification failed:", error);

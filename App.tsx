@@ -572,6 +572,9 @@ const App: React.FC = () => {
                           setActiveTab={setActiveTab}
                           setPlanSubTab={setPlanSubTab}
                           showBalance={showBalance} setShowBalance={setShowBalance}
+                          pendingReviews={pendingReviews}
+                          handleApproveReview={handleApproveReview}
+                          handleRejectReview={handleRejectReview}
                           handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}
                           handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
                           handleOpenAddExpense={() => setAddExpenseModalOpen(true)}
@@ -703,13 +706,6 @@ const App: React.FC = () => {
                 pendingCount={pendingCount}
                 isChatOpen={isChatOpen}
                 onOpenChat={() => setIsChatOpen(!isChatOpen)}
-                topContent={
-                  <PendingReviewList 
-                      reviews={pendingReviews} 
-                      onApprove={handleApproveReview} 
-                      onReject={handleRejectReview} 
-                  />
-                }
                 startAction={(activeTab === 'library' || activeTab === 'money') ? (
                     <FloatingSearch 
                         activeTab={activeTab} librarySubTab={librarySubTab} moneyView={moneyView}
