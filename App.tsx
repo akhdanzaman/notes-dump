@@ -40,7 +40,7 @@ const App: React.FC = () => {
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
       loading, error, pendingCount, parsingTasks, pendingReviews, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, handleApproveReview, handleRejectReview
+      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
   // Onboarding State
@@ -575,6 +575,9 @@ const App: React.FC = () => {
                           pendingReviews={pendingReviews}
                           handleApproveReview={handleApproveReview}
                           handleRejectReview={handleRejectReview}
+                          parsingTasks={parsingTasks}
+                          retryParsing={retryParsing}
+                          clearParsingTask={clearParsingTask}
                           handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}
                           handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
                           handleOpenAddExpense={() => setAddExpenseModalOpen(true)}

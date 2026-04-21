@@ -156,7 +156,9 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
       ${walletsContext}
       ${budgetContext}
       
-      ***CRITICAL***: For budgetCategory, paymentMethod, and toWallet, you MUST try to map against Known Budget Categories and Known Wallets and then output ONLY the exact matched ID (e.g., bg-1, w-123). Do not output the name.
+      ***CRITICAL FOR BUDGET CATEGORIES***: For 'budgetCategory', do NOT lazily default to "finance" or a generic term. Intelligently deduce the most appropriate category based on context (e.g., 'makan', 'kopi', 'gofood' -> Food; 'bensin', 'grab' -> Transportation) AND then strictly output ONLY the exact matched ID from Known Budget Categories.
+      ***CRITICAL FOR MULTIPLICITY***: Return EXACTLY ONE object in the array for a single logical transaction/input. Do NOT split an expense into multiple array elements. A single sentence MUST result in exactly 1 array item.
+      ***CRITICAL FOR WALLETS***: For paymentMethod and toWallet, use ONLY the exact ID.
 
       ${promptToUse}`,
       config: {

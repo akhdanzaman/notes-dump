@@ -295,27 +295,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <div className="bg-background border border-border rounded-2xl p-4 flex flex-col gap-4 shadow-sm">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-6">
-                                                        {(pendingCount > 0 || (parsingTasks && parsingTasks.length > 0)) && (
+                                                        {pendingCount > 0 && (
                                                             <div className="flex flex-col gap-1 border-r border-border pr-6">
                                                                 <div className="flex items-center gap-2">
-                                                                    {parsingTasks && parsingTasks.length > 0 && (
-                                                                        <button 
-                                                                            onClick={() => setIsParsingTasksExpanded(!isParsingTasksExpanded)}
-                                                                            className="p-0.5 hover:bg-muted/10 rounded -ml-1"
-                                                                        >
-                                                                            <ChevronRight className={`w-3.5 h-3.5 text-muted transition-transform ${isParsingTasksExpanded ? 'rotate-90' : ''}`} />
-                                                                        </button>
-                                                                    )}
-                                                                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Pending / Failed</span>
+                                                                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Pending</span>
                                                                 </div>
                                                                 <div className="flex items-center gap-1.5 text-primary">
                                                                     <CloudOff className="w-3.5 h-3.5 text-amber-500" />
                                                                     <span className="font-bold text-sm">{pendingCount}</span>
-                                                                    {parsingTasks && parsingTasks.filter(t => t.status === 'failed').length > 0 && (
-                                                                        <span className="text-xs text-red-500 font-medium ml-1">
-                                                                            ({parsingTasks.filter(t => t.status === 'failed').length} failed)
-                                                                        </span>
-                                                                    )}
                                                                 </div>
                                                             </div>
                                                         )}
@@ -342,57 +329,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         )}
                                                     </div>
                                                 </div>
-
-                                                {/* Parsing Tasks Expanded View */}
-                                                <AnimatePresence>
-                                                    {isParsingTasksExpanded && parsingTasks && parsingTasks.length > 0 && (
-                                                        <motion.div
-                                                            initial={{ height: 0, opacity: 0 }}
-                                                            animate={{ height: 'auto', opacity: 1 }}
-                                                            exit={{ height: 0, opacity: 0 }}
-                                                            className="overflow-hidden"
-                                                        >
-                                                            <div className="pt-3 mt-3 border-t border-border flex flex-col gap-2">
-                                                                <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Parsing Queue</span>
-                                                                {parsingTasks.map(task => (
-                                                                    <div key={task.id} className="flex items-center justify-between bg-surface border border-border rounded-lg p-2.5">
-                                                                        <div className="flex flex-col gap-1 overflow-hidden">
-                                                                            <span className="text-sm text-primary truncate" title={task.text}>"{task.text}"</span>
-                                                                            <div className="flex items-center gap-2">
-                                                                                {task.status === 'pending' && (
-                                                                                    <span className="text-xs text-amber-500 flex items-center gap-1">
-                                                                                        <RefreshCw className="w-3 h-3 animate-spin" />
-                                                                                        Parsing... {task.stage ? `(${task.stage})` : ''}
-                                                                                    </span>
-                                                                                )}
-                                                                                {task.status === 'failed' && (
-                                                                                    <span className="text-xs text-red-500 flex items-center gap-1" title={task.error}>
-                                                                                        <AlertCircle className="w-3 h-3" />
-                                                                                        Failed
-                                                                                    </span>
-                                                                                )}
-                                                                                {task.status === 'success' && (
-                                                                                    <span className="text-xs text-emerald-500 flex items-center gap-1">
-                                                                                        <CheckCircle2 className="w-3 h-3" />
-                                                                                        Success
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                        {task.status === 'failed' && retryParsing && (
-                                                                            <button
-                                                                                onClick={() => retryParsing(task.id)}
-                                                                                className="ml-3 shrink-0 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md text-xs font-medium transition-colors"
-                                                                            >
-                                                                                Retry
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
 
                                                 {/* Sync Mode Selector */}
                                                 {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (

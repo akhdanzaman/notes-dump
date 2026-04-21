@@ -880,17 +880,9 @@ export const useBrainDumpData = () => {
             }
 
             setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'success' } : t));
-            setTimeout(() => {
-                setParsingTasks(prev => prev.filter(t => t.id !== tempId));
-            }, 3000);
         } catch (err: any) {
             console.error("Processing failed", err);
             setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'failed', error: err.message || 'Unknown error' } : t));
-            setItems(prev => {
-                const updated = prev.map(i => i.id === tempId ? { ...i, isOptimistic: false } : i);
-                saveAndSync(updated);
-                return updated;
-            });
         } finally {
             setPendingCount(prev => Math.max(0, prev - 1));
         }
@@ -903,13 +895,11 @@ export const useBrainDumpData = () => {
         setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending', error: undefined, stage: undefined } : t));
         setPendingCount(prev => prev + 1);
         
-        setItems(prev => {
-            const updated = prev.map(i => i.id === taskId ? { ...i, isOptimistic: true } : i);
-            saveAndSync(updated);
-            return updated;
-        });
-        
         processItemInBackground(task.text, taskId);
+    };
+
+    const clearParsingTask = (taskId: string) => {
+        setParsingTasks(prev => prev.filter(t => t.id !== taskId));
     };
 
     const handleApproveReview = (id: string, updatedResults: ParserResultV2[]) => {
@@ -934,22 +924,6 @@ export const useBrainDumpData = () => {
         setError(null);
 
         const tempId = uuidv4();
-
-        const optimisticItem: BrainDumpItem = {
-            id: tempId,
-            type: ItemType.NOTE,
-            content: text,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-            meta: { tags: [] },
-            isOptimistic: true,
-        };
-
-        setItems((prev) => {
-            const updated = [optimisticItem, ...prev];
-            saveAndSync(updated);
-            return updated;
-        });
 
         processItemInBackground(text, tempId);
     };
@@ -1389,6 +1363,7 @@ export const useBrainDumpData = () => {
         saveAndSync,
         handleSend,
         retryParsing,
+        clearParsingTask,
         handleApproveReview,
         handleRejectReview,
         handleToggleStatus,

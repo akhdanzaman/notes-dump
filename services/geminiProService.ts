@@ -218,6 +218,11 @@ function buildContextText(ctx: ParserContext): string {
 
 function findClosestMatch<T extends { id: string; name: string }>(query: string, items: T[]): string | undefined {
   if (!query || !items.length) return undefined;
+  
+  // Direct ID exact match
+  const exactIdMatch = items.find(i => i.id === query);
+  if (exactIdMatch) return exactIdMatch.id;
+
   const q = lower(query);
   if (!q) return undefined;
 
@@ -398,6 +403,7 @@ Rules:
 11. Pure question only => query_only.
 12. Never invent ids.
 13. If ambiguous, set needsReview=true and lower confidence.
+14. CRITICAL RULE FOR MULTIPLICITY: Return EXACTLY ONE object in the array for a single logical input. Do NOT split a single transaction or thought into multiple array elements. A single transaction must result in exactly 1 array item. Only return multiple objects if the user explicitly listed multiple separate things.
 
 Entity hints:
 - todo = focus/task/routine action
@@ -698,7 +704,8 @@ Extraction rules by action:
 - completed expense/income => FINANCE
 - diary/feeling/recap => JOURNAL
 - saving target like "nabung buat laptop 15jt" => SHOPPING + shoppingCategory=saving
-- IMPORTANT: For 'budgetCategory', 'paymentMethod', and 'toWallet' (or when updating), STRICTLY use an ID or Name from the provided Context (Known wallets / Known budget categories) if at all possible. Do not make up arbitrary wallets or categories.
+- IMPORTANT FOR FINANCE/SHOPPING: For 'budgetCategory', do NOT lazily default to "finance" or a generic term. Intelligently deduce the most appropriate category based on context (e.g., 'makan', 'kopi', 'gofood' -> Food; 'bensin', 'grab' -> Transportation) AND then strictly use the EXACT ID from the 'Known budget categories' list.
+- For paymentMethod/toWallet find the exact ID too. Do not make up arbitrary wallets or categories.
 
 2) update_item
 - fill payload.match.itemName if exact id unknown
