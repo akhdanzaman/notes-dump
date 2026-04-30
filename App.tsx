@@ -582,6 +582,11 @@ const App: React.FC = () => {
                           handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
                           handleOpenAddExpense={() => setAddExpenseModalOpen(true)}
                           handleOpenAddNote={() => setAddNoteModalOpen(true)}
+                          onAddItem={(type) => {
+                              if (type === ItemType.JOURNAL || type === ItemType.NOTE) {
+                                  setAddNoteModalOpen(true);
+                              }
+                          }}
                           handleUpdateItem={handleUpdateItem}
                           handleDelete={requestDeleteItem}
                       />
