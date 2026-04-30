@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Plus, AlertCircle, MoreHorizontal } from 'lucide-react';
+import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Calculator, Plus, AlertCircle } from 'lucide-react';
 import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType, ItemType, Tab, Priority } from '../../types';
 import { getWalletStats, getFinanceItems } from '../../utils/selectors';
 import Card from '../Card';
@@ -21,18 +21,18 @@ interface MoneyViewProps {
 
     handleDelete: (id: string) => void;
     handleUpdateItem: (
-        id: string,
-        newContent: string,
-        newTags: string[],
-        newAmount?: number,
-        newDate?: string,
-        newPaymentMethod?: string,
-        newBudgetCategory?: string,
-        newDuration?: number,
-        newSkillId?: string,
-        newToWallet?: string,
-        newFinanceType?: FinanceType,
-        newProgress?: number,
+        id: string, 
+        newContent: string, 
+        newTags: string[], 
+        newAmount?: number, 
+        newDate?: string, 
+        newPaymentMethod?: string, 
+        newBudgetCategory?: string, 
+        newDuration?: number, 
+        newSkillId?: string, 
+        newToWallet?: string, 
+        newFinanceType?: FinanceType, 
+        newProgress?: number, 
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
@@ -62,37 +62,10 @@ interface MoneyViewProps {
     selectedTag: string;
     searchQuery: string;
     sortOrder: SortOrder;
-    clearMoneyFilters?: () => void;
-    setFilterTransactionType?: (val: string) => void;
     savingGoals: BrainDumpItem[];
     setActiveTab: (tab: Tab) => void;
     onAddItem: (type: ItemType) => void;
 }
-
-const fmt = (n: number) => new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-}).format(n);
-
-const formatMoneyDate = (dateInput?: string) => {
-    if (!dateInput) return null;
-    const date = new Date(dateInput);
-    if (Number.isNaN(date.getTime())) return null;
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-};
-
-const getTransactionDate = (item: BrainDumpItem) => {
-    if (item.type === ItemType.FINANCE) return item.meta.date || item.created_at;
-    return item.completed_at || item.created_at;
-};
-
-const getTransactionKind = (item: BrainDumpItem) => {
-    if (item.type === ItemType.SHOPPING) return 'shopping';
-    if (item.meta.financeType) return item.meta.financeType;
-    if (item.meta.amount) return 'expense';
-    return 'expense';
-};
 
 const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     items, wallets, budgetConfig, moneyView, setMoneyView,
@@ -100,72 +73,103 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     handleDelete, handleUpdateItem, handleToggleStatus, handleOpenEditWallet, handleOpenAddWallet,
     setDeleteId, setDeleteType, setIsSettingsOpen,
     filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
-    clearMoneyFilters, setFilterTransactionType,
     savingGoals, setActiveTab, onAddItem
 }) => {
+    
+    // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('money', setActiveTab);
 
+    // Date Swipe Logic
     const changeMonth = (offset: number) => {
         const newDate = new Date(financeDate);
         newDate.setMonth(newDate.getMonth() + offset);
         setFinanceDate(newDate);
     };
-
+    
     const dateSwipeHandlers = useSwipeDate(
-        () => changeMonth(-1),
-        () => changeMonth(1)
+        () => changeMonth(-1), // Swipe Right -> Prev Month
+        () => changeMonth(1)   // Swipe Left -> Next Month
     );
 
+    // Sub-Tab Swipe State
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
     const [budgetViewMode, setBudgetViewMode] = useState<'monthly' | 'yearly'>('monthly');
-    const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
-    const [walletActionId, setWalletActionId] = useState<string | null>(null);
 
-    const orderedTabs: MoneyView[] = ['transactions', 'wallets', 'budget'];
+    const touchStartRef = useRef<{ x: number, y: number } | null>(null);
+    const isHorizontalSwipe = useRef<boolean | null>(null);
 
+    const tabs: MoneyView[] = ['wallets', 'transactions', 'budget'];
+    const activeIndex = tabs.indexOf(moneyView);
+
+    // Calculate Data for All Views
     const { walletStats, totalNetWorth, totalAssets, totalDebt, totalSavings } = getWalletStats(items, wallets);
-    const {
-        list,
-        totalIncome,
-        totalExpense,
-        projectedExpense,
-        budgetMap,
-        plannedBudgetMap,
-        uncategorized,
-        projectedUncategorized,
+    
+    const { 
+        list, totalIncome, totalExpense, projectedExpense, 
+        budgetMap, plannedBudgetMap, uncategorized, projectedUncategorized 
     } = getFinanceItems(
-        items,
-        financeDate,
-        budgetConfig,
-        filterWallet,
-        filterTransactionType,
-        filterCategory,
-        filterMinAmount,
-        filterMaxAmount,
-        selectedTag,
-        searchQuery,
-        sortOrder,
+        items, financeDate, budgetConfig, 
+        filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
         budgetViewMode
     );
 
-    const effectiveIncome = budgetConfig.monthlyIncome > 0
-        ? (budgetViewMode === 'yearly' ? budgetConfig.monthlyIncome * 12 : budgetConfig.monthlyIncome)
+    const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+               
+    const effectiveIncome = budgetConfig.monthlyIncome > 0 
+        ? (budgetViewMode === 'yearly' ? budgetConfig.monthlyIncome * 12 : budgetConfig.monthlyIncome) 
         : totalIncome;
+    const incomeLabel = budgetConfig.monthlyIncome > 0 
+        ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : 'Fixed Income') 
+        : 'Recorded Income';
 
-    const budgetUsage = effectiveIncome > 0 ? (totalExpense / effectiveIncome) * 100 : 0;
-    const debtWalletCount = walletStats.filter(wallet => wallet.type === 'cc').length;
-    const monthLabel = financeDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    const onTouchStart = (e: React.TouchEvent) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setIsDragging(true);
+        isHorizontalSwipe.current = null;
+    };
 
-    const activeFilters = useMemo(() => {
-        const filters: string[] = [];
-        if (filterWallet) filters.push(`Wallet: ${filterWallet}`);
-        if (filterCategory) filters.push(`Category: ${filterCategory}`);
-        if (selectedTag) filters.push(`#${selectedTag}`);
-        if (searchQuery) filters.push(`Search: ${searchQuery}`);
-        if (filterMinAmount || filterMaxAmount) {
-            filters.push(`Amount: ${filterMinAmount || '0'}-${filterMaxAmount || '∞'}`);
+    const onTouchMove = (e: React.TouchEvent) => {
+        if (!touchStartRef.current) return;
+        
+        const dx = e.touches[0].clientX - touchStartRef.current.x;
+        const dy = e.touches[0].clientY - touchStartRef.current.y;
+
+        if (isHorizontalSwipe.current === null) {
+             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
+                 isHorizontalSwipe.current = true;
+             } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
+                 isHorizontalSwipe.current = false;
+             }
         }
-        return filters;
-    }, [filterWallet, filterCategory, selectedTag, searchQuery, filterMinAmount, filterMaxAmount]);
+
+        if (isHorizontalSwipe.current) {
+            // Resistance
+            if ((activeIndex === 0 && dx > 0) || (activeIndex === 2 && dx < 0)) {
+                setDragOffset(dx * 0.3);
+            } else {
+                setDragOffset(dx);
+            }
+        }
+    };
+
+    const onTouchEnd = () => {
+        setIsDragging(false);
+        const threshold = window.innerWidth * 0.25;
+
+        if (isHorizontalSwipe.current && Math.abs(dragOffset) > threshold) {
+            if (dragOffset < 0 && activeIndex < 2) {
+                setMoneyView(tabs[activeIndex + 1]);
+            }
+            if (dragOffset > 0 && activeIndex > 0) {
+                setMoneyView(tabs[activeIndex - 1]);
+            }
+        }
+        
+        setDragOffset(0);
+        touchStartRef.current = null;
+        isHorizontalSwipe.current = null;
+    };
 
     const cardProps = {
         onUpdate: handleUpdateItem,
@@ -178,414 +182,370 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         budgetRules: budgetConfig.rules,
         savingGoals,
         noStrikethrough: true,
-        noDarken: true,
-        className: 'mb-0',
+        noDarken: true
     };
-
-    const renderTransactionRow = (item: BrainDumpItem) => {
-        const kind = getTransactionKind(item);
-        const amount = item.meta.amount || 0;
-        const dateLabel = formatMoneyDate(getTransactionDate(item));
-        const categoryLabel = budgetConfig.rules.find(rule => rule.id === item.meta.budgetCategory)?.name
-            || item.meta.budgetCategory
-            || (kind === 'income' ? 'Income' : kind === 'saving' ? 'Saving' : kind === 'transfer' ? 'Transfer' : 'Expense');
-        const walletLabel = item.meta.paymentMethod || item.meta.toWallet;
-        const metaBits = [categoryLabel, walletLabel, dateLabel].filter(Boolean);
-        const isExpanded = expandedTransactionId === item.id;
-
-        const amountPrefix = kind === 'income' ? '+' : '-';
-        const amountColor = kind === 'income'
-            ? 'text-emerald-500'
-            : kind === 'saving'
-                ? 'text-indigo-500'
-                : kind === 'transfer'
-                    ? 'text-primary'
-                    : 'text-[#FF5722]';
-
-        return (
-            <div key={item.id} className="border-b border-border/70 last:border-b-0 py-3 first:pt-0 last:pb-0">
-                <button type="button" onClick={() => setExpandedTransactionId(current => current === item.id ? null : item.id)} className="w-full text-left">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-primary line-clamp-1">{item.content}</p>
-                            <p className="mt-1 text-xs text-muted">{metaBits.join(' • ')}</p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                            <p className={`text-sm font-semibold ${amountColor}`}>
-                                {showBalance ? `${amountPrefix}${fmt(amount).replace('Rp', 'Rp ')}` : '••••'}
-                            </p>
-                            <p className="mt-1 text-xs text-muted">{isExpanded ? 'Hide' : 'Detail'}</p>
-                        </div>
-                    </div>
-                </button>
-
-                <AnimatePresence initial={false}>
-                    {isExpanded && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.18 }}
-                            className="overflow-hidden"
-                        >
-                            <div className="pt-3">
-                                <Card item={item} {...cardProps} categoryName={categoryLabel} />
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        );
-    };
-
-    const renderTransactions = () => (
-        <div>
-            <div className="flex flex-wrap gap-2">
-                {[
-                    { label: 'All', value: '' },
-                    { label: 'Expense', value: 'expense' },
-                    { label: 'Income', value: 'income' },
-                    { label: 'Saving', value: 'saving' },
-                ].map((chip) => (
-                    <button
-                        key={chip.label}
-                        onClick={() => setFilterTransactionType?.(chip.value)}
-                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                            filterTransactionType === chip.value
-                                ? 'bg-indigo-500 text-white'
-                                : 'bg-muted/10 text-muted hover:text-primary'
-                        }`}
-                    >
-                        {chip.label}
-                    </button>
-                ))}
-            </div>
-
-            {activeFilters.length > 0 && (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {activeFilters.map(filter => (
-                        <span key={filter} className="rounded-full bg-muted/10 px-3 py-1 text-xs font-medium text-muted">
-                            {filter}
-                        </span>
-                    ))}
-                    {clearMoneyFilters && (
-                        <button
-                            onClick={clearMoneyFilters}
-                            className="text-xs font-semibold text-indigo-500 transition-opacity hover:opacity-80"
-                        >
-                            Clear
-                        </button>
-                    )}
-                </div>
-            )}
-
-            <div className="mt-4">
-                {list.length === 0 ? (
-                    <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                        <p className="text-sm text-muted">No transactions recorded for this period.</p>
-                        <button
-                            onClick={() => onAddItem(ItemType.FINANCE)}
-                            className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
-                        >
-                            <Plus className="w-4 h-4" /> Add Transaction
-                        </button>
-                    </div>
-                ) : (
-                    <div>{list.map(renderTransactionRow)}</div>
-                )}
-            </div>
-        </div>
-    );
-
-    const renderWallets = () => (
-        <div>
-            <p className="text-sm text-muted">
-                Wallets: {walletStats.length} • {debtWalletCount} debt account{debtWalletCount === 1 ? '' : 's'}
-            </p>
-
-            <div className="mt-4 rounded-3xl border border-border/70 bg-surface divide-y divide-border/70">
-                {walletStats.map((wallet) => {
-                    const walletSavings = savingGoals
-                        .filter(goal => goal.meta.dedicatedWalletId === wallet.id)
-                        .reduce((sum, goal) => sum + (goal.meta.savedAmount || 0), 0);
-                    const typeLabel = wallet.type === 'cc'
-                        ? 'Debt account'
-                        : wallet.type === 'bank'
-                            ? 'Bank account'
-                            : wallet.type === 'ewallet'
-                                ? 'E-wallet'
-                                : 'Cash wallet';
-
-                    return (
-                        <div key={wallet.id} className="px-4 py-4 first:pt-5 last:pb-5">
-                            <div className="flex items-start gap-3">
-                                <div className="mt-0.5 rounded-2xl bg-muted/10 p-2 text-muted">
-                                    {wallet.type === 'bank' ? <PiggyBank className="w-4 h-4" /> : wallet.type === 'cc' ? <CreditCard className="w-4 h-4" /> : <WalletIcon className="w-4 h-4" />}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <h3 className="text-sm font-semibold text-primary">{wallet.name}</h3>
-                                            <p className="mt-1 text-xs text-muted">{typeLabel}{walletSavings > 0 ? ` • Savings ${showBalance ? fmt(walletSavings) : '••••'}` : ''}</p>
-                                        </div>
-                                        <p className="shrink-0 text-sm font-semibold text-primary">
-                                            {showBalance ? fmt(wallet.currentBalance) : '••••'}
-                                        </p>
-                                    </div>
-
-                                    <AnimatePresence initial={false}>
-                                        {walletActionId === wallet.id && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="mt-3 flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => handleOpenEditWallet(wallet)}
-                                                        className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-muted/10"
-                                                    >
-                                                        <Pencil className="w-3.5 h-3.5" /> Edit
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setDeleteId(wallet.id);
-                                                            setDeleteType('wallet');
-                                                        }}
-                                                        className="inline-flex items-center gap-1 rounded-xl border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-500/10"
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                    </button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setWalletActionId(current => current === wallet.id ? null : wallet.id)}
-                                    className="mt-0.5 rounded-xl p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary"
-                                    aria-label={`Actions for ${wallet.name}`}
-                                >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            <button
-                onClick={handleOpenAddWallet}
-                className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-dashed border-border px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-primary/30 hover:text-primary"
-            >
-                <Plus className="w-4 h-4" /> Add Wallet
-            </button>
-        </div>
-    );
-
-    const renderBudget = () => {
-        if (effectiveIncome === 0) {
-            return (
-                <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <AlertCircle className="mx-auto mb-3 h-6 w-6 text-muted" />
-                    <p className="text-sm text-muted">Set monthly income or record income first to unlock budget breakdown.</p>
-                    <button
-                        onClick={() => setIsSettingsOpen(true)}
-                        className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
-                    >
-                        Set Income
-                    </button>
-                </div>
-            );
-        }
-
-        return (
-            <div>
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <p className="text-sm font-medium text-primary">Budget used: {Math.min(budgetUsage, 999).toFixed(0)}%</p>
-                        <p className="mt-1 text-xs text-muted">
-                            {showBalance ? `${fmt(totalExpense)} / ${fmt(effectiveIncome)} planned` : '•••• / •••• planned'}
-                            {projectedExpense > 0 ? ` • ${showBalance ? fmt(projectedExpense) : '••••'} pending` : ''}
-                        </p>
-                    </div>
-                    <div className="flex rounded-full bg-muted/10 p-1">
-                        <button
-                            onClick={() => setBudgetViewMode('monthly')}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${budgetViewMode === 'monthly' ? 'bg-surface text-primary shadow-sm' : 'text-muted'}`}
-                        >
-                            M
-                        </button>
-                        <button
-                            onClick={() => setBudgetViewMode('yearly')}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${budgetViewMode === 'yearly' ? 'bg-surface text-primary shadow-sm' : 'text-muted'}`}
-                        >
-                            Y
-                        </button>
-                    </div>
-                </div>
-
-                <div className="mt-4 rounded-3xl border border-border/70 bg-surface divide-y divide-border/70">
-                    {budgetConfig.rules.map((rule) => {
-                        const spent = budgetMap.get(rule.id) || 0;
-                        const planned = plannedBudgetMap.get(rule.id) || 0;
-                        const limit = effectiveIncome * (rule.percentage / 100);
-                        const progress = limit > 0 ? (spent / limit) * 100 : 0;
-
-                        return (
-                            <div key={rule.id} className="px-4 py-4 first:pt-5 last:pb-5">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`h-2.5 w-2.5 rounded-full ${rule.color || 'bg-gray-500'}`} />
-                                            <h3 className="text-sm font-semibold text-primary">{rule.name}</h3>
-                                        </div>
-                                        <p className="mt-1 text-xs text-muted">
-                                            {showBalance ? `${fmt(spent)} / ${fmt(limit)}` : '•••• / ••••'}
-                                            {planned > 0 ? ` • planned ${showBalance ? fmt(planned) : '••••'}` : ''}
-                                        </p>
-                                    </div>
-                                    <p className="shrink-0 text-sm font-semibold text-primary">{Math.min(progress, 999).toFixed(0)}%</p>
-                                </div>
-
-                                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-black/8 dark:bg-white/10">
-                                    <div
-                                        className={`h-full rounded-full ${rule.color || 'bg-gray-500'}`}
-                                        style={{ width: `${Math.min(progress, 100)}%` }}
-                                    />
-                                </div>
-                            </div>
-                        );
-                    })}
-
-                    {(uncategorized > 0 || projectedUncategorized > 0) && (
-                        <div className="px-4 py-4 last:pb-5">
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="h-2.5 w-2.5 rounded-full bg-gray-400" />
-                                        <h3 className="text-sm font-semibold text-primary">Other</h3>
-                                    </div>
-                                    <p className="mt-1 text-xs text-muted">
-                                        {showBalance ? fmt(uncategorized) : '••••'}
-                                        {projectedUncategorized > 0 ? ` • planned ${showBalance ? fmt(projectedUncategorized) : '••••'}` : ''}
-                                    </p>
-                                </div>
-                                <p className="shrink-0 text-sm font-semibold text-primary">
-                                    {effectiveIncome > 0 ? Math.min((uncategorized / effectiveIncome) * 100, 999).toFixed(0) : '0'}%
-                                </p>
-                            </div>
-                            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-black/8 dark:bg-white/10">
-                                <div
-                                    className="h-full rounded-full bg-gray-400"
-                                    style={{ width: `${effectiveIncome > 0 ? Math.min((uncategorized / effectiveIncome) * 100, 100) : 0}%` }}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    const content = moneyView === 'wallets'
-        ? renderWallets()
-        : moneyView === 'budget'
-            ? renderBudget()
-            : renderTransactions();
 
     return (
-        <div
-            className="min-h-[60vh] pb-24"
-            onTouchStart={swipeHandlers.onTouchStart}
-            onTouchMove={swipeHandlers.onTouchMove}
-            onTouchEnd={swipeHandlers.onTouchEnd}
-        >
-            <motion.div style={swipeHandlers.style} className="will-change-transform">
-                <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 pb-3 pt-safe backdrop-blur">
-                    <div className="flex items-center justify-between gap-3 pb-2 pt-4">
-                        <div
-                            className="flex items-center gap-3"
-                            onTouchStart={dateSwipeHandlers.onTouchStart}
-                            onTouchMove={dateSwipeHandlers.onTouchMove}
-                            onTouchEnd={dateSwipeHandlers.onTouchEnd}
-                        >
-                            <button onClick={() => changeMonth(-1)} className="rounded-full p-1.5 text-muted transition-colors hover:bg-muted/10 hover:text-primary">
-                                <ChevronLeft className="h-4 w-4" />
-                            </button>
-                            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">{monthLabel}</p>
-                            <button onClick={() => changeMonth(1)} className="rounded-full p-1.5 text-muted transition-colors hover:bg-muted/10 hover:text-primary">
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setShowBalance(!showBalance)}
-                                className="rounded-2xl bg-muted/10 p-2 text-muted transition-colors hover:text-primary"
-                            >
-                                {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                            <button
-                                onClick={() => onAddItem(ItemType.FINANCE)}
-                                className="rounded-2xl bg-indigo-500 p-2 text-white shadow-sm transition-opacity hover:opacity-90"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="pb-4 pt-1">
-                        <h1 className="text-3xl font-bold tracking-tight text-primary">
-                            {showBalance ? fmt(totalNetWorth) : '••••••••'}
-                        </h1>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-                            <span className="inline-flex items-center gap-1"><TrendingUp className="h-4 w-4 text-emerald-500" /> {showBalance ? fmt(totalIncome) : '••••'}</span>
-                            <span className="inline-flex items-center gap-1"><TrendingDown className="h-4 w-4 text-[#FF5722]" /> {showBalance ? fmt(totalExpense) : '••••'}</span>
-                            {(totalDebt > 0 || totalSavings > 0 || totalAssets > 0) && (
-                                <span className="text-xs text-muted/80">
-                                    Assets {showBalance ? fmt(totalAssets) : '••'} • Debt {showBalance ? fmt(totalDebt) : '••'} • Savings {showBalance ? fmt(totalSavings || 0) : '••'}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex rounded-2xl bg-black/5 p-1 dark:bg-white/10">
-                        {orderedTabs.map((tab) => (
-                            <button
+        <div className="min-h-[60vh] overflow-hidden pb-20">
+            {/* Top Container */}
+            <motion.div 
+                layoutId="top-container"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
+                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                onTouchStart={swipeHandlers.onTouchStart}
+                onTouchMove={swipeHandlers.onTouchMove}
+                onTouchEnd={swipeHandlers.onTouchEnd}
+                style={{ x: swipeHandlers.dragOffset }}
+            >
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "linear" }}
+                >
+                    <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
+                        {tabs.map(tab => (
+                            <button 
                                 key={tab}
-                                onClick={() => {
-                                    setMoneyView(tab);
-                                    setExpandedTransactionId(null);
-                                    setWalletActionId(null);
-                                }}
-                                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                                    moneyView === tab ? 'bg-surface text-primary shadow-sm' : 'text-primary/50 hover:text-primary'
-                                }`}
+                                onClick={() => setMoneyView(tab)}
+                                className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${moneyView === tab ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                             >
-                                {tab === 'transactions' && <List className="w-4 h-4" />}
                                 {tab === 'wallets' && <WalletIcon className="w-4 h-4" />}
+                                {tab === 'transactions' && <List className="w-4 h-4" />}
                                 {tab === 'budget' && <PieChart className="w-4 h-4" />}
-                                <span className="capitalize">{tab}</span>
+                                <span className="capitalize hidden sm:inline">{tab === 'transactions' ? 'Transactions' : tab}</span>
                             </button>
                         ))}
                     </div>
-                </div>
 
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={`${moneyView}-${financeDate.toISOString()}-${budgetViewMode}`}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 }}
-                        className="px-4 pt-4"
+                    <div>
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
+                            <button onClick={() => setShowBalance(!showBalance)} className="opacity-60 hover:opacity-100 transition-opacity">
+                                {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+                        <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div 
+                                className="bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y"
+                                onTouchStart={dateSwipeHandlers.onTouchStart}
+                                onTouchMove={dateSwipeHandlers.onTouchMove}
+                                onTouchEnd={dateSwipeHandlers.onTouchEnd}
+                            >
+                                <div className="flex items-center justify-between w-full">
+                                    <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+                                    
+                                    <AnimatePresence mode="wait">
+                                        <motion.div 
+                                            key={financeDate.toISOString()}
+                                            initial={{ opacity: 0, x: 10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -10 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="flex flex-col items-center"
+                                        >
+                                            <span className="text-xs font-bold opacity-60 uppercase tracking-wider leading-none mb-1">
+                                                {financeDate.getFullYear()}
+                                            </span>
+                                            <span className="text-xl font-bold leading-none">
+                                                {financeDate.toLocaleDateString(undefined, { month: 'long' })}
+                                            </span>
+                                        </motion.div>
+                                    </AnimatePresence>
+
+                                    <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><ChevronRight className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                            <div className="bg-black/5 rounded-[24px] p-4">
+                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 text-[#FF5722]" /> Expense</div>
+                                <div className="text-xl font-bold text-[#FF5722]">{showBalance ? fmt(totalExpense) : '••••'}</div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-4 pt-4 border-t border-border items-center justify-between">
+                            <div className="flex gap-4">
+                                <div className="text-sm font-medium opacity-80">
+                                Assets: <span className="text-emerald-600 dark:text-emerald-500 font-bold">{showBalance ? fmt(totalAssets) : '••'}</span>
+                                </div>
+                                <div className="text-sm font-medium opacity-80">
+                                Debt: <span className="text-[#FF5722] font-bold">{showBalance ? fmt(totalDebt) : '••'}</span>
+                                </div>
+                                <div className="text-sm font-medium opacity-80 flex items-center gap-1">
+                                    Savings: <span className="text-[#6366F1] font-bold">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => onAddItem(ItemType.FINANCE)}
+                                className="w-10 h-10 flex items-center justify-center bg-black dark:bg-zinc-800 text-white dark:text-white rounded-full hover:scale-110 active:scale-95 transition-all"
+                            >
+                                <Plus className="w-6 h-6" />
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            </motion.div>
+            
+            {/* Sliding Container */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
+                className="touch-pan-y"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
+                <motion.div 
+                    className="flex w-full will-change-transform"
+                    style={{
+                        transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
+                        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
+                    }}
+                >
+                    {/* VIEW: Wallets */}
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full flex-shrink-0 px-4"
                     >
-                        {content}
+                        <div className="space-y-4">
+                            {walletStats.map(wallet => (
+                                <div 
+                                    key={wallet.id} 
+                                    className="bg-surface rounded-[24px] p-4 transition-all hover:bg-surface/80 relative group"
+                                >
+                                    <div className="flex flex-col gap-1">
+                                        {/* Header */}
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-5 h-5 rounded-full ${wallet.color} flex items-center justify-center text-white`}>
+                                                    {wallet.type === 'bank' ? <PiggyBank className="w-3 h-3" /> : 
+                                                        wallet.type === 'cc' ? <CreditCard className="w-3 h-3" /> : 
+                                                        wallet.type === 'ewallet' ? <WalletIcon className="w-3 h-3" /> :
+                                                        <WalletIcon className="w-3 h-3" />}
+                                                </div>
+                                                <span className="text-sm font-semibold capitalize text-primary opacity-70">
+                                                    {wallet.type}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => handleOpenEditWallet(wallet)}
+                                                    className="p-1.5 hover:bg-muted/10 rounded-xl text-muted hover:text-primary transition-colors"
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setDeleteId(wallet.id); setDeleteType('wallet'); }}
+                                                    className="p-1.5 hover:bg-red-900/30 rounded-xl text-muted hover:text-red-400 transition-colors"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Body */}
+                                        <div className="flex justify-between items-start gap-4 mt-1">
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="text-base font-medium text-primary truncate">
+                                                    {wallet.name}
+                                                </div>
+                                                {wallet.type === 'cc' && (
+                                                    <div className="mt-1">
+                                                        <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Debt Account</span>
+                                                    </div>
+                                                )}
+                                                {(() => {
+                                                    const walletSavings = savingGoals
+                                                        .filter(g => g.meta.dedicatedWalletId === wallet.id)
+                                                        .reduce((sum, g) => sum + (g.meta.savedAmount || 0), 0);
+                                                    
+                                                    if (walletSavings > 0) {
+                                                        return (
+                                                            <div className="mt-1">
+                                                                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                                    Savings: {showBalance ? fmt(walletSavings) : '••••'}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                            </div>
+                                            <div className="text-base font-bold shrink-0 mt-0.5 text-primary">
+                                                {showBalance ? fmt(wallet.currentBalance) : '••••••••'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            <button onClick={handleOpenAddWallet} className="w-full border border-dashed border-border rounded-3xl flex items-center justify-center p-4 hover:border-primary/30 hover:bg-surface/50 transition-all text-muted hover:text-primary gap-2">
+                                <Plus className="w-5 h-5" />
+                                <span className="text-sm font-medium">Add Wallet</span>
+                            </button>
+                        </div>
                     </motion.div>
-                </AnimatePresence>
+
+                    {/* VIEW: Transactions */}
+                    <motion.div 
+                        key={"transactions-" + financeDate.toISOString()}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.4 }}
+                        className="w-full flex-shrink-0 px-4"
+                    >
+                        <div>
+                            {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
+                                <div className="space-y-2">
+                                    {list.map(item => {
+                                        const categoryName = budgetConfig.rules.find(r => r.id === item.meta.budgetCategory)?.name || item.meta.budgetCategory;
+                                        return (
+                                            <Card 
+                                            key={item.id} 
+                                            item={item} 
+                                            {...cardProps}
+                                            categoryName={categoryName}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+
+                    {/* VIEW: Budget Dashboard */}
+                    <motion.div 
+                        key={"budget-" + financeDate.toISOString()}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.4 }}
+                        className="w-full flex-shrink-0 px-4 pb-8"
+                    >
+                        {effectiveIncome === 0 ? (
+                            <div className="text-center p-6 bg-surface border border-border rounded-3xl">
+                                <PiggyBank className="w-8 h-8 text-muted mx-auto mb-2" />
+                                <p className="text-sm text-muted">Set a <strong>Monthly Income</strong> in Settings <br/>or record Income to see your budget breakdown.</p>
+                                <button onClick={() => setIsSettingsOpen(true)} className="mt-4 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-semibold hover:bg-primary/20">
+                                    Set Income
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
+                                {/* Header */}
+                                <div className="flex justify-between items-center mb-8">
+                                    <h2 className="text-3xl font-bold tracking-tight">
+                                        {budgetConfig.rules.length} Categories
+                                    </h2>
+                                    <div className="flex bg-zinc-100 dark:bg-white/20 rounded-full p-1 cursor-pointer">
+                                        <button 
+                                            onClick={() => setBudgetViewMode('monthly')}
+                                            className={`${budgetViewMode === 'monthly' ? 'bg-white dark:bg-white text-black' : 'text-zinc-500 dark:text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
+                                        >
+                                            M
+                                        </button>
+                                        <button 
+                                            onClick={() => setBudgetViewMode('yearly')}
+                                            className={`${budgetViewMode === 'yearly' ? 'bg-white dark:bg-white text-black' : 'text-zinc-500 dark:text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
+                                        >
+                                            Y
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Basis Fixed Income & Planned Spending */}
+                                <div className="flex justify-between items-end mb-8 pb-6 border-b border-border">
+                                    <div>
+                                        <div className="text-muted text-sm mb-1 font-medium">Basis: {incomeLabel}</div>
+                                        <div className="text-xl font-bold">{showBalance ? fmt(effectiveIncome) : '••••'}</div>
+                                    </div>
+                                    {projectedExpense > 0 && (
+                                        <div className="text-right">
+                                            <div className="text-muted text-sm mb-1 font-medium">Planned</div>
+                                            <div className="text-xl font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Categories List */}
+                                <div className="space-y-6">
+                                    {budgetConfig.rules?.map(rule => {
+                                        const spent = budgetMap.get(rule.id) || 0;
+                                        const planned = plannedBudgetMap.get(rule.id) || 0;
+                                        const limit = effectiveIncome * (rule.percentage / 100);
+                                        
+                                        // Calculate percentages relative to TOTAL income for the bars
+                                        const percentageOfTotalSpent = effectiveIncome > 0 ? (spent / effectiveIncome) * 100 : 0;
+                                        const percentageOfTotalPlanned = effectiveIncome > 0 ? (planned / effectiveIncome) * 100 : 0;
+                                        
+                                        // Calculate percentage relative to CATEGORY limit for the text display
+                                        const percentageOfCategorySpent = limit > 0 ? (spent / limit) * 100 : 0;
+                                        
+                                        const textColorClass = rule.color ? rule.color.replace('bg-', 'text-') : 'text-gray-400';
+
+                                        return (
+                                            <div key={rule.id}>
+                                                <div className={`flex items-center gap-2 text-sm font-semibold mb-1 ${textColorClass}`}>
+                                                    <div className={`w-2 h-2 rounded-full ${rule.color || 'bg-gray-500'}`}></div>
+                                                    {rule.name}
+                                                </div>
+                                                <div className={`text-sm font-bold mb-2 ${textColorClass} flex items-center justify-between`}>
+                                                    <div>
+                                                        {percentageOfCategorySpent.toFixed(1)} % <span className="text-muted font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
+                                                    </div>
+                                                    {planned > 0 && (
+                                                        <div className="text-amber-500 font-medium text-[10px] uppercase tracking-wider">
+                                                            Planned: {showBalance ? fmt(planned) : '•••'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="h-3 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden flex relative">
+                                                    <div className={`h-full ${rule.color || 'bg-gray-500'}`} style={{ width: `${Math.min(percentageOfTotalSpent, 100)}%` }}></div>
+                                                    {planned > 0 && (
+                                                        <div className={`h-full ${rule.color || 'bg-gray-500'} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`} style={{ width: `${Math.min(percentageOfTotalPlanned, 100 - Math.min(percentageOfTotalSpent, 100))}%` }}></div>
+                                                    )}
+                                                    {/* Limit Marker at the rule's percentage of total */}
+                                                    <div 
+                                                        className="h-full w-0.5 bg-zinc-400 dark:bg-white z-20 absolute top-0"
+                                                        style={{ left: `${rule.percentage}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Uncategorized */}
+                                    {(uncategorized > 0 || projectedUncategorized > 0) && (
+                                        <div className="pt-4 border-t border-border mt-4">
+                                            <div className="flex items-center gap-2 text-sm font-semibold mb-1 text-gray-400">
+                                                <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                                                Other
+                                            </div>
+                                            <div className="text-sm font-bold mb-2 text-gray-400 flex items-center justify-between">
+                                                <div>
+                                                    {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-muted font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
+                                                </div>
+                                                {projectedUncategorized > 0 && (
+                                                    <div className="text-amber-500 font-medium text-[10px] uppercase tracking-wider">
+                                                        Planned: {showBalance ? fmt(projectedUncategorized) : '•••'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="h-3 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden flex">
+                                                <div className="h-full bg-gray-400" style={{ width: `${Math.min((uncategorized / effectiveIncome) * 100, 100)}%` }}></div>
+                                                {projectedUncategorized > 0 && (
+                                                    <div className="h-full bg-gray-400 opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]" style={{ width: `${Math.min((projectedUncategorized / effectiveIncome) * 100, 100 - Math.min((uncategorized / effectiveIncome) * 100, 100))}%` }}></div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                </motion.div>
             </motion.div>
         </div>
     );
