@@ -656,10 +656,12 @@ const App: React.FC = () => {
                           handleToggleStatus={handleToggleStatus}
                           handleOpenEditWallet={handleOpenEditWallet} handleOpenAddWallet={handleOpenAddWallet}
                           setDeleteId={setDeleteId} setDeleteType={setDeleteType} setIsSettingsOpen={setIsControlCenterOpen}
-                          filterWallet={filterWallet} filterTransactionType={filterTransactionType}
-                          filterCategory={filterCategory}
-                          filterMinAmount={filterMinAmount} filterMaxAmount={filterMaxAmount}
-                          selectedTag={selectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
+                          filterWallet={filterWallet} setFilterWallet={setFilterWallet}
+                          filterTransactionType={filterTransactionType} setFilterTransactionType={setFilterTransactionType}
+                          filterCategory={filterCategory} setFilterCategory={setFilterCategory}
+                          filterMinAmount={filterMinAmount} setFilterMinAmount={setFilterMinAmount}
+                          filterMaxAmount={filterMaxAmount} setFilterMaxAmount={setFilterMaxAmount}
+                          selectedTag={selectedTag} setSelectedTag={setSelectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
                           savingGoals={savingGoals}
                           setActiveTab={setActiveTab}
                           onAddItem={(type) => {
