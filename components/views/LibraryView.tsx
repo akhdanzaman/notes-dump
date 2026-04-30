@@ -284,6 +284,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 <Card
                                     item={item}
                                     {...commonCardProps}
+                                    enableCollapse={false}
+                                    embedded
                                     noStrikethrough={type === 'journal'}
                                     noDarken={type === 'journal'}
                                 />

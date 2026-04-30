@@ -506,7 +506,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                                         className="overflow-hidden"
                                                     >
                                                         <div className="pt-3">
-                                                            <Card item={item} {...cardProps} />
+                                                            <Card item={item} {...cardProps} enableCollapse={false} embedded />
                                                         </div>
                                                     </motion.div>
                                                 )}

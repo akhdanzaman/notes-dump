@@ -294,7 +294,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             className="overflow-hidden"
                                         >
                                             <div className="pt-3">
-                                                <Card item={item} {...cardProps} />
+                                                <Card item={item} {...cardProps} enableCollapse={false} embedded />
                                             </div>
                                         </motion.div>
                                     )}
@@ -351,6 +351,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                                     wallets={wallets}
                                                     budgetRules={budgetRules}
                                                     onResetRoutine={handleResetRoutine}
+                                                    embedded
                                                 />
                                             </div>
                                         </motion.div>

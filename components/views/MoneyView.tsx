@@ -232,7 +232,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             className="overflow-hidden"
                         >
                             <div className="pt-3">
-                                <Card item={item} {...cardProps} categoryName={categoryLabel} />
+                                <Card item={item} {...cardProps} enableCollapse={false} embedded categoryName={categoryLabel} />
                             </div>
                         </motion.div>
                     )}
