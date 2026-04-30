@@ -248,7 +248,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         const isExpanded = expandedItemId === item.id;
 
         return (
-            <div key={item.id} className={`border-b border-border/70 py-3 transition-colors first:pt-0 last:border-b-0 last:pb-0 ${isExpanded ? 'bg-background/30' : ''}`}>
+            <div key={item.id} className={`border-b border-border/70 py-3 transition-colors first:pt-0 last:border-b-0 last:pb-0 ${isExpanded ? 'bg-surface/80' : ''}`}>
                 <button
                     type="button"
                     onClick={() => toggleExpandedItem(item.id)}
@@ -260,12 +260,12 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 {item.content}
                             </p>
                             {previewMeta.length > 0 && (
-                                <p className="mt-1 text-xs text-muted">
+                                <p className="mt-1 text-xs text-primary/65">
                                     {previewMeta.join(' • ')}
                                 </p>
                             )}
                         </div>
-                        <span className="mt-1 shrink-0 text-muted">
+                        <span className="mt-1 shrink-0 text-primary/50">
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </span>
                     </div>
@@ -301,7 +301,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (generalItems.length === 0) {
             return (
                 <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-muted">
+                    <p className="text-sm text-primary/65">
                         {searchQuery || selectedTag || filterDate
                             ? 'No notes match the current filters.'
                             : 'No notes yet. Start with one clean thought.'}
@@ -323,7 +323,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (journalItems.length === 0) {
             return (
                 <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-muted">
+                    <p className="text-sm text-primary/65">
                         {searchQuery || selectedTag || filterDate
                             ? 'No journal entries match the current filters.'
                             : 'Write your first entry and start building a readable archive.'}
@@ -342,10 +342,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             <div className="space-y-8">
                 {Object.entries(journalGroups).map(([dateKey, entries]) => (
                     <section key={dateKey}>
-                        <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                        <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary/65">
                             {formatJournalHeading(dateKey)}
                         </h3>
-                        <div className="rounded-3xl border border-border/70 bg-surface px-4 py-4">
+                        <div className="rounded-3xl border border-border/80 bg-surface px-4 py-4 shadow-sm shadow-black/5">
                             {entries.map(item => renderNoteRow(item, 'journal'))}
                         </div>
                     </section>
@@ -358,7 +358,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (skillStats.length === 0) {
             return (
                 <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-muted">No skills tracked yet. Add one target and keep the weekly rhythm visible.</p>
+                    <p className="text-sm text-primary/65">No skills tracked yet. Add one target and keep the weekly rhythm visible.</p>
                     <button
                         onClick={handleOpenAddSkill}
                         className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
@@ -370,7 +370,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         }
 
         return (
-            <div className="rounded-3xl border border-border/70 bg-surface divide-y divide-border/70">
+            <div className="rounded-3xl border border-border/80 bg-surface divide-y divide-border/70 shadow-sm shadow-black/5">
                 {skillStats.map((skill) => {
                     const weeklyText = skill.weeklyHours > 0
                         ? `${skill.weeklyHours.toFixed(1)}h this week`
@@ -386,14 +386,14 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <h3 className="text-sm font-semibold text-primary">{skill.name}</h3>
-                                            <p className="mt-1 text-xs text-muted">{weeklyText} • {targetText}</p>
+                                            <p className="mt-1 text-xs text-primary/65">{weeklyText} • {targetText}</p>
                                         </div>
                                         {skill.hasWeeklyTarget ? (
                                             <span className="shrink-0 text-sm font-semibold text-primary">
                                                 {Math.round(skill.weeklyProgress)}%
                                             </span>
                                         ) : (
-                                            <span className="shrink-0 text-xs text-muted">Tracked</span>
+                                            <span className="shrink-0 rounded-full border border-border/80 bg-background/80 px-2 py-1 text-[11px] font-semibold text-primary/65">Tracked</span>
                                         )}
                                     </div>
 
@@ -415,7 +415,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                                 <div className="mt-3 flex items-center gap-2">
                                                     <button
                                                         onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
-                                                        className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-muted/10"
+                                                        className="inline-flex items-center gap-1 rounded-xl border border-border/90 bg-background/80 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-background"
                                                     >
                                                         <Pencil className="w-3.5 h-3.5" /> Edit
                                                     </button>
@@ -437,7 +437,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setSkillActionId(current => (current === skill.id ? null : skill.id))}
-                                    className="mt-0.5 rounded-xl p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary"
+                                    className="mt-0.5 rounded-xl border border-transparent p-2 text-primary/55 transition-colors hover:border-border/70 hover:bg-background hover:text-primary"
                                     aria-label={`Actions for ${skill.name}`}
                                 >
                                     <MoreHorizontal className="w-4 h-4" />
@@ -473,7 +473,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 </div>
                                 <h1 className="text-2xl font-bold tracking-tight">{heroConfig.title}</h1>
                             </div>
-                            <p className="mt-2 text-sm text-muted">{heroConfig.support}</p>
+                            <p className="mt-2 text-sm text-primary/65">{heroConfig.support}</p>
                         </div>
                         <button
                             onClick={heroConfig.onAction}
@@ -483,7 +483,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         </button>
                     </div>
 
-                    <div className="flex rounded-2xl bg-black/5 p-1 dark:bg-white/10">
+                    <div className="flex rounded-2xl border border-border/80 bg-surface/80 p-1 shadow-sm shadow-black/5">
                         {[
                             { id: 'general' as LibrarySubTab, label: 'General', icon: <Library className="w-4 h-4" /> },
                             { id: 'journal' as LibrarySubTab, label: 'Journal', icon: <BookText className="w-4 h-4" /> },
@@ -498,8 +498,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 }}
                                 className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
                                     librarySubTab === tab.id
-                                        ? 'bg-surface text-primary shadow-sm'
-                                        : 'text-primary/50 hover:text-primary'
+                                        ? 'bg-background text-primary shadow-sm'
+                                        : 'text-primary/60 hover:bg-background/60 hover:text-primary'
                                 }`}
                             >
                                 {tab.icon}
@@ -513,7 +513,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             {activeFilters.map(filter => (
                                 <span
                                     key={filter}
-                                    className="rounded-full bg-muted/10 px-3 py-1 text-xs font-medium text-muted"
+                                    className="rounded-full border border-border/80 bg-surface px-3 py-1 text-xs font-medium text-primary/65"
                                 >
                                     {filter}
                                 </span>
