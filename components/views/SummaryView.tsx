@@ -398,10 +398,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             <motion.div style={swipeHandlers.style} className="will-change-transform">
                 <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 pb-4 pt-safe backdrop-blur">
                     <div className="pb-5 pt-4">
-                        <p className="text-sm font-medium text-primary/65">{getGreeting(today)}</p>
+                        <p className="text-sm font-medium text-muted">{getGreeting(today)}</p>
                         <h1 className="mt-2 text-3xl font-bold tracking-tight text-primary">{hero.title}</h1>
-                        <p className="mt-2 text-sm text-primary/65">{hero.support}</p>
-                        {hero.metric && <p className="mt-1 text-sm text-primary/55">{hero.metric}</p>}
+                        <p className="mt-2 text-sm text-muted">{hero.support}</p>
+                        {hero.metric && <p className="mt-1 text-sm text-muted/80">{hero.metric}</p>}
                         <div className="mt-4 flex items-center gap-2">
                             <button
                                 onClick={hero.onPrimary}
@@ -411,7 +411,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             </button>
                             <button
                                 onClick={hero.onSecondary}
-                                className="inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-background"
+                                className="inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
                             >
                                 {hero.secondaryLabel}
                             </button>
@@ -428,7 +428,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             <button
                                 key={action.label}
                                 onClick={action.onClick}
-                                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border/80 bg-surface px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-background"
+                                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border/70 bg-surface px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-muted/10"
                             >
                                 {action.icon}
                                 {action.label}
@@ -442,14 +442,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         <div className="mb-3 flex items-center justify-between gap-3">
                             <div>
                                 <h2 className="text-base font-semibold text-primary">Today</h2>
-                                <p className="mt-1 text-sm text-primary/65">Top things worth your attention right now.</p>
+                                <p className="mt-1 text-sm text-muted">Top things worth your attention right now.</p>
                             </div>
                             <button
                                 onClick={() => {
                                     setActiveTab('plan');
                                     setPlanSubTab('tasks');
                                 }}
-                                className="inline-flex items-center gap-1 text-sm font-semibold text-primary/70 transition-colors hover:text-primary"
+                                className="inline-flex items-center gap-1 text-sm font-semibold text-muted transition-colors hover:text-primary"
                             >
                                 View all <ArrowRight className="h-4 w-4" />
                             </button>
@@ -457,7 +457,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                         {focusFeed.length === 0 ? (
                             <div className="rounded-3xl border border-dashed border-border px-6 py-10 text-center">
-                                <p className="text-sm text-primary/65">Nothing urgent here. Good moment to capture something or line up the next task.</p>
+                                <p className="text-sm text-muted">Nothing urgent here. Good moment to capture something or line up the next task.</p>
                                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                                     <button
                                         onClick={handleOpenAddNote}
@@ -470,18 +470,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                             setActiveTab('plan');
                                             setPlanSubTab('tasks');
                                         }}
-                                        className="inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-background"
+                                        className="inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
                                     >
                                         View Plan
                                     </button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="divide-y divide-border/70 rounded-3xl border border-border/80 bg-surface shadow-sm shadow-black/5">
+                            <div className="divide-y divide-border/70 rounded-3xl border border-border/70 bg-surface">
                                 {focusFeed.map(item => {
                                     const isExpanded = expandedItemId === item.id;
                                     return (
-                                        <div key={item.id} className={`px-4 py-4 transition-colors first:pt-5 last:pb-5 ${isExpanded ? 'bg-surface/80' : ''}`}>
+                                        <div key={item.id} className={`px-4 py-4 transition-colors first:pt-5 last:pb-5 ${isExpanded ? 'bg-background/30' : ''}`}>
                                             <button
                                                 type="button"
                                                 onClick={() => setExpandedItemId(current => current === item.id ? null : item.id)}
@@ -490,9 +490,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="min-w-0 flex-1">
                                                         <p className="text-sm font-medium text-primary line-clamp-1">{item.content}</p>
-                                                        <p className="mt-1 text-xs text-primary/65">{renderFocusMeta(item)}</p>
+                                                        <p className="mt-1 text-xs text-muted">{renderFocusMeta(item)}</p>
                                                     </div>
-                                                    <Zap className="mt-0.5 h-4 w-4 shrink-0 text-primary/50" />
+                                                    <Zap className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
                                                 </div>
                                             </button>
 
@@ -520,20 +520,20 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                     {signal && (
                         <section>
-                            <div className="rounded-3xl border border-border/80 bg-surface p-4 shadow-sm shadow-black/5">
+                            <div className="rounded-3xl border border-border/70 bg-surface p-4">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
-                                        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary/65">
+                                        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
                                             {signal.icon}
                                             {signal.eyebrow}
                                         </p>
                                         <h3 className="mt-2 text-base font-semibold text-primary">{signal.title}</h3>
-                                        <p className="mt-1 text-sm text-primary/65">{signal.body}</p>
+                                        <p className="mt-1 text-sm text-muted">{signal.body}</p>
                                     </div>
                                     {signal.kind === 'budget' && (
                                         <button
                                             onClick={() => setShowBalance(!showBalance)}
-                                            className="rounded-2xl border border-border/80 bg-surface p-2 text-primary/65 transition-colors hover:bg-background hover:text-primary"
+                                            className="rounded-2xl bg-muted/10 p-2 text-muted transition-colors hover:text-primary"
                                         >
                                             {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                         </button>
@@ -542,16 +542,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                                 {signal.kind === 'theme' && (
                                     <div
-                                        className="mt-3 flex items-center gap-2 text-sm text-primary/65"
+                                        className="mt-3 flex items-center gap-2 text-sm text-muted"
                                         onTouchStart={dateSwipeHandlers.onTouchStart}
                                         onTouchMove={dateSwipeHandlers.onTouchMove}
                                         onTouchEnd={dateSwipeHandlers.onTouchEnd}
                                     >
-                                        <button onClick={() => changeThemeMonth(-1)} className="rounded-full border border-transparent p-1 text-primary/60 transition-colors hover:border-border/70 hover:bg-background hover:text-primary">
+                                        <button onClick={() => changeThemeMonth(-1)} className="rounded-full p-1 transition-colors hover:bg-muted/10 hover:text-primary">
                                             <ChevronLeft className="h-4 w-4" />
                                         </button>
                                         <span>{themeMonthLabel}</span>
-                                        <button onClick={() => changeThemeMonth(1)} className="rounded-full border border-transparent p-1 text-primary/60 transition-colors hover:border-border/70 hover:bg-background hover:text-primary">
+                                        <button onClick={() => changeThemeMonth(1)} className="rounded-full p-1 transition-colors hover:bg-muted/10 hover:text-primary">
                                             <ChevronRight className="h-4 w-4" />
                                         </button>
                                     </div>
@@ -559,7 +559,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                                 <button
                                     onClick={openSignal}
-                                    className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-background"
+                                    className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
                                 >
                                     {signal.cta}
                                 </button>
@@ -573,7 +573,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                                         <div className="flex items-start justify-between gap-3">
                                                             <div>
                                                                 <p className="text-sm font-medium text-primary">{task.text}</p>
-                                                                <p className="mt-1 text-xs text-primary/65">
+                                                                <p className="mt-1 text-xs text-muted">
                                                                     {task.status === 'failed'
                                                                         ? (task.error || 'Parsing failed')
                                                                         : task.status === 'pending'
@@ -586,7 +586,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                                                     <button onClick={() => retryParsing(task.id)} className="text-xs font-semibold text-indigo-500">Retry</button>
                                                                 )}
                                                                 {clearParsingTask && (
-                                                                    <button onClick={() => clearParsingTask(task.id)} className="text-xs font-semibold text-primary/60 transition-colors hover:text-primary">Dismiss</button>
+                                                                    <button onClick={() => clearParsingTask(task.id)} className="text-xs font-semibold text-muted">Dismiss</button>
                                                                 )}
                                                             </div>
                                                         </div>

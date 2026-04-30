@@ -268,7 +268,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             <section key={title}>
                 <div className="mb-3 flex items-center justify-between">
                     <h3 className={`text-sm font-semibold uppercase tracking-[0.14em] ${titleClass}`}>{title}</h3>
-                    <span className="text-xs font-medium text-primary/55">{sectionItems.length}</span>
+                    <span className="text-xs text-muted">{sectionItems.length}</span>
                 </div>
                 <div className="divide-y divide-border/70 rounded-3xl border border-border/70 bg-surface">
                     {sectionItems.map(item => {
@@ -279,9 +279,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
                                             <p className={`text-sm font-medium line-clamp-1 ${tone === 'done' ? 'text-muted line-through' : 'text-primary'}`}>{item.content}</p>
-                                            <p className="mt-1 text-xs text-primary/65">{formatDueLine(item)}</p>
+                                            <p className="mt-1 text-xs text-muted">{formatDueLine(item)}</p>
                                         </div>
-                                        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/45" />
+                                        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
                                     </div>
                                 </button>
                                 <AnimatePresence initial={false}>
@@ -313,7 +313,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             <section key={title}>
                 <div className="mb-3 flex items-center justify-between">
                     <h3 className={`text-sm font-semibold uppercase tracking-[0.14em] ${headingClass}`}>{title}</h3>
-                    <span className="text-xs font-medium text-primary/55">{sectionItems.length}</span>
+                    <span className="text-xs text-muted">{sectionItems.length}</span>
                 </div>
                 <div className="divide-y divide-border/70 rounded-3xl border border-border/70 bg-surface">
                     {sectionItems.map(item => {
@@ -324,12 +324,12 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
                                             <p className="text-sm font-medium text-primary line-clamp-1">{item.content}</p>
-                                            <p className="mt-1 text-xs text-primary/65">
+                                            <p className="mt-1 text-xs text-muted">
                                                 {item.meta.quantity || (title === 'Routine' ? 'Routine restock' : title === 'Urgent' ? 'Need this soon' : 'Not urgent')}
                                             </p>
                                         </div>
                                         <div className="shrink-0 text-right">
-                                            {item.meta.amount ? <p className="text-sm font-semibold text-primary">{fmt(item.meta.amount)}</p> : <p className="text-xs font-medium text-primary/55">Detail</p>}
+                                            {item.meta.amount ? <p className="text-sm font-semibold text-primary">{fmt(item.meta.amount)}</p> : <p className="text-xs text-muted">Detail</p>}
                                         </div>
                                     </div>
                                 </button>
@@ -369,7 +369,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         if (savingsGoals.length === 0) {
             return (
                 <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-primary/65">No saving goals yet.</p>
+                    <p className="text-sm text-muted">No saving goals yet.</p>
                     <button
                         onClick={() => handleOpenAddShopping('saving')}
                         className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
@@ -410,7 +410,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
                                             <p className="text-sm font-medium text-primary line-clamp-1">{goal.content}</p>
-                                            <p className="mt-1 text-xs text-primary/65">{fmt(saved)} / {fmt(target)}</p>
+                                            <p className="mt-1 text-xs text-muted">{fmt(saved)} / {fmt(target)}</p>
                                         </div>
                                         <p className="shrink-0 text-sm font-semibold text-primary">{progress.toFixed(0)}%</p>
                                     </div>
@@ -433,7 +433,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setExpandedGoalId(current => current === goal.id ? null : goal.id)}
-                                        className="rounded-xl border border-transparent p-2 text-primary/55 transition-colors hover:border-border/70 hover:bg-background hover:text-primary"
+                                        className="rounded-xl p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary"
                                     >
                                         <MoreHorizontal className="h-4 w-4" />
                                     </button>
@@ -581,12 +581,12 @@ const PlanView: React.FC<PlanViewProps> = ({
                 <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 pb-4 pt-safe backdrop-blur">
                     <div className="pb-4 pt-4">
                         {planSubTab === 'tasks' && (
-                            <div className="mb-3 flex items-center gap-3 text-sm text-primary/65" onTouchStart={dateSwipeHandlers.onTouchStart} onTouchMove={dateSwipeHandlers.onTouchMove} onTouchEnd={dateSwipeHandlers.onTouchEnd}>
-                                <button onClick={() => changeMonth(-1)} className="rounded-full border border-transparent p-1.5 transition-colors hover:border-border/70 hover:bg-background hover:text-primary">
+                            <div className="mb-3 flex items-center gap-3 text-sm text-muted" onTouchStart={dateSwipeHandlers.onTouchStart} onTouchMove={dateSwipeHandlers.onTouchMove} onTouchEnd={dateSwipeHandlers.onTouchEnd}>
+                                <button onClick={() => changeMonth(-1)} className="rounded-full p-1.5 transition-colors hover:bg-muted/10 hover:text-primary">
                                     <ChevronLeft className="h-4 w-4" />
                                 </button>
                                 <span className="font-semibold uppercase tracking-[0.14em]">{monthLabel}</span>
-                                <button onClick={() => changeMonth(1)} className="rounded-full border border-transparent p-1.5 transition-colors hover:border-border/70 hover:bg-background hover:text-primary">
+                                <button onClick={() => changeMonth(1)} className="rounded-full p-1.5 transition-colors hover:bg-muted/10 hover:text-primary">
                                     <ChevronRight className="h-4 w-4" />
                                 </button>
                             </div>
@@ -595,11 +595,11 @@ const PlanView: React.FC<PlanViewProps> = ({
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <h1 className="text-3xl font-bold tracking-tight text-primary">{hero.title}</h1>
-                                <p className="mt-2 text-sm text-primary/65">{hero.support}</p>
+                                <p className="mt-2 text-sm text-muted">{hero.support}</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 {hero.secondaryLabel && hero.secondaryAction && (
-                                    <button onClick={hero.secondaryAction} className="inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-background">
+                                    <button onClick={hero.secondaryAction} className="inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
                                         {hero.secondaryLabel}
                                     </button>
                                 )}
@@ -610,7 +610,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex rounded-2xl border border-border/80 bg-surface/80 p-1 shadow-sm shadow-black/5">
+                    <div className="flex rounded-2xl bg-black/5 p-1 dark:bg-white/10">
                         {[
                             { id: 'tasks' as PlanSubTab, label: 'Tasks', icon: <ListTodo className="h-4 w-4" /> },
                             { id: 'shopping' as PlanSubTab, label: 'Shopping', icon: <ShoppingCart className="h-4 w-4" /> },
@@ -624,7 +624,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     setExpandedShoppingId(null);
                                     setExpandedGoalId(null);
                                 }}
-                                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${planSubTab === tab.id ? 'bg-background text-primary shadow-sm' : 'text-primary/60 hover:bg-background/60 hover:text-primary'}`}
+                                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${planSubTab === tab.id ? 'bg-surface text-primary shadow-sm' : 'text-primary/50 hover:text-primary'}`}
                             >
                                 {tab.icon}
                                 {tab.label}
@@ -644,7 +644,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <button
                                     key={chip.value}
                                     onClick={() => setTaskFocusFilter(chip.value)}
-                                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${taskFocusFilter === chip.value ? 'bg-indigo-500 text-white' : 'border border-border/80 bg-surface text-primary/70 hover:bg-background hover:text-primary'}`}
+                                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${taskFocusFilter === chip.value ? 'bg-indigo-500 text-white' : 'bg-muted/10 text-muted hover:text-primary'}`}
                                 >
                                     {chip.label}
                                 </button>
@@ -657,8 +657,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                     {planSubTab === 'tasks' && (
                         taskSections.length > 0 ? taskSections.map(section => renderTaskSection(section.title, section.items, section.tone)) : (
                             <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                                <p className="text-sm text-primary/65">{emptyTaskState.text}</p>
-                                <button onClick={emptyTaskState.action} className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-background">
+                                <p className="text-sm text-muted">{emptyTaskState.text}</p>
+                                <button onClick={emptyTaskState.action} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
                                     <Plus className="h-4 w-4" /> {emptyTaskState.actionLabel}
                                 </button>
                             </div>
@@ -668,8 +668,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                     {planSubTab === 'shopping' && (
                         shoppingSections.length > 0 ? shoppingSections.map(section => renderShoppingSection(section.title, section.items, section.tone)) : (
                             <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                                <p className="text-sm text-primary/65">Shopping queue is clear. Add the next thing before it slips.</p>
-                                <button onClick={() => handleOpenAddShopping('not_urgent')} className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-background">
+                                <p className="text-sm text-muted">Shopping queue is clear. Add the next thing before it slips.</p>
+                                <button onClick={() => handleOpenAddShopping('not_urgent')} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
                                     <Plus className="h-4 w-4" /> Add Item
                                 </button>
                             </div>

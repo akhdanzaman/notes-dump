@@ -220,36 +220,36 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                         <p className="text-3xl font-bold tracking-tight text-primary">
                             {currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                         </p>
-                        <p className="mt-2 text-sm text-primary/65">
+                        <p className="mt-2 text-sm text-muted">
                             {monthItemsCount} scheduled day{monthItemsCount === 1 ? '' : 's'} • {upcomingWeekCount} upcoming this week
                         </p>
                     </div>
                     <button
                         onClick={jumpToToday}
-                        className="rounded-2xl border border-border/80 bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-background"
+                        className="rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
                     >
                         Today
                     </button>
                 </div>
 
                 <div className="flex items-center justify-between gap-3">
-                    <button onClick={prevMonth} className="rounded-full border border-transparent p-2 text-primary/60 transition-colors hover:border-border/70 hover:bg-background hover:text-primary">
+                    <button onClick={prevMonth} className="rounded-full p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary">
                         <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <div className="flex items-center gap-2 text-sm font-semibold text-primary/65">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-muted">
                         <CalendarIcon className="h-4 w-4" /> Month view
                     </div>
-                    <button onClick={nextMonth} className="rounded-full border border-transparent p-2 text-primary/60 transition-colors hover:border-border/70 hover:bg-background hover:text-primary">
+                    <button onClick={nextMonth} className="rounded-full p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary">
                         <ChevronRight className="h-5 w-5" />
                     </button>
                 </div>
             </div>
 
             <div className="space-y-5 px-4 pt-4">
-                <section className="rounded-3xl border border-border/80 bg-surface p-3 shadow-sm shadow-black/5">
+                <section className="rounded-3xl border border-border/70 bg-surface p-3">
                     <div className="mb-2 grid grid-cols-7 gap-1">
                         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                            <div key={day} className="py-1 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/55">
+                            <div key={day} className="py-1 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
                                 {day}
                             </div>
                         ))}
@@ -271,10 +271,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     }}
                                     className={`min-h-[58px] rounded-2xl border px-2 py-2 text-left transition-colors ${
                                         isSelected
-                                            ? 'border-indigo-500 bg-indigo-500/10 shadow-sm shadow-indigo-500/10'
+                                            ? 'border-indigo-500 bg-indigo-500/8'
                                             : dayObj.isCurrentMonth
-                                                ? 'border-border/80 bg-background hover:bg-surface'
-                                                : 'border-transparent bg-background/40 text-primary/35'
+                                                ? 'border-border/70 bg-background hover:bg-muted/10'
+                                                : 'border-transparent bg-muted/5 text-muted/60'
                                     } ${isTodayDate ? 'ring-1 ring-indigo-500/50 ring-inset' : ''}`}
                                 >
                                     <div className={`text-xs font-semibold ${isSelected ? 'text-indigo-500' : dayObj.isCurrentMonth ? 'text-primary' : 'text-muted/60'}`}>
@@ -285,7 +285,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                             <span key={item.id} className={`h-1.5 w-1.5 rounded-full ${getItemDotClass(item)}`} />
                                         ))}
                                         {dayItems.length > 2 && (
-                                            <span className="rounded-full border border-border/70 bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-primary/60">
+                                            <span className="rounded-full bg-muted/10 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
                                                 +{dayItems.length - 2}
                                             </span>
                                         )}
@@ -296,12 +296,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     </div>
                 </section>
 
-                <section className="rounded-3xl border border-border/80 bg-surface shadow-sm shadow-black/5">
+                <section className="rounded-3xl border border-border/70 bg-surface">
                     <div className="border-b border-border/70 px-4 py-4">
                         <h2 className="text-lg font-semibold text-primary">
                             {selectedDate.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'long' })}
                         </h2>
-                        <p className="mt-1 text-sm text-primary/65">
+                        <p className="mt-1 text-sm text-muted">
                             {selectedDayItems.length > 0
                                 ? `${selectedDayItems.length} item${selectedDayItems.length === 1 ? '' : 's'}`
                                 : 'Nothing scheduled'}
@@ -310,7 +310,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
 
                     {selectedDayItems.length === 0 ? (
                         <div className="px-6 py-12 text-center">
-                            <p className="text-sm text-primary/65">No agenda here yet. Good opening for planning or deep work.</p>
+                            <p className="text-sm text-muted">No agenda here yet. Good opening for planning or deep work.</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-border/70">
@@ -319,15 +319,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     key={item.id}
                                     type="button"
                                     onClick={() => setSelectedItem(item)}
-                                    className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-background/70"
+                                    className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/5"
                                 >
                                     <div className="min-w-0 flex-1">
                                         <p className={`text-sm font-medium ${item.status === 'done' ? 'text-muted line-through' : 'text-primary'}`}>
                                             {item.content}
                                         </p>
-                                        <p className="mt-1 text-xs text-primary/65">{getAgendaMeta(item)}</p>
+                                        <p className="mt-1 text-xs text-muted">{getAgendaMeta(item)}</p>
                                     </div>
-                                    <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-primary/45" />
+                                    <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
                                 </button>
                             ))}
                         </div>
@@ -353,25 +353,25 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                         >
                             <div className="flex items-center justify-between border-b border-border px-5 py-4">
                                 <h3 className="text-base font-semibold text-primary">Detail</h3>
-                                <button onClick={() => setSelectedItem(null)} className="rounded-full border border-transparent p-1 text-primary/60 transition-colors hover:border-border/70 hover:bg-background">
+                                <button onClick={() => setSelectedItem(null)} className="rounded-full p-1 text-muted transition-colors hover:bg-muted/10">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
                             <div className="space-y-4 px-5 py-5">
                                 <div>
                                     <p className="text-lg font-semibold text-primary">{selectedItem.content}</p>
-                                    <p className="mt-1 text-sm text-primary/65">{getAgendaMeta(selectedItem)}</p>
+                                    <p className="mt-1 text-sm text-muted">{getAgendaMeta(selectedItem)}</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary/60">Type</p>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Type</p>
                                         <p className="mt-1 capitalize text-primary">{selectedItem.type.toLowerCase()}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary/60">Status</p>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Status</p>
                                         <div className="mt-1 flex items-center gap-2 text-primary">
-                                            {selectedItem.status === 'done' ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-primary/50" />}
+                                            {selectedItem.status === 'done' ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-muted" />}
                                             <span className="capitalize">{selectedItem.status}</span>
                                         </div>
                                     </div>
@@ -379,7 +379,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
 
                                 {(selectedItem.meta.date || selectedItem.meta.dateTime || selectedItem.meta.start) && (
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary/60">When</p>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">When</p>
                                         <p className="mt-1 text-sm text-primary">
                                             {new Date(selectedItem.meta.start || selectedItem.meta.dateTime || selectedItem.meta.date || '').toLocaleString('id-ID', {
                                                 day: 'numeric',
@@ -399,7 +399,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         }}
                                         className={`rounded-2xl px-4 py-2 text-sm font-semibold transition-colors ${
                                             selectedItem.status === 'done'
-                                                ? 'border border-border/80 bg-surface text-primary hover:bg-background'
+                                                ? 'bg-muted/10 text-primary hover:bg-muted/20'
                                                 : 'bg-emerald-500 text-white hover:bg-emerald-600'
                                         }`}
                                     >

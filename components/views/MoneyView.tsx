@@ -206,18 +206,18 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     : 'text-[#FF5722]';
 
         return (
-            <div key={item.id} className={`border-b border-border/70 py-3 transition-colors first:pt-0 last:border-b-0 last:pb-0 ${isExpanded ? 'bg-surface/80' : ''}`}>
+            <div key={item.id} className={`border-b border-border/70 py-3 transition-colors first:pt-0 last:border-b-0 last:pb-0 ${isExpanded ? 'bg-background/30' : ''}`}>
                 <button type="button" onClick={() => setExpandedTransactionId(current => current === item.id ? null : item.id)} className="w-full text-left">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-primary line-clamp-1">{item.content}</p>
-                            <p className="mt-1 text-xs text-primary/65">{metaBits.join(' • ')}</p>
+                            <p className="mt-1 text-xs text-muted">{metaBits.join(' • ')}</p>
                         </div>
                         <div className="shrink-0 text-right">
                             <p className={`text-sm font-semibold ${amountColor}`}>
                                 {showBalance ? `${amountPrefix}${fmt(amount).replace('Rp', 'Rp ')}` : '••••'}
                             </p>
-                            <p className="mt-1 text-xs font-medium text-primary/55">{isExpanded ? 'Hide' : 'Detail'}</p>
+                            <p className="mt-1 text-xs text-muted">{isExpanded ? 'Hide' : 'Detail'}</p>
                         </div>
                     </div>
                 </button>
@@ -256,7 +256,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                             filterTransactionType === chip.value
                                 ? 'bg-indigo-500 text-white'
-                                : 'border border-border/80 bg-surface text-primary/70 hover:bg-background hover:text-primary'
+                                : 'bg-muted/10 text-muted hover:text-primary'
                         }`}
                     >
                         {chip.label}
@@ -267,7 +267,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             {activeFilters.length > 0 && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                     {activeFilters.map(filter => (
-                        <span key={filter} className="rounded-full border border-border/80 bg-surface px-3 py-1 text-xs font-medium text-primary/65">
+                        <span key={filter} className="rounded-full bg-muted/10 px-3 py-1 text-xs font-medium text-muted">
                             {filter}
                         </span>
                     ))}
@@ -285,7 +285,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             <div className="mt-4">
                 {list.length === 0 ? (
                     <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                        <p className="text-sm text-primary/65">
+                        <p className="text-sm text-muted">
                             {activeFilters.length > 0 || filterTransactionType
                                 ? 'No transactions match the current filters.'
                                 : 'No transactions recorded for this period.'}
@@ -300,7 +300,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             {clearMoneyFilters && (activeFilters.length > 0 || filterTransactionType) && (
                                 <button
                                     onClick={clearMoneyFilters}
-                                    className="inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-background"
+                                    className="inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
                                 >
                                     Clear Filters
                                 </button>
@@ -316,13 +316,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
     const renderWallets = () => (
         <div>
-            <p className="text-sm text-primary/65">
+            <p className="text-sm text-muted">
                 Wallets: {walletStats.length} • {debtWalletCount} debt account{debtWalletCount === 1 ? '' : 's'}
             </p>
 
             {walletStats.length === 0 ? (
                 <div className="mt-4 rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-primary/65">No wallets yet. Add one place where money actually lives.</p>
+                    <p className="text-sm text-muted">No wallets yet. Add one place where money actually lives.</p>
                     <button
                         onClick={handleOpenAddWallet}
                         className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
@@ -331,7 +331,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     </button>
                 </div>
             ) : (
-            <div className="mt-4 rounded-3xl border border-border/80 bg-surface divide-y divide-border/70 shadow-sm shadow-black/5">
+            <div className="mt-4 rounded-3xl border border-border/70 bg-surface divide-y divide-border/70">
                 {walletStats.map((wallet) => {
                     const walletSavings = savingGoals
                         .filter(goal => goal.meta.dedicatedWalletId === wallet.id)
@@ -347,14 +347,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     return (
                         <div key={wallet.id} className="px-4 py-4 first:pt-5 last:pb-5">
                             <div className="flex items-start gap-3">
-                                <div className="mt-0.5 rounded-2xl border border-border/80 bg-background/80 p-2 text-primary/70 shadow-sm shadow-black/5">
+                                <div className="mt-0.5 rounded-2xl bg-muted/10 p-2 text-muted">
                                     {wallet.type === 'bank' ? <PiggyBank className="w-4 h-4" /> : wallet.type === 'cc' ? <CreditCard className="w-4 h-4" /> : <WalletIcon className="w-4 h-4" />}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <h3 className="text-sm font-semibold text-primary">{wallet.name}</h3>
-                                            <p className="mt-1 text-xs text-primary/65">{typeLabel}{walletSavings > 0 ? ` • Savings ${showBalance ? fmt(walletSavings) : '••••'}` : ''}</p>
+                                            <p className="mt-1 text-xs text-muted">{typeLabel}{walletSavings > 0 ? ` • Savings ${showBalance ? fmt(walletSavings) : '••••'}` : ''}</p>
                                         </div>
                                         <p className="shrink-0 text-sm font-semibold text-primary">
                                             {showBalance ? fmt(wallet.currentBalance) : '••••'}
@@ -372,7 +372,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                 <div className="mt-3 flex items-center gap-2">
                                                     <button
                                                         onClick={() => handleOpenEditWallet(wallet)}
-                                                        className="inline-flex items-center gap-1 rounded-xl border border-border/90 bg-background/80 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-background"
+                                                        className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-muted/10"
                                                     >
                                                         <Pencil className="w-3.5 h-3.5" /> Edit
                                                     </button>
@@ -393,7 +393,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setWalletActionId(current => current === wallet.id ? null : wallet.id)}
-                                    className="mt-0.5 rounded-xl border border-transparent p-2 text-primary/55 transition-colors hover:border-border/70 hover:bg-background hover:text-primary"
+                                    className="mt-0.5 rounded-xl p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary"
                                     aria-label={`Actions for ${wallet.name}`}
                                 >
                                     <MoreHorizontal className="w-4 h-4" />
@@ -420,8 +420,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         if (effectiveIncome === 0) {
             return (
                 <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <AlertCircle className="mx-auto mb-3 h-6 w-6 text-primary/45" />
-                    <p className="text-sm text-primary/65">Set monthly income or record income first to unlock budget breakdown.</p>
+                    <AlertCircle className="mx-auto mb-3 h-6 w-6 text-muted" />
+                    <p className="text-sm text-muted">Set monthly income or record income first to unlock budget breakdown.</p>
                     <button
                         onClick={() => setIsSettingsOpen(true)}
                         className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
@@ -435,8 +435,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         if (budgetConfig.rules.length === 0) {
             return (
                 <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <AlertCircle className="mx-auto mb-3 h-6 w-6 text-primary/45" />
-                    <p className="text-sm text-primary/65">No budget categories yet. Add a few rules before reviewing the breakdown.</p>
+                    <AlertCircle className="mx-auto mb-3 h-6 w-6 text-muted" />
+                    <p className="text-sm text-muted">No budget categories yet. Add a few rules before reviewing the breakdown.</p>
                     <button
                         onClick={() => setIsSettingsOpen(true)}
                         className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
@@ -452,28 +452,28 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <p className="text-sm font-medium text-primary">Budget used: {Math.min(budgetUsage, 999).toFixed(0)}%</p>
-                        <p className="mt-1 text-xs text-primary/65">
+                        <p className="mt-1 text-xs text-muted">
                             {showBalance ? `${fmt(totalExpense)} / ${fmt(effectiveIncome)} planned` : '•••• / •••• planned'}
                             {projectedExpense > 0 ? ` • ${showBalance ? fmt(projectedExpense) : '••••'} pending` : ''}
                         </p>
                     </div>
-                    <div className="flex rounded-full border border-border/80 bg-surface p-1 shadow-sm shadow-black/5">
+                    <div className="flex rounded-full bg-muted/10 p-1">
                         <button
                             onClick={() => setBudgetViewMode('monthly')}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${budgetViewMode === 'monthly' ? 'bg-background text-primary shadow-sm' : 'text-primary/60 hover:text-primary'}`}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${budgetViewMode === 'monthly' ? 'bg-surface text-primary shadow-sm' : 'text-muted'}`}
                         >
                             M
                         </button>
                         <button
                             onClick={() => setBudgetViewMode('yearly')}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${budgetViewMode === 'yearly' ? 'bg-background text-primary shadow-sm' : 'text-primary/60 hover:text-primary'}`}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${budgetViewMode === 'yearly' ? 'bg-surface text-primary shadow-sm' : 'text-muted'}`}
                         >
                             Y
                         </button>
                     </div>
                 </div>
 
-                <div className="mt-4 rounded-3xl border border-border/80 bg-surface divide-y divide-border/70 shadow-sm shadow-black/5">
+                <div className="mt-4 rounded-3xl border border-border/70 bg-surface divide-y divide-border/70">
                     {budgetConfig.rules.map((rule) => {
                         const spent = budgetMap.get(rule.id) || 0;
                         const planned = plannedBudgetMap.get(rule.id) || 0;
@@ -488,7 +488,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             <span className={`h-2.5 w-2.5 rounded-full ${rule.color || 'bg-gray-500'}`} />
                                             <h3 className="text-sm font-semibold text-primary">{rule.name}</h3>
                                         </div>
-                                        <p className="mt-1 text-xs text-primary/65">
+                                        <p className="mt-1 text-xs text-muted">
                                             {showBalance ? `${fmt(spent)} / ${fmt(limit)}` : '•••• / ••••'}
                                             {planned > 0 ? ` • planned ${showBalance ? fmt(planned) : '••••'}` : ''}
                                         </p>
@@ -514,7 +514,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         <span className="h-2.5 w-2.5 rounded-full bg-gray-400" />
                                         <h3 className="text-sm font-semibold text-primary">Other</h3>
                                     </div>
-                                    <p className="mt-1 text-xs text-primary/65">
+                                    <p className="mt-1 text-xs text-muted">
                                         {showBalance ? fmt(uncategorized) : '••••'}
                                         {projectedUncategorized > 0 ? ` • planned ${showBalance ? fmt(projectedUncategorized) : '••••'}` : ''}
                                     </p>
@@ -558,11 +558,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             onTouchMove={dateSwipeHandlers.onTouchMove}
                             onTouchEnd={dateSwipeHandlers.onTouchEnd}
                         >
-                            <button onClick={() => changeMonth(-1)} className="rounded-full border border-transparent p-1.5 text-primary/60 transition-colors hover:border-border/70 hover:bg-background hover:text-primary">
+                            <button onClick={() => changeMonth(-1)} className="rounded-full p-1.5 text-muted transition-colors hover:bg-muted/10 hover:text-primary">
                                 <ChevronLeft className="h-4 w-4" />
                             </button>
-                            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary/65">{monthLabel}</p>
-                            <button onClick={() => changeMonth(1)} className="rounded-full border border-transparent p-1.5 text-primary/60 transition-colors hover:border-border/70 hover:bg-background hover:text-primary">
+                            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">{monthLabel}</p>
+                            <button onClick={() => changeMonth(1)} className="rounded-full p-1.5 text-muted transition-colors hover:bg-muted/10 hover:text-primary">
                                 <ChevronRight className="h-4 w-4" />
                             </button>
                         </div>
@@ -570,7 +570,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setShowBalance(!showBalance)}
-                                className="rounded-2xl border border-border/80 bg-surface p-2 text-primary/65 transition-colors hover:bg-background hover:text-primary"
+                                className="rounded-2xl bg-muted/10 p-2 text-muted transition-colors hover:text-primary"
                             >
                                 {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
@@ -587,18 +587,18 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         <h1 className="text-3xl font-bold tracking-tight text-primary">
                             {showBalance ? fmt(totalNetWorth) : '••••••••'}
                         </h1>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-primary/70">
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
                             <span className="inline-flex items-center gap-1"><TrendingUp className="h-4 w-4 text-emerald-500" /> {showBalance ? fmt(totalIncome) : '••••'}</span>
                             <span className="inline-flex items-center gap-1"><TrendingDown className="h-4 w-4 text-[#FF5722]" /> {showBalance ? fmt(totalExpense) : '••••'}</span>
                             {(totalDebt > 0 || totalSavings > 0 || totalAssets > 0) && (
-                                <span className="text-xs text-primary/55">
+                                <span className="text-xs text-muted/80">
                                     Assets {showBalance ? fmt(totalAssets) : '••'} • Debt {showBalance ? fmt(totalDebt) : '••'} • Savings {showBalance ? fmt(totalSavings || 0) : '••'}
                                 </span>
                             )}
                         </div>
                     </div>
 
-                    <div className="flex rounded-2xl border border-border/80 bg-surface/80 p-1 shadow-sm shadow-black/5">
+                    <div className="flex rounded-2xl bg-black/5 p-1 dark:bg-white/10">
                         {orderedTabs.map((tab) => (
                             <button
                                 key={tab}
@@ -608,7 +608,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     setWalletActionId(null);
                                 }}
                                 className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                                    moneyView === tab ? 'bg-background text-primary shadow-sm' : 'text-primary/60 hover:bg-background/60 hover:text-primary'
+                                    moneyView === tab ? 'bg-surface text-primary shadow-sm' : 'text-primary/50 hover:text-primary'
                                 }`}
                             >
                                 {tab === 'transactions' && <List className="w-4 h-4" />}

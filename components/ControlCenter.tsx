@@ -115,14 +115,14 @@ const CHANGELOG_ENTRIES = [
 const SectionLabel: React.FC<{ title: string; detail?: string }> = ({ title, detail }) => (
     <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/65">{title}</h3>
-            {detail && <p className="mt-1 text-xs text-primary/60">{detail}</p>}
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{title}</h3>
+            {detail && <p className="mt-1 text-xs text-muted">{detail}</p>}
         </div>
     </div>
 );
 
 const GroupCard: React.FC<{ children: React.ReactNode; danger?: boolean }> = ({ children, danger = false }) => (
-    <div className={`overflow-hidden rounded-3xl border shadow-sm shadow-black/5 ${danger ? 'border-red-500/25 bg-red-500/5' : 'border-border/80 bg-surface'}`}>
+    <div className={`overflow-hidden rounded-3xl border ${danger ? 'border-red-500/25 bg-red-500/5' : 'border-border/70 bg-background'}`}>
         {children}
     </div>
 );
@@ -146,13 +146,13 @@ const Row: React.FC<{
     return (
         <Comp
             {...(onClick ? { onClick, type: 'button' as const } : {})}
-            className={`flex w-full items-start justify-between gap-3 px-4 py-4 text-left ${onClick ? 'transition-colors hover:bg-background/70' : ''}`}
+            className={`flex w-full items-start justify-between gap-3 px-4 py-4 text-left ${onClick ? 'transition-colors hover:bg-muted/5' : ''}`}
         >
             <div className="flex min-w-0 flex-1 items-start gap-3">
-                {leading && <div className="mt-0.5 shrink-0 text-primary/60">{leading}</div>}
+                {leading && <div className="mt-0.5 shrink-0 text-muted">{leading}</div>}
                 <div className="min-w-0 flex-1">
                     <p className={`text-sm font-medium ${danger ? 'text-red-500' : 'text-primary'}`}>{title}</p>
-                    {description && <p className={`mt-1 text-xs ${danger ? 'text-red-500/80' : 'text-primary/60'}`}>{description}</p>}
+                    {description && <p className={`mt-1 text-xs ${danger ? 'text-red-500/80' : 'text-muted'}`}>{description}</p>}
                 </div>
             </div>
             {trailing && <div className="shrink-0">{trailing}</div>}
@@ -165,21 +165,21 @@ const Divider = () => <div className="h-px bg-border/70" />;
 const Field: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
     <input
         {...props}
-        className={`w-full rounded-2xl border border-border/90 bg-background px-3 py-3 text-sm text-primary shadow-sm shadow-black/5 placeholder:text-muted/50 focus:border-primary focus:outline-none ${props.className || ''}`}
+        className={`w-full rounded-2xl border border-border bg-surface px-3 py-3 text-sm text-primary placeholder:text-muted/50 focus:border-primary focus:outline-none ${props.className || ''}`}
     />
 );
 
 const Area: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = (props) => (
     <textarea
         {...props}
-        className={`w-full rounded-2xl border border-border/90 bg-background px-3 py-3 text-sm text-primary shadow-sm shadow-black/5 placeholder:text-muted/50 focus:border-primary focus:outline-none ${props.className || ''}`}
+        className={`w-full rounded-2xl border border-border bg-surface px-3 py-3 text-sm text-primary placeholder:text-muted/50 focus:border-primary focus:outline-none ${props.className || ''}`}
     />
 );
 
 const Select: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (props) => (
     <select
         {...props}
-        className={`w-full rounded-2xl border border-border/90 bg-background px-3 py-3 text-sm text-primary shadow-sm shadow-black/5 focus:border-primary focus:outline-none ${props.className || ''}`}
+        className={`w-full rounded-2xl border border-border bg-surface px-3 py-3 text-sm text-primary focus:border-primary focus:outline-none ${props.className || ''}`}
     />
 );
 
@@ -344,9 +344,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                 {statusMeta[activeStatus].icon}
                                 <h3 className="text-lg font-semibold text-primary">{statusMeta[activeStatus].title}</h3>
                             </div>
-                            <p className="mt-2 text-sm text-primary/65">{statusMeta[activeStatus].support}</p>
+                            <p className="mt-2 text-sm text-muted">{statusMeta[activeStatus].support}</p>
                             {pendingCount > 0 && activeStatus === 'synced' && (
-                                <p className="mt-2 text-xs text-primary/60">{pendingCount} parser review item{pendingCount === 1 ? '' : 's'} waiting.</p>
+                                <p className="mt-2 text-xs text-muted">{pendingCount} parser review item{pendingCount === 1 ? '' : 's'} waiting.</p>
                             )}
                         </div>
                         {settingsSaveStatus === 'saved' && (
@@ -357,7 +357,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                     </div>
 
                     {(activeStatus === 'error' || activeStatus === 'local') && (
-                        <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-background p-1 text-xs font-medium text-primary/60 shadow-sm shadow-black/5">
+                        <div className="flex items-center gap-2 rounded-2xl bg-surface p-1 text-xs font-medium text-muted">
                             <button
                                 onClick={() => setSyncMode('merge')}
                                 className={`flex-1 rounded-xl px-3 py-2 transition-colors ${syncMode === 'merge' ? 'bg-background text-primary' : 'hover:text-primary'}`}
@@ -419,14 +419,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                             title={item.label}
                             description={item.desc}
                             leading={item.icon}
-                            trailing={<ChevronRight className="h-4 w-4 text-primary/45" />}
+                            trailing={<ChevronRight className="h-4 w-4 text-muted" />}
                             onClick={() => handleTabChange(item.id as any)}
                         />
                     ))}
                 </div>
             </GroupCard>
 
-            <div className="px-1 pt-1 text-xs text-primary/60">
+            <div className="px-1 pt-1 text-xs text-muted">
                 BrainDump AI v0.3.1
             </div>
         </div>
@@ -1049,7 +1049,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         )}
                                         <h2 className="text-2xl font-bold tracking-tight text-primary">{pageTitle}</h2>
                                     </div>
-                                    <p className="mt-2 text-sm text-primary/65">{pageSubtitle}</p>
+                                    <p className="mt-2 text-sm text-muted">{pageSubtitle}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {activeTab !== 'main' && (
@@ -1063,7 +1063,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         </button>
                                     )}
                                     <button onClick={onClose} className="rounded-full p-2 transition-colors hover:bg-muted/10">
-                                        <X className="h-5 w-5 text-primary/60" />
+                                        <X className="h-5 w-5 text-muted" />
                                     </button>
                                 </div>
                             </div>
