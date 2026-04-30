@@ -517,36 +517,6 @@ const PlanView: React.FC<PlanViewProps> = ({
         );
     };
 
-    const emptyTaskState = taskFocusFilter === 'today'
-        ? {
-            text: 'Nothing due today. Good room for proactive work.',
-            actionLabel: 'Add Task',
-            action: () => handleOpenAddTask(new Date().toISOString().split('T')[0]),
-        }
-        : taskFocusFilter === 'overdue'
-            ? {
-                text: 'No overdue items. Nice — keep it that way.',
-                actionLabel: 'Add Task',
-                action: () => handleOpenAddTask(new Date().toISOString().split('T')[0]),
-            }
-            : taskFocusFilter === 'routine'
-                ? {
-                    text: 'No routine items left in this view.',
-                    actionLabel: 'Add Routine',
-                    action: handleOpenAddRoutine,
-                }
-                : taskFocusFilter === 'done'
-                    ? {
-                        text: 'Nothing completed yet in this month view.',
-                        actionLabel: 'Add Task',
-                        action: () => handleOpenAddTask(new Date().toISOString().split('T')[0]),
-                    }
-                    : {
-                        text: 'Nothing pending in this month view.',
-                        actionLabel: 'Add Task',
-                        action: () => handleOpenAddTask(new Date().toISOString().split('T')[0]),
-                    };
-
     const hero = planSubTab === 'shopping'
         ? {
             title: 'Shopping',
@@ -656,9 +626,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                     {planSubTab === 'tasks' && (
                         taskSections.length > 0 ? taskSections.map(section => renderTaskSection(section.title, section.items, section.tone)) : (
                             <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                                <p className="text-sm text-muted">{emptyTaskState.text}</p>
-                                <button onClick={emptyTaskState.action} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
-                                    <Plus className="h-4 w-4" /> {emptyTaskState.actionLabel}
+                                <p className="text-sm text-muted">No items in this view.</p>
+                                <button onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
+                                    <Plus className="h-4 w-4" /> Add Task
                                 </button>
                             </div>
                         )
@@ -667,7 +637,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     {planSubTab === 'shopping' && (
                         shoppingSections.length > 0 ? shoppingSections.map(section => renderShoppingSection(section.title, section.items, section.tone)) : (
                             <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                                <p className="text-sm text-muted">Shopping queue is clear. Add the next thing before it slips.</p>
+                                <p className="text-sm text-muted">Your shopping queue is empty.</p>
                                 <button onClick={() => handleOpenAddShopping('not_urgent')} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
                                     <Plus className="h-4 w-4" /> Add Item
                                 </button>

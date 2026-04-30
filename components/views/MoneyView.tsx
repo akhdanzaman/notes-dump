@@ -157,9 +157,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
     const activeFilters = useMemo(() => {
         const filters: string[] = [];
-        if (filterTransactionType) {
-            filters.push(`Type: ${filterTransactionType.charAt(0).toUpperCase()}${filterTransactionType.slice(1)}`);
-        }
         if (filterWallet) filters.push(`Wallet: ${filterWallet}`);
         if (filterCategory) filters.push(`Category: ${filterCategory}`);
         if (selectedTag) filters.push(`#${selectedTag}`);
@@ -168,7 +165,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             filters.push(`Amount: ${filterMinAmount || '0'}-${filterMaxAmount || '∞'}`);
         }
         return filters;
-    }, [filterTransactionType, filterWallet, filterCategory, selectedTag, searchQuery, filterMinAmount, filterMaxAmount]);
+    }, [filterWallet, filterCategory, selectedTag, searchQuery, filterMinAmount, filterMaxAmount]);
 
     const cardProps = {
         onUpdate: handleUpdateItem,
@@ -285,27 +282,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             <div className="mt-4">
                 {list.length === 0 ? (
                     <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                        <p className="text-sm text-muted">
-                            {activeFilters.length > 0 || filterTransactionType
-                                ? 'No transactions match the current filters.'
-                                : 'No transactions recorded for this period.'}
-                        </p>
-                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                            <button
-                                onClick={() => onAddItem(ItemType.FINANCE)}
-                                className="inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
-                            >
-                                <Plus className="w-4 h-4" /> Add Transaction
-                            </button>
-                            {clearMoneyFilters && (activeFilters.length > 0 || filterTransactionType) && (
-                                <button
-                                    onClick={clearMoneyFilters}
-                                    className="inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
-                                >
-                                    Clear Filters
-                                </button>
-                            )}
-                        </div>
+                        <p className="text-sm text-muted">No transactions recorded for this period.</p>
+                        <button
+                            onClick={() => onAddItem(ItemType.FINANCE)}
+                            className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
+                        >
+                            <Plus className="w-4 h-4" /> Add Transaction
+                        </button>
                     </div>
                 ) : (
                     <div>{list.map(renderTransactionRow)}</div>
@@ -320,17 +303,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 Wallets: {walletStats.length} • {debtWalletCount} debt account{debtWalletCount === 1 ? '' : 's'}
             </p>
 
-            {walletStats.length === 0 ? (
-                <div className="mt-4 rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-muted">No wallets yet. Add one place where money actually lives.</p>
-                    <button
-                        onClick={handleOpenAddWallet}
-                        className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
-                    >
-                        <Plus className="w-4 h-4" /> Add Wallet
-                    </button>
-                </div>
-            ) : (
             <div className="mt-4 rounded-3xl border border-border/70 bg-surface divide-y divide-border/70">
                 {walletStats.map((wallet) => {
                     const walletSavings = savingGoals
@@ -403,16 +375,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     );
                 })}
             </div>
-            )}
 
-            {walletStats.length > 0 && (
-                <button
-                    onClick={handleOpenAddWallet}
-                    className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-dashed border-border px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-primary/30 hover:text-primary"
-                >
-                    <Plus className="w-4 h-4" /> Add Wallet
-                </button>
-            )}
+            <button
+                onClick={handleOpenAddWallet}
+                className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-dashed border-border px-4 py-2 text-sm font-semibold text-muted transition-colors hover:border-primary/30 hover:text-primary"
+            >
+                <Plus className="w-4 h-4" /> Add Wallet
+            </button>
         </div>
     );
 
@@ -427,21 +396,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
                     >
                         Set Income
-                    </button>
-                </div>
-            );
-        }
-
-        if (budgetConfig.rules.length === 0) {
-            return (
-                <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <AlertCircle className="mx-auto mb-3 h-6 w-6 text-muted" />
-                    <p className="text-sm text-muted">No budget categories yet. Add a few rules before reviewing the breakdown.</p>
-                    <button
-                        onClick={() => setIsSettingsOpen(true)}
-                        className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
-                    >
-                        Open Settings
                     </button>
                 </div>
             );
