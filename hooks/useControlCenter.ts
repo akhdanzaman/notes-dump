@@ -372,6 +372,14 @@ export const useControlCenter = ({
         }
     };
 
+    const handleDisconnectGoogle = () => {
+        if (window.confirm("Sign out from Google on this device?")) {
+            clearGoogleSession();
+            setGoogleProfile(null);
+            if (onRefreshClick) onRefreshClick();
+        }
+    };
+
     const handleSave = async () => {
         // Check if GitHub is being newly connected
         const currentGithub = getGithubConfig();
@@ -561,6 +569,7 @@ export const useControlCenter = ({
         handleGoogleLogin,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
+        handleDisconnectGoogle,
         handleSave,
         handleDisconnectGithub,
         handleConnectionChoice,
