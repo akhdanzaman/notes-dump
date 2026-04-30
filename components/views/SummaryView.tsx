@@ -1,20 +1,29 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { BackHandler } from '../../utils/backHandler';
 import {
-    ArrowRight,
-    BookText,
-    CheckCircle2,
     ChevronLeft,
     ChevronRight,
-    ClipboardCheck,
-    Eye,
-    EyeOff,
-    StickyNote,
-    Wallet as WalletIcon,
-    Zap,
+    Pencil,
+    Target,
+    CheckCircle2,
+    ShoppingCart,
     AlertTriangle,
-    Sparkles,
-    Pencil
+    ArrowRight,
+    Wallet as WalletIcon,
+    EyeOff,
+    Eye,
+    Sprout,
+    StickyNote,
+    Plus,
+    Zap,
+    Coffee,
+    RefreshCw,
+    ChevronDown,
+    ClipboardCheck,
+    AlertCircle,
+    X
 } from 'lucide-react';
 import {
     BrainDumpItem,
@@ -25,16 +34,16 @@ import {
     FinanceType,
     Priority,
     ShoppingCategory,
-    AppSettings,
-    ItemType,
-    ParsingTask
+    AppSettings
 } from '../../types';
 import {
     getFocusMonthData,
     getShoppingItems,
+    getWalletStats,
     getFinanceItems,
     generateInsights
 } from '../../utils/selectors';
+import { generateAIInsights, Insight } from '../../services/insightService';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import Card from '../Card';
@@ -55,11 +64,11 @@ interface SummaryViewProps {
     setPlanSubTab: (tab: any) => void;
     showBalance: boolean;
     setShowBalance: (val: boolean) => void;
+
     handleOpenAddTask: (date?: string) => void;
     handleOpenAddShopping: (category?: ShoppingCategory) => void;
     handleOpenAddExpense: () => void;
     handleOpenAddNote: () => void;
-    onAddItem?: (type: ItemType) => void;
     handleUpdateItem: (
         id: string,
         content: string,
@@ -90,29 +99,16 @@ interface SummaryViewProps {
     pendingReviews?: { id: string; text: string; results: any[] }[];
     handleApproveReview?: (id: string, updatedResults: any[]) => void;
     handleRejectReview?: (id: string) => void;
-    parsingTasks?: ParsingTask[];
+    parsingTasks?: import('../../types').ParsingTask[];
     retryParsing?: (id: string) => void;
     clearParsingTask?: (id: string) => void;
 }
 
-const fmt = (n: number) => new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0
-}).format(n);
-
-const isSameDay = (dateA: Date, dateB: Date) => (
-    dateA.getFullYear() === dateB.getFullYear()
-    && dateA.getMonth() === dateB.getMonth()
-    && dateA.getDate() === dateB.getDate()
-);
-
-const getGreeting = (date: Date) => {
-    const hour = date.getHours();
-    if (hour < 11) return 'Good morning';
-    if (hour < 15) return 'Good afternoon';
-    if (hour < 19) return 'Good evening';
-    return 'Good night';
+type PopupPosition = {
+    top: number;
+    left: number;
+    width: number;
+    transformOrigin: string;
 };
 
 const SummaryView: React.FC<SummaryViewProps> = ({
@@ -134,7 +130,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     handleOpenAddShopping,
     handleOpenAddExpense,
     handleOpenAddNote,
-    onAddItem,
     handleUpdateItem,
     handleDelete,
     pendingReviews = [],
@@ -145,13 +140,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     clearParsingTask
 }) => {
     const swipeHandlers = useSwipeTabs('summary', setActiveTab);
-    const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
-    const [signalExpanded, setSignalExpanded] = useState(false);
 
     const changeThemeMonth = (offset: number) => {
-        const next = new Date(themeNavDate);
-        next.setMonth(next.getMonth() + offset);
-        setThemeNavDate(next);
+        const newDate = new Date(themeNavDate);
+        newDate.setMonth(newDate.getMonth() + offset);
+        setThemeNavDate(newDate);
     };
 
     const dateSwipeHandlers = useSwipeDate(
@@ -159,33 +152,81 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         () => changeThemeMonth(1)
     );
 
-    const today = new Date();
-    const todayIso = today.toISOString().split('T')[0];
-    const { pendingGroups } = getFocusMonthData(items, today, '', '');
+    const todayDate = new Date();
+    const { pendingGroups } = getFocusMonthData(items, todayDate, '', '');
     const { urgent } = getShoppingItems(items);
-    const routines = pendingGroups.routines.filter(item => item.status === 'pending');
-    const todayTasks = pendingGroups.today;
-    const tomorrowItems = pendingGroups.tomorrow;
 
-    const todaySpend = useMemo(() => {
-        return items.reduce((sum, item) => {
-            const isDirectExpense = item.type === ItemType.FINANCE && item.meta.financeType === 'expense';
-            const isImplicitExpense = (item.type === ItemType.SHOPPING || item.type === ItemType.TODO)
-                && item.status === 'done'
-                && !item.meta.isRoutine
-                && !!item.meta.amount;
+    const { displayItems, displayTitle, displaySubtitle, isDoneState } = useMemo(() => {
+        const todayItems = [
+            ...urgent.map(i => ({ ...i, _isUrgentShopping: true })),
+            ...pendingGroups.today
+        ];
 
-            if (!isDirectExpense && !isImplicitExpense) return sum;
-            const rawDate = item.meta.date || item.completed_at || item.created_at;
-            const date = new Date(rawDate);
-            if (Number.isNaN(date.getTime()) || !isSameDay(date, today)) return sum;
-            return sum + (item.meta.amount || 0);
-        }, 0);
-    }, [items, today]);
+        if (todayItems.length > 0) {
+            return {
+                displayItems: todayItems.slice(0, 5),
+                displayTitle: "Today's Focus",
+                displaySubtitle: null,
+                isDoneState: false
+            };
+        }
+
+        if (pendingGroups.tomorrow.length > 0) {
+            return {
+                displayItems: pendingGroups.tomorrow.slice(0, 5),
+                displayTitle: 'Tomorrow',
+                displaySubtitle: "Get a head start on tomorrow's tasks.",
+                isDoneState: false
+            };
+        }
+
+        const pendingRoutines = pendingGroups.routines.filter(r => r.status === 'pending');
+        if (pendingRoutines.length > 0) {
+            return {
+                displayItems: pendingRoutines.slice(0, 5),
+                displayTitle: 'Daily Rituals',
+                displaySubtitle: 'Keep your momentum going.',
+                isDoneState: false
+            };
+        }
+
+        if (pendingGroups.later.length > 0) {
+            return {
+                displayItems: pendingGroups.later.slice(0, 5),
+                displayTitle: 'Upcoming',
+                displaySubtitle: 'Tasks waiting for your attention.',
+                isDoneState: false
+            };
+        }
+
+        const recentDone = items
+            .filter(i => i.type === 'TODO' && i.status === 'done' && i.completed_at)
+            .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
+            .slice(0, 3);
+
+        if (recentDone.length > 0) {
+            return {
+                displayItems: recentDone,
+                displayTitle: 'Recently Completed',
+                displaySubtitle: "Great job! You're all caught up.",
+                isDoneState: true
+            };
+        }
+
+        return {
+            displayItems: [],
+            displayTitle: 'All Clear',
+            displaySubtitle: 'Take a break or plan ahead.',
+            isDoneState: false
+        };
+    }, [items, pendingGroups, urgent]);
+
+    const pendingRoutines = pendingGroups.routines.filter(r => r.status === 'pending');
+    const showRitualsSection = pendingRoutines.length > 0 && displayTitle !== 'Daily Rituals';
 
     const { totalExpense } = getFinanceItems(
         items,
-        today,
+        todayDate,
         budgetConfig,
         '',
         '',
@@ -196,403 +237,809 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         '',
         'newest'
     );
+    const { totalNetWorth } = getWalletStats(items, wallets);
 
-    const totalBudgetLimit = budgetConfig.rules.reduce(
-        (acc, rule) => acc + ((rule.percentage / 100) * budgetConfig.monthlyIncome),
+    const totalLimits = budgetConfig.rules.reduce(
+        (acc, rule) => acc + (rule.percentage / 100) * budgetConfig.monthlyIncome,
         0
     );
-    const budgetPercent = totalBudgetLimit > 0 ? (totalExpense / totalBudgetLimit) * 100 : 0;
+
+    const fmt = (n: number) =>
+        new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            maximumFractionDigits: 0
+        }).format(n);
+
+    const budgetPercent = totalLimits > 0 ? Math.min(100, (totalExpense / totalLimits) * 100) : 0;
+
+    const getThemeForDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const key = `${year}-${month}`;
+        return { key, content: monthlyThemes[key] || '' };
+    };
+
+    const { content: themeContent } = getThemeForDate(themeNavDate);
 
     const localInsights = useMemo(
         () => generateInsights(items, budgetConfig, wallets, skills),
         [items, budgetConfig, wallets, skills]
     );
 
-    const themeKey = `${themeNavDate.getFullYear()}-${String(themeNavDate.getMonth() + 1).padStart(2, '0')}`;
-    const themeContent = monthlyThemes[themeKey] || '';
-    const themeMonthLabel = themeNavDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    const [aiInsights, setAiInsights] = useState<Insight[]>(() => {
+        const saved = localStorage.getItem('braindump_ai_insights');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch {
+                return [];
+            }
+        }
+        return [];
+    });
 
-    const focusFeed = useMemo(() => {
-        const queue: BrainDumpItem[] = [];
-        const seen = new Set<string>();
-        const pushUnique = (item: BrainDumpItem) => {
-            if (seen.has(item.id)) return;
-            seen.add(item.id);
-            queue.push(item);
+    const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [hasNewNotification, setHasNewNotification] = useState(() => {
+        return localStorage.getItem('braindump_has_new_notification') === 'true';
+    });
+
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+    useEffect(() => {
+        if (isNotificationOpen) {
+            return BackHandler.register(() => {
+                setIsNotificationOpen(false);
+                return true;
+            });
+        }
+    }, [isNotificationOpen]);
+
+    useEffect(() => {
+        if (isReviewOpen) {
+            return BackHandler.register(() => {
+                setIsReviewOpen(false);
+                return true;
+            });
+        }
+    }, [isReviewOpen]);
+
+    const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
+    const reviewButtonRef = useRef<HTMLButtonElement | null>(null);
+    const popupRef = useRef<HTMLDivElement | null>(null);
+    const reviewPopupRef = useRef<HTMLDivElement | null>(null);
+
+    const [popupPosition, setPopupPosition] = useState<PopupPosition>({
+        top: 72,
+        left: 16,
+        width: 380,
+        transformOrigin: 'top right'
+    });
+
+    const [reviewPopupPosition, setReviewPopupPosition] = useState<PopupPosition>({
+        top: 72,
+        left: 16,
+        width: 500,
+        transformOrigin: 'top right'
+    });
+
+    const updatePopupPosition = () => {
+        const buttonEl = notificationButtonRef.current;
+        if (!buttonEl) return;
+
+        const rect = buttonEl.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        const horizontalMargin = 16;
+        const verticalGap = 8;
+        const popupOffsetY = -6;
+        const preferredWidth = 380;
+        const minWidth = 280;
+
+        const width = Math.min(
+            preferredWidth,
+            Math.max(minWidth, viewportWidth - horizontalMargin * 2)
+        );
+
+        let left = rect.right - width;
+        left = Math.max(horizontalMargin, left);
+        left = Math.min(left, viewportWidth - width - horizontalMargin);
+
+        const estimatedHeight = Math.min(480, viewportHeight * 0.6);
+
+
+        let top = rect.bottom + verticalGap + popupOffsetY;
+
+        if (top + estimatedHeight > viewportHeight - 16) {
+            top = Math.max(16, rect.top - estimatedHeight - verticalGap);
+        }
+
+        const originX = Math.min(width - 24, Math.max(24, rect.right - left - rect.width / 2));
+        const originY = top > rect.top ? 0 : estimatedHeight;
+
+        setPopupPosition({
+            top,
+            left,
+            width,
+            transformOrigin: `${originX}px ${originY}px`
+        });
+    };
+
+    const updateReviewPopupPosition = () => {
+        const buttonEl = reviewButtonRef.current;
+        if (!buttonEl) return;
+
+        const rect = buttonEl.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        const horizontalMargin = 16;
+        const verticalGap = 8;
+        const popupOffsetY = -6;
+        const preferredWidth = 500;
+        const minWidth = 320;
+
+        const width = Math.min(
+            preferredWidth,
+            Math.max(minWidth, viewportWidth - horizontalMargin * 2)
+        );
+
+        let left = rect.right - width;
+        left = Math.max(horizontalMargin, left);
+        left = Math.min(left, viewportWidth - width - horizontalMargin);
+
+        const estimatedHeight = Math.min(600, viewportHeight * 0.7);
+
+        let top = rect.bottom + verticalGap + popupOffsetY;
+
+        if (top + estimatedHeight > viewportHeight - 16) {
+            top = Math.max(16, rect.top - estimatedHeight - verticalGap);
+        }
+
+        const originX = Math.min(width - 24, Math.max(24, rect.right - left - rect.width / 2));
+        const originY = top > rect.top ? 0 : estimatedHeight;
+
+        setReviewPopupPosition({
+            top,
+            left,
+            width,
+            transformOrigin: `${originX}px ${originY}px`
+        });
+    };
+
+    const fetchAIInsights = async (force = false) => {
+        const lastFetched = localStorage.getItem('braindump_ai_insights_date');
+        const today = new Date().toDateString();
+
+        if (!force && (!appSettings.enableDailyInsight || lastFetched === today)) {
+            return;
+        }
+
+        setIsLoadingInsights(true);
+        const generated = await generateAIInsights(
+            items,
+            budgetConfig,
+            wallets,
+            skills,
+            appSettings.insightModel
+        );
+
+        if (generated.length > 0) {
+            setAiInsights(generated);
+            localStorage.setItem('braindump_ai_insights', JSON.stringify(generated));
+            localStorage.setItem('braindump_ai_insights_date', today);
+            setHasNewNotification(true);
+            localStorage.setItem('braindump_has_new_notification', 'true');
+        }
+
+        setIsLoadingInsights(false);
+    };
+
+    const handleOpenNotification = () => {
+        updatePopupPosition();
+        setIsNotificationOpen(true);
+        setHasNewNotification(false);
+        localStorage.setItem('braindump_has_new_notification', 'false');
+    };
+
+    const handleCloseNotification = () => {
+        setIsNotificationOpen(false);
+    };
+
+    const handleOpenReview = () => {
+        updateReviewPopupPosition();
+        setIsReviewOpen(true);
+    };
+
+    const handleCloseReview = () => {
+        setIsReviewOpen(false);
+    };
+
+    useLayoutEffect(() => {
+        if (!isNotificationOpen) return;
+
+        updatePopupPosition();
+
+        const handleWindowChange = () => {
+            updatePopupPosition();
         };
 
-        urgent.forEach(pushUnique);
-        todayTasks.forEach(pushUnique);
-        routines.forEach(pushUnique);
-        if (queue.length === 0) tomorrowItems.forEach(pushUnique);
+        window.addEventListener('resize', handleWindowChange);
+        window.addEventListener('scroll', handleWindowChange, true);
 
-        return queue.slice(0, 3);
-    }, [urgent, todayTasks, routines, tomorrowItems]);
-
-    const hero = useMemo(() => {
-        const urgentCount = urgent.length;
-        const todayCount = todayTasks.length;
-        const routineCount = routines.length;
-        const totalAttention = urgentCount + todayCount;
-
-        const spendLine = todaySpend > 0
-            ? `Spend today ${showBalance ? fmt(todaySpend) : '••••'}`
-            : budgetPercent >= 75
-                ? `Month spend at ${budgetPercent.toFixed(0)}% of budget`
-                : 'Month spend is on track';
-
-        if (totalAttention > 0) {
-            return {
-                title: `${totalAttention} thing${totalAttention > 1 ? 's' : ''} need you today`,
-                support: [
-                    todayCount > 0 ? `${todayCount} task${todayCount > 1 ? 's' : ''}` : null,
-                    urgentCount > 0 ? `${urgentCount} urgent purchase${urgentCount > 1 ? 's' : ''}` : null,
-                ].filter(Boolean).join(' • '),
-                metric: spendLine,
-                primaryLabel: 'Open Today',
-                onPrimary: () => {
-                    setActiveTab('plan');
-                    setPlanSubTab(todayCount > 0 ? 'tasks' : 'shopping');
-                },
-                secondaryLabel: '+ Capture',
-                onSecondary: handleOpenAddNote,
-            };
-        }
-
-        if (routineCount > 0) {
-            return {
-                title: `You’re mostly clear today`,
-                support: `Only ${routineCount} routine${routineCount > 1 ? 's' : ''} left`,
-                metric: spendLine,
-                primaryLabel: 'See Routine',
-                onPrimary: () => {
-                    setActiveTab('plan');
-                    setPlanSubTab('tasks');
-                },
-                secondaryLabel: '+ Capture',
-                onSecondary: handleOpenAddNote,
-            };
-        }
-
-        return {
-            title: 'Nothing urgent right now',
-            support: 'Good time to plan or capture ideas',
-            metric: budgetPercent >= 75 ? spendLine : null,
-            primaryLabel: '+ New Note',
-            onPrimary: handleOpenAddNote,
-            secondaryLabel: 'View Plan',
-            onSecondary: () => {
-                setActiveTab('plan');
-                setPlanSubTab('tasks');
-            },
+        return () => {
+            window.removeEventListener('resize', handleWindowChange);
+            window.removeEventListener('scroll', handleWindowChange, true);
         };
-    }, [urgent.length, todayTasks.length, routines.length, todaySpend, showBalance, budgetPercent, handleOpenAddNote, setActiveTab, setPlanSubTab]);
+    }, [isNotificationOpen]);
 
-    const reviewCount = pendingReviews.length + parsingTasks.length;
-    const primaryInsight = localInsights[0];
+    useLayoutEffect(() => {
+        if (!isReviewOpen) return;
 
-    const signal = useMemo(() => {
-        if (reviewCount > 0) {
-            return {
-                kind: 'review' as const,
-                eyebrow: 'Signal',
-                title: `${reviewCount} item${reviewCount > 1 ? 's' : ''} need review`,
-                body: pendingReviews.length > 0
-                    ? `${pendingReviews.length} parser draft${pendingReviews.length > 1 ? 's' : ''} waiting for approval`
-                    : `${parsingTasks.length} parsing task${parsingTasks.length > 1 ? 's are' : ' is'} blocked or still processing`,
-                cta: signalExpanded ? 'Hide review' : 'Open review',
-                icon: <ClipboardCheck className="h-4 w-4" />,
-            };
+        updateReviewPopupPosition();
+
+        const handleWindowChange = () => {
+            updateReviewPopupPosition();
+        };
+
+        window.addEventListener('resize', handleWindowChange);
+        window.addEventListener('scroll', handleWindowChange, true);
+
+        return () => {
+            window.removeEventListener('resize', handleWindowChange);
+            window.removeEventListener('scroll', handleWindowChange, true);
+        };
+    }, [isReviewOpen]);
+
+    useEffect(() => {
+        if (items.length > 0) {
+            fetchAIInsights();
         }
 
-        if (budgetPercent >= 75 && totalBudgetLimit > 0) {
-            return {
-                kind: 'budget' as const,
-                eyebrow: 'Signal',
-                title: `${themeMonthLabel} spend is at ${budgetPercent.toFixed(0)}% of budget`,
-                body: `${showBalance ? fmt(totalExpense) : '••••'} used${budgetConfig.monthlyIncome > 0 ? ` out of ${showBalance ? fmt(totalBudgetLimit) : '••••'}` : ''}`,
-                cta: 'Open Money',
-                icon: <AlertTriangle className="h-4 w-4" />,
-            };
-        }
+        const intervalId = setInterval(() => {
+            if (items.length > 0) {
+                fetchAIInsights();
+            }
+        }, 60 * 60 * 1000);
 
-        if (primaryInsight) {
-            return {
-                kind: 'insight' as const,
-                eyebrow: 'Signal',
-                title: primaryInsight.title,
-                body: primaryInsight.message,
-                cta: primaryInsight.iconType === 'finance' ? 'Open Money' : primaryInsight.iconType === 'skill' ? 'Open Library' : 'Open Plan',
-                icon: <Sparkles className="h-4 w-4" />,
-            };
-        }
+        return () => clearInterval(intervalId);
+    }, [items.length, budgetConfig, wallets, skills, appSettings.enableDailyInsight]);
 
-        if (themeContent) {
-            return {
-                kind: 'theme' as const,
-                eyebrow: `${themeMonthLabel} theme`,
-                title: themeContent,
-                body: 'Keep this close while planning the month.',
-                cta: 'Edit',
-                icon: <Pencil className="h-4 w-4" />,
-            };
-        }
-
-        return null;
-    }, [reviewCount, pendingReviews.length, parsingTasks.length, signalExpanded, budgetPercent, totalBudgetLimit, themeMonthLabel, showBalance, totalExpense, budgetConfig.monthlyIncome, primaryInsight, themeContent]);
+    const displayInsights = aiInsights.length > 0 ? aiInsights : localInsights;
 
     const cardProps = {
+        onToggleStatus: handleToggleStatus,
         onUpdate: handleUpdateItem,
         onDelete: handleDelete,
-        onToggleStatus: handleToggleStatus,
         enableCollapse: true,
-        defaultCollapsed: appSettings.defaultCollapsed,
-        hideMoney: appSettings.hideMoney,
+        defaultCollapsed: true,
+        skills,
         wallets,
         budgetRules: budgetConfig.rules,
-        noStrikethrough: false,
-        noDarken: false,
-        className: 'mb-0',
-    };
-
-    const openSignal = () => {
-        if (!signal) return;
-
-        if (signal.kind === 'review') {
-            setSignalExpanded(current => !current);
-            return;
-        }
-
-        if (signal.kind === 'budget') {
-            setActiveTab('money');
-            return;
-        }
-
-        if (signal.kind === 'insight') {
-            if (primaryInsight?.iconType === 'finance') {
-                setActiveTab('money');
-            } else if (primaryInsight?.iconType === 'skill') {
-                setActiveTab('library');
-            } else {
-                setActiveTab('plan');
-                setPlanSubTab(primaryInsight?.iconType === 'shopping' ? 'shopping' : 'tasks');
-            }
-            return;
-        }
-
-        if (signal.kind === 'theme') {
-            onThemeEdit(themeContent);
-        }
-    };
-
-    const renderFocusMeta = (item: BrainDumpItem) => {
-        if (urgent.some(entry => entry.id === item.id)) return 'Shopping • urgent';
-        if (routines.some(entry => entry.id === item.id)) return 'Routine';
-        if (tomorrowItems.some(entry => entry.id === item.id)) return 'Tomorrow';
-        if (item.type === ItemType.EVENT) return 'Event • today';
-        return 'Task • today';
+        onResetRoutine: (id: string) => {}
     };
 
     return (
-        <div className="pb-24" onTouchStart={swipeHandlers.onTouchStart} onTouchMove={swipeHandlers.onTouchMove} onTouchEnd={swipeHandlers.onTouchEnd}>
-            <motion.div style={swipeHandlers.style} className="will-change-transform">
-                <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 pb-4 pt-safe backdrop-blur">
-                    <div className="pb-5 pt-4">
-                        <p className="text-sm font-medium text-muted">{getGreeting(today)}</p>
-                        <h1 className="mt-2 text-3xl font-bold tracking-tight text-primary">{hero.title}</h1>
-                        <p className="mt-2 text-sm text-muted">{hero.support}</p>
-                        {hero.metric && <p className="mt-1 text-sm text-muted/80">{hero.metric}</p>}
-                        <div className="mt-4 flex items-center gap-2">
-                            <button
-                                onClick={hero.onPrimary}
-                                className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-                            >
-                                {hero.primaryLabel}
-                            </button>
-                            <button
-                                onClick={hero.onSecondary}
-                                className="inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
-                            >
-                                {hero.secondaryLabel}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                        {[
-                            { label: 'Note', icon: <StickyNote className="h-4 w-4" />, onClick: handleOpenAddNote },
-                            { label: 'Task', icon: <CheckCircle2 className="h-4 w-4" />, onClick: () => handleOpenAddTask(todayIso) },
-                            { label: 'Expense', icon: <WalletIcon className="h-4 w-4" />, onClick: handleOpenAddExpense },
-                            { label: 'Journal', icon: <BookText className="h-4 w-4" />, onClick: () => onAddItem ? onAddItem(ItemType.JOURNAL) : handleOpenAddNote() },
-                        ].map(action => (
-                            <button
-                                key={action.label}
-                                onClick={action.onClick}
-                                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border/70 bg-surface px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-muted/10"
-                            >
-                                {action.icon}
-                                {action.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="space-y-6 px-4 pt-4">
-                    <section>
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                            <div>
-                                <h2 className="text-base font-semibold text-primary">Today</h2>
-                                <p className="mt-1 text-sm text-muted">Top things worth your attention right now.</p>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setActiveTab('plan');
-                                    setPlanSubTab('tasks');
-                                }}
-                                className="inline-flex items-center gap-1 text-sm font-semibold text-muted transition-colors hover:text-primary"
-                            >
-                                View all <ArrowRight className="h-4 w-4" />
-                            </button>
+        <div className="pb-24">
+            <motion.div
+                layoutId="top-container"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-6 touch-pan-y"
+                transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                onTouchStart={swipeHandlers.onTouchStart}
+                onTouchMove={swipeHandlers.onTouchMove}
+                onTouchEnd={swipeHandlers.onTouchEnd}
+                style={{ x: swipeHandlers.dragOffset }}
+            >
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: 'linear' }}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-sm font-bold opacity-60 uppercase tracking-wider">
+                            <div className="w-2 h-2 rounded-full bg-black"></div>
+                            Dashboard
                         </div>
 
-                        {focusFeed.length === 0 ? (
-                            <div className="rounded-3xl border border-dashed border-border px-6 py-10 text-center">
-                                <p className="text-sm text-muted">Nothing urgent here. Capture something or plan ahead.</p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-border/70 rounded-3xl border border-border/70 bg-surface">
-                                {focusFeed.map(item => {
-                                    const isExpanded = expandedItemId === item.id;
-                                    return (
-                                        <div key={item.id} className="px-4 py-4 first:pt-5 last:pb-5">
-                                            <button
-                                                type="button"
-                                                onClick={() => setExpandedItemId(current => current === item.id ? null : item.id)}
-                                                className="w-full text-left"
-                                            >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-sm font-medium text-primary line-clamp-1">{item.content}</p>
-                                                        <p className="mt-1 text-xs text-muted">{renderFocusMeta(item)}</p>
-                                                    </div>
-                                                    <Zap className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
-                                                </div>
-                                            </button>
-
-                                            <AnimatePresence initial={false}>
-                                                {isExpanded && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, height: 0 }}
-                                                        animate={{ opacity: 1, height: 'auto' }}
-                                                        exit={{ opacity: 0, height: 0 }}
-                                                        transition={{ duration: 0.18 }}
-                                                        className="overflow-hidden"
-                                                    >
-                                                        <div className="pt-3">
-                                                            <Card item={item} {...cardProps} />
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </section>
-
-                    {signal && (
-                        <section>
-                            <div className="rounded-3xl border border-border/70 bg-surface p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
-                                            {signal.icon}
-                                            {signal.eyebrow}
-                                        </p>
-                                        <h3 className="mt-2 text-base font-semibold text-primary">{signal.title}</h3>
-                                        <p className="mt-1 text-sm text-muted">{signal.body}</p>
-                                    </div>
-                                    {signal.kind === 'budget' && (
-                                        <button
-                                            onClick={() => setShowBalance(!showBalance)}
-                                            className="rounded-2xl bg-muted/10 p-2 text-muted transition-colors hover:text-primary"
-                                        >
-                                            {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </button>
-                                    )}
-                                </div>
-
-                                {signal.kind === 'theme' && (
-                                    <div
-                                        className="mt-3 flex items-center gap-2 text-sm text-muted"
-                                        onTouchStart={dateSwipeHandlers.onTouchStart}
-                                        onTouchMove={dateSwipeHandlers.onTouchMove}
-                                        onTouchEnd={dateSwipeHandlers.onTouchEnd}
-                                    >
-                                        <button onClick={() => changeThemeMonth(-1)} className="rounded-full p-1 transition-colors hover:bg-muted/10 hover:text-primary">
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </button>
-                                        <span>{themeMonthLabel}</span>
-                                        <button onClick={() => changeThemeMonth(1)} className="rounded-full p-1 transition-colors hover:bg-muted/10 hover:text-primary">
-                                            <ChevronRight className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                )}
-
+                        <div className="flex items-center gap-2">
+                            <div
+                                className="flex items-center bg-black/5 rounded-full p-1 touch-pan-y"
+                                onTouchStart={dateSwipeHandlers.onTouchStart}
+                                onTouchMove={dateSwipeHandlers.onTouchMove}
+                                onTouchEnd={dateSwipeHandlers.onTouchEnd}
+                            >
                                 <button
-                                    onClick={openSignal}
-                                    className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
+                                    onClick={() => changeThemeMonth(-1)}
+                                    className="p-2 hover:bg-black/5 rounded-full"
                                 >
-                                    {signal.cta}
+                                    <ChevronLeft className="w-4 h-4" />
                                 </button>
 
-                                {signal.kind === 'review' && signalExpanded && (
-                                    <div className="mt-4 space-y-3">
-                                        {parsingTasks.length > 0 && (
-                                            <div className="space-y-2">
-                                                {parsingTasks.map(task => (
-                                                    <div key={task.id} className="rounded-2xl border border-border/70 bg-background px-4 py-3">
-                                                        <div className="flex items-start justify-between gap-3">
+                                <AnimatePresence mode="wait">
+                                    <motion.span
+                                        key={themeNavDate.toISOString()}
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -10 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="px-2 text-sm font-bold min-w-[80px] text-center"
+                                    >
+                                        {themeNavDate.toLocaleDateString(undefined, {
+                                            month: 'short',
+                                            year: 'numeric'
+                                        })}
+                                    </motion.span>
+                                </AnimatePresence>
+
+                                <button
+                                    onClick={() => changeThemeMonth(1)}
+                                    className="p-2 hover:bg-black/5 rounded-full"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <button
+                                ref={reviewButtonRef}
+                                onClick={handleOpenReview}
+                                className="relative flex items-center justify-center bg-black/5 rounded-full h-[36px] w-[36px] hover:bg-black/10 transition-colors"
+                                aria-label="Open review center"
+                            >
+                                <ClipboardCheck className="w-[18px] h-[18px]" strokeWidth={2} />
+                                {((pendingReviews && pendingReviews.length > 0) || (parsingTasks && parsingTasks.length > 0)) && (
+                                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-indigo-500 rounded-full border border-surface"></span>
+                                )}
+                            </button>
+
+                            <button
+                                ref={notificationButtonRef}
+                                onClick={handleOpenNotification}
+                                className="relative flex items-center justify-center bg-black/5 rounded-full h-[36px] w-[36px] hover:bg-black/10 transition-colors"
+                                aria-label="Open notifications"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                                </svg>
+
+                                {hasNewNotification && (
+                                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-surface"></span>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                            <h1 className="text-3xl font-bold mb-1 tracking-tight leading-tight">
+                                {themeContent ? `"${themeContent}"` : 'Set a theme...'}
+                            </h1>
+                            <button
+                                onClick={() => onThemeEdit(themeContent)}
+                                className="text-sm font-medium opacity-50 hover:opacity-100 flex items-center gap-1 mt-2"
+                            >
+                                <Pencil className="w-3 h-3" /> Edit Theme
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            </motion.div>
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="px-4 space-y-8"
+            >
+                <section>
+                    <div className="grid grid-cols-4 gap-3">
+                        <button
+                            onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
+                            className="flex flex-col items-center gap-2 group"
+                        >
+                            <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
+                                <Plus className="w-6 h-6" />
+                            </div>
+                            <span className="text-xs font-medium opacity-70">Task</span>
+                        </button>
+
+                        <button
+                            onClick={() => handleOpenAddShopping()}
+                            className="flex flex-col items-center gap-2 group"
+                        >
+                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
+                                <ShoppingCart className="w-6 h-6" />
+                            </div>
+                            <span className="text-xs font-medium opacity-70">Buy</span>
+                        </button>
+
+                        <button
+                            onClick={handleOpenAddNote}
+                            className="flex flex-col items-center gap-2 group"
+                        >
+                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
+                                <StickyNote className="w-6 h-6" />
+                            </div>
+                            <span className="text-xs font-medium opacity-70">Note</span>
+                        </button>
+
+                        <button
+                            onClick={handleOpenAddExpense}
+                            className="flex flex-col items-center gap-2 group"
+                        >
+                            <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
+                                <WalletIcon className="w-6 h-6" />
+                            </div>
+                            <span className="text-xs font-medium opacity-70">Expense</span>
+                        </button>
+                    </div>
+                </section>
+
+                <section>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex flex-col">
+                            <h2 className="text-lg font-bold flex items-center gap-2">
+                                {displayTitle}
+                            </h2>
+                            {displaySubtitle && (
+                                <p className="text-xs opacity-50 font-medium mt-0.5">
+                                    {displaySubtitle}
+                                </p>
+                            )}
+                        </div>
+
+                        <button
+                            onClick={() => setActiveTab('plan')}
+                            className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider"
+                        >
+                            View All
+                        </button>
+                    </div>
+
+                    {displayItems.length > 0 ? (
+                        <div className={`space-y-3 ${isDoneState ? 'opacity-60 grayscale' : ''}`}>
+                            {displayItems.map(item => (
+                                <Card key={item.id} item={item} {...cardProps} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
+                            <p className="text-muted font-medium">All clear!</p>
+                            <p className="text-xs opacity-50 mt-1">Take a break or plan ahead.</p>
+                        </div>
+                    )}
+                </section>
+
+                {showRitualsSection && (
+                    <section>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold flex items-center gap-2">Rituals</h2>
+                        </div>
+
+                        <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                            {pendingRoutines.map(routine => (
+                                <button
+                                    key={routine.id}
+                                    onClick={() => handleToggleStatus(routine.id)}
+                                    className="flex-shrink-0 flex flex-col items-center gap-2 min-w-[72px]"
+                                >
+                                    <div className="w-16 h-16 bg-surface border-2 border-indigo-500/20 rounded-full flex items-center justify-center transition-all hover:border-indigo-500 hover:bg-indigo-500/10">
+                                        <CheckCircle2 className="w-6 h-6 text-indigo-500 opacity-50" />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-center line-clamp-2 w-full opacity-70 leading-tight">
+                                        {routine.content}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                <section onClick={() => setActiveTab('money')} className="cursor-pointer group">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                            Financials
+                        </h2>
+                        <ArrowRight className="w-4 h-4 opacity-30 group-hover:opacity-100 transition-opacity" />
+                    </div>
+
+                    <div className="bg-surface text-primary rounded-[24px] p-5 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-5 opacity-5">
+                            <WalletIcon className="w-24 h-24" />
+                        </div>
+
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-end mb-2">
+                                <div>
+                                    <p className="text-sm font-medium opacity-60 mb-1">Net Worth</p>
+                                    <div className="text-2xl font-bold flex items-center gap-2">
+                                        {showBalance ? fmt(totalNetWorth) : '••••••••'}
+                                        <button
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setShowBalance(!showBalance);
+                                            }}
+                                            className="opacity-50 hover:opacity-100"
+                                        >
+                                            {showBalance ? (
+                                                <EyeOff className="w-4 h-4" />
+                                            ) : (
+                                                <Eye className="w-4 h-4" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-6">
+                                <div className="flex justify-between text-xs font-medium mb-2 opacity-80">
+                                    <span>Monthly Spending</span>
+                                    <span>{budgetPercent.toFixed(0)}% of Budget</span>
+                                </div>
+                                <div className="h-2 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full ${
+                                            budgetPercent > 100 ? 'bg-red-500' : 'bg-emerald-500'
+                                        }`}
+                                        style={{ width: `${budgetPercent}%` }}
+                                    />
+                                </div>
+                                <div className="flex justify-between text-[10px] mt-1 opacity-50">
+                                    <span>{fmt(totalExpense)}</span>
+                                    <span>{fmt(totalLimits)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {typeof window !== 'undefined' &&
+                    createPortal(
+                        <AnimatePresence>
+                            {isNotificationOpen && (
+                                <>
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={handleCloseNotification}
+                                        className="fixed inset-0 bg-black/30 z-[9998]"
+                                    />
+
+                                    <motion.div
+                                        ref={popupRef}
+                                        initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                                        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                                        className="fixed bg-surface border border-border rounded-3xl z-[9999] overflow-hidden flex flex-col max-h-[60vh]"
+                                        style={{
+                                            top: popupPosition.top,
+                                            left: popupPosition.left,
+                                            width: popupPosition.width,
+                                            transformOrigin: popupPosition.transformOrigin
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between p-4 border-b border-border">
+                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                                                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                                                </svg>
+                                                Notifications
+                                            </h3>
+
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => fetchAIInsights(true)}
+                                                    disabled={isLoadingInsights}
+                                                    className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
+                                                >
+                                                    <RefreshCw className={`w-4 h-4 ${isLoadingInsights ? 'animate-spin' : ''}`} />
+                                                </button>
+
+                                                <button
+                                                    onClick={handleCloseNotification}
+                                                    className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+                                                >
+                                                    <ChevronDown className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 overflow-y-auto space-y-3">
+                                            {displayInsights.length > 0 ? (
+                                                displayInsights.map((insight, idx) => {
+                                                    let bgColor = 'bg-black/5 dark:bg-white/10';
+                                                    let iconColor = 'text-zinc-500';
+                                                    let Icon = AlertTriangle;
+
+                                                    if (insight.type === 'warning') {
+                                                        bgColor = 'bg-red-500/10 border border-red-500/20';
+                                                        iconColor = 'text-red-500';
+                                                        Icon = AlertTriangle;
+                                                    } else if (insight.type === 'success') {
+                                                        bgColor = 'bg-emerald-500/10 border border-emerald-500/20';
+                                                        iconColor = 'text-emerald-500';
+                                                        Icon = CheckCircle2;
+                                                    } else {
+                                                        bgColor = 'bg-blue-500/10 border border-blue-500/20';
+                                                        iconColor = 'text-blue-500';
+                                                        if (insight.iconType === 'task') Icon = Target;
+                                                        else if (insight.iconType === 'finance') Icon = WalletIcon;
+                                                        else if (insight.iconType === 'shopping') Icon = ShoppingCart;
+                                                        else if (insight.iconType === 'skill') Icon = Sprout;
+                                                    }
+
+                                                    return (
+                                                        <div key={idx} className={`p-4 rounded-2xl flex items-start gap-3 ${bgColor}`}>
+                                                            <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${iconColor}`} />
                                                             <div>
-                                                                <p className="text-sm font-medium text-primary">{task.text}</p>
-                                                                <p className="mt-1 text-xs text-muted">
-                                                                    {task.status === 'failed'
-                                                                        ? (task.error || 'Parsing failed')
-                                                                        : task.status === 'pending'
-                                                                            ? 'Still processing'
-                                                                            : 'Processed'}
-                                                                </p>
+                                                                <h3 className="text-sm font-bold mb-0.5">{insight.title}</h3>
+                                                                <p className="text-xs opacity-70 leading-relaxed">{insight.message}</p>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="text-center py-8 opacity-50">
+                                                    <p className="text-sm">No new notifications</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                            
+                            {isReviewOpen && (
+                                <>
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={handleCloseReview}
+                                        className="fixed inset-0 bg-black/30 z-[9998]"
+                                    />
+
+                                    <motion.div
+                                        ref={reviewPopupRef}
+                                        initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                                        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                                        className="fixed bg-surface border border-border rounded-3xl z-[9999] overflow-hidden flex flex-col max-h-[70vh] shadow-2xl"
+                                        style={{
+                                            top: reviewPopupPosition.top,
+                                            left: reviewPopupPosition.left,
+                                            width: reviewPopupPosition.width,
+                                            transformOrigin: reviewPopupPosition.transformOrigin
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between p-4 border-b border-border bg-surface shrink-0 z-10">
+                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                <ClipboardCheck className="w-5 h-5 text-indigo-500" />
+                                                Review Center
+                                            </h3>
+
+                                            <div className="flex items-center gap-2">
+                                                {pendingReviews && pendingReviews.length > 0 && (
+                                                    <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
+                                                        {pendingReviews.length} Pending
+                                                    </span>
+                                                )}
+                                                <button
+                                                    onClick={handleCloseReview}
+                                                    className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors ml-2"
+                                                >
+                                                    <ChevronDown className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="overflow-y-auto px-4 py-4 bg-background">
+                                            {parsingTasks && parsingTasks.length > 0 && (
+                                                <div className="mb-6 flex flex-col gap-2">
+                                                    <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Parsing Queue</span>
+                                                    {parsingTasks.map(task => (
+                                                        <div key={task.id} className="flex items-center justify-between bg-surface border border-border rounded-lg p-3 shadow-sm">
+                                                            <div className="flex flex-col gap-1 overflow-hidden flex-1 border-r border-border/50 pr-2">
+                                                                <span className="text-sm font-medium text-primary truncate" title={task.text}>"{task.text}"</span>
+                                                                 <div className="flex items-center gap-2">
+                                                                     {task.status === 'pending' && (
+                                                                         <span className="text-xs text-amber-500 flex items-center gap-1 font-medium">
+                                                                             <RefreshCw className="w-3 h-3 animate-spin" />
+                                                                             Parsing... {task.stage ? `(${task.stage})` : ''}
+                                                                         </span>
+                                                                     )}
+                                                                     {task.status === 'failed' && (
+                                                                         <span className="text-xs text-red-500 flex items-center gap-1 font-medium" title={task.error}>
+                                                                             <AlertCircle className="w-3 h-3" />
+                                                                             Failed
+                                                                         </span>
+                                                                     )}
+                                                                     {task.status === 'success' && (
+                                                                         <span className="text-xs text-emerald-500 flex items-center gap-1 font-medium">
+                                                                             <CheckCircle2 className="w-3 h-3" />
+                                                                             Success
+                                                                         </span>
+                                                                     )}
+                                                                 </div>
+                                                            </div>
+                                                            <div className="flex items-center">
                                                                 {task.status === 'failed' && retryParsing && (
-                                                                    <button onClick={() => retryParsing(task.id)} className="text-xs font-semibold text-indigo-500">Retry</button>
+                                                                    <button
+                                                                        onClick={() => retryParsing(task.id)}
+                                                                        className="ml-2 shrink-0 px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md text-xs font-bold transition-colors"
+                                                                    >
+                                                                        Retry
+                                                                    </button>
                                                                 )}
-                                                                {clearParsingTask && (
-                                                                    <button onClick={() => clearParsingTask(task.id)} className="text-xs font-semibold text-muted">Dismiss</button>
+                                                                {task.status !== 'pending' && clearParsingTask && (
+                                                                    <button
+                                                                        onClick={() => clearParsingTask(task.id)}
+                                                                        className="ml-2 p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                                                                        title="Dismiss"
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
                                                                 )}
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                    ))}
+                                                </div>
+                                            )}
 
-                                        {pendingReviews.length > 0 && handleApproveReview && handleRejectReview && (
-                                            <div className="-mx-4">
-                                                <PendingReviewList
-                                                    reviews={pendingReviews}
-                                                    onApprove={handleApproveReview}
-                                                    onReject={handleRejectReview}
+                                            {pendingReviews && pendingReviews.length > 0 ? (
+                                                <PendingReviewList 
+                                                    reviews={pendingReviews} 
+                                                    onApprove={(id, res) => {
+                                                        if (handleApproveReview) handleApproveReview(id, res);
+                                                    }} 
+                                                    onReject={(id) => {
+                                                        if (handleRejectReview) handleRejectReview(id);
+                                                    }}
                                                 />
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </section>
+                                            ) : (
+                                                (!parsingTasks || parsingTasks.length === 0) && (
+                                                    <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
+                                                        <div className="w-12 h-12 rounded-full border border-current flex items-center justify-center mb-3">
+                                                            <CheckCircle2 className="w-6 h-6" />
+                                                        </div>
+                                                        <p className="text-sm font-bold">All caught up!</p>
+                                                        <p className="text-xs mt-1">No entries awaiting review.</p>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>,
+                        document.body
                     )}
-                </div>
             </motion.div>
         </div>
     );
