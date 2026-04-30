@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory } from '../../types';
+import {
+    ShoppingCart,
+    PiggyBank,
+    Trash2,
+    Plus,
+    ChevronLeft,
+    ChevronRight,
+    X,
+    ListTodo,
+    ArrowRight,
+    MoreHorizontal
+} from 'lucide-react';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, ItemType } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import Card from '../Card';
 import ShoppingItem from '../ShoppingItem';
@@ -13,26 +24,24 @@ interface PlanViewProps {
     skills: Skill[];
     planSubTab: PlanSubTab;
     setPlanSubTab: (tab: PlanSubTab) => void;
-    
     focusDate: Date;
     setFocusDate: (d: Date) => void;
-    
     appSettings: AppSettings;
     handleToggleStatus: (id: string) => void;
     handleDelete: (id: string) => void;
     handleUpdateItem: (
-        id: string, 
-        newContent: string, 
-        newTags: string[], 
-        newAmount?: number, 
-        newDate?: string, 
-        newPaymentMethod?: string, 
-        newBudgetCategory?: string, 
-        newDuration?: number, 
-        newSkillId?: string, 
-        newToWallet?: string, 
-        newFinanceType?: FinanceType, 
-        newProgress?: number, 
+        id: string,
+        newContent: string,
+        newTags: string[],
+        newAmount?: number,
+        newDate?: string,
+        newPaymentMethod?: string,
+        newBudgetCategory?: string,
+        newDuration?: number,
+        newSkillId?: string,
+        newToWallet?: string,
+        newFinanceType?: FinanceType,
+        newProgress?: number,
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
@@ -53,11 +62,8 @@ interface PlanViewProps {
     handleOpenAddSkill: () => void;
     setDeleteId: (id: string) => void;
     setDeleteType: (type: 'skill' | 'wallet' | null) => void;
-    
     searchQuery: string;
     selectedTag: string;
-    
-    // Context
     wallets: Wallet[];
     budgetRules: BudgetRule[];
     handleResetRoutine: (id: string) => void;
@@ -65,6 +71,26 @@ interface PlanViewProps {
     onCompleteGoal: (goal: BrainDumpItem) => void;
     setActiveTab: (tab: Tab) => void;
 }
+
+const fmt = (n: number) => new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+}).format(n);
+
+const formatDueLine = (item: BrainDumpItem) => {
+    if (!item.meta.date) return item.meta.isRoutine ? 'Routine' : 'No date';
+    const date = new Date(item.meta.date);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const tomorrowStart = todayStart + 86400000;
+    const itemStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+    if (item.meta.isRoutine) return 'Routine';
+    if (itemStart < todayStart) return item.type === ItemType.EVENT ? 'Event • overdue' : 'Task • overdue';
+    if (itemStart < tomorrowStart) return item.type === ItemType.EVENT ? 'Event • today' : 'Task • today';
+    return `${item.type === ItemType.EVENT ? 'Event' : 'Task'} • ${date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}`;
+};
 
 const PlanView: React.FC<PlanViewProps> = ({
     items, skills, planSubTab, setPlanSubTab,
@@ -74,27 +100,30 @@ const PlanView: React.FC<PlanViewProps> = ({
     searchQuery, selectedTag,
     wallets, budgetRules, handleResetRoutine, onAddFunds, onCompleteGoal, setActiveTab
 }) => {
-    
-    // Data Preparation
-    const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
-    const { today, tomorrow, later, routines } = pendingGroups;
-    
-    const { urgent, routine, normal, savings } = getShoppingItems(items);
-    const isShoppingEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
+    void skills;
+    void handleOpenEditSkill;
+    void handleOpenAddSkill;
+    void setDeleteId;
+    void setDeleteType;
 
+    const swipeHandlers = useSwipeTabs('plan', setActiveTab);
+    const [taskFocusFilter, setTaskFocusFilter] = useState<'all' | 'today' | 'overdue' | 'routine' | 'done'>('all');
+    const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+    const [expandedShoppingId, setExpandedShoppingId] = useState<string | null>(null);
+    const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
     const [addFundsModal, setAddFundsModal] = useState<{ isOpen: boolean, goalId: string, goalName: string, defaultWallet?: string } | null>(null);
     const [fundAmount, setFundAmount] = useState('');
     const [fundWallet, setFundWallet] = useState('');
     const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
+    const [editContent, setEditContent] = useState('');
+    const [editAmount, setEditAmount] = useState('');
+    const [editDate, setEditDate] = useState('');
+    const [editDedicatedWalletId, setEditDedicatedWalletId] = useState('');
 
-    // Main Tab Swipe Logic
-    const swipeHandlers = useSwipeTabs('plan', setActiveTab);
-
-    // Date Swipe Logic
     const changeMonth = (offset: number) => {
-        const newDate = new Date(focusDate);
-        newDate.setMonth(newDate.getMonth() + offset);
-        setFocusDate(newDate);
+        const next = new Date(focusDate);
+        next.setMonth(next.getMonth() + offset);
+        setFocusDate(next);
     };
 
     const dateSwipeHandlers = useSwipeDate(
@@ -102,62 +131,77 @@ const PlanView: React.FC<PlanViewProps> = ({
         () => changeMonth(1)
     );
 
-    // Sub-Tab Swipe State
-    const [dragOffset, setDragOffset] = useState(0);
-    const [isDragging, setIsDragging] = useState(false);
-    const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
-    const isHorizontalSwipe = React.useRef<boolean | null>(null);
+    const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
+    const { today, tomorrow, later, routines } = pendingGroups;
+    const routinePending = routines.filter(item => item.status === 'pending');
 
-    const tabs: PlanSubTab[] = ['tasks', 'shopping', 'savings'];
-    const activeIndex = tabs.indexOf(planSubTab);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const overdueItems = today.filter(item => {
+        if (!item.meta.date || item.meta.isRoutine || item.status !== 'pending') return false;
+        return new Date(item.meta.date).getTime() < todayStart;
+    });
+    const todayItems = today.filter(item => !overdueItems.some(overdue => overdue.id === item.id));
 
-    const onTouchStart = (e: React.TouchEvent) => {
-        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        setIsDragging(true);
-        isHorizontalSwipe.current = null;
-    };
-
-    const onTouchMove = (e: React.TouchEvent) => {
-        if (!touchStartRef.current) return;
-        
-        const dx = e.touches[0].clientX - touchStartRef.current.x;
-        const dy = e.touches[0].clientY - touchStartRef.current.y;
-        
-        if (isHorizontalSwipe.current === null) {
-             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
-                 isHorizontalSwipe.current = true;
-             } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
-                 isHorizontalSwipe.current = false;
-             }
+    const taskSections = useMemo(() => {
+        if (taskFocusFilter === 'done') {
+            return doneList.length > 0 ? [{ title: 'Completed', items: doneList.slice(0, 10), tone: 'done' as const }] : [];
+        }
+        if (taskFocusFilter === 'overdue') {
+            return overdueItems.length > 0 ? [{ title: 'Overdue', items: overdueItems, tone: 'urgent' as const }] : [];
+        }
+        if (taskFocusFilter === 'today') {
+            return todayItems.length > 0 ? [{ title: 'Today', items: todayItems, tone: 'default' as const }] : [];
+        }
+        if (taskFocusFilter === 'routine') {
+            return routinePending.length > 0 ? [{ title: 'Routine', items: routinePending, tone: 'muted' as const }] : [];
         }
 
-        if (isHorizontalSwipe.current) {
-            // Resistance
-            if ((activeIndex === 0 && dx > 0) || (activeIndex === tabs.length - 1 && dx < 0)) {
-                setDragOffset(dx * 0.3);
-            } else {
-                setDragOffset(dx);
-            }
-        }
-    };
+        const sections: { title: string; items: BrainDumpItem[]; tone: 'urgent' | 'default' | 'muted' | 'done' }[] = [];
+        if (overdueItems.length > 0) sections.push({ title: 'Overdue', items: overdueItems, tone: 'urgent' });
+        if (todayItems.length > 0) sections.push({ title: 'Today', items: todayItems, tone: 'default' });
+        if (routinePending.length > 0) sections.push({ title: 'Routine', items: routinePending, tone: 'muted' });
+        if (sections.length === 0 && tomorrow.length > 0) sections.push({ title: 'Tomorrow', items: tomorrow, tone: 'default' });
+        if (sections.length < 2 && later.length > 0) sections.push({ title: sections.length === 0 ? 'Upcoming' : 'Later', items: later.slice(0, 6), tone: 'muted' });
+        return sections;
+    }, [taskFocusFilter, doneList, overdueItems, todayItems, routinePending, tomorrow, later]);
 
-    const onTouchEnd = () => {
-        setIsDragging(false);
-        const threshold = window.innerWidth * 0.25;
+    const { urgent, routine, normal, savings } = getShoppingItems(items);
+    const shoppingSections = [
+        { title: 'Urgent', items: urgent, tone: 'urgent' as const },
+        { title: 'Routine', items: routine, tone: 'muted' as const },
+        { title: 'Later', items: normal, tone: 'default' as const },
+    ].filter(section => section.items.length > 0);
 
-        if (isHorizontalSwipe.current && Math.abs(dragOffset) > threshold) {
-            if (dragOffset < 0 && activeIndex < tabs.length - 1) {
-                setPlanSubTab(tabs[activeIndex + 1]);
-            }
-            if (dragOffset > 0 && activeIndex > 0) {
-                setPlanSubTab(tabs[activeIndex - 1]);
-            }
-        }
-        
-        setDragOffset(0);
-        touchStartRef.current = null;
-        isHorizontalSwipe.current = null;
-    };
+    const shoppingEstimatedTotal = [...urgent, ...routine, ...normal].reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+    const totalShoppingItems = urgent.length + routine.length + normal.length;
+
+    const savingsGoals = useMemo(() => {
+        return [...savings].sort((a, b) => {
+            const aTarget = a.meta.amount || 0;
+            const bTarget = b.meta.amount || 0;
+            const aProgress = aTarget > 0 ? (a.meta.savedAmount || 0) / aTarget : 0;
+            const bProgress = bTarget > 0 ? (b.meta.savedAmount || 0) / bTarget : 0;
+            if (a.status !== b.status) return a.status === 'done' ? 1 : -1;
+            return bProgress - aProgress;
+        });
+    }, [savings]);
+
+    const totalSaved = savingsGoals.reduce((sum, goal) => sum + (goal.meta.savedAmount || 0), 0);
+    const nearTargetCount = savingsGoals.filter(goal => {
+        const target = goal.meta.amount || 0;
+        if (!target) return false;
+        return ((goal.meta.savedAmount || 0) / target) >= 0.75 && goal.status !== 'done';
+    }).length;
+
+    const monthLabel = focusDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    const taskHeroSupport = overdueItems.length > 0
+        ? `${summary.todo} pending • ${overdueItems.length} overdue`
+        : todayItems.length > 0
+            ? `${summary.todo} pending • ${todayItems.length} due today`
+            : routinePending.length > 0
+                ? `${summary.todo} pending • ${routinePending.length} routine left`
+                : `${summary.todo} pending • ${doneList.length} done recently`;
 
     const handleSaveFunds = () => {
         if (!addFundsModal || !fundAmount || !fundWallet) return;
@@ -168,635 +212,500 @@ const PlanView: React.FC<PlanViewProps> = ({
         setFundDate(new Date().toISOString().split('T')[0]);
     };
 
-    const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
-    const [editContent, setEditContent] = useState('');
-    const [editAmount, setEditAmount] = useState('');
-    const [editDate, setEditDate] = useState('');
-    const [editDedicatedWalletId, setEditDedicatedWalletId] = useState('');
-
-    const handleSaveEdit = (goal: BrainDumpItem) => {
+    const handleSaveGoalEdit = (goal: BrainDumpItem) => {
         handleUpdateItem(
             goal.id,
             editContent,
             goal.meta.tags || [],
             Number(editAmount),
-            new Date(editDate).toISOString(),
+            editDate ? new Date(editDate).toISOString() : undefined,
             goal.meta.paymentMethod,
             goal.meta.budgetCategory,
             goal.meta.durationMinutes,
             goal.meta.skillId,
             goal.meta.toWallet,
-            'saving',
+            goal.meta.financeType,
             goal.meta.progress,
             goal.meta.progressNotes,
             goal.meta.shoppingCategory,
             goal.meta.recurrenceDays,
             goal.meta.quantity,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
+            goal.meta.isRoutine,
+            goal.meta.routineInterval,
+            goal.meta.routineDaysOfWeek,
+            goal.meta.routineDaysOfMonth,
+            goal.meta.routineMonthsOfYear,
             undefined,
             editDedicatedWalletId
         );
         setExpandedGoalId(null);
     };
 
-    const renderGoalCard = (goal: BrainDumpItem) => {
-        const target = goal.meta.amount || 0;
-        const saved = goal.meta.savedAmount || 0;
-        const progress = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
-        const isDone = goal.status === 'done';
-        const isExpanded = expandedGoalId === goal.id;
-        
-        const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
-
-        return (
-            <motion.div 
-                layout={!isDragging}
-                transition={{ type: "tween", duration: 0.3 }}
-                key={goal.id} 
-                className={`bg-surface rounded-[24px] overflow-hidden ${isDone ? 'opacity-60' : ''}`}
-            >
-                <div 
-                    className="p-5 cursor-pointer"
-                    onClick={() => {
-                        if (isExpanded) {
-                            setExpandedGoalId(null);
-                        } else {
-                            setExpandedGoalId(goal.id);
-                            setEditContent(goal.content);
-                            setEditAmount(goal.meta.amount?.toString() || '');
-                            setEditDate(goal.meta.date ? goal.meta.date.split('T')[0] : new Date().toISOString().split('T')[0]);
-                            setEditDedicatedWalletId(goal.meta.dedicatedWalletId || '');
-                        }
-                    }}
-                >
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                            <h4 className="font-bold text-lg text-primary">{goal.content}</h4>
-                            <div className="flex items-baseline gap-2 mt-1">
-                                <span className="text-xl font-bold text-indigo-500">{fmt(saved)}</span>
-                                <span className="text-sm text-muted font-medium">/ {fmt(target)}</span>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            {isDone ? (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); handleToggleStatus(goal.id); }}
-                                    className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
-                                >
-                                    <CheckCircle2 className="w-5 h-5" />
-                                </button>
-                            ) : (
-                                <>
-                                    <button 
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            setAddFundsModal({ isOpen: true, goalId: goal.id, goalName: goal.content, defaultWallet: goal.meta.dedicatedWalletId });
-                                            if (goal.meta.dedicatedWalletId) setFundWallet(goal.meta.dedicatedWalletId);
-                                        }}
-                                        className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl hover:bg-indigo-500/20 transition-colors"
-                                    >
-                                        <Plus className="w-5 h-5" />
-                                    </button>
-                                    {progress >= 100 && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); onCompleteGoal(goal); }}
-                                            className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
-                                        >
-                                            <CheckCircle2 className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="w-full h-3 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                        <div 
-                            className={`h-full transition-all duration-1000 ease-out ${progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                            style={{ width: `${progress}%` }}
-                        />
-                    </div>
-                    
-                    <div className="flex justify-between items-center mt-3">
-                        <span className="text-xs font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Complete</span>
-                        {goal.meta.date && (
-                            <span className="text-xs font-medium text-muted flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                Target: {new Date(goal.meta.date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                <AnimatePresence>
-                    {isExpanded && (
-                        <motion.div 
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="border-t border-border bg-black/5 dark:bg-white/10"
-                        >
-                            <div className="p-5 space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Goal Name</label>
-                                    <input 
-                                        type="text"
-                                        value={editContent}
-                                        onChange={e => setEditContent(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Target Amount</label>
-                                        <input 
-                                            type="number"
-                                            value={editAmount}
-                                            onChange={e => setEditAmount(e.target.value)}
-                                            className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Target Date</label>
-                                        <input 
-                                            type="date"
-                                            value={editDate}
-                                            onChange={e => setEditDate(e.target.value)}
-                                            className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Dedicated Wallet (Optional)</label>
-                                    <select 
-                                        value={editDedicatedWalletId}
-                                        onChange={e => setEditDedicatedWalletId(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500 appearance-none"
-                                    >
-                                        <option value="">None</option>
-                                        {wallets.map(w => (
-                                            <option key={w.id} value={w.id}>{w.name}</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-[10px] text-muted mt-1">If set, funds can only be added from this wallet.</p>
-                                </div>
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <button 
-                                        onClick={() => handleDelete(goal.id)}
-                                        className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                        onClick={() => handleSaveEdit(goal)}
-                                        className="px-4 py-2 bg-indigo-500 text-white rounded-xl text-sm font-bold hover:bg-indigo-600 transition-colors"
-                                    >
-                                        Save Changes
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </motion.div>
-        );
-    };
-
     const cardProps = {
-        onToggleStatus: handleToggleStatus,
         onUpdate: handleUpdateItem,
         onDelete: handleDelete,
+        onToggleStatus: handleToggleStatus,
         enableCollapse: true,
         defaultCollapsed: appSettings.defaultCollapsed,
         hideMoney: appSettings.hideMoney,
-        skills,
         wallets,
         budgetRules,
-        onResetRoutine: handleResetRoutine
+        noStrikethrough: false,
+        noDarken: false,
+        className: 'mb-0',
     };
 
-    return (
-        <div className="min-h-[50vh] overflow-hidden pb-20">
-            {/* Top Container */}
-            <motion.div 
-                layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
-                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                onTouchStart={swipeHandlers.onTouchStart}
-                onTouchMove={swipeHandlers.onTouchMove}
-                onTouchEnd={swipeHandlers.onTouchEnd}
-                style={{ x: swipeHandlers.dragOffset }}
-            >
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2, ease: "linear" }}
-                >
-                    <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
-                        <button 
-                            onClick={() => setPlanSubTab('tasks')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'tasks' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
-                        >
-                            <CheckCircle2 className="w-4 h-4" /> Tasks
-                        </button>
-                        <button 
-                            onClick={() => setPlanSubTab('shopping')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'shopping' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
-                        >
-                            <ShoppingCart className="w-4 h-4" /> Shopping
-                        </button>
-                        <button 
-                            onClick={() => setPlanSubTab('savings')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'savings' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
-                        >
-                            <PiggyBank className="w-4 h-4" /> Goals
-                        </button>
-                    </div>
+    const renderTaskSection = (title: string, sectionItems: BrainDumpItem[], tone: 'urgent' | 'default' | 'muted' | 'done') => {
+        const titleClass = tone === 'urgent'
+            ? 'text-red-500'
+            : tone === 'muted'
+                ? 'text-muted'
+                : tone === 'done'
+                    ? 'text-muted'
+                    : 'text-primary';
 
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={planSubTab}
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -10 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            {planSubTab === 'tasks' && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">
-                                                {focusDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
-                                            </h2>
-                                            <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span>{summary.todo} Pending</span>
-                                                <span>•</span>
-                                                <span className="text-emerald-500">{summary.done} Done</span>
-                                                <span>•</span>
-                                                <span className="text-indigo-500">{routines?.length || 0} Routines</span>
+        return (
+            <section key={title}>
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className={`text-sm font-semibold uppercase tracking-[0.14em] ${titleClass}`}>{title}</h3>
+                    <span className="text-xs text-muted">{sectionItems.length}</span>
+                </div>
+                <div className="divide-y divide-border/70 rounded-3xl border border-border/70 bg-surface">
+                    {sectionItems.map(item => {
+                        const isExpanded = expandedTaskId === item.id;
+                        return (
+                            <div key={item.id} className="px-4 py-4 first:pt-5 last:pb-5">
+                                <button type="button" onClick={() => setExpandedTaskId(current => current === item.id ? null : item.id)} className="w-full text-left">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`text-sm font-medium line-clamp-1 ${tone === 'done' ? 'text-muted line-through' : 'text-primary'}`}>{item.content}</p>
+                                            <p className="mt-1 text-xs text-muted">{formatDueLine(item)}</p>
+                                        </div>
+                                        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+                                    </div>
+                                </button>
+                                <AnimatePresence initial={false}>
+                                    {isExpanded && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.18 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="pt-3">
+                                                <Card item={item} {...cardProps} />
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        );
+                    })}
+                </div>
+            </section>
+        );
+    };
+
+    const renderShoppingSection = (title: string, sectionItems: BrainDumpItem[], tone: 'urgent' | 'default' | 'muted') => {
+        const headingClass = tone === 'urgent' ? 'text-red-500' : tone === 'muted' ? 'text-indigo-500' : 'text-primary';
+        return (
+            <section key={title}>
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className={`text-sm font-semibold uppercase tracking-[0.14em] ${headingClass}`}>{title}</h3>
+                    <span className="text-xs text-muted">{sectionItems.length}</span>
+                </div>
+                <div className="divide-y divide-border/70 rounded-3xl border border-border/70 bg-surface">
+                    {sectionItems.map(item => {
+                        const isExpanded = expandedShoppingId === item.id;
+                        return (
+                            <div key={item.id} className="px-4 py-4 first:pt-5 last:pb-5">
+                                <button type="button" onClick={() => setExpandedShoppingId(current => current === item.id ? null : item.id)} className="w-full text-left">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium text-primary line-clamp-1">{item.content}</p>
+                                            <p className="mt-1 text-xs text-muted">
+                                                {item.meta.quantity || (title === 'Routine' ? 'Routine restock' : title === 'Urgent' ? 'Need this soon' : 'Not urgent')}
                                             </p>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => changeMonth(-1)} className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors">
-                                                <ChevronLeft className="w-5 h-5" />
-                                            </button>
-                                            <button onClick={() => changeMonth(1)} className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors">
-                                                <ChevronRight className="w-5 h-5" />
-                                            </button>
+                                        <div className="shrink-0 text-right">
+                                            {item.meta.amount ? <p className="text-sm font-semibold text-primary">{fmt(item.meta.amount)}</p> : <p className="text-xs text-muted">Detail</p>}
                                         </div>
                                     </div>
-                                    
-                                    
-                                </div>
-                            )}
-                            {planSubTab === 'shopping' && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">Shopping List</h2>
-                                            <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span className="text-red-500">{urgent.length} Urgent</span>
-                                                <span>•</span>
-                                                <span className="text-indigo-500">{routine.length} Routine</span>
-                                                <span>•</span>
-                                                <span>{normal.length} Normal</span>
-                                            </p>
+                                </button>
+                                <AnimatePresence initial={false}>
+                                    {isExpanded && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.18 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="pt-3">
+                                                <ShoppingItem
+                                                    item={item}
+                                                    onToggleStatus={handleToggleStatus}
+                                                    onDelete={handleDelete}
+                                                    onUpdate={handleUpdateItem}
+                                                    wallets={wallets}
+                                                    budgetRules={budgetRules}
+                                                    onResetRoutine={handleResetRoutine}
+                                                />
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        );
+                    })}
+                </div>
+            </section>
+        );
+    };
+
+    const renderSavingsList = () => {
+        if (savingsGoals.length === 0) {
+            return (
+                <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
+                    <p className="text-sm text-muted">No saving goals yet.</p>
+                    <button
+                        onClick={() => handleOpenAddShopping('saving')}
+                        className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
+                    >
+                        <Plus className="h-4 w-4" /> Create Goal
+                    </button>
+                </div>
+            );
+        }
+
+        return (
+            <div className="divide-y divide-border/70 rounded-3xl border border-border/70 bg-surface">
+                {savingsGoals.map(goal => {
+                    const target = goal.meta.amount || 0;
+                    const saved = goal.meta.savedAmount || 0;
+                    const progress = target > 0 ? Math.min((saved / target) * 100, 100) : 0;
+                    const isExpanded = expandedGoalId === goal.id;
+                    const isDone = goal.status === 'done';
+
+                    return (
+                        <div key={goal.id} className={`px-4 py-4 first:pt-5 last:pb-5 ${isDone ? 'opacity-60' : ''}`}>
+                            <div className="flex items-start justify-between gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (isExpanded) {
+                                            setExpandedGoalId(null);
+                                            return;
+                                        }
+                                        setExpandedGoalId(goal.id);
+                                        setEditContent(goal.content);
+                                        setEditAmount(goal.meta.amount?.toString() || '');
+                                        setEditDate(goal.meta.date ? goal.meta.date.split('T')[0] : '');
+                                        setEditDedicatedWalletId(goal.meta.dedicatedWalletId || '');
+                                    }}
+                                    className="min-w-0 flex-1 text-left"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium text-primary line-clamp-1">{goal.content}</p>
+                                            <p className="mt-1 text-xs text-muted">{fmt(saved)} / {fmt(target)}</p>
                                         </div>
+                                        <p className="shrink-0 text-sm font-semibold text-primary">{progress.toFixed(0)}%</p>
                                     </div>
+                                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-black/8 dark:bg-white/10">
+                                        <div className={`h-full rounded-full ${progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }} />
+                                    </div>
+                                </button>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    {!isDone && (
+                                        <button
+                                            onClick={() => {
+                                                setAddFundsModal({ isOpen: true, goalId: goal.id, goalName: goal.content, defaultWallet: goal.meta.dedicatedWalletId });
+                                                setFundWallet(goal.meta.dedicatedWalletId || '');
+                                            }}
+                                            className="rounded-xl bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
+                                        >
+                                            Add funds
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setExpandedGoalId(current => current === goal.id ? null : goal.id)}
+                                        className="rounded-xl p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary"
+                                    >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </button>
                                 </div>
-                            )}
-                            {planSubTab === 'savings' && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">Goals & Savings</h2>
-                                            <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span>{savings.length} Goals</span>
-                                                <span>•</span>
-                                                <span className="text-emerald-500">
-                                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(savings.reduce((acc, curr) => acc + (curr.meta.savedAmount || 0), 0))} Saved
-                                                </span>
-                                            </p>
+                            </div>
+
+                            <AnimatePresence initial={false}>
+                                {isExpanded && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.18 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="space-y-3 pt-4">
+                                            <div>
+                                                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-muted">Goal name</label>
+                                                <input
+                                                    type="text"
+                                                    value={editContent}
+                                                    onChange={e => setEditContent(e.target.value)}
+                                                    className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-primary focus:border-indigo-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-muted">Target</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editAmount}
+                                                        onChange={e => setEditAmount(e.target.value)}
+                                                        className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-primary focus:border-indigo-500 focus:outline-none"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-muted">Target date</label>
+                                                    <input
+                                                        type="date"
+                                                        value={editDate}
+                                                        onChange={e => setEditDate(e.target.value)}
+                                                        className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-primary focus:border-indigo-500 focus:outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-muted">Dedicated wallet</label>
+                                                <select
+                                                    value={editDedicatedWalletId}
+                                                    onChange={e => setEditDedicatedWalletId(e.target.value)}
+                                                    className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-primary focus:border-indigo-500 focus:outline-none"
+                                                >
+                                                    <option value="">None</option>
+                                                    {wallets.map(wallet => (
+                                                        <option key={wallet.id} value={wallet.id}>{wallet.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2 pt-1">
+                                                <button onClick={() => handleDelete(goal.id)} className="inline-flex items-center gap-2 rounded-xl border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/10">
+                                                    <Trash2 className="h-4 w-4" /> Delete
+                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {!isDone && progress >= 100 && (
+                                                        <button onClick={() => onCompleteGoal(goal)} className="rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90">
+                                                            Complete
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => handleSaveGoalEdit(goal)} className="rounded-xl bg-indigo-500 px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90">
+                                                        Save
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
-                </motion.div>
-            </motion.div>
-
-            {/* Sliding Container */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
-                className="touch-pan-y"
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={onTouchEnd}
-            >
-                <motion.div 
-                    className="flex w-full will-change-transform"
-                    style={{
-                        transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
-                        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
-                    }}
-                >
-                {/* VIEW: Tasks */}
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
-                >
-                    <div className="space-y-8">
-                        {summary.todo > 0 ? (
-                            <div className="space-y-8">
-                                <section>
-                                    <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
-                                            <span className="bg-red-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Today
-                                        </h3>
-                                        <button 
-                                            onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} 
-                                            className="p-1 hover:bg-red-500/10 text-red-500 rounded-md transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    {today.length > 0 ? (
-                                        <div className="space-y-3">{today?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
-                                    ) : (
-                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                                    )}
-                                </section>
-
-                                <section>
-                                    <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
-                                            <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Routines
-                                        </h3>
-                                        <button 
-                                            onClick={handleOpenAddRoutine}
-                                            className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    {routines && routines.length > 0 ? (
-                                        <div className="space-y-3">{routines?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
-                                    ) : (
-                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                                    )}
-                                </section>
-
-                                <section>
-                                    <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider">Tomorrow</h3>
-                                        <button 
-                                            onClick={() => handleOpenAddTask(new Date(Date.now() + 86400000).toISOString().split('T')[0])} 
-                                            className="p-1 hover:bg-acc-event/10 text-acc-event rounded-md transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    {tomorrow.length > 0 ? (
-                                        <div className="space-y-3">{tomorrow?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
-                                    ) : (
-                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                                    )}
-                                </section>
-
-                                <section>
-                                    <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
-                                        <button 
-                                            onClick={() => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0])} 
-                                            className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    {later.length > 0 ? (
-                                        <div className="space-y-3">{later?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
-                                    ) : (
-                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                                    )}
-                                </section>
-                            </div>
-                        ) : (
-                            summary.todo === 0 && (
-                                <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
-                                    <p className="text-muted font-medium">No pending tasks for this month.</p>
-                                    <div className="flex gap-3">
-                                        <button 
-                                            onClick={() => handleOpenAddTask()} 
-                                            className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" /> Add Task
-                                        </button>
-                                        <button 
-                                            onClick={handleOpenAddRoutine}
-                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" /> Add Routine
-                                        </button>
-                                    </div>
-                                </div>
-                            )
-                        )}
-                    </div>
-                </motion.div>
-
-                {/* VIEW: Shopping */}
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
-                >
-                    <div className="space-y-8">
-                        <section>
-                            <div className="flex items-center justify-between mb-3 pl-1">
-                                <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="bg-red-500/10 p-1 rounded-md"><ShoppingCart className="w-3 h-3" /></span> Urgent
-                                </h3>
-                                <button 
-                                    onClick={() => handleOpenAddShopping('urgent')}
-                                    className="p-1 hover:bg-red-500/10 text-red-500 rounded-md transition-colors"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                </button>
-                            </div>
-                            {urgent.length > 0 ? (
-                                <div className="space-y-3">{urgent?.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} />)}</div>
-                            ) : (
-                                <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                            )}
-                        </section>
-
-                        <section>
-                            <div className="flex items-center justify-between mb-3 pl-1">
-                                <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="bg-indigo-500/10 p-1 rounded-md"><History className="w-3 h-3" /></span> Routine
-                                </h3>
-                                <button 
-                                    onClick={() => handleOpenAddShopping('routine')}
-                                    className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                </button>
-                            </div>
-                            {routine.length > 0 ? (
-                                <div className="space-y-3">{routine?.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} onResetRoutine={handleResetRoutine} />)}</div>
-                            ) : (
-                                <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                            )}
-                        </section>
-
-                        <section>
-                            <div className="flex items-center justify-between mb-3 pl-1">
-                                <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Normal</h3>
-                                <button 
-                                    onClick={() => handleOpenAddShopping('not_urgent')}
-                                    className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                </button>
-                            </div>
-                            {normal.length > 0 ? (
-                                <div className="space-y-3">{normal?.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} />)}</div>
-                            ) : (
-                                <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                            )}
-                        </section>
-
-                        {isShoppingEmpty && (
-                            <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
-                                <p className="text-muted font-medium">Your shopping list is empty.</p>
-                                <button 
-                                    onClick={() => handleOpenAddShopping('not_urgent')} 
-                                    className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
-                                >
-                                    <Plus className="w-4 h-4" /> Add Item
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
-
-                {/* VIEW: Savings */}
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
-                >
-                    <div className="flex items-center justify-between mb-4 pl-1">
-                        <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider">Saving Goals</h3>
-                        <button 
-                            onClick={() => handleOpenAddShopping('saving')}
-                            className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
-                    </div>
-
-                    {savings.length > 0 ? (
-                        <div className="space-y-4">
-                            {savings?.map(goal => renderGoalCard(goal))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
-                            <p className="text-muted font-medium">No saving goals yet.</p>
-                            <button 
-                                onClick={() => handleOpenAddShopping('saving')} 
-                                className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
+                    );
+                })}
+            </div>
+        );
+    };
+
+    const hero = planSubTab === 'shopping'
+        ? {
+            title: 'Shopping',
+            support: `${totalShoppingItems} item${totalShoppingItems === 1 ? '' : 's'}${shoppingEstimatedTotal > 0 ? ` • Est. total ${fmt(shoppingEstimatedTotal)}` : ''}`,
+            primaryLabel: '+ Add Item',
+            onPrimary: () => handleOpenAddShopping('not_urgent' as ShoppingCategory),
+            secondaryLabel: null as string | null,
+            secondaryAction: null as (() => void) | null,
+        }
+        : planSubTab === 'savings'
+            ? {
+                title: 'Savings',
+                support: `${fmt(totalSaved)} saved${nearTargetCount > 0 ? ` • ${nearTargetCount} near target` : ''}`,
+                primaryLabel: '+ Create Goal',
+                onPrimary: () => handleOpenAddShopping('saving'),
+                secondaryLabel: null as string | null,
+                secondaryAction: null as (() => void) | null,
+            }
+            : {
+                title: 'Today in focus',
+                support: taskHeroSupport,
+                primaryLabel: '+ Add Task',
+                onPrimary: () => handleOpenAddTask(new Date().toISOString().split('T')[0]),
+                secondaryLabel: '+ Routine',
+                secondaryAction: handleOpenAddRoutine,
+            };
+
+    return (
+        <div className="pb-24" onTouchStart={swipeHandlers.onTouchStart} onTouchMove={swipeHandlers.onTouchMove} onTouchEnd={swipeHandlers.onTouchEnd}>
+            <motion.div style={swipeHandlers.style} className="will-change-transform">
+                <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 pb-4 pt-safe backdrop-blur">
+                    <div className="pb-4 pt-4">
+                        {planSubTab === 'tasks' && (
+                            <div className="mb-3 flex items-center gap-3 text-sm text-muted" onTouchStart={dateSwipeHandlers.onTouchStart} onTouchMove={dateSwipeHandlers.onTouchMove} onTouchEnd={dateSwipeHandlers.onTouchEnd}>
+                                <button onClick={() => changeMonth(-1)} className="rounded-full p-1.5 transition-colors hover:bg-muted/10 hover:text-primary">
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <span className="font-semibold uppercase tracking-[0.14em]">{monthLabel}</span>
+                                <button onClick={() => changeMonth(1)} className="rounded-full p-1.5 transition-colors hover:bg-muted/10 hover:text-primary">
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight text-primary">{hero.title}</h1>
+                                <p className="mt-2 text-sm text-muted">{hero.support}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {hero.secondaryLabel && hero.secondaryAction && (
+                                    <button onClick={hero.secondaryAction} className="inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
+                                        {hero.secondaryLabel}
+                                    </button>
+                                )}
+                                <button onClick={hero.onPrimary} className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90">
+                                    {hero.primaryLabel}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex rounded-2xl bg-black/5 p-1 dark:bg-white/10">
+                        {[
+                            { id: 'tasks' as PlanSubTab, label: 'Tasks', icon: <ListTodo className="h-4 w-4" /> },
+                            { id: 'shopping' as PlanSubTab, label: 'Shopping', icon: <ShoppingCart className="h-4 w-4" /> },
+                            { id: 'savings' as PlanSubTab, label: 'Savings', icon: <PiggyBank className="h-4 w-4" /> },
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => {
+                                    setPlanSubTab(tab.id);
+                                    setExpandedTaskId(null);
+                                    setExpandedShoppingId(null);
+                                    setExpandedGoalId(null);
+                                }}
+                                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${planSubTab === tab.id ? 'bg-surface text-primary shadow-sm' : 'text-primary/50 hover:text-primary'}`}
                             >
-                                <Plus className="w-4 h-4" /> Create Goal
+                                {tab.icon}
+                                {tab.label}
                             </button>
+                        ))}
+                    </div>
+
+                    {planSubTab === 'tasks' && (
+                        <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide">
+                            {[
+                                { label: 'All', value: 'all' as const },
+                                { label: 'Today', value: 'today' as const },
+                                { label: 'Overdue', value: 'overdue' as const },
+                                { label: 'Routine', value: 'routine' as const },
+                                { label: 'Done', value: 'done' as const },
+                            ].map(chip => (
+                                <button
+                                    key={chip.value}
+                                    onClick={() => setTaskFocusFilter(chip.value)}
+                                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${taskFocusFilter === chip.value ? 'bg-indigo-500 text-white' : 'bg-muted/10 text-muted hover:text-primary'}`}
+                                >
+                                    {chip.label}
+                                </button>
+                            ))}
                         </div>
                     )}
-                </motion.div>
-                </motion.div>
+                </div>
+
+                <div className="space-y-5 px-4 pt-4">
+                    {planSubTab === 'tasks' && (
+                        taskSections.length > 0 ? taskSections.map(section => renderTaskSection(section.title, section.items, section.tone)) : (
+                            <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
+                                <p className="text-sm text-muted">No items in this view.</p>
+                                <button onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
+                                    <Plus className="h-4 w-4" /> Add Task
+                                </button>
+                            </div>
+                        )
+                    )}
+
+                    {planSubTab === 'shopping' && (
+                        shoppingSections.length > 0 ? shoppingSections.map(section => renderShoppingSection(section.title, section.items, section.tone)) : (
+                            <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
+                                <p className="text-sm text-muted">Your shopping queue is empty.</p>
+                                <button onClick={() => handleOpenAddShopping('not_urgent')} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20">
+                                    <Plus className="h-4 w-4" /> Add Item
+                                </button>
+                            </div>
+                        )
+                    )}
+
+                    {planSubTab === 'savings' && renderSavingsList()}
+                </div>
             </motion.div>
 
-            {/* Add Funds Modal */}
             <AnimatePresence>
                 {addFundsModal?.isOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-                        <motion.div 
+                    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+                        <motion.div
                             initial={{ opacity: 0, y: 100 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 100 }}
-                            className="bg-surface border border-border rounded-t-[32px] sm:rounded-[32px] w-full max-w-md overflow-hidden flex flex-col"
+                            className="flex w-full max-w-md flex-col overflow-hidden rounded-t-[32px] border border-border bg-surface sm:rounded-[32px]"
                         >
-                            <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
-                                <h3 className="text-xl font-bold text-primary flex items-center gap-2">
-                                    <PiggyBank className="w-5 h-5 text-indigo-500" />
+                            <div className="flex items-center justify-between border-b border-border p-6">
+                                <h3 className="flex items-center gap-2 text-xl font-bold text-primary">
+                                    <PiggyBank className="h-5 w-5 text-indigo-500" />
                                     Add Funds
                                 </h3>
-                                <button onClick={() => setAddFundsModal(null)} className="p-2 bg-muted/10 hover:bg-muted/20 rounded-full text-muted transition-colors">
-                                    <X className="w-5 h-5" />
+                                <button onClick={() => setAddFundsModal(null)} className="rounded-full bg-muted/10 p-2 text-muted transition-colors hover:bg-muted/20">
+                                    <X className="h-5 w-5" />
                                 </button>
                             </div>
 
-                            <div className="p-6 space-y-4">
-                                <p className="text-sm font-medium text-muted">Adding funds to: <span className="text-primary font-bold">{addFundsModal.goalName}</span></p>
-                                
+                            <div className="space-y-4 p-6">
+                                <p className="text-sm font-medium text-muted">Adding funds to <span className="font-bold text-primary">{addFundsModal.goalName}</span></p>
                                 <div>
-                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Amount</label>
-                                    <input 
+                                    <label className="mb-2 block text-sm font-semibold uppercase tracking-[0.14em] text-muted">Amount</label>
+                                    <input
                                         type="number"
                                         autoFocus
                                         value={fundAmount}
                                         onChange={e => setFundAmount(e.target.value)}
                                         placeholder="0"
-                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium text-2xl"
+                                        className="w-full rounded-2xl border border-border bg-background p-4 text-2xl font-medium text-primary focus:border-indigo-500 focus:outline-none"
                                     />
                                 </div>
-
                                 <div>
-                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">From Wallet</label>
-                                    <select 
+                                    <label className="mb-2 block text-sm font-semibold uppercase tracking-[0.14em] text-muted">Wallet</label>
+                                    <select
                                         value={fundWallet}
                                         onChange={e => setFundWallet(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full rounded-2xl border border-border bg-background p-4 text-sm text-primary focus:border-indigo-500 focus:outline-none"
                                         disabled={!!addFundsModal.defaultWallet}
                                     >
-                                        <option value="">Select Wallet</option>
-                                        {wallets.map(w => (
-                                            <option key={w.id} value={w.id}>{w.name} ({new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(w.initialBalance)})</option>
+                                        <option value="">Choose wallet</option>
+                                        {wallets.map(wallet => (
+                                            <option key={wallet.id} value={wallet.id}>{wallet.name}</option>
                                         ))}
                                     </select>
-                                    {!!addFundsModal.defaultWallet && (
-                                        <p className="text-xs text-muted mt-2">Locked to dedicated wallet for this goal.</p>
-                                    )}
+                                    {addFundsModal.defaultWallet && <p className="mt-2 text-xs text-muted">Locked to dedicated wallet for this goal.</p>}
                                 </div>
-
                                 <div>
-                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Date</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                                        <input 
-                                            type="date"
-                                            value={fundDate}
-                                            onChange={e => setFundDate(e.target.value)}
-                                            className="w-full bg-background border border-border rounded-2xl pl-12 pr-4 py-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
-                                        />
-                                    </div>
+                                    <label className="mb-2 block text-sm font-semibold uppercase tracking-[0.14em] text-muted">Date</label>
+                                    <input
+                                        type="date"
+                                        value={fundDate}
+                                        onChange={e => setFundDate(e.target.value)}
+                                        className="w-full rounded-2xl border border-border bg-background p-4 text-sm text-primary focus:border-indigo-500 focus:outline-none"
+                                    />
                                 </div>
-                            </div>
-
-                            <div className="p-6 border-t border-border shrink-0">
-                                <button 
-                                    onClick={handleSaveFunds}
-                                    disabled={!fundAmount || !fundWallet}
-                                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    <Plus className="w-5 h-5" />
+                                <button onClick={handleSaveFunds} className="w-full rounded-2xl bg-indigo-500 px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90">
                                     Add Funds
                                 </button>
                             </div>
