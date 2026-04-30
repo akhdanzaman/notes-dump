@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, ItemType } from '../../types';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import Card from '../Card';
 import ShoppingItem from '../ShoppingItem';
@@ -81,102 +81,6 @@ const PlanView: React.FC<PlanViewProps> = ({
     
     const { urgent, routine, normal, savings } = getShoppingItems(items);
     const isShoppingEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
-    const [taskFocusFilter, setTaskFocusFilter] = useState<'all' | 'today' | 'overdue' | 'routine' | 'done'>('all');
-
-    const overdue = useMemo(() => {
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        const loweredQuery = searchQuery.trim().toLowerCase();
-        return items.filter(item => {
-            if (item.status !== 'pending') return false;
-            if (item.type !== ItemType.TODO && item.type !== ItemType.EVENT) return false;
-            if (selectedTag && !(item.meta.tags || []).includes(selectedTag)) return false;
-            if (loweredQuery) {
-                const haystack = [
-                    item.content,
-                    ...(item.meta.tags || []),
-                    item.meta.budgetCategory || '',
-                    item.meta.paymentMethod || ''
-                ].join(' ').toLowerCase();
-                if (!haystack.includes(loweredQuery)) return false;
-            }
-            const dateValue = item.meta.start || item.meta.date || item.meta.dateTime;
-            if (!dateValue) return false;
-            const itemDate = new Date(dateValue);
-            itemDate.setHours(0, 0, 0, 0);
-            return itemDate < now;
-        });
-    }, [items, searchQuery, selectedTag]);
-
-    const shoppingEstimatedTotal = [...urgent, ...routine, ...normal].reduce((sum, item) => sum + (item.meta.amount || 0), 0);
-    const nextGoal = savings
-        .map(goal => ({
-            goal,
-            target: goal.meta.amount || 0,
-            saved: goal.meta.savedAmount || 0,
-            remaining: Math.max(0, (goal.meta.amount || 0) - (goal.meta.savedAmount || 0))
-        }))
-        .sort((a, b) => a.remaining - b.remaining)[0];
-
-    const taskSections = useMemo(() => {
-        const sections = [
-            {
-                key: 'overdue',
-                title: 'Overdue',
-                tone: 'text-amber-500',
-                hoverTone: 'hover:bg-amber-500/10',
-                items: overdue,
-                addAction: () => handleOpenAddTask(new Date().toISOString().split('T')[0]),
-            },
-            {
-                key: 'today',
-                title: 'Today',
-                tone: 'text-red-500',
-                hoverTone: 'hover:bg-red-500/10',
-                items: today,
-                addAction: () => handleOpenAddTask(new Date().toISOString().split('T')[0]),
-            },
-            {
-                key: 'routine',
-                title: 'Routines',
-                tone: 'text-indigo-500',
-                hoverTone: 'hover:bg-indigo-500/10',
-                items: routines,
-                addAction: handleOpenAddRoutine,
-            },
-            {
-                key: 'tomorrow',
-                title: 'Tomorrow',
-                tone: 'text-acc-event',
-                hoverTone: 'hover:bg-acc-event/10',
-                items: tomorrow,
-                addAction: () => handleOpenAddTask(new Date(Date.now() + 86400000).toISOString().split('T')[0]),
-            },
-            {
-                key: 'later',
-                title: 'Later',
-                tone: 'text-muted',
-                hoverTone: 'hover:bg-muted/10',
-                items: later,
-                addAction: () => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0]),
-            },
-        ];
-
-        if (taskFocusFilter === 'today') return sections.filter(section => section.key === 'today');
-        if (taskFocusFilter === 'overdue') return sections.filter(section => section.key === 'overdue');
-        if (taskFocusFilter === 'routine') return sections.filter(section => section.key === 'routine');
-        return sections;
-    }, [overdue, today, routines, tomorrow, later, taskFocusFilter, handleOpenAddRoutine, handleOpenAddTask]);
-
-    const taskEmptyMessage = useMemo(() => {
-        switch (taskFocusFilter) {
-            case 'today': return 'Nothing queued for today.';
-            case 'overdue': return 'No overdue items. Nice.';
-            case 'routine': return 'No routines yet.';
-            case 'done': return 'No completed tasks match this filter yet.';
-            default: return 'No pending tasks for this month.';
-        }
-    }, [taskFocusFilter]);
 
     const [addFundsModal, setAddFundsModal] = useState<{ isOpen: boolean, goalId: string, goalName: string, defaultWallet?: string } | null>(null);
     const [fundAmount, setFundAmount] = useState('');
@@ -523,8 +427,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                             transition={{ duration: 0.2 }}
                         >
                             {planSubTab === 'tasks' && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="flex items-center justify-between mb-6">
                                         <div>
                                             <h2 className="text-2xl font-bold tracking-tight">
                                                 {focusDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
@@ -546,47 +450,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             </button>
                                         </div>
                                     </div>
-
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        {[
-                                            { key: 'today', label: 'Today', value: today.length, tone: 'text-red-500 bg-red-500/10' },
-                                            { key: 'overdue', label: 'Overdue', value: overdue.length, tone: overdue.length > 0 ? 'text-amber-500 bg-amber-500/10' : 'text-primary/70 bg-black/5' },
-                                            { key: 'routine', label: 'Routines', value: routines.length, tone: 'text-indigo-500 bg-indigo-500/10' },
-                                            { key: 'done', label: 'Done', value: doneList.length, tone: 'text-emerald-500 bg-emerald-500/10' },
-                                        ].map(stat => (
-                                            <button
-                                                key={stat.key}
-                                                onClick={() => setTaskFocusFilter(stat.key as 'today' | 'overdue' | 'routine' | 'done')}
-                                                className={`rounded-2xl p-3 text-left transition-all border ${taskFocusFilter === stat.key ? 'border-primary/30 bg-surface' : 'border-transparent bg-black/5 dark:bg-white/10 hover:border-primary/20'}`}
-                                            >
-                                                <div className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${stat.tone}`}>{stat.label}</div>
-                                                <div className="mt-2 text-xl font-bold">{stat.value}</div>
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-2">
-                                        {[
-                                            { key: 'all', label: 'All lanes' },
-                                            { key: 'today', label: 'Today first' },
-                                            { key: 'overdue', label: 'Needs rescue' },
-                                            { key: 'routine', label: 'Routines only' },
-                                            { key: 'done', label: 'Completed' },
-                                        ].map(option => (
-                                            <button
-                                                key={option.key}
-                                                onClick={() => setTaskFocusFilter(option.key as 'all' | 'today' | 'overdue' | 'routine' | 'done')}
-                                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${taskFocusFilter === option.key ? 'bg-surface text-primary' : 'bg-black/5 dark:bg-white/10 text-primary/70 hover:text-primary'}`}
-                                            >
-                                                {option.label}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    
+                                    
                                 </div>
                             )}
                             {planSubTab === 'shopping' && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="flex items-center justify-between mb-6">
                                         <div>
                                             <h2 className="text-2xl font-bold tracking-tight">Shopping List</h2>
                                             <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
@@ -598,21 +468,11 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Total items</div>
-                                            <div className="mt-2 text-xl font-bold">{urgent.length + routine.length + normal.length}</div>
-                                        </div>
-                                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Est. total</div>
-                                            <div className="mt-2 text-xl font-bold">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(shoppingEstimatedTotal)}</div>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                             {planSubTab === 'savings' && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="flex items-center justify-between mb-6">
                                         <div>
                                             <h2 className="text-2xl font-bold tracking-tight">Goals & Savings</h2>
                                             <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
@@ -624,15 +484,6 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             </p>
                                         </div>
                                     </div>
-                                    {nextGoal && (
-                                        <div className="rounded-[24px] bg-black/5 dark:bg-white/10 p-4">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Next milestone</div>
-                                            <div className="mt-2 text-lg font-bold">{nextGoal.goal.content}</div>
-                                            <p className="mt-1 text-sm text-primary/70">
-                                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(nextGoal.remaining)} left to reach the target.
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </motion.div>
@@ -663,77 +514,100 @@ const PlanView: React.FC<PlanViewProps> = ({
                     className="w-full flex-shrink-0 px-4"
                 >
                     <div className="space-y-8">
-                        {taskFocusFilter === 'done' ? (
-                            doneList.length > 0 ? (
+                        {summary.todo > 0 ? (
+                            <div className="space-y-8">
                                 <section>
                                     <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-2">
-                                            <span className="bg-emerald-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Completed this month
+                                        <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
+                                            <span className="bg-red-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Today
                                         </h3>
+                                        <button 
+                                            onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} 
+                                            className="p-1 hover:bg-red-500/10 text-red-500 rounded-md transition-colors"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
                                     </div>
-                                    <div className="space-y-3">{doneList.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                    {today.length > 0 ? (
+                                        <div className="space-y-3">{today?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                    ) : (
+                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                    )}
                                 </section>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
-                                    <p className="text-muted font-medium">{taskEmptyMessage}</p>
-                                    <button 
-                                        onClick={() => setTaskFocusFilter('all')}
-                                        className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
-                                    >
-                                        Show all lanes
-                                    </button>
-                                </div>
-                            )
-                        ) : taskSections.some(section => section.items.length > 0) ? (
-                            <div className="space-y-8">
-                                {taskSections.filter(section => section.items.length > 0 || taskFocusFilter !== 'all').map(section => (
-                                    <section key={section.key}>
-                                        <div className="flex items-center justify-between mb-3 pl-1">
-                                            <h3 className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${section.tone}`}>
-                                                <span className={`${section.tone.replace('text-', 'bg-').replace('acc-event', 'indigo-500')}/10 p-1 rounded-md`}><CheckCircle2 className="w-3 h-3" /></span>
-                                                {section.title}
-                                            </h3>
-                                            <button 
-                                                onClick={section.addAction}
-                                                className={`p-1 ${section.hoverTone} ${section.tone} rounded-md transition-colors`}
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                        {section.items.length > 0 ? (
-                                            <div className="space-y-3">{section.items.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
-                                        ) : (
-                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                                        )}
-                                    </section>
-                                ))}
+
+                                <section>
+                                    <div className="flex items-center justify-between mb-3 pl-1">
+                                        <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
+                                            <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Routines
+                                        </h3>
+                                        <button 
+                                            onClick={handleOpenAddRoutine}
+                                            className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    {routines && routines.length > 0 ? (
+                                        <div className="space-y-3">{routines?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                    ) : (
+                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                    )}
+                                </section>
+
+                                <section>
+                                    <div className="flex items-center justify-between mb-3 pl-1">
+                                        <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider">Tomorrow</h3>
+                                        <button 
+                                            onClick={() => handleOpenAddTask(new Date(Date.now() + 86400000).toISOString().split('T')[0])} 
+                                            className="p-1 hover:bg-acc-event/10 text-acc-event rounded-md transition-colors"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    {tomorrow.length > 0 ? (
+                                        <div className="space-y-3">{tomorrow?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                    ) : (
+                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                    )}
+                                </section>
+
+                                <section>
+                                    <div className="flex items-center justify-between mb-3 pl-1">
+                                        <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
+                                        <button 
+                                            onClick={() => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0])} 
+                                            className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    {later.length > 0 ? (
+                                        <div className="space-y-3">{later?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                    ) : (
+                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                    )}
+                                </section>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
-                                <p className="text-muted font-medium">{taskEmptyMessage}</p>
-                                <div className="flex gap-3 flex-wrap justify-center">
-                                    <button 
-                                        onClick={() => handleOpenAddTask()} 
-                                        className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
-                                    >
-                                        <Plus className="w-4 h-4" /> Add Task
-                                    </button>
-                                    <button 
-                                        onClick={handleOpenAddRoutine}
-                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
-                                    >
-                                        <Plus className="w-4 h-4" /> Add Routine
-                                    </button>
-                                    {taskFocusFilter !== 'all' && (
+                            summary.todo === 0 && (
+                                <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                                    <p className="text-muted font-medium">No pending tasks for this month.</p>
+                                    <div className="flex gap-3">
                                         <button 
-                                            onClick={() => setTaskFocusFilter('all')}
-                                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-2xl text-sm font-bold transition-colors"
+                                            onClick={() => handleOpenAddTask()} 
+                                            className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
                                         >
-                                            Show all lanes
+                                            <Plus className="w-4 h-4" /> Add Task
                                         </button>
-                                    )}
+                                        <button 
+                                            onClick={handleOpenAddRoutine}
+                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
+                                        >
+                                            <Plus className="w-4 h-4" /> Add Routine
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )
                         )}
                     </div>
                 </motion.div>

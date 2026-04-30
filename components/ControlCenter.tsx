@@ -154,7 +154,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         handleGoogleLogin,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
-        handleDisconnectGoogle,
         handleSave,
         handleDisconnectGithub,
         handleConnectionChoice,
@@ -217,28 +216,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         { id: 'connect', label: 'Connect', icon: <Layout className="w-5 h-5" />, desc: 'GitHub, Gemini, APIs' },
         { id: 'changelog', label: 'Changelog', icon: <History className="w-5 h-5" />, desc: 'Recent updates' },
     ];
-
-    const totalConnections = [
-        !!googleProfile,
-        !!spreadsheetConfig,
-        !!githubConfig.token,
-        !!geminiKey,
-        !!(gCalKey || gCalId)
-    ].filter(Boolean).length;
-
-    const dataFootprint = [
-        { label: 'Items', value: allItems.length, icon: <CheckSquare className="w-4 h-4" /> },
-        { label: 'Skills', value: allSkills.length, icon: <Sparkles className="w-4 h-4" /> },
-        { label: 'Wallets', value: allWallets.length, icon: <PieChart className="w-4 h-4" /> },
-        { label: 'Themes', value: Object.keys(monthlyThemes).length, icon: <Calendar className="w-4 h-4" /> },
-    ];
-
-    const activeNotifications = [
-        localAppSettings.notifyBehavior,
-        localAppSettings.notifyInsights,
-        localAppSettings.notifyReminders,
-        localAppSettings.persistentNotification,
-    ].filter(Boolean).length;
 
     return (
         <AnimatePresence>
@@ -314,22 +291,33 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {/* MAIN VIEW */}
                                     {activeTab === 'main' && (
                                         <div className="space-y-6">
-                                            <div className="bg-background border border-border rounded-[28px] p-5 shadow-sm space-y-4">
-                                                <div className="flex items-start justify-between gap-4">
-                                                    <div>
-                                                        <div className="text-[10px] font-bold text-muted uppercase tracking-[0.24em] mb-2">System snapshot</div>
-                                                        <div className="flex items-center gap-3 flex-wrap">
+                                            {/* Status Card */}
+                                            <div className="bg-background border border-border rounded-2xl p-4 flex flex-col gap-4 shadow-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-6">
+                                                        {pendingCount > 0 && (
+                                                            <div className="flex flex-col gap-1 border-r border-border pr-6">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Pending</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5 text-primary">
+                                                                    <CloudOff className="w-3.5 h-3.5 text-amber-500" />
+                                                                    <span className="font-bold text-sm">{pendingCount}</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">System Status</span>
                                                             {renderSyncStatus()}
-                                                            <span className="text-xs text-muted">{pendingCount > 0 ? `${pendingCount} pending changes` : 'Everything looks clean'}</span>
                                                         </div>
                                                     </div>
-
+                                                    
                                                     <div className="flex gap-2">
                                                         {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
                                                             <button 
                                                                 onClick={() => onSyncClick(syncMode === 'overwrite')} 
                                                                 className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors"
-                                                                title={syncMode === 'overwrite' ? 'Force Overwrite Cloud Data' : 'Merge with Cloud Data'}
+                                                                title={syncMode === 'overwrite' ? "Force Overwrite Cloud Data" : "Merge with Cloud Data"}
                                                             >
                                                                 <RefreshCw className="w-5 h-5" />
                                                             </button>
@@ -342,27 +330,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                    <div className="rounded-2xl bg-surface border border-border p-3">
-                                                        <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Pending</div>
-                                                        <div className="mt-2 text-xl font-bold text-primary">{pendingCount}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-surface border border-border p-3">
-                                                        <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Connections</div>
-                                                        <div className="mt-2 text-xl font-bold text-primary">{totalConnections}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-surface border border-border p-3">
-                                                        <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Notifications</div>
-                                                        <div className="mt-2 text-xl font-bold text-primary">{activeNotifications}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-surface border border-border p-3">
-                                                        <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Theme</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary capitalize">{localAppSettings.theme || 'system'}</div>
-                                                    </div>
-                                                </div>
-
+                                                {/* Sync Mode Selector */}
                                                 {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
-                                                    <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden self-end w-fit">
+                                                    <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden self-end">
                                                         <button 
                                                             onClick={() => setSyncMode('merge')}
                                                             className={`px-3 py-1.5 text-xs font-medium transition-colors ${syncMode === 'merge' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-primary'}`}
@@ -387,37 +357,23 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 </div>
                                             )}
 
+                                            {/* Quick Actions */}
                                             <div className="grid grid-cols-2 gap-4">
                                                 <button 
                                                     onClick={toggleTheme}
                                                     className="flex flex-col items-center justify-center gap-3 p-6 bg-background border border-border rounded-2xl hover:bg-muted/5 active:scale-95 transition-all shadow-sm"
                                                 >
                                                     {localAppSettings.theme === 'dark' ? <Moon className="w-8 h-8 text-indigo-400" /> : <Sun className="w-8 h-8 text-amber-500" />}
-                                                    <span className="font-medium text-primary">{localAppSettings.theme === 'dark' ? 'Dark Mode' : localAppSettings.theme === 'light' ? 'Light Mode' : 'System Theme'}</span>
+                                                    <span className="font-medium text-primary">{localAppSettings.theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
                                                 </button>
+                                                
+                                                {/* Clock & Date */}
                                                 <div className="flex flex-col items-center justify-center gap-2 p-6 bg-background border border-border rounded-2xl shadow-sm">
                                                     <ClockDisplay />
                                                 </div>
                                             </div>
 
-                                            <section>
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <h3 className="text-xs font-bold text-muted uppercase tracking-wider ml-1">Data footprint</h3>
-                                                    <span className="text-xs text-muted">{dataFootprint.reduce((sum, item) => sum + item.value, 0)} records</span>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    {dataFootprint.map((item) => (
-                                                        <div key={item.label} className="rounded-2xl bg-background border border-border p-4">
-                                                            <div className="flex items-center gap-2 text-muted">
-                                                                {item.icon}
-                                                                <span className="text-xs font-bold uppercase tracking-wider">{item.label}</span>
-                                                            </div>
-                                                            <div className="mt-2 text-xl font-bold text-primary">{item.value}</div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </section>
-
+                                            {/* Menu List */}
                                             <div className="space-y-2">
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider ml-1 mb-2">Settings</h3>
                                                 {menuItems.map(item => (
@@ -440,10 +396,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 ))}
                                             </div>
 
-                                            <div className="text-center pt-2">
+                                            {/* Footer Info */}
+                                            <div className="text-center pt-4">
                                                 <p className="text-xs text-muted flex items-center justify-center gap-2">
                                                     <Github className="w-3 h-3" />
-                                                    <span>BrainDump AI v0.4.0</span>
+                                                    <span>BrainDump AI v0.3.1</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -452,23 +409,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {/* APPEARANCE TAB */}
                                     {activeTab === 'appearance' && (
                                         <div className="space-y-6">
-                                            <section>
-                                                <div className="grid grid-cols-3 gap-3">
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Theme</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary capitalize">{localAppSettings.theme || 'system'}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Cards</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{localAppSettings.defaultCollapsed ? 'Compact' : 'Expanded'}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Privacy</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{localAppSettings.hideMoney ? 'Hidden' : 'Visible'}</div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Theme</h3>
                                                 <div className="grid grid-cols-3 gap-3">
@@ -593,19 +533,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {/* BEHAVIOR TAB */}
                                     {activeTab === 'behavior' && (
                                         <div className="space-y-6">
-                                            <section>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Parser flow</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{localAppSettings.useProParser ? '3-stage pro mode' : 'Standard mode'}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Review gate</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{localAppSettings.enableDraftReview ? 'Enabled' : 'Skipped'}</div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Parsing Mode</h3>
                                                 <div className="flex flex-col gap-3">
@@ -743,23 +670,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {/* NOTIFICATIONS TAB */}
                                     {activeTab === 'notifications' && (
                                         <div className="space-y-6">
-                                            <section>
-                                                <div className="grid grid-cols-3 gap-3">
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Mode</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary capitalize">{localAppSettings.notificationMode || 'both'}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Enabled</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{activeNotifications}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Quick input</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{localAppSettings.persistentNotification ? 'Pinned' : 'Off'}</div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">System Permission</h3>
                                                 <div className="bg-background border border-border rounded-2xl p-4">
@@ -912,23 +822,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {activeTab === 'budget' && (
                                         <div className="space-y-6">
                                             <section>
-                                                <div className="grid grid-cols-3 gap-3">
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Income</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{monthlyIncome > 0 ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(monthlyIncome) : 'Not set'}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Categories</div>
-                                                        <div className="mt-2 text-xl font-bold text-primary">{budgetRules.length}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Allocation</div>
-                                                        <div className={`mt-2 text-sm font-bold ${totalPercentage === 100 ? 'text-emerald-500' : 'text-amber-500'}`}>{totalPercentage}%</div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Income</h3>
                                                 <div>
                                                     <label className="block text-xs font-medium text-muted mb-1">Monthly Income (IDR)</label>
@@ -1013,19 +906,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {/* DATA TAB */}
                                     {activeTab === 'data' && (
                                         <div className="space-y-6">
-                                            <section>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Backups</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{spreadsheetConfig ? 'Cloud history enabled' : 'Local only'}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Records</div>
-                                                        <div className="mt-2 text-xl font-bold text-primary">{dataFootprint.reduce((sum, item) => sum + item.value, 0)}</div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Export & Import</h3>
                                                 <div className="grid grid-cols-2 gap-3">
@@ -1152,19 +1032,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {/* CONNECT TAB */}
                                     {activeTab === 'connect' && (
                                         <div className="space-y-6">
-                                            <section>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Connected services</div>
-                                                        <div className="mt-2 text-xl font-bold text-primary">{totalConnections}</div>
-                                                    </div>
-                                                    <div className="rounded-2xl bg-background border border-border p-4">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Cloud sync</div>
-                                                        <div className="mt-2 text-sm font-bold text-primary">{githubConfig.token || spreadsheetConfig ? 'Ready' : 'Not configured'}</div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
                                             {/* Google Profile Section */}
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Google Account</h3>
@@ -1183,7 +1050,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 </div>
                                                             </div>
                                                             <button 
-                                                                onClick={handleDisconnectGoogle}
+                                                                onClick={handleDisconnectSpreadsheet}
                                                                 className="text-xs text-red-500 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
                                                             >
                                                                 Sign Out
@@ -1385,17 +1252,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Version History</h3>
                                                 <div className="space-y-4">
-                                                    <div className="bg-background border border-border rounded-2xl p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-primary">v0.4.0</div>
-                                                            <div className="text-xs text-muted">April 2026</div>
-                                                        </div>
-                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
-                                                            <li>Refined Summary with clearer focus cards, faster quick actions, and visible AI signals.</li>
-                                                            <li>Upgraded Plan, Library, Money, and Calendar views with better summaries, filters, and navigation context.</li>
-                                                            <li>Polished Control Center with richer status snapshots, clearer section overviews, and improved connection UX.</li>
-                                                        </ul>
-                                                    </div>
                                                     <div className="bg-background border border-border rounded-2xl p-4">
                                                         <div className="flex items-center justify-between mb-2">
                                                             <div className="font-bold text-primary">v0.3.1</div>

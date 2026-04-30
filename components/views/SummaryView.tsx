@@ -508,46 +508,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     }, [items.length, budgetConfig, wallets, skills, appSettings.enableDailyInsight]);
 
     const displayInsights = aiInsights.length > 0 ? aiInsights : localInsights;
-    const overviewCards = [
-        {
-            label: 'In focus',
-            value: pendingGroups.today.length + urgent.length,
-            tone: 'text-red-500 bg-red-500/10',
-            icon: Zap,
-            onClick: () => {
-                setPlanSubTab('tasks');
-                setActiveTab('plan');
-            }
-        },
-        {
-            label: 'Rituals',
-            value: pendingRoutines.length,
-            tone: 'text-indigo-500 bg-indigo-500/10',
-            icon: CheckCircle2,
-            onClick: () => {
-                setPlanSubTab('tasks');
-                setActiveTab('plan');
-            }
-        },
-        {
-            label: 'Urgent buys',
-            value: urgent.length,
-            tone: 'text-amber-500 bg-amber-500/10',
-            icon: ShoppingCart,
-            onClick: () => {
-                setPlanSubTab('shopping');
-                setActiveTab('plan');
-            }
-        },
-        {
-            label: 'Review queue',
-            value: pendingReviews.length + parsingTasks.length,
-            tone: 'text-emerald-500 bg-emerald-500/10',
-            icon: ClipboardCheck,
-            onClick: handleOpenReview,
-        }
-    ];
-    const insightPreview = displayInsights.slice(0, 2);
 
     const cardProps = {
         onToggleStatus: handleToggleStatus,
@@ -685,12 +645,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 className="px-4 space-y-8"
             >
                 <section>
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h2 className="text-lg font-bold">Quick capture</h2>
-                            <p className="text-xs text-muted mt-1">Log the next thing before it slips away.</p>
-                        </div>
-                    </div>
                     <div className="grid grid-cols-4 gap-3">
                         <button
                             onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
@@ -732,25 +686,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             <span className="text-xs font-medium opacity-70">Expense</span>
                         </button>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-3 mt-4">
-                        {overviewCards.map(card => {
-                            const Icon = card.icon;
-                            return (
-                                <button
-                                    key={card.label}
-                                    onClick={card.onClick}
-                                    className="rounded-2xl bg-surface border border-border p-4 text-left hover:border-primary/20 transition-colors"
-                                >
-                                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${card.tone}`}>
-                                        <Icon className="w-3.5 h-3.5" />
-                                        {card.label}
-                                    </div>
-                                    <div className="mt-3 text-2xl font-bold text-primary">{card.value}</div>
-                                </button>
-                            );
-                        })}
-                    </div>
                 </section>
 
                 <section>
@@ -767,10 +702,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         </div>
 
                         <button
-                            onClick={() => {
-                                setPlanSubTab('tasks');
-                                setActiveTab('plan');
-                            }}
+                            onClick={() => setActiveTab('plan')}
                             className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider"
                         >
                             View All
@@ -785,25 +717,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         </div>
                     ) : (
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                            <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3">
-                                <Coffee className="w-5 h-5" />
-                            </div>
                             <p className="text-muted font-medium">All clear!</p>
-                            <p className="text-xs opacity-50 mt-1">Take a break or queue tomorrow while the board is quiet.</p>
-                            <div className="flex items-center justify-center gap-2 mt-4">
-                                <button
-                                    onClick={() => handleOpenAddTask()}
-                                    className="px-3 py-2 rounded-xl bg-black/5 hover:bg-black/10 text-xs font-bold transition-colors"
-                                >
-                                    Add task
-                                </button>
-                                <button
-                                    onClick={handleOpenAddNote}
-                                    className="px-3 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 text-xs font-bold transition-colors"
-                                >
-                                    Capture note
-                                </button>
-                            </div>
+                            <p className="text-xs opacity-50 mt-1">Take a break or plan ahead.</p>
                         </div>
                     )}
                 </section>
@@ -889,46 +804,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             </div>
                         </div>
                     </div>
-                </section>
-
-                <section>
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h2 className="text-lg font-bold flex items-center gap-2">AI signals</h2>
-                            <p className="text-xs text-muted mt-1">Highlights worth checking right now.</p>
-                        </div>
-                        <button
-                            onClick={handleOpenNotification}
-                            className="text-xs font-bold opacity-60 hover:opacity-100 uppercase tracking-wider"
-                        >
-                            Open inbox
-                        </button>
-                    </div>
-
-                    {insightPreview.length > 0 ? (
-                        <div className="space-y-3">
-                            {insightPreview.map((insight, idx) => (
-                                <button
-                                    key={`${insight.title}-${idx}`}
-                                    onClick={handleOpenNotification}
-                                    className="w-full text-left rounded-[24px] bg-surface border border-border p-4 hover:border-primary/20 transition-colors"
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <div className="text-xs font-bold uppercase tracking-wider text-muted">{insight.type}</div>
-                                            <h3 className="mt-1 font-bold text-primary">{insight.title}</h3>
-                                            <p className="mt-1 text-sm text-primary/70 line-clamp-2">{insight.message}</p>
-                                        </div>
-                                        <ArrowRight className="w-4 h-4 text-muted shrink-0 mt-1" />
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="rounded-[24px] border border-dashed border-border p-5 text-center text-sm text-muted">
-                            No AI signals yet. Turn on daily insights or refresh notifications.
-                        </div>
-                    )}
                 </section>
 
                 {typeof window !== 'undefined' &&

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { NotebookPen, BookText, Library, Plus, Pencil, Trash2, Target, LayoutGrid, List, Tag, CalendarRange, Search, Flame, TrendingUp } from 'lucide-react';
+import { NotebookPen, BookText, Library, Plus, Pencil, Trash2, Target } from 'lucide-react';
 import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
 import { getNoteItems, getJournalGroups, getSkillItems } from '../../utils/selectors';
 import Card from '../Card';
@@ -64,30 +64,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const generalItems = getNoteItems(items, 'general', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const journalItems = getNoteItems(items, 'journal', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const { stats: skillStats } = getSkillItems(items, skills);
-    const [notesLayout, setNotesLayout] = useState<'masonry' | 'list'>('masonry');
-
-    const journalGroups = getJournalGroups(journalItems, sortOrder);
-    const journalDays = Object.keys(journalGroups).sort();
-    const activeLibraryFilters = [
-        searchQuery ? { icon: Search, label: `Search: ${searchQuery}` } : null,
-        selectedTag ? { icon: Tag, label: `Tag: ${selectedTag}` } : null,
-        filterDate ? { icon: CalendarRange, label: `From: ${filterDate}` } : null,
-        filterDateTo ? { icon: CalendarRange, label: `To: ${filterDateTo}` } : null,
-    ].filter(Boolean) as { icon: typeof Search; label: string }[];
-
-    const journalStreak = (() => {
-        if (journalDays.length === 0) return 0;
-        let streak = 0;
-        let cursor = new Date();
-        cursor.setHours(0, 0, 0, 0);
-
-        while (journalDays.includes(cursor.toISOString().split('T')[0])) {
-            streak += 1;
-            cursor.setDate(cursor.getDate() - 1);
-        }
-
-        return streak;
-    })();
 
     // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('library', setActiveTab);
@@ -194,16 +170,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             );
         }
 
-        if (notesLayout === 'list') {
-            return (
-                <div className="space-y-3">
-                    {data.map(item => (
-                        <Card key={item.id} item={item} {...commonProps} className="break-inside-avoid" />
-                    ))}
-                </div>
-            );
-        }
-
+        // Masonry layout for general notes
         return (
             <div className="columns-1 sm:columns-2 gap-4">
                 {data.map(item => (
@@ -232,13 +199,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             <div className="space-y-4">
                 {skillStats.map(skill => {
                     const progress = skill.weeklyProgress;
-                    const weeklyStatus = skill.weeklyTargetMinutes
-                        ? progress >= 100
-                            ? 'On track this week'
-                            : progress >= 60
-                                ? 'Close to target'
-                                : 'Needs another session'
-                        : 'Add a weekly target to track momentum';
                     return (
                         <motion.div 
                             key={skill.id}
@@ -283,10 +243,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                             <Target className="w-3 h-3" />
                                             Target: {skill.weeklyTargetMinutes}m/wk
                                         </span>
-                                    </div>
-                                    <div className="mt-2 flex items-center gap-2 text-xs font-medium">
-                                        <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
-                                        <span className="text-primary/80">{weeklyStatus}</span>
                                     </div>
                                 </>
                             )}
@@ -343,89 +299,50 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -10 }}
                             transition={{ duration: 0.2 }}
-                            className="space-y-4"
+                            className="flex items-center justify-between"
                         >
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="text-2xl font-bold tracking-tight">
-                                        {librarySubTab === 'general' ? 'All Notes' : librarySubTab === 'skills' ? 'Skill Growth' : 'Journal Entries'}
-                                    </h2>
-                                    <p className="text-sm text-muted font-medium flex flex-wrap items-center gap-2 mt-1">
-                                        {librarySubTab === 'general' && (
-                                            <>
-                                                <span>{generalItems.length} Notes</span>
-                                                {new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size > 0 && (
-                                                    <>
-                                                        <span>•</span>
-                                                        <span>{new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size} Tags</span>
-                                                    </>
-                                                )}
-                                            </>
-                                        )}
-                                        {librarySubTab === 'skills' && (
-                                            <>
-                                                <span>{skillStats.length} Skills</span>
-                                                <span>•</span>
-                                                <span className="text-indigo-500">{skillStats.reduce((acc, curr) => acc + curr.totalHours, 0).toFixed(1)}h Total Time</span>
-                                            </>
-                                        )}
-                                        {librarySubTab === 'journal' && (
-                                            <>
-                                                <span>{journalItems.length} Entries</span>
-                                                <span>•</span>
-                                                <span>Across {journalDays.length} Days</span>
-                                                {journalStreak > 0 && (
-                                                    <>
-                                                        <span>•</span>
-                                                        <span className="text-amber-500 inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5" /> {journalStreak}-day streak</span>
-                                                    </>
-                                                )}
-                                            </>
-                                        )}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
+                            <div>
+                                <h2 className="text-2xl font-bold tracking-tight">
+                                    {librarySubTab === 'general' ? 'All Notes' : librarySubTab === 'skills' ? 'Skill Growth' : 'Journal Entries'}
+                                </h2>
+                                <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
                                     {librarySubTab === 'general' && (
-                                        <div className="flex bg-black/5 dark:bg-white/10 rounded-xl p-1">
-                                            <button
-                                                onClick={() => setNotesLayout('masonry')}
-                                                className={`p-2 rounded-lg transition-colors ${notesLayout === 'masonry' ? 'bg-surface text-primary' : 'text-muted hover:text-primary'}`}
-                                                aria-label="Masonry notes view"
-                                            >
-                                                <LayoutGrid className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => setNotesLayout('list')}
-                                                className={`p-2 rounded-lg transition-colors ${notesLayout === 'list' ? 'bg-surface text-primary' : 'text-muted hover:text-primary'}`}
-                                                aria-label="List notes view"
-                                            >
-                                                <List className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                                        <>
+                                            <span>{generalItems.length} Notes</span>
+                                            {new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size > 0 && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span>{new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size} Tags</span>
+                                                </>
+                                            )}
+                                        </>
                                     )}
-                                    <button 
-                                        onClick={() => {
-                                            if (librarySubTab === 'general') onAddItem(ItemType.NOTE);
-                                            if (librarySubTab === 'skills') handleOpenAddSkill();
-                                            if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
-                                        }}
-                                        className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors"
-                                    >
-                                        <Plus className="w-5 h-5" />
-                                    </button>
-                                </div>
+                                    {librarySubTab === 'skills' && (
+                                        <>
+                                            <span>{skillStats.length} Skills</span>
+                                            <span>•</span>
+                                            <span className="text-indigo-500">{skillStats.reduce((acc, curr) => acc + curr.totalHours, 0).toFixed(1)}h Total Time</span>
+                                        </>
+                                    )}
+                                    {librarySubTab === 'journal' && (
+                                        <>
+                                            <span>{journalItems.length} Entries</span>
+                                            <span>•</span>
+                                            <span>Across {Object.keys(getJournalGroups(journalItems, sortOrder)).length} Days</span>
+                                        </>
+                                    )}
+                                </p>
                             </div>
-
-                            {activeLibraryFilters.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                    {activeLibraryFilters.map(({ icon: Icon, label }) => (
-                                        <div key={label} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-black/5 dark:bg-white/10 rounded-full text-xs font-medium text-primary/80">
-                                            <Icon className="w-3.5 h-3.5" />
-                                            <span>{label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            <button 
+                                onClick={() => {
+                                    if (librarySubTab === 'general') onAddItem(ItemType.NOTE);
+                                    if (librarySubTab === 'skills') handleOpenAddSkill();
+                                    if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
+                                }}
+                                className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors"
+                            >
+                                <Plus className="w-5 h-5" />
+                            </button>
                         </motion.div>
                     </AnimatePresence>
                 </motion.div>

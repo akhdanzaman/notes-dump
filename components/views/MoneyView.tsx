@@ -55,17 +55,11 @@ interface MoneyViewProps {
 
     // Filters
     filterWallet: string;
-    setFilterWallet: (value: string) => void;
     filterTransactionType: string;
-    setFilterTransactionType: (value: string) => void;
     filterCategory: string;
-    setFilterCategory: (value: string) => void;
     filterMinAmount: string;
-    setFilterMinAmount: (value: string) => void;
     filterMaxAmount: string;
-    setFilterMaxAmount: (value: string) => void;
     selectedTag: string;
-    setSelectedTag: (value: string) => void;
     searchQuery: string;
     sortOrder: SortOrder;
     savingGoals: BrainDumpItem[];
@@ -78,7 +72,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     financeDate, setFinanceDate, showBalance, setShowBalance, appSettings,
     handleDelete, handleUpdateItem, handleToggleStatus, handleOpenEditWallet, handleOpenAddWallet,
     setDeleteId, setDeleteType, setIsSettingsOpen,
-    filterWallet, setFilterWallet, filterTransactionType, setFilterTransactionType, filterCategory, setFilterCategory, filterMinAmount, setFilterMinAmount, filterMaxAmount, setFilterMaxAmount, selectedTag, setSelectedTag, searchQuery, sortOrder,
+    filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
     savingGoals, setActiveTab, onAddItem
 }) => {
     
@@ -128,26 +122,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const incomeLabel = budgetConfig.monthlyIncome > 0 
         ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : 'Fixed Income') 
         : 'Recorded Income';
-
-    const activeMoneyFilters = [
-        filterWallet && { label: `Wallet: ${filterWallet}`, clear: () => setFilterWallet('') },
-        filterTransactionType && { label: `Type: ${filterTransactionType}`, clear: () => setFilterTransactionType('') },
-        filterCategory && { label: `Category: ${filterTransactionType === 'saving' ? (savingGoals.find(goal => goal.id === filterCategory)?.content || 'Selected') : (budgetConfig.rules.find(rule => rule.id === filterCategory)?.name || filterCategory)}`, clear: () => setFilterCategory('') },
-        selectedTag && { label: `Tag: ${selectedTag}`, clear: () => setSelectedTag('') },
-        filterMinAmount && { label: `Min ${fmt(Number(filterMinAmount))}`, clear: () => setFilterMinAmount('') },
-        filterMaxAmount && { label: `Max ${fmt(Number(filterMaxAmount))}`, clear: () => setFilterMaxAmount('') },
-    ].filter(Boolean) as { label: string; clear: () => void }[];
-
-    const walletBreakdown = walletStats
-        .slice()
-        .sort((a, b) => Math.abs(b.currentBalance) - Math.abs(a.currentBalance))
-        .slice(0, 3);
-
-    const transactionMix = useMemo(() => ({
-        expense: list.filter(item => item.meta.financeType === 'expense').length,
-        income: list.filter(item => item.meta.financeType === 'income').length,
-        saving: list.filter(item => item.meta.financeType === 'saving').length,
-    }), [list]);
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -289,88 +263,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 <div className="text-xl font-bold text-[#FF5722]">{showBalance ? fmt(totalExpense) : '••••'}</div>
                             </div>
                         </div>
-
-                        <div className="grid grid-cols-3 gap-3 mb-4">
-                            <button
-                                onClick={() => setFilterTransactionType(filterTransactionType === 'income' ? '' : 'income')}
-                                className={`rounded-2xl p-3 text-left transition-colors ${filterTransactionType === 'income' ? 'bg-emerald-500/15 border border-emerald-500/20' : 'bg-black/5 dark:bg-white/10 border border-transparent'}`}
-                            >
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Income</div>
-                                <div className="mt-2 text-lg font-bold text-emerald-500">{showBalance ? fmt(totalIncome) : '••••'}</div>
-                            </button>
-                            <button
-                                onClick={() => setFilterTransactionType(filterTransactionType === 'expense' ? '' : 'expense')}
-                                className={`rounded-2xl p-3 text-left transition-colors ${filterTransactionType === 'expense' ? 'bg-red-500/15 border border-red-500/20' : 'bg-black/5 dark:bg-white/10 border border-transparent'}`}
-                            >
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Transactions</div>
-                                <div className="mt-2 text-lg font-bold text-primary">{list.length}</div>
-                            </button>
-                            <button
-                                onClick={() => setMoneyView('budget')}
-                                className="rounded-2xl p-3 text-left transition-colors bg-black/5 dark:bg-white/10 border border-transparent hover:border-primary/20"
-                            >
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Savings</div>
-                                <div className="mt-2 text-lg font-bold text-indigo-500">{showBalance ? fmt(totalSavings || 0) : '••••'}</div>
-                            </button>
-                        </div>
-
-                        {moneyView === 'transactions' && (
-                            <div className="rounded-[24px] bg-black/5 dark:bg-white/10 p-4 mb-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Quick filters</div>
-                                        <div className="text-xs text-primary/70 mt-1">Tap once to narrow this month faster.</div>
-                                    </div>
-                                    {activeMoneyFilters.length > 0 && (
-                                        <button
-                                            onClick={() => {
-                                                setFilterWallet('');
-                                                setFilterTransactionType('');
-                                                setFilterCategory('');
-                                                setFilterMinAmount('');
-                                                setFilterMaxAmount('');
-                                                setSelectedTag('');
-                                            }}
-                                            className="text-xs font-bold text-primary/70 hover:text-primary"
-                                        >
-                                            Clear all
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-wrap gap-2">
-                                    {[
-                                        { label: 'Expenses', active: filterTransactionType === 'expense', onClick: () => setFilterTransactionType(filterTransactionType === 'expense' ? '' : 'expense') },
-                                        { label: 'Income', active: filterTransactionType === 'income', onClick: () => setFilterTransactionType(filterTransactionType === 'income' ? '' : 'income') },
-                                        { label: 'Savings', active: filterTransactionType === 'saving', onClick: () => setFilterTransactionType(filterTransactionType === 'saving' ? '' : 'saving') },
-                                        { label: 'Shopping', active: filterTransactionType === 'shopping', onClick: () => setFilterTransactionType(filterTransactionType === 'shopping' ? '' : 'shopping') },
-                                        { label: 'Big spends', active: filterMinAmount === '500000', onClick: () => setFilterMinAmount(filterMinAmount === '500000' ? '' : '500000') },
-                                    ].map(chip => (
-                                        <button
-                                            key={chip.label}
-                                            onClick={chip.onClick}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${chip.active ? 'bg-surface text-primary border border-primary/20' : 'bg-background/70 text-primary/70 border border-transparent hover:border-primary/15 hover:text-primary'}`}
-                                        >
-                                            {chip.label}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {activeMoneyFilters.length > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {activeMoneyFilters.map(filter => (
-                                            <button
-                                                key={filter.label}
-                                                onClick={filter.clear}
-                                                className="px-3 py-1.5 rounded-full bg-surface border border-border text-xs font-medium text-primary"
-                                            >
-                                                {filter.label} ×
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
                         
                         <div className="flex flex-wrap gap-4 pt-4 border-t border-border items-center justify-between">
                             <div className="flex gap-4">
@@ -418,29 +310,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         className="w-full flex-shrink-0 px-4"
                     >
                         <div className="space-y-4">
-                            {walletBreakdown.length > 0 && (
-                                <div className="grid grid-cols-1 gap-3">
-                                    {walletBreakdown.map(wallet => (
-                                        <button
-                                            key={`${wallet.id}-summary`}
-                                            onClick={() => {
-                                                setMoneyView('transactions');
-                                                setFilterWallet(filterWallet === wallet.name ? '' : wallet.name);
-                                            }}
-                                            className="rounded-2xl bg-black/5 dark:bg-white/10 p-4 text-left border border-transparent hover:border-primary/15 transition-colors"
-                                        >
-                                            <div className="flex items-center justify-between gap-3">
-                                                <div>
-                                                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Top wallet</div>
-                                                    <div className="mt-1 font-bold text-primary">{wallet.name}</div>
-                                                </div>
-                                                <div className="text-sm font-bold text-primary">{showBalance ? fmt(wallet.currentBalance) : '••••'}</div>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
                             {walletStats.map(wallet => (
                                 <div 
                                     key={wallet.id} 
@@ -528,29 +397,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         transition={{ duration: 0.4 }}
                         className="w-full flex-shrink-0 px-4"
                     >
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Expenses</div>
-                                    <div className="mt-2 text-xl font-bold text-primary">{transactionMix.expense}</div>
-                                </div>
-                                <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Income</div>
-                                    <div className="mt-2 text-xl font-bold text-primary">{transactionMix.income}</div>
-                                </div>
-                                <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Savings</div>
-                                    <div className="mt-2 text-xl font-bold text-primary">{transactionMix.saving}</div>
-                                </div>
-                            </div>
-
-                            {searchQuery && (
-                                <div className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-primary/70">
-                                    Showing results for <span className="font-bold text-primary">“{searchQuery}”</span>
-                                </div>
-                            )}
-
-                            {list.length === 0 ? <div className="text-center text-muted py-10 rounded-[28px] border border-dashed border-border">No transactions match these filters.</div> : (
+                        <div>
+                            {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
                                 <div className="space-y-2">
                                     {list.map(item => {
                                         const categoryName = budgetConfig.rules.find(r => r.id === item.meta.budgetCategory)?.name || item.meta.budgetCategory;
@@ -559,7 +407,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             key={item.id} 
                                             item={item} 
                                             {...cardProps}
-                                                categoryName={categoryName}
+                                            categoryName={categoryName}
                                             />
                                         );
                                     })}
@@ -604,21 +452,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         >
                                             Y
                                         </button>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-3 mb-8">
-                                    <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Income base</div>
-                                        <div className="mt-2 text-sm font-bold">{showBalance ? fmt(effectiveIncome) : '••••'}</div>
-                                    </div>
-                                    <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Spent</div>
-                                        <div className="mt-2 text-sm font-bold text-red-500">{showBalance ? fmt(totalExpense) : '••••'}</div>
-                                    </div>
-                                    <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Left</div>
-                                        <div className="mt-2 text-sm font-bold text-emerald-500">{showBalance ? fmt(Math.max(0, effectiveIncome - totalExpense - projectedExpense)) : '••••'}</div>
                                     </div>
                                 </div>
 
