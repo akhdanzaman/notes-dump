@@ -9,6 +9,55 @@ const SETTINGS_KEY = 'braindump_spreadsheet_config';
 const LOCAL_STORAGE_KEY = 'braindump_db';
 const SYSTEM_SHEET_NAME = 'App_State_Do_Not_Edit';
 const HISTORY_SHEET_NAME = 'App_State_History';
+const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+const MAX_WRITE_BATCH_SIZE = 8;
+const MAX_FETCH_RETRIES = 3;
+const MAX_HISTORY_COLUMNS = 'ZZZ';
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const safeLocalStorageGet = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    console.warn(`Error reading localStorage key: ${key}`, e);
+    return null;
+  }
+};
+
+const safeLocalStorageSet = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn(`Failed to save localStorage key: ${key}`, e);
+  }
+};
+
+const safeLocalStorageRemove = (key: string) => {
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {
+    console.warn(`Failed to remove localStorage key: ${key}`, e);
+  }
+};
+
+const safeJsonParse = <T>(value: string | null, fallback: T): T => {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch (e) {
+    console.warn('Failed to parse JSON payload', e);
+    return fallback;
+  }
+};
+
+const getRetryDelayMs = (attempt: number, retryAfterHeader: string | null) => {
+  const retryAfterSeconds = Number(retryAfterHeader);
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+  return 500 * Math.pow(2, attempt) + Math.floor(Math.random() * 250);
+};
 
 export interface SpreadsheetConfig {
   spreadsheetId: string;
@@ -20,41 +69,22 @@ let lastSnapshot: string | null = null;
 let operationQueue: Promise<any> = Promise.resolve();
 
 export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
-  try {
-    const local = localStorage.getItem(SETTINGS_KEY);
-    if (local) {
-      const parsed = JSON.parse(local);
-      if (parsed.spreadsheetId) {
-        return parsed;
-      }
-    }
-  } catch(e) {
-    console.warn("Error reading spreadsheet settings", e);
-  }
-  return null;
+  const parsed = safeJsonParse<SpreadsheetConfig | null>(safeLocalStorageGet(SETTINGS_KEY), null);
+  return parsed?.spreadsheetId ? parsed : null;
 };
 
 export const saveSpreadsheetConfig = (config: SpreadsheetConfig) => {
-  const existingStr = localStorage.getItem(SETTINGS_KEY);
-  let existing = null;
-  if (existingStr) {
-      try { existing = JSON.parse(existingStr); } catch(e) {}
-  }
-  
-  const nextConfig = {
-      ...config
-  };
-
-  const next = JSON.stringify(nextConfig);
+  const existingStr = safeLocalStorageGet(SETTINGS_KEY);
+  const next = JSON.stringify({ ...config });
   if (existingStr === next) return;
 
-  localStorage.setItem(SETTINGS_KEY, next);
+  safeLocalStorageSet(SETTINGS_KEY, next);
   isHydrated = false;
   lastSnapshot = null;
 };
 
 export const clearSpreadsheetConfig = () => {
-  localStorage.removeItem(SETTINGS_KEY);
+  safeLocalStorageRemove(SETTINGS_KEY);
   isHydrated = false;
   lastSnapshot = null;
 };
@@ -63,7 +93,6 @@ const validateSchema = (data: any): DbSchema => {
   if (!data || typeof data !== 'object') return { data: [] };
   
   const rawChatHistory = Array.isArray(data.chatHistory) ? data.chatHistory : [];
-  // Truncate to last 50 messages to prevent bloated database issues
   const chatHistory = rawChatHistory.slice(-50);
 
   return {
@@ -81,41 +110,55 @@ const validateSchema = (data: any): DbSchema => {
   };
 };
 
+const shouldRetrySpreadsheetRequest = (status: number) => status === 401 || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+
+const sheetsFetch = async (
+  spreadsheetId: string,
+  path: string,
+  init: RequestInit = {},
+  attempt = 0,
+  tokenOverride?: string
+): Promise<Response> => {
+  const token = tokenOverride || await getValidGoogleAccessToken();
+  if (!token) throw new Error('No valid Google access token available');
+
+  const response = await fetch(`${GOOGLE_SHEETS_API_BASE}/${spreadsheetId}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(init.headers || {})
+    }
+  });
+
+  if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
+    return response;
+  }
+
+  const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
+  await wait(delayMs);
+  return sheetsFetch(spreadsheetId, path, init, attempt + 1, response.status === 401 ? undefined : token);
+};
+
+const readLocalDbFallback = () => {
+  const local = safeLocalStorageGet(LOCAL_STORAGE_KEY);
+  if (!local) return null;
+  const data = validateSchema(safeJsonParse(local, { data: [] }));
+  isHydrated = true;
+  lastSnapshot = local;
+  return { data, sha: 'local-sha', reconciled: false };
+};
+
 const performFetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
   const config = getSpreadsheetConfig();
   if (!config) throw new Error("No spreadsheet config");
 
   try {
-    const token = await getValidGoogleAccessToken();
-    if (!token) throw new Error("No valid Google access token available");
-    
-    // First, get metadata to see which sheets exist
-    const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
-    if (!metaRes.ok) {
-      if (metaRes.status === 401) {
-        // Token might have expired right after we got it, try to get a new one
-        const newToken = await getValidGoogleAccessToken();
-        if (!newToken) throw new Error("Failed to refresh Google access token");
-        return fetchSpreadsheetDbWithToken(config, newToken, skipLocalStorage);
-      }
-      throw new Error(`Google Sheets API error: ${metaRes.statusText}`);
-    }
-    
-    return fetchSpreadsheetDbWithToken(config, token, skipLocalStorage);
-
+    return await fetchSpreadsheetDbWithToken(config, skipLocalStorage);
   } catch (error: any) {
     console.warn("Spreadsheet fetch failed:", error);
     if (!skipLocalStorage) {
-      const local = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (local) {
-        const data = validateSchema(JSON.parse(local));
-        isHydrated = true;
-        lastSnapshot = local;
-        return { data, sha: 'local-sha', reconciled: false };
-      }
+      const fallback = readLocalDbFallback();
+      if (fallback) return fallback;
     }
     throw error;
   }
@@ -128,10 +171,8 @@ export const fetchSpreadsheetDb = (skipLocalStorage = false): Promise<{ data: Db
   return queuedTask;
 };
 
-const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: string, skipLocalStorage: boolean) => {
-    const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalStorage: boolean) => {
+    const metaRes = await sheetsFetch(config.spreadsheetId, '');
     if (!metaRes.ok) {
         const errText = await metaRes.text();
         throw new Error(`Failed to fetch metadata: ${metaRes.status} ${metaRes.statusText} - ${errText}`);
@@ -173,8 +214,8 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     let batchData: any = { valueRanges: [] };
     
     if (rangesToFetch.length > 0) {
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchGet?ranges=${rangesToFetch.map(encodeURIComponent).join('&ranges=')}`;
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const path = `/values:batchGet?ranges=${rangesToFetch.map(encodeURIComponent).join('&ranges=')}`;
+        const res = await sheetsFetch(config.spreadsheetId, path);
         
         if (!res.ok) {
             const errText = await res.text();
@@ -189,8 +230,8 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     let dbData;
     if (isNewSpreadsheet) {
         console.log("New spreadsheet detected, returning local data to avoid wiping.");
-        const local = localStorage.getItem(LOCAL_STORAGE_KEY);
-        dbData = local ? validateSchema(JSON.parse(local)) : { data: [] };
+        const local = safeLocalStorageGet(LOCAL_STORAGE_KEY);
+        dbData = local ? validateSchema(safeJsonParse(local, { data: [] })) : { data: [] };
     } else {
         dbData = processFetchResponse(systemSheet, skipLocalStorage).data;
     }
@@ -213,7 +254,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, token: str
     const jsonString = JSON.stringify(dbData);
     if (!skipLocalStorage) {
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+        safeLocalStorageSet(LOCAL_STORAGE_KEY, jsonString);
       } catch (e) {
         console.warn("Failed to save to local storage (quota exceeded?)", e);
       }
@@ -230,11 +271,9 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
     jsonString = data.values.map((row: any[]) => row[0] || '').join('');
   }
   
-  let rawData;
-  try {
-    rawData = JSON.parse(jsonString);
-  } catch (e) {
-    console.warn("Failed to parse spreadsheet data, initializing empty DB", e);
+  let rawData = safeJsonParse<any>(jsonString, { data: [] });
+  if (!rawData || typeof rawData !== 'object') {
+    console.warn("Failed to parse spreadsheet data, initializing empty DB");
     rawData = { data: [] };
     jsonString = '{"data":[]}';
   }
@@ -243,7 +282,7 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
   
   if (!skipLocalStorage) {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
+      safeLocalStorageSet(LOCAL_STORAGE_KEY, jsonString);
     } catch (e) {
       console.warn("Failed to save to local storage (quota exceeded?)", e);
     }
@@ -271,11 +310,7 @@ const performSync = async (
   
   const jsonString = JSON.stringify(updatedDb);
 
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, jsonString);
-  } catch (e) {
-    console.warn("Local storage error (quota exceeded?)", e);
-  }
+  safeLocalStorageSet(LOCAL_STORAGE_KEY, jsonString);
 
   if (!isHydrated) {
     try {
@@ -305,23 +340,13 @@ const performSync = async (
         // 1. Fetch latest data from spreadsheet and merge
         const { data: remoteDb } = await performFetchSpreadsheetDb(false);
         
-        let baseDb: DbSchema | undefined;
-        if (lastSnapshot) {
-            try {
-                baseDb = JSON.parse(lastSnapshot);
-            } catch (e) {
-                console.warn("Failed to parse lastSnapshot", e);
-            }
-        }
+        const baseDb = lastSnapshot ? safeJsonParse<DbSchema | undefined>(lastSnapshot, undefined) : undefined;
         
         finalDb = mergeDbData(updatedDb, remoteDb, baseDb);
         finalItems = finalDb.data;
         reconciled = true;
     }
 
-    const token = await getValidGoogleAccessToken();
-    if (!token) throw new Error("No valid Google access token available");
-    
     const finalJsonString = JSON.stringify(finalDb);
 
     // 2. Prepare Data
@@ -353,10 +378,8 @@ const performSync = async (
     ];
 
     // 2. Get existing sheets to determine what needs to be created
-    const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!metaRes.ok) throw new Error("Failed to fetch spreadsheet metadata");
+    const metaRes = await sheetsFetch(config.spreadsheetId, '');
+    if (!metaRes.ok) throw new Error(`Failed to fetch spreadsheet metadata: ${await metaRes.text()}`);
     const meta = await metaRes.json();
     const existingSheetTitles = new Set((meta.sheets || []).map((s: any) => s.properties.title));
 
@@ -383,10 +406,9 @@ const performSync = async (
     }
 
     if (requests.length > 0) {
-      const batchRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}:batchUpdate`, {
+      const batchRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
         method: 'POST',
         headers: { 
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ requests })
@@ -397,10 +419,9 @@ const performSync = async (
     // 4. Clear existing data in target sheets to avoid leftover rows
     console.log("Clearing sheets...");
     const rangesToClear = allSheets.map(s => `'${s.name}'`);
-    const clearRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchClear`, {
+    const clearRes = await sheetsFetch(config.spreadsheetId, '/values:batchClear', {
       method: 'POST',
       headers: { 
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ ranges: rangesToClear })
@@ -422,10 +443,9 @@ const performSync = async (
     }));
 
     // Update System Sheet first (critical data)
-    const updateSystemRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchUpdate`, {
+    const updateSystemRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
       method: 'POST',
       headers: { 
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -441,22 +461,24 @@ const performSync = async (
 
     // Update User Sheets
     if (userSheetsData.length > 0) {
-        const updateUserRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values:batchUpdate`, {
-            method: 'POST',
-            headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                valueInputOption: 'RAW',
-                data: userSheetsData
-            })
-        });
+        for (let i = 0; i < userSheetsData.length; i += MAX_WRITE_BATCH_SIZE) {
+            const batch = userSheetsData.slice(i, i + MAX_WRITE_BATCH_SIZE);
+            const updateUserRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    valueInputOption: 'RAW',
+                    data: batch
+                })
+            });
 
-        if (!updateUserRes.ok) {
-            const errorText = await updateUserRes.text();
-            // Log error but don't fail the whole sync if user sheets fail (system sheet is safe)
-            console.error(`Google Sheets API error (User Sheets): ${updateUserRes.status} ${updateUserRes.statusText} - ${errorText}`);
+            if (!updateUserRes.ok) {
+                const errorText = await updateUserRes.text();
+                console.error(`Google Sheets API error (User Sheets): ${updateUserRes.status} ${updateUserRes.statusText} - ${errorText}`);
+                throw new Error(`Failed to write user-facing sheets: ${updateUserRes.status} ${updateUserRes.statusText}`);
+            }
         }
     }
 
@@ -465,10 +487,9 @@ const performSync = async (
     
     try {
         const historyRow = [new Date().toISOString(), ...jsonChunks.map(c => c[0])];
-        const appendRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values/'${HISTORY_SHEET_NAME}'!A:A:append?valueInputOption=RAW`, {
+        const appendRes = await sheetsFetch(config.spreadsheetId, `/values/'${HISTORY_SHEET_NAME}'!A:${MAX_HISTORY_COLUMNS}:append?valueInputOption=RAW`, {
             method: 'POST',
-            headers: { 
-                Authorization: `Bearer ${token}`,
+            headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -477,7 +498,7 @@ const performSync = async (
         });
         
         if (appendRes.ok) {
-            localStorage.setItem('braindump_last_backup_time', now.toString());
+            safeLocalStorageSet('braindump_last_backup_time', now.toString());
             console.log("Appended new version to history sheet.");
         } else {
             console.warn("Failed to append to history sheet:", await appendRes.text());
@@ -530,12 +551,7 @@ export const getSpreadsheetHistory = async (): Promise<SpreadsheetHistoryEntry[]
     const config = getSpreadsheetConfig();
     if (!config) throw new Error("No spreadsheet config");
 
-    const token = await getValidGoogleAccessToken();
-    if (!token) throw new Error("No valid Google access token available");
-
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values/'${HISTORY_SHEET_NAME}'!A:Z`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await sheetsFetch(config.spreadsheetId, `/values/'${HISTORY_SHEET_NAME}'!A:${MAX_HISTORY_COLUMNS}`);
 
     if (!res.ok) {
         if (res.status === 400) {
@@ -554,7 +570,8 @@ export const getSpreadsheetHistory = async (): Promise<SpreadsheetHistoryEntry[]
         const timestamp = row[0];
         const jsonString = row.slice(1).join('');
         try {
-            const parsed = JSON.parse(jsonString);
+            const parsed = safeJsonParse<any>(jsonString, null);
+            if (!parsed) continue;
             history.push({
                 timestamp,
                 data: validateSchema(parsed)

@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import {
   ItemType,
   BrainDumpItem,
@@ -25,7 +25,8 @@ import {
   ParsedWalletType,
   ParsedItemType
 } from '../types';
-import { getGeminiKey, DEFAULT_PROMPT } from './geminiService';
+import { DEFAULT_PROMPT } from './geminiService';
+import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_PRO_MODEL } from './aiService';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -618,31 +619,20 @@ const stage2Schema = {
 
 function safeParseJSON(text: string) {
   if (!text) throw new Error("Empty JSON response");
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    console.warn("JSON parsing failed. Raw text length:", text.length);
-    // Try to find array brackets
-    const start = text.indexOf('[');
-    const end = text.lastIndexOf(']');
-    if (start !== -1 && end !== -1 && end > start) {
-      try {
-        return JSON.parse(text.substring(start, end + 1));
-      } catch (e2) {
-        console.warn("Fallback parsing also failed.");
-      }
-    }
+  const parsed = parseJsonResponse<any>(text, undefined as any);
+  if (parsed === undefined) {
     throw new Error(`Failed to parse JSON response (length: ${text.length})`);
   }
+  return parsed;
 }
 
 async function parseStage1(
-  ai: GoogleGenAI,
+  ai: NonNullable<ReturnType<typeof createGeminiClient>>,
   model: string,
   text: string,
   ctx: ParserContext
 ): Promise<ParserResultV2[]> {
-  const response = await ai.models.generateContent({
+  const response = await withAiRetry(() => ai.models.generateContent({
     model,
     contents: [
       INTENT_PROMPT_V2,
@@ -666,7 +656,7 @@ async function parseStage1(
       responseMimeType: "application/json",
       responseSchema: stage1Schema
     }
-  });
+  }));
 
   const parsed = safeParseJSON(response.text);
   const arr = Array.isArray(parsed) ? parsed : [parsed];
@@ -765,14 +755,14 @@ Routine rules:
 }
 
 async function parseStage2(
-  ai: GoogleGenAI,
+  ai: NonNullable<ReturnType<typeof createGeminiClient>>,
   model: string,
   text: string,
   stage1Results: ParserResultV2[],
   ctx: ParserContext,
   customPrompt?: string
 ): Promise<ParserResultV2[]> {
-  const response = await ai.models.generateContent({
+  const response = await withAiRetry(() => ai.models.generateContent({
     model,
     contents: buildFeaturePrompt(text, stage1Results, ctx, customPrompt),
     config: {
@@ -781,7 +771,7 @@ async function parseStage2(
       responseMimeType: "application/json",
       responseSchema: stage2Schema
     }
-  });
+  }));
 
   const parsed = safeParseJSON(response.text);
   const arr = Array.isArray(parsed) ? parsed : [parsed];
@@ -1217,8 +1207,18 @@ export const parsePro = async (
     }];
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-  const activeModel = parsingModel || 'gemini-3.1-pro-preview';
+  const ai = createGeminiClient(apiKey);
+  if (!ai) {
+    return [{
+      action: 'unknown',
+      entityType: 'note',
+      content: text,
+      confidence: 'low',
+      needsReview: true,
+      reviewReason: 'Missing Gemini API key'
+    }];
+  }
+  const activeModel = parsingModel || DEFAULT_PRO_MODEL;
   const ctx = buildContext(existingTags, availableSkills, availableWallets, availableBudgetRules, existingItems);
 
   try {

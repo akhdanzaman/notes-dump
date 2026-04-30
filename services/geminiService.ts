@@ -1,26 +1,10 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { ItemType, BrainDumpItem } from '../types';
 
 import { getLocalISOString } from '../utils/selectors/dateUtils';
+import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 
-const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
-
-export const getGeminiKey = (): string => {
-  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.GEMINI_API_KEY || '';
-};
-
-export const saveGeminiKey = (key: string) => {
-  if (key) {
-      localStorage.setItem(GEMINI_SETTINGS_KEY, key);
-  } else {
-      localStorage.removeItem(GEMINI_SETTINGS_KEY);
-  }
-};
-
-// Updated to Gemini 3 Flash Preview as requested
-const modelName = 'gemini-3-flash-preview';
-
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+export { getGeminiKey, saveGeminiKey, DEFAULT_FLASH_MODEL } from './aiService';
 
 export const DEFAULT_PROMPT = `Task: Split input into distinct items. Output MUST be a JSON ARRAY of objects.
 
@@ -120,20 +104,27 @@ Examples:
 - "Saved 500k for car from BCA" => FINANCE saving, content "Saved for car", amount 500000, paymentMethod "BCA"
 `;
 
-// CHANGED: Added availableSkills to prompt context
-export const classifyText = async (text: string, existingTags: string[] = [], availableSkills: string[] = [], retryCount = 0, customPrompt?: string, parsingModel?: string, availableWallets: {id: string, name: string}[] = [], availableBudgetRules: {id: string, name: string}[] = []): Promise<Partial<BrainDumpItem>[]> => {
+export const classifyText = async (
+  text: string,
+  existingTags: string[] = [],
+  availableSkills: string[] = [],
+  retryCount = 0,
+  customPrompt?: string,
+  parsingModel?: string,
+  availableWallets: {id: string, name: string}[] = [],
+  availableBudgetRules: {id: string, name: string}[] = []
+): Promise<Partial<BrainDumpItem>[]> => {
   const apiKey = getGeminiKey();
-  
-  if (!apiKey) {
-      console.warn("No Gemini API Key found.");
-      return [{
-        type: ItemType.NOTE,
-        content: text,
-        meta: { tags: ['missing-api-key'] }
-      }];
-  }
+  const ai = createGeminiClient(apiKey);
 
-  const ai = new GoogleGenAI({ apiKey });
+  if (!ai || !apiKey) {
+    console.warn("No Gemini API Key found.");
+    return [{
+      type: ItemType.NOTE,
+      content: text,
+      meta: { tags: ['missing-api-key'] }
+    }];
+  }
 
   const now = new Date();
   const currentDate = getLocalISOString(now);
@@ -144,10 +135,10 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
   const budgetContext = availableBudgetRules.length > 0 ? `Known Budget Categories (for budgetCategory): ${availableBudgetRules.map(b => `${b.name} [ID: ${b.id}]`).join(', ')}` : '';
 
   const promptToUse = customPrompt || DEFAULT_PROMPT;
-  const activeModel = parsingModel || modelName;
+  const activeModel = parsingModel || DEFAULT_FLASH_MODEL;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await withAiRetry(() => ai.models.generateContent({
       model: activeModel,
       contents: `Analyze this user input: "${text}". 
       Current Date context: ${currentDate} (${currentDayName}).
@@ -201,57 +192,48 @@ export const classifyText = async (text: string, existingTags: string[] = [], av
           }
         },
       },
-    });
+    }));
 
-    const parsed = JSON.parse(response.text || "[]");
-    
-    // Ensure result is an array
+    const parsed = parseJsonResponse<any[]>(response.text, []);
     const resultsArray = Array.isArray(parsed) ? parsed : [parsed];
 
     return resultsArray.map((result: any) => {
-        // Validate type matches our Enum
-        let matchedType = ItemType.NOTE;
-        const typeStr = result.type?.toUpperCase();
-        if (Object.values(ItemType).includes(typeStr as ItemType)) {
-          matchedType = typeStr as ItemType;
-        }
+      let matchedType = ItemType.NOTE;
+      const typeStr = result?.type?.toUpperCase();
+      if (Object.values(ItemType).includes(typeStr as ItemType)) {
+        matchedType = typeStr as ItemType;
+      }
 
-        // Default shopping category if missing
-        if (matchedType === ItemType.SHOPPING && !result.meta?.shoppingCategory) {
-            if (!result.meta) result.meta = {};
-            result.meta.shoppingCategory = 'not_urgent';
-        }
+      if (matchedType === ItemType.SHOPPING && !result?.meta?.shoppingCategory) {
+        if (!result.meta) result.meta = {};
+        result.meta.shoppingCategory = 'not_urgent';
+      }
 
-        // Default date for JOURNAL if missing is TODAY (created_at handles it mostly, but strict date helps sorting)
-        if (matchedType === ItemType.JOURNAL && !result.meta?.date) {
-             if (!result.meta) result.meta = {};
-             result.meta.date = new Date().toISOString();
-        }
+      if (matchedType === ItemType.JOURNAL && !result?.meta?.date) {
+        if (!result.meta) result.meta = {};
+        result.meta.date = new Date().toISOString();
+      }
 
-        return {
-          type: matchedType,
-          content: result.content || text,
-          meta: result.meta || { tags: [] }
-        };
+      return {
+        type: matchedType,
+        content: result?.content || text,
+        meta: result?.meta || { tags: [] }
+      };
     });
 
   } catch (error: any) {
-    const status = error?.status || error?.response?.status;
-    
-    if (retryCount < 2 && (status === 429 || status >= 500)) {
-        const delay = Math.pow(2, retryCount) * 1000;
-        await wait(delay);
-        return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt, parsingModel, availableWallets, availableBudgetRules);
+    if (retryCount < 2) {
+      return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt, parsingModel, availableWallets, availableBudgetRules);
     }
 
     console.error("Gemini classification failed:", error);
-    
+
     return [{
       type: ItemType.NOTE,
       content: text,
-      meta: { 
-          tags: ['parsing_failed'],
-          parsingError: error?.message || "Unknown error occurred during parsing"
+      meta: {
+        tags: ['parsing_failed'],
+        parsingError: error?.message || "Unknown error occurred during parsing"
       }
     }];
   }

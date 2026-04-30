@@ -28,6 +28,12 @@ test('parseJsonResponse handles fenced JSON and surrounding prose', () => {
   const objectResult = parseJsonResponse<{ ok: boolean }>('Model said: {"ok":true}', { ok: false });
   assert.deepEqual(objectResult, { ok: true });
 
+  const nestedObjectResult = parseJsonResponse<{ data: { tags: string[]; meta: { count: number } } }>(
+    'Sure — here you go: {"data":{"tags":["food"],"meta":{"count":1}}} Thanks!',
+    { data: { tags: [], meta: { count: 0 } } }
+  );
+  assert.deepEqual(nestedObjectResult, { data: { tags: ['food'], meta: { count: 1 } } });
+
   const fallbackResult = parseJsonResponse('not json at all', [{ fallback: true }]);
   assert.deepEqual(fallbackResult, [{ fallback: true }]);
 });

@@ -400,7 +400,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <div className="text-center pt-4">
                                                 <p className="text-xs text-muted flex items-center justify-center gap-2">
                                                     <Github className="w-3 h-3" />
-                                                    <span>BrainDump AI v0.2.0</span>
+                                                    <span>BrainDump AI v0.3.1</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -1252,6 +1252,19 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Version History</h3>
                                                 <div className="space-y-4">
+                                                    <div className="bg-background border border-border rounded-2xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-primary">v0.3.1</div>
+                                                            <div className="text-xs text-muted">April 2026</div>
+                                                        </div>
+                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                            <li>Stabilized all Gemini-based AI services with shared key handling and retry logic.</li>
+                                                            <li>Hardened AI JSON parsing so fenced/prose-wrapped responses no longer break flows easily.</li>
+                                                            <li>Improved Google Sheets sync reliability with token refresh retry, rate-limit backoff, and chunked sheet writes.</li>
+                                                            <li>Expanded spreadsheet history reads/writes to avoid truncated backups on larger databases.</li>
+                                                            <li>Reduced silent localStorage failures with safer read/write guards.</li>
+                                                        </ul>
+                                                    </div>
                                                     <div className="bg-background border border-border rounded-2xl p-4">
                                                         <div className="flex items-center justify-between mb-2">
                                                             <div className="font-bold text-primary">v0.3.0</div>

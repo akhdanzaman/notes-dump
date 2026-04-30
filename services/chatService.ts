@@ -1,13 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, ChatMessage } from '../types';
-
-const GEMINI_SETTINGS_KEY = 'braindump_gemini_key';
-
-export const getGeminiKey = (): string => {
-  return localStorage.getItem(GEMINI_SETTINGS_KEY) || process.env.GEMINI_API_KEY || '';
-};
-
-const modelName = 'gemini-3-flash-preview';
+import { createGeminiClient, getGeminiKey, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 
 export const generateChatResponse = async (
     message: string,
@@ -20,15 +12,15 @@ export const generateChatResponse = async (
     chatModel?: string
 ): Promise<string> => {
     const apiKey = getGeminiKey();
-    if (!apiKey) {
+    const ai = createGeminiClient(apiKey);
+
+    if (!ai || !apiKey) {
         return "Please configure your Gemini API key in the settings to use the chat feature.";
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-    const activeModel = chatModel || modelName;
-
-    // Truncate items to the last 200 to prevent massive payloads
+    const activeModel = chatModel || DEFAULT_FLASH_MODEL;
     const recentItems = items.slice(-200);
+    const recentHistory = history.slice(-20);
 
     const systemInstruction = `
 You are an intelligent assistant for a personal productivity and finance app called BrainDump AI.
@@ -57,26 +49,22 @@ ${JSON.stringify(skills, null, 2)}
 `;
 
     try {
-        // We can format the history manually and send it as a single prompt if we don't want to use the chat session,
-        // or we can use the chat session and send messages sequentially.
-        // Since we want to maintain context, sending the whole history as a single prompt is easier and stateless.
-        
         let prompt = "";
-        for (const msg of history) {
+        for (const msg of recentHistory) {
             prompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n\n`;
         }
         prompt += `User: ${message}\n\nAssistant:`;
 
-        const response = await ai.models.generateContent({
+        const response = await withAiRetry(() => ai.models.generateContent({
             model: activeModel,
             contents: prompt,
             config: {
                 systemInstruction,
                 temperature: 0.7,
             }
-        });
+        }));
 
-        return response.text || "Sorry, I couldn't generate a response.";
+        return response.text?.trim() || "Sorry, I couldn't generate a response.";
     } catch (error) {
         console.error("Chat error:", error);
         return "Sorry, I encountered an error while processing your request.";

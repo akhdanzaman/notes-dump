@@ -1,7 +1,7 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { BrainDumpItem, BudgetConfig, Wallet, Skill, ItemType } from '../types';
-import { getGeminiKey } from './geminiService';
 import { getFinanceItems } from '../utils/selectors';
+import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -18,7 +18,9 @@ export const generateAIInsights = async (
   insightModel?: string
 ): Promise<Insight[]> => {
   const apiKey = getGeminiKey();
-  if (!apiKey) {
+  const ai = createGeminiClient(apiKey);
+
+  if (!ai || !apiKey) {
     return [{
       type: 'warning',
       title: 'API Key Missing',
@@ -27,10 +29,8 @@ export const generateAIInsights = async (
     }];
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-  const activeModel = insightModel || 'gemini-3-flash-preview';
+  const activeModel = insightModel || DEFAULT_FLASH_MODEL;
   
-  // Aggregate data
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -41,7 +41,6 @@ export const generateAIInsights = async (
   const lastMonth = lastMonthDate.getMonth();
   const lastYear = lastMonthDate.getFullYear();
 
-  // Finance aggregation (Apple to Apple: up to current day)
   const getMonthExpenses = (month: number, year: number, upToDay: number) => {
     return items.filter(i => {
       if (i.type !== ItemType.FINANCE && i.type !== ItemType.SHOPPING && i.type !== ItemType.TODO) return false;
@@ -78,7 +77,6 @@ export const generateAIInsights = async (
   const currentTags = getTagBreakdown(currentMonthExpenses);
   const lastTags = getTagBreakdown(lastMonthExpenses);
 
-  // Tasks aggregation (Apple to Apple: up to current day)
   const incompleteLastMonth = items.filter(i => 
     (i.type === ItemType.TODO || i.type === ItemType.EVENT) && 
     i.status === 'pending' && 
@@ -105,7 +103,6 @@ export const generateAIInsights = async (
     new Date(i.completed_at).getDate() <= currentDay
   ).length;
 
-  // Budget and Planned Spending (Current Month)
   const { budgetMap, plannedBudgetMap, projectedExpense } = getFinanceItems(items, now, budgetConfig, '', '', '', '', '', '', '', 'newest');
   
   const budgetLimits = budgetConfig.rules.map(rule => ({
@@ -115,7 +112,6 @@ export const generateAIInsights = async (
     planned: plannedBudgetMap.get(rule.id) || 0
   }));
 
-  // Daily and Weekly data
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const yesterdayStart = todayStart - (24 * 60 * 60 * 1000);
   const sevenDaysAgo = todayStart - (7 * 24 * 60 * 60 * 1000);
@@ -142,17 +138,13 @@ export const generateAIInsights = async (
       };
   };
 
-  // Skill Progress
-  const skillProgress = skills.map(s => {
-      return {
-          name: s.name,
-          current: 0,
-          target: s.weeklyTargetMinutes || 0,
-          percentage: 0
-      };
-  });
+  const skillProgress = skills.map(s => ({
+      name: s.name,
+      current: 0,
+      target: s.weeklyTargetMinutes || 0,
+      percentage: 0
+  }));
 
-  // Saving Goals
   const savingGoals = items
       .filter(i => i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving')
       .map(goal => {
@@ -218,7 +210,7 @@ export const generateAIInsights = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await withAiRetry(() => ai.models.generateContent({
       model: activeModel,
       contents: prompt,
       config: {
@@ -237,9 +229,9 @@ export const generateAIInsights = async (
           }
         }
       }
-    });
+    }));
 
-    const parsed = JSON.parse(response.text || "[]");
+    const parsed = parseJsonResponse<Insight[]>(response.text, []);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     console.error("Failed to generate AI insights:", error);
