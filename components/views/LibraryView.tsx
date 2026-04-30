@@ -356,7 +356,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (skillStats.length === 0) {
             return (
                 <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-muted">No skills tracked yet.</p>
+                    <p className="text-sm text-muted">No skills tracked yet. Add one target and keep the weekly rhythm visible.</p>
                     <button
                         onClick={handleOpenAddSkill}
                         className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"

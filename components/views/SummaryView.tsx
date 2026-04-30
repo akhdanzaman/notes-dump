@@ -457,7 +457,24 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                         {focusFeed.length === 0 ? (
                             <div className="rounded-3xl border border-dashed border-border px-6 py-10 text-center">
-                                <p className="text-sm text-muted">Nothing urgent here. Capture something or plan ahead.</p>
+                                <p className="text-sm text-muted">Nothing urgent here. Good moment to capture something or line up the next task.</p>
+                                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                    <button
+                                        onClick={handleOpenAddNote}
+                                        className="inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
+                                    >
+                                        <StickyNote className="h-4 w-4" /> New Note
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab('plan');
+                                            setPlanSubTab('tasks');
+                                        }}
+                                        className="inline-flex items-center gap-2 rounded-2xl bg-muted/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-muted/20"
+                                    >
+                                        View Plan
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <div className="divide-y divide-border/70 rounded-3xl border border-border/70 bg-surface">

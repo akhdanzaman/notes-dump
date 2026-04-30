@@ -310,7 +310,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
 
                     {selectedDayItems.length === 0 ? (
                         <div className="px-6 py-12 text-center">
-                            <p className="text-sm text-muted">Good day for planning or deep work.</p>
+                            <p className="text-sm text-muted">No agenda here yet. Good opening for planning or deep work.</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-border/70">
