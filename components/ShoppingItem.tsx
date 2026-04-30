@@ -35,11 +35,10 @@ interface ShoppingItemProps {
   budgetRules?: BudgetRule[];
   wallets?: Wallet[];
   onResetRoutine?: (id: string) => void;
-  embedded?: boolean;
 }
 
-const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], wallets = [], onResetRoutine, embedded = false }) => {
-  const [isExpanded, setIsExpanded] = useState(embedded);
+const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], wallets = [], onResetRoutine }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const { content, meta, status, completed_at } = item;
   
   // Edit State
@@ -177,17 +176,16 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   const toggleExpand = (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (embedded) return;
       setIsExpanded(!isExpanded);
   };
 
-  const shellClass = embedded
-    ? 'rounded-none bg-transparent p-0 shadow-none'
-    : `rounded-[24px] p-4 shadow-sm cursor-pointer ${isDone ? 'bg-surface/50 opacity-75' : 'bg-surface hover:bg-surface/80'}`;
-
   return (
     <div 
-      className={`group flex flex-col overflow-hidden transition-all ${shellClass}`}
+      className={`group flex flex-col rounded-[24px] p-4 shadow-sm transition-all overflow-hidden cursor-pointer
+        ${isDone 
+            ? 'bg-surface/50 opacity-75' 
+            : `bg-surface hover:bg-surface/80`
+        }`}
       onClick={toggleExpand}
     >
       <div className="flex flex-col gap-1">

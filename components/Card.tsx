@@ -125,7 +125,6 @@ interface CardProps {
   defaultCollapsed?: boolean;
   hideMoney?: boolean;
   className?: string;
-  embedded?: boolean;
   
   // Context Props
   skills?: Skill[];
@@ -149,7 +148,6 @@ const Card: React.FC<CardProps> = ({
     defaultCollapsed = false,
     hideMoney = false,
     className = '',
-    embedded = false,
     skills = [],
     wallets = [],
     budgetRules = [],
@@ -500,16 +498,13 @@ const Card: React.FC<CardProps> = ({
   
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
-  const shellClass = embedded
-    ? `bg-transparent rounded-none p-0 shadow-none hover:bg-transparent ${className}`
-    : `${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-lg' : ''} rounded-[16px] p-3 shadow-sm transition-all hover:bg-surface/80 ${className} ${enableCollapse ? 'cursor-pointer' : ''}`;
 
   return (
     <motion.div 
         initial={{ scale: 1 }}
-        animate={{ scale: embedded ? 1 : (!isCollapsed ? 1.02 : 1) }}
+        animate={{ scale: !isCollapsed ? 1.02 : 1 }}
         transition={{ type: "tween", ease: "easeInOut", duration: 0.2 }}
-        className={`${shellClass} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid`}
+        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-lg' : ''} rounded-[16px] p-3 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
