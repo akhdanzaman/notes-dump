@@ -666,6 +666,16 @@ const App: React.FC = () => {
                           filterCategory={filterCategory}
                           filterMinAmount={filterMinAmount} filterMaxAmount={filterMaxAmount}
                           selectedTag={selectedTag} searchQuery={searchQuery} sortOrder={sortOrder}
+                          clearMoneyFilters={() => {
+                              setFilterWallet('');
+                              setFilterTransactionType('');
+                              setFilterCategory('');
+                              setFilterMinAmount('');
+                              setFilterMaxAmount('');
+                              setSelectedTag('');
+                              setSearchQuery('');
+                          }}
+                          setFilterTransactionType={setFilterTransactionType}
                           savingGoals={savingGoals}
                           setActiveTab={setActiveTab}
                           onAddItem={(type) => {
