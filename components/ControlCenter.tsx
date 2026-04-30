@@ -250,7 +250,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         handleGoogleLogin,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
-        handleDisconnectGoogle,
         handleSave,
         handleDisconnectGithub,
         handleConnectionChoice,
@@ -866,7 +865,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     <p className="truncate text-xs text-muted">{googleProfile.email}</p>
                                 </div>
                             </div>
-                            <button onClick={handleDisconnectGoogle} className="rounded-xl border border-red-500/20 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-500/10">
+                            <button onClick={handleDisconnectSpreadsheet} className="rounded-xl border border-red-500/20 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-500/10">
                                 Sign out
                             </button>
                         </div>
