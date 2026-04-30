@@ -274,7 +274,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     {sectionItems.map(item => {
                         const isExpanded = expandedTaskId === item.id;
                         return (
-                            <div key={item.id} className="px-4 py-4 first:pt-5 last:pb-5">
+                            <div key={item.id} className={`px-4 py-4 transition-colors first:pt-5 last:pb-5 ${isExpanded ? 'bg-background/30' : ''}`}>
                                 <button type="button" onClick={() => setExpandedTaskId(current => current === item.id ? null : item.id)} className="w-full text-left">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
@@ -293,7 +293,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             transition={{ duration: 0.18 }}
                                             className="overflow-hidden"
                                         >
-                                            <div className="pt-3">
+                                            <div className="mt-3 border-t border-border/80 pt-3">
                                                 <Card item={item} {...cardProps} enableCollapse={false} embedded />
                                             </div>
                                         </motion.div>
@@ -319,7 +319,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     {sectionItems.map(item => {
                         const isExpanded = expandedShoppingId === item.id;
                         return (
-                            <div key={item.id} className="px-4 py-4 first:pt-5 last:pb-5">
+                            <div key={item.id} className={`px-4 py-4 transition-colors first:pt-5 last:pb-5 ${isExpanded ? 'bg-background/30' : ''}`}>
                                 <button type="button" onClick={() => setExpandedShoppingId(current => current === item.id ? null : item.id)} className="w-full text-left">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
@@ -342,7 +342,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             transition={{ duration: 0.18 }}
                                             className="overflow-hidden"
                                         >
-                                            <div className="pt-3">
+                                            <div className="mt-3 border-t border-border/80 pt-3">
                                                 <ShoppingItem
                                                     item={item}
                                                     onToggleStatus={handleToggleStatus}

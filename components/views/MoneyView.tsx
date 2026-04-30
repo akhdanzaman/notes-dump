@@ -206,7 +206,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     : 'text-[#FF5722]';
 
         return (
-            <div key={item.id} className="border-b border-border/70 last:border-b-0 py-3 first:pt-0 last:pb-0">
+            <div key={item.id} className={`border-b border-border/70 py-3 transition-colors first:pt-0 last:border-b-0 last:pb-0 ${isExpanded ? 'bg-background/30' : ''}`}>
                 <button type="button" onClick={() => setExpandedTransactionId(current => current === item.id ? null : item.id)} className="w-full text-left">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
@@ -231,7 +231,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             transition={{ duration: 0.18 }}
                             className="overflow-hidden"
                         >
-                            <div className="pt-3">
+                            <div className="mt-3 border-t border-border/80 pt-3">
                                 <Card item={item} {...cardProps} enableCollapse={false} embedded categoryName={categoryLabel} />
                             </div>
                         </motion.div>
