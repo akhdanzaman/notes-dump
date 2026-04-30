@@ -634,12 +634,6 @@ const App: React.FC = () => {
                           handleOpenEditSkill={handleOpenEditSkill} handleOpenAddSkill={handleOpenAddSkill}
                           setDeleteId={setDeleteId} setDeleteType={setDeleteType}
                           selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
-                          clearLibraryFilters={() => {
-                              setSelectedTag('');
-                              setSearchQuery('');
-                              setFilterDate('');
-                              setFilterDateTo('');
-                          }}
                           setActiveTab={setActiveTab}
                           onAddItem={(type) => {
                               if (type === ItemType.NOTE) setAddNoteModalOpen(true);

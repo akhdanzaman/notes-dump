@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { NotebookPen, BookText, Library, Plus, Pencil, Trash2, Target, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
+import { NotebookPen, BookText, Library, Plus, Pencil, Trash2, Target } from 'lucide-react';
 import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
-import { getNoteItems, getJournalGroups } from '../../utils/selectors';
+import { getNoteItems, getJournalGroups, getSkillItems } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 
@@ -14,18 +14,18 @@ interface LibraryViewProps {
     appSettings: AppSettings;
     handleDelete: (id: string) => void;
     handleUpdateItem: (
-        id: string,
-        newContent: string,
-        newTags: string[],
-        newAmount?: number,
-        newDate?: string,
-        newPaymentMethod?: string,
-        newBudgetCategory?: string,
-        newDuration?: number,
-        newSkillId?: string,
-        newToWallet?: string,
-        newFinanceType?: FinanceType,
-        newProgress?: number,
+        id: string, 
+        newContent: string, 
+        newTags: string[], 
+        newAmount?: number, 
+        newDate?: string, 
+        newPaymentMethod?: string, 
+        newBudgetCategory?: string, 
+        newDuration?: number, 
+        newSkillId?: string, 
+        newToWallet?: string, 
+        newFinanceType?: FinanceType, 
+        newProgress?: number, 
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
@@ -43,310 +43,138 @@ interface LibraryViewProps {
     handleOpenAddSkill: () => void;
     setDeleteId: (id: string) => void;
     setDeleteType: (type: 'skill' | 'wallet' | null) => void;
-
+    
     // Filters
     selectedTag: string;
     filterDate: string;
     filterDateTo: string;
     searchQuery: string;
     sortOrder: SortOrder;
-    clearLibraryFilters?: () => void;
     setActiveTab: (tab: Tab) => void;
     onAddItem: (type: ItemType) => void;
 }
 
-type LibrarySkillStat = Skill & {
-    totalHours: number;
-    weeklyHours: number;
-    weeklyProgress: number;
-    hasWeeklyTarget: boolean;
-};
-
-const getStartOfWeek = (date: Date) => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    d.setHours(0, 0, 0, 0);
-    return new Date(d.setDate(diff));
-};
-
-const formatDateLabel = (dateInput?: string) => {
-    if (!dateInput) return null;
-    const date = new Date(dateInput);
-    if (Number.isNaN(date.getTime())) return null;
-
-    return date.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-    });
-};
-
-const formatJournalHeading = (dateKey: string) => {
-    const date = new Date(dateKey);
-    if (Number.isNaN(date.getTime())) return dateKey;
-
-    return date.toLocaleDateString('id-ID', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-    });
-};
-
-const getItemPrimaryDate = (item: BrainDumpItem) => {
-    return item.meta.date || item.completed_at || item.created_at;
-};
-
 const LibraryView: React.FC<LibraryViewProps> = ({
     items, skills, librarySubTab, setLibrarySubTab, appSettings,
     handleDelete, handleUpdateItem, handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
-    selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, clearLibraryFilters, setActiveTab, onAddItem
+    selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab, onAddItem
 }) => {
-    const generalItems = useMemo(
-        () => getNoteItems(items, 'general', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder),
-        [items, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder]
-    );
-    const journalItems = useMemo(
-        () => getNoteItems(items, 'journal', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder),
-        [items, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder]
-    );
+    
+    // Data Preparation
+    const generalItems = getNoteItems(items, 'general', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
+    const journalItems = getNoteItems(items, 'journal', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
+    const { stats: skillStats } = getSkillItems(items, skills);
 
-    const skillStats = useMemo<LibrarySkillStat[]>(() => {
-        const weekStart = getStartOfWeek(new Date()).getTime();
-
-        return skills
-            .map((skill) => {
-                const relatedItems = items.filter((item) => {
-                    const itemSkillId = item.meta.skillId;
-                    const itemSkillName = item.meta.skillName?.trim().toLowerCase();
-                    const matchesId = itemSkillId && itemSkillId === skill.id;
-                    const matchesName = itemSkillName && itemSkillName === skill.name.trim().toLowerCase();
-                    return Boolean(matchesId || matchesName);
-                });
-
-                const totalMinutes = relatedItems.reduce((sum, item) => sum + (item.meta.durationMinutes || 0), 0);
-                const weeklyMinutes = relatedItems.reduce((sum, item) => {
-                    const dateValue = getItemPrimaryDate(item);
-                    const date = dateValue ? new Date(dateValue) : null;
-                    if (!date || Number.isNaN(date.getTime())) return sum;
-                    return date.getTime() >= weekStart ? sum + (item.meta.durationMinutes || 0) : sum;
-                }, 0);
-
-                const weeklyProgress = skill.weeklyTargetMinutes && skill.weeklyTargetMinutes > 0
-                    ? (weeklyMinutes / skill.weeklyTargetMinutes) * 100
-                    : 0;
-
-                return {
-                    ...skill,
-                    totalHours: totalMinutes / 60,
-                    weeklyHours: weeklyMinutes / 60,
-                    weeklyProgress,
-                    hasWeeklyTarget: Boolean(skill.weeklyTargetMinutes && skill.weeklyTargetMinutes > 0)
-                };
-            })
-            .sort((a, b) => {
-                if (b.weeklyProgress !== a.weeklyProgress) return b.weeklyProgress - a.weeklyProgress;
-                if (b.weeklyHours !== a.weeklyHours) return b.weeklyHours - a.weeklyHours;
-                return a.name.localeCompare(b.name);
-            });
-    }, [items, skills]);
-
-    const journalGroups = useMemo(() => getJournalGroups(journalItems, sortOrder), [journalItems, sortOrder]);
-    const activeFilters = useMemo(() => {
-        const filters: string[] = [];
-        if (selectedTag) filters.push(`#${selectedTag}`);
-        if (searchQuery) filters.push(`Search: ${searchQuery}`);
-        if (filterDate && filterDateTo) filters.push(`${formatDateLabel(filterDate)} → ${formatDateLabel(filterDateTo)}`);
-        else if (filterDate) filters.push(`Date: ${formatDateLabel(filterDate)}`);
-        return filters;
-    }, [selectedTag, searchQuery, filterDate, filterDateTo]);
-
-    const latestJournalDate = useMemo(() => {
-        const firstEntry = journalItems[0];
-        return firstEntry ? formatDateLabel(getItemPrimaryDate(firstEntry)) : null;
-    }, [journalItems]);
-
-    const onTrackSkillsCount = skillStats.filter(skill => skill.hasWeeklyTarget && skill.weeklyProgress >= 100).length;
-    const activeSkillsThisWeek = skillStats.filter(skill => skill.weeklyHours > 0).length;
-
+    // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('library', setActiveTab);
-    const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
-    const [skillActionId, setSkillActionId] = useState<string | null>(null);
 
-    const commonCardProps = {
-        onUpdate: handleUpdateItem,
-        onDelete: handleDelete,
-        enableCollapse: true,
-        defaultCollapsed: appSettings.defaultCollapsed,
-        hideMoney: appSettings.hideMoney,
-        skills,
-        className: 'mb-0',
+    // Sub-Tab Swipe State
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
+    const isHorizontalSwipe = React.useRef<boolean | null>(null);
+
+    const subTabs: LibrarySubTab[] = ['general', 'skills', 'journal'];
+    const activeIndex = subTabs.indexOf(librarySubTab);
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setIsDragging(true);
+        isHorizontalSwipe.current = null;
     };
 
-    const heroConfig = useMemo(() => {
-        if (librarySubTab === 'journal') {
-            return {
-                icon: <BookText className="w-5 h-5" />,
-                title: 'Journal',
-                support: latestJournalDate
-                    ? `${journalItems.length} entries • Last written ${latestJournalDate}`
-                    : 'Start a calmer running record of your days',
-                actionLabel: '+ Entry',
-                onAction: () => onAddItem(ItemType.JOURNAL),
-            };
+    const onTouchMove = (e: React.TouchEvent) => {
+        if (!touchStartRef.current) return;
+        
+        const dx = e.touches[0].clientX - touchStartRef.current.x;
+        const dy = e.touches[0].clientY - touchStartRef.current.y;
+
+        if (isHorizontalSwipe.current === null) {
+             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
+                 isHorizontalSwipe.current = true;
+             } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
+                 isHorizontalSwipe.current = false;
+             }
         }
 
-        if (librarySubTab === 'skills') {
-            const support = skillStats.length === 0
-                ? 'Track skills and build a steady practice rhythm'
-                : onTrackSkillsCount > 0
-                    ? `${skillStats.length} skills • ${onTrackSkillsCount} on track this week`
-                    : `${skillStats.length} skills • ${activeSkillsThisWeek} active this week`;
+        if (isHorizontalSwipe.current) {
+            // Resistance
+            if ((activeIndex === 0 && dx > 0) || (activeIndex === subTabs.length - 1 && dx < 0)) {
+                setDragOffset(dx * 0.3);
+            } else {
+                setDragOffset(dx);
+            }
+        }
+    };
 
-            return {
-                icon: <Target className="w-5 h-5" />,
-                title: 'Skills',
-                support,
-                actionLabel: '+ Track',
-                onAction: handleOpenAddSkill,
-            };
+    const onTouchEnd = () => {
+        setIsDragging(false);
+        const threshold = window.innerWidth * 0.25;
+
+        if (isHorizontalSwipe.current && Math.abs(dragOffset) > threshold) {
+            if (dragOffset < 0 && activeIndex < subTabs.length - 1) {
+                setLibrarySubTab(subTabs[activeIndex + 1]);
+            }
+            if (dragOffset > 0 && activeIndex > 0) {
+                setLibrarySubTab(subTabs[activeIndex - 1]);
+            }
+        }
+        
+        setDragOffset(0);
+        touchStartRef.current = null;
+        isHorizontalSwipe.current = null;
+    };
+              
+    const renderContent = (data: BrainDumpItem[], type: 'general' | 'journal') => {
+        if (data.length === 0) {
+            return (
+                <div className="text-center text-muted py-10">
+                   {searchQuery 
+                    ? "No matching notes." 
+                    : (type === 'general' 
+                        ? "No notes found." 
+                        : "Write your first entry: \"Journal: Today was...\"")}
+                </div>
+            );
         }
 
-        const generalSupportParts = [`${generalItems.length} notes`];
-        if (activeFilters.length > 0) generalSupportParts.push('Filtered view');
-        else generalSupportParts.push('All notes');
-
-        return {
-            icon: <Library className="w-5 h-5" />,
-            title: 'Library',
-            support: generalSupportParts.join(' • '),
-            actionLabel: '+ New',
-            onAction: () => onAddItem(ItemType.NOTE),
+        const commonProps = {
+            onUpdate: handleUpdateItem,
+            onDelete: handleDelete,
+            enableCollapse: true,
+            defaultCollapsed: appSettings.defaultCollapsed,
+            hideMoney: appSettings.hideMoney,
+            skills,
+            className: "mb-4 break-inside-avoid",
+            noStrikethrough: type === 'journal',
+            noDarken: type === 'journal'
         };
-    }, [librarySubTab, latestJournalDate, journalItems.length, onAddItem, skillStats.length, onTrackSkillsCount, activeSkillsThisWeek, handleOpenAddSkill, generalItems.length, activeFilters.length]);
 
-    const toggleExpandedItem = (id: string) => {
-        setExpandedItemId(current => (current === id ? null : id));
-    };
-
-    const renderNoteRow = (item: BrainDumpItem, type: 'general' | 'journal') => {
-        const itemDateLabel = formatDateLabel(getItemPrimaryDate(item));
-        const tags = (item.meta.tags || []).filter(Boolean);
-        const previewMeta: string[] = [];
-
-        if (itemDateLabel) previewMeta.push(itemDateLabel);
-        if (type === 'general') {
-            if (tags.length === 1) previewMeta.push(`#${tags[0]}`);
-            else if (tags.length > 1) previewMeta.push(`${tags.length} tags`);
-        }
-
-        if (type === 'journal' && item.type === ItemType.TODO) {
-            previewMeta.push('Completed task');
-        }
-
-        const isExpanded = expandedItemId === item.id;
-
-        return (
-            <div key={item.id} className="border-b border-border/70 last:border-b-0 py-3 first:pt-0 last:pb-0">
-                <button
-                    type="button"
-                    onClick={() => toggleExpandedItem(item.id)}
-                    className="w-full text-left"
-                >
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm leading-6 text-primary line-clamp-2 whitespace-pre-wrap">
-                                {item.content}
-                            </p>
-                            {previewMeta.length > 0 && (
-                                <p className="mt-1 text-xs text-muted">
-                                    {previewMeta.join(' • ')}
-                                </p>
-                            )}
-                        </div>
-                        <span className="mt-1 shrink-0 text-muted">
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </span>
-                    </div>
-                </button>
-
-                <AnimatePresence initial={false}>
-                    {isExpanded && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.18 }}
-                            className="overflow-hidden"
-                        >
-                            <div className="pt-3">
-                                <Card
-                                    item={item}
-                                    {...commonCardProps}
-                                    noStrikethrough={type === 'journal'}
-                                    noDarken={type === 'journal'}
-                                />
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        );
-    };
-
-    const renderGeneralNotes = () => {
-        if (generalItems.length === 0) {
+        if (type === 'journal') {
             return (
-                <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-muted">
-                        {searchQuery || selectedTag || filterDate
-                            ? 'No notes match the current filters.'
-                            : 'No notes yet. Start with one clean thought.'}
-                    </p>
-                    <button
-                        onClick={() => onAddItem(ItemType.NOTE)}
-                        className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
-                    >
-                        <Plus className="w-4 h-4" /> New Note
-                    </button>
+                <div className="space-y-8">
+                    {Object.entries(getJournalGroups(data, sortOrder)).map(([dateKey, entries]) => {
+                        const date = new Date(dateKey);
+                        return (
+                            <section key={dateKey}>
+                                <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1 sticky top-0 bg-background/80 backdrop-blur-md py-2 z-10">
+                                    {date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                </h3>
+                                <div className="space-y-3">
+                                    {entries.map(item => <Card key={item.id} item={item} {...commonProps} />)}
+                                </div>
+                            </section>
+                        );
+                    })}
                 </div>
             );
         }
 
-        return <div>{generalItems.map(item => renderNoteRow(item, 'general'))}</div>;
-    };
-
-    const renderJournal = () => {
-        if (journalItems.length === 0) {
-            return (
-                <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-muted">
-                        {searchQuery || selectedTag || filterDate
-                            ? 'No journal entries match the current filters.'
-                            : 'Write your first entry and start building a readable archive.'}
-                    </p>
-                    <button
-                        onClick={() => onAddItem(ItemType.JOURNAL)}
-                        className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
-                    >
-                        <Plus className="w-4 h-4" /> New Entry
-                    </button>
-                </div>
-            );
-        }
-
+        // Masonry layout for general notes
         return (
-            <div className="space-y-8">
-                {Object.entries(journalGroups).map(([dateKey, entries]) => (
-                    <section key={dateKey}>
-                        <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                            {formatJournalHeading(dateKey)}
-                        </h3>
-                        <div className="rounded-3xl border border-border/70 bg-surface px-4 py-4">
-                            {entries.map(item => renderNoteRow(item, 'journal'))}
-                        </div>
-                    </section>
+            <div className="columns-1 sm:columns-2 gap-4">
+                {data.map(item => (
+                    <Card key={item.id} item={item} {...commonProps} />
                 ))}
             </div>
         );
@@ -355,11 +183,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const renderSkills = () => {
         if (skillStats.length === 0) {
             return (
-                <div className="rounded-3xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="text-sm text-muted">No skills tracked yet.</p>
-                    <button
-                        onClick={handleOpenAddSkill}
-                        className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-500/20"
+                <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                    <p className="text-muted font-medium">No skills tracked yet.</p>
+                    <button 
+                        onClick={handleOpenAddSkill} 
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
                     >
                         <Plus className="w-4 h-4" /> Track Skill
                     </button>
@@ -368,178 +196,201 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         }
 
         return (
-            <div className="rounded-3xl border border-border/70 bg-surface divide-y divide-border/70">
-                {skillStats.map((skill) => {
-                    const weeklyText = skill.weeklyHours > 0
-                        ? `${skill.weeklyHours.toFixed(1)}h this week`
-                        : 'No practice logged this week';
-                    const targetText = skill.hasWeeklyTarget && skill.weeklyTargetMinutes
-                        ? `target ${(skill.weeklyTargetMinutes / 60).toFixed(1)}h`
-                        : `${skill.totalHours.toFixed(1)}h total`;
-
+            <div className="space-y-4">
+                {skillStats.map(skill => {
+                    const progress = skill.weeklyProgress;
                     return (
-                        <div key={skill.id} className="px-4 py-4 first:pt-5 last:pb-5">
-                            <div className="flex items-start gap-3">
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <h3 className="text-sm font-semibold text-primary">{skill.name}</h3>
-                                            <p className="mt-1 text-xs text-muted">{weeklyText} • {targetText}</p>
-                                        </div>
-                                        {skill.hasWeeklyTarget ? (
-                                            <span className="shrink-0 text-sm font-semibold text-primary">
-                                                {Math.round(skill.weeklyProgress)}%
-                                            </span>
-                                        ) : (
-                                            <span className="shrink-0 text-xs text-muted">Tracked</span>
-                                        )}
+                        <motion.div 
+                            key={skill.id}
+                            layout
+                            className="bg-surface border border-border rounded-[24px] p-5"
+                        >
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 className="font-bold text-lg text-primary">{skill.name}</h4>
+                                    <div className="flex items-baseline gap-2 mt-1">
+                                        <span className="text-xl font-bold text-indigo-500">{skill.totalHours.toFixed(1)}h</span>
+                                        <span className="text-sm text-muted font-medium">total</span>
                                     </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
+                                        className="p-2 bg-black/5 hover:bg-black/10 rounded-xl transition-colors"
+                                    >
+                                        <Pencil className="w-4 h-4 text-muted" />
+                                    </button>
+                                    <button 
+                                        onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
+                                        className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                    </button>
+                                </div>
+                            </div>
 
-                                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-black/8 dark:bg-white/10">
-                                        <div
-                                            className="h-full rounded-full bg-indigo-500 transition-all duration-300"
-                                            style={{ width: `${Math.min(skill.hasWeeklyTarget ? skill.weeklyProgress : 100, 100)}%` }}
+                            {skill.weeklyTargetMinutes && (
+                                <>
+                                    <div className="w-full h-3 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-indigo-500 transition-all duration-1000 ease-out"
+                                            style={{ width: `${progress}%` }}
                                         />
                                     </div>
-
-                                    <AnimatePresence initial={false}>
-                                        {skillActionId === skill.id && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="mt-3 flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
-                                                        className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-muted/10"
-                                                    >
-                                                        <Pencil className="w-3.5 h-3.5" /> Edit
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setDeleteId(skill.id);
-                                                            setDeleteType('skill');
-                                                        }}
-                                                        className="inline-flex items-center gap-1 rounded-xl border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-500/10"
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                    </button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setSkillActionId(current => (current === skill.id ? null : skill.id))}
-                                    className="mt-0.5 rounded-xl p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary"
-                                    aria-label={`Actions for ${skill.name}`}
-                                >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
+                                    <div className="flex justify-between items-center mt-3">
+                                        <span className="text-xs font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Weekly Progress</span>
+                                        <span className="text-xs font-medium text-muted flex items-center gap-1">
+                                            <Target className="w-3 h-3" />
+                                            Target: {skill.weeklyTargetMinutes}m/wk
+                                        </span>
+                                    </div>
+                                </>
+                            )}
+                        </motion.div>
                     );
                 })}
             </div>
         );
     };
 
-    const content = librarySubTab === 'journal'
-        ? renderJournal()
-        : librarySubTab === 'skills'
-            ? renderSkills()
-            : renderGeneralNotes();
-
     return (
-        <div
-            className="min-h-[50vh] pb-24"
-            onTouchStart={swipeHandlers.onTouchStart}
-            onTouchMove={swipeHandlers.onTouchMove}
-            onTouchEnd={swipeHandlers.onTouchEnd}
-        >
-            <motion.div style={swipeHandlers.style} className="will-change-transform">
-                <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 pb-3 pt-safe backdrop-blur">
-                    <div className="flex items-start justify-between gap-3 pb-4 pt-4">
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2 text-primary">
-                                <div className="rounded-2xl bg-indigo-500/10 p-2 text-indigo-500">
-                                    {heroConfig.icon}
-                                </div>
-                                <h1 className="text-2xl font-bold tracking-tight">{heroConfig.title}</h1>
-                            </div>
-                            <p className="mt-2 text-sm text-muted">{heroConfig.support}</p>
-                        </div>
-                        <button
-                            onClick={heroConfig.onAction}
-                            className="shrink-0 rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+        <div className="min-h-[50vh] overflow-hidden pb-20">
+            {/* Top Container */}
+            <motion.div 
+                layoutId="top-container"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
+                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                onTouchStart={swipeHandlers.onTouchStart}
+                onTouchMove={swipeHandlers.onTouchMove}
+                onTouchEnd={swipeHandlers.onTouchEnd}
+                style={{ x: swipeHandlers.dragOffset }}
+            >
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "linear" }}
+                >
+                    <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
+                        <button 
+                            onClick={() => setLibrarySubTab('general')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'general' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
-                            {heroConfig.actionLabel}
+                            <Library className="w-4 h-4" /> Notes
+                        </button>
+                        <button 
+                            onClick={() => setLibrarySubTab('skills')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'skills' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                        >
+                            <Target className="w-4 h-4" /> Skills
+                        </button>
+                        <button 
+                            onClick={() => setLibrarySubTab('journal')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'journal' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                        >
+                            <BookText className="w-4 h-4" /> Journal
                         </button>
                     </div>
 
-                    <div className="flex rounded-2xl bg-black/5 p-1 dark:bg-white/10">
-                        {[
-                            { id: 'general' as LibrarySubTab, label: 'General', icon: <Library className="w-4 h-4" /> },
-                            { id: 'journal' as LibrarySubTab, label: 'Journal', icon: <BookText className="w-4 h-4" /> },
-                            { id: 'skills' as LibrarySubTab, label: 'Skills', icon: <NotebookPen className="w-4 h-4" /> },
-                        ].map((tab) => (
-                            <button
-                                key={tab.id}
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={librarySubTab}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex items-center justify-between"
+                        >
+                            <div>
+                                <h2 className="text-2xl font-bold tracking-tight">
+                                    {librarySubTab === 'general' ? 'All Notes' : librarySubTab === 'skills' ? 'Skill Growth' : 'Journal Entries'}
+                                </h2>
+                                <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
+                                    {librarySubTab === 'general' && (
+                                        <>
+                                            <span>{generalItems.length} Notes</span>
+                                            {new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size > 0 && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span>{new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size} Tags</span>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                    {librarySubTab === 'skills' && (
+                                        <>
+                                            <span>{skillStats.length} Skills</span>
+                                            <span>•</span>
+                                            <span className="text-indigo-500">{skillStats.reduce((acc, curr) => acc + curr.totalHours, 0).toFixed(1)}h Total Time</span>
+                                        </>
+                                    )}
+                                    {librarySubTab === 'journal' && (
+                                        <>
+                                            <span>{journalItems.length} Entries</span>
+                                            <span>•</span>
+                                            <span>Across {Object.keys(getJournalGroups(journalItems, sortOrder)).length} Days</span>
+                                        </>
+                                    )}
+                                </p>
+                            </div>
+                            <button 
                                 onClick={() => {
-                                    setLibrarySubTab(tab.id);
-                                    setExpandedItemId(null);
-                                    setSkillActionId(null);
+                                    if (librarySubTab === 'general') onAddItem(ItemType.NOTE);
+                                    if (librarySubTab === 'skills') handleOpenAddSkill();
+                                    if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
                                 }}
-                                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                                    librarySubTab === tab.id
-                                        ? 'bg-surface text-primary shadow-sm'
-                                        : 'text-primary/50 hover:text-primary'
-                                }`}
+                                className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors"
                             >
-                                {tab.icon}
-                                <span>{tab.label}</span>
+                                <Plus className="w-5 h-5" />
                             </button>
-                        ))}
-                    </div>
+                        </motion.div>
+                    </AnimatePresence>
+                </motion.div>
+            </motion.div>
 
-                    {activeFilters.length > 0 && librarySubTab !== 'skills' && (
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                            {activeFilters.map(filter => (
-                                <span
-                                    key={filter}
-                                    className="rounded-full bg-muted/10 px-3 py-1 text-xs font-medium text-muted"
-                                >
-                                    {filter}
-                                </span>
-                            ))}
-                            {clearLibraryFilters && (
-                                <button
-                                    onClick={clearLibraryFilters}
-                                    className="text-xs font-semibold text-indigo-500 transition-opacity hover:opacity-80"
-                                >
-                                    Clear
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
+            {/* Sliding Container */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
+                className="touch-pan-y"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
+                <motion.div 
+                    className="flex w-full will-change-transform"
+                    style={{
+                        transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
+                        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
+                    }}
+                >
+                {/* VIEW: General Notes */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="w-full flex-shrink-0 px-4"
+                >
+                    {renderContent(generalItems, 'general')}
+                </motion.div>
 
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={librarySubTab}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 }}
-                        className="px-4 pt-4"
-                    >
-                        {content}
-                    </motion.div>
-                </AnimatePresence>
+                {/* VIEW: Skills */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="w-full flex-shrink-0 px-4"
+                >
+                    {renderSkills()}
+                </motion.div>
+
+                {/* VIEW: Journal */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="w-full flex-shrink-0 px-4"
+                >
+                    {renderContent(journalItems, 'journal')}
+                </motion.div>
+                </motion.div>
             </motion.div>
         </div>
     );
