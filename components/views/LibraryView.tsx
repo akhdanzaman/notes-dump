@@ -248,7 +248,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         const isExpanded = expandedItemId === item.id;
 
         return (
-            <div key={item.id} className={`border-b border-border/70 py-3 transition-colors first:pt-0 last:border-b-0 last:pb-0 ${isExpanded ? 'bg-background/30' : ''}`}>
+            <div key={item.id} className="border-b border-border/70 last:border-b-0 py-3 first:pt-0 last:pb-0">
                 <button
                     type="button"
                     onClick={() => toggleExpandedItem(item.id)}
@@ -280,7 +280,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             transition={{ duration: 0.18 }}
                             className="overflow-hidden"
                         >
-                            <div className="mt-3 border-t border-border/80 pt-3">
+                            <div className="pt-3">
                                 <Card
                                     item={item}
                                     {...commonCardProps}

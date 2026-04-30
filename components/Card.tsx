@@ -503,9 +503,6 @@ const Card: React.FC<CardProps> = ({
   const shellClass = embedded
     ? `bg-transparent rounded-none p-0 shadow-none hover:bg-transparent ${className}`
     : `${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-lg' : ''} rounded-[16px] p-3 shadow-sm transition-all hover:bg-surface/80 ${className} ${enableCollapse ? 'cursor-pointer' : ''}`;
-  const controlSurfaceClass = embedded ? 'bg-surface border border-border/90 shadow-sm shadow-black/5' : 'bg-background border border-border';
-  const routinePanelClass = embedded ? 'col-span-2 rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-3 mt-1' : 'col-span-2 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl p-4 mt-2';
-  const progressPanelClass = embedded ? 'rounded-2xl border border-acc-todo/25 bg-acc-todo/10 p-3 mb-3' : 'bg-acc-todo/5 border border-acc-todo/20 rounded-2xl p-3 mb-3';
 
   return (
     <motion.div 
@@ -515,7 +512,6 @@ const Card: React.FC<CardProps> = ({
         className={`${shellClass} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid`}
         onClick={toggleCollapse}
     >
-      {!embedded && (
       <div className="flex flex-col gap-1">
         
         {/* COLLAPSED HEADER */}
@@ -658,11 +654,10 @@ const Card: React.FC<CardProps> = ({
             </div>
         ) : null}
       </div>
-      )}
 
       {/* EXPANDED EDIT BODY */}
       {(!enableCollapse || !isCollapsed) && (
-          <div className={`${embedded ? 'pt-0' : isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
+          <div className={`${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
                
                {/* Content Edit */}
                <textarea
@@ -670,7 +665,7 @@ const Card: React.FC<CardProps> = ({
                    className={`w-full text-primary focus:outline-none mb-3 resize-none overflow-hidden ${
                        isNote 
                            ? 'text-base bg-transparent border-none p-0 min-h-[120px] leading-relaxed' 
-                           : `text-sm ${controlSurfaceClass} rounded-2xl p-3 focus:border-primary min-h-[80px]`
+                           : 'text-sm bg-background border border-border rounded-2xl p-3 focus:border-primary min-h-[80px]'
                    }`}
                    value={editContent}
                    onChange={(e) => setEditContent(e.target.value)}
@@ -681,7 +676,7 @@ const Card: React.FC<CardProps> = ({
                <div className="grid grid-cols-2 gap-3 mb-3">
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
-                       <div className={`col-span-2 flex ${controlSurfaceClass} rounded-2xl p-1 overflow-x-auto no-scrollbar`}>
+                       <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1 overflow-x-auto no-scrollbar">
                            {(['expense', 'income', 'transfer', 'saving'] as FinanceType[]).map(ft => (
                                <button
                                    key={ft}
@@ -702,7 +697,7 @@ const Card: React.FC<CardProps> = ({
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
                                     type="number"
-                                    className={`w-full ${controlSurfaceClass} rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary`}
+                                    className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                     value={editAmount}
                                     onChange={(e) => setEditAmount(e.target.value)}
                                     placeholder="0"
@@ -719,7 +714,7 @@ const Card: React.FC<CardProps> = ({
                                 <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
                                     type="datetime-local"
-                                    className={`w-full ${controlSurfaceClass} rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]`}
+                                    className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                     value={editDate}
                                     onChange={(e) => setEditDate(e.target.value)}
                                 />
@@ -736,7 +731,7 @@ const Card: React.FC<CardProps> = ({
                                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                    <input
                                        type="datetime-local"
-                                       className={`w-full ${controlSurfaceClass} rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]`}
+                                       className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                        value={editStart}
                                        onChange={(e) => setEditStart(e.target.value)}
                                    />
@@ -748,7 +743,7 @@ const Card: React.FC<CardProps> = ({
                                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                    <input
                                        type="datetime-local"
-                                       className={`w-full ${controlSurfaceClass} rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]`}
+                                       className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                        value={editEnd}
                                        onChange={(e) => setEditEnd(e.target.value)}
                                    />
@@ -797,7 +792,7 @@ const Card: React.FC<CardProps> = ({
 
                    {/* Routine Settings */}
                    {meta.isRoutine && (
-                       <div className={routinePanelClass}>
+                       <div className="col-span-2 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl p-4 mt-2">
                            <div className="flex items-center justify-between mb-4">
                                <div className="flex items-center gap-2">
                                    <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
@@ -812,7 +807,7 @@ const Card: React.FC<CardProps> = ({
                            
                            <div className="space-y-4">
                                {/* Interval Selector */}
-                               <div className={`grid grid-cols-4 gap-2 rounded-2xl p-1.5 ${embedded ? 'bg-background/70 border border-border/80' : 'bg-background/50 border border-border/50'}`}>
+                               <div className="grid grid-cols-4 gap-2 bg-background/50 p-1.5 rounded-2xl border border-border/50">
                                    {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
                                        <button
                                            key={int}
@@ -917,7 +912,7 @@ const Card: React.FC<CardProps> = ({
                                     <Hourglass className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                     <input
                                         type="number"
-                                        className={`w-full ${controlSurfaceClass} rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary`}
+                                        className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                         value={editDuration}
                                         onChange={(e) => setEditDuration(e.target.value)}
                                     />
@@ -926,7 +921,7 @@ const Card: React.FC<CardProps> = ({
                            <div>
                                 <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Skill</label>
                                 <select
-                                    className={`w-full ${controlSurfaceClass} rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary`}
+                                    className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                     value={editSkillId}
                                     onChange={(e) => setEditSkillId(e.target.value)}
                                 >
@@ -946,7 +941,7 @@ const Card: React.FC<CardProps> = ({
                                        {editFinanceType === 'transfer' ? 'From' : editFinanceType === 'income' ? 'To' : 'Wallet'}
                                    </label>
                                    <select
-                                       className={`w-full ${controlSurfaceClass} rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary`}
+                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                        value={editPaymentMethod}
                                        onChange={(e) => setEditPaymentMethod(e.target.value)}
                                    >
@@ -960,7 +955,7 @@ const Card: React.FC<CardProps> = ({
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">To</label>
                                    <select
-                                       className={`w-full ${controlSurfaceClass} rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary`}
+                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                        value={editToWallet}
                                        onChange={(e) => setEditToWallet(e.target.value)}
                                    >
@@ -973,7 +968,7 @@ const Card: React.FC<CardProps> = ({
                                    <div>
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Saving Goal</label>
                                        <select
-                                           className={`w-full ${controlSurfaceClass} rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary`}
+                                           className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                            value={editSavingGoalId}
                                            onChange={(e) => setEditSavingGoalId(e.target.value)}
                                        >
@@ -983,7 +978,7 @@ const Card: React.FC<CardProps> = ({
                                    </div>
                                    <div>
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Wallet</label>
-                                       <div className={`w-full ${controlSurfaceClass} rounded-2xl px-3 py-2 text-xs text-muted flex items-center gap-2`}>
+                                       <div className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-muted flex items-center gap-2">
                                            <WalletIcon className="w-3 h-3" />
                                            {(() => {
                                                const goal = savingGoals.find(g => g.id === editSavingGoalId);
@@ -996,7 +991,7 @@ const Card: React.FC<CardProps> = ({
                                    <div className="col-span-2">
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget Category</label>
                                        <select
-                                           className={`w-full ${controlSurfaceClass} rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary`}
+                                           className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                            value={editBudgetCategory}
                                            onChange={(e) => setEditBudgetCategory(e.target.value)}
                                        >
@@ -1009,7 +1004,7 @@ const Card: React.FC<CardProps> = ({
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget</label>
                                    <select
-                                       className={`w-full ${controlSurfaceClass} rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary`}
+                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                        value={editBudgetCategory}
                                        onChange={(e) => setEditBudgetCategory(e.target.value)}
                                    >
@@ -1024,7 +1019,7 @@ const Card: React.FC<CardProps> = ({
 
                {/* Progress Control (Only for Todo) */}
                {showProgress && (
-                   <div className={progressPanelClass}>
+                   <div className="bg-acc-todo/5 border border-acc-todo/20 rounded-2xl p-3 mb-3">
                        <div className="flex justify-between items-center mb-2">
                            <span className="text-xs uppercase font-bold text-acc-todo flex items-center gap-1">
                                <Activity className="w-3.5 h-3.5" /> Progress
@@ -1044,7 +1039,7 @@ const Card: React.FC<CardProps> = ({
                                 type="text"
                                 value={editProgressNotes}
                                 onChange={(e) => setEditProgressNotes(e.target.value)}
-                                className={`w-full ${controlSurfaceClass} rounded-2xl px-3 py-2 text-sm text-primary placeholder-muted/50 focus:outline-none focus:border-acc-todo`}
+                                className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-sm text-primary placeholder-muted/50 focus:outline-none focus:border-acc-todo"
                                 placeholder="Add a progress note..."
                             />
                        </div>
@@ -1056,7 +1051,7 @@ const Card: React.FC<CardProps> = ({
                     <Tag className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                     <input
                         type="text"
-                        className={`w-full ${controlSurfaceClass} rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary placeholder-muted/50`}
+                        className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary placeholder-muted/50"
                         value={editTags}
                         onChange={(e) => setEditTags(e.target.value)}
                         placeholder="Tags (comma separated)..."
@@ -1064,7 +1059,7 @@ const Card: React.FC<CardProps> = ({
                </div>
 
                {/* Actions */}
-               <div className={`flex justify-end gap-2 ${embedded ? 'pt-3 mt-1 border-t border-border/80' : 'pt-2 border-t border-border/30'}`}>
+               <div className="flex justify-end gap-2 pt-2 border-t border-border/30">
                    {onDelete && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 

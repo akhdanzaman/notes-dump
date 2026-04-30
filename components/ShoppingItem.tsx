@@ -184,15 +184,12 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const shellClass = embedded
     ? 'rounded-none bg-transparent p-0 shadow-none'
     : `rounded-[24px] p-4 shadow-sm cursor-pointer ${isDone ? 'bg-surface/50 opacity-75' : 'bg-surface hover:bg-surface/80'}`;
-  const controlSurfaceClass = embedded ? 'bg-surface border border-border/90 shadow-sm shadow-black/5' : 'bg-background border border-border';
-  const routinePanelClass = embedded ? 'col-span-2 rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-3 mt-1' : 'col-span-2 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl p-4 mt-2';
 
   return (
     <div 
       className={`group flex flex-col overflow-hidden transition-all ${shellClass}`}
       onClick={toggleExpand}
     >
-      {!embedded && (
       <div className="flex flex-col gap-1">
         
         {/* Top Row */}
@@ -273,22 +270,21 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
             )}
         </div>
       </div>
-      )}
 
       {/* EXPANDED EDIT BODY */}
       {isExpanded && !readonly && (
-          <div className={embedded ? 'pt-0' : 'pt-4 mt-2 border-t border-border/30'} onClick={(e) => e.stopPropagation()}>
+          <div className="pt-4 mt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
               <div className="space-y-3">
                   {/* Content & Quantity */}
                   <div className="flex gap-2">
                       <input 
-                          className={`flex-1 ${controlSurfaceClass} rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping`}
+                          className="flex-1 bg-background border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping"
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}
                           placeholder="Item name"
                       />
                       <input 
-                          className={`w-20 ${controlSurfaceClass} rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping`}
+                          className="w-20 bg-background border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping"
                           value={editQuantity}
                           onChange={(e) => setEditQuantity(e.target.value)}
                           placeholder="Qty"
@@ -300,7 +296,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       <div>
                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Category</label>
                           <select
-                               className={`w-full ${controlSurfaceClass} rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping`}
+                               className="w-full bg-background border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
                                value={editCategory}
                                onChange={(e) => setEditCategory(e.target.value as ShoppingCategory)}
                           >
@@ -312,7 +308,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       <div>
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget Category</label>
                            <select
-                                className={`w-full ${controlSurfaceClass} rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping`}
+                                className="w-full bg-background border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
                                 value={editBudgetCategory}
                                 onChange={(e) => setEditBudgetCategory(e.target.value)}
                            >
@@ -325,7 +321,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       <div>
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Payment Method</label>
                            <select
-                                className={`w-full ${controlSurfaceClass} rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping`}
+                                className="w-full bg-background border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
                                 value={editPaymentMethod}
                                 onChange={(e) => setEditPaymentMethod(e.target.value)}
                            >
@@ -339,7 +335,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Est. Cost</label>
                            <input 
                               type="number"
-                              className={`w-full ${controlSurfaceClass} rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping`}
+                              className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
                               value={editAmount}
                               onChange={(e) => setEditAmount(e.target.value)}
                               placeholder="0"
@@ -349,7 +345,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Date / Due</label>
                            <input
                                 type="datetime-local"
-                                className={`w-full ${controlSurfaceClass} rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]`}
+                                className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                 value={editDate}
                                 onChange={(e) => setEditDate(e.target.value)}
                             />
@@ -358,7 +354,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
                   {/* Routine Extras */}
                   {editCategory === 'routine' && (
-                       <div className={routinePanelClass}>
+                       <div className="col-span-2 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl p-4 mt-2">
                            <div className="flex items-center justify-between mb-4">
                                <div className="flex items-center gap-2">
                                    <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
@@ -373,7 +369,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                            
                            <div className="space-y-4">
                                {/* Interval Selector */}
-                               <div className={`grid grid-cols-4 gap-2 rounded-2xl p-1.5 ${embedded ? 'bg-background/70 border border-border/80' : 'bg-background/50 border border-border/50'}`}>
+                               <div className="grid grid-cols-4 gap-2 bg-background/50 p-1.5 rounded-2xl border border-border/50">
                                    {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
                                        <button
                                            key={int}
@@ -460,7 +456,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                        </div>
                   )}
 
-                  <div className={`flex justify-between items-center ${embedded ? 'pt-3 mt-1 border-t border-border/80' : 'pt-2'}`}>
+                  <div className="flex justify-between items-center pt-2">
                       <button 
                         onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
                         className="text-red-400 hover:text-red-500 text-xs flex items-center gap-1"

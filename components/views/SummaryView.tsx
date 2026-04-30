@@ -481,7 +481,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                 {focusFeed.map(item => {
                                     const isExpanded = expandedItemId === item.id;
                                     return (
-                                        <div key={item.id} className={`px-4 py-4 transition-colors first:pt-5 last:pb-5 ${isExpanded ? 'bg-background/30' : ''}`}>
+                                        <div key={item.id} className="px-4 py-4 first:pt-5 last:pb-5">
                                             <button
                                                 type="button"
                                                 onClick={() => setExpandedItemId(current => current === item.id ? null : item.id)}
@@ -505,7 +505,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                                         transition={{ duration: 0.18 }}
                                                         className="overflow-hidden"
                                                     >
-                                                        <div className="mt-3 border-t border-border/80 pt-3">
+                                                        <div className="pt-3">
                                                             <Card item={item} {...cardProps} enableCollapse={false} embedded />
                                                         </div>
                                                     </motion.div>
