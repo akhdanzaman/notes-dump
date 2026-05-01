@@ -56,7 +56,10 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
                 // Savings do not reduce asset (wallet balance remains unchanged)
                 // but they will reduce net worth later
             } else if (isAchievedGoal) {
-                // Achieved goals consume reserved savings, not liquid wallet balance.
+                // Achieved goals spend from the wallet now,
+                // while staying out of expense analytics.
+                if (isCC) balanceMap.set(walletName, current + amount);
+                else balanceMap.set(walletName, current - amount);
             } else {
                 // Expense (Finance expense or implicit expense from Shopping/Todo)
                 if (isCC) balanceMap.set(walletName, current + amount); // Spending on CC -> Increases Debt
