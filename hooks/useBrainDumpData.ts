@@ -75,6 +75,52 @@ const isValidPriority = (value: unknown): value is Priority =>
 const isValidShoppingCategory = (value: unknown): value is ShoppingCategory =>
     typeof value === 'string' && ['urgent', 'not_urgent', 'routine', 'saving'].includes(value);
 
+const LEGACY_COMPLETED_GOAL_PREFIX = 'Completed Goal:';
+
+const isLegacyAchievedGoalFinanceItem = (item: BrainDumpItem) =>
+    item.type === ItemType.FINANCE && item.content.trim().startsWith(LEGACY_COMPLETED_GOAL_PREFIX);
+
+const migrateLegacyAchievedGoalItems = (items: BrainDumpItem[]) => {
+    const legacyItems = items.filter(isLegacyAchievedGoalFinanceItem);
+    if (legacyItems.length === 0) return items;
+
+    const updatedItems = items.map(item => ({
+        ...item,
+        meta: { ...item.meta }
+    }));
+
+    for (const legacyItem of legacyItems) {
+        const goalName = legacyItem.content.replace(/^Completed Goal:\s*/i, '').trim();
+        const match = updatedItems.find(item =>
+            item.type === ItemType.SHOPPING &&
+            item.meta.shoppingCategory === 'saving' &&
+            normalizeWhitespace(item.content).toLowerCase() === normalizeWhitespace(goalName).toLowerCase()
+        );
+
+        if (match) {
+            match.status = 'done';
+            match.completed_at = legacyItem.completed_at || legacyItem.meta.date || match.completed_at || match.created_at;
+        } else {
+            updatedItems.push({
+                id: uuidv4(),
+                type: ItemType.SHOPPING,
+                content: goalName || 'Achieved Goal',
+                status: 'done',
+                created_at: legacyItem.created_at,
+                completed_at: legacyItem.completed_at || legacyItem.meta.date || legacyItem.created_at,
+                meta: {
+                    tags: legacyItem.meta.tags || [],
+                    shoppingCategory: 'saving',
+                    amount: legacyItem.meta.amount,
+                    date: legacyItem.meta.date
+                }
+            });
+        }
+    }
+
+    return updatedItems.filter(item => !isLegacyAchievedGoalFinanceItem(item));
+};
+
 const mapEntityTypeToItemType = (entityType: ParserEntityType, fallback: ItemType = ItemType.NOTE): ItemType => {
     switch (entityType) {
         case 'todo': return ItemType.TODO;
@@ -334,7 +380,7 @@ export const useBrainDumpData = () => {
 
             const applyData = (data: DbSchema) => {
                 if (Array.isArray(data.data)) {
-                    const migratedData = data.data.map(item => ({
+                    const normalizedData = data.data.map(item => ({
                         ...item,
                         status: item.type === ItemType.FINANCE ? 'done' : item.status,
                         completed_at: item.type === ItemType.FINANCE
@@ -348,6 +394,8 @@ export const useBrainDumpData = () => {
                                 : item.meta?.shoppingCategory
                         }
                     }));
+
+                    const migratedData = migrateLegacyAchievedGoalItems(normalizedData);
 
                     const checkedData = checkRoutineResets(migratedData);
                     setItems(checkedData);
