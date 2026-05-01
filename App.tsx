@@ -605,7 +605,18 @@ const App: React.FC = () => {
                           handleResetRoutine={handleResetRoutine}
                           onAddFunds={handleAddSavingTransaction}
                           onCompleteGoal={(goal) => {
-                              if (confirm(`Complete goal "${goal.content}"? This will mark it as achieved without changing your wallet balance again.`)) {
+                              if (confirm(`Complete goal "${goal.content}"? This will deduct ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(goal.meta.savedAmount || 0)} from your wallet.`)) {
+                                  if ((goal.meta.savedAmount || 0) > 0) {
+                                      handleAddTransaction(
+                                          `Completed Goal: ${goal.content}`,
+                                          goal.meta.savedAmount || 0,
+                                          'expense',
+                                          goal.meta.paymentMethod,
+                                          'wants', // Default budget category
+                                          undefined,
+                                          new Date().toISOString()
+                                      );
+                                  }
                                   handleToggleStatus(goal.id);
                               }
                           }}

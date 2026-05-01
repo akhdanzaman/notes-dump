@@ -6,12 +6,6 @@ const fmtDate = (dateStr?: string) => {
     return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString();
 };
 
-const LEGACY_COMPLETED_GOAL_PREFIX = 'Completed Goal:';
-
-const normalizeGoalName = (value?: string) => (value || '').replace(/^Completed Goal:\s*/i, '').trim().toLowerCase();
-
-const isLegacyCompletedGoalDescription = (value?: string) => (value || '').trim().startsWith(LEGACY_COMPLETED_GOAL_PREFIX);
-
 export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSchema => {
     if (!Array.isArray(valueRanges)) return db;
     const newItems = [...db.data];
@@ -30,25 +24,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         for (const row of rows) {
             const [date, type, category, description, amountStr, wallet, toWallet, tagsStr, idStr] = row;
             if (!date && !description && !amountStr && !idStr) continue;
-            if (isLegacyCompletedGoalDescription(description)) {
-                hasChanges = true;
-                continue;
-            }
             const amount = parseFloat(amountStr) || 0;
-
-            const matchedSavingGoal = newItems.find(i =>
-                i.type === ItemType.SHOPPING &&
-                i.meta.shoppingCategory === 'saving' &&
-                (
-                    (idStr && i.id === idStr) ||
-                    normalizeGoalName(i.content) === normalizeGoalName(description)
-                )
-            );
-
-            if (matchedSavingGoal) {
-                hasChanges = true;
-                continue;
-            }
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
@@ -391,63 +367,6 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         }
     }
 
-    // 3b. Achieved Goals
-    const achievedGoalsSheet = valueRanges.find(r => r.range && r.range.includes('Achieved Goals'));
-    if (achievedGoalsSheet && achievedGoalsSheet.values) {
-        const rows = achievedGoalsSheet.values.slice(1);
-        for (const row of rows) {
-            const [, goal, targetAmountStr, , targetDateStr, achievedAtStr, dedicatedWallet, tagsStr, idStr] = row;
-            if (!goal && !targetAmountStr && !idStr) continue;
-
-            const amount = parseFloat(targetAmountStr) || 0;
-            const match = newItems.find(i =>
-                (idStr && i.id === idStr) ||
-                (!idStr && i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving' && normalizeGoalName(i.content) === normalizeGoalName(goal))
-            );
-
-            const parsedTargetDate = targetDateStr ? new Date(targetDateStr) : undefined;
-            const parsedAchievedAt = achievedAtStr ? new Date(achievedAtStr) : undefined;
-            const isoTargetDate = parsedTargetDate && !isNaN(parsedTargetDate.getTime()) ? parsedTargetDate.toISOString() : undefined;
-            const isoAchievedAt = parsedAchievedAt && !isNaN(parsedAchievedAt.getTime()) ? parsedAchievedAt.toISOString() : undefined;
-            const newWalletId = getWalId(dedicatedWallet);
-            const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
-
-            if (match) {
-                seenItemIds.add(match.id);
-                let updated = false;
-                if (match.type !== ItemType.SHOPPING) { match.type = ItemType.SHOPPING; updated = true; }
-                if (match.content !== goal) { match.content = goal; updated = true; }
-                if (match.status !== 'done') { match.status = 'done'; updated = true; }
-                if (match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
-                if (match.meta.shoppingCategory !== 'saving') { match.meta.shoppingCategory = 'saving'; updated = true; }
-                if (match.meta.dedicatedWalletId !== newWalletId) { match.meta.dedicatedWalletId = newWalletId; updated = true; }
-                if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
-                if (isoTargetDate && match.meta.date !== isoTargetDate) { match.meta.date = isoTargetDate; updated = true; }
-                if (isoAchievedAt && match.completed_at !== isoAchievedAt) { match.completed_at = isoAchievedAt; updated = true; }
-                if (updated) hasChanges = true;
-            } else {
-                const newId = idStr || uuidv4();
-                newItems.push({
-                    id: newId,
-                    type: ItemType.SHOPPING,
-                    content: goal || 'Achieved Goal',
-                    status: 'done',
-                    created_at: isoAchievedAt || isoTargetDate || new Date().toISOString(),
-                    completed_at: isoAchievedAt,
-                    meta: {
-                        amount,
-                        shoppingCategory: 'saving',
-                        dedicatedWalletId: newWalletId,
-                        tags: newTags,
-                        date: isoTargetDate
-                    }
-                });
-                seenItemIds.add(newId);
-                hasChanges = true;
-            }
-        }
-    }
-
     // 4. Events
     const eventSheet = valueRanges.find(r => r.range && r.range.includes('Events'));
     if (eventSheet && eventSheet.values) {
@@ -703,7 +622,6 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
     const sheetsFetched = {
         tx: !!txSheet,
-        achieved: !!achievedGoalsSheet,
         todo: !!todoSheet,
         shop: !!shopSheet,
         event: !!eventSheet,
@@ -718,12 +636,11 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         if (seenItemIds.has(item.id)) return true;
         
         let sheetWasFetched = false;
-        // Strict check: completed saving goals live in Achieved Goals, other done shopping items live in Transactions,
-        // and pending shopping items live in Shopping.
+        // Strict check: if it's a shopping item that is done, it MUST be in the Transactions sheet.
+        // If it's a shopping item that is pending, it MUST be in the Shopping sheet.
         if (item.type === ItemType.FINANCE) sheetWasFetched = sheetsFetched.tx;
         else if (item.type === ItemType.SHOPPING) {
-            if (item.status === 'done' && item.meta.shoppingCategory === 'saving') sheetWasFetched = sheetsFetched.achieved || sheetsFetched.shop;
-            else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
+            if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
             else sheetWasFetched = sheetsFetched.shop;
         }
         else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;

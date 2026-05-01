@@ -195,11 +195,10 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
 
     let isNewSpreadsheet = !existingTitles.has(SYSTEM_SHEET_NAME);
 
-    const sheetsToSync = ['Transactions', 'Achieved Goals', 'Todos', 'Shopping', 'Events', 'Notes & Journals', 'Skill Logs', 'Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings'];
+    const sheetsToSync = ['Transactions', 'Todos', 'Shopping', 'Events', 'Notes & Journals', 'Skill Logs', 'Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings'];
     for (const s of sheetsToSync) {
         if (existingTitles.has(s)) {
             if (s === 'Transactions') rangesToFetch.push(`'${s}'!A:I`);
-            else if (s === 'Achieved Goals') rangesToFetch.push(`'${s}'!A:I`);
             else if (s === 'Todos') rangesToFetch.push(`'${s}'!A:M`);
             else if (s === 'Shopping') rangesToFetch.push(`'${s}'!A:I`);
             else if (s === 'Events') rangesToFetch.push(`'${s}'!A:H`);

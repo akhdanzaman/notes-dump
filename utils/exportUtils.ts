@@ -11,9 +11,6 @@ const fmtDate = (dateStr?: string) => {
     return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString();
 };
 
-const isLegacyCompletedGoalFinanceItem = (item: BrainDumpItem) =>
-  item.type === ItemType.FINANCE && item.content.trim().startsWith('Completed Goal:');
-
 // Helper to resolve wallet name
 const getWalletName = (id: string | undefined, wallets: Wallet[]) => {
     if (!id) return '';
@@ -37,19 +34,10 @@ export const generateExportData = (
   appSettings: AppSettings
 ): SheetData[] => {
   const sheets: SheetData[] = [];
-  const savedAmountByGoalId = items.reduce((acc, item) => {
-    if (item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'saving' && item.meta.savingGoalId) {
-      acc.set(item.meta.savingGoalId, (acc.get(item.meta.savingGoalId) || 0) + (item.meta.amount || 0));
-    }
-    return acc;
-  }, new Map<string, number>());
 
   // --- Sheet 1: Transactions (Money Tab) ---
   const transactions = items
-    .filter(i =>
-      (i.type === ItemType.FINANCE && !isLegacyCompletedGoalFinanceItem(i)) ||
-      (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving')
-    )
+    .filter(i => i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done'))
     .map(item => {
       const isShopping = item.type === ItemType.SHOPPING;
       const date = isShopping ? (item.completed_at || item.created_at) : (item.meta.date || item.created_at);
@@ -77,32 +65,7 @@ export const generateExportData = (
     });
   }
 
-  // --- Sheet 2: Achieved Goals ---
-  const achievedGoals = items
-    .filter(i => i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory === 'saving')
-    .map(item => ({
-      Type: 'Achieved Goal',
-      Goal: item.content,
-      Target_Amount: item.meta.amount || 0,
-      Saved_Amount: savedAmountByGoalId.get(item.id) || 0,
-      Target_Date: fmtDate(item.meta.date || item.meta.dateTime),
-      Achieved_At: fmtDate(item.completed_at),
-      Dedicated_Wallet: getWalletName(item.meta.dedicatedWalletId, wallets),
-      Tags: item.meta.tags?.join(', ') || '',
-      ID: item.id
-    }));
-
-  if (achievedGoals.length > 0) {
-    sheets.push({
-      name: 'Achieved Goals',
-      data: [
-        ['Type', 'Goal', 'Target_Amount', 'Saved_Amount', 'Target_Date', 'Achieved_At', 'Dedicated_Wallet', 'Tags', 'ID'],
-        ...achievedGoals.map(g => [g.Type, g.Goal, g.Target_Amount, g.Saved_Amount, g.Target_Date, g.Achieved_At, g.Dedicated_Wallet, g.Tags, g.ID])
-      ]
-    });
-  }
-
-  // --- Sheet 3: Todos ---
+  // --- Sheet 2: Todos ---
   const todos = items.filter(i => i.type === ItemType.TODO).map(item => ({
       Type: item.type,
       Status: item.status,
@@ -128,11 +91,8 @@ export const generateExportData = (
     });
   }
 
-  // --- Sheet 4: Shopping ---
-  const shopping = items
-    .filter(i => !(i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory === 'saving'))
-    .filter(i => i.type === ItemType.SHOPPING)
-    .map(item => ({
+  // --- Sheet 3: Shopping ---
+  const shopping = items.filter(i => i.type === ItemType.SHOPPING).map(item => ({
       Status: item.status,
       Item: item.content,
       Amount: item.meta.amount || 0,
@@ -153,7 +113,7 @@ export const generateExportData = (
     });
   }
 
-  // --- Sheet 5: Events ---
+  // --- Sheet 4: Events ---
   const events = items.filter(i => i.type === ItemType.EVENT).map(item => ({
       Type: item.type,
       Date: fmtDate(item.meta.date),
@@ -174,7 +134,7 @@ export const generateExportData = (
     });
   }
 
-  // --- Sheet 6: Notes & Journals ---
+  // --- Sheet 5: Notes & Journals ---
   const notes = items.filter(i => i.type === ItemType.NOTE || i.type === ItemType.JOURNAL).map(item => ({
       Date: fmtDate(item.created_at),
       Type: item.type,
