@@ -447,6 +447,7 @@ const Card: React.FC<CardProps> = ({
 
   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
   const displayAmount = type !== ItemType.TODO ? formatMoney(meta?.amount) : null;
+  const canToggleStatus = !readonly && !!onToggleStatus && type !== ItemType.FINANCE;
 
   // Field visibilities
   const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL;
@@ -515,10 +516,10 @@ const Card: React.FC<CardProps> = ({
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!readonly && onToggleStatus) onToggleStatus(item.id);
+                  if (canToggleStatus) onToggleStatus(item.id);
                 }}
-                disabled={readonly}
-                className={`transition-colors shrink-0 ${readonly ? 'cursor-default' : 'hover:opacity-80'}`}
+                disabled={!canToggleStatus}
+                className={`transition-colors shrink-0 ${canToggleStatus ? 'hover:opacity-80' : 'cursor-default'}`}
               >
                 {status === 'done' ? (
                     <CheckCircle2 className="w-4 h-4 text-muted" />

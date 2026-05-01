@@ -37,6 +37,11 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             if (match) {
                 seenItemIds.add(match.id);
                 let updated = false;
+
+                if (match.status !== 'done') {
+                    match.status = 'done';
+                    updated = true;
+                }
                 
                 if (match.content !== description) { match.content = description; updated = true; }
                 if (match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
@@ -63,6 +68,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         if (match.completed_at !== isoDate) { match.completed_at = isoDate; updated = true; }
                     } else {
                         if (match.meta.date !== isoDate) { match.meta.date = isoDate; updated = true; }
+                        if (match.completed_at !== isoDate) { match.completed_at = isoDate; updated = true; }
                     }
                 }
                 

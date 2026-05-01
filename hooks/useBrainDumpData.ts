@@ -336,6 +336,10 @@ export const useBrainDumpData = () => {
                 if (Array.isArray(data.data)) {
                     const migratedData = data.data.map(item => ({
                         ...item,
+                        status: item.type === ItemType.FINANCE ? 'done' : item.status,
+                        completed_at: item.type === ItemType.FINANCE
+                            ? (item.completed_at || item.meta?.date || item.created_at)
+                            : item.completed_at,
                         meta: {
                             tags: [],
                             ...item.meta,
@@ -932,6 +936,7 @@ export const useBrainDumpData = () => {
         const prevItems = itemsRef.current;
         const targetItem = prevItems.find(i => i.id === id);
         if (!targetItem) return;
+        if (targetItem.type === ItemType.FINANCE) return;
 
         const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
         const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
