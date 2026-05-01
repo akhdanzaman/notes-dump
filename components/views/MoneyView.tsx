@@ -359,6 +359,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                 )}
                                                 {(() => {
                                                     const walletSavings = savingGoals
+                                                        .filter(g => g.status !== 'done')
                                                         .filter(g => g.meta.dedicatedWalletId === wallet.id)
                                                         .reduce((sum, g) => sum + (g.meta.savedAmount || 0), 0);
                                                     

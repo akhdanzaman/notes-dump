@@ -4,6 +4,7 @@ import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priori
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
+import { ACHIEVED_GOAL_FINANCE_TYPE, formatFinanceTypeLabel } from '../utils/financeTypeUtils';
 
 // Helper to calculate next due date based on schedule (Same as RoutineTaskModal)
 const calculateNextDate = (
@@ -304,7 +305,7 @@ const Card: React.FC<CardProps> = ({
       const finalSkillId = editSkillId === '' ? undefined : editSkillId;
       const wallet = wallets.find(w => w.name === editToWallet);
       const finalToWallet = editFinanceType === 'transfer' && editToWallet ? editToWallet : undefined;
-      const finalSavingGoalId = editFinanceType === 'saving' && editSavingGoalId ? editSavingGoalId : undefined;
+      const finalSavingGoalId = (editFinanceType === 'saving' || editFinanceType === ACHIEVED_GOAL_FINANCE_TYPE) && editSavingGoalId ? editSavingGoalId : undefined;
 
       const numRecurrence = editRecurrenceDays ? parseInt(editRecurrenceDays) : undefined;
 
@@ -370,7 +371,8 @@ const Card: React.FC<CardProps> = ({
         const isIncome = meta?.financeType === 'income';
         const isTransfer = meta?.financeType === 'transfer';
         const isSaving = meta?.financeType === 'saving';
-        const iconColor = isTransfer ? 'text-blue-400' : (isIncome ? 'text-emerald-500' : (isSaving ? 'text-[#6366F1]' : 'text-red-500'));
+        const isAchievedGoal = meta?.financeType === ACHIEVED_GOAL_FINANCE_TYPE;
+        const iconColor = isTransfer ? 'text-blue-400' : (isIncome ? 'text-emerald-500' : (isSaving ? 'text-[#6366F1]' : (isAchievedGoal ? 'text-amber-500' : 'text-red-500')));
         
         return {
             textColor: iconColor,
@@ -448,6 +450,7 @@ const Card: React.FC<CardProps> = ({
   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
   const displayAmount = type !== ItemType.TODO ? formatMoney(meta?.amount) : null;
   const canToggleStatus = !readonly && !!onToggleStatus && type !== ItemType.FINANCE;
+  const displayTypeLabel = type === ItemType.FINANCE ? formatFinanceTypeLabel(meta?.financeType) : type.toLowerCase();
 
   // Field visibilities
   const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL;
@@ -529,7 +532,7 @@ const Card: React.FC<CardProps> = ({
               </button>
               <div className="flex items-center gap-1.5">
                   <span className={`text-[10px] font-bold uppercase tracking-wider ${shouldStrike ? 'text-muted' : style.textColor}`}>
-                      {categoryName || type.toLowerCase()}
+                      {categoryName || displayTypeLabel}
                   </span>
                   {meta.isRoutine && (
                       <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
@@ -607,12 +610,12 @@ const Card: React.FC<CardProps> = ({
                     </div>
                     
                     {/* Extra Metadata Row */}
-                    {(meta.paymentMethod || meta.toWallet || skillName) && (
+                    {(meta.paymentMethod || meta.toWallet || skillName || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE))) && (
                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
-                            {(meta.paymentMethod || meta.toWallet || (meta.financeType === 'saving' && meta.savingGoalId)) && (
+                            {(meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE))) && (
                                 <span className="flex items-center gap-0.5">
                                     <WalletIcon className="w-3 h-3" />
-                                    {meta.financeType === 'saving' && meta.savingGoalId ? (() => {
+                                    {meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE) ? (() => {
                                         const goal = savingGoals.find(g => g.id === meta.savingGoalId);
                                         const walletId = goal?.meta.dedicatedWalletId;
                                         const wallet = wallets.find(w => w.id === walletId);
@@ -643,7 +646,7 @@ const Card: React.FC<CardProps> = ({
                 </div>
 
                 {(displayAmount || meta.durationMinutes) && (
-                    <div className={`text-base font-bold shrink-0 mt-0.5 ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-400' : 'text-primary')}`}>
+                    <div className={`text-base font-bold shrink-0 mt-0.5 ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-400' : (type === 'FINANCE' && meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'text-amber-500' : 'text-primary'))}`}>
                         {displayAmount || `${meta.durationMinutes}m`}
                     </div>
                 )}
@@ -673,13 +676,13 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
                        <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1 overflow-x-auto no-scrollbar">
-                           {(['expense', 'income', 'transfer', 'saving'] as FinanceType[]).map(ft => (
+                           {(['expense', 'income', 'transfer', 'saving', 'achieved_goal'] as FinanceType[]).map(ft => (
                                <button
                                    key={ft}
                                    onClick={() => setEditFinanceType(ft)}
                                    className={`flex-1 py-1 px-2 text-[10px] font-medium rounded-xl capitalize whitespace-nowrap ${editFinanceType === ft ? 'bg-[#6366F1] text-white' : 'text-muted hover:text-primary'}`}
                                >
-                                   {ft}
+                                   {formatFinanceTypeLabel(ft)}
                                </button>
                            ))}
                        </div>
@@ -931,7 +934,7 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Extras (Payment/Budget) */}
                    {showFinanceExtras && (
                        <>
-                           {editFinanceType !== 'saving' && (
+                           {editFinanceType !== 'saving' && editFinanceType !== ACHIEVED_GOAL_FINANCE_TYPE && (
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">
                                        {editFinanceType === 'transfer' ? 'From' : editFinanceType === 'income' ? 'To' : 'Wallet'}
@@ -959,7 +962,7 @@ const Card: React.FC<CardProps> = ({
                                        {getWalletNameOptions()}
                                    </select>
                                </div>
-                           ) : editFinanceType === 'saving' ? (
+                           ) : editFinanceType === 'saving' || editFinanceType === ACHIEVED_GOAL_FINANCE_TYPE ? (
                                <>
                                    <div>
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Saving Goal</label>
@@ -984,6 +987,7 @@ const Card: React.FC<CardProps> = ({
                                            })()}
                                        </div>
                                    </div>
+                                   {editFinanceType === 'saving' && (
                                    <div className="col-span-2">
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget Category</label>
                                        <select
@@ -995,6 +999,7 @@ const Card: React.FC<CardProps> = ({
                                            {budgetRules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                                        </select>
                                    </div>
+                                   )}
                                </>
                            ) : (
                                <div>

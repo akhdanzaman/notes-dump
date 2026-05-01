@@ -1,4 +1,5 @@
 import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType } from '../types';
+import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 
 export interface SheetData {
   name: string;
@@ -37,14 +38,14 @@ export const generateExportData = (
 
   // --- Sheet 1: Transactions (Money Tab) ---
   const transactions = items
-    .filter(i => i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done'))
+    .filter(i => i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving'))
     .map(item => {
       const isShopping = item.type === ItemType.SHOPPING;
       const date = isShopping ? (item.completed_at || item.created_at) : (item.meta.date || item.created_at);
       
       return {
         Date: fmtDate(date),
-        Type: isShopping ? 'expense' : (item.meta.financeType || 'expense'),
+        Type: isShopping ? 'expense' : (item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'Achieved Goals' : (item.meta.financeType || 'expense')),
         Category: getCategoryName(item.meta.budgetCategory, budgetConfig),
         Description: item.content,
         Amount: item.meta.amount || 0,

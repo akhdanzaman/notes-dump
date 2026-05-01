@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { DbSchema, BrainDumpItem, ItemType, FinanceType } from '../types';
+import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
 
 const fmtDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -25,10 +26,11 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const [date, type, category, description, amountStr, wallet, toWallet, tagsStr, idStr] = row;
             if (!date && !description && !amountStr && !idStr) continue;
             const amount = parseFloat(amountStr) || 0;
+            const financeType = parseFinanceType(type) || 'expense';
             
             const match = newItems.find(i => 
-                (idStr && i.id === idStr) ||
-                (!idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done')) &&
+                (idStr && i.id === idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving'))) ||
+                (!idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving')) &&
                 i.content === description &&
                 (i.meta.amount || 0) === amount &&
                 fmtDate(i.type === ItemType.SHOPPING ? (i.completed_at || i.created_at) : (i.meta.date || i.created_at)) === date)
@@ -55,8 +57,20 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const newToWalId = getWalId(toWallet);
                 if (match.meta.toWallet !== newToWalId) { match.meta.toWallet = newToWalId; updated = true; }
                 
-                const newType = type as FinanceType;
+                const newType = financeType as FinanceType;
                 if (match.meta.financeType !== newType) { match.meta.financeType = newType; updated = true; }
+
+                if (newType === ACHIEVED_GOAL_FINANCE_TYPE) {
+                    const matchedGoal = newItems.find(i =>
+                        i.type === ItemType.SHOPPING &&
+                        i.meta.shoppingCategory === 'saving' &&
+                        getAchievedGoalName(description).toLowerCase() === i.content.trim().toLowerCase()
+                    );
+                    if (matchedGoal && match.meta.savingGoalId !== matchedGoal.id) {
+                        match.meta.savingGoalId = matchedGoal.id;
+                        updated = true;
+                    }
+                }
                 
                 const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
@@ -86,11 +100,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     created_at: isoDate,
                     meta: {
                         date: isoDate,
-                        financeType: (type as FinanceType) || 'expense',
+                        financeType,
                         amount: amount,
                         budgetCategory: getCatId(category),
                         paymentMethod: getWalId(wallet),
                         toWallet: getWalId(toWallet),
+                        savingGoalId: financeType === ACHIEVED_GOAL_FINANCE_TYPE
+                            ? newItems.find(i => i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving' && getAchievedGoalName(description).toLowerCase() === i.content.trim().toLowerCase())?.id
+                            : undefined,
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : []
                     }
                 });
@@ -636,11 +653,11 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         if (seenItemIds.has(item.id)) return true;
         
         let sheetWasFetched = false;
-        // Strict check: if it's a shopping item that is done, it MUST be in the Transactions sheet.
-        // If it's a shopping item that is pending, it MUST be in the Shopping sheet.
+        // Completed saving goals remain in Shopping; only their achieved-goal transaction lives in Transactions.
         if (item.type === ItemType.FINANCE) sheetWasFetched = sheetsFetched.tx;
         else if (item.type === ItemType.SHOPPING) {
-            if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
+            if (item.status === 'done' && item.meta.shoppingCategory === 'saving') sheetWasFetched = sheetsFetched.shop;
+            else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
             else sheetWasFetched = sheetsFetched.shop;
         }
         else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;

@@ -605,18 +605,7 @@ const App: React.FC = () => {
                           handleResetRoutine={handleResetRoutine}
                           onAddFunds={handleAddSavingTransaction}
                           onCompleteGoal={(goal) => {
-                              if (confirm(`Complete goal "${goal.content}"? This will deduct ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(goal.meta.savedAmount || 0)} from your wallet.`)) {
-                                  if ((goal.meta.savedAmount || 0) > 0) {
-                                      handleAddTransaction(
-                                          `Completed Goal: ${goal.content}`,
-                                          goal.meta.savedAmount || 0,
-                                          'expense',
-                                          goal.meta.paymentMethod,
-                                          'wants', // Default budget category
-                                          undefined,
-                                          new Date().toISOString()
-                                      );
-                                  }
+                              if (confirm(`Complete goal "${goal.content}"? This will record it in Transactions as Achieved Goals and release the reserved savings from its wallet.`)) {
                                   handleToggleStatus(goal.id);
                               }
                           }}

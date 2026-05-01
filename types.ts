@@ -8,7 +8,7 @@ export enum ItemType {
 }
 
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving';
-export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving';
+export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving' | 'achieved_goal';
 export type Priority = 'low' | 'normal' | 'high';
 
 export interface BudgetRule {

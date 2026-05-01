@@ -304,6 +304,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         <option value="income">Income</option>
                                         <option value="transfer">Transfer</option>
                                         <option value="saving">Saving</option>
+                                        <option value="achieved_goal">Achieved Goals</option>
                                         <option value="shopping">Shopping</option>
                                     </select>
                                 </div>

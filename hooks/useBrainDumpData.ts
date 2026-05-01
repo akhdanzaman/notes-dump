@@ -33,6 +33,7 @@ import { SyncResult, mergeDbData } from '../services/githubService';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { parsePro } from '../services/geminiProService';
 import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors';
+import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, isLegacyCompletedGoalContent } from '../utils/financeTypeUtils';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -67,7 +68,7 @@ const stripUndefined = <T extends Record<string, any>>(obj: T): T =>
 const lower = (s?: string) => (s || '').toLowerCase().trim();
 
 const isValidFinanceType = (value: unknown): value is FinanceType =>
-    typeof value === 'string' && ['expense', 'income', 'transfer', 'saving'].includes(value);
+    typeof value === 'string' && ['expense', 'income', 'transfer', 'saving', 'achieved_goal'].includes(value);
 
 const isValidPriority = (value: unknown): value is Priority =>
     typeof value === 'string' && ['low', 'normal', 'high'].includes(value);
@@ -86,6 +87,80 @@ const mapEntityTypeToItemType = (entityType: ParserEntityType, fallback: ItemTyp
         case 'saving_goal': return ItemType.SHOPPING;
         default: return fallback;
     }
+};
+
+const migrateAchievedGoalItems = (items: BrainDumpItem[]) => {
+    const updatedItems = items.map(item => ({
+        ...item,
+        meta: { ...item.meta }
+    }));
+
+    const doneSavingGoals = updatedItems.filter(item =>
+        item.type === ItemType.SHOPPING &&
+        item.meta.shoppingCategory === 'saving' &&
+        item.status === 'done'
+    );
+
+    const totalSavedByGoalId = new Map<string, number>();
+    updatedItems.forEach(item => {
+        if (item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'saving' && item.meta.savingGoalId) {
+            totalSavedByGoalId.set(item.meta.savingGoalId, (totalSavedByGoalId.get(item.meta.savingGoalId) || 0) + (item.meta.amount || 0));
+        }
+    });
+
+    const achievedGoalItemIdsToKeep = new Set<string>();
+
+    doneSavingGoals.forEach(goal => {
+        const matchingFinanceItems = updatedItems.filter(item =>
+            item.type === ItemType.FINANCE && (
+                item.meta.savingGoalId === goal.id ||
+                (isLegacyCompletedGoalContent(item.content) && getAchievedGoalName(item.content).toLowerCase() === goal.content.trim().toLowerCase())
+            )
+        );
+
+        const existingAchieved = matchingFinanceItems.find(item => item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)
+            || matchingFinanceItems.find(item => isLegacyCompletedGoalContent(item.content));
+
+        const amount = totalSavedByGoalId.get(goal.id) || goal.meta.amount || 0;
+        const completedAt = goal.completed_at || goal.meta.date || goal.created_at;
+        const paymentMethod = goal.meta.dedicatedWalletId || existingAchieved?.meta.paymentMethod || goal.meta.paymentMethod;
+
+        if (existingAchieved) {
+            existingAchieved.content = `Completed Goal: ${goal.content}`;
+            existingAchieved.status = 'done';
+            existingAchieved.completed_at = existingAchieved.completed_at || completedAt;
+            existingAchieved.meta.financeType = ACHIEVED_GOAL_FINANCE_TYPE;
+            existingAchieved.meta.amount = existingAchieved.meta.amount || amount;
+            existingAchieved.meta.paymentMethod = paymentMethod;
+            existingAchieved.meta.savingGoalId = goal.id;
+            existingAchieved.meta.date = existingAchieved.meta.date || completedAt;
+            achievedGoalItemIdsToKeep.add(existingAchieved.id);
+        } else {
+            updatedItems.push({
+                id: uuidv4(),
+                type: ItemType.FINANCE,
+                content: `Completed Goal: ${goal.content}`,
+                status: 'done',
+                created_at: completedAt,
+                completed_at: completedAt,
+                meta: {
+                    tags: ['achieved-goal'],
+                    amount,
+                    paymentMethod,
+                    financeType: ACHIEVED_GOAL_FINANCE_TYPE,
+                    savingGoalId: goal.id,
+                    date: completedAt
+                }
+            });
+            achievedGoalItemIdsToKeep.add(updatedItems[updatedItems.length - 1].id);
+        }
+    });
+
+    return updatedItems.filter(item => {
+        if (item.type !== ItemType.FINANCE) return true;
+        if (!isLegacyCompletedGoalContent(item.content)) return true;
+        return achievedGoalItemIdsToKeep.has(item.id) || item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE;
+    });
 };
 
 const convertLegacyResultsToNative = (legacyResults: Partial<BrainDumpItem>[], originalText: string): ParserResultV2[] => {
@@ -334,7 +409,7 @@ export const useBrainDumpData = () => {
 
             const applyData = (data: DbSchema) => {
                 if (Array.isArray(data.data)) {
-                    const migratedData = data.data.map(item => ({
+                    const normalizedData = data.data.map(item => ({
                         ...item,
                         status: item.type === ItemType.FINANCE ? 'done' : item.status,
                         completed_at: item.type === ItemType.FINANCE
@@ -348,6 +423,8 @@ export const useBrainDumpData = () => {
                                 : item.meta?.shoppingCategory
                         }
                     }));
+
+                    const migratedData = migrateAchievedGoalItems(normalizedData);
 
                     const checkedData = checkRoutineResets(migratedData);
                     setItems(checkedData);
@@ -937,6 +1014,7 @@ export const useBrainDumpData = () => {
         const targetItem = prevItems.find(i => i.id === id);
         if (!targetItem) return;
         if (targetItem.type === ItemType.FINANCE) return;
+        const isSavingGoal = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'saving';
 
         const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
         const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
@@ -1016,6 +1094,66 @@ export const useBrainDumpData = () => {
             };
 
             updatedItems.push(historyItem);
+        }
+
+        if (isSavingGoal) {
+            const savedAmount = prevItems
+                .filter(item => item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'saving' && item.meta.savingGoalId === targetItem.id)
+                .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+
+            const achievedGoalItems = updatedItems.filter(item =>
+                item.type === ItemType.FINANCE && (
+                    ((item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE || isLegacyCompletedGoalContent(item.content)) && item.meta.savingGoalId === targetItem.id) ||
+                    (isLegacyCompletedGoalContent(item.content) && getAchievedGoalName(item.content).toLowerCase() === targetItem.content.trim().toLowerCase())
+                )
+            );
+
+            if (newStatus === 'done') {
+                const existingAchieved = achievedGoalItems.find(item => item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)
+                    || achievedGoalItems.find(item => isLegacyCompletedGoalContent(item.content));
+
+                if (existingAchieved) {
+                    updatedItems = updatedItems.map(item => item.id !== existingAchieved.id ? item : {
+                        ...item,
+                        content: `Completed Goal: ${targetItem.content}`,
+                        status: 'done',
+                        completed_at: item.completed_at || completedAt,
+                        meta: {
+                            ...item.meta,
+                            amount: item.meta.amount || savedAmount || targetItem.meta.amount,
+                            financeType: ACHIEVED_GOAL_FINANCE_TYPE,
+                            paymentMethod: targetItem.meta.dedicatedWalletId || item.meta.paymentMethod || targetItem.meta.paymentMethod,
+                            savingGoalId: targetItem.id,
+                            date: item.meta.date || completedAt,
+                            tags: Array.from(new Set([...(item.meta.tags || []), 'achieved-goal']))
+                        }
+                    });
+                } else {
+                    updatedItems = [{
+                        id: uuidv4(),
+                        type: ItemType.FINANCE,
+                        content: `Completed Goal: ${targetItem.content}`,
+                        status: 'done',
+                        created_at: completedAt || new Date().toISOString(),
+                        completed_at: completedAt,
+                        meta: {
+                            tags: ['achieved-goal'],
+                            amount: savedAmount || targetItem.meta.amount,
+                            paymentMethod: targetItem.meta.dedicatedWalletId || targetItem.meta.paymentMethod,
+                            financeType: ACHIEVED_GOAL_FINANCE_TYPE,
+                            savingGoalId: targetItem.id,
+                            date: completedAt
+                        }
+                    }, ...updatedItems];
+                }
+            } else {
+                const achievedIds = new Set(
+                    achievedGoalItems
+                        .filter(item => item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE || isLegacyCompletedGoalContent(item.content))
+                        .map(item => item.id)
+                );
+                updatedItems = updatedItems.filter(item => !achievedIds.has(item.id));
+            }
         }
 
         setItems(updatedItems);

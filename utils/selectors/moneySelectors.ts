@@ -1,4 +1,5 @@
 import { BrainDumpItem, ItemType, Wallet, BudgetConfig, SortOrder } from '../../types';
+import { ACHIEVED_GOAL_FINANCE_TYPE } from '../financeTypeUtils';
 
 export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
     // Create a map to track balances
@@ -30,6 +31,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
             const isIncome = isFinance && item.meta.financeType === 'income';
             const isTransfer = isFinance && item.meta.financeType === 'transfer';
             const isSaving = isFinance && item.meta.financeType === 'saving';
+            const isAchievedGoal = isFinance && item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE;
             
             if (isIncome) {
                  // Income adds to Asset. If CC, it reduces debt (by subtracting from the 'positive' debt balance).
@@ -53,6 +55,8 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
             } else if (isSaving) {
                 // Savings do not reduce asset (wallet balance remains unchanged)
                 // but they will reduce net worth later
+            } else if (isAchievedGoal) {
+                // Achieved goals consume reserved savings, not liquid wallet balance.
             } else {
                 // Expense (Finance expense or implicit expense from Shopping/Todo)
                 if (isCC) balanceMap.set(walletName, current + amount); // Spending on CC -> Increases Debt
@@ -259,9 +263,10 @@ export const getFinanceItems = (
 
         if (type === 'income') {
             if (isDone) totalIncome += amount;
-        } else if (type === 'expense' || type === 'transfer' || type === 'saving') {
+        } else if (type === 'expense' || type === 'transfer' || type === 'saving' || type === ACHIEVED_GOAL_FINANCE_TYPE) {
             // Only count actual expenses and savings, not transfers between own wallets
             if (type === 'transfer') return;
+            if (type === ACHIEVED_GOAL_FINANCE_TYPE) return;
 
             if (type === 'saving' && isDone) {
                 totalSavings += amount;
