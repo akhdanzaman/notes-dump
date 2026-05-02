@@ -30,7 +30,8 @@ import AddNoteModal from './components/AddNoteModal';
 import FloatingChatBox from './components/FloatingChatBox';
 import PendingReviewList from './components/PendingReviewList';
 import Onboarding from './components/Onboarding';
-import { Brain } from 'lucide-react';
+import { Brain, History, X } from 'lucide-react';
+import { LATEST_CHANGELOG, LATEST_CHANGELOG_VERSION, SEEN_CHANGELOG_STORAGE_KEY } from './utils/changelog';
 
 const App: React.FC = () => {
   // Data Logic Hook
@@ -53,6 +54,7 @@ const App: React.FC = () => {
   const [librarySubTab, setLibrarySubTab] = useState<'general' | 'skills' | 'journal'>('general');
   const [showBalance, setShowBalance] = useState(false);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
+  const [showChangelogPopup, setShowChangelogPopup] = useState(false);
   const [themeNavDate, setThemeNavDate] = useState(new Date());
   
   // Focus View State
@@ -174,6 +176,27 @@ const App: React.FC = () => {
     });
   }, [appSettings.persistentNotification]);
 
+  useEffect(() => {
+    if (showOnboarding) return;
+    try {
+      const seenVersion = localStorage.getItem(SEEN_CHANGELOG_STORAGE_KEY);
+      if (seenVersion !== LATEST_CHANGELOG_VERSION) {
+        setShowChangelogPopup(true);
+      }
+    } catch (e) {
+      console.warn('Failed to read changelog seen version', e);
+    }
+  }, [showOnboarding]);
+
+  const handleCloseChangelogPopup = () => {
+    try {
+      localStorage.setItem(SEEN_CHANGELOG_STORAGE_KEY, LATEST_CHANGELOG_VERSION);
+    } catch (e) {
+      console.warn('Failed to save changelog seen version', e);
+    }
+    setShowChangelogPopup(false);
+  };
+
   // --- Handle Reply from URL ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -279,6 +302,7 @@ const App: React.FC = () => {
   useEffect(() => { if (skillModal.isOpen) return BackHandler.register(() => { setSkillModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [skillModal.isOpen]);
   useEffect(() => { if (walletModal.isOpen) return BackHandler.register(() => { setWalletModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [walletModal.isOpen]);
   useEffect(() => { if (routineModalOpen) return BackHandler.register(() => { setRoutineModalOpen(false); return true; }); }, [routineModalOpen]);
+  useEffect(() => { if (showChangelogPopup) return BackHandler.register(() => { handleCloseChangelogPopup(); return true; }); }, [showChangelogPopup]);
   useEffect(() => { if (addTaskModal.isOpen) return BackHandler.register(() => { setAddTaskModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [addTaskModal.isOpen]);
   useEffect(() => { if (addShoppingModal.isOpen) return BackHandler.register(() => { setAddShoppingModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [addShoppingModal.isOpen]);
   useEffect(() => { if (addExpenseModalOpen) return BackHandler.register(() => { setAddExpenseModalOpen(false); return true; }); }, [addExpenseModalOpen]);
@@ -759,6 +783,58 @@ const App: React.FC = () => {
         onImportData={handleImportData}
         onClearData={handleClearData}
       />
+
+      <AnimatePresence>
+        {showChangelogPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              className="bg-surface border border-border rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+            >
+              <div className="p-5 border-b border-border flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-500/10 text-indigo-500 rounded-2xl">
+                    <History className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-indigo-500">What's new</div>
+                    <h3 className="text-xl font-bold text-primary">{LATEST_CHANGELOG.version}</h3>
+                    <p className="text-xs text-muted">{LATEST_CHANGELOG.date}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseChangelogPopup}
+                  className="p-2 rounded-xl text-muted hover:text-primary hover:bg-muted/10 transition-colors"
+                  aria-label="Close changelog"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <ul className="space-y-3 text-sm text-muted list-disc pl-5">
+                  {LATEST_CHANGELOG.items.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+                <button
+                  onClick={handleCloseChangelogPopup}
+                  className="w-full py-3 rounded-2xl bg-primary text-background font-bold hover:opacity-90 transition-opacity"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {themeEditMode && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">

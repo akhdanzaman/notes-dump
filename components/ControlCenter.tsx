@@ -13,6 +13,7 @@ import { DEFAULT_PROMPT } from '../services/geminiService';
 import { useControlCenter } from '../hooks/useControlCenter';
 import { getDatabaseHistory } from '../services/syncFacade';
 import { SpreadsheetHistoryEntry } from '../services/spreadsheetService';
+import { CHANGELOG_ENTRIES, LATEST_CHANGELOG_VERSION } from '../utils/changelog';
 
 interface ControlCenterProps {
     isOpen: boolean;
@@ -413,7 +414,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <div className="text-center pt-4">
                                                 <p className="text-xs text-muted flex items-center justify-center gap-2">
                                                     <Database className="w-3 h-3" />
-                                                    <span>BrainDump AI v0.3.4</span>
+                                                    <span>BrainDump AI {LATEST_CHANGELOG_VERSION}</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -1298,94 +1299,24 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Version History</h3>
                                                 <div className="space-y-4">
-                                                    <div className="bg-background border border-border rounded-2xl p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-primary">v0.3.4</div>
-                                                            <div className="text-xs text-muted">May 2026</div>
+                                                    {CHANGELOG_ENTRIES.map((entry) => (
+                                                        <div key={entry.version} className="bg-background border border-border rounded-2xl p-4">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <div className="font-bold text-primary flex items-center gap-2">
+                                                                    {entry.version}
+                                                                    {entry.version === LATEST_CHANGELOG_VERSION && (
+                                                                        <span className="text-[10px] uppercase tracking-wider bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">New</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-xs text-muted">{entry.date}</div>
+                                                            </div>
+                                                            <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                                {entry.items.map((item) => (
+                                                                    <li key={item}>{item}</li>
+                                                                ))}
+                                                            </ul>
                                                         </div>
-                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
-                                                            <li>Retired the GitHub/db.json runtime database path so Google Sheets is now the only cloud source of truth.</li>
-                                                            <li>Added a spreadsheet cache for fast/offline display, with one-time migration from the legacy browser cache when a new spreadsheet is connected.</li>
-                                                            <li>Control Center and onboarding now point users to Google Sheets instead of local-only or GitHub file sync.</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div className="bg-background border border-border rounded-2xl p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-primary">v0.3.3</div>
-                                                            <div className="text-xs text-muted">May 2026</div>
-                                                        </div>
-                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
-                                                            <li>Added Smart Canonicalizer foundations so parser results can store stable canonical merchant, payment method, and subcommodity metadata without changing raw user input.</li>
-                                                            <li>Pending Review now surfaces canonical suggestions with Use/Keep Raw actions, so approvals can intentionally teach either accepted mappings or rejection signals.</li>
-                                                            <li>Learned canonical aliases now merge deterministically, graduate to auto-apply after repeated approvals, decay after rejection, and lose auto-apply when they become risky.</li>
-                                                            <li>Added a safe historical canonical sweep that backfills high-confidence aliases, queues only threshold-qualified ambiguous rows for review, and can be rerun from Data settings after rule improvements.</li>
-                                                            <li>Control Center now shows canonical data quality coverage, learned-rule counts, review pressure, rejected-rule guardrails, and recent learned-rule controls before rerunning the sweep.</li>
-                                                            <li>Money search, wallet filters, wallet balances, AI insights, and exports now read canonical merchant, payment method, commodity, and subcommodity clusters while preserving raw item text.</li>
-                                                            <li>Parser extraction now captures clearer merchant, commodity, and subcommodity signals for common finance notes such as sarapan, parkir, and wallet mentions while leaving ambiguous transactions uncategorized.</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div className="bg-background border border-border rounded-2xl p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-primary">v0.3.2</div>
-                                                            <div className="text-xs text-muted">May 2026</div>
-                                                        </div>
-                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
-                                                            <li>Added behavior drift alerts that flag real pattern changes instead of only static summaries.</li>
-                                                            <li>New alerts can catch 3-day food spend runs, wants reactivation, task throughput dips, and 2-week skill stagnation.</li>
-                                                            <li>Refreshed AI insight cache versioning so newly shipped insight logic shows up without waiting for yesterday's cached cards to expire.</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div className="bg-background border border-border rounded-2xl p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-primary">v0.3.1</div>
-                                                            <div className="text-xs text-muted">April 2026</div>
-                                                        </div>
-                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
-                                                            <li>Stabilized all Gemini-based AI services with shared key handling and retry logic.</li>
-                                                            <li>Hardened AI JSON parsing so fenced/prose-wrapped responses no longer break flows easily.</li>
-                                                            <li>Improved Google Sheets sync reliability with token refresh retry, rate-limit backoff, and chunked sheet writes.</li>
-                                                            <li>Expanded spreadsheet history reads/writes to avoid truncated backups on larger databases.</li>
-                                                            <li>Reduced silent localStorage failures with safer read/write guards.</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div className="bg-background border border-border rounded-2xl p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-primary">v0.3.0</div>
-                                                            <div className="text-xs text-muted">April 2026</div>
-                                                        </div>
-                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
-                                                            <li>Fixed wiggly animations when switching sub-tabs.</li>
-                                                            <li>Enhanced summary numbers in Focus and Notes tabs.</li>
-                                                            <li>Fixed navigation bar expansion on sub-tabs.</li>
-                                                            <li>Improved dark and light mode theme consistency.</li>
-                                                            <li>Fixed navbar width consistency.</li>
-                                                            <li>Set AI draft review disabled by default.</li>
-                                                            <li>Set collapsed card view enabled by default.</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div className="bg-background border border-border rounded-2xl p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-primary">v0.2.0</div>
-                                                            <div className="text-xs text-muted">April 2026</div>
-                                                        </div>
-                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
-                                                            <li>Added Changelog section to Control Center.</li>
-                                                            <li>Refined UI theme for light mode consistency.</li>
-                                                            <li>Fixed navbar background color in light mode.</li>
-                                                            <li>Removed "Life" tab from navigation.</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div className="bg-background border border-border rounded-2xl p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="font-bold text-primary">v0.1.0</div>
-                                                            <div className="text-xs text-muted">Initial Release</div>
-                                                        </div>
-                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
-                                                            <li>Initial BrainDump AI release.</li>
-                                                            <li>Added Gemini parsing support.</li>
-                                                            <li>Added Budget and Money tracking.</li>
-                                                        </ul>
-                                                    </div>
+                                                    ))}
                                                 </div>
                                             </section>
                                         </div>
