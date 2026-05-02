@@ -64,8 +64,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab, onAddItem
 }) => {
     const libraryTabs: { key: LibrarySubTab; label: string; title: string; icon: React.ReactNode }[] = [
-        { key: 'skills', label: 'Skills', title: 'Skill Growth', icon: <Target className="w-4 h-4" /> },
         { key: 'general', label: 'Notes', title: 'All Notes', icon: <Library className="w-4 h-4" /> },
+        { key: 'skills', label: 'Skills', title: 'Skill Growth', icon: <Target className="w-4 h-4" /> },
         { key: 'journal', label: 'Journal', title: 'Journal Entries', icon: <BookText className="w-4 h-4" /> },
     ];
 
@@ -572,16 +572,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
                     }}
                 >
-                {/* VIEW: Skills */}
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex-shrink-0 overflow-hidden px-4"
-                    style={{ width: slideWidth }}
-                >
-                    {renderSkills()}
-                </motion.div>
-
                 {/* VIEW: General Notes */}
                 <motion.div 
                     initial={{ opacity: 0 }}
@@ -590,6 +580,16 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     style={{ width: slideWidth }}
                 >
                     {renderContent(generalItems, 'general')}
+                </motion.div>
+
+                {/* VIEW: Skills */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex-shrink-0 overflow-hidden px-4"
+                    style={{ width: slideWidth }}
+                >
+                    {renderSkills()}
                 </motion.div>
 
                 {/* VIEW: Journal */}

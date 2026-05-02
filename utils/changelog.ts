@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.17',
+    date: 'May 2026',
+    items: [
+      'Library sub-tabs now use the same left-to-right order as the rest of the app, so the Skills pane slides consistently instead of feeling reversed.',
+      'Aligned the Library slider track with the visible tab order to remove the odd Skills transition mismatch.',
+    ],
+  },
+  {
     version: 'v0.3.16',
     date: 'May 2026',
     items: [
