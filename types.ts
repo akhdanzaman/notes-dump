@@ -265,7 +265,11 @@ export interface CanonicalRule {
   };
   createdAt: string;
   updatedAt: string;
+  lastApprovedAt?: string;
+  lastRejectedAt?: string;
+  autoApplyDisabled?: boolean;
   disabled?: boolean;
+  disabledReason?: string;
 }
 
 export interface CanonicalCandidate {
@@ -276,6 +280,7 @@ export interface CanonicalCandidate {
   reason: string;
   ruleId?: string;
   source: CanonicalSource;
+  autoApplyEligible?: boolean;
 }
 
 export interface CanonicalReviewSuggestion {

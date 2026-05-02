@@ -12,7 +12,7 @@ import {
 } from '../types';
 import { findBestCanonicalCandidate } from '../utils/canonicalization/ruleMatcher';
 import { shouldAutoApply, shouldSuggestReview } from '../utils/canonicalization/scoring';
-import { incrementCanonicalRuleRejection, mergeLearnedRule } from '../utils/canonicalization/learnedRules';
+import { consolidateCanonicalRules, incrementCanonicalRuleRejection, mergeLearnedRule } from '../utils/canonicalization/learnedRules';
 
 export interface CanonicalizerContext {
   existingItems: BrainDumpItem[];
@@ -69,19 +69,25 @@ export function canonicalizeMeta(
     const rawValue = nextMeta[field];
     if (!rawValue || typeof rawValue !== 'string') continue;
 
+    // Precedence rule #1: a value explicitly applied in manual review is final for this pass.
+    // We do not rematch it against system/learned rules or contextual boosts, because review
+    // is the human correction signal that may later train learned rules.
+    const existingCanonical = nextMeta.canonical?.[field];
+    if (existingCanonical?.value && existingCanonical.source === 'manual_review') continue;
+
     const candidate = findBestCanonicalCandidate(field, rawValue, nextMeta, ctx.rules);
     if (!candidate) continue;
 
     const autoApplyEnabled = ctx.autoApplyHighConfidence !== false;
 
-    if (autoApplyEnabled && shouldAutoApply(candidate.score)) {
+    if (autoApplyEnabled && candidate.autoApplyEligible !== false && shouldAutoApply(candidate.score)) {
       nextMeta.canonical = nextMeta.canonical || {};
       nextMeta.canonical[field] = buildCanonicalValue(field, rawValue, candidate, false);
       autoApplied.push(field);
       continue;
     }
 
-    const needsReview = shouldSuggestReview(candidate.score) || !autoApplyEnabled;
+    const needsReview = shouldSuggestReview(candidate.score) || !autoApplyEnabled || candidate.autoApplyEligible === false;
 
     if (needsReview) {
       nextMeta.canonical = nextMeta.canonical || {};
@@ -147,9 +153,9 @@ export function canonicalizeParserResults(
         payload: {
           ...payload,
           changes: {
-            ...payload.changes,
+            ...(payload.changes as ParsedItemMetaV2),
             canonical: canonicalized.meta.canonical,
-          },
+          } as ParsedItemMetaV2,
         },
         canonicalReview: canonicalized.suggestions,
       };
@@ -200,5 +206,5 @@ export function learnCanonicalRulesFromReview(params: {
     }
   });
 
-  return rules;
+  return consolidateCanonicalRules(rules);
 }

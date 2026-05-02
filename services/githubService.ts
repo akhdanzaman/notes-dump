@@ -2,6 +2,7 @@
 import { Octokit } from "@octokit/rest";
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule } from "../types";
 import { mergeDbData } from "../utils/mergeUtils";
+import { consolidateCanonicalRules } from "../utils/canonicalization/learnedRules";
 export { mergeDbData } from "../utils/mergeUtils";
 
 // --- Configuration & Constants ---
@@ -151,8 +152,7 @@ export const mergeDbDataInternal = (local: DbSchema, remote: DbSchema, base?: Db
 
     const localCanonicalRules = local.canonicalRules || [];
     const remoteCanonicalRules = remote.canonicalRules || [];
-    const canonicalRuleMap = new Map<string, typeof localCanonicalRules[number]>();
-    [...remoteCanonicalRules, ...localCanonicalRules].forEach(rule => canonicalRuleMap.set(rule.id, rule));
+    const canonicalRules = consolidateCanonicalRules([...remoteCanonicalRules, ...localCanonicalRules]);
 
     return {
         data: Array.from(itemMap.values()),
@@ -163,7 +163,7 @@ export const mergeDbDataInternal = (local: DbSchema, remote: DbSchema, base?: Db
         wallets: Array.from(walletMap.values()),
         monthlyThemes: themes,
         chatHistory: chatHistory.slice(-50),
-        canonicalRules: Array.from(canonicalRuleMap.values())
+        canonicalRules
     };
 };
 

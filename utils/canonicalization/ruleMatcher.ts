@@ -1,6 +1,13 @@
 import { CanonicalCandidate, CanonicalField, CanonicalRule, ParsedItemMetaV2 } from '../../types';
+import { isCanonicalRuleAutoApplyEligible } from './learnedRules';
 import { normalizeCanonicalText, normalizeMerchantText, normalizeWalletText, tokenizeCanonicalText } from './normalize';
 import { scoreCandidate } from './scoring';
+
+// Canonical precedence is intentionally deterministic:
+// 1. manual_review annotations already stored on item meta are preserved by the service layer.
+// 2. Enabled rules are scored with contextual boosts included in the score.
+// 3. Equal scores break by rule source (manual > system > learned), then net evidence, then stable ids.
+// 4. Learned lifecycle state can make an otherwise high-score rule review-only or disabled.
 
 const normalizeByField = (field: CanonicalField, value?: string) => {
   if (field === 'merchant') return normalizeMerchantText(value);
@@ -63,6 +70,35 @@ const buildReason = (rule: CanonicalRule, aliasExact: boolean, overlap: number, 
   return parts.join(' • ') || 'weak canonical signal';
 };
 
+const sourceRank = (rule: CanonicalRule) => {
+  if (rule.source === 'manual') return 3;
+  if (rule.source === 'system') return 2;
+  return 1;
+};
+
+const candidateSource = (rule: CanonicalRule) => {
+  if (rule.source === 'learned') return 'learned_rule' as const;
+  if (rule.source === 'manual') return 'manual_review' as const;
+  return 'system_rule' as const;
+};
+
+const compareCandidates = (
+  left: CanonicalCandidate & { rule: CanonicalRule },
+  right: CanonicalCandidate & { rule: CanonicalRule }
+) => {
+  if (left.score !== right.score) return right.score - left.score;
+  const sourceDelta = sourceRank(right.rule) - sourceRank(left.rule);
+  if (sourceDelta !== 0) return sourceDelta;
+  const leftNet = (left.rule.approvalCount || 0) - (left.rule.rejectionCount || 0);
+  const rightNet = (right.rule.approvalCount || 0) - (right.rule.rejectionCount || 0);
+  if (leftNet !== rightNet) return rightNet - leftNet;
+  if ((left.rule.approvalCount || 0) !== (right.rule.approvalCount || 0)) return (right.rule.approvalCount || 0) - (left.rule.approvalCount || 0);
+  if ((left.rule.rejectionCount || 0) !== (right.rule.rejectionCount || 0)) return (left.rule.rejectionCount || 0) - (right.rule.rejectionCount || 0);
+  const canonicalDelta = left.canonicalValue.localeCompare(right.canonicalValue);
+  if (canonicalDelta !== 0) return canonicalDelta;
+  return (left.ruleId || '').localeCompare(right.ruleId || '');
+};
+
 export function buildRuleCandidates(
   field: CanonicalField,
   rawValue: string,
@@ -101,11 +137,14 @@ export function buildRuleCandidates(
         score,
         reason: buildReason(rule, aliasExact, tokenOverlap, contextMatch),
         ruleId: rule.id,
-        source: rule.source === 'learned' ? 'learned_rule' : 'system_rule',
-      } satisfies CanonicalCandidate;
+        source: candidateSource(rule),
+        autoApplyEligible: isCanonicalRuleAutoApplyEligible(rule),
+        rule,
+      } satisfies CanonicalCandidate & { rule: CanonicalRule };
     })
     .filter(candidate => candidate.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .sort(compareCandidates)
+    .map(({ rule, ...candidate }) => candidate);
 }
 
 export function findBestCanonicalCandidate(

@@ -1,4 +1,5 @@
 import { BrainDumpItem, DbSchema, Skill, Wallet } from '../types';
+import { consolidateCanonicalRules } from './canonicalization/learnedRules';
 
 // Helper for merging data (3-way merge to handle deletions correctly)
 export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema): DbSchema => {
@@ -92,8 +93,7 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
 
     const localCanonicalRules = local.canonicalRules || [];
     const remoteCanonicalRules = remote.canonicalRules || [];
-    const canonicalRuleMap = new Map<string, typeof localCanonicalRules[number]>();
-    [...remoteCanonicalRules, ...localCanonicalRules].forEach(rule => canonicalRuleMap.set(rule.id, rule));
+    const canonicalRules = consolidateCanonicalRules([...remoteCanonicalRules, ...localCanonicalRules]);
 
     return {
         data: Array.from(itemMap.values()),
@@ -107,6 +107,6 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
         wallets: Array.from(walletMap.values()),
         monthlyThemes: { ...remote.monthlyThemes, ...local.monthlyThemes },
         chatHistory: chatHistory.slice(-50),
-        canonicalRules: Array.from(canonicalRuleMap.values())
+        canonicalRules
     };
 };

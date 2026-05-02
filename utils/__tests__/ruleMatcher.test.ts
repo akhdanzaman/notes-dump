@@ -86,3 +86,58 @@ test('context can break ties toward the more plausible rule', () => {
   assert.ok(candidate);
   assert.equal(candidate?.ruleId, 'sub-breakfast');
 });
+
+test('equal-score collisions resolve by source precedence then stable evidence', () => {
+  const rules: CanonicalRule[] = [
+    {
+      id: 'learned-teh',
+      field: 'subcommodity',
+      canonicalValue: 'tea break',
+      aliases: ['teh'],
+      source: 'learned',
+      approvalCount: 999,
+      rejectionCount: 0,
+      createdAt: '2026-05-02T00:00:00.000Z',
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    },
+    {
+      id: 'system-teh',
+      field: 'subcommodity',
+      canonicalValue: 'tea',
+      aliases: ['teh'],
+      source: 'system',
+      approvalCount: 999,
+      rejectionCount: 0,
+      createdAt: '2026-05-02T00:00:00.000Z',
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    },
+  ];
+
+  const candidate = findBestCanonicalCandidate('subcommodity', 'teh', meta, rules);
+
+  assert.equal(candidate?.ruleId, 'system-teh');
+});
+
+test('learned rules with rejection guardrails remain matchable but lose auto-apply eligibility', () => {
+  const rules: CanonicalRule[] = [
+    {
+      id: 'learned-risky',
+      field: 'merchant',
+      canonicalValue: 'Risky Merchant',
+      aliases: ['risky'],
+      source: 'learned',
+      approvalCount: 10,
+      rejectionCount: 2,
+      confidenceBoost: 0.15,
+      conditions: { financeType: ['expense'], commodity: ['food'] },
+      createdAt: '2026-05-02T00:00:00.000Z',
+      updatedAt: '2026-05-02T00:00:00.000Z',
+      autoApplyDisabled: true,
+    },
+  ];
+
+  const candidate = findBestCanonicalCandidate('merchant', 'risky', meta, rules);
+
+  assert.ok(candidate);
+  assert.equal(candidate?.autoApplyEligible, false);
+});
