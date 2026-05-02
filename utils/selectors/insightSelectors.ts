@@ -2,6 +2,7 @@ import { BrainDumpItem, ItemType, BudgetConfig, Wallet, Skill } from '../../type
 import { getFinanceItems, getWalletStats } from './moneySelectors';
 import { getShoppingItems } from './shoppingSelectors';
 import { getSkillItems } from './skillSelectors';
+import { generateBehaviorDriftInsights } from '../behaviorDrift';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -17,6 +18,7 @@ export const generateInsights = (
   skills: Skill[]
 ): Insight[] => {
   const insights: Insight[] = [];
+  const behaviorDrifts = generateBehaviorDriftInsights(items, skills, 3);
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -255,5 +257,5 @@ export const generateInsights = (
     });
   }
 
-  return insights;
+  return [...behaviorDrifts, ...insights];
 };

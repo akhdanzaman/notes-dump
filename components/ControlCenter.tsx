@@ -1254,6 +1254,17 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 <div className="space-y-4">
                                                     <div className="bg-background border border-border rounded-2xl p-4">
                                                         <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-primary">v0.3.2</div>
+                                                            <div className="text-xs text-muted">May 2026</div>
+                                                        </div>
+                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                            <li>Added behavior drift alerts that flag real pattern changes instead of only static summaries.</li>
+                                                            <li>New alerts can catch 3-day food spend runs, wants reactivation, task throughput dips, and 2-week skill stagnation.</li>
+                                                            <li>Refreshed AI insight cache versioning so newly shipped insight logic shows up without waiting for yesterday's cached cards to expire.</li>
+                                                        </ul>
+                                                    </div>
+                                                    <div className="bg-background border border-border rounded-2xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
                                                             <div className="font-bold text-primary">v0.3.1</div>
                                                             <div className="text-xs text-muted">April 2026</div>
                                                         </div>

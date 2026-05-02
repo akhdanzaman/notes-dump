@@ -2,6 +2,7 @@ import { Type } from "@google/genai";
 import { BrainDumpItem, BudgetConfig, Wallet, Skill, ItemType } from '../types';
 import { getFinanceItems } from '../utils/selectors';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
+import { generateBehaviorDriftInsights } from '../utils/behaviorDrift';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -17,16 +18,20 @@ export const generateAIInsights = async (
   skills: Skill[],
   insightModel?: string
 ): Promise<Insight[]> => {
+  const behaviorDrifts = generateBehaviorDriftInsights(items, skills, 3);
   const apiKey = getGeminiKey();
   const ai = createGeminiClient(apiKey);
 
   if (!ai || !apiKey) {
-    return [{
+    return [
+      ...behaviorDrifts,
+      {
       type: 'warning',
       title: 'API Key Missing',
       message: 'Please configure your Gemini API key to get AI insights.',
       iconType: 'finance'
-    }];
+      }
+    ];
   }
 
   const activeModel = insightModel || DEFAULT_FLASH_MODEL;
@@ -161,6 +166,7 @@ export const generateAIInsights = async (
       });
 
   const dataSummary = {
+    behaviorDrifts,
     yesterday: getSummaryStats(yesterdayItems),
     past7Days: getSummaryStats(recentItems),
     currentMonth: {
@@ -204,6 +210,7 @@ export const generateAIInsights = async (
     2. Use specific numbers and tags provided.
     3. Cover ALL aspects: Budget, Focus (Tasks), Goals (Skills/Savings), Shopping, and Journaling.
     4. The 'title' field MUST be exactly one of: "Daily Review", "Weekly Review", "Month over Month Review", "General Review".
+    5. If behaviorDrifts contains real changes, weave the biggest drift into the most relevant review instead of repeating static monthly summaries.
     
     Data Summary (Apple-to-Apple comparison up to day ${currentDay} of the month):
     ${JSON.stringify(dataSummary, null, 2)}
@@ -232,9 +239,9 @@ export const generateAIInsights = async (
     }));
 
     const parsed = parseJsonResponse<Insight[]>(response.text, []);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? [...behaviorDrifts, ...parsed] : behaviorDrifts;
   } catch (error) {
     console.error("Failed to generate AI insights:", error);
-    return [];
+    return behaviorDrifts;
   }
 };

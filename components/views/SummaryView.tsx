@@ -111,6 +111,11 @@ type PopupPosition = {
     transformOrigin: string;
 };
 
+const AI_INSIGHTS_CACHE_KEY = 'braindump_ai_insights';
+const AI_INSIGHTS_CACHE_DATE_KEY = 'braindump_ai_insights_date';
+const AI_INSIGHTS_CACHE_VERSION_KEY = 'braindump_ai_insights_version';
+const AI_INSIGHTS_CACHE_VERSION = '2026-05-behavior-drift-v1';
+
 const SummaryView: React.FC<SummaryViewProps> = ({
     items,
     skills,
@@ -268,7 +273,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     );
 
     const [aiInsights, setAiInsights] = useState<Insight[]>(() => {
-        const saved = localStorage.getItem('braindump_ai_insights');
+        const saved = localStorage.getItem(AI_INSIGHTS_CACHE_KEY);
+        const savedVersion = localStorage.getItem(AI_INSIGHTS_CACHE_VERSION_KEY);
+        if (savedVersion !== AI_INSIGHTS_CACHE_VERSION) {
+            return [];
+        }
         if (saved) {
             try {
                 return JSON.parse(saved);
@@ -410,10 +419,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     };
 
     const fetchAIInsights = async (force = false) => {
-        const lastFetched = localStorage.getItem('braindump_ai_insights_date');
+        const lastFetched = localStorage.getItem(AI_INSIGHTS_CACHE_DATE_KEY);
+        const cachedVersion = localStorage.getItem(AI_INSIGHTS_CACHE_VERSION_KEY);
         const today = new Date().toDateString();
 
-        if (!force && (!appSettings.enableDailyInsight || lastFetched === today)) {
+        if (!force && (!appSettings.enableDailyInsight || (lastFetched === today && cachedVersion === AI_INSIGHTS_CACHE_VERSION))) {
             return;
         }
 
@@ -428,8 +438,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
         if (generated.length > 0) {
             setAiInsights(generated);
-            localStorage.setItem('braindump_ai_insights', JSON.stringify(generated));
-            localStorage.setItem('braindump_ai_insights_date', today);
+            localStorage.setItem(AI_INSIGHTS_CACHE_KEY, JSON.stringify(generated));
+            localStorage.setItem(AI_INSIGHTS_CACHE_DATE_KEY, today);
+            localStorage.setItem(AI_INSIGHTS_CACHE_VERSION_KEY, AI_INSIGHTS_CACHE_VERSION);
             setHasNewNotification(true);
             localStorage.setItem('braindump_has_new_notification', 'true');
         }
