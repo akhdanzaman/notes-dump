@@ -6,7 +6,7 @@ import {
     Moon, Sun, X, AlertTriangle, Github,
     Monitor, Layout, Eye, EyeOff, Database, Download, Upload, Trash2,
     Check, Smartphone, WifiOff, CheckCircle2, PieChart, Plus, Sparkles,
-    MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History
+    MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History, ShieldCheck
 } from 'lucide-react';
 import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
 import { DEFAULT_PROMPT } from '../services/geminiService';
@@ -27,6 +27,12 @@ interface ControlCenterProps {
     setAppSettings: (settings: AppSettings) => void;
     error: string | null;
     pendingCount: number;
+    canonicalReviewSummary?: {
+        suggestionCount: number;
+        draftCount: number;
+        oldestCreatedAt?: string | null;
+    };
+    onReviewNow?: () => void;
     parsingTasks?: import('../types').ParsingTask[];
     retryParsing?: (taskId: string) => void;
 
@@ -80,7 +86,7 @@ const ClockDisplay = () => {
 
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
     isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, 
-    appSettings, setAppSettings, error, pendingCount, parsingTasks, retryParsing,
+    appSettings, setAppSettings, error, pendingCount, canonicalReviewSummary, onReviewNow, parsingTasks, retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes,
     onImportData, onClearData
@@ -206,6 +212,17 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                 return <div className="flex items-center gap-2 text-amber-500"><Save className="w-5 h-5" /><span className="font-medium">Local</span></div>;
         }
     };
+
+    const canonicalSuggestionCount = canonicalReviewSummary?.suggestionCount || 0;
+    const canonicalDraftCount = canonicalReviewSummary?.draftCount || 0;
+    const oldestReviewMs = canonicalReviewSummary?.oldestCreatedAt ? new Date(canonicalReviewSummary.oldestCreatedAt).getTime() : null;
+    const isCanonicalPilingUp = canonicalSuggestionCount > 5 || (!!oldestReviewMs && Date.now() - oldestReviewMs > 24 * 60 * 60 * 1000);
+    const canonicalStatusLabel = canonicalSuggestionCount === 0 ? 'Clean' : isCanonicalPilingUp ? 'Piling up' : 'Review needed';
+    const canonicalStatusClass = canonicalSuggestionCount === 0
+        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+        : isCanonicalPilingUp
+            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+            : 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20';
 
     const menuItems = [
         { id: 'appearance', label: 'Appearance', icon: <Monitor className="w-5 h-5" />, desc: 'Theme, UI options' },
@@ -356,6 +373,49 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     <p className="text-sm font-medium">{error}</p>
                                                 </div>
                                             )}
+
+                                            {/* Data Quality */}
+                                            <div className="bg-background border border-border rounded-2xl p-4 shadow-sm space-y-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex items-start gap-3 min-w-0">
+                                                        <div className={`p-2 rounded-xl shrink-0 ${canonicalSuggestionCount === 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
+                                                            <ShieldCheck className="w-5 h-5" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <h3 className="font-bold text-primary text-sm">Data quality</h3>
+                                                                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${canonicalStatusClass}`}>
+                                                                    {canonicalStatusLabel}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-xs text-muted mt-1 leading-snug">
+                                                                {canonicalSuggestionCount === 0
+                                                                    ? 'No canonical cleanup needed. Aliases are being grouped automatically.'
+                                                                    : `${canonicalSuggestionCount} alias ${canonicalSuggestionCount === 1 ? 'decision' : 'decisions'} waiting across ${canonicalDraftCount} ${canonicalDraftCount === 1 ? 'draft' : 'drafts'}.`}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {canonicalSuggestionCount > 0 && onReviewNow && (
+                                                        <button
+                                                            onClick={onReviewNow}
+                                                            className="shrink-0 min-h-10 px-3 rounded-xl bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-600 transition-colors"
+                                                        >
+                                                            Review now
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="rounded-xl bg-surface border border-border p-3">
+                                                        <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Canonical reviews</div>
+                                                        <div className="text-lg font-bold text-primary mt-1">{canonicalSuggestionCount}</div>
+                                                    </div>
+                                                    <div className="rounded-xl bg-surface border border-border p-3">
+                                                        <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Drafts affected</div>
+                                                        <div className="text-lg font-bold text-primary mt-1">{canonicalDraftCount}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
 
                                             {/* Quick Actions */}
                                             <div className="grid grid-cols-2 gap-4">
@@ -1259,7 +1319,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </div>
                                                         <ul className="text-sm text-muted space-y-2 list-disc pl-4">
                                                             <li>Added Smart Canonicalizer foundations so parser results can store stable canonical merchant, payment method, and subcommodity metadata without changing raw user input.</li>
-                                                            <li>Pending Review now surfaces canonical suggestions, and approved review corrections can teach the app new learned mappings for future parses.</li>
+                                                            <li>Pending Review now shows canonical cleanup as mobile-friendly raw → canonical decisions with confidence, reason, source, Apply, Keep raw, and Override actions.</li>
+                                                            <li>Control Center now surfaces canonical-review workload in Data quality so alias cleanup is visible before it piles up.</li>
                                                             <li>Money search, wallet filters, wallet balances, AI insights, and exports now read canonical merchant, payment method, commodity, and subcommodity clusters while preserving raw item text.</li>
                                                         </ul>
                                                     </div>

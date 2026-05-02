@@ -43,6 +43,21 @@ const App: React.FC = () => {
       handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
+  const canonicalReviewSummary = useMemo(() => {
+    const canonicalDrafts = pendingReviews.filter(review =>
+      review.results.some(result => (result.canonicalReview || []).length > 0)
+    );
+
+    return {
+      suggestionCount: canonicalDrafts.reduce(
+        (total, review) => total + review.results.reduce((sum, result) => sum + (result.canonicalReview || []).length, 0),
+        0
+      ),
+      draftCount: canonicalDrafts.length,
+      oldestCreatedAt: null,
+    };
+  }, [pendingReviews]);
+
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem('braindump_onboarding_completed') !== 'true';
@@ -400,7 +415,7 @@ const App: React.FC = () => {
   };
 
   const handleClearData = async () => {
-      await saveAndSync([], undefined, undefined, [], [], {}, undefined, true);
+      await saveAndSync([], undefined, undefined, [], [], {}, undefined, undefined, true);
       clearSpreadsheetConfig();
       clearGithubConfig();
       setIsControlCenterOpen(false);
@@ -507,6 +522,7 @@ const App: React.FC = () => {
       newWallets.length > 0 ? newWallets : wallets,
       monthlyThemes,
       settings,
+      undefined,
       true // force overwrite
     );
   };
@@ -738,12 +754,20 @@ const App: React.FC = () => {
         onClose={() => setIsControlCenterOpen(false)}
         saveStatus={saveStatus}
         fetchStatus={fetchStatus}
-        onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
+        onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
         onRefreshClick={() => loadData()}
         appSettings={appSettings}
         setAppSettings={setAppSettings}
         error={error}
         pendingCount={pendingCount}
+        canonicalReviewSummary={canonicalReviewSummary}
+        onReviewNow={() => {
+          setIsControlCenterOpen(false);
+          setActiveTab('summary');
+          window.setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('braindump:open-review-center'));
+          }, 0);
+        }}
         parsingTasks={parsingTasks}
         retryParsing={retryParsing}
         onSave={handleSettingsSaved}

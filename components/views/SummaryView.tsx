@@ -468,6 +468,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         setIsReviewOpen(false);
     };
 
+    useEffect(() => {
+        const handleOpenReviewRequest = () => handleOpenReview();
+        window.addEventListener('braindump:open-review-center', handleOpenReviewRequest);
+        return () => window.removeEventListener('braindump:open-review-center', handleOpenReviewRequest);
+    }, []);
+
     useLayoutEffect(() => {
         if (!isNotificationOpen) return;
 
