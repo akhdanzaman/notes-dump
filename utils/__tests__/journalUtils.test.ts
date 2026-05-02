@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { ItemType } from '../../types';
-import { upsertDailyJournalEntry } from '../journalUtils';
+import { recoverMisclassifiedJournalNotes, upsertDailyJournalEntry } from '../journalUtils';
 import { getJournalDayGroups } from '../selectors/noteSelectors';
 
 test('same-day journal entries append into one daily item', () => {
@@ -31,6 +31,41 @@ test('same-day journal entries append into one daily item', () => {
   assert.equal(result.length, 1);
   assert.equal(result[0].content, 'Morning thoughts\n\nNight reflection');
   assert.deepEqual(result[0].meta.tags, ['mood', 'gratitude']);
+});
+
+test('recoverMisclassifiedJournalNotes restores legacy journal rows that were saved back as notes', () => {
+  const recovered = recoverMisclassifiedJournalNotes([
+    {
+      id: 'legacy-journal-note',
+      type: ItemType.NOTE,
+      content: 'Morning note\n\nNight reflection',
+      status: 'done' as const,
+      created_at: '2026-05-02T01:00:00.000Z',
+      completed_at: '2026-05-02T12:00:00.000Z',
+      meta: { date: '2026-05-02T01:00:00.000Z', tags: ['mood', 'gratitude'] },
+    },
+  ]);
+
+  assert.equal(recovered.length, 1);
+  assert.equal(recovered[0].type, ItemType.JOURNAL);
+  assert.equal(recovered[0].status, 'done');
+  assert.equal(recovered[0].completed_at, '2026-05-02T12:00:00.000Z');
+});
+
+test('recoverMisclassifiedJournalNotes leaves real notes alone', () => {
+  const original = {
+    id: 'note-1',
+    type: ItemType.NOTE,
+    content: 'Remember to ask about pricing',
+    status: 'pending' as const,
+    created_at: '2026-05-02T01:00:00.000Z',
+    meta: { tags: ['work'] },
+  };
+
+  const recovered = recoverMisclassifiedJournalNotes([original]);
+
+  assert.equal(recovered[0], original);
+  assert.equal(recovered[0].type, ItemType.NOTE);
 });
 
 test('journal day groups merge todos shopping events and transactions into day sections', () => {

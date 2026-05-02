@@ -32,7 +32,7 @@ import {
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
 import { getCachedSpreadsheetDb } from '../services/spreadsheetService';
-import { upsertDailyJournalEntry } from '../utils/journalUtils';
+import { recoverMisclassifiedJournalNotes, upsertDailyJournalEntry } from '../utils/journalUtils';
 import { mergeDbData } from '../utils/mergeUtils';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { parsePro } from '../services/geminiProService';
@@ -549,8 +549,9 @@ export const useBrainDumpData = () => {
                     }));
 
                     const migratedData = migrateAchievedGoalItems(normalizedData);
+                    const recoveredJournalData = recoverMisclassifiedJournalNotes(migratedData);
 
-                    const checkedData = checkRoutineResets(migratedData);
+                    const checkedData = checkRoutineResets(recoveredJournalData);
                     const canonicalRulesForSweep = data.canonicalRules || canonicalRulesRef.current;
                     const walletsForSweep = data.wallets || walletsRef.current;
                     const budgetRulesForSweep = data.budgetConfig?.rules || budgetConfigRef.current?.rules || [];

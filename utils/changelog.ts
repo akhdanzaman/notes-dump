@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.16',
+    date: 'May 2026',
+    items: [
+      'Added a journal recovery migration that restores legacy entries accidentally saved back as regular notes during the earlier refresh bug.',
+      'Recovered journal rows are promoted back into the Journal timeline on load, then re-synced so Google Sheets stops carrying the wrong NOTE type forward.',
+    ],
+  },
+  {
     version: 'v0.3.15',
     date: 'May 2026',
     items: [

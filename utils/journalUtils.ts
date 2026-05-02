@@ -6,6 +6,13 @@ const getValidTime = (value?: string) => {
   return Number.isFinite(time) ? time : null;
 };
 
+const isSameLocalDay = (left?: string, right?: string) => {
+  const leftTime = getValidTime(left);
+  const rightTime = getValidTime(right);
+  if (leftTime === null || rightTime === null) return false;
+  return getLocalDateKeyFromTimestamp(leftTime) === getLocalDateKeyFromTimestamp(rightTime);
+};
+
 export const getJournalTimelineTimestamp = (item: BrainDumpItem): number | null => {
   switch (item.type) {
     case ItemType.JOURNAL:
@@ -74,4 +81,31 @@ export const upsertDailyJournalEntry = (items: BrainDumpItem[], newEntry: BrainD
       }
     };
   });
+};
+
+export const recoverMisclassifiedJournalNotes = (items: BrainDumpItem[]): BrainDumpItem[] => {
+  let changed = false;
+
+  const recovered = items.map(item => {
+    if (item.type !== ItemType.NOTE) return item;
+    if (!item.meta.date) return item;
+    if (!(item.status === 'done' || !!item.completed_at)) return item;
+    if (!isSameLocalDay(item.meta.date, item.completed_at || item.created_at)) return item;
+
+    changed = true;
+    const completedAt = item.completed_at || item.meta.date || item.created_at;
+
+    return {
+      ...item,
+      type: ItemType.JOURNAL,
+      status: 'done',
+      completed_at: completedAt,
+      meta: {
+        ...item.meta,
+        date: item.meta.date || completedAt,
+      }
+    };
+  });
+
+  return changed ? recovered : items;
 };
