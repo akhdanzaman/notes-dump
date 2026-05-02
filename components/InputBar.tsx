@@ -8,7 +8,8 @@ import {
   StickyNote,
   PiggyBank,
   Loader2,
-  MessageSquareText
+  MessageSquareText,
+  ClipboardCheck
 } from 'lucide-react';
 import { SyncStatus } from '../types';
 
@@ -23,6 +24,10 @@ interface InputBarProps {
   pendingCount?: number;
   isChatOpen?: boolean;
   onOpenChat?: () => void;
+  showReviewCenterButton?: boolean;
+  reviewCenterActive?: boolean;
+  reviewCenterCount?: number;
+  onOpenReviewCenter?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -44,7 +49,11 @@ const InputBar: React.FC<InputBarProps> = ({
   fetchStatus,
   pendingCount,
   isChatOpen,
-  onOpenChat
+  onOpenChat,
+  showReviewCenterButton,
+  reviewCenterActive,
+  reviewCenterCount,
+  onOpenReviewCenter
 }) => {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -98,6 +107,7 @@ const InputBar: React.FC<InputBarProps> = ({
     !!startAction ||
     saveStatus === 'saving' ||
     fetchStatus === 'syncing' ||
+    showReviewCenterButton ||
     (pendingCount !== undefined && pendingCount > 0);
 
   return (
@@ -148,8 +158,29 @@ const InputBar: React.FC<InputBarProps> = ({
                 )}
               </div>
 
-              {/* Syncing Animation */}
-              {(saveStatus === 'saving' || fetchStatus === 'syncing') && (
+              {/* Review Center / Syncing Animation */}
+              {showReviewCenterButton ? (
+                <div className="shrink-0 z-20 pointer-events-auto">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={onOpenReviewCenter}
+                    className="relative w-10 h-10 rounded-full bg-indigo-500/15 border border-indigo-500/40 text-indigo-500 backdrop-blur-xl flex items-center justify-center shadow-xl shadow-indigo-500/20 hover:bg-indigo-500/25 active:scale-95 transition-all"
+                    title="Open Review Center"
+                    aria-label="Open Review Center"
+                  >
+                    {reviewCenterActive && (
+                      <span className="absolute -inset-1 rounded-full border-2 border-transparent border-t-indigo-500 border-r-indigo-300 animate-spin" />
+                    )}
+                    <ClipboardCheck className="w-5 h-5" />
+                    {reviewCenterCount !== undefined && reviewCenterCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center border border-surface">
+                        {reviewCenterCount > 9 ? '9+' : reviewCenterCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              ) : (saveStatus === 'saving' || fetchStatus === 'syncing') && (
                 <div className="shrink-0 z-20 pointer-events-none">
                   <div
                     className={`w-10 h-10 rounded-full ${

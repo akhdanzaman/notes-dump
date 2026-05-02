@@ -29,7 +29,9 @@ export interface ParsingTask {
   status: 'pending' | 'failed' | 'success';
   stage?: 'stage1' | 'stage2' | 'legacy';
   error?: string;
+  results?: ParserResultV2[];
   createdAt: number;
+  completedAt?: number;
 }
 
 export interface AppSettings {

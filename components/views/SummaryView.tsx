@@ -22,8 +22,6 @@ import {
     RefreshCw,
     ChevronDown,
     ClipboardCheck,
-    AlertCircle,
-    X
 } from 'lucide-react';
 import {
     BrainDumpItem,
@@ -47,7 +45,7 @@ import { generateAIInsights, Insight } from '../../services/insightService';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import Card from '../Card';
-import PendingReviewList from '../PendingReviewList';
+import ReviewCenterPanel from '../ReviewCenterPanel';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -970,81 +968,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                             </div>
                                         </div>
 
-                                        <div className="overflow-y-auto px-4 py-4 bg-background">
-                                            {parsingTasks && parsingTasks.length > 0 && (
-                                                <div className="mb-6 flex flex-col gap-2">
-                                                    <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Parsing Queue</span>
-                                                    {parsingTasks.map(task => (
-                                                        <div key={task.id} className="flex items-center justify-between bg-surface border border-border rounded-lg p-3 shadow-sm">
-                                                            <div className="flex flex-col gap-1 overflow-hidden flex-1 border-r border-border/50 pr-2">
-                                                                <span className="text-sm font-medium text-primary truncate" title={task.text}>"{task.text}"</span>
-                                                                 <div className="flex items-center gap-2">
-                                                                     {task.status === 'pending' && (
-                                                                         <span className="text-xs text-amber-500 flex items-center gap-1 font-medium">
-                                                                             <RefreshCw className="w-3 h-3 animate-spin" />
-                                                                             Parsing... {task.stage ? `(${task.stage})` : ''}
-                                                                         </span>
-                                                                     )}
-                                                                     {task.status === 'failed' && (
-                                                                         <span className="text-xs text-red-500 flex items-center gap-1 font-medium" title={task.error}>
-                                                                             <AlertCircle className="w-3 h-3" />
-                                                                             Failed
-                                                                         </span>
-                                                                     )}
-                                                                     {task.status === 'success' && (
-                                                                         <span className="text-xs text-emerald-500 flex items-center gap-1 font-medium">
-                                                                             <CheckCircle2 className="w-3 h-3" />
-                                                                             Success
-                                                                         </span>
-                                                                     )}
-                                                                 </div>
-                                                            </div>
-                                                            <div className="flex items-center">
-                                                                {task.status === 'failed' && retryParsing && (
-                                                                    <button
-                                                                        onClick={() => retryParsing(task.id)}
-                                                                        className="ml-2 shrink-0 px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md text-xs font-bold transition-colors"
-                                                                    >
-                                                                        Retry
-                                                                    </button>
-                                                                )}
-                                                                {task.status !== 'pending' && clearParsingTask && (
-                                                                    <button
-                                                                        onClick={() => clearParsingTask(task.id)}
-                                                                        className="ml-2 p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-                                                                        title="Dismiss"
-                                                                    >
-                                                                        <X className="w-4 h-4" />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {pendingReviews && pendingReviews.length > 0 ? (
-                                                <PendingReviewList 
-                                                    reviews={pendingReviews} 
-                                                    onApprove={(id, res) => {
-                                                        if (handleApproveReview) handleApproveReview(id, res);
-                                                    }} 
-                                                    onReject={(id) => {
-                                                        if (handleRejectReview) handleRejectReview(id);
-                                                    }}
-                                                />
-                                            ) : (
-                                                (!parsingTasks || parsingTasks.length === 0) && (
-                                                    <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
-                                                        <div className="w-12 h-12 rounded-full border border-current flex items-center justify-center mb-3">
-                                                            <CheckCircle2 className="w-6 h-6" />
-                                                        </div>
-                                                        <p className="text-sm font-bold">All caught up!</p>
-                                                        <p className="text-xs mt-1">No entries awaiting review.</p>
-                                                    </div>
-                                                )
-                                            )}
-                                        </div>
+                                        <ReviewCenterPanel
+                                            parsingTasks={parsingTasks}
+                                            pendingReviews={pendingReviews}
+                                            onApproveReview={handleApproveReview}
+                                            onRejectReview={handleRejectReview}
+                                            retryParsing={retryParsing}
+                                            clearParsingTask={clearParsingTask}
+                                        />
                                     </motion.div>
                                 </>
                             )}

@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.6',
+    date: 'May 2026',
+    items: [
+      'Paused spreadsheet save/fetch work while parser jobs are still running, then safely flushes queued sync after parsing finishes.',
+      'Added a Review Center button above the input bar after new parser activity, with a spinning ring while parsing/save/fetch work is active.',
+      'Review Center now shows successful parser destinations and structured attributes, plus clear failure details when parsing fails.',
+    ],
+  },
+  {
     version: 'v0.3.5',
     date: 'May 2026',
     items: [

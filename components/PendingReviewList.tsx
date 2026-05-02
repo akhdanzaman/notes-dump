@@ -191,6 +191,17 @@ const ReviewCard: React.FC<{
   const financeType = payload?.meta?.financeType || '';
   const content = payload?.content || primaryResult.content || review.text;
   const canonicalReview = primaryResult.canonicalReview || [];
+  const parsedDestination = payload?.itemType
+    ? ({ FINANCE: 'Money > Transactions', TODO: 'Plan > Tasks', SHOPPING: 'Plan > Shopping', NOTE: 'Library > Notes', JOURNAL: 'Library > Journal', EVENT: 'Calendar' } as Record<string, string>)[payload.itemType] || payload.itemType
+    : primaryResult.action.replace(/_/g, ' ');
+  const parsedAttributes = Object.entries({
+    content,
+    itemType: payload?.itemType,
+    status: payload?.status,
+    ...(payload?.meta || {}),
+    ...(payload?.changes || {}),
+    ...(payload?.match || {}),
+  }).filter(([, value]) => value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0));
 
   return (
     <motion.div
@@ -310,6 +321,31 @@ const ReviewCard: React.FC<{
             <p className="text-[10px] text-amber-500 leading-tight">
               {primaryResult.reviewReason}
             </p>
+          </div>
+        )}
+
+        {!isEditing && (
+          <div className="mt-3 p-2.5 bg-background/60 border border-border rounded-lg space-y-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Parsed Output</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 font-medium">
+                {parsedDestination}
+              </span>
+            </div>
+            {parsedAttributes.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {parsedAttributes.slice(0, 12).map(([key, value]) => (
+                  <div key={`${key}-${String(value)}`} className="min-w-0 rounded-md bg-surface/80 border border-border px-2 py-1">
+                    <div className="text-[9px] uppercase tracking-wide text-muted font-bold truncate">{key}</div>
+                    <div className="text-[11px] text-primary font-medium truncate" title={Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value)}>
+                      {Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted">No structured attributes returned.</p>
+            )}
           </div>
         )}
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { v4 as uuidv4 } from 'uuid';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,9 +29,9 @@ import AddShoppingModal from './components/AddShoppingModal';
 import AddExpenseModal from './components/AddExpenseModal';
 import AddNoteModal from './components/AddNoteModal';
 import FloatingChatBox from './components/FloatingChatBox';
-import PendingReviewList from './components/PendingReviewList';
+import ReviewCenterPanel from './components/ReviewCenterPanel';
 import Onboarding from './components/Onboarding';
-import { Brain, History, X } from 'lucide-react';
+import { History, X, ClipboardCheck, ChevronDown } from 'lucide-react';
 import { LATEST_CHANGELOG, LATEST_CHANGELOG_VERSION, SEEN_CHANGELOG_STORAGE_KEY } from './utils/changelog';
 
 const App: React.FC = () => {
@@ -100,6 +101,33 @@ const App: React.FC = () => {
   // Chat State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [newChatMessage, setNewChatMessage] = useState<{ text: string; id: string } | null>(null);
+
+  // Review Center nudge above the input bar
+  const [isReviewCenterOpen, setIsReviewCenterOpen] = useState(false);
+  const [lastReviewCenterOpenedAt, setLastReviewCenterOpenedAt] = useState(0);
+
+  const latestParsingTaskAt = useMemo(() => {
+    return parsingTasks.reduce((latest, task) => Math.max(latest, task.createdAt || 0, task.completedAt || 0), 0);
+  }, [parsingTasks]);
+
+  const hasRunningProcess = useMemo(() => {
+    return pendingCount > 0
+      || parsingTasks.some(task => task.status === 'pending')
+      || saveStatus === 'saving'
+      || fetchStatus === 'syncing';
+  }, [fetchStatus, parsingTasks, pendingCount, saveStatus]);
+
+  const showReviewCenterNudge = parsingTasks.length > 0 && latestParsingTaskAt > lastReviewCenterOpenedAt;
+  const reviewCenterBadgeCount = pendingReviews.length + parsingTasks.length;
+
+  const openReviewCenterFromInput = () => {
+    setLastReviewCenterOpenedAt(Date.now());
+    setIsReviewCenterOpen(true);
+  };
+
+  const closeReviewCenterFromInput = () => {
+    setIsReviewCenterOpen(false);
+  };
 
   const handleUpdateChatHistory = (newHistory: import('./types').ChatMessage[]) => {
       setChatHistory(newHistory);
@@ -721,6 +749,10 @@ const App: React.FC = () => {
                 pendingCount={pendingCount}
                 isChatOpen={isChatOpen}
                 onOpenChat={() => setIsChatOpen(!isChatOpen)}
+                showReviewCenterButton={showReviewCenterNudge}
+                reviewCenterActive={hasRunningProcess}
+                reviewCenterCount={reviewCenterBadgeCount}
+                onOpenReviewCenter={openReviewCenterFromInput}
                 startAction={(activeTab === 'library' || activeTab === 'money') ? (
                     <FloatingSearch 
                         activeTab={activeTab} librarySubTab={librarySubTab} moneyView={moneyView}
@@ -783,6 +815,64 @@ const App: React.FC = () => {
         onImportData={handleImportData}
         onClearData={handleClearData}
       />
+
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isReviewCenterOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={closeReviewCenterFromInput}
+                className="fixed inset-0 bg-black/40 z-[94]"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, x: '-50%', y: 20 }}
+                animate={{ opacity: 1, scale: 1, x: '-50%', y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, x: '-50%', y: 20 }}
+                transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                className="fixed left-1/2 bottom-28 z-[95] w-[calc(100vw-2rem)] max-w-2xl max-h-[70vh] bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              >
+                <div className="flex items-center justify-between p-4 border-b border-border bg-surface shrink-0">
+                  <h3 className="font-bold text-lg flex items-center gap-2">
+                    <ClipboardCheck className="w-5 h-5 text-indigo-500" />
+                    Review Center
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {pendingReviews.length > 0 && (
+                      <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
+                        {pendingReviews.length} Pending
+                      </span>
+                    )}
+                    {hasRunningProcess && (
+                      <span className="text-xs bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-full font-bold">
+                        Running
+                      </span>
+                    )}
+                    <button
+                      onClick={closeReviewCenterFromInput}
+                      className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors ml-1"
+                      aria-label="Close Review Center"
+                    >
+                      <ChevronDown className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <ReviewCenterPanel
+                  parsingTasks={parsingTasks}
+                  pendingReviews={pendingReviews}
+                  onApproveReview={handleApproveReview}
+                  onRejectReview={handleRejectReview}
+                  retryParsing={retryParsing}
+                  clearParsingTask={clearParsingTask}
+                />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <AnimatePresence>
         {showChangelogPopup && (

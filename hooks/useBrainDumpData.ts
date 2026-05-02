@@ -263,6 +263,22 @@ export const useBrainDumpData = () => {
     const [fetchStatus, setFetchStatus] = useState<SyncStatus>('synced');
     const [pendingReviews, setPendingReviews] = useState<HistoricalCanonicalReview[]>([]);
 
+    const parsingInFlightRef = useRef<Set<string>>(new Set());
+    const pendingSaveAfterParsingRef = useRef<{
+        newItems?: BrainDumpItem[];
+        newConfig?: BudgetConfig;
+        newPrompt?: string;
+        newSkills?: Skill[];
+        newWallets?: Wallet[];
+        newThemes?: Record<string, string>;
+        newAppSettings?: AppSettings;
+        newCanonicalRules?: CanonicalRule[];
+        forceOverwrite: boolean;
+    } | null>(null);
+    const pendingFetchAfterParsingRef = useRef(false);
+
+    const hasActiveParsing = () => parsingInFlightRef.current.size > 0;
+
     const itemsRef = useRef(items);
     itemsRef.current = items;
 
@@ -337,8 +353,8 @@ export const useBrainDumpData = () => {
         return updatedItems;
     };
 
-    const saveAndSync = useCallback(async (
-        newItems: BrainDumpItem[],
+    const performSaveAndSync = useCallback(async (
+        newItems?: BrainDumpItem[],
         newConfig?: BudgetConfig,
         newPrompt?: string,
         newSkills?: Skill[],
@@ -349,6 +365,7 @@ export const useBrainDumpData = () => {
         forceOverwrite = false
     ) => {
         const baseItems = itemsRef.current;
+        const itemsToSave = newItems || itemsRef.current;
         setSaveStatus('saving');
 
         try {
@@ -361,7 +378,7 @@ export const useBrainDumpData = () => {
             const canonicalRulesToSave = newCanonicalRules || canonicalRulesRef.current;
 
             const result: SyncResult = await syncData(
-                newItems,
+                itemsToSave,
                 configToSave,
                 promptToSave,
                 skillsToSave,
@@ -411,6 +428,47 @@ export const useBrainDumpData = () => {
         }
     }, []);
 
+    const saveAndSync = useCallback(async (
+        newItems?: BrainDumpItem[],
+        newConfig?: BudgetConfig,
+        newPrompt?: string,
+        newSkills?: Skill[],
+        newWallets?: Wallet[],
+        newThemes?: Record<string, string>,
+        newAppSettings?: AppSettings,
+        newCanonicalRules?: CanonicalRule[],
+        forceOverwrite = false
+    ) => {
+        if (hasActiveParsing()) {
+            const previous = pendingSaveAfterParsingRef.current;
+            pendingSaveAfterParsingRef.current = {
+                newItems: newItems || previous?.newItems,
+                newConfig: newConfig || previous?.newConfig,
+                newPrompt: newPrompt !== undefined ? newPrompt : previous?.newPrompt,
+                newSkills: newSkills || previous?.newSkills,
+                newWallets: newWallets || previous?.newWallets,
+                newThemes: newThemes || previous?.newThemes,
+                newAppSettings: newAppSettings || previous?.newAppSettings,
+                newCanonicalRules: newCanonicalRules || previous?.newCanonicalRules,
+                forceOverwrite: (previous?.forceOverwrite || forceOverwrite)
+            };
+            setSaveStatus('saving');
+            return;
+        }
+
+        return performSaveAndSync(
+            newItems,
+            newConfig,
+            newPrompt,
+            newSkills,
+            newWallets,
+            newThemes,
+            newAppSettings,
+            newCanonicalRules,
+            forceOverwrite
+        );
+    }, [performSaveAndSync]);
+
     const replaceHistoricalCanonicalReviews = useCallback((reviews: HistoricalCanonicalReview[]) => {
         setPendingReviews(prev => [
             ...reviews,
@@ -458,6 +516,12 @@ export const useBrainDumpData = () => {
     const isSyncingRef = useRef(false);
 
     const loadData = useCallback(async () => {
+        if (hasActiveParsing()) {
+            pendingFetchAfterParsingRef.current = true;
+            setFetchStatus('syncing');
+            return;
+        }
+
         if (isSyncingRef.current && itemsRef.current.length > 0) return;
 
         isSyncingRef.current = true;
@@ -553,6 +617,34 @@ export const useBrainDumpData = () => {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    const flushDeferredSyncAfterParsing = useCallback(async () => {
+        if (hasActiveParsing()) return;
+
+        const deferredSave = pendingSaveAfterParsingRef.current;
+        const shouldFetch = pendingFetchAfterParsingRef.current;
+
+        pendingSaveAfterParsingRef.current = null;
+        pendingFetchAfterParsingRef.current = false;
+
+        if (deferredSave) {
+            await performSaveAndSync(
+                deferredSave.newItems || itemsRef.current,
+                deferredSave.newConfig || budgetConfigRef.current,
+                deferredSave.newPrompt !== undefined ? deferredSave.newPrompt : customPromptRef.current,
+                deferredSave.newSkills || skillsRef.current,
+                deferredSave.newWallets || walletsRef.current,
+                deferredSave.newThemes || monthlyThemesRef.current,
+                deferredSave.newAppSettings || appSettingsRef.current,
+                deferredSave.newCanonicalRules || canonicalRulesRef.current,
+                deferredSave.forceOverwrite
+            );
+        }
+
+        if (shouldFetch) {
+            await loadData();
+        }
+    }, [loadData, performSaveAndSync]);
 
     const buildMetaFromParsed = (meta?: ParsedItemMetaV2, action?: ParserAction, entityType?: ParserEntityType, confidence?: string, needsReview?: boolean, reviewReason?: string) => {
         const cleanMeta = stripUndefined({
@@ -989,7 +1081,13 @@ export const useBrainDumpData = () => {
     };
 
     const processItemInBackground = async (text: string, tempId: string) => {
-        setParsingTasks(prev => [{ id: tempId, text, status: 'pending', createdAt: Date.now() }, ...prev]);
+        parsingInFlightRef.current.add(tempId);
+        setParsingTasks(prev => {
+            const nextTask: ParsingTask = { id: tempId, text, status: 'pending', createdAt: Date.now() };
+            return prev.some(t => t.id === tempId)
+                ? prev.map(t => t.id === tempId ? { ...t, text, status: 'pending', stage: undefined, error: undefined, results: undefined, completedAt: undefined } : t)
+                : [nextTask, ...prev];
+        });
         try {
             const currentTags = new Set<string>();
             itemsRef.current.forEach(i => i.meta?.tags?.forEach(t => currentTags.add(t)));
@@ -1043,12 +1141,14 @@ export const useBrainDumpData = () => {
                 executeParserResults(parsedResults, text, tempId);
             }
 
-            setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'success' } : t));
+            setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'success', results: parsedResults, completedAt: Date.now() } : t));
         } catch (err: any) {
             console.error("Processing failed", err);
-            setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'failed', error: err.message || 'Unknown error' } : t));
+            setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'failed', error: err.message || 'Unknown error', completedAt: Date.now() } : t));
         } finally {
+            parsingInFlightRef.current.delete(tempId);
             setPendingCount(prev => Math.max(0, prev - 1));
+            flushDeferredSyncAfterParsing();
         }
     };
 
