@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet } from 'lucide-react';
+import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
 import { getJournalDayGroups, getNoteItems, getSkillItems, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+import { useSwipeDate } from '../../hooks/useSwipeDate';
+import { useLazyItems } from '../../hooks/useLazyItems';
+import LoadMoreButton from '../LoadMoreButton';
 import { formatFinanceTypeLabel } from '../../utils/financeTypeUtils';
 
 interface LibraryViewProps {
@@ -72,6 +75,46 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const journalItems = getNoteItems(items, 'journal', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const journalDayGroups = getJournalDayGroups(items, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const { stats: skillStats } = getSkillItems(items, skills);
+    const [journalDate, setJournalDate] = useState(new Date());
+
+    const changeJournalMonth = (offset: number) => {
+        const next = new Date(journalDate);
+        next.setMonth(next.getMonth() + offset);
+        setJournalDate(next);
+    };
+
+    const journalDateSwipeHandlers = useSwipeDate(
+        () => changeJournalMonth(-1),
+        () => changeJournalMonth(1)
+    );
+
+    const isWithinJournalMonth = (value?: string) => {
+        if (!value) return false;
+        const date = new Date(value);
+        return !Number.isNaN(date.getTime())
+            && date.getMonth() === journalDate.getMonth()
+            && date.getFullYear() === journalDate.getFullYear();
+    };
+
+    const filteredJournalDayGroups = React.useMemo(
+        () => journalDayGroups.filter(group => isWithinJournalMonth(group.dateKey)),
+        [journalDayGroups, journalDate]
+    );
+
+    const filteredJournalItems = React.useMemo(
+        () => journalItems.filter(item => isWithinJournalMonth(item.completed_at || item.meta.date || item.created_at)),
+        [journalItems, journalDate]
+    );
+
+    const visibleGeneralItems = useLazyItems(generalItems, {
+        resetKey: `library-general-${selectedTag}-${filterDate}-${filterDateTo}-${searchQuery}-${sortOrder}-${generalItems.length}`,
+    });
+    const visibleSkillItems = useLazyItems(skillStats, {
+        resetKey: `library-skills-${skillStats.length}`,
+    });
+    const visibleJournalGroups = useLazyItems(filteredJournalDayGroups, {
+        resetKey: `library-journal-${journalDate.getFullYear()}-${journalDate.getMonth()}-${selectedTag}-${filterDate}-${filterDateTo}-${searchQuery}-${sortOrder}-${filteredJournalDayGroups.length}`,
+    });
 
     const formatCurrency = (amount?: number) => new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -269,7 +312,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     };
               
     const renderContent = (data: BrainDumpItem[], type: 'general' | 'journal') => {
-        const isEmpty = type === 'journal' ? journalDayGroups.length === 0 : data.length === 0;
+        const isEmpty = type === 'journal' ? filteredJournalDayGroups.length === 0 : data.length === 0;
         if (isEmpty) {
             return (
                 <div className="text-center text-muted py-10">
@@ -297,17 +340,21 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (type === 'journal') {
             return (
                 <div className="space-y-8">
-                    {journalDayGroups.map(renderJournalDay)}
+                    {visibleJournalGroups.visibleItems.map(renderJournalDay)}
+                    <LoadMoreButton remainingCount={visibleJournalGroups.remainingCount} onClick={visibleJournalGroups.loadMore} />
                 </div>
             );
         }
 
         // Masonry layout for general notes
         return (
-            <div className="columns-1 sm:columns-2 gap-4">
-                {data.map(item => (
-                    <Card key={item.id} item={item} {...commonProps} />
-                ))}
+            <div className="space-y-4">
+                <div className="columns-1 sm:columns-2 gap-4">
+                    {visibleGeneralItems.visibleItems.map(item => (
+                        <Card key={item.id} item={item} {...commonProps} />
+                    ))}
+                </div>
+                <LoadMoreButton remainingCount={visibleGeneralItems.remainingCount} onClick={visibleGeneralItems.loadMore} />
             </div>
         );
     };
@@ -329,7 +376,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
         return (
             <div className="space-y-4">
-                {skillStats.map(skill => {
+                {visibleSkillItems.visibleItems.map(skill => {
                     const progress = skill.weeklyProgress;
                     return (
                         <motion.div 
@@ -381,6 +428,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         </motion.div>
                     );
                 })}
+                <LoadMoreButton remainingCount={visibleSkillItems.remainingCount} onClick={visibleSkillItems.loadMore} />
             </div>
         );
     };
@@ -449,9 +497,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     )}
                                     {librarySubTab === 'journal' && (
                                         <>
-                                            <span>{journalItems.length} Journal Entries</span>
+                                            <span>{filteredJournalItems.length} Journal Entries</span>
                                             <span>•</span>
-                                            <span>Across {journalDayGroups.length} Days</span>
+                                            <span>Across {filteredJournalDayGroups.length} Days</span>
                                         </>
                                     )}
                                 </p>
@@ -468,6 +516,39 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             </button>
                         </motion.div>
                     </AnimatePresence>
+
+                    {librarySubTab === 'journal' && (
+                        <div
+                            className="mt-4 bg-black/5 rounded-[24px] p-4 touch-pan-y"
+                            onTouchStart={journalDateSwipeHandlers.onTouchStart}
+                            onTouchMove={journalDateSwipeHandlers.onTouchMove}
+                            onTouchEnd={journalDateSwipeHandlers.onTouchEnd}
+                        >
+                            <div className="flex items-center justify-between">
+                                <button onClick={() => changeJournalMonth(-1)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={journalDate.toISOString()}
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -10 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="text-center"
+                                    >
+                                        <div className="text-xs font-bold opacity-60 uppercase tracking-wider">Journal Month</div>
+                                        <div className="text-xl font-bold leading-none mt-1">
+                                            {journalDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                        </div>
+                                    </motion.div>
+                                </AnimatePresence>
+                                <button onClick={() => changeJournalMonth(1)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </motion.div>
             </motion.div>
 

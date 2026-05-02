@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.14',
+    date: 'May 2026',
+    items: [
+      'Journal tab now has a month slicer, so you can browse the daily timeline one month at a time like Transactions.',
+      'Large lists across Library, Plan, and Money now lazy-load in batches of 20 to keep scrolling smooth on heavy datasets.',
+      'Skills, notes, journal days, shopping lists, tasks, goals, wallets, and transaction lists now reveal more entries on demand instead of rendering everything at once.',
+    ],
+  },
+  {
     version: 'v0.3.13',
     date: 'May 2026',
     items: [

@@ -7,6 +7,8 @@ import Card from '../Card';
 import ShoppingItem from '../ShoppingItem';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
+import { useLazyItems } from '../../hooks/useLazyItems';
+import LoadMoreButton from '../LoadMoreButton';
 
 interface PlanViewProps {
     items: BrainDumpItem[];
@@ -81,6 +83,18 @@ const PlanView: React.FC<PlanViewProps> = ({
     
     const { urgent, routine, normal, savings } = getShoppingItems(items);
     const isShoppingEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
+
+    const taskResetKey = `plan-tasks-${focusDate.getFullYear()}-${focusDate.getMonth()}-${searchQuery}-${selectedTag}`;
+    const shoppingResetKey = `plan-shopping-${searchQuery}-${selectedTag}`;
+
+    const visibleToday = useLazyItems(today, { resetKey: `${taskResetKey}-today-${today.length}` });
+    const visibleRoutines = useLazyItems(routines || [], { resetKey: `${taskResetKey}-routines-${routines?.length || 0}` });
+    const visibleTomorrow = useLazyItems(tomorrow, { resetKey: `${taskResetKey}-tomorrow-${tomorrow.length}` });
+    const visibleLater = useLazyItems(later, { resetKey: `${taskResetKey}-later-${later.length}` });
+    const visibleUrgent = useLazyItems(urgent, { resetKey: `${shoppingResetKey}-urgent-${urgent.length}` });
+    const visibleRoutineShopping = useLazyItems(routine, { resetKey: `${shoppingResetKey}-routine-${routine.length}` });
+    const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal-${normal.length}` });
+    const visibleSavings = useLazyItems(savings, { resetKey: `plan-savings-${savings.length}` });
 
     const [addFundsModal, setAddFundsModal] = useState<{ isOpen: boolean, goalId: string, goalName: string, defaultWallet?: string } | null>(null);
     const [fundAmount, setFundAmount] = useState('');
@@ -529,7 +543,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </button>
                                     </div>
                                     {today.length > 0 ? (
-                                        <div className="space-y-3">{today?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        <div className="space-y-3">
+                                            {visibleToday.visibleItems.map(item => <Card key={item.id} item={item} {...cardProps} />)}
+                                            <LoadMoreButton remainingCount={visibleToday.remainingCount} onClick={visibleToday.loadMore} />
+                                        </div>
                                     ) : (
                                         <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                     )}
@@ -548,7 +565,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </button>
                                     </div>
                                     {routines && routines.length > 0 ? (
-                                        <div className="space-y-3">{routines?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        <div className="space-y-3">
+                                            {visibleRoutines.visibleItems.map(item => <Card key={item.id} item={item} {...cardProps} />)}
+                                            <LoadMoreButton remainingCount={visibleRoutines.remainingCount} onClick={visibleRoutines.loadMore} />
+                                        </div>
                                     ) : (
                                         <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                     )}
@@ -565,7 +585,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </button>
                                     </div>
                                     {tomorrow.length > 0 ? (
-                                        <div className="space-y-3">{tomorrow?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        <div className="space-y-3">
+                                            {visibleTomorrow.visibleItems.map(item => <Card key={item.id} item={item} {...cardProps} />)}
+                                            <LoadMoreButton remainingCount={visibleTomorrow.remainingCount} onClick={visibleTomorrow.loadMore} />
+                                        </div>
                                     ) : (
                                         <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                     )}
@@ -582,7 +605,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </button>
                                     </div>
                                     {later.length > 0 ? (
-                                        <div className="space-y-3">{later?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                        <div className="space-y-3">
+                                            {visibleLater.visibleItems.map(item => <Card key={item.id} item={item} {...cardProps} />)}
+                                            <LoadMoreButton remainingCount={visibleLater.remainingCount} onClick={visibleLater.loadMore} />
+                                        </div>
                                     ) : (
                                         <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                     )}
@@ -632,7 +658,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 </button>
                             </div>
                             {urgent.length > 0 ? (
-                                <div className="space-y-3">{urgent?.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} />)}</div>
+                                <div className="space-y-3">
+                                    {visibleUrgent.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} />)}
+                                    <LoadMoreButton remainingCount={visibleUrgent.remainingCount} onClick={visibleUrgent.loadMore} />
+                                </div>
                             ) : (
                                 <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                             )}
@@ -651,7 +680,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 </button>
                             </div>
                             {routine.length > 0 ? (
-                                <div className="space-y-3">{routine?.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} onResetRoutine={handleResetRoutine} />)}</div>
+                                <div className="space-y-3">
+                                    {visibleRoutineShopping.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} onResetRoutine={handleResetRoutine} />)}
+                                    <LoadMoreButton remainingCount={visibleRoutineShopping.remainingCount} onClick={visibleRoutineShopping.loadMore} />
+                                </div>
                             ) : (
                                 <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                             )}
@@ -668,7 +700,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 </button>
                             </div>
                             {normal.length > 0 ? (
-                                <div className="space-y-3">{normal?.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} />)}</div>
+                                <div className="space-y-3">
+                                    {visibleNormalShopping.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} />)}
+                                    <LoadMoreButton remainingCount={visibleNormalShopping.remainingCount} onClick={visibleNormalShopping.loadMore} />
+                                </div>
                             ) : (
                                 <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                             )}
@@ -706,7 +741,8 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                     {savings.length > 0 ? (
                         <div className="space-y-4">
-                            {savings?.map(goal => renderGoalCard(goal))}
+                            {visibleSavings.visibleItems.map(goal => renderGoalCard(goal))}
+                            <LoadMoreButton remainingCount={visibleSavings.remainingCount} onClick={visibleSavings.loadMore} />
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">

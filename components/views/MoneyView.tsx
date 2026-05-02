@@ -6,6 +6,8 @@ import { getWalletStats, getFinanceItems } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
+import { useLazyItems } from '../../hooks/useLazyItems';
+import LoadMoreButton from '../LoadMoreButton';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -114,6 +116,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         budgetViewMode,
         wallets
     );
+
+    const visibleWallets = useLazyItems(walletStats, {
+        resetKey: `money-wallets-${walletStats.length}-${savingGoals.length}`,
+    });
+    const visibleTransactions = useLazyItems(list, {
+        resetKey: `money-transactions-${financeDate.getFullYear()}-${financeDate.getMonth()}-${filterWallet}-${filterTransactionType}-${filterCategory}-${filterMinAmount}-${filterMaxAmount}-${selectedTag}-${searchQuery}-${sortOrder}-${list.length}`,
+    });
 
     const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
                
@@ -311,7 +320,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         className="w-full flex-shrink-0 px-4"
                     >
                         <div className="space-y-4">
-                            {walletStats.map(wallet => (
+                            {visibleWallets.visibleItems.map(wallet => (
                                 <div 
                                     key={wallet.id} 
                                     className="bg-surface rounded-[24px] p-4 transition-all hover:bg-surface/80 relative group"
@@ -384,6 +393,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </div>
                             ))}
 
+                            <LoadMoreButton remainingCount={visibleWallets.remainingCount} onClick={visibleWallets.loadMore} />
+
                             <button onClick={handleOpenAddWallet} className="w-full border border-dashed border-border rounded-3xl flex items-center justify-center p-4 hover:border-primary/30 hover:bg-surface/50 transition-all text-muted hover:text-primary gap-2">
                                 <Plus className="w-5 h-5" />
                                 <span className="text-sm font-medium">Add Wallet</span>
@@ -402,7 +413,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         <div>
                             {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
                                 <div className="space-y-2">
-                                    {list.map(item => {
+                                    {visibleTransactions.visibleItems.map(item => {
                                         const categoryName = budgetConfig.rules.find(r => r.id === item.meta.budgetCategory)?.name || item.meta.budgetCategory;
                                         return (
                                             <Card 
@@ -413,6 +424,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             />
                                         );
                                     })}
+                                    <LoadMoreButton remainingCount={visibleTransactions.remainingCount} onClick={visibleTransactions.loadMore} className="mt-4" />
                                 </div>
                             )}
                         </div>
