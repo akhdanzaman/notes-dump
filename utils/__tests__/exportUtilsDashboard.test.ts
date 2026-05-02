@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { generateExportData, DASHBOARD_SHEET_NAME } from '../exportUtils';
 import { ItemType } from '../../types';
 
-test('export data starts with Sheet1 dashboard and sparkline formulas', () => {
+test('export data starts with premium Sheet1 dashboard and helper analytics data', () => {
   const sheets = generateExportData(
     [
       {
@@ -35,6 +35,7 @@ test('export data starts with Sheet1 dashboard and sparkline formulas', () => {
   assert.equal(sheets[0].name, DASHBOARD_SHEET_NAME);
   assert.equal(sheets[0].inputOption, 'USER_ENTERED');
   assert.equal(sheets[0].data[0][0], 'BRAINDUMP HQ');
-  assert.equal(sheets[0].data[12][1], '=SPARKLINE(H2:U2)');
+  assert.equal(sheets[0].data[25][0], 'ANALYTICS DECK');
+  assert.ok(typeof sheets[0].data[1][7] === 'number');
   assert.ok(sheets.some(sheet => sheet.name === 'All Items (Raw)'));
 });

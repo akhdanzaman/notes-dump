@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.12',
+    date: 'May 2026',
+    items: [
+      'Upgraded Sheet1 into a more premium command center with richer KPI copy, today-vs-yesterday comparisons, projected burn, and a cleaner analytics deck.',
+      'Spreadsheet sync now rebuilds embedded Google Sheets charts for cashflow trend, productivity pulse, and top spend categories after each save.',
+      'Expanded the hidden dashboard helper data so visual summaries stay powered by fresh structured metrics instead of brittle manual edits.',
+    ],
+  },
+  {
     version: 'v0.3.11',
     date: 'May 2026',
     items: [

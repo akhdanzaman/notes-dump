@@ -10,7 +10,7 @@ export interface SheetData {
 
 export const DASHBOARD_SHEET_NAME = 'Sheet1';
 export const DASHBOARD_HELPER_START_COLUMN_INDEX = 7; // Column H
-export const DASHBOARD_HELPER_END_COLUMN_INDEX = 21; // Up to Column U (exclusive)
+export const DASHBOARD_HELPER_END_COLUMN_INDEX = 31; // Up to AE (exclusive)
 
 // Helper to format date
 const fmtDate = (dateStr?: string) => {
@@ -49,6 +49,12 @@ const getCurrentMonthTheme = (monthlyThemes: Record<string, string>, now: Date) 
   return monthlyThemes[key] || '';
 };
 
+const fmtCurrency = (value: number) => new Intl.NumberFormat('id-ID', {
+  style: 'currency',
+  currency: 'IDR',
+  maximumFractionDigits: 0,
+}).format(value || 0);
+
 const getDaySeries = (days: number, computeValue: (dayStart: Date, dayEnd: Date) => number) => {
   const today = startOfDay(new Date());
   const start = new Date(today);
@@ -77,10 +83,17 @@ const buildDashboardSheet = (
   monthlyThemes: Record<string, string>
 ): SheetData => {
   const now = new Date();
+  const todayStart = startOfDay(now);
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const next7Days = new Date(now);
   next7Days.setDate(next7Days.getDate() + 7);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysElapsed = Math.max(1, now.getDate());
 
   const isInCurrentMonth = (item: BrainDumpItem) => {
     const ts = getItemTimestamp(item);
@@ -119,6 +132,8 @@ const buildDashboardSheet = (
   const totalSavings = currentMonthSavingItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
   const netCashFlow = totalIncome - totalExpenses - totalSavings;
   const budgetUsed = budgetConfig.monthlyIncome > 0 ? totalExpenses / budgetConfig.monthlyIncome : 0;
+  const avgDailyExpense = totalExpenses / daysElapsed;
+  const projectedExpense = avgDailyExpense * daysInMonth;
 
   const openTodos = items.filter(item => item.type === ItemType.TODO && item.status === 'pending').length;
   const doneThisMonth = items.filter(item =>
@@ -228,48 +243,136 @@ const buildDashboardSheet = (
   const activeSkills = skills.length;
   const monthTheme = getCurrentMonthTheme(monthlyThemes, now);
 
+  const getWindowExpense = (start: Date, end: Date) => expenseLikeItems
+    .filter(item => {
+      const ts = getItemTimestamp(item);
+      if (ts < start.getTime() || ts >= end.getTime()) return false;
+      if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0 && item.status === 'done' && item.meta.shoppingCategory !== 'saving';
+      return item.status === 'done' && item.meta.financeType !== 'income' && item.meta.financeType !== 'transfer' && item.meta.financeType !== 'saving' && item.meta.financeType !== ACHIEVED_GOAL_FINANCE_TYPE;
+    })
+    .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+
+  const getWindowIncome = (start: Date, end: Date) => items
+    .filter(item => item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'income')
+    .filter(item => {
+      const ts = getItemTimestamp(item);
+      return ts >= start.getTime() && ts < end.getTime();
+    })
+    .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+
+  const getTasksDone = (start: Date, end: Date) => items.filter(item =>
+    (item.type === ItemType.TODO || item.type === ItemType.EVENT)
+    && item.status === 'done'
+    && item.completed_at
+    && new Date(item.completed_at).getTime() >= start.getTime()
+    && new Date(item.completed_at).getTime() < end.getTime()
+  ).length;
+
+  const getCaptures = (start: Date, end: Date) => items.filter(item => {
+    const ts = new Date(item.created_at).getTime();
+    return ts >= start.getTime() && ts < end.getTime();
+  }).length;
+
+  const todayExpense = getWindowExpense(todayStart, tomorrowStart);
+  const yesterdayExpense = getWindowExpense(yesterdayStart, todayStart);
+  const todayIncome = getWindowIncome(todayStart, tomorrowStart);
+  const yesterdayIncome = getWindowIncome(yesterdayStart, todayStart);
+  const todayTasksDone = getTasksDone(todayStart, tomorrowStart);
+  const yesterdayTasksDone = getTasksDone(yesterdayStart, todayStart);
+  const todayCaptured = getCaptures(todayStart, tomorrowStart);
+  const yesterdayCaptured = getCaptures(yesterdayStart, todayStart);
+
+  const topCategorySummary = topCategories[0]
+    ? `${topCategories[0][0]} · ${fmtCurrency(topCategories[0][1])}`
+    : 'Belum ada pengeluaran bulan ini';
+
+  const topMerchantSummary = topMerchants[0]
+    ? `${topMerchants[0][0]} · ${fmtCurrency(topMerchants[0][1])}`
+    : 'Belum ada merchant dominan';
+
+  const budgetHealth = budgetConfig.monthlyIncome <= 0
+    ? 'Budget baseline belum diset'
+    : budgetUsed < 0.45
+      ? 'Masih adem, pace pengeluaran sehat'
+      : budgetUsed < 0.75
+        ? 'Masih aman, tapi mulai jagain burn rate'
+        : 'Budget lagi panas, perlu lebih ketat';
+
+  const snapshotHeadline = [
+    budgetHealth,
+    upcomingWeek > 0 ? `${upcomingWeek} item upcoming 7 hari ke depan` : 'Upcoming week lagi cukup lega',
+    topCategories[0] ? `Top spend: ${topCategories[0][0]}` : 'Belum ada top spend bulan ini'
+  ].join(' • ');
+
+  const visibleColumnCount = 7;
+  const totalColumnCount = DASHBOARD_HELPER_END_COLUMN_INDEX;
+  const buildRow = (
+    visible: (string | number | boolean | null)[],
+    helpers: Record<number, string | number | boolean | null> = {}
+  ) => {
+    const row = Array.from({ length: totalColumnCount }, () => '') as (string | number | boolean | null)[];
+    visible.slice(0, visibleColumnCount).forEach((value, index) => {
+      row[index] = value;
+    });
+    Object.entries(helpers).forEach(([index, value]) => {
+      row[Number(index)] = value;
+    });
+    return row;
+  };
+
   const fallbackRows = (entries: string[], count = 5) => Array.from({ length: count }, (_, i) => entries[i] || '—');
   const categoryRows = fallbackRows(topCategories.map(([name, amount]) => `${name} — ${amount}`));
   const merchantRows = fallbackRows(topMerchants.map(([name, amount]) => `${name} — ${amount}`));
   const upcomingRows = fallbackRows(upcomingHighlights);
 
+  const categoryChartRows = Array.from({ length: 5 }, (_, index) => ({
+    label: topCategories[index]?.[0] || `Category ${index + 1}`,
+    value: topCategories[index]?.[1] || 0,
+  }));
+
+  const merchantChartRows = Array.from({ length: 5 }, (_, index) => ({
+    label: topMerchants[index]?.[0] || `Merchant ${index + 1}`,
+    value: topMerchants[index]?.[1] || 0,
+  }));
+
+  const rows = [
+    buildRow(['BRAINDUMP HQ'], Object.fromEntries(expenseSeries.labels.map((label, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, label]))),
+    buildRow(['Auto-generated finance + life tracker command center'], Object.fromEntries(expenseSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
+    buildRow([monthTheme ? `Theme of the month: ${monthTheme}` : `Generated ${now.toLocaleString()}`], Object.fromEntries(incomeSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
+    buildRow([snapshotHeadline], Object.fromEntries(completedTaskSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
+    buildRow(['FINANCE PULSE', '', '', 'LIFE TRACKER'], Object.fromEntries(captureSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
+    buildRow(['Net Cash Flow', netCashFlow, '', 'Open Todos', openTodos]),
+    buildRow(['Income MTD', totalIncome, '', 'Done This Month', doneThisMonth]),
+    buildRow(['Expense MTD', totalExpenses, '', 'Upcoming 7d', upcomingWeek]),
+    buildRow(['Savings Added', totalSavings, '', 'Journal Entries', journalEntries]),
+    buildRow(['Budget Used', budgetUsed, '', 'Goals / Skills / Wallets', `${activeSavingGoals} / ${activeSkills} / ${activeWallets}`]),
+    buildRow(['']),
+    buildRow(['TODAY VS YESTERDAY', '', '', 'BUDGET RADAR']),
+    buildRow(['Today Expense', todayExpense, `Yesterday: ${fmtCurrency(yesterdayExpense)}`, 'Top Category', topCategorySummary], { 22: categoryChartRows[0].label, 23: categoryChartRows[0].value }),
+    buildRow(['Today Income', todayIncome, `Yesterday: ${fmtCurrency(yesterdayIncome)}`, 'Budget Health', budgetHealth], { 22: categoryChartRows[1].label, 23: categoryChartRows[1].value }),
+    buildRow(['Tasks Done Today', todayTasksDone, `Yesterday: ${yesterdayTasksDone}`, 'Top Merchant', topMerchantSummary], { 22: categoryChartRows[2].label, 23: categoryChartRows[2].value }),
+    buildRow(['Captured Today', todayCaptured, `Yesterday: ${yesterdayCaptured}`, 'Projected Expense', fmtCurrency(projectedExpense)], { 22: categoryChartRows[3].label, 23: categoryChartRows[3].value }),
+    buildRow(['Skill Minutes MTD', totalSkillMinutes, `Journal entries: ${journalEntries}`, 'Avg Daily Burn', fmtCurrency(avgDailyExpense)], { 22: categoryChartRows[4].label, 23: categoryChartRows[4].value }),
+    buildRow(['']),
+    buildRow(['UPCOMING RADAR', '', '', 'TOP MERCHANTS']),
+    buildRow([upcomingRows[0], '', '', merchantChartRows[0].label, fmtCurrency(merchantChartRows[0].value)], { 25: merchantChartRows[0].label, 26: merchantChartRows[0].value, 28: 'Today Expense', 29: todayExpense }),
+    buildRow([upcomingRows[1], '', '', merchantChartRows[1].label, fmtCurrency(merchantChartRows[1].value)], { 25: merchantChartRows[1].label, 26: merchantChartRows[1].value, 28: 'Yesterday Expense', 29: yesterdayExpense }),
+    buildRow([upcomingRows[2], '', '', merchantChartRows[2].label, fmtCurrency(merchantChartRows[2].value)], { 25: merchantChartRows[2].label, 26: merchantChartRows[2].value }),
+    buildRow([upcomingRows[3], '', '', merchantChartRows[3].label, fmtCurrency(merchantChartRows[3].value)], { 25: merchantChartRows[3].label, 26: merchantChartRows[3].value }),
+    buildRow([upcomingRows[4], '', '', merchantChartRows[4].label, fmtCurrency(merchantChartRows[4].value)], { 25: merchantChartRows[4].label, 26: merchantChartRows[4].value }),
+    buildRow(['']),
+    buildRow(['ANALYTICS DECK']),
+    buildRow(['Charts below auto-refresh on every sync.']),
+  ];
+
+  while (rows.length < 52) {
+    rows.push(buildRow(['']));
+  }
+
   return {
     name: DASHBOARD_SHEET_NAME,
     inputOption: 'USER_ENTERED',
-    data: [
-      ['BRAINDUMP HQ', '', '', '', '', '', '', ...expenseSeries.labels],
-      [
-        'Auto-generated finance + life tracker command center',
-        '', '', '', '', '', '',
-        ...expenseSeries.values
-      ],
-      [
-        monthTheme ? `Theme of the month: ${monthTheme}` : `Generated ${now.toLocaleString()}`,
-        '', '', '', '', '', '',
-        ...incomeSeries.values
-      ],
-      ['', '', '', '', '', '', '', ...completedTaskSeries.values],
-      ['FINANCE PULSE', '', '', 'LIFE TRACKER', '', '', '', ...captureSeries.values],
-      ['Net Cash Flow', netCashFlow, '', 'Open Todos', openTodos, '', ''],
-      ['Income MTD', totalIncome, '', 'Done This Month', doneThisMonth, '', ''],
-      ['Expense MTD', totalExpenses, '', 'Upcoming 7d', upcomingWeek, '', ''],
-      ['Savings Added', totalSavings, '', 'Journal Entries', journalEntries, '', ''],
-      ['Budget Used', budgetUsed, '', 'Savings Goals / Skills / Wallets', `${activeSavingGoals} / ${activeSkills} / ${activeWallets}`, '', ''],
-      ['', '', '', '', '', '', ''],
-      ['14-DAY TREND', '', '', 'TOP SPEND CATEGORIES', '', '', ''],
-      ['Expense Burn', '=SPARKLINE(H2:U2)', '', categoryRows[0], '', '', ''],
-      ['Income Pulse', '=SPARKLINE(H3:U3)', '', categoryRows[1], '', '', ''],
-      ['Tasks Done', '=SPARKLINE(H4:U4)', '', categoryRows[2], '', '', ''],
-      ['Capture Volume', '=SPARKLINE(H5:U5)', '', categoryRows[3], '', '', ''],
-      ['Skill Minutes', totalSkillMinutes, '', categoryRows[4], '', '', ''],
-      ['', '', '', '', '', '', ''],
-      ['UPCOMING RADAR', '', '', 'TOP MERCHANTS', '', '', ''],
-      [upcomingRows[0], '', '', merchantRows[0], '', '', ''],
-      [upcomingRows[1], '', '', merchantRows[1], '', '', ''],
-      [upcomingRows[2], '', '', merchantRows[2], '', '', ''],
-      [upcomingRows[3], '', '', merchantRows[3], '', '', ''],
-      [upcomingRows[4], '', '', merchantRows[4], '', '', ''],
-    ]
+    data: rows
   };
 };
 

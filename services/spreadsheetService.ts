@@ -197,8 +197,18 @@ const isValidSystemSnapshotSheet = (sheet: any) => {
   }
 };
 
+const buildSourceRange = (
+  sheetId: number,
+  startRowIndex: number,
+  endRowIndex: number,
+  startColumnIndex: number,
+  endColumnIndex: number
+) => ({
+  sources: [{ sheetId, startRowIndex, endRowIndex, startColumnIndex, endColumnIndex }]
+});
+
 const buildDashboardFormattingRequests = (sheetId: number) => {
-  const visibleEndColumn = 6;
+  const visibleEndColumn = 7;
 
   return [
     {
@@ -213,7 +223,7 @@ const buildDashboardFormattingRequests = (sheetId: number) => {
     },
     {
       unmergeCells: {
-        range: { sheetId, startRowIndex: 0, endRowIndex: 24, startColumnIndex: 0, endColumnIndex: visibleEndColumn }
+        range: { sheetId, startRowIndex: 0, endRowIndex: 52, startColumnIndex: 0, endColumnIndex: visibleEndColumn }
       }
     },
     {
@@ -263,7 +273,7 @@ const buildDashboardFormattingRequests = (sheetId: number) => {
     },
     {
       repeatCell: {
-        range: { sheetId, startRowIndex: 1, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        range: { sheetId, startRowIndex: 1, endRowIndex: 4, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
         cell: {
           userEnteredFormat: {
             backgroundColor: hexToRgb('#EEF2FF'),
@@ -295,7 +305,7 @@ const buildDashboardFormattingRequests = (sheetId: number) => {
     })),
     {
       repeatCell: {
-        range: { sheetId, startRowIndex: 5, endRowIndex: 24, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        range: { sheetId, startRowIndex: 5, endRowIndex: 52, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
         cell: {
           userEnteredFormat: {
             backgroundColor: hexToRgb('#FFFFFF'),
@@ -307,10 +317,39 @@ const buildDashboardFormattingRequests = (sheetId: number) => {
         fields: 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)'
       }
     },
+    {
+      repeatCell: {
+        range: { sheetId, startRowIndex: 25, endRowIndex: 26, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: hexToRgb('#111827'),
+            textFormat: { foregroundColor: hexToRgb('#F9FAFB'), fontSize: 11, bold: true },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+      }
+    },
+    {
+      repeatCell: {
+        range: { sheetId, startRowIndex: 26, endRowIndex: 27, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: hexToRgb('#F8FAFC'),
+            textFormat: { foregroundColor: hexToRgb('#334155'), fontSize: 10, italic: true },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+      }
+    },
     ...[
       { startRowIndex: 5, endRowIndex: 10, startColumnIndex: 1, endColumnIndex: 2, type: 'CURRENCY', pattern: 'Rp#,##0' },
       { startRowIndex: 9, endRowIndex: 10, startColumnIndex: 1, endColumnIndex: 2, type: 'PERCENT', pattern: '0%' },
       { startRowIndex: 5, endRowIndex: 10, startColumnIndex: 4, endColumnIndex: 5 },
+      { startRowIndex: 12, endRowIndex: 17, startColumnIndex: 1, endColumnIndex: 2, type: 'CURRENCY', pattern: 'Rp#,##0' },
       { startRowIndex: 12, endRowIndex: 17, startColumnIndex: 1, endColumnIndex: 2 },
     ].map(({ type, pattern, ...range }) => ({
       repeatCell: {
@@ -331,9 +370,10 @@ const buildDashboardFormattingRequests = (sheetId: number) => {
       { startIndex: 0, endIndex: 1, pixelSize: 240 },
       { startIndex: 1, endIndex: 2, pixelSize: 170 },
       { startIndex: 2, endIndex: 3, pixelSize: 32 },
-      { startIndex: 3, endIndex: 4, pixelSize: 260 },
+      { startIndex: 3, endIndex: 4, pixelSize: 280 },
       { startIndex: 4, endIndex: 5, pixelSize: 170 },
       { startIndex: 5, endIndex: 6, pixelSize: 32 },
+      { startIndex: 6, endIndex: 7, pixelSize: 32 },
     ].map(({ startIndex, endIndex, pixelSize }) => ({
       updateDimensionProperties: {
         range: { sheetId, dimension: 'COLUMNS', startIndex, endIndex },
@@ -351,6 +391,118 @@ const buildDashboardFormattingRequests = (sheetId: number) => {
         },
         properties: { hiddenByUser: true },
         fields: 'hiddenByUser'
+      }
+    }
+  ];
+};
+
+const buildDashboardChartRequests = (sheetId: number, existingChartIds: number[] = []) => {
+  const deleteRequests = existingChartIds.map(objectId => ({
+    deleteEmbeddedObject: { objectId }
+  }));
+
+  const helperStart = DASHBOARD_HELPER_START_COLUMN_INDEX;
+
+  return [
+    ...deleteRequests,
+    {
+      addChart: {
+        chart: {
+          spec: {
+            title: 'Cashflow Trend (14 Days)',
+            subtitle: 'Expense vs income pace',
+            basicChart: {
+              chartType: 'COMBO',
+              legendPosition: 'BOTTOM_LEGEND',
+              headerCount: 0,
+              axis: [
+                { position: 'BOTTOM_AXIS', title: 'Day' },
+                { position: 'LEFT_AXIS', title: 'Amount (IDR)' }
+              ],
+              domains: [{ domain: { sourceRange: buildSourceRange(sheetId, 0, 1, helperStart, helperStart + 14) } }],
+              series: [
+                { series: { sourceRange: buildSourceRange(sheetId, 1, 2, helperStart, helperStart + 14) }, type: 'LINE', targetAxis: 'LEFT_AXIS' },
+                { series: { sourceRange: buildSourceRange(sheetId, 2, 3, helperStart, helperStart + 14) }, type: 'AREA', targetAxis: 'LEFT_AXIS' }
+              ],
+              lineSmoothing: true,
+              interpolateNulls: true
+            }
+          },
+          position: {
+            overlayPosition: {
+              anchorCell: { sheetId, rowIndex: 27, columnIndex: 0 },
+              offsetXPixels: 8,
+              offsetYPixels: 8,
+              widthPixels: 540,
+              heightPixels: 260
+            }
+          }
+        }
+      }
+    },
+    {
+      addChart: {
+        chart: {
+          spec: {
+            title: 'Productivity Pulse (14 Days)',
+            subtitle: 'Completed tasks vs capture volume',
+            basicChart: {
+              chartType: 'COLUMN',
+              legendPosition: 'BOTTOM_LEGEND',
+              headerCount: 0,
+              axis: [
+                { position: 'BOTTOM_AXIS', title: 'Day' },
+                { position: 'LEFT_AXIS', title: 'Count' }
+              ],
+              domains: [{ domain: { sourceRange: buildSourceRange(sheetId, 0, 1, helperStart, helperStart + 14) } }],
+              series: [
+                { series: { sourceRange: buildSourceRange(sheetId, 3, 4, helperStart, helperStart + 14) }, targetAxis: 'LEFT_AXIS' },
+                { series: { sourceRange: buildSourceRange(sheetId, 4, 5, helperStart, helperStart + 14) }, targetAxis: 'LEFT_AXIS' }
+              ]
+            }
+          },
+          position: {
+            overlayPosition: {
+              anchorCell: { sheetId, rowIndex: 27, columnIndex: 3 },
+              offsetXPixels: 28,
+              offsetYPixels: 8,
+              widthPixels: 540,
+              heightPixels: 260
+            }
+          }
+        }
+      }
+    },
+    {
+      addChart: {
+        chart: {
+          spec: {
+            title: 'Top Spend Categories',
+            subtitle: 'Current month mix',
+            basicChart: {
+              chartType: 'BAR',
+              legendPosition: 'NO_LEGEND',
+              headerCount: 0,
+              axis: [
+                { position: 'LEFT_AXIS', title: 'Category' },
+                { position: 'BOTTOM_AXIS', title: 'Spend (IDR)' }
+              ],
+              domains: [{ domain: { sourceRange: buildSourceRange(sheetId, 12, 17, 22, 23) } }],
+              series: [
+                { series: { sourceRange: buildSourceRange(sheetId, 12, 17, 23, 24) }, targetAxis: 'BOTTOM_AXIS' }
+              ]
+            }
+          },
+          position: {
+            overlayPosition: {
+              anchorCell: { sheetId, rowIndex: 41, columnIndex: 0 },
+              offsetXPixels: 8,
+              offsetYPixels: 8,
+              widthPixels: 540,
+              heightPixels: 240
+            }
+          }
+        }
       }
     }
   ];
@@ -819,7 +971,8 @@ const performSync = async (
         }
     }
 
-    const dashboardSheetId = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DASHBOARD_SHEET_NAME)?.properties?.sheetId;
+    const dashboardSheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DASHBOARD_SHEET_NAME);
+    const dashboardSheetId = dashboardSheetMeta?.properties?.sheetId;
     if (typeof dashboardSheetId === 'number') {
       const dashboardRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
         method: 'POST',
@@ -833,6 +986,26 @@ const performSync = async (
 
       if (!dashboardRes.ok) {
         console.warn('Failed to format dashboard sheet:', await dashboardRes.text());
+      }
+
+      const existingChartIds = Array.isArray(dashboardSheetMeta?.charts)
+        ? dashboardSheetMeta.charts
+            .map((chart: any) => chart?.chartId ?? chart?.embeddedObjectId)
+            .filter((id: unknown): id is number => typeof id === 'number')
+        : [];
+
+      const dashboardChartsRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          requests: buildDashboardChartRequests(dashboardSheetId, existingChartIds)
+        })
+      });
+
+      if (!dashboardChartsRes.ok) {
+        console.warn('Failed to render dashboard charts:', await dashboardChartsRes.text());
       }
     }
 
