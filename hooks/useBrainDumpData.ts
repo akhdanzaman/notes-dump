@@ -26,7 +26,8 @@ import {
     ThemePayload,
     TransferMoneyPayload,
     AddSavingFundsPayload,
-    ParsingTask
+    ParsingTask,
+    CanonicalRule
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult, mergeDbData } from '../services/githubService';
@@ -34,6 +35,7 @@ import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { parsePro } from '../services/geminiProService';
 import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, isLegacyCompletedGoalContent } from '../utils/financeTypeUtils';
+import { canonicalizeParserResults } from '../services/canonicalizerService';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -242,6 +244,7 @@ export const useBrainDumpData = () => {
         const local = localStorage.getItem('braindump_chat_history');
         return local ? JSON.parse(local) : [];
     });
+    const [canonicalRules, setCanonicalRules] = useState<CanonicalRule[]>([]);
 
     useEffect(() => {
         localStorage.setItem('braindump_chat_history', JSON.stringify(chatHistory));
@@ -253,10 +256,13 @@ export const useBrainDumpData = () => {
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<SyncStatus>('synced');
     const [fetchStatus, setFetchStatus] = useState<SyncStatus>('synced');
-    const [pendingReviews, setPendingReviews] = useState<{ id: string; text: string; results: ParserResultV2[] }[]>([]);
+    const [pendingReviews, setPendingReviews] = useState<{ id: string; text: string; results: ParserResultV2[]; originalResults: ParserResultV2[] }[]>([]);
 
     const itemsRef = useRef(items);
     itemsRef.current = items;
+
+    const canonicalRulesRef = useRef(canonicalRules);
+    canonicalRulesRef.current = canonicalRules;
 
     const budgetConfigRef = useRef(budgetConfig);
     budgetConfigRef.current = budgetConfig;
@@ -386,6 +392,7 @@ export const useBrainDumpData = () => {
                 });
 
                 if (remoteSchema.monthlyThemes) setMonthlyThemes(prev => ({ ...remoteSchema.monthlyThemes, ...prev }));
+                if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
             }
 
             setSaveStatus('synced');
@@ -450,6 +457,7 @@ export const useBrainDumpData = () => {
                 if (data.monthlyThemes) setMonthlyThemes(data.monthlyThemes);
                 if (data.appSettings) setAppSettings(data.appSettings);
                 if (data.chatHistory) setChatHistory(data.chatHistory);
+                if (data.canonicalRules) setCanonicalRules(data.canonicalRules);
             };
 
             // Load local data first for instant display
@@ -516,6 +524,7 @@ export const useBrainDumpData = () => {
             savedAmount: meta?.savedAmount,
             savingGoalId: meta?.savingGoalId,
             dedicatedWalletId: meta?.dedicatedWalletId,
+            canonical: meta?.canonical,
             priority: meta?.priority,
             parserAction: action,
             parserEntityType: entityType,
@@ -680,6 +689,7 @@ export const useBrainDumpData = () => {
                                 commodity: changes.commodity,
                                 subcommodity: changes.subcommodity,
                                 merchant: changes.merchant,
+                                canonical: changes.canonical,
                                 quantity: changes.quantity,
                                 shoppingCategory: changes.shoppingCategory,
                                 priority: changes.priority,
@@ -952,10 +962,18 @@ export const useBrainDumpData = () => {
                 parsedResults = convertLegacyResultsToNative(legacy, text);
             }
 
+            parsedResults = canonicalizeParserResults(parsedResults, {
+                existingItems: itemsRef.current,
+                wallets: walletsRef.current,
+                budgetRules: budgetConfigRef.current?.rules || [],
+                rules: canonicalRulesRef.current,
+            });
+
             const enableDraftReview = appSettingsRef.current.enableDraftReview ?? false;
+            const originalResults = structuredClone(parsedResults);
             
             if (enableDraftReview) {
-                setPendingReviews(prev => [{ id: tempId, text, results: parsedResults }, ...prev]);
+                setPendingReviews(prev => [{ id: tempId, text, results: parsedResults, originalResults }, ...prev]);
             } else {
                 executeParserResults(parsedResults, text, tempId);
             }
