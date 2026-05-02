@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, SyncStatus } from '../types';
-import { getGithubConfig, saveGithubConfig, clearGithubConfig, GithubConfig } from '../services/githubService';
 import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig } from '../services/spreadsheetService';
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
@@ -50,22 +49,6 @@ export const useControlCenter = ({
         }
     }, [isOpen, activeTab]);
 
-    type ConnectionAction = 'github' | 'spreadsheet';
-    const [connectionModal, setConnectionModal] = useState<{
-        isOpen: boolean;
-        provider: ConnectionAction;
-        config: any;
-    } | null>(null);
-
-    useEffect(() => {
-        if (isOpen && connectionModal?.isOpen) {
-            return BackHandler.register(() => {
-                setConnectionModal(null);
-                return true;
-            });
-        }
-    }, [isOpen, connectionModal?.isOpen]);
-
     const handleTabChange = (tab: typeof activeTab) => {
         if (tab === 'main') {
             setDirection(-1);
@@ -75,9 +58,6 @@ export const useControlCenter = ({
         setActiveTab(tab);
     };
 
-    // GitHub
-    const [githubConfig, setGithubConfig] = useState<GithubConfig>({ token: '', owner: '', repo: '', path: 'db.json' });
-    
     // Spreadsheet
     const [spreadsheetLink, setSpreadsheetLink] = useState('');
     const spreadsheetLinkRef = useRef(spreadsheetLink);
@@ -145,10 +125,6 @@ export const useControlCenter = ({
                     });
                 }
             });
-
-            // Load GitHub
-            const gh = getGithubConfig();
-            if (gh) setGithubConfig(gh);
 
             // Load Spreadsheet
             const ss = getSpreadsheetConfig();
@@ -373,22 +349,6 @@ export const useControlCenter = ({
     };
 
     const handleSave = async () => {
-        // Check if GitHub is being newly connected
-        const currentGithub = getGithubConfig();
-        const isNewGithub = githubConfig.token && githubConfig.owner && githubConfig.repo && 
-            (!currentGithub || currentGithub.token !== githubConfig.token || currentGithub.repo !== githubConfig.repo);
-
-        if (isNewGithub) {
-            setConnectionModal({
-                isOpen: true,
-                provider: 'github',
-                config: githubConfig
-            });
-            return; // Stop save process, wait for modal choice
-        } else if (githubConfig.token && githubConfig.owner && githubConfig.repo) {
-            saveGithubConfig(githubConfig);
-        }
-
         // Save Gemini
         saveGeminiKey(geminiKey);
 
@@ -422,56 +382,6 @@ export const useControlCenter = ({
         setTimeout(() => {
             setSettingsSaveStatus('idle');
         }, 2000);
-    };
-
-    const handleDisconnectGithub = () => {
-        clearGithubConfig();
-        setGithubConfig({ token: '', owner: '', repo: '', path: 'db.json' });
-        if (onRefreshClick) onRefreshClick();
-    };
-
-    const handleConnectionChoice = async (choice: 'merge' | 'overwrite_cloud' | 'overwrite_local') => {
-        if (!connectionModal) return;
-        
-        const { provider, config } = connectionModal;
-        
-        // Save the config
-        if (provider === 'spreadsheet') {
-            saveSpreadsheetConfig(config);
-            setSpreadsheetConfig(config);
-        } else if (provider === 'github') {
-            saveGithubConfig(config);
-        }
-        
-        setConnectionModal(null);
-        
-        // Trigger the action
-        if (choice === 'merge') {
-            if (onRefreshClick) onRefreshClick();
-            setTimeout(() => {
-                onSyncClick(false);
-            }, 1500);
-            // alert(`Connected to ${provider} and merged data.`);
-        } else if (choice === 'overwrite_cloud') {
-            onSyncClick(true);
-            // alert(`Connected to ${provider} and overwrote cloud data.`);
-        } else if (choice === 'overwrite_local') {
-            if (onRefreshClick) onRefreshClick();
-            // alert(`Connected to ${provider} and overwrote local data.`);
-        }
-
-        // If it was github, we also need to finish the save process
-        if (provider === 'github') {
-            saveGeminiKey(geminiKey);
-            localStorage.setItem('braindump_gcal_key', gCalKey);
-            localStorage.setItem('braindump_gcal_id', gCalId);
-            const newBudgetConfig: BudgetConfig = { monthlyIncome, rules: budgetRules };
-            setSettingsSaveStatus('saved');
-            onSave(newBudgetConfig, prompt, localAppSettings);
-            setTimeout(() => {
-                setSettingsSaveStatus('idle');
-            }, 800);
-        }
     };
 
     const handleExportExcel = () => {
@@ -534,8 +444,6 @@ export const useControlCenter = ({
         activeTab,
         direction,
         settingsSaveStatus,
-        connectionModal,
-        githubConfig,
         spreadsheetLink,
         spreadsheetConfig,
         isConnectingSpreadsheet,
@@ -549,7 +457,6 @@ export const useControlCenter = ({
         googleProfile,
         isSyncingProfile,
         handleTabChange,
-        setGithubConfig,
         setSpreadsheetLink,
         setGeminiKey,
         setPrompt,
@@ -557,13 +464,10 @@ export const useControlCenter = ({
         setGCalId,
         setMonthlyIncome,
         setLocalAppSettings,
-        setConnectionModal,
         handleGoogleLogin,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,
-        handleDisconnectGithub,
-        handleConnectionChoice,
         handleExportExcel,
         handleExportJSON,
         handleAddRule,

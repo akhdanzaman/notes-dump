@@ -6,7 +6,6 @@ import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Tab, PlanSubTa
 import { useBrainDumpData } from './hooks/useBrainDumpData';
 import { getShoppingItems } from './utils/selectors';
 import { clearSpreadsheetConfig } from './services/spreadsheetService';
-import { clearGithubConfig } from './services/githubService';
 import { BackHandler } from './utils/backHandler';
 
 import InputBar from './components/InputBar';
@@ -402,7 +401,6 @@ const App: React.FC = () => {
   const handleClearData = async () => {
       await saveAndSync([], undefined, undefined, [], [], {}, undefined, undefined, true);
       clearSpreadsheetConfig();
-      clearGithubConfig();
       setIsControlCenterOpen(false);
       window.location.reload();
   };

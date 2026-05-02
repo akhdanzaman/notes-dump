@@ -1,12 +1,13 @@
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule } from "../types";
-import { SyncResult } from "./githubService";
+import { SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
 import { getValidGoogleAccessToken } from "./googleProfileService";
 
 const SETTINGS_KEY = 'braindump_spreadsheet_config';
-const LOCAL_STORAGE_KEY = 'braindump_db';
+const SPREADSHEET_CACHE_KEY = 'braindump_spreadsheet_cache';
+const LEGACY_LOCAL_STORAGE_KEY = 'braindump_db';
 const SYSTEM_SHEET_NAME = 'App_State_Do_Not_Edit';
 const HISTORY_SHEET_NAME = 'App_State_History';
 const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -14,10 +15,24 @@ const MAX_WRITE_BATCH_SIZE = 8;
 const MAX_FETCH_RETRIES = 3;
 const MAX_HISTORY_COLUMNS = 'ZZZ';
 
+export const SPREADSHEET_FETCH_RANGES = {
+  Transactions: 'A:I',
+  Todos: 'A:M',
+  Shopping: 'A:I',
+  Events: 'A:H',
+  'Notes & Journals': 'A:E',
+  'Skill Logs': 'A:F',
+  'Wallets Config': 'A:E',
+  'Skills Config': 'A:E',
+  'Budget Rules': 'A:C',
+  'Themes & Settings': 'A:C',
+} as const;
+
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const safeLocalStorageGet = (key: string): string | null => {
   try {
+    if (typeof localStorage === 'undefined') return null;
     return localStorage.getItem(key);
   } catch (e) {
     console.warn(`Error reading localStorage key: ${key}`, e);
@@ -27,6 +42,7 @@ const safeLocalStorageGet = (key: string): string | null => {
 
 const safeLocalStorageSet = (key: string, value: string) => {
   try {
+    if (typeof localStorage === 'undefined') return;
     localStorage.setItem(key, value);
   } catch (e) {
     console.warn(`Failed to save localStorage key: ${key}`, e);
@@ -35,6 +51,7 @@ const safeLocalStorageSet = (key: string, value: string) => {
 
 const safeLocalStorageRemove = (key: string) => {
   try {
+    if (typeof localStorage === 'undefined') return;
     localStorage.removeItem(key);
   } catch (e) {
     console.warn(`Failed to remove localStorage key: ${key}`, e);
@@ -66,6 +83,7 @@ export interface SpreadsheetConfig {
 
 let isHydrated = false;
 let lastSnapshot: string | null = null;
+let needsInitialSpreadsheetWrite = false;
 let operationQueue: Promise<any> = Promise.resolve();
 
 export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
@@ -81,12 +99,14 @@ export const saveSpreadsheetConfig = (config: SpreadsheetConfig) => {
   safeLocalStorageSet(SETTINGS_KEY, next);
   isHydrated = false;
   lastSnapshot = null;
+  needsInitialSpreadsheetWrite = false;
 };
 
 export const clearSpreadsheetConfig = () => {
   safeLocalStorageRemove(SETTINGS_KEY);
   isHydrated = false;
   lastSnapshot = null;
+  needsInitialSpreadsheetWrite = false;
 };
 
 const validateSchema = (data: any): DbSchema => {
@@ -109,6 +129,26 @@ const validateSchema = (data: any): DbSchema => {
       chatHistory: chatHistory,
       canonicalRules: Array.isArray(data.canonicalRules) ? data.canonicalRules : []
   };
+};
+
+const readDbFromStorageKey = (key: string): { data: DbSchema; jsonString: string } | null => {
+  const jsonString = safeLocalStorageGet(key);
+  if (!jsonString) return null;
+  return { data: validateSchema(safeJsonParse(jsonString, { data: [] })), jsonString };
+};
+
+export const getCachedSpreadsheetDb = (): DbSchema | null => {
+  return readDbFromStorageKey(SPREADSHEET_CACHE_KEY)?.data
+    || readDbFromStorageKey(LEGACY_LOCAL_STORAGE_KEY)?.data
+    || null;
+};
+
+const writeSpreadsheetCache = (jsonString: string) => {
+  safeLocalStorageSet(SPREADSHEET_CACHE_KEY, jsonString);
+};
+
+export const cacheSpreadsheetDbForMigration = (db: DbSchema) => {
+  writeSpreadsheetCache(JSON.stringify(validateSchema(db)));
 };
 
 const shouldRetrySpreadsheetRequest = (status: number) => status === 401 || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
@@ -140,13 +180,14 @@ const sheetsFetch = async (
   return sheetsFetch(spreadsheetId, path, init, attempt + 1, response.status === 401 ? undefined : token);
 };
 
-const readLocalDbFallback = () => {
-  const local = safeLocalStorageGet(LOCAL_STORAGE_KEY);
-  if (!local) return null;
-  const data = validateSchema(safeJsonParse(local, { data: [] }));
+const readSpreadsheetCacheFallback = () => {
+  const cached = readDbFromStorageKey(SPREADSHEET_CACHE_KEY)
+    || readDbFromStorageKey(LEGACY_LOCAL_STORAGE_KEY);
+  if (!cached) return null;
+  const { data, jsonString } = cached;
   isHydrated = true;
-  lastSnapshot = local;
-  return { data, sha: 'local-sha', reconciled: false };
+  lastSnapshot = jsonString;
+  return { data, sha: 'spreadsheet-cache-sha', reconciled: false };
 };
 
 const performFetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
@@ -158,7 +199,7 @@ const performFetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ da
   } catch (error: any) {
     console.warn("Spreadsheet fetch failed:", error);
     if (!skipLocalStorage) {
-      const fallback = readLocalDbFallback();
+      const fallback = readSpreadsheetCacheFallback();
       if (fallback) return fallback;
     }
     throw error;
@@ -195,20 +236,12 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
     }
 
     let isNewSpreadsheet = !existingTitles.has(SYSTEM_SHEET_NAME);
+    needsInitialSpreadsheetWrite = isNewSpreadsheet;
 
-    const sheetsToSync = ['Transactions', 'Todos', 'Shopping', 'Events', 'Notes & Journals', 'Skill Logs', 'Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings'];
-    for (const s of sheetsToSync) {
+    const sheetsToSync = Object.entries(SPREADSHEET_FETCH_RANGES);
+    for (const [s, range] of sheetsToSync) {
         if (existingTitles.has(s)) {
-            if (s === 'Transactions') rangesToFetch.push(`'${s}'!A:I`);
-            else if (s === 'Todos') rangesToFetch.push(`'${s}'!A:M`);
-            else if (s === 'Shopping') rangesToFetch.push(`'${s}'!A:I`);
-            else if (s === 'Events') rangesToFetch.push(`'${s}'!A:H`);
-            else if (s === 'Notes & Journals') rangesToFetch.push(`'${s}'!A:E`);
-            else if (s === 'Skill Logs') rangesToFetch.push(`'${s}'!A:F`);
-            else if (s === 'Wallets Config') rangesToFetch.push(`'${s}'!A:E`);
-            else if (s === 'Skills Config') rangesToFetch.push(`'${s}'!A:E`);
-            else if (s === 'Budget Rules') rangesToFetch.push(`'${s}'!A:C`);
-            else if (s === 'Themes & Settings') rangesToFetch.push(`'${s}'!A:C`);
+            rangesToFetch.push(`'${s}'!${range}`);
         }
     }
 
@@ -230,9 +263,8 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
     
     let dbData;
     if (isNewSpreadsheet) {
-        console.log("New spreadsheet detected, returning local data to avoid wiping.");
-        const local = safeLocalStorageGet(LOCAL_STORAGE_KEY);
-        dbData = local ? validateSchema(safeJsonParse(local, { data: [] })) : { data: [] };
+        console.log("New spreadsheet detected, seeding from spreadsheet cache/legacy browser cache if available.");
+        dbData = getCachedSpreadsheetDb() || { data: [] };
     } else {
         dbData = processFetchResponse(systemSheet, skipLocalStorage).data;
     }
@@ -255,7 +287,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
     const jsonString = JSON.stringify(dbData);
     if (!skipLocalStorage) {
       try {
-        safeLocalStorageSet(LOCAL_STORAGE_KEY, jsonString);
+        writeSpreadsheetCache(jsonString);
       } catch (e) {
         console.warn("Failed to save to local storage (quota exceeded?)", e);
       }
@@ -283,7 +315,7 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
   
   if (!skipLocalStorage) {
     try {
-      safeLocalStorageSet(LOCAL_STORAGE_KEY, jsonString);
+      writeSpreadsheetCache(jsonString);
     } catch (e) {
       console.warn("Failed to save to local storage (quota exceeded?)", e);
     }
@@ -308,7 +340,8 @@ const performSync = async (
 ): Promise<SyncResult> => {
   const previousDb = validateSchema(
     safeJsonParse<DbSchema | undefined>(lastSnapshot, undefined)
-      || safeJsonParse<DbSchema | undefined>(safeLocalStorageGet(LOCAL_STORAGE_KEY), undefined)
+      || safeJsonParse<DbSchema | undefined>(safeLocalStorageGet(SPREADSHEET_CACHE_KEY), undefined)
+      || safeJsonParse<DbSchema | undefined>(safeLocalStorageGet(LEGACY_LOCAL_STORAGE_KEY), undefined)
       || { data: [] }
   );
 
@@ -319,7 +352,7 @@ const performSync = async (
   
   const jsonString = JSON.stringify(updatedDb);
 
-  safeLocalStorageSet(LOCAL_STORAGE_KEY, jsonString);
+  writeSpreadsheetCache(jsonString);
 
   if (!isHydrated) {
     try {
@@ -330,14 +363,13 @@ const performSync = async (
     }
   }
 
-  if (lastSnapshot === jsonString && !forceOverwrite) {
+  if (lastSnapshot === jsonString && !forceOverwrite && !needsInitialSpreadsheetWrite) {
     return { success: true, method: 'skipped_no_changes' };
   }
 
   const config = getSpreadsheetConfig();
   if (!config) {
-    lastSnapshot = jsonString;
-    return { success: true, method: 'local' };
+    return { success: false, method: 'error', error: 'Spreadsheet is not connected. Connect Google Sheets before saving.' };
   }
 
   let finalItems = items;
@@ -349,7 +381,7 @@ const performSync = async (
         // 1. Fetch latest data from spreadsheet and merge
         const { data: remoteDb } = await performFetchSpreadsheetDb(false);
         
-        const baseDb = lastSnapshot ? safeJsonParse<DbSchema | undefined>(lastSnapshot, undefined) : undefined;
+        const baseDb = previousDb;
         
         finalDb = mergeDbData(updatedDb, remoteDb, baseDb);
         finalItems = finalDb.data;
@@ -516,7 +548,10 @@ const performSync = async (
         console.warn("Error appending to history sheet:", e);
     }
 
+    writeSpreadsheetCache(finalJsonString);
+    safeLocalStorageRemove(LEGACY_LOCAL_STORAGE_KEY);
     lastSnapshot = finalJsonString;
+    needsInitialSpreadsheetWrite = false;
     return { 
       success: true, 
       method: 'cloud',

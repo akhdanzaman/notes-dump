@@ -7,7 +7,6 @@ import {
   Wallet as WalletIcon, 
   DollarSign, 
   Cloud, 
-  HardDrive, 
   ArrowRight, 
   Check, 
   Bot,
@@ -15,7 +14,6 @@ import {
 } from 'lucide-react';
 import { AppSettings, BudgetConfig, Wallet } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { saveGithubConfig } from '../services/githubService';
 
 interface OnboardingProps {
   onComplete: (
@@ -44,9 +42,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
   const [walletName, setWalletName] = useState('Main Bank');
   const [walletBalance, setWalletBalance] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [syncMethod, setSyncMethod] = useState<'local' | 'github'>('local');
-  const [githubToken, setGithubToken] = useState('');
-  const [githubRepo, setGithubRepo] = useState('braindump-data');
   const [testInput, setTestInput] = useState('Lunch at McDonald 50k');
   const [testResult, setTestResult] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
@@ -94,15 +89,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
       hideMoney: false,
       theme,
     };
-
-    if (syncMethod === 'github' && githubToken && githubRepo) {
-      saveGithubConfig({
-        token: githubToken,
-        owner: '', // The user will need to set this up later or we can assume their username
-        repo: githubRepo,
-        path: 'braindump.json'
-      });
-    }
 
     let newWallet: Wallet | null = null;
     if (walletName.trim()) {
@@ -314,63 +300,19 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Cloud className="w-8 h-8 text-purple-500" />
               </div>
-              <h2 className="text-2xl font-bold text-primary">Where to save your data?</h2>
-              <p className="text-muted">Choose how you want to store your BrainDump data.</p>
+              <h2 className="text-2xl font-bold text-primary">Spreadsheet-first database</h2>
+              <p className="text-muted">BrainDump now uses Google Sheets as the source of truth.</p>
             </div>
             <div className="space-y-4">
-              <button
-                onClick={() => setSyncMethod('local')}
-                className={`w-full p-4 rounded-xl border-2 flex items-center gap-4 transition-all text-left ${
-                  syncMethod === 'local' 
-                    ? 'border-indigo-500 bg-indigo-500/10' 
-                    : 'border-border bg-surface hover:border-primary/30'
-                }`}
-              >
-                <div className={`p-2 rounded-lg ${syncMethod === 'local' ? 'bg-indigo-500/20' : 'bg-surface-elevated'}`}>
-                  <HardDrive className={`w-6 h-6 ${syncMethod === 'local' ? 'text-indigo-500' : 'text-muted'}`} />
+              <div className="w-full p-4 rounded-xl border-2 border-indigo-500 bg-indigo-500/10 flex items-center gap-4 text-left">
+                <div className="p-2 rounded-lg bg-indigo-500/20">
+                  <Cloud className="w-6 h-6 text-indigo-500" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-primary">Local Storage Only</h3>
-                  <p className="text-sm text-muted">Data stays on this device. No setup required.</p>
+                  <h3 className="font-medium text-primary">Google Sheets DB</h3>
+                  <p className="text-sm text-muted">Connect your spreadsheet from Control Center after onboarding. This device keeps only a cache for fast loading/offline display.</p>
                 </div>
-              </button>
-              
-              <button
-                onClick={() => setSyncMethod('github')}
-                className={`w-full p-4 rounded-xl border-2 flex items-center gap-4 transition-all text-left ${
-                  syncMethod === 'github' 
-                    ? 'border-indigo-500 bg-indigo-500/10' 
-                    : 'border-border bg-surface hover:border-primary/30'
-                }`}
-              >
-                <div className={`p-2 rounded-lg ${syncMethod === 'github' ? 'bg-indigo-500/20' : 'bg-surface-elevated'}`}>
-                  <Cloud className={`w-6 h-6 ${syncMethod === 'github' ? 'text-indigo-500' : 'text-muted'}`} />
-                </div>
-                <div>
-                  <h3 className="font-medium text-primary">GitHub Sync</h3>
-                  <p className="text-sm text-muted">Sync across devices using a private GitHub gist.</p>
-                </div>
-              </button>
-
-              {syncMethod === 'github' && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="space-y-4 pt-4 border-t border-border"
-                >
-                  <div>
-                    <label className="block text-sm font-medium text-muted mb-1">GitHub Personal Access Token</label>
-                    <input
-                      type="password"
-                      value={githubToken}
-                      onChange={(e) => setGithubToken(e.target.value)}
-                      placeholder="ghp_..."
-                      className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-primary focus:outline-none focus:border-indigo-500 transition-colors"
-                    />
-                    <p className="text-xs text-muted mt-1">Needs 'gist' scope.</p>
-                  </div>
-                </motion.div>
-              )}
+              </div>
             </div>
           </motion.div>
         );

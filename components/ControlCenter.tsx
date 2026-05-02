@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Settings, RefreshCw, CloudCheck, CloudOff, Save, 
-    Moon, Sun, X, AlertTriangle, Github,
+    Moon, Sun, X, AlertTriangle,
     Monitor, Layout, Eye, EyeOff, Database, Download, Upload, Trash2,
-    Check, Smartphone, WifiOff, CheckCircle2, PieChart, Plus, Sparkles,
+    Check, Smartphone, CheckCircle2, PieChart, Plus, Sparkles,
     MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History
 } from 'lucide-react';
 import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, CanonicalRule, ParserResultV2 } from '../types';
@@ -146,8 +146,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         activeTab,
         direction,
         settingsSaveStatus,
-        connectionModal,
-        githubConfig,
         spreadsheetLink,
         spreadsheetConfig,
         isConnectingSpreadsheet,
@@ -161,7 +159,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         googleProfile,
         isSyncingProfile,
         handleTabChange,
-        setGithubConfig,
         setSpreadsheetLink,
         setGeminiKey,
         setPrompt,
@@ -169,13 +166,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         setGCalId,
         setMonthlyIncome,
         setLocalAppSettings,
-        setConnectionModal,
         handleGoogleLogin,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,
-        handleDisconnectGithub,
-        handleConnectionChoice,
         handleExportExcel,
         handleExportJSON,
         handleAddRule,
@@ -232,7 +226,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         { id: 'notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" />, desc: 'Alerts, reminders' },
         { id: 'budget', label: 'Budget', icon: <PieChart className="w-5 h-5" />, desc: 'Income, categories' },
         { id: 'data', label: 'Data', icon: <Database className="w-5 h-5" />, desc: 'Export, import, reset' },
-        { id: 'connect', label: 'Connect', icon: <Layout className="w-5 h-5" />, desc: 'GitHub, Gemini, APIs' },
+        { id: 'connect', label: 'Connect', icon: <Layout className="w-5 h-5" />, desc: 'Google Sheets, Gemini, APIs' },
         { id: 'changelog', label: 'Changelog', icon: <History className="w-5 h-5" />, desc: 'Recent updates' },
     ];
 
@@ -418,8 +412,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             {/* Footer Info */}
                                             <div className="text-center pt-4">
                                                 <p className="text-xs text-muted flex items-center justify-center gap-2">
-                                                    <Github className="w-3 h-3" />
-                                                    <span>BrainDump AI v0.3.1</span>
+                                                    <Database className="w-3 h-3" />
+                                                    <span>BrainDump AI v0.3.4</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -1265,62 +1259,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 </div>
                                             </section>
 
-                                            {/* GitHub */}
-                                            <section>
-                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Cloud Sync</h3>
-                                                <div className="bg-background border border-border rounded-2xl p-4 space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-black/10 dark:bg-white/10 rounded-xl">
-                                                                <Github className="w-5 h-5" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-medium text-primary text-sm">GitHub</div>
-                                                                <div className="text-xs text-muted">Sync data to a private repo.</div>
-                                                            </div>
-                                                        </div>
-                                                        {githubConfig.token && (
-                                                            <button onClick={handleDisconnectGithub} className="text-red-400 hover:bg-red-400/10 p-2 rounded-lg" title="Disconnect">
-                                                                <WifiOff className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    <div className="space-y-2">
-                                                        <input
-                                                            type="password"
-                                                            className="w-full bg-surface border border-border rounded-xl p-3 text-primary focus:outline-none focus:border-acc-todo transition-colors placeholder:text-muted/20 text-xs"
-                                                            value={githubConfig.token}
-                                                            onChange={(e) => setGithubConfig({ ...githubConfig, token: e.target.value })}
-                                                            placeholder="Personal Access Token (ghp_...)"
-                                                        />
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <input
-                                                                type="text"
-                                                                className="w-full bg-surface border border-border rounded-xl p-3 text-primary focus:outline-none focus:border-acc-todo transition-colors text-xs"
-                                                                value={githubConfig.owner}
-                                                                onChange={(e) => setGithubConfig({ ...githubConfig, owner: e.target.value })}
-                                                                placeholder="Owner (User/Org)"
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                className="w-full bg-surface border border-border rounded-xl p-3 text-primary focus:outline-none focus:border-acc-todo transition-colors text-xs"
-                                                                value={githubConfig.repo}
-                                                                onChange={(e) => setGithubConfig({ ...githubConfig, repo: e.target.value })}
-                                                                placeholder="Repository"
-                                                            />
-                                                        </div>
-                                                        <input
-                                                            type="text"
-                                                            className="w-full bg-surface border border-border rounded-xl p-3 text-primary focus:outline-none focus:border-acc-todo transition-colors text-xs"
-                                                            value={githubConfig.path}
-                                                            onChange={(e) => setGithubConfig({ ...githubConfig, path: e.target.value })}
-                                                            placeholder="File Path (e.g. db.json)"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </section>
-
                                             {/* Google Calendar */}
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Integrations</h3>
@@ -1360,6 +1298,17 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Version History</h3>
                                                 <div className="space-y-4">
+                                                    <div className="bg-background border border-border rounded-2xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-primary">v0.3.4</div>
+                                                            <div className="text-xs text-muted">May 2026</div>
+                                                        </div>
+                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                            <li>Retired the GitHub/db.json runtime database path so Google Sheets is now the only cloud source of truth.</li>
+                                                            <li>Added a spreadsheet cache for fast/offline display, with one-time migration from the legacy browser cache when a new spreadsheet is connected.</li>
+                                                            <li>Control Center and onboarding now point users to Google Sheets instead of local-only or GitHub file sync.</li>
+                                                        </ul>
+                                                    </div>
                                                     <div className="bg-background border border-border rounded-2xl p-4">
                                                         <div className="flex items-center justify-between mb-2">
                                                             <div className="font-bold text-primary">v0.3.3</div>
@@ -1446,46 +1395,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                         </div>
                     </motion.div>
                     
-                    {/* Connection Modal */}
-                    {connectionModal?.isOpen && (
-                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
-                            <div className="bg-surface rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-border">
-                                <h3 className="text-xl font-bold text-primary mb-2">Connect Database</h3>
-                                <p className="text-sm text-muted mb-6">How would you like to handle the data when connecting to {connectionModal.provider === 'github' ? 'GitHub' : 'Google Sheets'}?</p>
-                                
-                                <div className="space-y-3">
-                                    <button 
-                                        onClick={() => handleConnectionChoice('merge')}
-                                        className="w-full text-left p-4 rounded-2xl border border-border hover:bg-muted/5 transition-colors group"
-                                    >
-                                        <div className="font-bold text-primary group-hover:text-emerald-500 transition-colors">Merge Data</div>
-                                        <div className="text-xs text-muted mt-1">Combine local data with cloud data.</div>
-                                    </button>
-                                    <button 
-                                        onClick={() => handleConnectionChoice('overwrite_cloud')}
-                                        className="w-full text-left p-4 rounded-2xl border border-border hover:bg-muted/5 transition-colors group"
-                                    >
-                                        <div className="font-bold text-primary group-hover:text-blue-500 transition-colors">Overwrite Cloud</div>
-                                        <div className="text-xs text-muted mt-1">Replace cloud data with your current local data.</div>
-                                    </button>
-                                    <button 
-                                        onClick={() => handleConnectionChoice('overwrite_local')}
-                                        className="w-full text-left p-4 rounded-2xl border border-border hover:bg-muted/5 transition-colors group"
-                                    >
-                                        <div className="font-bold text-primary group-hover:text-amber-500 transition-colors">Overwrite Local</div>
-                                        <div className="text-xs text-muted mt-1">Replace your current local data with cloud data.</div>
-                                    </button>
-                                </div>
-                                
-                                <button 
-                                    onClick={() => setConnectionModal(null)}
-                                    className="mt-6 w-full py-3 text-sm font-bold text-muted hover:text-primary transition-colors rounded-xl hover:bg-muted/10"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </>
             )}
         </AnimatePresence>

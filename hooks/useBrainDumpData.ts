@@ -30,7 +30,9 @@ import {
     CanonicalRule
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
-import { SyncResult, mergeDbData } from '../services/githubService';
+import { SyncResult } from '../services/syncTypes';
+import { getCachedSpreadsheetDb } from '../services/spreadsheetService';
+import { mergeDbData } from '../utils/mergeUtils';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { parsePro } from '../services/geminiProService';
 import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors';
@@ -523,14 +525,13 @@ export const useBrainDumpData = () => {
 
             // Load local data first for instant display
             try {
-                const localDataStr = localStorage.getItem('braindump_db');
-                if (localDataStr) {
-                    const localData = JSON.parse(localDataStr) as DbSchema;
-                    applyData(localData);
+                const cachedData = getCachedSpreadsheetDb();
+                if (cachedData) {
+                    applyData(cachedData);
                     setLoading(false); // Stop loading spinner if we have local data
                 }
             } catch (e) {
-                console.warn("Failed to load local data initially", e);
+                console.warn("Failed to load spreadsheet cache initially", e);
             }
 
             const { data } = await fetchDb();
