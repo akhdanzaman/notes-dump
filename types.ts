@@ -105,6 +105,8 @@ export interface ItemMeta {
   savingGoalId?: string;
   dedicatedWalletId?: string;
 
+  canonical?: ItemCanonicalMeta;
+
   lastGeneratedHistoryId?: string;
   priority?: Priority;
   parsingError?: string;
@@ -147,6 +149,7 @@ export interface DbSchema {
   wallets?: Wallet[];
   monthlyThemes?: Record<string, string>;
   chatHistory?: ChatMessage[];
+  canonicalRules?: CanonicalRule[];
 }
 
 export interface GitHubFileResponse {
@@ -209,7 +212,84 @@ export type ParserEntityType =
 
 export type ParserConfidence = 'low' | 'medium' | 'high';
 
+export type CanonicalField =
+  | 'merchant'
+  | 'paymentMethod'
+  | 'commodity'
+  | 'subcommodity'
+  | 'label'
+  | 'family';
+
+export type CanonicalSource =
+  | 'system_rule'
+  | 'learned_rule'
+  | 'context_inference'
+  | 'ai_assist'
+  | 'manual_review';
+
+export interface CanonicalValue {
+  rawValue?: string;
+  value?: string;
+  confidence?: number;
+  source?: CanonicalSource;
+  ruleId?: string;
+  needsReview?: boolean;
+  reason?: string;
+}
+
+export interface ItemCanonicalMeta {
+  merchant?: CanonicalValue;
+  paymentMethod?: CanonicalValue;
+  commodity?: CanonicalValue;
+  subcommodity?: CanonicalValue;
+  label?: CanonicalValue;
+  family?: CanonicalValue;
+}
+
+export interface CanonicalRule {
+  id: string;
+  field: CanonicalField;
+  canonicalValue: string;
+  aliases: string[];
+  source: 'system' | 'learned' | 'manual';
+  confidenceBoost?: number;
+  approvalCount: number;
+  rejectionCount: number;
+  conditions?: {
+    financeType?: FinanceType[];
+    budgetCategory?: string[];
+    commodity?: string[];
+    paymentMethod?: string[];
+    amountMin?: number;
+    amountMax?: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+  disabled?: boolean;
+}
+
+export interface CanonicalCandidate {
+  field: CanonicalField;
+  rawValue: string;
+  canonicalValue: string;
+  score: number;
+  reason: string;
+  ruleId?: string;
+  source: CanonicalSource;
+}
+
+export interface CanonicalReviewSuggestion {
+  field: CanonicalField;
+  rawValue?: string;
+  suggestedValue?: string;
+  confidence: number;
+  reason: string;
+  source: CanonicalSource;
+  ruleId?: string;
+}
+
 export interface ParserEntityRefs {
+
   itemId?: string;
   itemName?: string;
   walletId?: string;
@@ -260,6 +340,8 @@ export interface ParsedItemMetaV2 {
   dedicatedWalletId?: string;
   dedicatedWalletName?: string;
   savedAmount?: number;
+
+  canonical?: ItemCanonicalMeta;
 
   isRoutine?: boolean;
   routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -419,6 +501,12 @@ export type ParserPayloadV2 =
   | AddSavingFundsPayload
   | QueryOnlyPayload;
 
+export interface CanonicalizationResult {
+  meta: ParsedItemMetaV2;
+  suggestions: CanonicalReviewSuggestion[];
+  autoApplied: CanonicalField[];
+}
+
 export interface ParserResultV2 {
   action: ParserAction;
   entityType: ParserEntityType;
@@ -429,4 +517,5 @@ export interface ParserResultV2 {
   reviewReason?: string;
   entityRefs?: ParserEntityRefs;
   payload?: ParserPayloadV2;
+  canonicalReview?: CanonicalReviewSuggestion[];
 }

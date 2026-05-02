@@ -106,7 +106,8 @@ const validateSchema = (data: any): DbSchema => {
       skills: Array.isArray(data.skills) ? data.skills : [],
       wallets: Array.isArray(data.wallets) ? data.wallets : [],
       monthlyThemes: data.monthlyThemes || {},
-      chatHistory: chatHistory
+      chatHistory: chatHistory,
+      canonicalRules: Array.isArray(data.canonicalRules) ? data.canonicalRules : []
   };
 };
 
@@ -304,8 +305,15 @@ const performSync = async (
   chatHistory?: ChatMessage[],
   forceOverwrite = false
 ): Promise<SyncResult> => {
+  const previousDb = validateSchema(
+    safeJsonParse<DbSchema | undefined>(lastSnapshot, undefined)
+      || safeJsonParse<DbSchema | undefined>(safeLocalStorageGet(LOCAL_STORAGE_KEY), undefined)
+      || { data: [] }
+  );
+
   const updatedDb: DbSchema = { 
-    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory
+    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory,
+    canonicalRules: previousDb.canonicalRules || []
   };
   
   const jsonString = JSON.stringify(updatedDb);

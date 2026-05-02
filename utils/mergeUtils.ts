@@ -90,6 +90,11 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     const remoteChat = remote.chatHistory || [];
     const chatHistory = localChat.length >= remoteChat.length ? localChat : remoteChat;
 
+    const localCanonicalRules = local.canonicalRules || [];
+    const remoteCanonicalRules = remote.canonicalRules || [];
+    const canonicalRuleMap = new Map<string, typeof localCanonicalRules[number]>();
+    [...remoteCanonicalRules, ...localCanonicalRules].forEach(rule => canonicalRuleMap.set(rule.id, rule));
+
     return {
         data: Array.from(itemMap.values()),
         budgetConfig: {
@@ -101,6 +106,7 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
         skills: Array.from(skillMap.values()),
         wallets: Array.from(walletMap.values()),
         monthlyThemes: { ...remote.monthlyThemes, ...local.monthlyThemes },
-        chatHistory: chatHistory.slice(-50)
+        chatHistory: chatHistory.slice(-50),
+        canonicalRules: Array.from(canonicalRuleMap.values())
     };
 };

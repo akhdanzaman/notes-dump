@@ -149,6 +149,11 @@ export const mergeDbDataInternal = (local: DbSchema, remote: DbSchema, base?: Db
     const remoteChat = remote.chatHistory || [];
     const chatHistory = localChat.length >= remoteChat.length ? localChat : remoteChat;
 
+    const localCanonicalRules = local.canonicalRules || [];
+    const remoteCanonicalRules = remote.canonicalRules || [];
+    const canonicalRuleMap = new Map<string, typeof localCanonicalRules[number]>();
+    [...remoteCanonicalRules, ...localCanonicalRules].forEach(rule => canonicalRuleMap.set(rule.id, rule));
+
     return {
         data: Array.from(itemMap.values()),
         budgetConfig: local.budgetConfig || remote.budgetConfig,
@@ -157,7 +162,8 @@ export const mergeDbDataInternal = (local: DbSchema, remote: DbSchema, base?: Db
         skills: Array.from(skillMap.values()),
         wallets: Array.from(walletMap.values()),
         monthlyThemes: themes,
-        chatHistory: chatHistory.slice(-50)
+        chatHistory: chatHistory.slice(-50),
+        canonicalRules: Array.from(canonicalRuleMap.values())
     };
 };
 
@@ -240,7 +246,8 @@ const validateSchema = (data: any): DbSchema => {
         skills: Array.isArray(data.skills) ? data.skills : [],
         wallets: Array.isArray(data.wallets) ? data.wallets : [],
         monthlyThemes: data.monthlyThemes || {},
-        chatHistory: chatHistory
+        chatHistory: chatHistory,
+        canonicalRules: Array.isArray(data.canonicalRules) ? data.canonicalRules : []
     };
 };
 
@@ -355,6 +362,22 @@ const performSync = async (
   }
 
   // Ensure we persist ALL fields
+  let previousDb: DbSchema = { data: [] };
+  if (lastSnapshot) {
+      try {
+          previousDb = validateSchema(JSON.parse(lastSnapshot));
+      } catch (e) {
+          previousDb = { data: [] };
+      }
+  } else {
+      try {
+          const local = localStorage.getItem(LOCAL_STORAGE_KEY);
+          if (local) previousDb = validateSchema(JSON.parse(local));
+      } catch (e) {
+          previousDb = { data: [] };
+      }
+  }
+
   const updatedDb: DbSchema = { 
     data: items,
     budgetConfig: budgetConfig,
@@ -363,7 +386,8 @@ const performSync = async (
     wallets: wallets,
     monthlyThemes: monthlyThemes,
     appSettings: appSettings,
-    chatHistory: chatHistory
+    chatHistory: chatHistory,
+    canonicalRules: previousDb.canonicalRules || []
   };
   
   const jsonString = JSON.stringify(updatedDb, null, 2);
