@@ -69,6 +69,7 @@ const App: React.FC = () => {
   const [addShoppingModal, setAddShoppingModal] = useState<{ isOpen: boolean; initialCategory?: ShoppingCategory }>({ isOpen: false });
   const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
   const [addNoteModalOpen, setAddNoteModalOpen] = useState(false);
+  const [addNoteModalType, setAddNoteModalType] = useState<ItemType.NOTE | ItemType.JOURNAL>(ItemType.NOTE);
   const [themeEditMode, setThemeEditMode] = useState(false);
   const [tempThemeContent, setTempThemeContent] = useState('');
   
@@ -632,7 +633,7 @@ const App: React.FC = () => {
                           handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}
                           handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
                           handleOpenAddExpense={() => setAddExpenseModalOpen(true)}
-                          handleOpenAddNote={() => setAddNoteModalOpen(true)}
+                          handleOpenAddNote={() => { setAddNoteModalType(ItemType.NOTE); setAddNoteModalOpen(true); }}
                           handleUpdateItem={handleUpdateItem}
                           handleDelete={requestDeleteItem}
                       />
@@ -676,8 +677,12 @@ const App: React.FC = () => {
                           selectedTag={selectedTag} filterDate={filterDate} filterDateTo={filterDateTo} searchQuery={searchQuery} sortOrder={sortOrder}
                           setActiveTab={setActiveTab}
                           onAddItem={(type) => {
-                              if (type === ItemType.NOTE) setAddNoteModalOpen(true);
+                              if (type === ItemType.NOTE) {
+                                  setAddNoteModalType(ItemType.NOTE);
+                                  setAddNoteModalOpen(true);
+                              }
                               if (type === ItemType.JOURNAL) {
+                                  setAddNoteModalType(ItemType.JOURNAL);
                                   setAddNoteModalOpen(true);
                               }
                           }}
@@ -1026,7 +1031,8 @@ const App: React.FC = () => {
       <AddNoteModal
         isOpen={addNoteModalOpen}
         onClose={() => setAddNoteModalOpen(false)}
-        onSave={handleAddNote}
+        onSave={(content, tags) => handleAddNote(content, tags, addNoteModalType)}
+        mode={addNoteModalType === ItemType.JOURNAL ? 'journal' : 'note'}
       />
 
       <ConfirmDialog 

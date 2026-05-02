@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.13',
+    date: 'May 2026',
+    items: [
+      'Journal quick-add now appends into the same day\'s journal entry instead of scattering multiple separate cards across one date.',
+      'Journal view now behaves more like a real daily log: completed todos, shopped items, events, and transactions are grouped into their own day-level cards.',
+      'Transaction history now appears inside the daily journal timeline too, so post-spend reflections can live beside what actually happened that day.',
+    ],
+  },
+  {
     version: 'v0.3.12',
     date: 'May 2026',
     items: [

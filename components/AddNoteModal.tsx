@@ -6,11 +6,14 @@ interface AddNoteModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (content: string, tags: string[]) => void;
+    mode?: 'note' | 'journal';
 }
 
-const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave }) => {
+const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mode = 'note' }) => {
     const [content, setContent] = useState('');
     const [tags, setTags] = useState('');
+
+    const isJournal = mode === 'journal';
 
     const handleSave = () => {
         if (!content.trim()) return;
@@ -35,7 +38,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave }) 
                     <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                         <h3 className="text-xl font-bold text-primary flex items-center gap-2">
                             <StickyNote className="w-5 h-5 text-indigo-500" />
-                            Add Note
+                            {isJournal ? 'Add Journal Entry' : 'Add Note'}
                         </h3>
                         <button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full text-muted transition-colors">
                             <X className="w-5 h-5" />
@@ -49,7 +52,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave }) 
                                 autoFocus
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
-                                placeholder="What's on your mind?"
+                                placeholder={isJournal ? 'What happened today, and how did it feel?' : "What's on your mind?"}
                                 className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium min-h-[150px] resize-none"
                             />
                         </div>
@@ -73,7 +76,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave }) 
                             className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <Check className="w-5 h-5" />
-                            Save Note
+                            {isJournal ? 'Append to Today Journal' : 'Save Note'}
                         </button>
                     </div>
                 </motion.div>

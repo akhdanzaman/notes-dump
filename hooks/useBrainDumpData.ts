@@ -32,6 +32,7 @@ import {
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
 import { getCachedSpreadsheetDb } from '../services/spreadsheetService';
+import { upsertDailyJournalEntry } from '../utils/journalUtils';
 import { mergeDbData } from '../utils/mergeUtils';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { parsePro } from '../services/geminiProService';
@@ -803,7 +804,12 @@ export const useBrainDumpData = () => {
                     case 'create_item': {
                         const payload = result.payload as CreateItemPayload | undefined;
                         if (!payload) break;
-                        itemsToAdd.push(buildItemFromCreatePayload(result, payload, sourceText));
+                        const newItem = buildItemFromCreatePayload(result, payload, sourceText);
+                        if (newItem.type === ItemType.JOURNAL) {
+                            updated = upsertDailyJournalEntry(updated, newItem);
+                        } else {
+                            itemsToAdd.push(newItem);
+                        }
                         break;
                     }
 
@@ -1652,19 +1658,36 @@ export const useBrainDumpData = () => {
         saveAndSync(updated);
     };
 
-    const handleAddNote = async (content: string, tags: string[]) => {
-        const newItem: BrainDumpItem = {
-            id: uuidv4(),
-            type: ItemType.NOTE,
-            content,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-            meta: {
-                tags
-            }
-        };
+    const handleAddNote = async (content: string, tags: string[], type: ItemType.NOTE | ItemType.JOURNAL = ItemType.NOTE) => {
+        const now = new Date().toISOString();
 
-        const updated = [newItem, ...itemsRef.current];
+        const newItem: BrainDumpItem = type === ItemType.JOURNAL
+            ? {
+                id: uuidv4(),
+                type: ItemType.JOURNAL,
+                content,
+                status: 'done',
+                created_at: now,
+                completed_at: now,
+                meta: {
+                    tags,
+                    date: now
+                }
+            }
+            : {
+                id: uuidv4(),
+                type: ItemType.NOTE,
+                content,
+                status: 'pending',
+                created_at: now,
+                meta: {
+                    tags
+                }
+            };
+
+        const updated = type === ItemType.JOURNAL
+            ? upsertDailyJournalEntry(itemsRef.current, newItem)
+            : [newItem, ...itemsRef.current];
         setItems(updated);
         saveAndSync(updated);
     };

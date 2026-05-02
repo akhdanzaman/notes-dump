@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { NotebookPen, BookText, Library, Plus, Pencil, Trash2, Target } from 'lucide-react';
+import { NotebookPen, BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet } from 'lucide-react';
 import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
-import { getNoteItems, getJournalGroups, getSkillItems } from '../../utils/selectors';
+import { getJournalDayGroups, getNoteItems, getSkillItems, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+import { formatFinanceTypeLabel } from '../../utils/financeTypeUtils';
 
 interface LibraryViewProps {
     items: BrainDumpItem[];
@@ -63,7 +64,143 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     // Data Preparation
     const generalItems = getNoteItems(items, 'general', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const journalItems = getNoteItems(items, 'journal', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
+    const journalDayGroups = getJournalDayGroups(items, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const { stats: skillStats } = getSkillItems(items, skills);
+
+    const formatCurrency = (amount?: number) => new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0,
+    }).format(amount || 0);
+
+    const formatJournalTime = (value?: string) => {
+        if (!value) return '';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const renderJournalSectionCard = (
+        title: string,
+        icon: React.ReactNode,
+        accentClass: string,
+        children: React.ReactNode,
+        count?: number
+    ) => (
+        <div className="rounded-3xl border border-border bg-surface p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${accentClass}`}>{icon}</div>
+                    <div>
+                        <h4 className="text-sm font-bold text-primary">{title}</h4>
+                        {typeof count === 'number' && <p className="text-xs text-muted">{count} item{count === 1 ? '' : 's'}</p>}
+                    </div>
+                </div>
+            </div>
+            {children}
+        </div>
+    );
+
+    const renderJournalDay = (group: JournalDayGroup) => {
+        const date = new Date(group.dateKey);
+        const friendlyDate = date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const mergedJournalText = group.journalEntries.slice().reverse().map(entry => entry.content.trim()).filter(Boolean).join('\n\n');
+
+        return (
+            <section key={group.dateKey}>
+                <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1 sticky top-0 bg-background/80 backdrop-blur-md py-2 z-10">
+                    {friendlyDate}
+                </h3>
+                <div className="space-y-3">
+                    {mergedJournalText && renderJournalSectionCard(
+                        'Daily Journal',
+                        <BookText className="w-5 h-5 text-fuchsia-700 dark:text-fuchsia-200" />,
+                        'bg-fuchsia-100 dark:bg-fuchsia-500/20',
+                        <div className="space-y-3">
+                            <p className="whitespace-pre-wrap text-sm leading-6 text-primary">{mergedJournalText}</p>
+                            {group.journalEntries.length > 0 && (
+                                <p className="text-xs text-muted">
+                                    Last updated {formatJournalTime(group.journalEntries[0].completed_at || group.journalEntries[0].meta.date || group.journalEntries[0].created_at)}
+                                </p>
+                            )}
+                        </div>,
+                        group.journalEntries.length
+                    )}
+
+                    {group.todos.length > 0 && renderJournalSectionCard(
+                        'Completed Todos',
+                        <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-200" />,
+                        'bg-emerald-100 dark:bg-emerald-500/20',
+                        <div className="space-y-2">
+                            {group.todos.map(item => (
+                                <div key={item.id} className="rounded-2xl bg-background px-3 py-2">
+                                    <div className="text-sm font-medium text-primary">{item.content}</div>
+                                    <div className="text-xs text-muted">Done {formatJournalTime(item.completed_at)}</div>
+                                </div>
+                            ))}
+                        </div>,
+                        group.todos.length
+                    )}
+
+                    {group.shopping.length > 0 && renderJournalSectionCard(
+                        'Shopping Done',
+                        <ShoppingBag className="w-5 h-5 text-amber-700 dark:text-amber-200" />,
+                        'bg-amber-100 dark:bg-amber-500/20',
+                        <div className="space-y-2">
+                            {group.shopping.map(item => (
+                                <div key={item.id} className="rounded-2xl bg-background px-3 py-2">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div className="text-sm font-medium text-primary">{item.content}</div>
+                                            <div className="text-xs text-muted">{item.meta.quantity || item.meta.shoppingCategory || 'Shopping item'}</div>
+                                        </div>
+                                        <div className="text-sm font-semibold text-primary">{formatCurrency(item.meta.amount)}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>,
+                        group.shopping.length
+                    )}
+
+                    {group.events.length > 0 && renderJournalSectionCard(
+                        'Events',
+                        <CalendarDays className="w-5 h-5 text-sky-700 dark:text-sky-200" />,
+                        'bg-sky-100 dark:bg-sky-500/20',
+                        <div className="space-y-2">
+                            {group.events.map(item => (
+                                <div key={item.id} className="rounded-2xl bg-background px-3 py-2">
+                                    <div className="text-sm font-medium text-primary">{item.content}</div>
+                                    <div className="text-xs text-muted">
+                                        {[formatJournalTime(item.meta.start || item.meta.date), item.meta.end ? `→ ${formatJournalTime(item.meta.end)}` : ''].filter(Boolean).join(' ')}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>,
+                        group.events.length
+                    )}
+
+                    {group.transactions.length > 0 && renderJournalSectionCard(
+                        'Transactions',
+                        <Wallet className="w-5 h-5 text-violet-700 dark:text-violet-200" />,
+                        'bg-violet-100 dark:bg-violet-500/20',
+                        <div className="space-y-2">
+                            {group.transactions.map(item => (
+                                <div key={item.id} className="rounded-2xl bg-background px-3 py-2">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div className="text-sm font-medium text-primary">{item.content}</div>
+                                            <div className="text-xs text-muted">{[formatFinanceTypeLabel(item.meta.financeType || 'expense'), item.meta.paymentMethod].filter(Boolean).join(' • ')}</div>
+                                        </div>
+                                        <div className="text-sm font-semibold text-primary">{formatCurrency(item.meta.amount)}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>,
+                        group.transactions.length
+                    )}
+                </div>
+            </section>
+        );
+    };
 
     // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('library', setActiveTab);
@@ -126,7 +263,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     };
               
     const renderContent = (data: BrainDumpItem[], type: 'general' | 'journal') => {
-        if (data.length === 0) {
+        const isEmpty = type === 'journal' ? journalDayGroups.length === 0 : data.length === 0;
+        if (isEmpty) {
             return (
                 <div className="text-center text-muted py-10">
                    {searchQuery 
@@ -153,19 +291,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (type === 'journal') {
             return (
                 <div className="space-y-8">
-                    {Object.entries(getJournalGroups(data, sortOrder)).map(([dateKey, entries]) => {
-                        const date = new Date(dateKey);
-                        return (
-                            <section key={dateKey}>
-                                <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-3 pl-1 sticky top-0 bg-background/80 backdrop-blur-md py-2 z-10">
-                                    {date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                                </h3>
-                                <div className="space-y-3">
-                                    {entries.map(item => <Card key={item.id} item={item} {...commonProps} />)}
-                                </div>
-                            </section>
-                        );
-                    })}
+                    {journalDayGroups.map(renderJournalDay)}
                 </div>
             );
         }
@@ -326,9 +452,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     )}
                                     {librarySubTab === 'journal' && (
                                         <>
-                                            <span>{journalItems.length} Entries</span>
+                                            <span>{journalItems.length} Journal Entries</span>
                                             <span>•</span>
-                                            <span>Across {Object.keys(getJournalGroups(journalItems, sortOrder)).length} Days</span>
+                                            <span>Across {journalDayGroups.length} Days</span>
                                         </>
                                     )}
                                 </p>
