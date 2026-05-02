@@ -8,7 +8,7 @@ import {
     Check, Smartphone, WifiOff, CheckCircle2, PieChart, Plus, Sparkles,
     MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History
 } from 'lucide-react';
-import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
+import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, CanonicalRule, ParserResultV2 } from '../types';
 import { DEFAULT_PROMPT } from '../services/geminiService';
 import { useControlCenter } from '../hooks/useControlCenter';
 import { getDatabaseHistory } from '../services/syncFacade';
@@ -22,6 +22,8 @@ interface ControlCenterProps {
     onSyncClick: (forceOverwrite?: boolean) => void;
     onRefreshClick?: () => void;
     onRunCanonicalBackfill?: () => { autoAppliedCount: number; reviewSuggestionCount: number; changedItemIds: string[]; reviews: unknown[] };
+    canonicalRules?: CanonicalRule[];
+    pendingReviews?: { id: string; text: string; results: ParserResultV2[] }[];
     
     // App State & Settings
     appSettings: AppSettings;
@@ -80,7 +82,7 @@ const ClockDisplay = () => {
 };
 
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
-    isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill,
+    isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [],
     appSettings, setAppSettings, error, pendingCount, parsingTasks, retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes,
@@ -93,6 +95,16 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const [isFetchingHistory, setIsFetchingHistory] = useState(false);
     const [historyError, setHistoryError] = useState<string | null>(null);
     const [canonicalBackfillSummary, setCanonicalBackfillSummary] = useState<string | null>(null);
+
+    const canonicalRuleStats = {
+        learned: canonicalRules.filter(rule => rule.source === 'learned').length,
+        activeLearned: canonicalRules.filter(rule => rule.source === 'learned' && !rule.disabled).length,
+        disabled: canonicalRules.filter(rule => rule.disabled).length,
+        rejected: canonicalRules.filter(rule => rule.rejectionCount > 0).length,
+    };
+    const canonicalizedItemCount = allItems.filter(item => Object.keys(item.meta.canonical || {}).length > 0).length;
+    const pendingCanonicalSuggestionCount = pendingReviews.reduce((sum, review) =>
+        sum + review.results.reduce((inner, result) => inner + (result.canonicalReview?.length || 0), 0), 0);
 
     const fetchHistory = async () => {
         setIsFetchingHistory(true);
@@ -942,12 +954,39 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <Sparkles className="w-5 h-5" />
                                                             </div>
                                                             <div>
-                                                                <div className="font-medium text-primary text-sm">Re-run Historical Canonical Sweep</div>
+                                                                <div className="font-medium text-primary text-sm">Canonical Data Quality</div>
                                                                 <div className="text-xs text-muted mt-1">
-                                                                    Safely reprocess old items with current canonical rules. High-confidence matches are saved; ambiguous matches become review cards.
+                                                                    Track learned aliases, review pressure, and historical coverage before reprocessing old data.
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                            <div className="bg-surface border border-border rounded-xl p-3">
+                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Canonicalized</div>
+                                                                <div className="text-lg font-bold text-primary">{canonicalizedItemCount}</div>
+                                                                <div className="text-[10px] text-muted">items</div>
+                                                            </div>
+                                                            <div className="bg-surface border border-border rounded-xl p-3">
+                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Learned</div>
+                                                                <div className="text-lg font-bold text-primary">{canonicalRuleStats.activeLearned}</div>
+                                                                <div className="text-[10px] text-muted">active rules</div>
+                                                            </div>
+                                                            <div className="bg-surface border border-border rounded-xl p-3">
+                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Review</div>
+                                                                <div className="text-lg font-bold text-amber-500">{pendingCanonicalSuggestionCount}</div>
+                                                                <div className="text-[10px] text-muted">suggestions</div>
+                                                            </div>
+                                                            <div className="bg-surface border border-border rounded-xl p-3">
+                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Guardrails</div>
+                                                                <div className="text-lg font-bold text-primary">{canonicalRuleStats.rejected}</div>
+                                                                <div className="text-[10px] text-muted">rules rejected</div>
+                                                            </div>
+                                                        </div>
+                                                        {(canonicalRuleStats.disabled > 0 || canonicalRuleStats.learned > canonicalRuleStats.activeLearned) && (
+                                                            <div className="text-[10px] text-muted bg-surface border border-border rounded-xl p-2">
+                                                                {canonicalRuleStats.disabled} disabled learned rule(s); {canonicalRuleStats.learned - canonicalRuleStats.activeLearned} learned rule(s) currently not auto-applying.
+                                                            </div>
+                                                        )}
                                                         <button
                                                             onClick={() => {
                                                                 const result = onRunCanonicalBackfill();
@@ -955,7 +994,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             }}
                                                             className="w-full py-2.5 bg-indigo-500/10 text-indigo-500 font-medium rounded-xl hover:bg-indigo-500/20 transition-colors"
                                                         >
-                                                            Run Safe Sweep
+                                                            Re-run Historical Canonical Sweep
                                                         </button>
                                                         {canonicalBackfillSummary && (
                                                             <div className="text-xs text-muted bg-surface border border-border rounded-xl p-3">
@@ -1297,6 +1336,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <li>Pending Review now surfaces canonical suggestions with Use/Keep Raw actions, so approvals can intentionally teach either accepted mappings or rejection signals.</li>
                                                             <li>Learned canonical aliases now merge deterministically, decay after rejection, and lose auto-apply when they become risky.</li>
                                                             <li>Added a safe historical canonical sweep that backfills high-confidence aliases, queues ambiguous old rows for review, and can be rerun from Data settings after rule improvements.</li>
+                                                            <li>Control Center now shows canonical data quality coverage, learned-rule counts, review pressure, and rejected-rule guardrails before rerunning the sweep.</li>
                                                             <li>Money search, wallet filters, wallet balances, AI insights, and exports now read canonical merchant, payment method, commodity, and subcommodity clusters while preserving raw item text.</li>
                                                         </ul>
                                                     </div>

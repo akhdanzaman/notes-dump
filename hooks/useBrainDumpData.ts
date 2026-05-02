@@ -1570,6 +1570,7 @@ export const useBrainDumpData = () => {
         pendingCount,
         parsingTasks,
         pendingReviews,
+        canonicalRules,
         saveStatus,
         fetchStatus,
         loadData,

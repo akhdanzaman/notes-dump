@@ -39,7 +39,7 @@ const App: React.FC = () => {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
-      loading, error, pendingCount, parsingTasks, pendingReviews, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
+      loading, error, pendingCount, parsingTasks, pendingReviews, canonicalRules, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
       handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
@@ -742,6 +742,8 @@ const App: React.FC = () => {
         onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
         onRefreshClick={() => loadData()}
         onRunCanonicalBackfill={runCanonicalBackfill}
+        canonicalRules={canonicalRules}
+        pendingReviews={pendingReviews}
         appSettings={appSettings}
         setAppSettings={setAppSettings}
         error={error}
