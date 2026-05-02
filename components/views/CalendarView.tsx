@@ -228,90 +228,79 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 </div>
             </div>
 
-            <div className="px-2 pb-2 pt-3">
-                <div className="rounded-[28px] border border-border bg-surface/50 p-2 overflow-x-auto no-scrollbar">
-                    <div className="min-w-[720px] sm:min-w-0">
-                        <div className="grid grid-cols-7 gap-2 px-1 pb-2 pt-1">
-                            {WEEK_DAYS.map(day => (
-                                <div key={day} className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
-                                    {day}
-                                </div>
-                            ))}
-                        </div>
+            <div className="px-4 pb-2 pt-3">
+                <div className="rounded-[28px] border border-border bg-surface/40 overflow-hidden">
+                    <div className="grid grid-cols-7 border-b border-border bg-background/40">
+                        {WEEK_DAYS.map(day => (
+                            <div key={day} className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+                                {day.slice(0, 1)}
+                            </div>
+                        ))}
+                    </div>
 
-                    <div className="grid grid-cols-7 gap-2 auto-rows-[minmax(136px,auto)] sm:auto-rows-[minmax(148px,auto)]">
+                    <div className="grid grid-cols-7 auto-rows-[minmax(132px,auto)] sm:auto-rows-[minmax(148px,auto)]">
                         {calendarDays.map((dayObj, idx) => {
                             const isToday = dayObj.date.getDate() === today.getDate() &&
                                 dayObj.date.getMonth() === today.getMonth() &&
                                 dayObj.date.getFullYear() === today.getFullYear();
 
-                            const visibleItems = dayObj.items.slice(0, 3);
+                            const visibleItems = dayObj.items.slice(0, 4);
                             const hiddenCount = Math.max(0, dayObj.items.length - visibleItems.length);
 
                             return (
                                 <div
                                     key={`${getDateKey(dayObj.date)}-${idx}`}
                                     className={[
-                                        'rounded-2xl border p-2 flex flex-col gap-2 overflow-hidden transition-colors',
+                                        'min-w-0 border-r border-b border-border/80 px-1 py-1.5 flex flex-col gap-1 overflow-hidden transition-colors last:border-r-0',
+                                        idx % 7 === 6 ? 'border-r-0' : '',
                                         dayObj.isCurrentMonth
-                                            ? 'border-border bg-surface'
-                                            : 'border-dashed border-border/80 bg-background/30 opacity-60',
-                                        isToday ? 'border-primary' : '',
+                                            ? 'bg-surface/70'
+                                            : 'bg-background/30 text-muted/50',
+                                        isToday ? 'bg-indigo-500/5' : '',
                                     ].join(' ')}
                                 >
-                                    <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center justify-between min-w-0">
                                         <div className={[
-                                            'flex h-6 min-w-6 items-center justify-center rounded-full border px-1.5 text-[11px] font-semibold',
-                                            isToday ? 'border-primary text-primary' : 'border-border text-muted',
+                                            'flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold leading-none',
+                                            isToday ? 'bg-primary text-background' : dayObj.isCurrentMonth ? 'text-primary' : 'text-muted/50',
                                         ].join(' ')}>
                                             {dayObj.date.getDate()}
                                         </div>
-                                        {dayObj.items.length > 0 && (
-                                            <div className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted">
-                                                {dayObj.items.length}
+                                        {hiddenCount > 0 && (
+                                            <div className="text-[9px] font-semibold text-muted">
+                                                +{hiddenCount}
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar pr-0.5">
-                                        {visibleItems.length === 0 ? (
-                                            <div className="space-y-1 pt-1 opacity-50">
-                                                <div className="h-2.5 rounded-full border border-dashed border-border/70" />
-                                                <div className="h-2.5 w-4/5 rounded-full border border-dashed border-border/70" />
-                                            </div>
-                                        ) : (
-                                            visibleItems.map(item => (
-                                                <button
-                                                    key={item.id}
-                                                    onClick={() => setSelectedItem(item)}
-                                                    className={[
-                                                        'w-full rounded-xl border px-2 py-1.5 text-left text-[11px] leading-snug transition-colors',
-                                                        item.status === 'done'
-                                                            ? 'border-border text-muted line-through opacity-70'
-                                                            : 'border-border text-primary hover:bg-muted/5',
-                                                    ].join(' ')}
-                                                    title={item.content}
-                                                >
-                                                    <div className="mb-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-muted">
-                                                        {getItemTypeLabel(item.type)}
-                                                    </div>
-                                                    <div className="line-clamp-3 break-words">{item.content}</div>
-                                                </button>
-                                            ))
-                                        )}
-
-                                        {hiddenCount > 0 && (
-                                            <div className="rounded-xl border border-dashed border-border px-2 py-1 text-[10px] text-muted">
-                                                +{hiddenCount} more
-                                            </div>
-                                        )}
+                                    <div className="flex-1 space-y-1 overflow-hidden">
+                                        {visibleItems.map(item => (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => setSelectedItem(item)}
+                                                className={[
+                                                    'block w-full min-w-0 rounded-md px-1.5 py-1 text-left text-[9px] leading-[1.15] transition-colors',
+                                                    item.status === 'done'
+                                                        ? 'bg-muted/10 text-muted line-through opacity-70'
+                                                        : item.type === ItemType.EVENT
+                                                            ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-500/25'
+                                                            : item.type === ItemType.SHOPPING
+                                                                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25'
+                                                                : 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/25',
+                                                ].join(' ')}
+                                                title={`${getItemTypeLabel(item.type)} · ${item.content}`}
+                                            >
+                                                <span className="line-clamp-2 break-words font-medium">
+                                                    {item.content}
+                                                </span>
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
                 </div>
-            </div>
             </div>
 
             <AnimatePresence>

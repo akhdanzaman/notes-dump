@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.8',
+    date: 'May 2026',
+    items: [
+      'Reworked the mobile Calendar month view to stay full-width without horizontal scrolling.',
+      'The month grid now follows a more Google Calendar-like layout with fixed 7-day columns, airy week rows, and compact event chips inside each day.',
+      'Calendar entries now prioritize readable in-cell blocks over oversized cards, so more context fits without brutal truncation.',
+    ],
+  },
+  {
     version: 'v0.3.7',
     date: 'May 2026',
     items: [
