@@ -40,7 +40,7 @@ const App: React.FC = () => {
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
       loading, error, pendingCount, parsingTasks, pendingReviews, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
+      handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
   // Onboarding State
@@ -400,7 +400,7 @@ const App: React.FC = () => {
   };
 
   const handleClearData = async () => {
-      await saveAndSync([], undefined, undefined, [], [], {}, undefined, true);
+      await saveAndSync([], undefined, undefined, [], [], {}, undefined, undefined, true);
       clearSpreadsheetConfig();
       clearGithubConfig();
       setIsControlCenterOpen(false);
@@ -507,6 +507,7 @@ const App: React.FC = () => {
       newWallets.length > 0 ? newWallets : wallets,
       monthlyThemes,
       settings,
+      undefined,
       true // force overwrite
     );
   };
@@ -738,8 +739,9 @@ const App: React.FC = () => {
         onClose={() => setIsControlCenterOpen(false)}
         saveStatus={saveStatus}
         fetchStatus={fetchStatus}
-        onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
+        onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
         onRefreshClick={() => loadData()}
+        onRunCanonicalBackfill={runCanonicalBackfill}
         appSettings={appSettings}
         setAppSettings={setAppSettings}
         error={error}

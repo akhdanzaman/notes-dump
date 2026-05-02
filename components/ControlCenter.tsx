@@ -21,6 +21,7 @@ interface ControlCenterProps {
     fetchStatus: SyncStatus;
     onSyncClick: (forceOverwrite?: boolean) => void;
     onRefreshClick?: () => void;
+    onRunCanonicalBackfill?: () => { autoAppliedCount: number; reviewSuggestionCount: number; changedItemIds: string[]; reviews: unknown[] };
     
     // App State & Settings
     appSettings: AppSettings;
@@ -79,7 +80,7 @@ const ClockDisplay = () => {
 };
 
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
-    isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, 
+    isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill,
     appSettings, setAppSettings, error, pendingCount, parsingTasks, retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes,
@@ -91,6 +92,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const [history, setHistory] = useState<SpreadsheetHistoryEntry[]>([]);
     const [isFetchingHistory, setIsFetchingHistory] = useState(false);
     const [historyError, setHistoryError] = useState<string | null>(null);
+    const [canonicalBackfillSummary, setCanonicalBackfillSummary] = useState<string | null>(null);
 
     const fetchHistory = async () => {
         setIsFetchingHistory(true);
@@ -931,6 +933,39 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 </div>
                                             </section>
 
+                                            {onRunCanonicalBackfill && (
+                                                <section>
+                                                    <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Canonical Cleanup</h3>
+                                                    <div className="bg-background border border-border rounded-2xl p-4 space-y-3">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500 shrink-0">
+                                                                <Sparkles className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Re-run Historical Canonical Sweep</div>
+                                                                <div className="text-xs text-muted mt-1">
+                                                                    Safely reprocess old items with current canonical rules. High-confidence matches are saved; ambiguous matches become review cards.
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                const result = onRunCanonicalBackfill();
+                                                                setCanonicalBackfillSummary(`${result.autoAppliedCount} auto-applied across ${result.changedItemIds.length} item(s). ${result.reviewSuggestionCount} suggestion(s) queued for review.`);
+                                                            }}
+                                                            className="w-full py-2.5 bg-indigo-500/10 text-indigo-500 font-medium rounded-xl hover:bg-indigo-500/20 transition-colors"
+                                                        >
+                                                            Run Safe Sweep
+                                                        </button>
+                                                        {canonicalBackfillSummary && (
+                                                            <div className="text-xs text-muted bg-surface border border-border rounded-xl p-3">
+                                                                {canonicalBackfillSummary}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </section>
+                                            )}
+
                                             {spreadsheetConfig && (
                                                 <section>
                                                     <div className="flex items-center justify-between mb-3 ml-1">
@@ -1261,6 +1296,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <li>Added Smart Canonicalizer foundations so parser results can store stable canonical merchant, payment method, and subcommodity metadata without changing raw user input.</li>
                                                             <li>Pending Review now surfaces canonical suggestions, and approved review corrections can teach the app new learned mappings for future parses.</li>
                                                             <li>Learned canonical aliases now merge deterministically, decay after rejection, and lose auto-apply when they become risky.</li>
+                                                            <li>Added a safe historical canonical sweep that backfills high-confidence aliases, queues ambiguous old rows for review, and can be rerun from Data settings after rule improvements.</li>
                                                             <li>Money search, wallet filters, wallet balances, AI insights, and exports now read canonical merchant, payment method, commodity, and subcommodity clusters while preserving raw item text.</li>
                                                         </ul>
                                                     </div>

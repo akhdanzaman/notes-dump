@@ -9,6 +9,9 @@ import {
   ParsedItemMetaV2,
   ParserResultV2,
   Wallet,
+  ItemType,
+  ParserEntityType,
+  UpdateItemPayload,
 } from '../types';
 import { findBestCanonicalCandidate } from '../utils/canonicalization/ruleMatcher';
 import { shouldAutoApply, shouldSuggestReview } from '../utils/canonicalization/scoring';
@@ -23,6 +26,22 @@ export interface CanonicalizerContext {
 }
 
 const CANONICAL_FIELDS: CanonicalField[] = ['merchant', 'paymentMethod', 'subcommodity'];
+const HISTORICAL_REVIEW_ID_PREFIX = 'canonical-backfill';
+
+export interface HistoricalCanonicalReview {
+  id: string;
+  text: string;
+  results: ParserResultV2[];
+  originalResults: ParserResultV2[];
+}
+
+export interface HistoricalCanonicalSweepResult {
+  items: BrainDumpItem[];
+  reviews: HistoricalCanonicalReview[];
+  changedItemIds: string[];
+  autoAppliedCount: number;
+  reviewSuggestionCount: number;
+}
 
 const getPayloadMeta = (result: ParserResultV2): ParsedItemMetaV2 | undefined => {
   const payload = result.payload;
@@ -52,6 +71,67 @@ const buildCanonicalValue = (
   needsReview,
   reason: candidate.reason,
 });
+
+const itemTypeToEntityType = (type: ItemType): ParserEntityType => {
+  switch (type) {
+    case ItemType.TODO: return 'todo';
+    case ItemType.SHOPPING: return 'shopping';
+    case ItemType.EVENT: return 'event';
+    case ItemType.FINANCE: return 'finance';
+    case ItemType.JOURNAL: return 'journal';
+    case ItemType.NOTE:
+    default:
+      return 'note';
+  }
+};
+
+const pickCanonicalFields = (
+  meta: ParsedItemMetaV2,
+  fields: CanonicalField[]
+): ItemCanonicalMeta => fields.reduce<ItemCanonicalMeta>((acc, field) => {
+  const canonicalValue = meta.canonical?.[field];
+  if (canonicalValue) acc[field] = canonicalValue;
+  return acc;
+}, {});
+
+const hasCanonicalFields = (canonical?: ItemCanonicalMeta) => !!canonical && Object.keys(canonical).length > 0;
+
+const buildHistoricalReview = (
+  item: BrainDumpItem,
+  suggestions: CanonicalReviewSuggestion[],
+  suggestedMeta: ParsedItemMetaV2
+): HistoricalCanonicalReview => {
+  const entityType = itemTypeToEntityType(item.type);
+  const reviewId = `${HISTORICAL_REVIEW_ID_PREFIX}-${item.id}`;
+  const suggestedCanonical = pickCanonicalFields(suggestedMeta, suggestions.map(suggestion => suggestion.field));
+  const basePayload: UpdateItemPayload = {
+    match: { itemId: item.id, itemName: item.content },
+    changes: {},
+  };
+  const originalPayload: UpdateItemPayload = {
+    match: { itemId: item.id, itemName: item.content },
+    changes: hasCanonicalFields(suggestedCanonical) ? { canonical: suggestedCanonical } : {},
+  };
+
+  const resultBase: Omit<ParserResultV2, 'payload'> = {
+    action: 'update_item',
+    entityType,
+    content: item.content,
+    targetText: item.content,
+    confidence: 'medium',
+    needsReview: true,
+    reviewReason: 'Historical canonical suggestion needs review before applying.',
+    entityRefs: { itemId: item.id, itemName: item.content },
+    canonicalReview: suggestions,
+  };
+
+  return {
+    id: reviewId,
+    text: `Review canonical metadata for ${item.content}`,
+    results: [{ ...resultBase, payload: basePayload }],
+    originalResults: [{ ...resultBase, payload: originalPayload }],
+  };
+};
 
 export function canonicalizeMeta(
   meta: ParsedItemMetaV2,
@@ -173,6 +253,55 @@ export function canonicalizeParserResults(
 
     return result;
   });
+}
+
+export function sweepHistoricalCanonicalMeta(
+  items: BrainDumpItem[],
+  ctx: CanonicalizerContext
+): HistoricalCanonicalSweepResult {
+  const reviews: HistoricalCanonicalReview[] = [];
+  const changedItemIds: string[] = [];
+  let autoAppliedCount = 0;
+  let reviewSuggestionCount = 0;
+
+  const nextItems = items.map((item) => {
+    const canonicalized = canonicalizeMeta(item.meta as ParsedItemMetaV2, ctx);
+
+    if (canonicalized.suggestions.length > 0) {
+      reviews.push(buildHistoricalReview(item, canonicalized.suggestions, canonicalized.meta));
+      reviewSuggestionCount += canonicalized.suggestions.length;
+    }
+
+    if (canonicalized.autoApplied.length === 0) return item;
+
+    const nextCanonical = {
+      ...(item.meta.canonical || {}),
+      ...pickCanonicalFields(canonicalized.meta, canonicalized.autoApplied),
+    };
+
+    const nextMeta = {
+      ...item.meta,
+      canonical: nextCanonical,
+    };
+
+    if (JSON.stringify(nextMeta) === JSON.stringify(item.meta)) return item;
+
+    changedItemIds.push(item.id);
+    autoAppliedCount += canonicalized.autoApplied.length;
+
+    return {
+      ...item,
+      meta: nextMeta,
+    };
+  });
+
+  return {
+    items: nextItems,
+    reviews,
+    changedItemIds,
+    autoAppliedCount,
+    reviewSuggestionCount,
+  };
 }
 
 export function learnCanonicalRulesFromReview(params: {

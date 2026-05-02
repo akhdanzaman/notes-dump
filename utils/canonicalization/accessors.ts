@@ -7,7 +7,11 @@ const text = (value: unknown): string => (typeof value === 'string' ? value.trim
 export const getCanonicalMetaValue = (
   meta: Pick<ParsedItemMetaV2, CanonicalMetaField | 'canonical'>,
   field: CanonicalMetaField
-): string => text(meta.canonical?.[field]?.value);
+): string => {
+  const canonicalValue = meta.canonical?.[field];
+  if (canonicalValue?.needsReview) return '';
+  return text(canonicalValue?.value);
+};
 
 export const getRawMetaValue = (
   meta: Pick<ParsedItemMetaV2, CanonicalMetaField>,

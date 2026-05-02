@@ -35,7 +35,7 @@ import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { parsePro } from '../services/geminiProService';
 import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, isLegacyCompletedGoalContent } from '../utils/financeTypeUtils';
-import { canonicalizeParserResults, learnCanonicalRulesFromReview } from '../services/canonicalizerService';
+import { canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta, HistoricalCanonicalReview } from '../services/canonicalizerService';
 import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
@@ -67,6 +67,8 @@ const safeArrayNumbers = (value: unknown): number[] | undefined => {
 
 const stripUndefined = <T extends Record<string, any>>(obj: T): T =>
     Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T;
+
+const CANONICAL_BACKFILL_REVIEW_PREFIX = 'canonical-backfill-';
 
 const lower = (s?: string) => (s || '').toLowerCase().trim();
 
@@ -257,7 +259,7 @@ export const useBrainDumpData = () => {
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<SyncStatus>('synced');
     const [fetchStatus, setFetchStatus] = useState<SyncStatus>('synced');
-    const [pendingReviews, setPendingReviews] = useState<{ id: string; text: string; results: ParserResultV2[]; originalResults: ParserResultV2[] }[]>([]);
+    const [pendingReviews, setPendingReviews] = useState<HistoricalCanonicalReview[]>([]);
 
     const itemsRef = useRef(items);
     itemsRef.current = items;
@@ -407,6 +409,31 @@ export const useBrainDumpData = () => {
         }
     }, []);
 
+    const replaceHistoricalCanonicalReviews = useCallback((reviews: HistoricalCanonicalReview[]) => {
+        setPendingReviews(prev => [
+            ...reviews,
+            ...prev.filter(review => !review.id.startsWith(CANONICAL_BACKFILL_REVIEW_PREFIX))
+        ]);
+    }, []);
+
+    const runCanonicalBackfill = useCallback(() => {
+        const sweep = sweepHistoricalCanonicalMeta(itemsRef.current, {
+            existingItems: itemsRef.current,
+            wallets: walletsRef.current,
+            budgetRules: budgetConfigRef.current?.rules || [],
+            rules: [...getSystemCanonicalRules(walletsRef.current), ...canonicalRulesRef.current],
+        });
+
+        replaceHistoricalCanonicalReviews(sweep.reviews);
+
+        if (sweep.changedItemIds.length > 0) {
+            setItems(sweep.items);
+            saveAndSync(sweep.items, undefined, undefined, undefined, undefined, undefined, undefined, canonicalRulesRef.current);
+        }
+
+        return sweep;
+    }, [replaceHistoricalCanonicalReviews, saveAndSync]);
+
     const isSyncingRef = useRef(false);
 
     const loadData = useCallback(async () => {
@@ -438,10 +465,21 @@ export const useBrainDumpData = () => {
                     const migratedData = migrateAchievedGoalItems(normalizedData);
 
                     const checkedData = checkRoutineResets(migratedData);
-                    setItems(checkedData);
+                    const canonicalRulesForSweep = data.canonicalRules || canonicalRulesRef.current;
+                    const walletsForSweep = data.wallets || walletsRef.current;
+                    const budgetRulesForSweep = data.budgetConfig?.rules || budgetConfigRef.current?.rules || [];
+                    const canonicalSweep = sweepHistoricalCanonicalMeta(checkedData, {
+                        existingItems: checkedData,
+                        wallets: walletsForSweep,
+                        budgetRules: budgetRulesForSweep,
+                        rules: [...getSystemCanonicalRules(walletsForSweep), ...canonicalRulesForSweep],
+                    });
 
-                    if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-                        saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
+                    replaceHistoricalCanonicalReviews(canonicalSweep.reviews);
+                    setItems(canonicalSweep.items);
+
+                    if (JSON.stringify(canonicalSweep.items) !== JSON.stringify(data.data)) {
+                        saveAndSync(canonicalSweep.items, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
                     }
                 }
 
@@ -490,7 +528,7 @@ export const useBrainDumpData = () => {
             setLoading(false);
             isSyncingRef.current = false;
         }
-    }, [saveAndSync]);
+    }, [replaceHistoricalCanonicalReviews, saveAndSync]);
 
     useEffect(() => {
         loadData();
@@ -694,7 +732,7 @@ export const useBrainDumpData = () => {
                                 commodity: changes.commodity,
                                 subcommodity: changes.subcommodity,
                                 merchant: changes.merchant,
-                                canonical: changes.canonical,
+                                canonical: changes.canonical ? { ...(i.meta.canonical || {}), ...changes.canonical } : undefined,
                                 quantity: changes.quantity,
                                 shoppingCategory: changes.shoppingCategory,
                                 priority: changes.priority,
@@ -1054,7 +1092,7 @@ export const useBrainDumpData = () => {
         const newProgressNotes = targetItem.meta.progressNotes;
 
         let newDate = targetItem.meta.date;
-        if (newStatus === 'done' && (targetItem.type === ItemType.SHOPPING || targetItem.type === ItemType.FINANCE)) {
+        if (newStatus === 'done' && targetItem.type === ItemType.SHOPPING) {
             newDate = new Date().toISOString();
         }
 
@@ -1090,7 +1128,7 @@ export const useBrainDumpData = () => {
         }
 
         if (historyItemIdToCreate) {
-            let newType = targetItem.type;
+            let newType: ItemType = targetItem.type;
             let newMeta = { ...targetItem.meta, isRoutine: false };
 
             if (isShoppingRoutine) {
@@ -1536,6 +1574,7 @@ export const useBrainDumpData = () => {
         fetchStatus,
         loadData,
         saveAndSync,
+        runCanonicalBackfill,
         handleSend,
         retryParsing,
         clearParsingTask,

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { canonicalizeMeta, canonicalizeParserResults, learnCanonicalRulesFromReview } from '../canonicalizerService';
-import { CanonicalRule, ParserResultV2 } from '../../types';
+import { canonicalizeMeta, canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta } from '../canonicalizerService';
+import { BrainDumpItem, CanonicalRule, ItemType, ParserResultV2 } from '../../types';
 
 const rules: CanonicalRule[] = [
   {
@@ -188,7 +188,6 @@ test('learnCanonicalRulesFromReview increments rejection count when suggestion i
   assert.equal(nextRules[0].rejectionCount, 1);
 });
 
-
 test('learnCanonicalRulesFromReview merges duplicate targets and moves conflicting aliases deterministically', () => {
   const existingRules: CanonicalRule[] = [
     {
@@ -353,6 +352,91 @@ test('manual review canonical values take precedence over rule rematching', () =
   assert.equal(result.meta.canonical?.merchant?.value, 'Manual Merchant');
   assert.deepEqual(result.autoApplied, []);
   assert.deepEqual(result.suggestions, []);
+});
+
+test('sweepHistoricalCanonicalMeta backfills high-confidence canonical metadata without changing raw content', () => {
+  const items: BrainDumpItem[] = [
+    {
+      id: 'item-high-confidence',
+      type: ItemType.FINANCE,
+      content: 'makan di gacoan',
+      status: 'done',
+      created_at: '2026-05-01T08:00:00.000Z',
+      completed_at: '2026-05-01T08:00:00.000Z',
+      meta: {
+        merchant: 'gacoan',
+        financeType: 'expense',
+        commodity: 'food',
+        budgetCategory: 'needs',
+      },
+    },
+  ];
+
+  const sweep = sweepHistoricalCanonicalMeta(items, ctx);
+
+  assert.equal(sweep.autoAppliedCount, 1);
+  assert.deepEqual(sweep.changedItemIds, ['item-high-confidence']);
+  assert.equal(sweep.reviews.length, 0);
+  assert.equal(sweep.items[0].content, 'makan di gacoan');
+  assert.equal(sweep.items[0].meta.merchant, 'gacoan');
+  assert.equal(sweep.items[0].meta.canonical?.merchant?.value, 'Mie Gacoan');
+  assert.equal(sweep.items[0].meta.canonical?.merchant?.needsReview, false);
+});
+
+test('sweepHistoricalCanonicalMeta seeds ambiguous historical rows for review without applying them', () => {
+  const items: BrainDumpItem[] = [
+    {
+      id: 'item-ambiguous',
+      type: ItemType.FINANCE,
+      content: 'bayar pakai debit bca',
+      status: 'done',
+      created_at: '2026-05-01T08:00:00.000Z',
+      completed_at: '2026-05-01T08:00:00.000Z',
+      meta: {
+        paymentMethod: 'debit bca',
+      },
+    },
+  ];
+
+  const sweep = sweepHistoricalCanonicalMeta(items, ctx);
+
+  assert.equal(sweep.autoAppliedCount, 0);
+  assert.equal(sweep.changedItemIds.length, 0);
+  assert.equal(sweep.items[0].meta.canonical?.paymentMethod, undefined);
+  assert.equal(sweep.reviews.length, 1);
+  assert.equal(sweep.reviews[0].id, 'canonical-backfill-item-ambiguous');
+  assert.equal(sweep.reviews[0].results[0].action, 'update_item');
+  assert.equal((sweep.reviews[0].results[0].payload as any).match.itemId, 'item-ambiguous');
+  assert.equal((sweep.reviews[0].results[0].payload as any).changes.canonical, undefined);
+  assert.equal(sweep.reviews[0].results[0].canonicalReview?.[0].suggestedValue, 'BCA');
+  assert.equal((sweep.reviews[0].originalResults[0].payload as any).changes.canonical.paymentMethod.value, 'BCA');
+});
+
+test('sweepHistoricalCanonicalMeta reruns idempotently after auto-apply', () => {
+  const items: BrainDumpItem[] = [
+    {
+      id: 'item-idempotent',
+      type: ItemType.FINANCE,
+      content: 'makan di gacoan',
+      status: 'done',
+      created_at: '2026-05-01T08:00:00.000Z',
+      completed_at: '2026-05-01T08:00:00.000Z',
+      meta: {
+        merchant: 'gacoan',
+        financeType: 'expense',
+        commodity: 'food',
+        budgetCategory: 'needs',
+      },
+    },
+  ];
+
+  const first = sweepHistoricalCanonicalMeta(items, ctx);
+  const second = sweepHistoricalCanonicalMeta(first.items, ctx);
+
+  assert.equal(first.autoAppliedCount, 1);
+  assert.equal(second.autoAppliedCount, 0);
+  assert.deepEqual(second.changedItemIds, []);
+  assert.deepEqual(second.items, first.items);
 });
 
 test('re-approval after edits rehabilitates degraded learned rules', () => {

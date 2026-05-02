@@ -29,6 +29,17 @@ test('getCanonicalOrRawItemValue prefers canonical values without losing raw fal
 
   const rawOnly = { ...item, meta: { ...item.meta, canonical: undefined } };
   assert.equal(getCanonicalOrRawItemValue(rawOnly, 'merchant'), 'gacoan jakal');
+
+  const needsReview = {
+    ...item,
+    meta: {
+      ...item.meta,
+      canonical: {
+        merchant: { rawValue: 'gacoan jakal', value: 'Maybe Gacoan', confidence: 0.72, source: 'learned_rule' as const, needsReview: true },
+      },
+    },
+  };
+  assert.equal(getCanonicalOrRawItemValue(needsReview, 'merchant'), 'gacoan jakal');
 });
 
 test('itemMatchesCanonicalSearch matches both raw aliases and canonical clusters', () => {
