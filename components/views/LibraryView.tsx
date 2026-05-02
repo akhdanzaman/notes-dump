@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { NotebookPen, BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet } from 'lucide-react';
+import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet } from 'lucide-react';
 import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
 import { getJournalDayGroups, getNoteItems, getSkillItems, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
@@ -60,6 +60,12 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     handleDelete, handleUpdateItem, handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
     selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab, onAddItem
 }) => {
+    const libraryTabs: { key: LibrarySubTab; label: string; title: string; icon: React.ReactNode }[] = [
+        { key: 'skills', label: 'Skills', title: 'Skill Growth', icon: <Target className="w-4 h-4" /> },
+        { key: 'general', label: 'Notes', title: 'All Notes', icon: <Library className="w-4 h-4" /> },
+        { key: 'journal', label: 'Journal', title: 'Journal Entries', icon: <BookText className="w-4 h-4" /> },
+    ];
+
     
     // Data Preparation
     const generalItems = getNoteItems(items, 'general', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
@@ -211,7 +217,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
     const isHorizontalSwipe = React.useRef<boolean | null>(null);
 
-    const subTabs: LibrarySubTab[] = ['general', 'skills', 'journal'];
+    const subTabs: LibrarySubTab[] = libraryTabs.map(tab => tab.key);
     const activeIndex = subTabs.indexOf(librarySubTab);
 
     const onTouchStart = (e: React.TouchEvent) => {
@@ -398,24 +404,15 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
                     <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
-                        <button 
-                            onClick={() => setLibrarySubTab('general')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'general' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
-                        >
-                            <Library className="w-4 h-4" /> Notes
-                        </button>
-                        <button 
-                            onClick={() => setLibrarySubTab('skills')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'skills' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
-                        >
-                            <Target className="w-4 h-4" /> Skills
-                        </button>
-                        <button 
-                            onClick={() => setLibrarySubTab('journal')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === 'journal' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
-                        >
-                            <BookText className="w-4 h-4" /> Journal
-                        </button>
+                        {libraryTabs.map(tab => (
+                            <button 
+                                key={tab.key}
+                                onClick={() => setLibrarySubTab(tab.key)}
+                                className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === tab.key ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                            >
+                                {tab.icon} {tab.label}
+                            </button>
+                        ))}
                     </div>
 
                     <AnimatePresence mode="wait">
@@ -429,7 +426,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         >
                             <div>
                                 <h2 className="text-2xl font-bold tracking-tight">
-                                    {librarySubTab === 'general' ? 'All Notes' : librarySubTab === 'skills' ? 'Skill Growth' : 'Journal Entries'}
+                                    {libraryTabs.find(tab => tab.key === librarySubTab)?.title || 'Library'}
                                 </h2>
                                 <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
                                     {librarySubTab === 'general' && (
@@ -490,15 +487,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
                     }}
                 >
-                {/* VIEW: General Notes */}
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
-                >
-                    {renderContent(generalItems, 'general')}
-                </motion.div>
-
                 {/* VIEW: Skills */}
                 <motion.div 
                     initial={{ opacity: 0 }}
@@ -506,6 +494,15 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     className="w-full flex-shrink-0 px-4"
                 >
                     {renderSkills()}
+                </motion.div>
+
+                {/* VIEW: General Notes */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="w-full flex-shrink-0 px-4"
+                >
+                    {renderContent(generalItems, 'general')}
                 </motion.div>
 
                 {/* VIEW: Journal */}

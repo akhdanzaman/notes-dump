@@ -6,6 +6,7 @@ import {
   Target,
   ShoppingCart,
   StickyNote,
+  BookText,
   PiggyBank,
   Loader2,
   MessageSquareText,
@@ -37,6 +38,7 @@ const SUGGESTIONS = [
   { label: 'Focus', value: 'Focus:', icon: <Target className="w-3 h-3 text-blue-400" /> },
   { label: 'Shopping', value: 'shopping:', icon: <ShoppingCart className="w-3 h-3 text-purple-400" /> },
   { label: 'Notes', value: 'notes:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
+  { label: 'Journal', value: 'Journal:', icon: <BookText className="w-3 h-3 text-fuchsia-400" /> },
 ];
 
 const InputBar: React.FC<InputBarProps> = ({
