@@ -1,6 +1,6 @@
 
 import { Octokit } from "@octokit/rest";
-import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule } from "../types";
 import { mergeDbData } from "../utils/mergeUtils";
 export { mergeDbData } from "../utils/mergeUtils";
 
@@ -345,6 +345,7 @@ const performSync = async (
     monthlyThemes?: Record<string, string>,
     appSettings?: AppSettings,
     chatHistory?: ChatMessage[],
+    canonicalRules?: CanonicalRule[],
     forceOverwrite = false
 ): Promise<SyncResult> => {
   if (!isHydrated) {
@@ -387,7 +388,7 @@ const performSync = async (
     monthlyThemes: monthlyThemes,
     appSettings: appSettings,
     chatHistory: chatHistory,
-    canonicalRules: previousDb.canonicalRules || []
+    canonicalRules: canonicalRules || previousDb.canonicalRules || []
   };
   
   const jsonString = JSON.stringify(updatedDb, null, 2);
@@ -509,9 +510,10 @@ export const syncData = (
     monthlyThemes?: Record<string, string>,
     appSettings?: AppSettings,
     chatHistory?: ChatMessage[],
+    canonicalRules?: CanonicalRule[],
     forceOverwrite = false
 ): Promise<SyncResult> => {
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, forceOverwrite);
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite);
 
   const queuedTask = operationQueue.then(
       () => task(),

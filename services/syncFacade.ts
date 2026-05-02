@@ -1,4 +1,4 @@
-import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage } from "../types";
+import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage, CanonicalRule } from "../types";
 import { fetchDb as fetchGithubDb, syncData as syncGithubData, getGithubConfig, isUsingLocalStorage as isGithubLocal, SyncResult } from "./githubService";
 import { mergeDbData } from "../utils/mergeUtils";
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, clearSpreadsheetConfig, getSpreadsheetHistory, SpreadsheetHistoryEntry } from "./spreadsheetService";
@@ -99,11 +99,12 @@ export const syncData = async (
   monthlyThemes?: Record<string, string>,
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
+  canonicalRules?: CanonicalRule[],
   forceOverwrite = false
 ): Promise<SyncResult> => {
   const providers = getActiveSyncProviders();
   if (providers.length === 0) {
-    return syncGithubData(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, forceOverwrite); // Fallback to local
+    return syncGithubData(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite); // Fallback to local
   }
 
   let hasError = false;
@@ -116,15 +117,16 @@ export const syncData = async (
   let currentThemes = monthlyThemes;
   let currentSettings = appSettings;
   let currentChatHistory = chatHistory;
+  let currentCanonicalRules = canonicalRules;
   let finalMergedData: DbSchema | undefined;
 
   for (const provider of providers) {
     try {
       let res: SyncResult;
       if (provider === 'spreadsheet') {
-        res = await syncSpreadsheetData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory, forceOverwrite);
+        res = await syncSpreadsheetData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory, currentCanonicalRules, forceOverwrite);
       } else {
-        res = await syncGithubData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory, forceOverwrite);
+        res = await syncGithubData(currentItems, currentBudgetConfig, currentPrompt, currentSkills, currentWallets, currentThemes, currentSettings, currentChatHistory, currentCanonicalRules, forceOverwrite);
       }
 
       if (!res.success) {
@@ -142,6 +144,7 @@ export const syncData = async (
         currentThemes = res.mergedData.monthlyThemes;
         currentSettings = res.mergedData.appSettings;
         currentChatHistory = res.mergedData.chatHistory;
+        currentCanonicalRules = res.mergedData.canonicalRules;
       }
     } catch (e) {
       console.error(`Failed to sync to ${provider}`, e);

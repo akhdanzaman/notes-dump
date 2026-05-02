@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, AlertCircle, Edit2, Sparkles, ChevronDown, ChevronUp, Save } from 'lucide-react';
-import { ParserResultV2, FinanceType, ParserEntityType } from '../types';
+import { Check, X, AlertCircle, Edit2, Sparkles, Save } from 'lucide-react';
+import { CanonicalReviewSuggestion, ParserResultV2, ParserEntityType } from '../types';
 
 interface PendingReviewListProps {
   reviews: { id: string; text: string; results: ParserResultV2[] }[];
@@ -76,10 +76,64 @@ const ReviewCard: React.FC<{
     });
   };
 
+  const handleApplyCanonicalSuggestion = (suggestion: CanonicalReviewSuggestion) => {
+    setResults(prev => {
+      const newResults = [...prev];
+      const first = { ...newResults[0] } as any;
+      const payload = first.payload;
+
+      if (!payload) return prev;
+
+      if ('meta' in payload) {
+        first.payload = {
+          ...payload,
+          meta: {
+            ...(payload.meta || {}),
+            canonical: {
+              ...(payload.meta?.canonical || {}),
+              [suggestion.field]: {
+                rawValue: suggestion.rawValue,
+                value: suggestion.suggestedValue,
+                confidence: suggestion.confidence,
+                source: 'manual_review',
+                ruleId: suggestion.ruleId,
+                needsReview: false,
+                reason: suggestion.reason,
+              }
+            }
+          }
+        };
+      } else if ('changes' in payload) {
+        first.payload = {
+          ...payload,
+          changes: {
+            ...(payload.changes || {}),
+            canonical: {
+              ...(payload.changes?.canonical || {}),
+              [suggestion.field]: {
+                rawValue: suggestion.rawValue,
+                value: suggestion.suggestedValue,
+                confidence: suggestion.confidence,
+                source: 'manual_review',
+                ruleId: suggestion.ruleId,
+                needsReview: false,
+                reason: suggestion.reason,
+              }
+            }
+          }
+        };
+      }
+
+      newResults[0] = first;
+      return newResults;
+    });
+  };
+
   const payload = primaryResult.payload as any;
   const amount = payload?.meta?.amount || '';
   const financeType = payload?.meta?.financeType || '';
   const content = payload?.content || primaryResult.content || review.text;
+  const canonicalReview = primaryResult.canonicalReview || [];
 
   return (
     <motion.div
@@ -199,6 +253,32 @@ const ReviewCard: React.FC<{
             <p className="text-[10px] text-amber-500 leading-tight">
               {primaryResult.reviewReason}
             </p>
+          </div>
+        )}
+
+        {!isEditing && canonicalReview.length > 0 && (
+          <div className="mt-3 p-2.5 bg-indigo-500/5 border border-indigo-500/20 rounded-lg space-y-2">
+            <div className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
+              Canonical Suggestions
+            </div>
+            {canonicalReview.map((suggestion) => (
+              <div key={`${suggestion.field}-${suggestion.suggestedValue}`} className="flex items-start justify-between gap-2 bg-background/60 rounded-lg p-2 border border-border">
+                <div className="min-w-0">
+                  <div className="text-[11px] text-primary font-medium capitalize">
+                    {suggestion.field}: {suggestion.rawValue || '—'} → {suggestion.suggestedValue || '—'}
+                  </div>
+                  <div className="text-[10px] text-muted leading-tight mt-0.5">
+                    {Math.round(suggestion.confidence * 100)}% • {suggestion.reason}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleApplyCanonicalSuggestion(suggestion)}
+                  className="shrink-0 px-2 py-1 rounded-md bg-indigo-500 text-white text-[10px] font-semibold hover:bg-indigo-600 transition-colors"
+                >
+                  Use
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

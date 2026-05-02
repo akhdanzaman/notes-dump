@@ -1,6 +1,11 @@
 import { BrainDumpItem, ItemType, Wallet, BudgetConfig, SortOrder } from '../../types';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from '../financeTypeUtils';
 
+const getCanonicalOrRawMeta = (
+    item: BrainDumpItem,
+    field: 'merchant' | 'paymentMethod' | 'commodity' | 'subcommodity'
+) => item.meta.canonical?.[field]?.value || item.meta[field] || '';
+
 export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
     // Create a map to track balances
     const balanceMap = new Map<string, number>();
@@ -218,7 +223,10 @@ export const getFinanceItems = (
         allTransactions = allTransactions.filter(i => 
             i.content.toLowerCase().includes(lowerQ) || 
             i.meta.tags?.some(t => t.toLowerCase().includes(lowerQ)) ||
-            i.meta.paymentMethod?.toLowerCase().includes(lowerQ)
+            getCanonicalOrRawMeta(i, 'paymentMethod').toLowerCase().includes(lowerQ) ||
+            getCanonicalOrRawMeta(i, 'merchant').toLowerCase().includes(lowerQ) ||
+            getCanonicalOrRawMeta(i, 'subcommodity').toLowerCase().includes(lowerQ) ||
+            getCanonicalOrRawMeta(i, 'commodity').toLowerCase().includes(lowerQ)
         );
     }
 

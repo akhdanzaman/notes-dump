@@ -4,6 +4,11 @@ import { getFinanceItems } from '../utils/selectors';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 import { generateBehaviorDriftInsights } from '../utils/behaviorDrift';
 
+const getCanonicalOrRaw = (
+  item: BrainDumpItem,
+  field: 'merchant' | 'paymentMethod' | 'commodity' | 'subcommodity'
+) => item.meta.canonical?.[field]?.value || item.meta[field] || '';
+
 export interface Insight {
   type: 'warning' | 'info' | 'success';
   title: string;
@@ -81,6 +86,21 @@ export const generateAIInsights = async (
 
   const currentTags = getTagBreakdown(currentMonthExpenses);
   const lastTags = getTagBreakdown(lastMonthExpenses);
+
+  const getCanonicalBreakdown = (arr: BrainDumpItem[], field: 'merchant' | 'subcommodity') => {
+    const breakdown: Record<string, { total: number; count: number }> = {};
+    arr.forEach(item => {
+      const key = getCanonicalOrRaw(item, field).trim();
+      if (!key) return;
+      if (!breakdown[key]) breakdown[key] = { total: 0, count: 0 };
+      breakdown[key].total += item.meta.amount || 0;
+      breakdown[key].count += 1;
+    });
+    return Object.entries(breakdown)
+      .sort((a, b) => b[1].total - a[1].total)
+      .slice(0, 5)
+      .map(([name, stats]) => ({ name, total: stats.total, count: stats.count }));
+  };
 
   const incompleteLastMonth = items.filter(i => 
     (i.type === ItemType.TODO || i.type === ItemType.EVENT) && 
@@ -175,6 +195,8 @@ export const generateAIInsights = async (
       totalExpense: currentTotalExpense,
       projectedTotalExpense: currentTotalExpense + projectedExpense,
       expenseByTag: currentTags,
+      topCanonicalMerchants: getCanonicalBreakdown(currentMonthExpenses, 'merchant'),
+      topCanonicalSubcommodities: getCanonicalBreakdown(currentMonthExpenses, 'subcommodity'),
       completedTasks: completedTasksCurrentMonth,
       dailyAverageTasks: completedTasksCurrentMonth / currentDay,
       skillProgress,
@@ -185,6 +207,8 @@ export const generateAIInsights = async (
       dailyAverageExpense: lastTotalExpense / currentDay,
       totalExpense: lastTotalExpense,
       expenseByTag: lastTags,
+      topCanonicalMerchants: getCanonicalBreakdown(lastMonthExpenses, 'merchant'),
+      topCanonicalSubcommodities: getCanonicalBreakdown(lastMonthExpenses, 'subcommodity'),
       completedTasks: completedTasksLastMonth,
       dailyAverageTasks: completedTasksLastMonth / currentDay,
       incompleteTasks: incompleteLastMonth

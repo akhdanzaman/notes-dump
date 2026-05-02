@@ -1,4 +1,4 @@
-import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule } from "../types";
 import { SyncResult } from "./githubService";
 import { mergeDbData } from "../utils/mergeUtils";
 import { generateExportData, SheetData } from "../utils/exportUtils";
@@ -303,6 +303,7 @@ const performSync = async (
   monthlyThemes?: Record<string, string>,
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
+  canonicalRules?: CanonicalRule[],
   forceOverwrite = false
 ): Promise<SyncResult> => {
   const previousDb = validateSchema(
@@ -313,7 +314,7 @@ const performSync = async (
 
   const updatedDb: DbSchema = { 
     data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory,
-    canonicalRules: previousDb.canonicalRules || []
+    canonicalRules: canonicalRules || previousDb.canonicalRules || []
   };
   
   const jsonString = JSON.stringify(updatedDb);
@@ -542,9 +543,10 @@ export const syncSpreadsheetData = (
   monthlyThemes?: Record<string, string>,
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
+  canonicalRules?: CanonicalRule[],
   forceOverwrite = false
 ): Promise<SyncResult> => {
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, forceOverwrite);
+  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite);
   const queuedTask = operationQueue.then(() => task(), () => task());
   operationQueue = queuedTask;
   return queuedTask;

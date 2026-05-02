@@ -1254,6 +1254,17 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 <div className="space-y-4">
                                                     <div className="bg-background border border-border rounded-2xl p-4">
                                                         <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-primary">v0.3.3</div>
+                                                            <div className="text-xs text-muted">May 2026</div>
+                                                        </div>
+                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                            <li>Added Smart Canonicalizer foundations so parser results can store stable canonical merchant, payment method, and subcommodity metadata without changing raw user input.</li>
+                                                            <li>Pending Review now surfaces canonical suggestions, and approved review corrections can teach the app new learned mappings for future parses.</li>
+                                                            <li>Money search and AI insights can now read canonical merchant and subcommodity clusters, reducing fragmented analysis from alias-heavy inputs.</li>
+                                                        </ul>
+                                                    </div>
+                                                    <div className="bg-background border border-border rounded-2xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
                                                             <div className="font-bold text-primary">v0.3.2</div>
                                                             <div className="text-xs text-muted">May 2026</div>
                                                         </div>

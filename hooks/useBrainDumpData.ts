@@ -35,7 +35,8 @@ import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { parsePro } from '../services/geminiProService';
 import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, isLegacyCompletedGoalContent } from '../utils/financeTypeUtils';
-import { canonicalizeParserResults } from '../services/canonicalizerService';
+import { canonicalizeParserResults, learnCanonicalRulesFromReview } from '../services/canonicalizerService';
+import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -340,6 +341,7 @@ export const useBrainDumpData = () => {
         newWallets?: Wallet[],
         newThemes?: Record<string, string>,
         newAppSettings?: AppSettings,
+        newCanonicalRules?: CanonicalRule[],
         forceOverwrite = false
     ) => {
         const baseItems = itemsRef.current;
@@ -352,6 +354,7 @@ export const useBrainDumpData = () => {
             const walletsToSave = newWallets || walletsRef.current;
             const themesToSave = newThemes || monthlyThemesRef.current;
             const settingsToSave = newAppSettings || appSettingsRef.current;
+            const canonicalRulesToSave = newCanonicalRules || canonicalRulesRef.current;
 
             const result: SyncResult = await syncData(
                 newItems,
@@ -362,6 +365,7 @@ export const useBrainDumpData = () => {
                 themesToSave,
                 settingsToSave,
                 undefined,
+                canonicalRulesToSave,
                 forceOverwrite
             );
 
@@ -437,7 +441,7 @@ export const useBrainDumpData = () => {
                     setItems(checkedData);
 
                     if (JSON.stringify(checkedData) !== JSON.stringify(data.data)) {
-                        saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings);
+                        saveAndSync(checkedData, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
                     }
                 }
 
@@ -450,7 +454,7 @@ export const useBrainDumpData = () => {
                         { id: 'skill-1', name: 'General Learning', color: 'indigo-500', created_at: new Date().toISOString() }
                     ];
                     setSkills(defaults);
-                    saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes, data.appSettings);
+                    saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
                 }
 
                 if (data.wallets) setWallets(data.wallets);
@@ -627,7 +631,8 @@ export const useBrainDumpData = () => {
     const executeParserResults = (
         parsedResults: ParserResultV2[],
         sourceText: string,
-        tempId: string
+        tempId: string,
+        canonicalRulesOverride?: CanonicalRule[]
     ) => {
         setItems((prev) => {
             const prevWithoutOptimistic = prev.filter(i => i.id !== tempId);
@@ -916,7 +921,9 @@ export const useBrainDumpData = () => {
                 undefined,
                 hasSkillChange ? newSkills : undefined,
                 hasWalletChange ? newWallets : undefined,
-                hasThemeChange ? newThemes : undefined
+                hasThemeChange ? newThemes : undefined,
+                undefined,
+                canonicalRulesOverride
             );
 
             return updated;
@@ -966,7 +973,7 @@ export const useBrainDumpData = () => {
                 existingItems: itemsRef.current,
                 wallets: walletsRef.current,
                 budgetRules: budgetConfigRef.current?.rules || [],
-                rules: canonicalRulesRef.current,
+                rules: [...getSystemCanonicalRules(walletsRef.current), ...canonicalRulesRef.current],
             });
 
             const enableDraftReview = appSettingsRef.current.enableDraftReview ?? false;
@@ -1004,8 +1011,15 @@ export const useBrainDumpData = () => {
     const handleApproveReview = (id: string, updatedResults: ParserResultV2[]) => {
         const review = pendingReviews.find(r => r.id === id);
         if (!review) return;
-        
-        executeParserResults(updatedResults, review.text, id);
+
+        const nextCanonicalRules = learnCanonicalRulesFromReview({
+            originalResults: review.originalResults,
+            approvedResults: updatedResults,
+            existingRules: canonicalRulesRef.current
+        });
+
+        setCanonicalRules(nextCanonicalRules);
+        executeParserResults(updatedResults, review.text, id, nextCanonicalRules);
         setPendingReviews(prev => prev.filter(r => r.id !== id));
     };
 

@@ -12,6 +12,7 @@ import {
 } from '../types';
 import { findBestCanonicalCandidate } from '../utils/canonicalization/ruleMatcher';
 import { shouldAutoApply, shouldSuggestReview } from '../utils/canonicalization/scoring';
+import { incrementCanonicalRuleRejection, mergeLearnedRule } from '../utils/canonicalization/learnedRules';
 
 export interface CanonicalizerContext {
   existingItems: BrainDumpItem[];
@@ -22,6 +23,14 @@ export interface CanonicalizerContext {
 }
 
 const CANONICAL_FIELDS: CanonicalField[] = ['merchant', 'paymentMethod', 'subcommodity'];
+
+const getPayloadMeta = (result: ParserResultV2): ParsedItemMetaV2 | undefined => {
+  const payload = result.payload;
+  if (!payload) return undefined;
+  if ("meta" in payload) return payload.meta as ParsedItemMetaV2;
+  if ("changes" in payload) return payload.changes as ParsedItemMetaV2;
+  return undefined;
+};
 
 const mergeReviewReason = (currentReason: string | undefined, nextReason: string) => {
   if (!currentReason) return nextReason;
@@ -158,4 +167,38 @@ export function canonicalizeParserResults(
 
     return result;
   });
+}
+
+export function learnCanonicalRulesFromReview(params: {
+  originalResults: ParserResultV2[];
+  approvedResults: ParserResultV2[];
+  existingRules: CanonicalRule[];
+}): CanonicalRule[] {
+  let rules = params.existingRules;
+
+  params.approvedResults.forEach((approvedResult, index) => {
+    const originalResult = params.originalResults[index];
+    const approvedMeta = getPayloadMeta(approvedResult);
+    const originalMeta = originalResult ? getPayloadMeta(originalResult) : undefined;
+
+    if (!approvedMeta) return;
+
+    for (const field of CANONICAL_FIELDS) {
+      const approvedCanonical = approvedMeta.canonical?.[field];
+      const originalCanonical = originalMeta?.canonical?.[field];
+      const rawValue = approvedCanonical?.rawValue || originalCanonical?.rawValue || approvedMeta[field] || originalMeta?.[field];
+      const canonicalValue = approvedCanonical?.value;
+
+      if (rawValue && canonicalValue) {
+        rules = mergeLearnedRule(rules, field, rawValue, canonicalValue);
+        continue;
+      }
+
+      if (originalCanonical?.ruleId && !approvedCanonical?.value) {
+        rules = incrementCanonicalRuleRejection(rules, originalCanonical.ruleId);
+      }
+    }
+  });
+
+  return rules;
 }

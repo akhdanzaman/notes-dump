@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { canonicalizeMeta, canonicalizeParserResults } from '../canonicalizerService';
+import { canonicalizeMeta, canonicalizeParserResults, learnCanonicalRulesFromReview } from '../canonicalizerService';
 import { CanonicalRule, ParserResultV2 } from '../../types';
 
 const rules: CanonicalRule[] = [
@@ -86,4 +86,104 @@ test('canonicalizeParserResults annotates create_item results with canonical rev
   const payload = next[0].payload as any;
   assert.equal(payload.meta.canonical.paymentMethod.value, 'BCA');
   assert.equal(next[0].canonicalReview?.length, 1);
+});
+
+test('learnCanonicalRulesFromReview stores approved canonical mappings', () => {
+  const approved: ParserResultV2[] = [
+    {
+      action: 'create_item',
+      entityType: 'finance',
+      confidence: 'medium',
+      needsReview: false,
+      payload: {
+        itemType: 'FINANCE',
+        content: 'kopken 28k',
+        meta: {
+          merchant: 'kopken',
+          canonical: {
+            merchant: {
+              rawValue: 'kopken',
+              value: 'Kopi Kenangan',
+              confidence: 0.8,
+              source: 'manual_review',
+              needsReview: false,
+            },
+          },
+        },
+      },
+    },
+  ];
+
+  const nextRules = learnCanonicalRulesFromReview({
+    originalResults: [],
+    approvedResults: approved,
+    existingRules: [],
+  });
+
+  assert.equal(nextRules.length, 1);
+  assert.equal(nextRules[0].field, 'merchant');
+  assert.equal(nextRules[0].canonicalValue, 'Kopi Kenangan');
+  assert.deepEqual(nextRules[0].aliases, ['kopken']);
+  assert.equal(nextRules[0].approvalCount, 1);
+});
+
+test('learnCanonicalRulesFromReview increments rejection count when suggestion is removed', () => {
+  const existingRules: CanonicalRule[] = [
+    {
+      id: 'merchant-wrong',
+      field: 'merchant',
+      canonicalValue: 'Wrong Merchant',
+      aliases: ['orange'],
+      source: 'learned',
+      approvalCount: 2,
+      rejectionCount: 0,
+      createdAt: '2026-05-02T00:00:00.000Z',
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    },
+  ];
+
+  const original: ParserResultV2[] = [
+    {
+      action: 'create_item',
+      entityType: 'finance',
+      confidence: 'medium',
+      needsReview: true,
+      payload: {
+        itemType: 'FINANCE',
+        content: 'orange 75k',
+        meta: {
+          merchant: 'orange',
+          canonical: {
+            merchant: {
+              rawValue: 'orange',
+              value: 'Wrong Merchant',
+              confidence: 0.7,
+              source: 'learned_rule',
+              ruleId: 'merchant-wrong',
+              needsReview: true,
+            },
+          },
+        },
+      },
+    },
+  ];
+
+  const approved: ParserResultV2[] = [
+    {
+      ...original[0],
+      payload: {
+        itemType: 'FINANCE',
+        content: 'orange 75k',
+        meta: { merchant: 'orange' },
+      },
+    },
+  ];
+
+  const nextRules = learnCanonicalRulesFromReview({
+    originalResults: original,
+    approvedResults: approved,
+    existingRules,
+  });
+
+  assert.equal(nextRules[0].rejectionCount, 1);
 });
