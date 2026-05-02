@@ -35,6 +35,8 @@ const ReviewCard: React.FC<{
 }> = ({ review, onApprove, onReject }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [results, setResults] = useState(review.results);
+  const [appliedSuggestionKeys, setAppliedSuggestionKeys] = useState<Set<string>>(new Set());
+  const [keptRawSuggestionKeys, setKeptRawSuggestionKeys] = useState<Set<string>>(new Set());
 
   const primaryResult = results[0];
   if (!primaryResult) return null;
@@ -76,7 +78,17 @@ const ReviewCard: React.FC<{
     });
   };
 
+  const suggestionKey = (suggestion: CanonicalReviewSuggestion) => `${suggestion.field}-${suggestion.rawValue || ''}-${suggestion.suggestedValue || ''}`;
+
   const handleApplyCanonicalSuggestion = (suggestion: CanonicalReviewSuggestion) => {
+    const key = suggestionKey(suggestion);
+    setAppliedSuggestionKeys(prev => new Set(prev).add(key));
+    setKeptRawSuggestionKeys(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+
     setResults(prev => {
       const newResults = [...prev];
       const first = { ...newResults[0] } as any;
@@ -120,6 +132,51 @@ const ReviewCard: React.FC<{
                 reason: suggestion.reason,
               }
             }
+          }
+        };
+      }
+
+      newResults[0] = first;
+      return newResults;
+    });
+  };
+
+  const handleKeepRawSuggestion = (suggestion: CanonicalReviewSuggestion) => {
+    const key = suggestionKey(suggestion);
+    setKeptRawSuggestionKeys(prev => new Set(prev).add(key));
+    setAppliedSuggestionKeys(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+
+    setResults(prev => {
+      const newResults = [...prev];
+      const first = { ...newResults[0] } as any;
+      const payload = first.payload;
+
+      if (!payload) return prev;
+
+      const removeField = (canonical?: Record<string, unknown>) => {
+        const next = { ...(canonical || {}) };
+        delete next[suggestion.field];
+        return next;
+      };
+
+      if ('meta' in payload) {
+        first.payload = {
+          ...payload,
+          meta: {
+            ...(payload.meta || {}),
+            canonical: removeField(payload.meta?.canonical),
+          }
+        };
+      } else if ('changes' in payload) {
+        first.payload = {
+          ...payload,
+          changes: {
+            ...(payload.changes || {}),
+            canonical: removeField(payload.changes?.canonical),
           }
         };
       }
@@ -261,24 +318,58 @@ const ReviewCard: React.FC<{
             <div className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
               Canonical Suggestions
             </div>
-            {canonicalReview.map((suggestion) => (
-              <div key={`${suggestion.field}-${suggestion.suggestedValue}`} className="flex items-start justify-between gap-2 bg-background/60 rounded-lg p-2 border border-border">
-                <div className="min-w-0">
-                  <div className="text-[11px] text-primary font-medium capitalize">
-                    {suggestion.field}: {suggestion.rawValue || '—'} → {suggestion.suggestedValue || '—'}
+            {canonicalReview.map((suggestion) => {
+              const key = suggestionKey(suggestion);
+              const isApplied = appliedSuggestionKeys.has(key);
+              const isKeptRaw = keptRawSuggestionKeys.has(key);
+
+              return (
+              <div key={key} className={`bg-background/60 rounded-lg p-2 border ${isApplied ? 'border-emerald-500/40' : isKeptRaw ? 'border-slate-500/30' : 'border-border'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted uppercase tracking-wide">
+                        {suggestion.field}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                        {Math.round(suggestion.confidence * 100)}%
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted">
+                        {suggestion.source.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-primary font-medium">
+                      <span className="text-muted">Raw:</span> {suggestion.rawValue || '—'}
+                      <span className="text-muted mx-1">→</span>
+                      <span className="text-indigo-500">{suggestion.suggestedValue || '—'}</span>
+                    </div>
+                    <div className="text-[10px] text-muted leading-tight">
+                      {suggestion.reason}
+                    </div>
+                    {(isApplied || isKeptRaw) && (
+                      <div className={`text-[10px] font-semibold ${isApplied ? 'text-emerald-500' : 'text-muted'}`}>
+                        {isApplied ? 'Using this canonical value on approval.' : 'Keeping raw value; approval will teach this as a rejection signal.'}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-[10px] text-muted leading-tight mt-0.5">
-                    {Math.round(suggestion.confidence * 100)}% • {suggestion.reason}
+                  <div className="shrink-0 flex flex-col gap-1">
+                    <button
+                      onClick={() => handleApplyCanonicalSuggestion(suggestion)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-semibold transition-colors ${isApplied ? 'bg-emerald-500 text-white' : 'bg-indigo-500 text-white hover:bg-indigo-600'}`}
+                    >
+                      {isApplied ? 'Using' : 'Use'}
+                    </button>
+                    <button
+                      onClick={() => handleKeepRawSuggestion(suggestion)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors ${isKeptRaw ? 'bg-surface-elevated text-primary border-border' : 'bg-background text-muted border-border hover:text-primary'}`}
+                    >
+                      Keep Raw
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleApplyCanonicalSuggestion(suggestion)}
-                  className="shrink-0 px-2 py-1 rounded-md bg-indigo-500 text-white text-[10px] font-semibold hover:bg-indigo-600 transition-colors"
-                >
-                  Use
-                </button>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

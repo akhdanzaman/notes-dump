@@ -1294,7 +1294,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </div>
                                                         <ul className="text-sm text-muted space-y-2 list-disc pl-4">
                                                             <li>Added Smart Canonicalizer foundations so parser results can store stable canonical merchant, payment method, and subcommodity metadata without changing raw user input.</li>
-                                                            <li>Pending Review now surfaces canonical suggestions, and approved review corrections can teach the app new learned mappings for future parses.</li>
+                                                            <li>Pending Review now surfaces canonical suggestions with Use/Keep Raw actions, so approvals can intentionally teach either accepted mappings or rejection signals.</li>
                                                             <li>Learned canonical aliases now merge deterministically, decay after rejection, and lose auto-apply when they become risky.</li>
                                                             <li>Added a safe historical canonical sweep that backfills high-confidence aliases, queues ambiguous old rows for review, and can be rerun from Data settings after rule improvements.</li>
                                                             <li>Money search, wallet filters, wallet balances, AI insights, and exports now read canonical merchant, payment method, commodity, and subcommodity clusters while preserving raw item text.</li>
