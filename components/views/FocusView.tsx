@@ -77,7 +77,7 @@ const FocusView: React.FC<FocusViewProps> = ({
     const { stats, logs } = getSkillItems(items, skills);
 
     // Main Tab Swipe Logic
-    const swipeHandlers = useSwipeTabs('focus', setActiveTab);
+    const swipeHandlers = useSwipeTabs('plan', setActiveTab);
 
     // Date Swipe Logic
     const changeMonth = (offset: number) => {

@@ -4,7 +4,8 @@ export enum ItemType {
   NOTE = 'NOTE',
   EVENT = 'EVENT',
   FINANCE = 'FINANCE',
-  JOURNAL = 'JOURNAL'
+  JOURNAL = 'JOURNAL',
+  SKILL_LOG = 'SKILL_LOG'
 }
 
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving';
@@ -162,7 +163,7 @@ export interface GitHubFileResponse {
 
 export type Tab = 'summary' | 'plan' | 'library' | 'money' | 'calendar';
 export type PlanSubTab = 'tasks' | 'shopping' | 'savings';
-export type FocusSubTab = PlanSubTab;
+export type FocusSubTab = 'tasks' | 'skills';
 export type LibrarySubTab = 'general' | 'skills' | 'journal';
 export type NotesSubTab = LibrarySubTab;
 export type SyncStatus = 'synced' | 'syncing' | 'saving' | 'error' | 'local';
@@ -179,7 +180,8 @@ export type ParsedItemType =
   | 'NOTE'
   | 'EVENT'
   | 'FINANCE'
-  | 'JOURNAL';
+  | 'JOURNAL'
+  | 'SKILL_LOG';
 
 export type ParsedWalletType = 'cash' | 'bank' | 'ewallet' | 'cc' | 'other';
 

@@ -63,7 +63,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Main Tab Swipe Logic
-    const swipeHandlers = useSwipeTabs('shopping', setActiveTab);
+    const swipeHandlers = useSwipeTabs('plan', setActiveTab);
 
     // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);

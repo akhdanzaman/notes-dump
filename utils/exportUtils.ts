@@ -5,7 +5,12 @@ import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 export interface SheetData {
   name: string;
   data: (string | number | boolean | null)[][];
+  inputOption?: 'RAW' | 'USER_ENTERED';
 }
+
+export const DASHBOARD_SHEET_NAME = 'Sheet1';
+export const DASHBOARD_HELPER_START_COLUMN_INDEX = 7; // Column H
+export const DASHBOARD_HELPER_END_COLUMN_INDEX = 21; // Up to Column U (exclusive)
 
 // Helper to format date
 const fmtDate = (dateStr?: string) => {
@@ -27,6 +32,247 @@ const getCategoryName = (id: string | undefined, budgetConfig: BudgetConfig) => 
     return r ? r.name : id;
 };
 
+const startOfDay = (date: Date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const getItemTimestamp = (item: BrainDumpItem) => {
+  const raw = item.completed_at || item.meta.date || item.meta.dateTime || item.meta.start || item.created_at;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : new Date(item.created_at).getTime();
+};
+
+const getCurrentMonthTheme = (monthlyThemes: Record<string, string>, now: Date) => {
+  const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return monthlyThemes[key] || '';
+};
+
+const getDaySeries = (days: number, computeValue: (dayStart: Date, dayEnd: Date) => number) => {
+  const today = startOfDay(new Date());
+  const start = new Date(today);
+  start.setDate(start.getDate() - (days - 1));
+
+  const values: number[] = [];
+  const labels: string[] = [];
+
+  for (let i = 0; i < days; i++) {
+    const dayStart = new Date(start);
+    dayStart.setDate(start.getDate() + i);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    labels.push(dayStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+    values.push(computeValue(dayStart, dayEnd));
+  }
+
+  return { labels, values };
+};
+
+const buildDashboardSheet = (
+  items: BrainDumpItem[],
+  skills: Skill[],
+  wallets: Wallet[],
+  budgetConfig: BudgetConfig,
+  monthlyThemes: Record<string, string>
+): SheetData => {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const next7Days = new Date(now);
+  next7Days.setDate(next7Days.getDate() + 7);
+
+  const isInCurrentMonth = (item: BrainDumpItem) => {
+    const ts = getItemTimestamp(item);
+    return ts >= monthStart.getTime() && ts < nextMonthStart.getTime();
+  };
+
+  const expenseLikeItems = items.filter(item => {
+    if (item.type === ItemType.SHOPPING && item.status === 'done' && item.meta.shoppingCategory !== 'saving') {
+      return true;
+    }
+    return item.type === ItemType.FINANCE && item.status === 'done';
+  });
+
+  const currentMonthExpenseItems = expenseLikeItems.filter(item => {
+    if (!isInCurrentMonth(item)) return false;
+    if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0;
+    return item.meta.financeType !== 'income' && item.meta.financeType !== 'transfer' && item.meta.financeType !== 'saving' && item.meta.financeType !== ACHIEVED_GOAL_FINANCE_TYPE;
+  });
+
+  const currentMonthIncomeItems = items.filter(item =>
+    item.type === ItemType.FINANCE
+    && item.status === 'done'
+    && item.meta.financeType === 'income'
+    && isInCurrentMonth(item)
+  );
+
+  const currentMonthSavingItems = items.filter(item =>
+    item.type === ItemType.FINANCE
+    && item.status === 'done'
+    && item.meta.financeType === 'saving'
+    && isInCurrentMonth(item)
+  );
+
+  const totalExpenses = currentMonthExpenseItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+  const totalIncome = currentMonthIncomeItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+  const totalSavings = currentMonthSavingItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+  const netCashFlow = totalIncome - totalExpenses - totalSavings;
+  const budgetUsed = budgetConfig.monthlyIncome > 0 ? totalExpenses / budgetConfig.monthlyIncome : 0;
+
+  const openTodos = items.filter(item => item.type === ItemType.TODO && item.status === 'pending').length;
+  const doneThisMonth = items.filter(item =>
+    (item.type === ItemType.TODO || item.type === ItemType.EVENT)
+    && item.status === 'done'
+    && item.completed_at
+    && new Date(item.completed_at).getTime() >= monthStart.getTime()
+    && new Date(item.completed_at).getTime() < nextMonthStart.getTime()
+  ).length;
+  const upcomingWeek = items.filter(item => {
+    if (item.status === 'done') return false;
+    if (item.type !== ItemType.TODO && item.type !== ItemType.EVENT && item.type !== ItemType.SHOPPING) return false;
+    const raw = item.meta.start || item.meta.date || item.meta.dateTime;
+    if (!raw) return false;
+    const ts = new Date(raw).getTime();
+    return Number.isFinite(ts) && ts >= now.getTime() && ts <= next7Days.getTime();
+  }).length;
+  const journalEntries = items.filter(item => item.type === ItemType.JOURNAL && isInCurrentMonth(item)).length;
+  const activeSavingGoals = items.filter(item => item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'saving' && item.status !== 'done').length;
+
+  const expenseCategoryTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
+    const key = getCategoryName(item.meta.budgetCategory, budgetConfig) || 'Uncategorised';
+    acc[key] = (acc[key] || 0) + (item.meta.amount || 0);
+    return acc;
+  }, {});
+
+  const topCategories = Object.entries(expenseCategoryTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const merchantTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
+    const key = getCanonicalOrRawItemValue(item, 'merchant') || item.content;
+    if (!key) return acc;
+    acc[key] = (acc[key] || 0) + (item.meta.amount || 0);
+    return acc;
+  }, {});
+
+  const topMerchants = Object.entries(merchantTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const upcomingHighlights = items
+    .filter(item => {
+      if (item.status === 'done') return false;
+      if (item.type !== ItemType.TODO && item.type !== ItemType.EVENT && item.type !== ItemType.SHOPPING) return false;
+      const raw = item.meta.start || item.meta.date || item.meta.dateTime;
+      if (!raw) return false;
+      const ts = new Date(raw).getTime();
+      return Number.isFinite(ts) && ts >= now.getTime();
+    })
+    .sort((a, b) => {
+      const left = new Date(a.meta.start || a.meta.date || a.meta.dateTime || a.created_at).getTime();
+      const right = new Date(b.meta.start || b.meta.date || b.meta.dateTime || b.created_at).getTime();
+      return left - right;
+    })
+    .slice(0, 5)
+    .map(item => {
+      const raw = item.meta.start || item.meta.date || item.meta.dateTime || item.created_at;
+      const label = new Date(raw).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return `${label} • ${item.content}`;
+    });
+
+  const expenseSeries = getDaySeries(14, (dayStart, dayEnd) =>
+    expenseLikeItems
+      .filter(item => {
+        const ts = getItemTimestamp(item);
+        if (ts < dayStart.getTime() || ts >= dayEnd.getTime()) return false;
+        if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0 && item.status === 'done' && item.meta.shoppingCategory !== 'saving';
+        return item.status === 'done' && item.meta.financeType !== 'income' && item.meta.financeType !== 'transfer' && item.meta.financeType !== 'saving' && item.meta.financeType !== ACHIEVED_GOAL_FINANCE_TYPE;
+      })
+      .reduce((sum, item) => sum + (item.meta.amount || 0), 0)
+  );
+
+  const incomeSeries = getDaySeries(14, (dayStart, dayEnd) =>
+    items
+      .filter(item => item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'income')
+      .filter(item => {
+        const ts = getItemTimestamp(item);
+        return ts >= dayStart.getTime() && ts < dayEnd.getTime();
+      })
+      .reduce((sum, item) => sum + (item.meta.amount || 0), 0)
+  );
+
+  const completedTaskSeries = getDaySeries(14, (dayStart, dayEnd) =>
+    items.filter(item =>
+      (item.type === ItemType.TODO || item.type === ItemType.EVENT)
+      && item.status === 'done'
+      && item.completed_at
+      && new Date(item.completed_at).getTime() >= dayStart.getTime()
+      && new Date(item.completed_at).getTime() < dayEnd.getTime()
+    ).length
+  );
+
+  const captureSeries = getDaySeries(14, (dayStart, dayEnd) =>
+    items.filter(item => {
+      const createdAt = new Date(item.created_at).getTime();
+      return createdAt >= dayStart.getTime() && createdAt < dayEnd.getTime();
+    }).length
+  );
+
+  const totalSkillMinutes = items
+    .filter(item => item.type === ItemType.SKILL_LOG || !!item.meta.skillId || !!item.meta.skillName)
+    .filter(isInCurrentMonth)
+    .reduce((sum, item) => sum + (item.meta.durationMinutes || 0), 0);
+
+  const activeWallets = wallets.length;
+  const activeSkills = skills.length;
+  const monthTheme = getCurrentMonthTheme(monthlyThemes, now);
+
+  const fallbackRows = (entries: string[], count = 5) => Array.from({ length: count }, (_, i) => entries[i] || '—');
+  const categoryRows = fallbackRows(topCategories.map(([name, amount]) => `${name} — ${amount}`));
+  const merchantRows = fallbackRows(topMerchants.map(([name, amount]) => `${name} — ${amount}`));
+  const upcomingRows = fallbackRows(upcomingHighlights);
+
+  return {
+    name: DASHBOARD_SHEET_NAME,
+    inputOption: 'USER_ENTERED',
+    data: [
+      ['BRAINDUMP HQ', '', '', '', '', '', '', ...expenseSeries.labels],
+      [
+        'Auto-generated finance + life tracker command center',
+        '', '', '', '', '', '',
+        ...expenseSeries.values
+      ],
+      [
+        monthTheme ? `Theme of the month: ${monthTheme}` : `Generated ${now.toLocaleString()}`,
+        '', '', '', '', '', '',
+        ...incomeSeries.values
+      ],
+      ['', '', '', '', '', '', '', ...completedTaskSeries.values],
+      ['FINANCE PULSE', '', '', 'LIFE TRACKER', '', '', '', ...captureSeries.values],
+      ['Net Cash Flow', netCashFlow, '', 'Open Todos', openTodos, '', ''],
+      ['Income MTD', totalIncome, '', 'Done This Month', doneThisMonth, '', ''],
+      ['Expense MTD', totalExpenses, '', 'Upcoming 7d', upcomingWeek, '', ''],
+      ['Savings Added', totalSavings, '', 'Journal Entries', journalEntries, '', ''],
+      ['Budget Used', budgetUsed, '', 'Savings Goals / Skills / Wallets', `${activeSavingGoals} / ${activeSkills} / ${activeWallets}`, '', ''],
+      ['', '', '', '', '', '', ''],
+      ['14-DAY TREND', '', '', 'TOP SPEND CATEGORIES', '', '', ''],
+      ['Expense Burn', '=SPARKLINE(H2:U2)', '', categoryRows[0], '', '', ''],
+      ['Income Pulse', '=SPARKLINE(H3:U3)', '', categoryRows[1], '', '', ''],
+      ['Tasks Done', '=SPARKLINE(H4:U4)', '', categoryRows[2], '', '', ''],
+      ['Capture Volume', '=SPARKLINE(H5:U5)', '', categoryRows[3], '', '', ''],
+      ['Skill Minutes', totalSkillMinutes, '', categoryRows[4], '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['UPCOMING RADAR', '', '', 'TOP MERCHANTS', '', '', ''],
+      [upcomingRows[0], '', '', merchantRows[0], '', '', ''],
+      [upcomingRows[1], '', '', merchantRows[1], '', '', ''],
+      [upcomingRows[2], '', '', merchantRows[2], '', '', ''],
+      [upcomingRows[3], '', '', merchantRows[3], '', '', ''],
+      [upcomingRows[4], '', '', merchantRows[4], '', '', ''],
+    ]
+  };
+};
+
 export const generateExportData = (
   items: BrainDumpItem[],
   skills: Skill[],
@@ -35,7 +281,7 @@ export const generateExportData = (
   monthlyThemes: Record<string, string>,
   appSettings: AppSettings
 ): SheetData[] => {
-  const sheets: SheetData[] = [];
+  const sheets: SheetData[] = [buildDashboardSheet(items, skills, wallets, budgetConfig, monthlyThemes)];
 
   // --- Sheet 1: Transactions (Money Tab) ---
   const transactions = items

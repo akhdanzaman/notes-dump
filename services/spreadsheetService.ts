@@ -1,7 +1,7 @@
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule } from "../types";
 import { SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
-import { generateExportData, SheetData } from "../utils/exportUtils";
+import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
 import { getValidGoogleAccessToken } from "./googleProfileService";
 
@@ -17,6 +17,7 @@ const MAX_HISTORY_COLUMNS = 'ZZZ';
 const SYSTEM_SNAPSHOT_MARKER = '__BRAINDUMP_STATE_V2__';
 const SYSTEM_SNAPSHOT_VERSION = 2;
 const MANAGED_USER_SHEET_NAMES = [
+  DASHBOARD_SHEET_NAME,
   'Transactions',
   'Todos',
   'Shopping',
@@ -110,6 +111,20 @@ let lastSnapshot: string | null = null;
 let needsInitialSpreadsheetWrite = false;
 let operationQueue: Promise<any> = Promise.resolve();
 
+const hexToRgb = (hex: string) => {
+  const normalized = hex.replace('#', '');
+  const expanded = normalized.length === 3
+    ? normalized.split('').map(char => char + char).join('')
+    : normalized;
+
+  const value = parseInt(expanded, 16);
+  return {
+    red: ((value >> 16) & 255) / 255,
+    green: ((value >> 8) & 255) / 255,
+    blue: (value & 255) / 255,
+  };
+};
+
 const buildSystemSheetRows = (jsonString: string, status: SystemSheetSyncStatus): string[][] => {
   const CHUNK_SIZE = 45000; // Safe limit below 50,000
   const chunks: string[] = [];
@@ -170,6 +185,175 @@ const extractSystemSheetSnapshot = (sheet: any): { jsonString: string; status: S
     status: 'ready',
     format: 'legacy'
   };
+};
+
+const isValidSystemSnapshotSheet = (sheet: any) => {
+  try {
+    const snapshot = extractSystemSheetSnapshot(sheet);
+    const parsed = JSON.parse(snapshot.jsonString);
+    return !!parsed && typeof parsed === 'object';
+  } catch {
+    return false;
+  }
+};
+
+const buildDashboardFormattingRequests = (sheetId: number) => {
+  const visibleEndColumn = 6;
+
+  return [
+    {
+      updateSheetProperties: {
+        properties: {
+          sheetId,
+          index: 0,
+          gridProperties: { frozenRowCount: 3 }
+        },
+        fields: 'index,gridProperties.frozenRowCount'
+      }
+    },
+    {
+      unmergeCells: {
+        range: { sheetId, startRowIndex: 0, endRowIndex: 24, startColumnIndex: 0, endColumnIndex: visibleEndColumn }
+      }
+    },
+    {
+      mergeCells: {
+        range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        mergeType: 'MERGE_ALL'
+      }
+    },
+    {
+      mergeCells: {
+        range: { sheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        mergeType: 'MERGE_ALL'
+      }
+    },
+    {
+      mergeCells: {
+        range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        mergeType: 'MERGE_ALL'
+      }
+    },
+    ...[
+      [4, 5, 0, 3],
+      [4, 5, 3, 6],
+      [11, 12, 0, 3],
+      [11, 12, 3, 6],
+      [18, 19, 0, 3],
+      [18, 19, 3, 6],
+    ].map(([startRowIndex, endRowIndex, startColumnIndex, endColumnIndex]) => ({
+      mergeCells: {
+        range: { sheetId, startRowIndex, endRowIndex, startColumnIndex, endColumnIndex },
+        mergeType: 'MERGE_ALL'
+      }
+    })),
+    {
+      repeatCell: {
+        range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: hexToRgb('#111827'),
+            textFormat: { foregroundColor: hexToRgb('#F9FAFB'), fontSize: 18, bold: true },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+      }
+    },
+    {
+      repeatCell: {
+        range: { sheetId, startRowIndex: 1, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: hexToRgb('#EEF2FF'),
+            textFormat: { foregroundColor: hexToRgb('#312E81'), fontSize: 10, italic: true },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+      }
+    },
+    ...[
+      { row: 4, color: '#DBEAFE', text: '#1D4ED8' },
+      { row: 11, color: '#EDE9FE', text: '#6D28D9' },
+      { row: 18, color: '#DCFCE7', text: '#166534' },
+    ].map(({ row, color, text }) => ({
+      repeatCell: {
+        range: { sheetId, startRowIndex: row, endRowIndex: row + 1, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: hexToRgb(color),
+            textFormat: { foregroundColor: hexToRgb(text), fontSize: 11, bold: true },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+      }
+    })),
+    {
+      repeatCell: {
+        range: { sheetId, startRowIndex: 5, endRowIndex: 24, startColumnIndex: 0, endColumnIndex: visibleEndColumn },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: hexToRgb('#FFFFFF'),
+            textFormat: { foregroundColor: hexToRgb('#111827'), fontSize: 10 },
+            wrapStrategy: 'WRAP',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)'
+      }
+    },
+    ...[
+      { startRowIndex: 5, endRowIndex: 10, startColumnIndex: 1, endColumnIndex: 2, type: 'CURRENCY', pattern: 'Rp#,##0' },
+      { startRowIndex: 9, endRowIndex: 10, startColumnIndex: 1, endColumnIndex: 2, type: 'PERCENT', pattern: '0%' },
+      { startRowIndex: 5, endRowIndex: 10, startColumnIndex: 4, endColumnIndex: 5 },
+      { startRowIndex: 12, endRowIndex: 17, startColumnIndex: 1, endColumnIndex: 2 },
+    ].map(({ type, pattern, ...range }) => ({
+      repeatCell: {
+        range: { sheetId, ...range },
+        cell: {
+          userEnteredFormat: {
+            textFormat: { bold: true, fontSize: 12 },
+            horizontalAlignment: 'LEFT',
+            ...(type ? { numberFormat: { type, pattern } } : {})
+          }
+        },
+        fields: type
+          ? 'userEnteredFormat(textFormat,horizontalAlignment,numberFormat)'
+          : 'userEnteredFormat(textFormat,horizontalAlignment)'
+      }
+    })),
+    ...[
+      { startIndex: 0, endIndex: 1, pixelSize: 240 },
+      { startIndex: 1, endIndex: 2, pixelSize: 170 },
+      { startIndex: 2, endIndex: 3, pixelSize: 32 },
+      { startIndex: 3, endIndex: 4, pixelSize: 260 },
+      { startIndex: 4, endIndex: 5, pixelSize: 170 },
+      { startIndex: 5, endIndex: 6, pixelSize: 32 },
+    ].map(({ startIndex, endIndex, pixelSize }) => ({
+      updateDimensionProperties: {
+        range: { sheetId, dimension: 'COLUMNS', startIndex, endIndex },
+        properties: { pixelSize },
+        fields: 'pixelSize'
+      }
+    })),
+    {
+      updateDimensionProperties: {
+        range: {
+          sheetId,
+          dimension: 'COLUMNS',
+          startIndex: DASHBOARD_HELPER_START_COLUMN_INDEX,
+          endIndex: DASHBOARD_HELPER_END_COLUMN_INDEX
+        },
+        properties: { hiddenByUser: true },
+        fields: 'hiddenByUser'
+      }
+    }
+  ];
 };
 
 export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
@@ -349,13 +533,20 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
     
     let dbData;
     let systemSheetStatus: SystemSheetSyncStatus = 'ready';
-    if (isNewSpreadsheet) {
+    const hasValidSystemSheet = systemSheet ? isValidSystemSnapshotSheet(systemSheet) : false;
+
+    if (!hasValidSystemSheet && systemSheetName === SYSTEM_SHEET_NAME && systemSheet) {
+        processFetchResponse(systemSheet, skipLocalStorage);
+    }
+
+    if (isNewSpreadsheet && !hasValidSystemSheet) {
         console.log("New spreadsheet detected, seeding from spreadsheet cache/legacy browser cache if available.");
         dbData = getCachedSpreadsheetDb() || { data: [] };
     } else {
         const fetched = processFetchResponse(systemSheet, skipLocalStorage);
         dbData = fetched.data;
         systemSheetStatus = fetched.systemStatus;
+        isNewSpreadsheet = false;
     }
     
     let reconciled = false;
@@ -514,7 +705,8 @@ const performSync = async (
     const metaRes = await sheetsFetch(config.spreadsheetId, '');
     if (!metaRes.ok) throw new Error(`Failed to fetch spreadsheet metadata: ${await metaRes.text()}`);
     const meta = await metaRes.json();
-    const existingSheetTitles = new Set((meta.sheets || []).map((s: any) => s.properties.title));
+    let liveMeta = meta;
+    let existingSheetTitles = new Set((liveMeta.sheets || []).map((s: any) => s.properties.title));
 
     // 3. Create missing sheets
     console.log("Creating missing sheets...");
@@ -547,6 +739,11 @@ const performSync = async (
         body: JSON.stringify({ requests })
       });
       if (!batchRes.ok) throw new Error(`Failed to create sheets: ${await batchRes.text()}`);
+
+      const refreshedMetaRes = await sheetsFetch(config.spreadsheetId, '');
+      if (!refreshedMetaRes.ok) throw new Error(`Failed to refresh spreadsheet metadata: ${await refreshedMetaRes.text()}`);
+      liveMeta = await refreshedMetaRes.json();
+      existingSheetTitles = new Set((liveMeta.sheets || []).map((s: any) => s.properties.title));
     }
 
     // 4. Write the system snapshot first so refreshes never see an empty source-of-truth.
@@ -589,14 +786,19 @@ const performSync = async (
     // 6. Write new data - Split into chunks to avoid payload limits
     console.log("Writing new data...");
 
-    const userSheetsData = exportSheets.map(sheet => ({
-        range: `'${sheet.name}'!A1`,
-        values: sheet.data
-    }));
+    const groupedUserSheets = exportSheets.reduce<Record<string, { range: string; values: SheetData['data'] }[]>>((acc, sheet) => {
+        const inputOption = sheet.inputOption || 'RAW';
+        if (!acc[inputOption]) acc[inputOption] = [];
+        acc[inputOption].push({
+          range: `'${sheet.name}'!A1`,
+          values: sheet.data
+        });
+        return acc;
+    }, {});
 
     // Update User Sheets
-    if (userSheetsData.length > 0) {
-        for (let i = 0; i < userSheetsData.length; i += MAX_WRITE_BATCH_SIZE) {
+    for (const [inputOption, userSheetsData] of Object.entries(groupedUserSheets)) {
+      for (let i = 0; i < userSheetsData.length; i += MAX_WRITE_BATCH_SIZE) {
             const batch = userSheetsData.slice(i, i + MAX_WRITE_BATCH_SIZE);
             const updateUserRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
                 method: 'POST',
@@ -604,7 +806,7 @@ const performSync = async (
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    valueInputOption: 'RAW',
+                    valueInputOption: inputOption,
                     data: batch
                 })
             });
@@ -615,6 +817,23 @@ const performSync = async (
                 throw new Error(`Failed to write user-facing sheets: ${updateUserRes.status} ${updateUserRes.statusText}`);
             }
         }
+    }
+
+    const dashboardSheetId = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DASHBOARD_SHEET_NAME)?.properties?.sheetId;
+    if (typeof dashboardSheetId === 'number') {
+      const dashboardRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          requests: buildDashboardFormattingRequests(dashboardSheetId)
+        })
+      });
+
+      if (!dashboardRes.ok) {
+        console.warn('Failed to format dashboard sheet:', await dashboardRes.text());
+      }
     }
 
     // 7. Finalize the system snapshot only after user-facing sheets are fully updated.

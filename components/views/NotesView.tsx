@@ -61,7 +61,7 @@ const NotesView: React.FC<NotesViewProps> = ({
     const skillItems = getNoteItems(items, 'skills', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
 
     // Main Tab Swipe Logic
-    const swipeHandlers = useSwipeTabs('notes', setActiveTab);
+    const swipeHandlers = useSwipeTabs('library', setActiveTab);
 
     // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);

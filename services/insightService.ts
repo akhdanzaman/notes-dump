@@ -12,6 +12,12 @@ export interface Insight {
   iconType: 'finance' | 'task' | 'shopping' | 'skill';
 }
 
+export const getEffectiveInsightTime = (item: Pick<BrainDumpItem, 'created_at' | 'completed_at' | 'meta'>): number => {
+  const raw = item.completed_at || item.meta.date || item.meta.dateTime || item.created_at;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : new Date(item.created_at).getTime();
+};
+
 export const generateAIInsights = async (
   items: BrainDumpItem[],
   budgetConfig: BudgetConfig,

@@ -62,8 +62,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
 
-    const getItemsForDate = (date: Date) => {
-        return items.flatMap(item => {
+    const getItemsForDate = (date: Date): BrainDumpItem[] => {
+        return items.flatMap<BrainDumpItem>((item) => {
             if (item.type !== ItemType.TODO && item.type !== ItemType.EVENT && item.type !== ItemType.SHOPPING) {
                 return [];
             }
@@ -104,7 +104,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 const completedDate = item.completed_at ? new Date(item.completed_at) : null;
                 if (completedDate) completedDate.setHours(0, 0, 0, 0);
 
-                const occurrenceStatus = completedDate && isSameDay(completedDate, compareDate)
+                const occurrenceStatus: BrainDumpItem['status'] = completedDate && isSameDay(completedDate, compareDate)
                     ? 'done'
                     : 'pending';
 

@@ -15,7 +15,7 @@ export const getNoteItems = (
     if (notesSubTab === 'general') {
         relevantItems = items.filter(i => i.type === ItemType.NOTE && i.status !== 'done');
     } else if (notesSubTab === 'skills') {
-        relevantItems = [];
+        relevantItems = items.filter(i => i.type === ItemType.SKILL_LOG || !!i.meta.skillId || !!i.meta.skillName);
     } else {
         // JOURNAL: Include explicit journals AND done TODO items (excluding routines, as they generate their own history items)
         relevantItems = items.filter(i => 

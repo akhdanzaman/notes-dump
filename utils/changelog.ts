@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.11',
+    date: 'May 2026',
+    items: [
+      'Sheet1 now auto-generates a polished BrainDump dashboard with finance + life tracker summaries, upcoming radar, merchant/category highlights, and built-in sparkline charts.',
+      'Google Sheets sync now reapplies dashboard layout formatting so the first tab stays readable and presentable after every save.',
+      'Fixed lingering TypeScript/lint breakages around tabs, skill logs, calendar typing, and insight timestamp helpers.',
+    ],
+  },
+  {
     version: 'v0.3.10',
     date: 'May 2026',
     items: [
