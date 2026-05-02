@@ -24,6 +24,7 @@ interface ControlCenterProps {
     onRunCanonicalBackfill?: () => { autoAppliedCount: number; reviewSuggestionCount: number; changedItemIds: string[]; reviews: unknown[] };
     canonicalRules?: CanonicalRule[];
     pendingReviews?: { id: string; text: string; results: ParserResultV2[] }[];
+    onToggleCanonicalRuleDisabled?: (ruleId: string) => void;
     
     // App State & Settings
     appSettings: AppSettings;
@@ -82,7 +83,7 @@ const ClockDisplay = () => {
 };
 
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
-    isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [],
+    isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
     appSettings, setAppSettings, error, pendingCount, parsingTasks, retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes,
@@ -105,6 +106,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const canonicalizedItemCount = allItems.filter(item => Object.keys(item.meta.canonical || {}).length > 0).length;
     const pendingCanonicalSuggestionCount = pendingReviews.reduce((sum, review) =>
         sum + review.results.reduce((inner, result) => inner + (result.canonicalReview?.length || 0), 0), 0);
+    const learnedCanonicalRules = canonicalRules
+        .filter(rule => rule.source === 'learned')
+        .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+        .slice(0, 5);
 
     const fetchHistory = async () => {
         setIsFetchingHistory(true);
@@ -987,6 +992,35 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 {canonicalRuleStats.disabled} disabled learned rule(s); {canonicalRuleStats.learned - canonicalRuleStats.activeLearned} learned rule(s) currently not auto-applying.
                                                             </div>
                                                         )}
+                                                        {learnedCanonicalRules.length > 0 && (
+                                                            <div className="space-y-2">
+                                                                <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Recent Learned Rules</div>
+                                                                {learnedCanonicalRules.map(rule => (
+                                                                    <div key={rule.id} className="bg-surface border border-border rounded-xl p-3 flex items-start justify-between gap-3">
+                                                                        <div className="min-w-0">
+                                                                            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-background border border-border text-muted uppercase">{rule.field}</span>
+                                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${rule.disabled ? 'bg-red-500/10 text-red-500 border-red-500/20' : rule.autoApplyDisabled ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                                                                                    {rule.disabled ? 'disabled' : rule.autoApplyDisabled ? 'review-only' : 'auto-apply'}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="text-xs font-semibold text-primary truncate">{rule.aliases.slice(0, 2).join(', ') || '—'} → {rule.canonicalValue}</div>
+                                                                            <div className="text-[10px] text-muted mt-1">
+                                                                                {rule.approvalCount} approval(s), {rule.rejectionCount} rejection(s){rule.disabledReason ? ` • ${rule.disabledReason}` : ''}
+                                                                            </div>
+                                                                        </div>
+                                                                        {onToggleCanonicalRuleDisabled && (
+                                                                            <button
+                                                                                onClick={() => onToggleCanonicalRuleDisabled(rule.id)}
+                                                                                className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-colors ${rule.disabled ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20'}`}
+                                                                            >
+                                                                                {rule.disabled ? 'Enable' : 'Disable'}
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                         <button
                                                             onClick={() => {
                                                                 const result = onRunCanonicalBackfill();
@@ -1336,7 +1370,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <li>Pending Review now surfaces canonical suggestions with Use/Keep Raw actions, so approvals can intentionally teach either accepted mappings or rejection signals.</li>
                                                             <li>Learned canonical aliases now merge deterministically, decay after rejection, and lose auto-apply when they become risky.</li>
                                                             <li>Added a safe historical canonical sweep that backfills high-confidence aliases, queues ambiguous old rows for review, and can be rerun from Data settings after rule improvements.</li>
-                                                            <li>Control Center now shows canonical data quality coverage, learned-rule counts, review pressure, and rejected-rule guardrails before rerunning the sweep.</li>
+                                                            <li>Control Center now shows canonical data quality coverage, learned-rule counts, review pressure, rejected-rule guardrails, and recent learned-rule controls before rerunning the sweep.</li>
                                                             <li>Money search, wallet filters, wallet balances, AI insights, and exports now read canonical merchant, payment method, commodity, and subcommodity clusters while preserving raw item text.</li>
                                                         </ul>
                                                     </div>

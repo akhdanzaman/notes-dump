@@ -434,6 +434,25 @@ export const useBrainDumpData = () => {
         return sweep;
     }, [replaceHistoricalCanonicalReviews, saveAndSync]);
 
+    const toggleCanonicalRuleDisabled = useCallback((ruleId: string) => {
+        const timestamp = new Date().toISOString();
+        const nextRules = canonicalRulesRef.current.map(rule => {
+            if (rule.id !== ruleId || rule.source !== 'learned') return rule;
+            const nextDisabled = !rule.disabled;
+            return {
+                ...rule,
+                disabled: nextDisabled,
+                autoApplyDisabled: nextDisabled ? true : rule.rejectionCount >= 2,
+                disabledReason: nextDisabled ? 'manually disabled in Control Center' : undefined,
+                updatedAt: timestamp,
+            };
+        });
+
+        canonicalRulesRef.current = nextRules;
+        setCanonicalRules(nextRules);
+        saveAndSync(undefined, undefined, undefined, undefined, undefined, undefined, undefined, nextRules);
+    }, [saveAndSync]);
+
     const isSyncingRef = useRef(false);
 
     const loadData = useCallback(async () => {
@@ -1576,6 +1595,7 @@ export const useBrainDumpData = () => {
         loadData,
         saveAndSync,
         runCanonicalBackfill,
+        toggleCanonicalRuleDisabled,
         handleSend,
         retryParsing,
         clearParsingTask,

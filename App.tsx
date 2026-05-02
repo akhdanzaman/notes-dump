@@ -40,7 +40,7 @@ const App: React.FC = () => {
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
       loading, error, pendingCount, parsingTasks, pendingReviews, canonicalRules, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
+      handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, toggleCanonicalRuleDisabled, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
   // Onboarding State
@@ -744,6 +744,7 @@ const App: React.FC = () => {
         onRunCanonicalBackfill={runCanonicalBackfill}
         canonicalRules={canonicalRules}
         pendingReviews={pendingReviews}
+        onToggleCanonicalRuleDisabled={toggleCanonicalRuleDisabled}
         appSettings={appSettings}
         setAppSettings={setAppSettings}
         error={error}
