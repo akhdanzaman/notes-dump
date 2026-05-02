@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.15',
+    date: 'May 2026',
+    items: [
+      'Fixed a journal refresh bug where same-day appended journal entries could come back from Google Sheets as regular notes and vanish from the Journal tab.',
+      'Spreadsheet note/journal reconciliation now treats uppercase JOURNAL rows correctly and preserves their IDs when rebuilding local state.',
+    ],
+  },
+  {
     version: 'v0.3.14',
     date: 'May 2026',
     items: [

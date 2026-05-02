@@ -7,6 +7,11 @@ const fmtDate = (dateStr?: string) => {
     return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString();
 };
 
+const parseNotesSheetItemType = (value: unknown): ItemType => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return normalized === 'journal' ? ItemType.JOURNAL : ItemType.NOTE;
+};
+
 export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSchema => {
     if (!Array.isArray(valueRanges)) return db;
     const newItems = [...db.data];
@@ -517,8 +522,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 seenItemIds.add(match.id);
                 let updated = false;
                 if (match.content !== content) { match.content = content; updated = true; }
-                const newType = type === 'journal' ? ItemType.JOURNAL : ItemType.NOTE;
+                const newType = parseNotesSheetItemType(type);
                 if (match.type !== newType) { match.type = newType; updated = true; }
+
+                if (newType === ItemType.JOURNAL) {
+                    if (match.status !== 'done') { match.status = 'done'; updated = true; }
+                    const journalCompletedAt = match.completed_at || match.meta.date || match.created_at;
+                    if (match.completed_at !== journalCompletedAt) { match.completed_at = journalCompletedAt; updated = true; }
+                }
                 
                 const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
@@ -533,15 +544,17 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             } else {
                 const parsedDate = new Date(date);
                 const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
-                const newId = uuidv4();
+                const itemType = parseNotesSheetItemType(type);
+                const newId = idStr || uuidv4();
                 newItems.push({
                     id: newId,
-                    type: (type === 'journal' ? ItemType.JOURNAL : ItemType.NOTE),
+                    type: itemType,
                     content: content || 'Manual Note',
-                    status: 'done',
+                    status: itemType === ItemType.JOURNAL ? 'done' : 'pending',
                     created_at: isoDate,
+                    completed_at: itemType === ItemType.JOURNAL ? isoDate : undefined,
                     meta: {
-                        date: isoDate,
+                        date: itemType === ItemType.JOURNAL ? isoDate : undefined,
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : []
                     }
                 });
