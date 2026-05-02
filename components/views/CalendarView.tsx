@@ -19,6 +19,12 @@ const getDateKey = (date: Date) => {
     return `${year}-${month}-${day}`;
 };
 
+const isSameDay = (left: Date, right: Date) => (
+    left.getDate() === right.getDate() &&
+    left.getMonth() === right.getMonth() &&
+    left.getFullYear() === right.getFullYear()
+);
+
 const getItemTypeLabel = (type: ItemType) => {
     switch (type) {
         case ItemType.TODO:
@@ -57,38 +63,60 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
 
     const getItemsForDate = (date: Date) => {
-        return items.filter(item => {
+        return items.flatMap(item => {
             if (item.type !== ItemType.TODO && item.type !== ItemType.EVENT && item.type !== ItemType.SHOPPING) {
-                return false;
+                return [];
             }
 
             if (item.meta.hideFromCalendar) {
-                return false;
+                return [];
             }
 
             if (item.meta.isRoutine || item.meta.shoppingCategory === 'routine') {
+                const anchorStr = item.meta.start || item.meta.date || item.meta.dateTime || item.created_at;
+                const anchorDate = anchorStr ? new Date(anchorStr) : new Date(item.created_at);
+                anchorDate.setHours(0, 0, 0, 0);
+
+                const compareDate = new Date(date);
+                compareDate.setHours(12, 0, 0, 0);
+
                 const interval = item.meta.routineInterval;
-                if (interval === 'daily') return true;
-                if (interval === 'weekly' && item.meta.routineDaysOfWeek) {
-                    return item.meta.routineDaysOfWeek.includes(date.getDay());
+                let occursOnDate = false;
+
+                if (interval === 'daily') occursOnDate = compareDate >= anchorDate;
+                else if (interval === 'weekly' && item.meta.routineDaysOfWeek) {
+                    occursOnDate = compareDate >= anchorDate && item.meta.routineDaysOfWeek.includes(compareDate.getDay());
+                } else if (interval === 'monthly' && item.meta.routineDaysOfMonth) {
+                    occursOnDate = compareDate >= anchorDate && item.meta.routineDaysOfMonth.includes(compareDate.getDate());
+                } else if (interval === 'yearly' && item.meta.routineMonthsOfYear && item.meta.routineDaysOfMonth) {
+                    occursOnDate = compareDate >= anchorDate &&
+                        item.meta.routineMonthsOfYear.includes(compareDate.getMonth()) &&
+                        item.meta.routineDaysOfMonth.includes(compareDate.getDate());
+                } else if (!interval && item.meta.recurrenceDays) {
+                    const diffDays = Math.floor((compareDate.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24));
+                    occursOnDate = diffDays >= 0 && diffDays % item.meta.recurrenceDays === 0;
+                } else if (!interval) {
+                    occursOnDate = isSameDay(anchorDate, compareDate);
                 }
-                if (interval === 'monthly' && item.meta.routineDaysOfMonth) {
-                    return item.meta.routineDaysOfMonth.includes(date.getDate());
-                }
-                if (interval === 'yearly' && item.meta.routineMonthsOfYear && item.meta.routineDaysOfMonth) {
-                    return item.meta.routineMonthsOfYear.includes(date.getMonth()) &&
-                           item.meta.routineDaysOfMonth.includes(date.getDate());
-                }
-                if (!interval) {
-                    const itemDateStr = item.meta.start || item.meta.date || item.meta.dateTime;
-                    if (itemDateStr) {
-                        const itemDate = new Date(itemDateStr);
-                        return itemDate.getDate() === date.getDate() &&
-                               itemDate.getMonth() === date.getMonth() &&
-                               itemDate.getFullYear() === date.getFullYear();
+
+                if (!occursOnDate) return [];
+
+                const completedDate = item.completed_at ? new Date(item.completed_at) : null;
+                if (completedDate) completedDate.setHours(0, 0, 0, 0);
+
+                const occurrenceStatus = completedDate && isSameDay(completedDate, compareDate)
+                    ? 'done'
+                    : 'pending';
+
+                return [{
+                    ...item,
+                    status: occurrenceStatus,
+                    completed_at: occurrenceStatus === 'done' ? item.completed_at : undefined,
+                    meta: {
+                        ...item.meta,
+                        date: compareDate.toISOString()
                     }
-                }
-                return false;
+                }];
             }
 
             const startStr = item.meta.start;
@@ -108,17 +136,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 const compareDate = new Date(date);
                 compareDate.setHours(12, 0, 0, 0);
 
-                return compareDate >= startDate && compareDate <= endDate;
+                return compareDate >= startDate && compareDate <= endDate ? [item] : [];
             }
 
             if (dateStr) {
                 const itemDate = new Date(dateStr);
-                return itemDate.getDate() === date.getDate() &&
-                       itemDate.getMonth() === date.getMonth() &&
-                       itemDate.getFullYear() === date.getFullYear();
+                return isSameDay(itemDate, date) ? [item] : [];
             }
 
-            return false;
+            return [];
         });
     };
 

@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.9',
+    date: 'May 2026',
+    items: [
+      'Fixed recurring task status in Calendar so a completed occurrence no longer makes future occurrences look done too.',
+      'Routine items now compute status per occurrence date, including recurrenceDays-based routines, so history and upcoming instances render more truthfully.',
+      'Calendar month view now keeps the completed mark on the actual finished date while later recurring slots stay pending until they are really done.',
+    ],
+  },
+  {
     version: 'v0.3.8',
     date: 'May 2026',
     items: [
