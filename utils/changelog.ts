@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.10',
+    date: 'May 2026',
+    items: [
+      'Hardened Google Sheets refresh/save flow so a fast browser refresh can no longer wipe the live database while a sync is mid-flight.',
+      'The app now publishes a protected system snapshot before clearing user-facing sheets, then marks the sync complete only after every sheet finishes writing.',
+      'Refresh reads now detect in-progress spreadsheet writes and temporarily trust the protected system snapshot instead of reconciling against half-cleared tabs.',
+    ],
+  },
+  {
     version: 'v0.3.9',
     date: 'May 2026',
     items: [

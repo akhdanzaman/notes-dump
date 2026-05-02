@@ -14,6 +14,30 @@ const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const MAX_WRITE_BATCH_SIZE = 8;
 const MAX_FETCH_RETRIES = 3;
 const MAX_HISTORY_COLUMNS = 'ZZZ';
+const SYSTEM_SNAPSHOT_MARKER = '__BRAINDUMP_STATE_V2__';
+const SYSTEM_SNAPSHOT_VERSION = 2;
+const MANAGED_USER_SHEET_NAMES = [
+  'Transactions',
+  'Todos',
+  'Shopping',
+  'Events',
+  'Notes & Journals',
+  'All Items (Raw)',
+  'Wallets Config',
+  'Skills Config',
+  'Budget Rules',
+  'Themes & Settings',
+] as const;
+
+type SystemSheetSyncStatus = 'ready' | 'writing';
+
+type SystemSheetSnapshotMeta = {
+  marker: string;
+  version: number;
+  status: SystemSheetSyncStatus;
+  chunkCount: number;
+  updatedAt: string;
+};
 
 export const SPREADSHEET_FETCH_RANGES = {
   Transactions: 'A:I',
@@ -85,6 +109,68 @@ let isHydrated = false;
 let lastSnapshot: string | null = null;
 let needsInitialSpreadsheetWrite = false;
 let operationQueue: Promise<any> = Promise.resolve();
+
+const buildSystemSheetRows = (jsonString: string, status: SystemSheetSyncStatus): string[][] => {
+  const CHUNK_SIZE = 45000; // Safe limit below 50,000
+  const chunks: string[] = [];
+
+  for (let i = 0; i < jsonString.length; i += CHUNK_SIZE) {
+    chunks.push(jsonString.substring(i, i + CHUNK_SIZE));
+  }
+
+  const meta: SystemSheetSnapshotMeta = {
+    marker: SYSTEM_SNAPSHOT_MARKER,
+    version: SYSTEM_SNAPSHOT_VERSION,
+    status,
+    chunkCount: chunks.length,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return [[JSON.stringify(meta)], ...chunks.map(chunk => [chunk])];
+};
+
+const parseSystemSheetSnapshotMeta = (value: unknown): SystemSheetSnapshotMeta | null => {
+  if (typeof value !== 'string' || !value.trim().startsWith('{')) return null;
+
+  try {
+    const parsed = JSON.parse(value) as Partial<SystemSheetSnapshotMeta>;
+    if (
+      parsed?.marker !== SYSTEM_SNAPSHOT_MARKER
+      || parsed.version !== SYSTEM_SNAPSHOT_VERSION
+      || (parsed.status !== 'ready' && parsed.status !== 'writing')
+      || !Number.isInteger(parsed.chunkCount)
+      || parsed.chunkCount! < 0
+    ) {
+      return null;
+    }
+    return parsed as SystemSheetSnapshotMeta;
+  } catch {
+    return null;
+  }
+};
+
+const extractSystemSheetSnapshot = (sheet: any): { jsonString: string; status: SystemSheetSyncStatus; format: 'legacy' | 'v2' } => {
+  const values = Array.isArray(sheet?.values) ? sheet.values : null;
+  if (!values || values.length === 0) {
+    throw new Error('System sheet snapshot is empty');
+  }
+
+  const meta = parseSystemSheetSnapshotMeta(values[0]?.[0]);
+  if (meta) {
+    const jsonString = values
+      .slice(1, 1 + meta.chunkCount)
+      .map((row: any[]) => row?.[0] || '')
+      .join('');
+
+    return { jsonString, status: meta.status, format: 'v2' };
+  }
+
+  return {
+    jsonString: values.map((row: any[]) => row?.[0] || '').join(''),
+    status: 'ready',
+    format: 'legacy'
+  };
+};
 
 export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
   const parsed = safeJsonParse<SpreadsheetConfig | null>(safeLocalStorageGet(SETTINGS_KEY), null);
@@ -262,17 +348,20 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
     const systemSheet = batchData.valueRanges?.find((r: any) => r.range && r.range.includes(systemSheetName));
     
     let dbData;
+    let systemSheetStatus: SystemSheetSyncStatus = 'ready';
     if (isNewSpreadsheet) {
         console.log("New spreadsheet detected, seeding from spreadsheet cache/legacy browser cache if available.");
         dbData = getCachedSpreadsheetDb() || { data: [] };
     } else {
-        dbData = processFetchResponse(systemSheet, skipLocalStorage).data;
+        const fetched = processFetchResponse(systemSheet, skipLocalStorage);
+        dbData = fetched.data;
+        systemSheetStatus = fetched.systemStatus;
     }
     
     let reconciled = false;
 
     // Reconcile with user-facing sheets
-    if (batchData.valueRanges) {
+    if (batchData.valueRanges && systemSheetStatus !== 'writing') {
         console.log("Reconciling with valueRanges:", batchData.valueRanges.map((r: any) => r.range));
         const reconciledDb = reconcileSpreadsheetData(dbData, batchData.valueRanges);
         console.log("Reconciled DB:", reconciledDb);
@@ -281,6 +370,8 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
             dbData = reconciledDb;
             reconciled = true;
         }
+    } else if (systemSheetStatus === 'writing') {
+        console.log('Detected in-progress spreadsheet sync; skipping user-sheet reconciliation and trusting system snapshot.');
     }
 
     // Update local storage with reconciled data
@@ -299,16 +390,19 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
 };
 
 const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
-  let jsonString = '{"data":[]}';
-  if (data && data.values && data.values.length > 0) {
-    jsonString = data.values.map((row: any[]) => row[0] || '').join('');
+  const snapshot = extractSystemSheetSnapshot(data);
+  const jsonString = snapshot.jsonString;
+
+  let rawData: any;
+  try {
+    rawData = JSON.parse(jsonString);
+  } catch (e) {
+    console.warn('Failed to parse spreadsheet system snapshot', e);
+    throw new Error('Spreadsheet system snapshot is malformed');
   }
-  
-  let rawData = safeJsonParse<any>(jsonString, { data: [] });
+
   if (!rawData || typeof rawData !== 'object') {
-    console.warn("Failed to parse spreadsheet data, initializing empty DB");
-    rawData = { data: [] };
-    jsonString = '{"data":[]}';
+    throw new Error('Spreadsheet system snapshot is not a valid object');
   }
 
   const dbData = validateSchema(rawData);
@@ -323,7 +417,7 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
     lastSnapshot = jsonString;
   }
   
-  return { data: dbData, sha: 'spreadsheet-sha' }; 
+  return { data: dbData, sha: 'spreadsheet-sha', systemStatus: snapshot.status }; 
 };
 
 const performSync = async (
@@ -401,16 +495,14 @@ const performSync = async (
       finalDb.appSettings || { defaultCollapsed: false, hideMoney: false }
     );
 
-    // Add the system sheet for state persistence
-    const CHUNK_SIZE = 45000; // Safe limit below 50,000
-    const jsonChunks: string[][] = [];
-    for (let i = 0; i < finalJsonString.length; i += CHUNK_SIZE) {
-      jsonChunks.push([finalJsonString.substring(i, i + CHUNK_SIZE)]);
-    }
-
     const systemSheetData: SheetData = {
         name: SYSTEM_SHEET_NAME,
-        data: jsonChunks
+        data: buildSystemSheetRows(finalJsonString, 'ready')
+    };
+
+    const systemSheetWritingData: SheetData = {
+      name: SYSTEM_SHEET_NAME,
+      data: buildSystemSheetRows(finalJsonString, 'writing')
     };
 
     const allSheets: SheetData[] = [
@@ -457,48 +549,50 @@ const performSync = async (
       if (!batchRes.ok) throw new Error(`Failed to create sheets: ${await batchRes.text()}`);
     }
 
-    // 4. Clear existing data in target sheets to avoid leftover rows
-    console.log("Clearing sheets...");
-    const rangesToClear = allSheets.map(s => `'${s.name}'`);
-    const clearRes = await sheetsFetch(config.spreadsheetId, '/values:batchClear', {
+    // 4. Write the system snapshot first so refreshes never see an empty source-of-truth.
+    console.log("Writing system snapshot...");
+    const updateSystemWritingRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        valueInputOption: 'RAW',
+        data: [{
+          range: `'${systemSheetWritingData.name}'!A1`,
+          values: systemSheetWritingData.data
+        }]
+      })
+    });
+
+    if (!updateSystemWritingRes.ok) {
+      const errorText = await updateSystemWritingRes.text();
+      throw new Error(`Google Sheets API error (System Sheet / writing): ${updateSystemWritingRes.status} ${updateSystemWritingRes.statusText} - ${errorText}`);
+    }
+
+    // 5. Clear existing user-facing data only after the system snapshot is safely published.
+    console.log("Clearing user-facing sheets...");
+    const userSheetNamesToClear = Array.from(new Set([
+      ...MANAGED_USER_SHEET_NAMES.filter(name => existingSheetTitles.has(name)),
+      ...exportSheets.map(sheet => sheet.name),
+    ]));
+
+    const clearRes = userSheetNamesToClear.length === 0 ? null : await sheetsFetch(config.spreadsheetId, '/values:batchClear', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ ranges: rangesToClear })
+      body: JSON.stringify({ ranges: userSheetNamesToClear.map(name => `'${name}'`) })
     });
-    if (!clearRes.ok) throw new Error(`Failed to clear sheets: ${await clearRes.text()}`);
+    if (clearRes && !clearRes.ok) throw new Error(`Failed to clear sheets: ${await clearRes.text()}`);
 
-    // 5. Write new data - Split into chunks to avoid payload limits
+    // 6. Write new data - Split into chunks to avoid payload limits
     console.log("Writing new data...");
-    
-    // Split: System sheet vs User sheets
-    const systemData = [{
-        range: `'${systemSheetData.name}'!A1`,
-        values: systemSheetData.data
-    }];
 
     const userSheetsData = exportSheets.map(sheet => ({
         range: `'${sheet.name}'!A1`,
         values: sheet.data
     }));
-
-    // Update System Sheet first (critical data)
-    const updateSystemRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        valueInputOption: 'RAW',
-        data: systemData
-      })
-    });
-
-    if (!updateSystemRes.ok) {
-        const errorText = await updateSystemRes.text();
-        throw new Error(`Google Sheets API error (System Sheet): ${updateSystemRes.status} ${updateSystemRes.statusText} - ${errorText}`);
-    }
 
     // Update User Sheets
     if (userSheetsData.length > 0) {
@@ -523,11 +617,31 @@ const performSync = async (
         }
     }
 
-    // 6. Append to History Sheet on every change
+    // 7. Finalize the system snapshot only after user-facing sheets are fully updated.
+    const updateSystemReadyRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        valueInputOption: 'RAW',
+        data: [{
+          range: `'${systemSheetData.name}'!A1`,
+          values: systemSheetData.data
+        }]
+      })
+    });
+
+    if (!updateSystemReadyRes.ok) {
+      const errorText = await updateSystemReadyRes.text();
+      throw new Error(`Google Sheets API error (System Sheet / ready): ${updateSystemReadyRes.status} ${updateSystemReadyRes.statusText} - ${errorText}`);
+    }
+
+    // 8. Append to History Sheet on every change
     const now = Date.now();
     
     try {
-        const historyRow = [new Date().toISOString(), ...jsonChunks.map(c => c[0])];
+        const historyRow = [new Date().toISOString(), ...systemSheetData.data.slice(1).map(row => row[0] || '')];
         const appendRes = await sheetsFetch(config.spreadsheetId, `/values/'${HISTORY_SHEET_NAME}'!A:${MAX_HISTORY_COLUMNS}:append?valueInputOption=RAW`, {
             method: 'POST',
             headers: {
@@ -628,4 +742,9 @@ export const getSpreadsheetHistory = async (): Promise<SpreadsheetHistoryEntry[]
 
     // Return newest first
     return history.reverse();
+};
+
+export const __test__ = {
+  buildSystemSheetRows,
+  extractSystemSheetSnapshot,
 };
