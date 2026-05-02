@@ -15,7 +15,7 @@ export function scoreCandidate(params: CandidateScoreParams): number {
 
   if (params.aliasExact) score += 0.45;
   score += clamp(params.tokenOverlap) * 0.2;
-  score += Math.min(0.2, Math.max(0, params.priorApprovals) * 0.05);
+  score += Math.min(0.25, Math.max(0, params.priorApprovals) * 0.05);
   score -= Math.min(0.2, Math.max(0, params.priorRejections) * 0.08);
   score += clamp(params.contextMatch) * 0.15;
   score -= clamp(params.ambiguityPenalty, 0, 0.25);

@@ -449,6 +449,54 @@ test('sweepHistoricalCanonicalMeta reruns idempotently after auto-apply', () => 
   assert.deepEqual(second.items, first.items);
 });
 
+test('repeated approvals graduate exact learned aliases to auto-apply', () => {
+  const original: ParserResultV2[] = [
+    {
+      action: 'create_item',
+      entityType: 'finance',
+      confidence: 'medium',
+      needsReview: true,
+      payload: {
+        itemType: 'FINANCE',
+        content: 'jajan gacoan',
+        meta: {
+          merchant: 'gacoan jakal',
+          canonical: {
+            merchant: {
+              rawValue: 'gacoan jakal',
+              value: 'Mie Gacoan',
+              confidence: 0.8,
+              source: 'learned_rule',
+              needsReview: true,
+            },
+          },
+        },
+      },
+    } as any,
+  ];
+
+  let nextRules: CanonicalRule[] = [];
+  for (let i = 0; i < 5; i += 1) {
+    nextRules = learnCanonicalRulesFromReview({
+      originalResults: original,
+      approvedResults: original,
+      existingRules: nextRules,
+    });
+  }
+
+  const canonicalized = canonicalizeMeta({ merchant: 'gacoan jakal' }, {
+    existingItems: [],
+    wallets: [],
+    budgetRules: [],
+    rules: nextRules,
+  });
+
+  assert.equal(canonicalized.meta.canonical?.merchant?.value, 'Mie Gacoan');
+  assert.equal(canonicalized.meta.canonical?.merchant?.needsReview, false);
+  assert.deepEqual(canonicalized.autoApplied, ['merchant']);
+  assert.equal(canonicalized.suggestions.length, 0);
+});
+
 test('re-approval after edits rehabilitates degraded learned rules', () => {
   const existingRules: CanonicalRule[] = [
     {
