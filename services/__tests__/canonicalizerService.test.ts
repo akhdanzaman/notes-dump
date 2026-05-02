@@ -62,6 +62,16 @@ test('canonicalizeMeta suggests review for medium-confidence matches', () => {
   assert.equal(result.suggestions.length, 1);
 });
 
+test('canonicalizeMeta does not queue low-confidence fuzzy matches for review', () => {
+  const result = canonicalizeMeta({
+    paymentMethod: 'cash',
+  }, ctx);
+
+  assert.equal(result.meta.canonical?.paymentMethod, undefined);
+  assert.equal(result.suggestions.length, 0);
+  assert.equal(result.autoApplied.length, 0);
+});
+
 test('canonicalizeParserResults annotates create_item results with canonical review metadata', () => {
   const parsed: ParserResultV2[] = [
     {

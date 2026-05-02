@@ -172,17 +172,16 @@ export function canonicalizeMeta(
     if (needsReview) {
       nextMeta.canonical = nextMeta.canonical || {};
       nextMeta.canonical[field] = buildCanonicalValue(field, rawValue, candidate, true);
+      suggestions.push({
+        field,
+        rawValue,
+        suggestedValue: candidate.canonicalValue,
+        confidence: candidate.score,
+        reason: candidate.reason,
+        source: candidate.source,
+        ruleId: candidate.ruleId,
+      });
     }
-
-    suggestions.push({
-      field,
-      rawValue,
-      suggestedValue: candidate.canonicalValue,
-      confidence: candidate.score,
-      reason: candidate.reason,
-      source: candidate.source,
-      ruleId: candidate.ruleId,
-    });
   }
 
   return {
