@@ -1260,7 +1260,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         <ul className="text-sm text-muted space-y-2 list-disc pl-4">
                                                             <li>Added Smart Canonicalizer foundations so parser results can store stable canonical merchant, payment method, and subcommodity metadata without changing raw user input.</li>
                                                             <li>Pending Review now surfaces canonical suggestions, and approved review corrections can teach the app new learned mappings for future parses.</li>
-                                                            <li>Money search and AI insights can now read canonical merchant and subcommodity clusters, reducing fragmented analysis from alias-heavy inputs.</li>
+                                                            <li>Money search, wallet filters, wallet balances, AI insights, and exports now read canonical merchant, payment method, commodity, and subcommodity clusters while preserving raw item text.</li>
                                                         </ul>
                                                     </div>
                                                     <div className="bg-background border border-border rounded-2xl p-4">

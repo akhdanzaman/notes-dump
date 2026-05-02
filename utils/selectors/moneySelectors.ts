@@ -115,7 +115,8 @@ export const getFinanceItems = (
     selectedTag: string,
     searchQuery: string,
     sortOrder: SortOrder,
-    viewMode: 'monthly' | 'yearly' = 'monthly'
+    viewMode: 'monthly' | 'yearly' = 'monthly',
+    wallets: Wallet[] = []
 ) => {
     const resolveCategory = (cat?: string) => {
         if (!cat) return null;
@@ -160,18 +161,20 @@ export const getFinanceItems = (
 
     // --- FILTERS ---
 
-    // Filter by Wallet (Source or Destination)
+    // Filter by Wallet (Source or Destination). Compare resolved wallet keys so
+    // canonical paymentMethod IDs and raw wallet display names collapse together.
     if (filterWallet) {
         if (filterWallet === 'undefined') {
             allTransactions = allTransactions.filter(i => 
-                !i.meta.paymentMethod && !i.meta.toWallet
+                !getCanonicalOrRawItemValue(i, 'paymentMethod') && !i.meta.toWallet
             );
         } else {
-            const wName = filterWallet.toLowerCase();
-            allTransactions = allTransactions.filter(i => 
-                getCanonicalOrRawItemValue(i, 'paymentMethod').toLowerCase() === wName || 
-                i.meta.toWallet?.toLowerCase() === wName
-            );
+            const walletKey = resolveWalletBalanceKey(wallets, filterWallet);
+            allTransactions = allTransactions.filter(i => {
+                const sourceKey = resolveWalletBalanceKey(wallets, getCanonicalOrRawItemValue(i, 'paymentMethod'));
+                const destinationKey = resolveWalletBalanceKey(wallets, i.meta.toWallet);
+                return sourceKey === walletKey || destinationKey === walletKey;
+            });
         }
     }
 

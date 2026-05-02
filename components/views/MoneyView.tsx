@@ -111,7 +111,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     } = getFinanceItems(
         items, financeDate, budgetConfig, 
         filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
-        budgetViewMode
+        budgetViewMode,
+        wallets
     );
 
     const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
