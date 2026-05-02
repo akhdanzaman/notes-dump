@@ -171,7 +171,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
     const selectedItemDate = selectedItem?.meta.start || selectedItem?.meta.date || selectedItem?.meta.dateTime;
 
     return (
-        <div className="flex flex-col h-full bg-background pt-safe">
+        <div className="min-h-screen bg-background pt-safe pb-36">
             <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-xl">
                 <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -228,17 +228,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 </div>
             </div>
 
-            <div className="flex-1 overflow-hidden px-2 pb-2">
-                <div className="flex h-full flex-col rounded-[28px] border border-border bg-surface/50 p-2">
-                    <div className="grid grid-cols-7 gap-2 px-1 pb-2 pt-1">
-                        {WEEK_DAYS.map(day => (
-                            <div key={day} className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
-                                {day}
-                            </div>
-                        ))}
-                    </div>
+            <div className="px-2 pb-2 pt-3">
+                <div className="rounded-[28px] border border-border bg-surface/50 p-2 overflow-x-auto no-scrollbar">
+                    <div className="min-w-[720px] sm:min-w-0">
+                        <div className="grid grid-cols-7 gap-2 px-1 pb-2 pt-1">
+                            {WEEK_DAYS.map(day => (
+                                <div key={day} className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+                                    {day}
+                                </div>
+                            ))}
+                        </div>
 
-                    <div className="grid flex-1 grid-cols-7 grid-rows-6 gap-2 min-h-0">
+                    <div className="grid grid-cols-7 gap-2 auto-rows-[minmax(136px,auto)] sm:auto-rows-[minmax(148px,auto)]">
                         {calendarDays.map((dayObj, idx) => {
                             const isToday = dayObj.date.getDate() === today.getDate() &&
                                 dayObj.date.getMonth() === today.getMonth() &&
@@ -251,7 +252,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 <div
                                     key={`${getDateKey(dayObj.date)}-${idx}`}
                                     className={[
-                                        'min-h-0 rounded-2xl border p-2 flex flex-col gap-2 overflow-hidden transition-colors',
+                                        'rounded-2xl border p-2 flex flex-col gap-2 overflow-hidden transition-colors',
                                         dayObj.isCurrentMonth
                                             ? 'border-border bg-surface'
                                             : 'border-dashed border-border/80 bg-background/30 opacity-60',
@@ -272,7 +273,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         )}
                                     </div>
 
-                                    <div className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
+                                    <div className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar pr-0.5">
                                         {visibleItems.length === 0 ? (
                                             <div className="space-y-1 pt-1 opacity-50">
                                                 <div className="h-2.5 rounded-full border border-dashed border-border/70" />
@@ -284,7 +285,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                                     key={item.id}
                                                     onClick={() => setSelectedItem(item)}
                                                     className={[
-                                                        'w-full rounded-xl border px-2 py-1 text-left text-[10px] leading-tight transition-colors',
+                                                        'w-full rounded-xl border px-2 py-1.5 text-left text-[11px] leading-snug transition-colors',
                                                         item.status === 'done'
                                                             ? 'border-border text-muted line-through opacity-70'
                                                             : 'border-border text-primary hover:bg-muted/5',
@@ -294,7 +295,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                                     <div className="mb-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-muted">
                                                         {getItemTypeLabel(item.type)}
                                                     </div>
-                                                    <div className="line-clamp-2">{item.content}</div>
+                                                    <div className="line-clamp-3 break-words">{item.content}</div>
                                                 </button>
                                             ))
                                         )}
@@ -310,6 +311,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                         })}
                     </div>
                 </div>
+            </div>
             </div>
 
             <AnimatePresence>

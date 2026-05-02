@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.7',
+    date: 'May 2026',
+    items: [
+      'Fixed the mobile Calendar month view so day cells are no longer squeezed into tiny truncated cards.',
+      'The Calendar grid now scrolls horizontally on narrow screens, uses taller day rows, and allows item titles to wrap up to three lines.',
+      'Added extra bottom breathing room so the input bar and bottom navigation do not cover the final calendar rows as aggressively.',
+    ],
+  },
+  {
     version: 'v0.3.6',
     date: 'May 2026',
     items: [
