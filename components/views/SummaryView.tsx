@@ -41,7 +41,6 @@ import {
     getShoppingItems,
     getWalletStats,
     getFinanceItems,
-    getSafeToSpendSummary,
     generateInsights
 } from '../../utils/selectors';
 import { generateAIInsights, Insight } from '../../services/insightService';
@@ -244,10 +243,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         'newest'
     );
     const { totalNetWorth } = getWalletStats(items, wallets);
-    const safeToSpend = useMemo(
-        () => getSafeToSpendSummary(items, wallets, budgetConfig),
-        [items, wallets, budgetConfig]
-    );
 
     const totalLimits = budgetConfig.rules.reduce(
         (acc, rule) => acc + (rule.percentage / 100) * budgetConfig.monthlyIncome,
@@ -262,12 +257,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         }).format(n);
 
     const budgetPercent = totalLimits > 0 ? Math.min(100, (totalExpense / totalLimits) * 100) : 0;
-
-    const safeToSpendHint = safeToSpend.capType === 'budget'
-        ? 'Capped by this month\'s budget runway.'
-        : safeToSpend.capType === 'balanced'
-            ? 'Balanced between cash on hand and budget runway.'
-            : 'Capped by cash after debt, goals, and near-term commitments.';
 
     const getThemeForDate = (date: Date) => {
         const year = date.getFullYear();
@@ -807,24 +796,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             </div>
 
                             <div className="mt-6">
-                                <div className="mb-4 p-4 rounded-2xl bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div>
-                                            <p className="text-xs font-bold uppercase tracking-wider opacity-60 mb-1">Safe to Spend</p>
-                                            <div className="text-2xl font-bold">
-                                                {showBalance ? fmt(safeToSpend.safeToSpend) : '••••••••'}
-                                            </div>
-                                        </div>
-                                        <div className="text-right text-[10px] opacity-60">
-                                            <div>Reserved Soon</div>
-                                            <div className="font-bold text-sm opacity-90 mt-0.5">
-                                                {showBalance ? fmt(safeToSpend.reservedForUpcoming + safeToSpend.reservedForUrgent) : '••••'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p className="text-[10px] opacity-60 mt-2 leading-relaxed">{safeToSpendHint}</p>
-                                </div>
-
                                 <div className="flex justify-between text-xs font-medium mb-2 opacity-80">
                                     <span>Monthly Spending</span>
                                     <span>{budgetPercent.toFixed(0)}% of Budget</span>

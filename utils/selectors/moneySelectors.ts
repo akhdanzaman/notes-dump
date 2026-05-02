@@ -1,20 +1,6 @@
 import { BrainDumpItem, ItemType, Wallet, BudgetConfig, SortOrder } from '../../types';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from '../financeTypeUtils';
 
-export interface SafeToSpendSummary {
-    safeToSpend: number;
-    availableCash: number;
-    reservedForDebt: number;
-    reservedForSavings: number;
-    reservedForUpcoming: number;
-    reservedForUrgent: number;
-    liquidBuffer: number;
-    monthlyBudgetBuffer: number | null;
-    incomeBase: number;
-    spentThisMonth: number;
-    capType: 'liquidity' | 'budget' | 'balanced';
-}
-
 export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
     // Create a map to track balances
     const balanceMap = new Map<string, number>();
@@ -485,94 +471,5 @@ export const getFinanceItems = (
         plannedBudgetMap,
         uncategorized, 
         projectedUncategorized 
-    };
-};
-
-export const getSafeToSpendSummary = (
-    items: BrainDumpItem[],
-    wallets: Wallet[],
-    budgetConfig: BudgetConfig,
-    now: Date = new Date()
-): SafeToSpendSummary => {
-    const { totalAssets, totalDebt, totalSavings } = getWalletStats(items, wallets);
-    const currentMonthFinance = getFinanceItems(
-        items,
-        now,
-        budgetConfig,
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        'newest'
-    );
-
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const next7DaysEnd = todayStart + (7 * 24 * 60 * 60 * 1000);
-
-    const upcomingRoutineItems = items.filter(item => {
-        if (item.type !== ItemType.SHOPPING) return false;
-        if (item.status !== 'pending') return false;
-        if (!(item.meta.shoppingCategory === 'routine' || item.meta.isRoutine)) return false;
-        if ((item.meta.amount || 0) <= 0) return false;
-
-        if (!item.meta.date) return true;
-        const dueTime = new Date(item.meta.date).getTime();
-        return dueTime >= todayStart && dueTime <= next7DaysEnd;
-    });
-
-    const urgentPendingItems = items.filter(item => {
-        if (item.type !== ItemType.SHOPPING) return false;
-        if (item.status === 'done') return false;
-        if (item.meta.shoppingCategory !== 'urgent') return false;
-        return (item.meta.amount || 0) > 0;
-    });
-
-    const reservedForUpcoming = upcomingRoutineItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
-    const reservedForUrgent = urgentPendingItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
-
-    const availableCash = Math.max(0, totalAssets);
-    const reservedForDebt = Math.max(0, totalDebt);
-    const reservedForSavings = Math.max(0, totalSavings);
-
-    const liquidBuffer = Math.max(
-        0,
-        availableCash - reservedForDebt - reservedForSavings - reservedForUpcoming - reservedForUrgent
-    );
-
-    const recordedIncome = currentMonthFinance.totalIncome;
-    const incomeBase = budgetConfig.monthlyIncome > 0 ? budgetConfig.monthlyIncome : recordedIncome;
-    const spentThisMonth = currentMonthFinance.totalExpense;
-
-    const monthlyBudgetBuffer = incomeBase > 0
-        ? Math.max(0, incomeBase - spentThisMonth - reservedForUpcoming - reservedForUrgent)
-        : null;
-
-    let safeToSpend = liquidBuffer;
-    let capType: 'liquidity' | 'budget' | 'balanced' = 'liquidity';
-
-    if (monthlyBudgetBuffer !== null) {
-        safeToSpend = Math.max(0, Math.min(liquidBuffer, monthlyBudgetBuffer));
-        if (Math.abs(liquidBuffer - monthlyBudgetBuffer) < 1000) {
-            capType = 'balanced';
-        } else if (monthlyBudgetBuffer < liquidBuffer) {
-            capType = 'budget';
-        }
-    }
-
-    return {
-        safeToSpend,
-        availableCash,
-        reservedForDebt,
-        reservedForSavings,
-        reservedForUpcoming,
-        reservedForUrgent,
-        liquidBuffer,
-        monthlyBudgetBuffer,
-        incomeBase,
-        spentThisMonth,
-        capType,
     };
 };
