@@ -1,4 +1,5 @@
 import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType } from '../types';
+import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 
 export interface SheetData {
@@ -49,9 +50,11 @@ export const generateExportData = (
         Category: getCategoryName(item.meta.budgetCategory, budgetConfig),
         Description: item.content,
         Amount: item.meta.amount || 0,
-        Wallet: getWalletName(item.meta.paymentMethod, wallets),
+        Wallet: getWalletName(getCanonicalOrRawItemValue(item, 'paymentMethod') || item.meta.paymentMethod, wallets),
         To_Wallet: getWalletName(item.meta.toWallet, wallets),
         Tags: item.meta.tags?.join(', ') || '',
+        Canonical_Merchant: getCanonicalMetaValue(item.meta, 'merchant'),
+        Canonical_Subcommodity: getCanonicalMetaValue(item.meta, 'subcommodity'),
         ID: item.id
       };
     });
@@ -60,8 +63,8 @@ export const generateExportData = (
     sheets.push({
       name: "Transactions",
       data: [
-        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "ID"],
-        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Tags, t.ID])
+        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Merchant", "Canonical_Subcommodity", "ID"],
+        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Tags, t.Canonical_Merchant, t.Canonical_Subcommodity, t.ID])
       ]
     });
   }
@@ -165,6 +168,13 @@ export const generateExportData = (
     Amount: item.meta.amount || 0,
     Tags: item.meta.tags?.join(', ') || '',
     Payment_Method: item.meta.paymentMethod || '',
+    Canonical_Payment_Method: getCanonicalMetaValue(item.meta, 'paymentMethod'),
+    Merchant: item.meta.merchant || '',
+    Canonical_Merchant: getCanonicalMetaValue(item.meta, 'merchant'),
+    Commodity: item.meta.commodity || '',
+    Canonical_Commodity: getCanonicalMetaValue(item.meta, 'commodity'),
+    Subcommodity: item.meta.subcommodity || '',
+    Canonical_Subcommodity: getCanonicalMetaValue(item.meta, 'subcommodity'),
     To_Wallet: item.meta.toWallet || '',
     Finance_Type: item.meta.financeType || '',
     Budget_Category: item.meta.budgetCategory || '',
@@ -179,8 +189,8 @@ export const generateExportData = (
   sheets.push({
     name: "All Items (Raw)",
     data: [
-      ["ID", "Type", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Recurrence_Days", "Priority"],
-      ...itemsData.map(i => [i.ID, i.Type, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Recurrence_Days, i.Priority])
+      ["ID", "Type", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Recurrence_Days", "Priority"],
+      ...itemsData.map(i => [i.ID, i.Type, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.Canonical_Payment_Method, i.Merchant, i.Canonical_Merchant, i.Commodity, i.Canonical_Commodity, i.Subcommodity, i.Canonical_Subcommodity, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Recurrence_Days, i.Priority])
     ]
   });
 

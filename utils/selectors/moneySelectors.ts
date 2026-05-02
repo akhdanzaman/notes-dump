@@ -1,10 +1,13 @@
 import { BrainDumpItem, ItemType, Wallet, BudgetConfig, SortOrder } from '../../types';
+import { getCanonicalOrRawItemValue, itemMatchesCanonicalSearch } from '../canonicalization/accessors';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from '../financeTypeUtils';
 
-const getCanonicalOrRawMeta = (
-    item: BrainDumpItem,
-    field: 'merchant' | 'paymentMethod' | 'commodity' | 'subcommodity'
-) => item.meta.canonical?.[field]?.value || item.meta[field] || '';
+const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
+    const normalized = value?.toLowerCase().trim();
+    if (!normalized) return '';
+    const wallet = wallets.find(w => w.id.toLowerCase() === normalized || w.name.toLowerCase() === normalized);
+    return wallet ? wallet.name.toLowerCase() : normalized;
+};
 
 export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
     // Create a map to track balances
@@ -26,7 +29,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         if (isImplicitExpense && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'routine')) return;
         
         const amount = item.meta.amount;
-        const walletName = item.meta.paymentMethod?.toLowerCase(); // Source Wallet
+        const walletName = resolveWalletBalanceKey(wallets, getCanonicalOrRawItemValue(item, 'paymentMethod')); // Source Wallet
         
         if (walletName && balanceMap.has(walletName)) {
             const current = balanceMap.get(walletName) || 0;
@@ -48,7 +51,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
                 else balanceMap.set(walletName, current - amount); // Transfer from Asset -> Decreases Asset
                 
                 // Destination of Transfer
-                const destName = item.meta.toWallet?.toLowerCase();
+                const destName = resolveWalletBalanceKey(wallets, item.meta.toWallet);
                 if (destName && balanceMap.has(destName)) {
                     const destCurrent = balanceMap.get(destName) || 0;
                     const destWallet = wallets.find(w => w.name.toLowerCase() === destName);
@@ -166,7 +169,7 @@ export const getFinanceItems = (
         } else {
             const wName = filterWallet.toLowerCase();
             allTransactions = allTransactions.filter(i => 
-                i.meta.paymentMethod?.toLowerCase() === wName || 
+                getCanonicalOrRawItemValue(i, 'paymentMethod').toLowerCase() === wName || 
                 i.meta.toWallet?.toLowerCase() === wName
             );
         }
@@ -220,14 +223,7 @@ export const getFinanceItems = (
     // Filter by Search Query
     if (searchQuery) {
         const lowerQ = searchQuery.toLowerCase();
-        allTransactions = allTransactions.filter(i => 
-            i.content.toLowerCase().includes(lowerQ) || 
-            i.meta.tags?.some(t => t.toLowerCase().includes(lowerQ)) ||
-            getCanonicalOrRawMeta(i, 'paymentMethod').toLowerCase().includes(lowerQ) ||
-            getCanonicalOrRawMeta(i, 'merchant').toLowerCase().includes(lowerQ) ||
-            getCanonicalOrRawMeta(i, 'subcommodity').toLowerCase().includes(lowerQ) ||
-            getCanonicalOrRawMeta(i, 'commodity').toLowerCase().includes(lowerQ)
-        );
+        allTransactions = allTransactions.filter(i => itemMatchesCanonicalSearch(i, lowerQ));
     }
 
     // --- SORTING ---

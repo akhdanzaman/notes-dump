@@ -1,4 +1,5 @@
 import { BrainDumpItem, Skill } from '../types';
+import { getCanonicalOrRawItemValue } from './canonicalization/accessors';
 
 export interface BehaviorDriftInsight {
   type: 'warning' | 'info' | 'success';
@@ -76,7 +77,10 @@ export const generateBehaviorDriftInsights = (
   const foodSpendByDay = new Map<number, number>();
   expenseItems.forEach(item => {
     const tags = (item.meta.tags || []).map(tag => tag.toLowerCase());
-    if (!tags.some(tag => FOOD_TAGS.has(tag))) return;
+    const commodity = getCanonicalOrRawItemValue(item, 'commodity').toLowerCase();
+    const subcommodity = getCanonicalOrRawItemValue(item, 'subcommodity').toLowerCase();
+    const isFoodLike = tags.some(tag => FOOD_TAGS.has(tag)) || FOOD_TAGS.has(commodity) || FOOD_TAGS.has(subcommodity) || commodity === 'food';
+    if (!isFoodLike) return;
     const ts = getItemTimestamp(item);
     if (ts === null || ts >= todayStart || ts < previous7Start) return;
     const day = startOfDay(ts);

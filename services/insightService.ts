@@ -3,11 +3,7 @@ import { BrainDumpItem, BudgetConfig, Wallet, Skill, ItemType } from '../types';
 import { getFinanceItems } from '../utils/selectors';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 import { generateBehaviorDriftInsights } from '../utils/behaviorDrift';
-
-const getCanonicalOrRaw = (
-  item: BrainDumpItem,
-  field: 'merchant' | 'paymentMethod' | 'commodity' | 'subcommodity'
-) => item.meta.canonical?.[field]?.value || item.meta[field] || '';
+import { getCanonicalOrRawItemValue } from '../utils/canonicalization/accessors';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -90,7 +86,7 @@ export const generateAIInsights = async (
   const getCanonicalBreakdown = (arr: BrainDumpItem[], field: 'merchant' | 'subcommodity') => {
     const breakdown: Record<string, { total: number; count: number }> = {};
     arr.forEach(item => {
-      const key = getCanonicalOrRaw(item, field).trim();
+      const key = getCanonicalOrRawItemValue(item, field).trim();
       if (!key) return;
       if (!breakdown[key]) breakdown[key] = { total: 0, count: 0 };
       breakdown[key].total += item.meta.amount || 0;
