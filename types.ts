@@ -381,6 +381,7 @@ export interface UpdateItemPayload {
     commodity: string;
     subcommodity: string;
     merchant: string;
+    canonical: ItemCanonicalMeta;
     quantity: string;
     durationMinutes: number;
     skillName: string;

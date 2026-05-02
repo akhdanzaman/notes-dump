@@ -1,0 +1,161 @@
+import {
+  BrainDumpItem,
+  BudgetRule,
+  CanonicalField,
+  CanonicalReviewSuggestion,
+  CanonicalRule,
+  CanonicalizationResult,
+  ItemCanonicalMeta,
+  ParsedItemMetaV2,
+  ParserResultV2,
+  Wallet,
+} from '../types';
+import { findBestCanonicalCandidate } from '../utils/canonicalization/ruleMatcher';
+import { shouldAutoApply, shouldSuggestReview } from '../utils/canonicalization/scoring';
+
+export interface CanonicalizerContext {
+  existingItems: BrainDumpItem[];
+  wallets: Wallet[];
+  budgetRules: BudgetRule[];
+  rules: CanonicalRule[];
+  autoApplyHighConfidence?: boolean;
+}
+
+const CANONICAL_FIELDS: CanonicalField[] = ['merchant', 'paymentMethod', 'subcommodity'];
+
+const mergeReviewReason = (currentReason: string | undefined, nextReason: string) => {
+  if (!currentReason) return nextReason;
+  if (currentReason.includes(nextReason)) return currentReason;
+  return `${currentReason} ${nextReason}`.trim();
+};
+
+const buildCanonicalValue = (
+  field: CanonicalField,
+  rawValue: string,
+  candidate: NonNullable<ReturnType<typeof findBestCanonicalCandidate>>,
+  needsReview: boolean
+): NonNullable<ItemCanonicalMeta[typeof field]> => ({
+  rawValue,
+  value: candidate.canonicalValue,
+  confidence: candidate.score,
+  source: candidate.source,
+  ruleId: candidate.ruleId,
+  needsReview,
+  reason: candidate.reason,
+});
+
+export function canonicalizeMeta(
+  meta: ParsedItemMetaV2,
+  ctx: CanonicalizerContext
+): CanonicalizationResult {
+  const nextMeta: ParsedItemMetaV2 = {
+    ...meta,
+    canonical: meta.canonical ? { ...meta.canonical } : {},
+  };
+
+  const suggestions: CanonicalReviewSuggestion[] = [];
+  const autoApplied: CanonicalField[] = [];
+
+  for (const field of CANONICAL_FIELDS) {
+    const rawValue = nextMeta[field];
+    if (!rawValue || typeof rawValue !== 'string') continue;
+
+    const candidate = findBestCanonicalCandidate(field, rawValue, nextMeta, ctx.rules);
+    if (!candidate) continue;
+
+    const autoApplyEnabled = ctx.autoApplyHighConfidence !== false;
+
+    if (autoApplyEnabled && shouldAutoApply(candidate.score)) {
+      nextMeta.canonical = nextMeta.canonical || {};
+      nextMeta.canonical[field] = buildCanonicalValue(field, rawValue, candidate, false);
+      autoApplied.push(field);
+      continue;
+    }
+
+    const needsReview = shouldSuggestReview(candidate.score) || !autoApplyEnabled;
+
+    if (needsReview) {
+      nextMeta.canonical = nextMeta.canonical || {};
+      nextMeta.canonical[field] = buildCanonicalValue(field, rawValue, candidate, true);
+    }
+
+    suggestions.push({
+      field,
+      rawValue,
+      suggestedValue: candidate.canonicalValue,
+      confidence: candidate.score,
+      reason: candidate.reason,
+      source: candidate.source,
+      ruleId: candidate.ruleId,
+    });
+  }
+
+  return {
+    meta: nextMeta,
+    suggestions,
+    autoApplied,
+  };
+}
+
+export function canonicalizeParserResults(
+  results: ParserResultV2[],
+  ctx: CanonicalizerContext
+): ParserResultV2[] {
+  return results.map((result) => {
+    if (result.action === 'create_item') {
+      const payload = result.payload;
+      if (!payload || !("meta" in payload) || !payload.meta) return result;
+
+      const canonicalized = canonicalizeMeta(payload.meta as ParsedItemMetaV2, ctx);
+      const nextResult: ParserResultV2 = {
+        ...result,
+        payload: {
+          ...payload,
+          meta: canonicalized.meta,
+        },
+        canonicalReview: canonicalized.suggestions,
+      };
+
+      if (canonicalized.suggestions.length > 0) {
+        nextResult.needsReview = true;
+        nextResult.reviewReason = mergeReviewReason(
+          result.reviewReason,
+          `Canonical review suggested for ${canonicalized.suggestions.map(s => s.field).join(', ')}.`
+        );
+      }
+
+      return nextResult;
+    }
+
+    if (result.action === 'update_item') {
+      const payload = result.payload;
+      if (!payload || !("changes" in payload) || !payload.changes) return result;
+
+      const partialMeta = payload.changes as ParsedItemMetaV2;
+      const canonicalized = canonicalizeMeta(partialMeta, ctx);
+      const nextResult: ParserResultV2 = {
+        ...result,
+        payload: {
+          ...payload,
+          changes: {
+            ...payload.changes,
+            canonical: canonicalized.meta.canonical,
+          },
+        },
+        canonicalReview: canonicalized.suggestions,
+      };
+
+      if (canonicalized.suggestions.length > 0) {
+        nextResult.needsReview = true;
+        nextResult.reviewReason = mergeReviewReason(
+          result.reviewReason,
+          `Canonical review suggested for ${canonicalized.suggestions.map(s => s.field).join(', ')}.`
+        );
+      }
+
+      return nextResult;
+    }
+
+    return result;
+  });
+}
