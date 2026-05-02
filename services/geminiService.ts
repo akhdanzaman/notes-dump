@@ -3,6 +3,7 @@ import { ItemType, BrainDumpItem } from '../types';
 
 import { getLocalISOString } from '../utils/selectors/dateUtils';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
+import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
 
 export { getGeminiKey, saveGeminiKey, DEFAULT_FLASH_MODEL } from './aiService';
 
@@ -89,6 +90,7 @@ TAG RULES (STRICT):
 - Do NOT duplicate values from budgetCategory, commodity, subcommodity, or paymentMethod.
 - Use for specific context not covered above (e.g. "trip to bali", "birthday").
 
+${PARSER_SIGNAL_GUIDANCE}
 Examples:
 - "Gave money to street musician 5000" => financeType "expense", budgetCategory "sedekah", commodity "social", subcommodity "donation", amount 5000
 - "tip driver gojek 10000" => financeType "expense", budgetCategory "wants", commodity "transport", subcommodity "tip", amount 10000
@@ -214,10 +216,20 @@ export const classifyText = async (
         result.meta.date = new Date().toISOString();
       }
 
+      const content = result?.content || text;
+      const meta = enrichFinanceMetaFromText({
+        rawText: text,
+        content,
+        itemType: matchedType,
+        meta: result?.meta || { tags: [] },
+        availableWallets,
+        availableBudgetRules,
+      });
+
       return {
         type: matchedType,
-        content: result?.content || text,
-        meta: result?.meta || { tags: [] }
+        content,
+        meta
       };
     });
 

@@ -27,6 +27,7 @@ import {
 } from '../types';
 import { DEFAULT_PROMPT } from './geminiService';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_PRO_MODEL } from './aiService';
+import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -449,6 +450,7 @@ Finance rules:
 - saving = adding money to an existing saving goal
 - paymentMethod = source wallet
 - toWallet = destination wallet
+${PARSER_SIGNAL_GUIDANCE}
 
 Journal rules:
 - if no date is specified, default to today
@@ -803,7 +805,7 @@ async function parseStage2(
   }));
 }
 
-function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserContext): ParserResultV2[] {
+function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserContext, rawText = ''): ParserResultV2[] {
   return stage2Results.map((result) => {
     const resolved: ParserResultV2 = {
       ...result,
@@ -821,8 +823,17 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         ? payload.itemType
         : mapEntityTypeToItemType(resolved.entityType);
 
-      const meta = normalizeMeta(payload.meta || {});
+      let meta = normalizeMeta(payload.meta || {});
       const content = normalizeWhitespace(payload.content || resolved.content || '');
+
+      meta = enrichFinanceMetaFromText({
+        rawText,
+        content,
+        itemType,
+        meta,
+        availableWallets: ctx.availableWallets,
+        availableBudgetRules: ctx.availableBudgetRules,
+      });
 
       if (itemType === 'SHOPPING' && !meta.shoppingCategory) {
         meta.shoppingCategory = meta.isRoutine ? 'routine' : 'not_urgent';
@@ -886,33 +897,40 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         findClosestItemMatch(targetText, ctx.existingItems, false);
 
       const changes = payload.changes || {};
-      const normalizedChanges = stripUndefined({
-        content: typeof changes.content === 'string' ? normalizeWhitespace(changes.content) : undefined,
-        status: changes.status === 'done' || changes.status === 'pending' ? changes.status : undefined,
-        priority: isValidPriority(changes.priority) ? changes.priority : undefined,
-        date: typeof changes.date === 'string' ? changes.date : undefined,
-        amount: sanitizeNumber(changes.amount),
-        tags: safeArrayStrings(changes.tags),
-        shoppingCategory: isValidShoppingCategory(changes.shoppingCategory) ? changes.shoppingCategory : undefined,
-        financeType: isValidFinanceType(changes.financeType) ? changes.financeType : undefined,
-        paymentMethod: typeof changes.paymentMethod === 'string' ? normalizeWhitespace(changes.paymentMethod) : undefined,
-        toWallet: typeof changes.toWallet === 'string' ? normalizeWhitespace(changes.toWallet) : undefined,
-        budgetCategory: typeof changes.budgetCategory === 'string' ? normalizeWhitespace(changes.budgetCategory) : undefined,
-        commodity: typeof changes.commodity === 'string' ? normalizeWhitespace(changes.commodity) : undefined,
-        subcommodity: typeof changes.subcommodity === 'string' ? normalizeWhitespace(changes.subcommodity) : undefined,
-        merchant: typeof changes.merchant === 'string' ? normalizeWhitespace(changes.merchant) : undefined,
-        quantity: typeof changes.quantity === 'string' ? normalizeWhitespace(changes.quantity) : undefined,
-        durationMinutes: sanitizeNumber(changes.durationMinutes),
-        skillName: typeof changes.skillName === 'string' ? normalizeWhitespace(changes.skillName) : undefined,
-        progress: sanitizeNumber(changes.progress),
-        progressNotes: typeof changes.progressNotes === 'string' ? normalizeWhitespace(changes.progressNotes) : undefined,
-        isRoutine: typeof changes.isRoutine === 'boolean' ? changes.isRoutine : undefined,
-        routineInterval: typeof changes.routineInterval === 'string' ? changes.routineInterval as any : undefined,
-        routineDaysOfWeek: safeArrayNumbers(changes.routineDaysOfWeek),
-        routineDaysOfMonth: safeArrayNumbers(changes.routineDaysOfMonth),
-        routineMonthsOfYear: safeArrayNumbers(changes.routineMonthsOfYear),
-        recurrenceDays: sanitizeNumber(changes.recurrenceDays),
-        targetDay: typeof changes.targetDay === 'string' ? normalizeWhitespace(changes.targetDay) : undefined
+      const normalizedChanges = enrichFinanceMetaFromText({
+        rawText,
+        content: `${targetText} ${typeof changes.content === 'string' ? changes.content : ''}`,
+        itemType: resolved.entityType === 'finance' ? 'FINANCE' : resolved.entityType === 'shopping' ? 'SHOPPING' : undefined,
+        meta: stripUndefined({
+          content: typeof changes.content === 'string' ? normalizeWhitespace(changes.content) : undefined,
+          status: changes.status === 'done' || changes.status === 'pending' ? changes.status : undefined,
+          priority: isValidPriority(changes.priority) ? changes.priority : undefined,
+          date: typeof changes.date === 'string' ? changes.date : undefined,
+          amount: sanitizeNumber(changes.amount),
+          tags: safeArrayStrings(changes.tags),
+          shoppingCategory: isValidShoppingCategory(changes.shoppingCategory) ? changes.shoppingCategory : undefined,
+          financeType: isValidFinanceType(changes.financeType) ? changes.financeType : undefined,
+          paymentMethod: typeof changes.paymentMethod === 'string' ? normalizeWhitespace(changes.paymentMethod) : undefined,
+          toWallet: typeof changes.toWallet === 'string' ? normalizeWhitespace(changes.toWallet) : undefined,
+          budgetCategory: typeof changes.budgetCategory === 'string' ? normalizeWhitespace(changes.budgetCategory) : undefined,
+          commodity: typeof changes.commodity === 'string' ? normalizeWhitespace(changes.commodity) : undefined,
+          subcommodity: typeof changes.subcommodity === 'string' ? normalizeWhitespace(changes.subcommodity) : undefined,
+          merchant: typeof changes.merchant === 'string' ? normalizeWhitespace(changes.merchant) : undefined,
+          quantity: typeof changes.quantity === 'string' ? normalizeWhitespace(changes.quantity) : undefined,
+          durationMinutes: sanitizeNumber(changes.durationMinutes),
+          skillName: typeof changes.skillName === 'string' ? normalizeWhitespace(changes.skillName) : undefined,
+          progress: sanitizeNumber(changes.progress),
+          progressNotes: typeof changes.progressNotes === 'string' ? normalizeWhitespace(changes.progressNotes) : undefined,
+          isRoutine: typeof changes.isRoutine === 'boolean' ? changes.isRoutine : undefined,
+          routineInterval: typeof changes.routineInterval === 'string' ? changes.routineInterval as any : undefined,
+          routineDaysOfWeek: safeArrayNumbers(changes.routineDaysOfWeek),
+          routineDaysOfMonth: safeArrayNumbers(changes.routineDaysOfMonth),
+          routineMonthsOfYear: safeArrayNumbers(changes.routineMonthsOfYear),
+          recurrenceDays: sanitizeNumber(changes.recurrenceDays),
+          targetDay: typeof changes.targetDay === 'string' ? normalizeWhitespace(changes.targetDay) : undefined
+        }) as ParsedItemMetaV2,
+        availableWallets: ctx.availableWallets,
+        availableBudgetRules: ctx.availableBudgetRules,
       });
 
       if (normalizedChanges.paymentMethod) {
@@ -1226,7 +1244,7 @@ export const parsePro = async (
     const stage1 = await parseStage1(ai, activeModel, text, ctx);
     onProgress?.('stage2');
     const stage2 = await parseStage2(ai, activeModel, text, stage1, ctx, customPrompt);
-    const resolved = resolveAndValidateResults(stage2, ctx);
+    const resolved = resolveAndValidateResults(stage2, ctx, text);
     return resolved;
   } catch (error: any) {
     const status = error?.status || error?.response?.status;

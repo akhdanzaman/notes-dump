@@ -1372,6 +1372,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <li>Added a safe historical canonical sweep that backfills high-confidence aliases, queues only threshold-qualified ambiguous rows for review, and can be rerun from Data settings after rule improvements.</li>
                                                             <li>Control Center now shows canonical data quality coverage, learned-rule counts, review pressure, rejected-rule guardrails, and recent learned-rule controls before rerunning the sweep.</li>
                                                             <li>Money search, wallet filters, wallet balances, AI insights, and exports now read canonical merchant, payment method, commodity, and subcommodity clusters while preserving raw item text.</li>
+                                                            <li>Parser extraction now captures clearer merchant, commodity, and subcommodity signals for common finance notes such as sarapan, parkir, and wallet mentions while leaving ambiguous transactions uncategorized.</li>
                                                         </ul>
                                                     </div>
                                                     <div className="bg-background border border-border rounded-2xl p-4">
