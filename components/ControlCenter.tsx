@@ -1254,6 +1254,17 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 <div className="space-y-4">
                                                     <div className="bg-background border border-border rounded-2xl p-4">
                                                         <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-primary">v0.3.3</div>
+                                                            <div className="text-xs text-muted">May 2026</div>
+                                                        </div>
+                                                        <ul className="text-sm text-muted space-y-2 list-disc pl-4">
+                                                            <li>Added a Safe to Spend number on the dashboard and money view so available spending is capped by both real cash and monthly budget runway.</li>
+                                                            <li>Safe to Spend now reserves debt, active goal savings, urgent pending buys, and near-term routine obligations before showing free money.</li>
+                                                            <li>Included quick reserve breakdowns so users can see why the spendable number is tighter on a given day.</li>
+                                                        </ul>
+                                                    </div>
+                                                    <div className="bg-background border border-border rounded-2xl p-4">
+                                                        <div className="flex items-center justify-between mb-2">
                                                             <div className="font-bold text-primary">v0.3.2</div>
                                                             <div className="text-xs text-muted">May 2026</div>
                                                         </div>

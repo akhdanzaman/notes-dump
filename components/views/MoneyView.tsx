@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Calculator, Plus, AlertCircle } from 'lucide-react';
 import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType, ItemType, Tab, Priority } from '../../types';
-import { getWalletStats, getFinanceItems } from '../../utils/selectors';
+import { getWalletStats, getFinanceItems, getSafeToSpendSummary } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
@@ -104,6 +104,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
     // Calculate Data for All Views
     const { walletStats, totalNetWorth, totalAssets, totalDebt, totalSavings } = getWalletStats(items, wallets);
+    const safeToSpend = useMemo(() => getSafeToSpendSummary(items, wallets, budgetConfig), [items, wallets, budgetConfig]);
     
     const { 
         list, totalIncome, totalExpense, projectedExpense, 
@@ -122,6 +123,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const incomeLabel = budgetConfig.monthlyIncome > 0 
         ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : 'Fixed Income') 
         : 'Recorded Income';
+
+    const safeToSpendHint = safeToSpend.capType === 'budget'
+        ? 'Budget runway is the tighter limit right now.'
+        : safeToSpend.capType === 'balanced'
+            ? 'Cash and monthly runway are almost matched.'
+            : 'Cash reserves are the tighter limit right now.';
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -261,6 +268,40 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             <div className="bg-black/5 rounded-[24px] p-4">
                                 <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 text-[#FF5722]" /> Expense</div>
                                 <div className="text-xl font-bold text-[#FF5722]">{showBalance ? fmt(totalExpense) : '••••'}</div>
+                            </div>
+                        </div>
+
+                        <div className="bg-black/5 rounded-[24px] p-4 mb-4 border border-black/5 dark:border-white/10">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2 text-xs font-bold opacity-60 uppercase tracking-wider mb-1">
+                                        <Calculator className="w-4 h-4" /> Safe to Spend
+                                    </div>
+                                    <div className="text-3xl font-bold tracking-tight">
+                                        {showBalance ? fmt(safeToSpend.safeToSpend) : '••••••••'}
+                                    </div>
+                                    <p className="text-xs opacity-60 mt-1">{safeToSpendHint}</p>
+                                </div>
+                                <div className="text-right text-xs opacity-70 space-y-1 shrink-0">
+                                    <div>
+                                        <div className="uppercase tracking-wider opacity-50">Reserved Soon</div>
+                                        <div className="font-bold text-sm opacity-90">{showBalance ? fmt(safeToSpend.reservedForUpcoming + safeToSpend.reservedForUrgent) : '••••'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="uppercase tracking-wider opacity-50">Saved for Goals</div>
+                                        <div className="font-bold text-sm opacity-90">{showBalance ? fmt(safeToSpend.reservedForSavings) : '••••'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mt-4 text-xs">
+                                <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-3">
+                                    <div className="opacity-50 uppercase tracking-wider mb-1">Cash Buffer</div>
+                                    <div className="font-bold">{showBalance ? fmt(safeToSpend.liquidBuffer) : '••••'}</div>
+                                </div>
+                                <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-3">
+                                    <div className="opacity-50 uppercase tracking-wider mb-1">Month Left</div>
+                                    <div className="font-bold">{showBalance ? fmt(safeToSpend.monthlyBudgetBuffer ?? safeToSpend.safeToSpend) : '••••'}</div>
+                                </div>
                             </div>
                         </div>
                         
