@@ -117,6 +117,8 @@ interface CardProps {
     newHideFromCalendar?: boolean
   ) => void;
   onResetRoutine?: (id: string) => void;
+  onAcceptDeepWorkPlan?: (id: string) => void;
+  onDismissDeepWorkPlan?: (id: string) => void;
   readonly?: boolean;
   skillName?: string;
   categoryName?: string;
@@ -140,6 +142,8 @@ const Card: React.FC<CardProps> = ({
     onDelete, 
     onUpdate,
     onResetRoutine,
+    onAcceptDeepWorkPlan,
+    onDismissDeepWorkPlan,
     readonly = false, 
     skillName, 
     categoryName, 
@@ -499,6 +503,7 @@ const Card: React.FC<CardProps> = ({
   const isRecentlyDone = status === 'done' && completed_at && (new Date().getTime() - new Date(completed_at).getTime() < 86400000);
   const isRoutineDone = meta.isRoutine && status === 'done';
   const isParsingFailed = meta.tags?.includes('parsing_failed');
+  const showDeepWorkSuggestion = type === ItemType.TODO && meta.deepWorkParent && meta.deepWorkStatus === 'suggested';
   
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
@@ -534,6 +539,13 @@ const Card: React.FC<CardProps> = ({
                   <span className={`text-[10px] font-bold uppercase tracking-wider ${shouldStrike ? 'text-muted' : style.textColor}`}>
                       {categoryName || displayTypeLabel}
                   </span>
+                  {(meta.deepWorkParent || meta.parentTodoId) && (
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-500">
+                          <span className="text-[9px] font-bold uppercase tracking-tight">
+                              {meta.deepWorkParent ? `deep work ${meta.progress !== undefined ? `${meta.progress}%` : ''}` : `step ${meta.deepWorkStepIndex || ''}`}
+                          </span>
+                      </div>
+                  )}
                   {meta.isRoutine && (
                       <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
                           <Repeat className="w-2.5 h-2.5 text-indigo-500" />
@@ -1043,6 +1055,88 @@ const Card: React.FC<CardProps> = ({
                                 className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-sm text-primary placeholder-muted/50 focus:outline-none focus:border-acc-todo"
                                 placeholder="Add a progress note..."
                             />
+                       </div>
+                   </div>
+               )}
+
+               {showDeepWorkSuggestion && (
+                   <div className="bg-purple-500/5 border border-purple-500/20 rounded-2xl p-3 mb-3">
+                       <div className="flex items-start justify-between gap-3 mb-2">
+                           <div>
+                               <div className="text-xs uppercase font-bold text-purple-500 flex items-center gap-1">
+                                   <BookOpen className="w-3.5 h-3.5" /> Deep Work suggestion
+                               </div>
+                               <p className="text-[11px] text-muted mt-1">
+                                   {meta.deepWorkConfidence === 'low'
+                                       ? 'Low confidence — review/edit this before creating steps.'
+                                       : 'Detected a vague/stuck task and drafted a safer work breakdown.'}
+                               </p>
+                           </div>
+                           {meta.deepWorkConfidence && (
+                               <span className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase ${meta.deepWorkConfidence === 'low' ? 'bg-amber-500/10 text-amber-500' : 'bg-purple-500/10 text-purple-500'}`}>
+                                   {meta.deepWorkConfidence}
+                               </span>
+                           )}
+                       </div>
+                       <div className="space-y-2 text-xs">
+                           {meta.deepWorkNextAction && (
+                               <div>
+                                   <span className="block text-[10px] uppercase font-bold text-muted">First next action</span>
+                                   <span className="text-primary">{meta.deepWorkNextAction}</span>
+                               </div>
+                           )}
+                           {meta.deepWorkFinalOutput && (
+                               <div>
+                                   <span className="block text-[10px] uppercase font-bold text-muted">Final output</span>
+                                   <span className="text-primary">{meta.deepWorkFinalOutput}</span>
+                               </div>
+                           )}
+                           <div className="grid grid-cols-2 gap-2">
+                               {meta.deepWorkSessionEstimateMinutes && (
+                                   <div>
+                                       <span className="block text-[10px] uppercase font-bold text-muted">Session</span>
+                                       <span className="text-primary">{meta.deepWorkSessionEstimateMinutes} min</span>
+                                   </div>
+                               )}
+                               {meta.deepWorkBlockerStatus && (
+                                   <div>
+                                       <span className="block text-[10px] uppercase font-bold text-muted">Blocker</span>
+                                       <span className="text-primary capitalize">{meta.deepWorkBlockerStatus.replace('_', ' ')}</span>
+                                   </div>
+                               )}
+                           </div>
+                           {meta.deepWorkBlockerCheck && (
+                               <div>
+                                   <span className="block text-[10px] uppercase font-bold text-muted">Check before starting</span>
+                                   <span className="text-primary">{meta.deepWorkBlockerCheck}</span>
+                               </div>
+                           )}
+                           {meta.subtasks && meta.subtasks.length > 0 && (
+                               <div>
+                                   <span className="block text-[10px] uppercase font-bold text-muted mb-1">Suggested subtasks</span>
+                                   <ol className="list-decimal list-inside space-y-1 text-primary">
+                                       {meta.subtasks.map((subtask, index) => <li key={`${subtask}-${index}`}>{subtask}</li>)}
+                                   </ol>
+                               </div>
+                           )}
+                       </div>
+                       <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-purple-500/10">
+                           {onDismissDeepWorkPlan && (
+                               <button
+                                   onClick={(e) => { e.stopPropagation(); onDismissDeepWorkPlan(item.id); }}
+                                   className="px-3 py-1.5 bg-background border border-border text-muted hover:text-primary rounded-2xl text-xs font-medium transition-colors"
+                               >
+                                   Dismiss
+                               </button>
+                           )}
+                           {onAcceptDeepWorkPlan && (
+                               <button
+                                   onClick={(e) => { e.stopPropagation(); onAcceptDeepWorkPlan(item.id); }}
+                                   className="px-3 py-1.5 bg-purple-600 text-white hover:bg-purple-500 rounded-2xl text-xs font-medium transition-colors"
+                               >
+                                   Create steps
+                               </button>
+                           )}
                        </div>
                    </div>
                )}

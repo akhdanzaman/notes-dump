@@ -27,7 +27,8 @@ import {
     TransferMoneyPayload,
     AddSavingFundsPayload,
     ParsingTask,
-    CanonicalRule
+    CanonicalRule,
+    ItemMeta
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
@@ -40,6 +41,8 @@ import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors'
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, isLegacyCompletedGoalContent } from '../utils/financeTypeUtils';
 import { canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta, HistoricalCanonicalReview } from '../services/canonicalizerService';
 import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
+import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
+import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -215,6 +218,33 @@ const convertLegacyResultsToNative = (legacyResults: Partial<BrainDumpItem>[], o
                     skillId: meta.skillId,
                     progress: meta.progress,
                     progressNotes: meta.progressNotes,
+                    parentTodoId: meta.parentTodoId,
+                    childTodoIds: meta.childTodoIds,
+                    deepWorkParent: meta.deepWorkParent,
+                    deepWorkPlanId: meta.deepWorkPlanId,
+                    deepWorkStatus: meta.deepWorkStatus,
+                    deepWorkTriggerPattern: meta.deepWorkTriggerPattern,
+                    deepWorkTriggerEvidence: meta.deepWorkTriggerEvidence,
+                    deepWorkConfidence: meta.deepWorkConfidence,
+                    deepWorkNextAction: meta.deepWorkNextAction,
+                    deepWorkNextActionDurationMinutes: meta.deepWorkNextActionDurationMinutes,
+                    deepWorkNextActionAcceptanceCheck: meta.deepWorkNextActionAcceptanceCheck,
+                    deepWorkFinalOutputFormat: meta.deepWorkFinalOutputFormat,
+                    deepWorkFinalOutput: meta.deepWorkFinalOutput,
+                    deepWorkSessionEstimateMinutes: meta.deepWorkSessionEstimateMinutes,
+                    deepWorkSessionEstimateConfidence: meta.deepWorkSessionEstimateConfidence,
+                    deepWorkSessionEstimateReason: meta.deepWorkSessionEstimateReason,
+                    deepWorkBlockerCheck: meta.deepWorkBlockerCheck,
+                    deepWorkBlockerStatus: meta.deepWorkBlockerStatus,
+                    deepWorkMissingInputs: meta.deepWorkMissingInputs,
+                    deepWorkCompletionMode: meta.deepWorkCompletionMode,
+                    deepWorkStepIndex: meta.deepWorkStepIndex,
+                    deepWorkStepCount: meta.deepWorkStepCount,
+                    deepWorkGeneratedAt: meta.deepWorkGeneratedAt,
+                    deepWorkAcceptedAt: meta.deepWorkAcceptedAt,
+                    deepWorkDismissedAt: meta.deepWorkDismissedAt,
+                    deepWorkReason: meta.deepWorkReason,
+                    subtasks: meta.subtasks,
                     savingGoalId: meta.savingGoalId,
                     savedAmount: meta.savedAmount,
                     dedicatedWalletId: meta.dedicatedWalletId,
@@ -533,20 +563,24 @@ export const useBrainDumpData = () => {
 
             const applyData = (data: DbSchema) => {
                 if (Array.isArray(data.data)) {
-                    const normalizedData = data.data.map(item => ({
-                        ...item,
-                        status: item.type === ItemType.FINANCE ? 'done' : item.status,
-                        completed_at: item.type === ItemType.FINANCE
-                            ? (item.completed_at || item.meta?.date || item.created_at)
-                            : item.completed_at,
-                        meta: {
+                    const normalizedData = data.data.map(item => {
+                        const meta = normalizeDeepWorkTodoMeta({
                             tags: [],
                             ...item.meta,
                             shoppingCategory: (item.type === ItemType.SHOPPING && !item.meta?.shoppingCategory)
                                 ? 'not_urgent'
                                 : item.meta?.shoppingCategory
-                        }
-                    }));
+                        });
+
+                        return {
+                            ...item,
+                            status: item.type === ItemType.FINANCE ? 'done' : item.status,
+                            completed_at: item.type === ItemType.FINANCE
+                                ? (item.completed_at || item.meta?.date || item.created_at)
+                                : item.completed_at,
+                            meta
+                        };
+                    });
 
                     const migratedData = migrateAchievedGoalItems(normalizedData);
                     const recoveredJournalData = recoverMisclassifiedJournalNotes(migratedData);
@@ -652,6 +686,8 @@ export const useBrainDumpData = () => {
         const cleanMeta = stripUndefined({
             date: meta?.date,
             dateTime: meta?.dateTime,
+            start: meta?.start,
+            end: meta?.end,
             when: meta?.when,
             tags: meta?.tags || [],
             quantity: meta?.quantity,
@@ -677,11 +713,39 @@ export const useBrainDumpData = () => {
             skillName: meta?.skillName,
             progress: meta?.progress,
             progressNotes: meta?.progressNotes,
+            parentTodoId: meta?.parentTodoId,
+            childTodoIds: meta?.childTodoIds,
+            deepWorkParent: meta?.deepWorkParent,
+            deepWorkPlanId: meta?.deepWorkPlanId,
+            deepWorkStatus: meta?.deepWorkStatus,
+            deepWorkTriggerPattern: meta?.deepWorkTriggerPattern,
+            deepWorkTriggerEvidence: meta?.deepWorkTriggerEvidence,
+            deepWorkConfidence: meta?.deepWorkConfidence,
+            deepWorkNextAction: meta?.deepWorkNextAction,
+            deepWorkNextActionDurationMinutes: meta?.deepWorkNextActionDurationMinutes,
+            deepWorkNextActionAcceptanceCheck: meta?.deepWorkNextActionAcceptanceCheck,
+            deepWorkFinalOutputFormat: meta?.deepWorkFinalOutputFormat,
+            deepWorkFinalOutput: meta?.deepWorkFinalOutput,
+            deepWorkSessionEstimateMinutes: meta?.deepWorkSessionEstimateMinutes,
+            deepWorkSessionEstimateConfidence: meta?.deepWorkSessionEstimateConfidence,
+            deepWorkSessionEstimateReason: meta?.deepWorkSessionEstimateReason,
+            deepWorkBlockerCheck: meta?.deepWorkBlockerCheck,
+            deepWorkBlockerStatus: meta?.deepWorkBlockerStatus,
+            deepWorkMissingInputs: meta?.deepWorkMissingInputs,
+            deepWorkCompletionMode: meta?.deepWorkCompletionMode,
+            deepWorkStepIndex: meta?.deepWorkStepIndex,
+            deepWorkStepCount: meta?.deepWorkStepCount,
+            deepWorkGeneratedAt: meta?.deepWorkGeneratedAt,
+            deepWorkAcceptedAt: meta?.deepWorkAcceptedAt,
+            deepWorkDismissedAt: meta?.deepWorkDismissedAt,
+            deepWorkReason: meta?.deepWorkReason,
+            subtasks: meta?.subtasks,
             savedAmount: meta?.savedAmount,
             savingGoalId: meta?.savingGoalId,
             dedicatedWalletId: meta?.dedicatedWalletId,
             canonical: meta?.canonical,
             priority: meta?.priority,
+            hideFromCalendar: meta?.hideFromCalendar,
             parserAction: action,
             parserEntityType: entityType,
             parserConfidence: confidence as any,
@@ -689,7 +753,7 @@ export const useBrainDumpData = () => {
             parserReviewReason: reviewReason,
             parsingError: reviewReason
         });
-        return cleanMeta;
+        return normalizeDeepWorkTodoMeta(cleanMeta);
     };
 
     const buildItemFromCreatePayload = (
@@ -739,6 +803,27 @@ export const useBrainDumpData = () => {
             meta,
             isOptimistic: false
         };
+    };
+
+    const buildItemsFromCreatePayload = (
+        result: ParserResultV2,
+        payload: CreateItemPayload,
+        sourceText: string
+    ): BrainDumpItem[] => {
+        const parent = buildItemFromCreatePayload(result, payload, sourceText);
+        if (parent.type !== ItemType.TODO || parent.status === 'done') return [parent];
+
+        const suggestedMeta = normalizeDeepWorkTodoMeta(buildDeepWorkSuggestionMeta(parent.content, parent.meta));
+        if (!suggestedMeta.deepWorkParent) return [parent];
+
+        return [{
+            ...parent,
+            meta: normalizeDeepWorkTodoMeta({
+                ...suggestedMeta,
+                deepWorkPlanId: suggestedMeta.deepWorkPlanId || parent.id,
+                progress: suggestedMeta.progress ?? 0,
+            })
+        }];
     };
 
     const buildTransferItem = (result: ParserResultV2, payload: TransferMoneyPayload): BrainDumpItem => {
@@ -805,12 +890,14 @@ export const useBrainDumpData = () => {
                     case 'create_item': {
                         const payload = result.payload as CreateItemPayload | undefined;
                         if (!payload) break;
-                        const newItem = buildItemFromCreatePayload(result, payload, sourceText);
-                        if (newItem.type === ItemType.JOURNAL) {
-                            updated = upsertDailyJournalEntry(updated, newItem);
-                        } else {
-                            itemsToAdd.push(newItem);
-                        }
+                        const newItems = buildItemsFromCreatePayload(result, payload, sourceText);
+                        newItems.forEach(newItem => {
+                            if (newItem.type === ItemType.JOURNAL) {
+                                updated = upsertDailyJournalEntry(updated, newItem);
+                            } else {
+                                itemsToAdd.push(newItem);
+                            }
+                        });
                         break;
                     }
 
@@ -859,6 +946,24 @@ export const useBrainDumpData = () => {
                                 skillName: changes.skillName,
                                 progress: sanitizeNumber(changes.progress),
                                 progressNotes: changes.progressNotes,
+                                parentTodoId: changes.parentTodoId,
+                                childTodoIds: changes.childTodoIds,
+                                deepWorkParent: changes.deepWorkParent,
+                                deepWorkPlanId: changes.deepWorkPlanId,
+                                deepWorkStatus: changes.deepWorkStatus,
+                                deepWorkNextAction: changes.deepWorkNextAction,
+                                deepWorkFinalOutput: changes.deepWorkFinalOutput,
+                                deepWorkSessionEstimateMinutes: sanitizeNumber(changes.deepWorkSessionEstimateMinutes),
+                                deepWorkBlockerCheck: changes.deepWorkBlockerCheck,
+                                deepWorkBlockerStatus: changes.deepWorkBlockerStatus,
+                                deepWorkCompletionMode: changes.deepWorkCompletionMode,
+                                deepWorkStepIndex: sanitizeNumber(changes.deepWorkStepIndex),
+                                deepWorkStepCount: sanitizeNumber(changes.deepWorkStepCount),
+                                deepWorkGeneratedAt: changes.deepWorkGeneratedAt,
+                                deepWorkAcceptedAt: changes.deepWorkAcceptedAt,
+                                deepWorkDismissedAt: changes.deepWorkDismissedAt,
+                                deepWorkReason: changes.deepWorkReason,
+                                subtasks: changes.subtasks,
                                 isRoutine: changes.isRoutine,
                                 routineInterval: changes.routineInterval,
                                 routineDaysOfWeek: changes.routineDaysOfWeek,
@@ -890,21 +995,23 @@ export const useBrainDumpData = () => {
                                 }
                             }
 
+                            const mergedMeta = normalizeDeepWorkTodoMeta({
+                                ...i.meta,
+                                ...cleanMeta,
+                                parserAction: result.action,
+                                parserEntityType: result.entityType,
+                                parserConfidence: result.confidence,
+                                parserNeedsReview: result.needsReview,
+                                parserReviewReason: result.reviewReason,
+                                parsingError: result.reviewReason
+                            });
+
                             return {
                                 ...i,
                                 content: newContent,
                                 status: newStatus,
                                 completed_at: completedAt,
-                                meta: {
-                                    ...i.meta,
-                                    ...cleanMeta,
-                                    parserAction: result.action,
-                                    parserEntityType: result.entityType,
-                                    parserConfidence: result.confidence,
-                                    parserNeedsReview: result.needsReview,
-                                    parserReviewReason: result.reviewReason,
-                                    parsingError: result.reviewReason
-                                }
+                                meta: mergedMeta
                             };
                         });
                         break;
@@ -1353,6 +1460,7 @@ export const useBrainDumpData = () => {
             }
         }
 
+        updatedItems = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(updatedItems));
         setItems(updatedItems);
         saveAndSync(updatedItems);
     };
@@ -1385,9 +1493,144 @@ export const useBrainDumpData = () => {
     };
 
     const handleDelete = async (id: string) => {
-        const updatedItems = itemsRef.current.filter(i => i.id !== id);
+        const target = itemsRef.current.find(i => i.id === id);
+        const childIds = new Set(target?.meta.childTodoIds || []);
+        let updatedItems = itemsRef.current.filter(i => i.id !== id && i.meta.parentTodoId !== id && !childIds.has(i.id));
+        updatedItems = applyDeepWorkChildProgress(updatedItems);
         setItems(updatedItems);
         saveAndSync(updatedItems);
+    };
+
+    const stripDeepWorkFields = (meta: ItemMeta = {}): ItemMeta => {
+        const {
+            parentTodoId,
+            childTodoIds,
+            deepWorkParent,
+            deepWorkPlanId,
+            deepWorkStatus,
+            deepWorkTriggerPattern,
+            deepWorkTriggerEvidence,
+            deepWorkConfidence,
+            deepWorkNextAction,
+            deepWorkNextActionDurationMinutes,
+            deepWorkNextActionAcceptanceCheck,
+            deepWorkFinalOutputFormat,
+            deepWorkFinalOutput,
+            deepWorkSessionEstimateMinutes,
+            deepWorkSessionEstimateConfidence,
+            deepWorkSessionEstimateReason,
+            deepWorkBlockerCheck,
+            deepWorkBlockerStatus,
+            deepWorkMissingInputs,
+            deepWorkCompletionMode,
+            deepWorkStepIndex,
+            deepWorkStepCount,
+            deepWorkGeneratedAt,
+            deepWorkReason,
+            subtasks,
+            ...rest
+        } = meta;
+        return rest;
+    };
+
+    const saveDeepWorkItems = (nextItems: BrainDumpItem[]) => {
+        const normalized = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(nextItems));
+        setItems(normalized);
+        saveAndSync(normalized);
+    };
+
+    const handleKeepRawTodo = async (id: string) => {
+        const target = itemsRef.current.find(item => item.id === id);
+        const childIds = new Set(target?.meta.childTodoIds || []);
+        const updatedItems = itemsRef.current
+            .filter(item => item.id === id || (item.meta.parentTodoId !== id && !childIds.has(item.id)))
+            .map(item => {
+                if (item.id !== id) return item;
+                return {
+                    ...item,
+                    meta: {
+                        ...stripDeepWorkFields(item.meta),
+                        progress: item.meta.progress,
+                        progressNotes: item.meta.progressNotes,
+                    }
+                };
+            });
+        saveDeepWorkItems(updatedItems);
+    };
+
+    const handleUpdateDeepWorkTodo = async (id: string, changes: Partial<ItemMeta>) => {
+        const updatedItems = itemsRef.current.map(item => {
+            if (item.id !== id) return item;
+            return {
+                ...item,
+                meta: normalizeDeepWorkTodoMeta({
+                    ...item.meta,
+                    ...changes,
+                    deepWorkPlanId: item.meta.deepWorkPlanId || item.id,
+                })
+            };
+        });
+        saveDeepWorkItems(updatedItems);
+    };
+
+    const handleRetriggerDeepWorkTodo = async (id: string) => {
+        const now = new Date().toISOString();
+        const target = itemsRef.current.find(item => item.id === id);
+        const childIds = new Set(target?.meta.childTodoIds || []);
+        const updatedItems = itemsRef.current
+            .filter(item => item.id === id || (item.meta.parentTodoId !== id && !childIds.has(item.id)))
+            .map(item => {
+                if (item.id !== id || item.type !== ItemType.TODO) return item;
+                const baseMeta = stripDeepWorkFields(item.meta);
+                const regeneratedMeta = buildDeepWorkSuggestionMeta(item.content, {
+                    ...baseMeta,
+                    deepWorkGeneratedAt: now,
+                });
+                return {
+                    ...item,
+                    meta: normalizeDeepWorkTodoMeta({
+                        ...regeneratedMeta,
+                        deepWorkPlanId: item.id,
+                        progress: regeneratedMeta.progress ?? item.meta.progress ?? 0,
+                    })
+                };
+            });
+        saveDeepWorkItems(updatedItems);
+    };
+
+    const handleAcceptDeepWorkTodo = async (id: string, subtasks?: string[]) => {
+        const now = new Date().toISOString();
+        let childItems: BrainDumpItem[] = [];
+        const updatedParents = itemsRef.current.map(item => {
+            if (item.id !== id || item.type !== ItemType.TODO) return item;
+            const parentForChildren: BrainDumpItem = {
+                ...item,
+                meta: normalizeDeepWorkTodoMeta({
+                    ...item.meta,
+                    childTodoIds: undefined,
+                    deepWorkPlanId: item.meta.deepWorkPlanId || item.id,
+                    subtasks: subtasks?.length ? subtasks : item.meta.subtasks,
+                })
+            };
+            childItems = createDeepWorkSubtaskItems(parentForChildren, uuidv4, now);
+            const childIds = childItems.map(child => child.id);
+            return {
+                ...parentForChildren,
+                meta: normalizeDeepWorkTodoMeta({
+                    ...parentForChildren.meta,
+                    childTodoIds: childIds.length ? childIds : parentForChildren.meta.childTodoIds,
+                    deepWorkParent: true,
+                    deepWorkPlanId: parentForChildren.meta.deepWorkPlanId || parentForChildren.id,
+                    deepWorkStatus: childIds.length ? 'active' : 'accepted',
+                    deepWorkCompletionMode: parentForChildren.meta.deepWorkCompletionMode || 'final_output_check',
+                    progress: parentForChildren.meta.progress ?? 0,
+                    subtasks: subtasks?.length ? subtasks : parentForChildren.meta.subtasks,
+                })
+            };
+        });
+
+        const withoutExistingChildren = updatedParents.filter(item => item.id === id || (item.meta.parentTodoId !== id && !(itemsRef.current.find(parent => parent.id === id)?.meta.childTodoIds || []).includes(item.id)));
+        saveDeepWorkItems([...childItems, ...withoutExistingChildren]);
     };
 
     const handleAddRoutineTask = async (
@@ -1535,28 +1778,86 @@ export const useBrainDumpData = () => {
             };
         });
 
-        setItems(updatedItems);
-        saveAndSync(updatedItems);
+        const reconciledDeepWorkItems = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(updatedItems));
+        setItems(reconciledDeepWorkItems);
+        saveAndSync(reconciledDeepWorkItems);
     };
 
     const handleAddTask = async (content: string, date: string, priority: Priority = 'normal', start?: string, end?: string, hideFromCalendar?: boolean) => {
-        const newItem: BrainDumpItem = {
-            id: uuidv4(),
-            type: ItemType.TODO,
-            content,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-            meta: {
-                tags: [],
-                date,
-                priority,
-                start,
-                end,
-                hideFromCalendar
-            }
+        const newItems = buildItemsFromCreatePayload(
+            {
+                action: 'create_item',
+                entityType: 'todo',
+                content,
+                confidence: 'high',
+                needsReview: false,
+                payload: {
+                    itemType: 'TODO',
+                    content,
+                    status: 'pending',
+                    meta: { date, priority, start, end, hideFromCalendar }
+                }
+            },
+            {
+                itemType: 'TODO',
+                content,
+                status: 'pending',
+                meta: { date, priority, start, end, hideFromCalendar }
+            },
+            content
+        );
+
+        const updated = [...newItems, ...itemsRef.current];
+        setItems(updated);
+        saveAndSync(updated);
+    };
+
+    const handleAcceptDeepWorkPlan = (id: string) => {
+        const currentItems = itemsRef.current;
+        const parent = currentItems.find(item => item.id === id && item.type === ItemType.TODO);
+        if (!parent) return;
+
+        const parentWithSuggestion: BrainDumpItem = {
+            ...parent,
+            meta: normalizeDeepWorkTodoMeta(buildDeepWorkSuggestionMeta(parent.content, parent.meta))
+        };
+        const now = new Date().toISOString();
+        const childItems = createDeepWorkSubtaskItems(parentWithSuggestion, uuidv4, now);
+        if (childItems.length === 0) return;
+
+        const childIds = childItems.map(child => child.id);
+        const updatedParent: BrainDumpItem = {
+            ...parentWithSuggestion,
+            meta: normalizeDeepWorkTodoMeta({
+                ...parentWithSuggestion.meta,
+                deepWorkStatus: 'active',
+                childTodoIds: childIds,
+                deepWorkPlanId: parentWithSuggestion.meta.deepWorkPlanId || parentWithSuggestion.id,
+                deepWorkAcceptedAt: now,
+                progress: 0,
+            })
         };
 
-        const updated = [newItem, ...itemsRef.current];
+        const withoutParent = currentItems.filter(item => item.id !== id);
+        const updated = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress([updatedParent, ...childItems, ...withoutParent]));
+        setItems(updated);
+        saveAndSync(updated);
+    };
+
+    const handleDismissDeepWorkPlan = (id: string) => {
+        const updated = itemsRef.current.map(item => {
+            if (item.id !== id || item.type !== ItemType.TODO) return item;
+            return {
+                ...item,
+                meta: normalizeDeepWorkTodoMeta({
+                    ...item.meta,
+                    deepWorkParent: false,
+                    deepWorkStatus: 'dismissed',
+                    deepWorkDismissedAt: new Date().toISOString(),
+                    subtasks: undefined,
+                })
+            };
+        });
         setItems(updated);
         saveAndSync(updated);
     };
@@ -1729,10 +2030,16 @@ export const useBrainDumpData = () => {
         handleToggleStatus,
         handleDelete,
         handleUpdateItem,
+        handleKeepRawTodo,
+        handleUpdateDeepWorkTodo,
+        handleRetriggerDeepWorkTodo,
+        handleAcceptDeepWorkTodo,
         handleAddRoutineTask,
         handleAddTask,
         handleAddShoppingItem,
         handleAddSavingTransaction,
+        handleAcceptDeepWorkPlan,
+        handleDismissDeepWorkPlan,
         handleResetRoutine,
         handleAddTransaction,
         handleAddNote

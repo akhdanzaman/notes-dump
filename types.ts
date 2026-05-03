@@ -11,6 +11,12 @@ export enum ItemType {
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving';
 export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving' | 'achieved_goal';
 export type Priority = 'low' | 'normal' | 'high';
+export type DeepWorkCompletionMode = 'manual' | 'all_subtasks' | 'final_output_check';
+export type DeepWorkStatus = 'suggested' | 'accepted' | 'active' | 'dismissed' | 'done';
+export type DeepWorkBlockerStatus = 'clear' | 'blocked' | 'needs_input' | 'unknown';
+export type DeepWorkPattern = 'summary' | 'regulation' | 'research' | 'review' | 'continuation' | 'artifact' | 'decision';
+export type DeepWorkConfidence = 'low' | 'medium' | 'high';
+export type DeepWorkOutputFormat = 'bullet_summary' | 'brief' | 'table' | 'decision_memo' | 'slides' | 'email_draft' | 'notes' | 'unknown';
 
 export interface BudgetRule {
   id: string;
@@ -103,6 +109,34 @@ export interface ItemMeta {
 
   progress?: number;
   progressNotes?: string;
+
+  parentTodoId?: string;
+  childTodoIds?: string[];
+  deepWorkParent?: boolean;
+  deepWorkPlanId?: string;
+  deepWorkStatus?: DeepWorkStatus;
+  deepWorkTriggerPattern?: DeepWorkPattern;
+  deepWorkTriggerEvidence?: string[];
+  deepWorkConfidence?: DeepWorkConfidence;
+  deepWorkNextAction?: string;
+  deepWorkNextActionDurationMinutes?: number;
+  deepWorkNextActionAcceptanceCheck?: string;
+  deepWorkFinalOutputFormat?: DeepWorkOutputFormat;
+  deepWorkFinalOutput?: string;
+  deepWorkSessionEstimateMinutes?: number;
+  deepWorkSessionEstimateConfidence?: DeepWorkConfidence;
+  deepWorkSessionEstimateReason?: string;
+  deepWorkBlockerCheck?: string;
+  deepWorkBlockerStatus?: DeepWorkBlockerStatus;
+  deepWorkMissingInputs?: string[];
+  deepWorkCompletionMode?: DeepWorkCompletionMode;
+  deepWorkStepIndex?: number;
+  deepWorkStepCount?: number;
+  deepWorkGeneratedAt?: string;
+  deepWorkAcceptedAt?: string;
+  deepWorkDismissedAt?: string;
+  deepWorkReason?: string;
+  subtasks?: string[];
 
   savedAmount?: number;
   savingGoalId?: string;
@@ -344,6 +378,34 @@ export interface ParsedItemMetaV2 {
   progress?: number;
   progressNotes?: string;
 
+  parentTodoId?: string;
+  childTodoIds?: string[];
+  deepWorkParent?: boolean;
+  deepWorkPlanId?: string;
+  deepWorkStatus?: DeepWorkStatus;
+  deepWorkTriggerPattern?: DeepWorkPattern;
+  deepWorkTriggerEvidence?: string[];
+  deepWorkConfidence?: DeepWorkConfidence;
+  deepWorkNextAction?: string;
+  deepWorkNextActionDurationMinutes?: number;
+  deepWorkNextActionAcceptanceCheck?: string;
+  deepWorkFinalOutputFormat?: DeepWorkOutputFormat;
+  deepWorkFinalOutput?: string;
+  deepWorkSessionEstimateMinutes?: number;
+  deepWorkSessionEstimateConfidence?: DeepWorkConfidence;
+  deepWorkSessionEstimateReason?: string;
+  deepWorkBlockerCheck?: string;
+  deepWorkBlockerStatus?: DeepWorkBlockerStatus;
+  deepWorkMissingInputs?: string[];
+  deepWorkCompletionMode?: DeepWorkCompletionMode;
+  deepWorkStepIndex?: number;
+  deepWorkStepCount?: number;
+  deepWorkGeneratedAt?: string;
+  deepWorkAcceptedAt?: string;
+  deepWorkDismissedAt?: string;
+  deepWorkReason?: string;
+  subtasks?: string[];
+
   savingGoalId?: string;
   savingGoalName?: string;
   dedicatedWalletId?: string;
@@ -380,6 +442,7 @@ export interface UpdateItemPayload {
     date: string;
     start: string;
     end: string;
+    hideFromCalendar: boolean;
     amount: number;
     tags: string[];
     shoppingCategory: ShoppingCategory;
@@ -396,6 +459,33 @@ export interface UpdateItemPayload {
     skillName: string;
     progress: number;
     progressNotes: string;
+    parentTodoId: string;
+    childTodoIds: string[];
+    deepWorkParent: boolean;
+    deepWorkPlanId: string;
+    deepWorkStatus: DeepWorkStatus;
+    deepWorkTriggerPattern: DeepWorkPattern;
+    deepWorkTriggerEvidence: string[];
+    deepWorkConfidence: DeepWorkConfidence;
+    deepWorkNextAction: string;
+    deepWorkNextActionDurationMinutes: number;
+    deepWorkNextActionAcceptanceCheck: string;
+    deepWorkFinalOutputFormat: DeepWorkOutputFormat;
+    deepWorkFinalOutput: string;
+    deepWorkSessionEstimateMinutes: number;
+    deepWorkSessionEstimateConfidence: DeepWorkConfidence;
+    deepWorkSessionEstimateReason: string;
+    deepWorkBlockerCheck: string;
+    deepWorkBlockerStatus: DeepWorkBlockerStatus;
+    deepWorkMissingInputs: string[];
+    deepWorkCompletionMode: DeepWorkCompletionMode;
+    deepWorkStepIndex: number;
+    deepWorkStepCount: number;
+    deepWorkGeneratedAt: string;
+    deepWorkAcceptedAt: string;
+    deepWorkDismissedAt: string;
+    deepWorkReason: string;
+    subtasks: string[];
     isRoutine: boolean;
     routineInterval: 'daily' | 'weekly' | 'monthly' | 'yearly';
     routineDaysOfWeek: number[];

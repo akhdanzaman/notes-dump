@@ -6,6 +6,26 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.19',
+    date: 'May 2026',
+    items: [
+      'Plan now gives Deep Work todos a compact decision panel with next action, final output, session estimate, and blocker check without changing the plain todo card flow.',
+      'Deep Work suggestions can be kept raw, retriggered, or transformed from an editable mobile-friendly subtask preview.',
+      'Nested Deep Work steps now expand under their parent with visible step progress while parent completion stays tied to the final output check.',
+    ],
+  },
+  {
+    version: 'v0.3.18',
+    date: 'May 2026',
+    items: [
+      'Added the Deep Work Transformer detector for abstract todos like summary IIMS, summary regulasi, research, recap, planning, writing, and implementation work: the app now surfaces first action, final output, session estimate, blocker checks, and suggested steps.',
+      'Low-confidence Deep Work suggestions stay review-first/editable and require an explicit Create steps action, so vague parser output no longer silently mutates tasks into nonsense.',
+      'Plan now shows optional nested todo steps directly under the parent task, with progress rolling up as the steps are completed instead of only relying on optimistic local state.',
+      'Google Sheets sync now preserves the nested todo fields, parent/child IDs, step order, next action, requested final output, session estimate, blocker/status notes, checklist subtasks, and completion mode so the plan survives a clean refresh or reload.',
+      'Nested todo metadata stays optional and backward-compatible: old todo rows keep working, while child completion rolls up progress without marking the parent done unless the parent explicitly opts into all-subtasks completion.',
+    ],
+  },
+  {
     version: 'v0.3.17',
     date: 'May 2026',
     items: [

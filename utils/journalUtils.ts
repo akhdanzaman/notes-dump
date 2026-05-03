@@ -86,7 +86,7 @@ export const upsertDailyJournalEntry = (items: BrainDumpItem[], newEntry: BrainD
 export const recoverMisclassifiedJournalNotes = (items: BrainDumpItem[]): BrainDumpItem[] => {
   let changed = false;
 
-  const recovered = items.map(item => {
+  const recovered: BrainDumpItem[] = items.map((item): BrainDumpItem => {
     if (item.type !== ItemType.NOTE) return item;
     if (!item.meta.date) return item;
     if (!(item.status === 'done' || !!item.completed_at)) return item;

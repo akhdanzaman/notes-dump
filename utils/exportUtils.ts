@@ -1,5 +1,6 @@
 import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType } from '../types';
 import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
+import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 
 export interface SheetData {
@@ -419,7 +420,13 @@ export const generateExportData = (
   }
 
   // --- Sheet 2: Todos ---
-  const todos = items.filter(i => i.type === ItemType.TODO).map(item => ({
+  const todos = items.filter(i => i.type === ItemType.TODO).map(item => {
+    const children = getDeepWorkChildren(items, item.id);
+    const childIds = item.meta.childTodoIds?.length
+      ? item.meta.childTodoIds
+      : children.map(child => child.id);
+
+    return {
       Type: item.type,
       Status: item.status,
       Priority: item.meta.priority || 'normal',
@@ -432,14 +439,29 @@ export const generateExportData = (
       Completed_At: fmtDate(item.completed_at),
       Progress: item.meta.progress ? `${item.meta.progress}%` : '',
       Progress_Notes: item.meta.progressNotes || '',
-      ID: item.id
-  }));
+      ID: item.id,
+      Parent_ID: item.meta.parentTodoId || '',
+      Deep_Work_Role: item.meta.deepWorkParent ? 'parent' : (item.meta.parentTodoId ? 'step' : ''),
+      Step_Order: item.meta.deepWorkStepIndex || '',
+      Step_Count: item.meta.deepWorkStepCount || '',
+      Child_IDs: childIds.join(', '),
+      Child_Count: children.length || childIds.length || '',
+      Completion_Mode: item.meta.deepWorkCompletionMode || '',
+      Deep_Work_Status: item.meta.deepWorkStatus || (item.meta.deepWorkParent ? 'suggested' : ''),
+      Next_Action: item.meta.deepWorkNextAction || '',
+      Final_Output: item.meta.deepWorkFinalOutput || '',
+      Session_Estimate_Min: item.meta.deepWorkSessionEstimateMinutes || '',
+      Blocker_Status: item.meta.deepWorkBlockerStatus || '',
+      Blocker_Check: item.meta.deepWorkBlockerCheck || '',
+      Subtasks: encodeSubtasksForSheet(item.meta.subtasks),
+    };
+  });
   if (todos.length > 0) {
     sheets.push({
       name: "Todos",
       data: [
-        ["Type", "Status", "Priority", "Content", "Due_Date", "Start_Date", "End_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID"],
-        ...todos.map(t => [t.Type, t.Status, t.Priority, t.Content, t.Due_Date, t.Start_Date, t.End_Date, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID])
+        ["Type", "Status", "Priority", "Content", "Due_Date", "Start_Date", "End_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID", "Parent_ID", "Deep_Work_Role", "Step_Order", "Step_Count", "Child_IDs", "Child_Count", "Completion_Mode", "Deep_Work_Status", "Next_Action", "Final_Output", "Session_Estimate_Min", "Blocker_Status", "Blocker_Check", "Subtasks"],
+        ...todos.map(t => [t.Type, t.Status, t.Priority, t.Content, t.Due_Date, t.Start_Date, t.End_Date, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID, t.Parent_ID, t.Deep_Work_Role, t.Step_Order, t.Step_Count, t.Child_IDs, t.Child_Count, t.Completion_Mode, t.Deep_Work_Status, t.Next_Action, t.Final_Output, t.Session_Estimate_Min, t.Blocker_Status, t.Blocker_Check, t.Subtasks])
       ]
     });
   }
@@ -533,13 +555,26 @@ export const generateExportData = (
     Shopping_Category: item.meta.shoppingCategory || '',
     Recurrence_Days: item.meta.recurrenceDays || '',
     Priority: item.meta.priority || 'normal',
+    Parent_Todo_ID: item.meta.parentTodoId || '',
+    Child_Todo_IDs: item.meta.childTodoIds?.join(', ') || '',
+    Deep_Work_Role: item.meta.deepWorkParent ? 'parent' : (item.meta.parentTodoId ? 'step' : ''),
+    Deep_Work_Status: item.meta.deepWorkStatus || '',
+    Deep_Work_Completion_Mode: item.meta.deepWorkCompletionMode || '',
+    Deep_Work_Next_Action: item.meta.deepWorkNextAction || '',
+    Deep_Work_Final_Output: item.meta.deepWorkFinalOutput || '',
+    Deep_Work_Session_Estimate_Min: item.meta.deepWorkSessionEstimateMinutes || '',
+    Deep_Work_Blocker_Status: item.meta.deepWorkBlockerStatus || '',
+    Deep_Work_Blocker_Check: item.meta.deepWorkBlockerCheck || '',
+    Deep_Work_Step_Index: item.meta.deepWorkStepIndex || '',
+    Deep_Work_Step_Count: item.meta.deepWorkStepCount || '',
+    Deep_Work_Subtasks: encodeSubtasksForSheet(item.meta.subtasks),
   }));
   
   sheets.push({
     name: "All Items (Raw)",
     data: [
-      ["ID", "Type", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Recurrence_Days", "Priority"],
-      ...itemsData.map(i => [i.ID, i.Type, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.Canonical_Payment_Method, i.Merchant, i.Canonical_Merchant, i.Commodity, i.Canonical_Commodity, i.Subcommodity, i.Canonical_Subcommodity, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Recurrence_Days, i.Priority])
+      ["ID", "Type", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Recurrence_Days", "Priority", "Parent_Todo_ID", "Child_Todo_IDs", "Deep_Work_Role", "Deep_Work_Status", "Deep_Work_Completion_Mode", "Deep_Work_Next_Action", "Deep_Work_Final_Output", "Deep_Work_Session_Estimate_Min", "Deep_Work_Blocker_Status", "Deep_Work_Blocker_Check", "Deep_Work_Step_Index", "Deep_Work_Step_Count", "Deep_Work_Subtasks"],
+      ...itemsData.map(i => [i.ID, i.Type, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.Canonical_Payment_Method, i.Merchant, i.Canonical_Merchant, i.Commodity, i.Canonical_Commodity, i.Subcommodity, i.Canonical_Subcommodity, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Recurrence_Days, i.Priority, i.Parent_Todo_ID, i.Child_Todo_IDs, i.Deep_Work_Role, i.Deep_Work_Status, i.Deep_Work_Completion_Mode, i.Deep_Work_Next_Action, i.Deep_Work_Final_Output, i.Deep_Work_Session_Estimate_Min, i.Deep_Work_Blocker_Status, i.Deep_Work_Blocker_Check, i.Deep_Work_Step_Index, i.Deep_Work_Step_Count, i.Deep_Work_Subtasks])
     ]
   });
 

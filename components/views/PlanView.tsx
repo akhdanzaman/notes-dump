@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
+import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
 import Card from '../Card';
 import ShoppingItem from '../ShoppingItem';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -22,6 +23,9 @@ interface PlanViewProps {
     appSettings: AppSettings;
     handleToggleStatus: (id: string) => void;
     handleDelete: (id: string) => void;
+    handleKeepRawTodo: (id: string) => void;
+    handleRetriggerDeepWorkTodo: (id: string) => void;
+    handleAcceptDeepWorkTodo: (id: string, subtasks?: string[]) => void;
     handleUpdateItem: (
         id: string, 
         newContent: string, 
@@ -71,7 +75,7 @@ interface PlanViewProps {
 const PlanView: React.FC<PlanViewProps> = ({
     items, skills, planSubTab, setPlanSubTab,
     focusDate, setFocusDate,
-    appSettings, handleToggleStatus, handleDelete, handleUpdateItem,
+    appSettings, handleToggleStatus, handleDelete, handleKeepRawTodo, handleRetriggerDeepWorkTodo, handleAcceptDeepWorkTodo, handleUpdateItem,
     handleOpenAddRoutine, handleOpenAddTask, handleOpenAddShopping, handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
     searchQuery, selectedTag,
     wallets, budgetRules, handleResetRoutine, onAddFunds, onCompleteGoal, setActiveTab
@@ -80,6 +84,10 @@ const PlanView: React.FC<PlanViewProps> = ({
     // Data Preparation
     const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
     const { today, tomorrow, later, routines } = pendingGroups;
+    const rootToday = today.filter(item => !item.meta.parentTodoId);
+    const rootTomorrow = tomorrow.filter(item => !item.meta.parentTodoId);
+    const rootLater = later.filter(item => !item.meta.parentTodoId);
+    const rootRoutines = (routines || []).filter(item => !item.meta.parentTodoId);
     
     const { urgent, routine, normal, savings } = getShoppingItems(items);
     const isShoppingEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
@@ -87,10 +95,10 @@ const PlanView: React.FC<PlanViewProps> = ({
     const taskResetKey = `plan-tasks-${focusDate.getFullYear()}-${focusDate.getMonth()}-${searchQuery}-${selectedTag}`;
     const shoppingResetKey = `plan-shopping-${searchQuery}-${selectedTag}`;
 
-    const visibleToday = useLazyItems(today, { resetKey: `${taskResetKey}-today-${today.length}` });
-    const visibleRoutines = useLazyItems(routines || [], { resetKey: `${taskResetKey}-routines-${routines?.length || 0}` });
-    const visibleTomorrow = useLazyItems(tomorrow, { resetKey: `${taskResetKey}-tomorrow-${tomorrow.length}` });
-    const visibleLater = useLazyItems(later, { resetKey: `${taskResetKey}-later-${later.length}` });
+    const visibleToday = useLazyItems(rootToday, { resetKey: `${taskResetKey}-today-${rootToday.length}` });
+    const visibleRoutines = useLazyItems(rootRoutines, { resetKey: `${taskResetKey}-routines-${rootRoutines.length}` });
+    const visibleTomorrow = useLazyItems(rootTomorrow, { resetKey: `${taskResetKey}-tomorrow-${rootTomorrow.length}` });
+    const visibleLater = useLazyItems(rootLater, { resetKey: `${taskResetKey}-later-${rootLater.length}` });
     const visibleUrgent = useLazyItems(urgent, { resetKey: `${shoppingResetKey}-urgent-${urgent.length}` });
     const visibleRoutineShopping = useLazyItems(routine, { resetKey: `${shoppingResetKey}-routine-${routine.length}` });
     const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal-${normal.length}` });
@@ -100,6 +108,8 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [fundAmount, setFundAmount] = useState('');
     const [fundWallet, setFundWallet] = useState('');
     const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
+    const [expandedDeepWorkIds, setExpandedDeepWorkIds] = useState<string[]>([]);
+    const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>({});
 
     // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('plan', setActiveTab);
@@ -393,6 +403,156 @@ const PlanView: React.FC<PlanViewProps> = ({
         onResetRoutine: handleResetRoutine
     };
 
+    const toggleDeepWorkExpanded = (id: string) => {
+        setExpandedDeepWorkIds(prev => prev.includes(id) ? prev.filter(existing => existing !== id) : [...prev, id]);
+    };
+
+    const getSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[]) => {
+        return subtaskDrafts[item.id] || item.meta.subtasks || children.map(child => child.content) || [];
+    };
+
+    const updateSubtaskDraft = (itemId: string, index: number, value: string, fallback: string[]) => {
+        const next = [...fallback];
+        next[index] = value;
+        setSubtaskDrafts(prev => ({ ...prev, [itemId]: next }));
+    };
+
+    const acceptDeepWorkPlan = (item: BrainDumpItem, children: BrainDumpItem[]) => {
+        const draft = getSubtaskDraft(item, children).map(step => step.trim()).filter(Boolean);
+        handleAcceptDeepWorkTodo(item.id, draft);
+        setExpandedDeepWorkIds(prev => prev.includes(item.id) ? prev : [...prev, item.id]);
+    };
+
+    const renderDeepWorkDetail = (icon: React.ReactNode, label: string, value?: string | number, tone = 'text-purple-500') => {
+        if (value === undefined || value === null || value === '') return null;
+        return (
+            <div className="rounded-2xl border border-border/60 bg-surface/70 px-3 py-2">
+                <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}>
+                    {icon}
+                    {label}
+                </div>
+                <div className="mt-1 text-sm font-medium text-primary leading-snug break-words">{value}</div>
+            </div>
+        );
+    };
+
+    const renderTaskCard = (item: BrainDumpItem) => {
+        const children = getDeepWorkChildren(items, item.id);
+        const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
+        if (!isDeepWork) return <Card key={item.id} item={item} {...cardProps} />;
+
+        const isExpanded = expandedDeepWorkIds.includes(item.id);
+        const isSuggested = item.meta.deepWorkStatus === 'suggested';
+        const isBlocked = item.meta.deepWorkBlockerStatus === 'blocked' || item.meta.deepWorkBlockerStatus === 'needs_input';
+        const doneCount = children.filter(child => child.status === 'done').length;
+        const draft = getSubtaskDraft(item, children);
+        const totalSteps = children.length || draft.length || item.meta.deepWorkStepCount || 0;
+        const progressPercent = totalSteps > 0 ? Math.round((doneCount / totalSteps) * 100) : (item.meta.progress || 0);
+
+        return (
+            <div key={item.id} className="space-y-2 rounded-[24px] border border-purple-500/15 bg-purple-500/[0.03] p-2">
+                <Card item={item} {...cardProps} />
+                <div className="px-2 pb-2 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="flex items-center gap-2 text-purple-500">
+                            <Sparkles className="w-4 h-4" />
+                            <div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider">Deep Work Transformer</div>
+                                <div className="text-xs text-muted">Parent stays separate; steps only show progress toward the final output.</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] font-bold text-muted">
+                            <span>{doneCount}/{totalSteps} steps</span>
+                            <span>•</span>
+                            <span>{progressPercent}%</span>
+                        </div>
+                    </div>
+
+                    {totalSteps > 0 && (
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-purple-500/10">
+                            <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${Math.max(progressPercent, doneCount > 0 ? 4 : 0)}%` }} />
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {renderDeepWorkDetail(<Flag className="w-3 h-3" />, 'Next action', item.meta.deepWorkNextAction)}
+                        {renderDeepWorkDetail(<ListChecks className="w-3 h-3" />, 'Final output', item.meta.deepWorkFinalOutput)}
+                        {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
+                        {renderDeepWorkDetail(<ShieldAlert className="w-3 h-3" />, 'Blocker check', item.meta.deepWorkBlockerCheck, isBlocked ? 'text-amber-500' : 'text-emerald-500')}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        {isSuggested && (
+                            <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors">
+                                Transform into steps
+                            </button>
+                        )}
+                        <button onClick={() => toggleDeepWorkExpanded(item.id)} className="px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1">
+                            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            {isExpanded ? 'Hide steps' : `${isSuggested ? 'Preview/edit' : 'Show'} steps`}
+                        </button>
+                        <button onClick={() => handleKeepRawTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
+                            Keep raw
+                        </button>
+                        <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1">
+                            <RotateCcw className="w-3 h-3" /> Retrigger
+                        </button>
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                        {isExpanded && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="mt-1 ml-1 border-l-2 border-purple-500/25 pl-3 space-y-2">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-purple-500/80">Optional subtasks</div>
+                                    {isSuggested ? (
+                                        <div className="space-y-2">
+                                            {draft.map((step, index) => (
+                                                <div key={`${item.id}-draft-${index}`} className="flex gap-2">
+                                                    <div className="mt-3 h-5 w-5 shrink-0 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-bold flex items-center justify-center">{index + 1}</div>
+                                                    <textarea
+                                                        value={step}
+                                                        onChange={(event) => updateSubtaskDraft(item.id, index, event.target.value, draft)}
+                                                        className="min-h-[44px] flex-1 resize-none rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-purple-500/60"
+                                                    />
+                                                    <button
+                                                        onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.filter((_, draftIndex) => draftIndex !== index) }))}
+                                                        className="self-center p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                                        aria-label="Remove subtask"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <div className="flex flex-wrap gap-2 pt-1">
+                                                <button onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: [...draft, ''] }))} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
+                                                    Add step
+                                                </button>
+                                                <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors">
+                                                    Use these steps
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {children.map(child => (
+                                                <Card key={child.id} item={child} {...cardProps} className="rounded-[14px]" />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-[50vh] overflow-hidden pb-20">
             {/* Top Container */}
@@ -542,9 +702,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             <Plus className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    {today.length > 0 ? (
+                                    {rootToday.length > 0 ? (
                                         <div className="space-y-3">
-                                            {visibleToday.visibleItems.map(item => <Card key={item.id} item={item} {...cardProps} />)}
+                                            {visibleToday.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleToday.remainingCount} onClick={visibleToday.loadMore} />
                                         </div>
                                     ) : (
@@ -564,9 +724,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             <Plus className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    {routines && routines.length > 0 ? (
+                                    {rootRoutines.length > 0 ? (
                                         <div className="space-y-3">
-                                            {visibleRoutines.visibleItems.map(item => <Card key={item.id} item={item} {...cardProps} />)}
+                                            {visibleRoutines.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleRoutines.remainingCount} onClick={visibleRoutines.loadMore} />
                                         </div>
                                     ) : (
@@ -584,9 +744,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             <Plus className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    {tomorrow.length > 0 ? (
+                                    {rootTomorrow.length > 0 ? (
                                         <div className="space-y-3">
-                                            {visibleTomorrow.visibleItems.map(item => <Card key={item.id} item={item} {...cardProps} />)}
+                                            {visibleTomorrow.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleTomorrow.remainingCount} onClick={visibleTomorrow.loadMore} />
                                         </div>
                                     ) : (
@@ -604,9 +764,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             <Plus className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    {later.length > 0 ? (
+                                    {rootLater.length > 0 ? (
                                         <div className="space-y-3">
-                                            {visibleLater.visibleItems.map(item => <Card key={item.id} item={item} {...cardProps} />)}
+                                            {visibleLater.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleLater.remainingCount} onClick={visibleLater.loadMore} />
                                         </div>
                                     ) : (

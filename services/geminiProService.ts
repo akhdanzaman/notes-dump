@@ -302,11 +302,14 @@ function normalizeMeta(meta: any): ParsedItemMetaV2 {
   const normalized: ParsedItemMetaV2 = {
     date: typeof meta.date === 'string' ? meta.date : undefined,
     dateTime: typeof meta.dateTime === 'string' ? meta.dateTime : undefined,
+    start: typeof meta.start === 'string' ? meta.start : undefined,
+    end: typeof meta.end === 'string' ? meta.end : undefined,
     when: typeof meta.when === 'string' ? meta.when as ParsedItemMetaV2['when'] : undefined,
 
     tags: safeArrayStrings(meta.tags),
     quantity: typeof meta.quantity === 'string' ? normalizeWhitespace(meta.quantity) : undefined,
     priority: isValidPriority(meta.priority) ? meta.priority : undefined,
+    hideFromCalendar: typeof meta.hideFromCalendar === 'boolean' ? meta.hideFromCalendar : undefined,
 
     shoppingCategory: isValidShoppingCategory(meta.shoppingCategory) ? meta.shoppingCategory : undefined,
 
@@ -327,6 +330,25 @@ function normalizeMeta(meta: any): ParsedItemMetaV2 {
 
     progress: sanitizeNumber(meta.progress),
     progressNotes: typeof meta.progressNotes === 'string' ? normalizeWhitespace(meta.progressNotes) : undefined,
+
+    parentTodoId: typeof meta.parentTodoId === 'string' ? normalizeWhitespace(meta.parentTodoId) : undefined,
+    childTodoIds: safeArrayStrings(meta.childTodoIds),
+    deepWorkParent: typeof meta.deepWorkParent === 'boolean' ? meta.deepWorkParent : undefined,
+    deepWorkPlanId: typeof meta.deepWorkPlanId === 'string' ? normalizeWhitespace(meta.deepWorkPlanId) : undefined,
+    deepWorkStatus: typeof meta.deepWorkStatus === 'string' ? normalizeWhitespace(meta.deepWorkStatus) as ParsedItemMetaV2['deepWorkStatus'] : undefined,
+    deepWorkNextAction: typeof meta.deepWorkNextAction === 'string' ? normalizeWhitespace(meta.deepWorkNextAction) : undefined,
+    deepWorkFinalOutput: typeof meta.deepWorkFinalOutput === 'string' ? normalizeWhitespace(meta.deepWorkFinalOutput) : undefined,
+    deepWorkSessionEstimateMinutes: sanitizeNumber(meta.deepWorkSessionEstimateMinutes),
+    deepWorkBlockerCheck: typeof meta.deepWorkBlockerCheck === 'string' ? normalizeWhitespace(meta.deepWorkBlockerCheck) : undefined,
+    deepWorkBlockerStatus: typeof meta.deepWorkBlockerStatus === 'string' ? normalizeWhitespace(meta.deepWorkBlockerStatus) as ParsedItemMetaV2['deepWorkBlockerStatus'] : undefined,
+    deepWorkCompletionMode: typeof meta.deepWorkCompletionMode === 'string' ? normalizeWhitespace(meta.deepWorkCompletionMode) as ParsedItemMetaV2['deepWorkCompletionMode'] : undefined,
+    deepWorkStepIndex: sanitizeNumber(meta.deepWorkStepIndex),
+    deepWorkStepCount: sanitizeNumber(meta.deepWorkStepCount),
+    deepWorkGeneratedAt: typeof meta.deepWorkGeneratedAt === 'string' ? normalizeWhitespace(meta.deepWorkGeneratedAt) : undefined,
+    deepWorkAcceptedAt: typeof meta.deepWorkAcceptedAt === 'string' ? normalizeWhitespace(meta.deepWorkAcceptedAt) : undefined,
+    deepWorkDismissedAt: typeof meta.deepWorkDismissedAt === 'string' ? normalizeWhitespace(meta.deepWorkDismissedAt) : undefined,
+    deepWorkReason: typeof meta.deepWorkReason === 'string' ? normalizeWhitespace(meta.deepWorkReason) : undefined,
+    subtasks: safeArrayStrings(meta.subtasks),
 
     savingGoalId: typeof meta.savingGoalId === 'string' ? normalizeWhitespace(meta.savingGoalId) : undefined,
     savingGoalName: typeof meta.savingGoalName === 'string' ? normalizeWhitespace(meta.savingGoalName) : undefined,
@@ -457,6 +479,11 @@ Journal rules:
 
 Skill log rules:
 - content should be cleaned summary, not raw sentence
+
+Deep Work Transformer rules:
+- If a TODO is abstract or multi-step (summary/research/plan/design/build/implement/audit/write/prepare), include payload.meta.subtasks with 3-5 concrete action steps.
+- Do not add subtasks for concrete errands, payments, simple calls/messages, or already checklist-like input.
+- Subtasks should be user-facing next actions, not generic placeholders.
 `;
 
 const stage1Schema = {
@@ -549,6 +576,9 @@ const stage2Schema = {
               status: { type: Type.STRING },
               priority: { type: Type.STRING },
               date: { type: Type.STRING },
+              start: { type: Type.STRING },
+              end: { type: Type.STRING },
+              hideFromCalendar: { type: Type.BOOLEAN },
               amount: { type: Type.NUMBER },
               tags: { type: Type.ARRAY, items: { type: Type.STRING } },
               shoppingCategory: { type: Type.STRING },
@@ -562,6 +592,22 @@ const stage2Schema = {
               quantity: { type: Type.STRING },
               progress: { type: Type.NUMBER },
               progressNotes: { type: Type.STRING },
+              parentTodoId: { type: Type.STRING },
+              childTodoIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+              deepWorkParent: { type: Type.BOOLEAN },
+              deepWorkPlanId: { type: Type.STRING },
+              deepWorkStatus: { type: Type.STRING },
+              deepWorkNextAction: { type: Type.STRING },
+              deepWorkFinalOutput: { type: Type.STRING },
+              deepWorkSessionEstimateMinutes: { type: Type.NUMBER },
+              deepWorkBlockerCheck: { type: Type.STRING },
+              deepWorkBlockerStatus: { type: Type.STRING },
+              deepWorkCompletionMode: { type: Type.STRING },
+              deepWorkStepIndex: { type: Type.NUMBER },
+              deepWorkStepCount: { type: Type.NUMBER },
+              deepWorkGeneratedAt: { type: Type.STRING },
+              deepWorkReason: { type: Type.STRING },
+              subtasks: { type: Type.ARRAY, items: { type: Type.STRING } },
               isRoutine: { type: Type.BOOLEAN },
               routineInterval: { type: Type.STRING },
               routineDaysOfWeek: { type: Type.ARRAY, items: { type: Type.NUMBER } },
@@ -577,10 +623,13 @@ const stage2Schema = {
             properties: {
               date: { type: Type.STRING },
               dateTime: { type: Type.STRING },
+              start: { type: Type.STRING },
+              end: { type: Type.STRING },
               when: { type: Type.STRING },
               tags: { type: Type.ARRAY, items: { type: Type.STRING } },
               quantity: { type: Type.STRING },
               priority: { type: Type.STRING },
+              hideFromCalendar: { type: Type.BOOLEAN },
 
               shoppingCategory: { type: Type.STRING },
 
@@ -596,6 +645,23 @@ const stage2Schema = {
 
               progress: { type: Type.NUMBER },
               progressNotes: { type: Type.STRING },
+
+              parentTodoId: { type: Type.STRING },
+              childTodoIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+              deepWorkParent: { type: Type.BOOLEAN },
+              deepWorkPlanId: { type: Type.STRING },
+              deepWorkStatus: { type: Type.STRING },
+              deepWorkNextAction: { type: Type.STRING },
+              deepWorkFinalOutput: { type: Type.STRING },
+              deepWorkSessionEstimateMinutes: { type: Type.NUMBER },
+              deepWorkBlockerCheck: { type: Type.STRING },
+              deepWorkBlockerStatus: { type: Type.STRING },
+              deepWorkCompletionMode: { type: Type.STRING },
+              deepWorkStepIndex: { type: Type.NUMBER },
+              deepWorkStepCount: { type: Type.NUMBER },
+              deepWorkGeneratedAt: { type: Type.STRING },
+              deepWorkReason: { type: Type.STRING },
+              subtasks: { type: Type.ARRAY, items: { type: Type.STRING } },
 
               savingGoalId: { type: Type.STRING },
               savingGoalName: { type: Type.STRING },
@@ -698,6 +764,7 @@ Extraction rules by action:
 - saving target like "nabung buat laptop 15jt" => SHOPPING + shoppingCategory=saving
 - IMPORTANT FOR FINANCE/SHOPPING: For 'budgetCategory', do NOT lazily default to "finance" or a generic term. Intelligently deduce the most appropriate category based on context (e.g., 'makan', 'kopi', 'gofood' -> Food; 'bensin', 'grab' -> Transportation) AND then strictly use the EXACT ID from the 'Known budget categories' list.
 - For paymentMethod/toWallet find the exact ID too. Do not make up arbitrary wallets or categories.
+- For abstract TODOs, include meta.subtasks with 3-5 concrete steps so the app can save an optional nested todo plan.
 
 2) update_item
 - fill payload.match.itemName if exact id unknown
@@ -906,6 +973,9 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
           status: changes.status === 'done' || changes.status === 'pending' ? changes.status : undefined,
           priority: isValidPriority(changes.priority) ? changes.priority : undefined,
           date: typeof changes.date === 'string' ? changes.date : undefined,
+          start: typeof changes.start === 'string' ? changes.start : undefined,
+          end: typeof changes.end === 'string' ? changes.end : undefined,
+          hideFromCalendar: typeof changes.hideFromCalendar === 'boolean' ? changes.hideFromCalendar : undefined,
           amount: sanitizeNumber(changes.amount),
           tags: safeArrayStrings(changes.tags),
           shoppingCategory: isValidShoppingCategory(changes.shoppingCategory) ? changes.shoppingCategory : undefined,
@@ -921,6 +991,21 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
           skillName: typeof changes.skillName === 'string' ? normalizeWhitespace(changes.skillName) : undefined,
           progress: sanitizeNumber(changes.progress),
           progressNotes: typeof changes.progressNotes === 'string' ? normalizeWhitespace(changes.progressNotes) : undefined,
+          parentTodoId: typeof changes.parentTodoId === 'string' ? normalizeWhitespace(changes.parentTodoId) : undefined,
+          childTodoIds: safeArrayStrings(changes.childTodoIds),
+          deepWorkParent: typeof changes.deepWorkParent === 'boolean' ? changes.deepWorkParent : undefined,
+          deepWorkPlanId: typeof changes.deepWorkPlanId === 'string' ? normalizeWhitespace(changes.deepWorkPlanId) : undefined,
+          deepWorkStatus: typeof changes.deepWorkStatus === 'string' ? normalizeWhitespace(changes.deepWorkStatus) as ParsedItemMetaV2['deepWorkStatus'] : undefined,
+          deepWorkNextAction: typeof changes.deepWorkNextAction === 'string' ? normalizeWhitespace(changes.deepWorkNextAction) : undefined,
+          deepWorkFinalOutput: typeof changes.deepWorkFinalOutput === 'string' ? normalizeWhitespace(changes.deepWorkFinalOutput) : undefined,
+          deepWorkSessionEstimateMinutes: sanitizeNumber(changes.deepWorkSessionEstimateMinutes),
+          deepWorkBlockerCheck: typeof changes.deepWorkBlockerCheck === 'string' ? normalizeWhitespace(changes.deepWorkBlockerCheck) : undefined,
+          deepWorkBlockerStatus: typeof changes.deepWorkBlockerStatus === 'string' ? normalizeWhitespace(changes.deepWorkBlockerStatus) as ParsedItemMetaV2['deepWorkBlockerStatus'] : undefined,
+          deepWorkCompletionMode: typeof changes.deepWorkCompletionMode === 'string' ? normalizeWhitespace(changes.deepWorkCompletionMode) as ParsedItemMetaV2['deepWorkCompletionMode'] : undefined,
+          deepWorkStepIndex: sanitizeNumber(changes.deepWorkStepIndex),
+          deepWorkStepCount: sanitizeNumber(changes.deepWorkStepCount),
+          deepWorkGeneratedAt: typeof changes.deepWorkGeneratedAt === 'string' ? normalizeWhitespace(changes.deepWorkGeneratedAt) : undefined,
+          deepWorkReason: typeof changes.deepWorkReason === 'string' ? normalizeWhitespace(changes.deepWorkReason) : undefined,
           isRoutine: typeof changes.isRoutine === 'boolean' ? changes.isRoutine : undefined,
           routineInterval: typeof changes.routineInterval === 'string' ? changes.routineInterval as any : undefined,
           routineDaysOfWeek: safeArrayNumbers(changes.routineDaysOfWeek),

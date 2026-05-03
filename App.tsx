@@ -41,7 +41,7 @@ const App: React.FC = () => {
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
       loading, error, pendingCount, parsingTasks, pendingReviews, canonicalRules, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, toggleCanonicalRuleDisabled, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
+      handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, toggleCanonicalRuleDisabled, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleKeepRawTodo, handleRetriggerDeepWorkTodo, handleAcceptDeepWorkTodo, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
   // Onboarding State
@@ -646,6 +646,9 @@ const App: React.FC = () => {
                           focusDate={focusDate} setFocusDate={setFocusDate}
                           appSettings={appSettings}
                           handleToggleStatus={handleToggleStatus} handleDelete={requestDeleteItem}
+                          handleKeepRawTodo={handleKeepRawTodo}
+                          handleRetriggerDeepWorkTodo={handleRetriggerDeepWorkTodo}
+                          handleAcceptDeepWorkTodo={handleAcceptDeepWorkTodo}
                           handleUpdateItem={handleUpdateItem}
                           handleOpenAddRoutine={() => setRoutineModalOpen(true)}
                           handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}

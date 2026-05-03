@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { DbSchema, BrainDumpItem, ItemType, FinanceType } from '../types';
+import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus } from '../types';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
+import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
 
 const fmtDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -10,6 +11,52 @@ const fmtDate = (dateStr?: string) => {
 const parseNotesSheetItemType = (value: unknown): ItemType => {
     const normalized = String(value || '').trim().toLowerCase();
     return normalized === 'journal' ? ItemType.JOURNAL : ItemType.NOTE;
+};
+
+const splitSheetList = (value: unknown): string[] | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const parts = value
+        .split(/[,\n;]/)
+        .map(v => v.trim())
+        .filter(Boolean);
+    return parts.length > 0 ? Array.from(new Set(parts)) : undefined;
+};
+
+const cleanCell = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const cleaned = value.replace(/\s+/g, ' ').trim();
+    return cleaned || undefined;
+};
+
+const parsePositiveInt = (value: unknown): number | undefined => {
+    const parsed = parseInt(String(value || '').replace(/[^\d-]/g, ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
+const parseCompletionMode = (value: unknown): DeepWorkCompletionMode | undefined => {
+    const normalized = cleanCell(value);
+    return normalized === 'manual' || normalized === 'all_subtasks' || normalized === 'final_output_check'
+        ? normalized
+        : undefined;
+};
+
+const parseDeepWorkStatus = (value: unknown): DeepWorkStatus | undefined => {
+    const normalized = cleanCell(value);
+    return normalized === 'suggested' || normalized === 'accepted' || normalized === 'active' || normalized === 'dismissed' || normalized === 'done'
+        ? normalized
+        : undefined;
+};
+
+const parseBlockerStatus = (value: unknown): DeepWorkBlockerStatus | undefined => {
+    const normalized = cleanCell(value);
+    return normalized === 'clear' || normalized === 'blocked' || normalized === 'needs_input' || normalized === 'unknown'
+        ? normalized
+        : undefined;
+};
+
+const getHeaderCell = (headers: unknown[], row: unknown[], name: string): unknown => {
+    const index = headers.indexOf(name);
+    return index >= 0 ? row[index] : undefined;
 };
 
 export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSchema => {
@@ -146,6 +193,35 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             }
             
             if (!content && !createdAt && !idStr) continue;
+
+            const hasParentTodoIdColumn = headers.includes("Parent_ID");
+            const hasDeepWorkRoleColumn = headers.includes("Deep_Work_Role");
+            const hasStepOrderColumn = headers.includes("Step_Order");
+            const hasStepCountColumn = headers.includes("Step_Count");
+            const hasChildIdsColumn = headers.includes("Child_IDs");
+            const hasCompletionModeColumn = headers.includes("Completion_Mode");
+            const hasDeepWorkStatusColumn = headers.includes("Deep_Work_Status");
+            const hasNextActionColumn = headers.includes("Next_Action");
+            const hasFinalOutputColumn = headers.includes("Final_Output");
+            const hasSessionEstimateColumn = headers.includes("Session_Estimate_Min");
+            const hasBlockerStatusColumn = headers.includes("Blocker_Status");
+            const hasBlockerCheckColumn = headers.includes("Blocker_Check");
+            const hasSubtasksColumn = headers.includes("Subtasks");
+            const parentTodoId = hasParentTodoIdColumn ? row[headers.indexOf("Parent_ID")] : undefined;
+            const deepWorkRole = hasDeepWorkRoleColumn ? row[headers.indexOf("Deep_Work_Role")] : undefined;
+            const stepOrderStr = hasStepOrderColumn ? row[headers.indexOf("Step_Order")] : undefined;
+            const stepCountStr = hasStepCountColumn ? row[headers.indexOf("Step_Count")] : undefined;
+            const stepOrder = parseInt(stepOrderStr || '', 10);
+            const stepCount = parseInt(stepCountStr || '', 10);
+            const childTodoIds = hasChildIdsColumn ? splitSheetList(getHeaderCell(headers, row, "Child_IDs")) : undefined;
+            const completionMode = hasCompletionModeColumn ? parseCompletionMode(getHeaderCell(headers, row, "Completion_Mode")) : undefined;
+            const deepWorkStatus = hasDeepWorkStatusColumn ? parseDeepWorkStatus(getHeaderCell(headers, row, "Deep_Work_Status")) : undefined;
+            const nextAction = hasNextActionColumn ? cleanCell(getHeaderCell(headers, row, "Next_Action")) : undefined;
+            const finalOutput = hasFinalOutputColumn ? cleanCell(getHeaderCell(headers, row, "Final_Output")) : undefined;
+            const sessionEstimate = hasSessionEstimateColumn ? parsePositiveInt(getHeaderCell(headers, row, "Session_Estimate_Min")) : undefined;
+            const blockerStatus = hasBlockerStatusColumn ? parseBlockerStatus(getHeaderCell(headers, row, "Blocker_Status")) : undefined;
+            const blockerCheck = hasBlockerCheckColumn ? cleanCell(getHeaderCell(headers, row, "Blocker_Check")) : undefined;
+            const subtasks = hasSubtasksColumn ? parseSubtasksFromSheet(getHeaderCell(headers, row, "Subtasks")) : undefined;
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
@@ -175,6 +251,26 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     match.meta.progressNotes = progressNotes;
                     updated = true;
                 }
+                const newParentTodoId = parentTodoId || undefined;
+                if (hasParentTodoIdColumn && match.meta.parentTodoId !== newParentTodoId) { match.meta.parentTodoId = newParentTodoId; updated = true; }
+                const newDeepWorkParent = deepWorkRole === 'parent' || !!childTodoIds?.length || !!nextAction || !!finalOutput;
+                if ((hasDeepWorkRoleColumn || hasChildIdsColumn || hasNextActionColumn || hasFinalOutputColumn) && !!match.meta.deepWorkParent !== newDeepWorkParent) { match.meta.deepWorkParent = newDeepWorkParent || undefined; updated = true; }
+                if (hasChildIdsColumn && JSON.stringify(match.meta.childTodoIds || []) !== JSON.stringify(childTodoIds || [])) { match.meta.childTodoIds = childTodoIds; updated = true; }
+                if (hasCompletionModeColumn && match.meta.deepWorkCompletionMode !== completionMode) { match.meta.deepWorkCompletionMode = completionMode; updated = true; }
+                if (hasDeepWorkStatusColumn && match.meta.deepWorkStatus !== deepWorkStatus) { match.meta.deepWorkStatus = deepWorkStatus; updated = true; }
+                if (hasNextActionColumn && match.meta.deepWorkNextAction !== nextAction) { match.meta.deepWorkNextAction = nextAction; updated = true; }
+                if (hasFinalOutputColumn && match.meta.deepWorkFinalOutput !== finalOutput) { match.meta.deepWorkFinalOutput = finalOutput; updated = true; }
+                if (hasSessionEstimateColumn && match.meta.deepWorkSessionEstimateMinutes !== sessionEstimate) { match.meta.deepWorkSessionEstimateMinutes = sessionEstimate; updated = true; }
+                if (hasBlockerStatusColumn && match.meta.deepWorkBlockerStatus !== blockerStatus) { match.meta.deepWorkBlockerStatus = blockerStatus; updated = true; }
+                if (hasBlockerCheckColumn && match.meta.deepWorkBlockerCheck !== blockerCheck) { match.meta.deepWorkBlockerCheck = blockerCheck; updated = true; }
+                if (hasSubtasksColumn && JSON.stringify(match.meta.subtasks || []) !== JSON.stringify(subtasks || [])) { match.meta.subtasks = subtasks; updated = true; }
+                const newStepIndex = !isNaN(stepOrder) ? stepOrder : undefined;
+                if (hasStepOrderColumn && match.meta.deepWorkStepIndex !== newStepIndex) { match.meta.deepWorkStepIndex = newStepIndex; updated = true; }
+                const newStepCount = !isNaN(stepCount) ? stepCount : undefined;
+                if (hasStepCountColumn && match.meta.deepWorkStepCount !== newStepCount) { match.meta.deepWorkStepCount = newStepCount; updated = true; }
+                if ((newDeepWorkParent || newParentTodoId) && !match.meta.deepWorkPlanId) { match.meta.deepWorkPlanId = newParentTodoId || match.id; updated = true; }
+                const normalizedMeta = normalizeDeepWorkTodoMeta(match.meta);
+                if (JSON.stringify(match.meta) !== JSON.stringify(normalizedMeta)) { match.meta = normalizedMeta; updated = true; }
                 const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
@@ -249,7 +345,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     }
                 }
 
-                const newId = uuidv4();
+                const newId = idStr || uuidv4();
                 newItems.push({
                     id: newId,
                     type: ItemType.TODO,
@@ -263,12 +359,33 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         progressNotes: progressNotes || '',
                         date: isoDueDate,
                         start: isoStart,
-                        end: isoEnd
+                        end: isoEnd,
+                        parentTodoId: parentTodoId || undefined,
+                        childTodoIds,
+                        deepWorkParent: deepWorkRole === 'parent' || !!childTodoIds?.length || !!nextAction || !!finalOutput || undefined,
+                        deepWorkPlanId: deepWorkRole === 'parent' ? newId : (parentTodoId || undefined),
+                        deepWorkCompletionMode: completionMode,
+                        deepWorkStatus,
+                        deepWorkNextAction: nextAction,
+                        deepWorkFinalOutput: finalOutput,
+                        deepWorkSessionEstimateMinutes: sessionEstimate,
+                        deepWorkBlockerStatus: blockerStatus,
+                        deepWorkBlockerCheck: blockerCheck,
+                        deepWorkStepIndex: !isNaN(stepOrder) ? stepOrder : undefined,
+                        deepWorkStepCount: !isNaN(stepCount) ? stepCount : undefined,
+                        subtasks
                     }
                 });
                 seenItemIds.add(newId);
                 hasChanges = true;
             }
+        }
+
+        const progressUpdatedItems = applyDeepWorkChildProgress(newItems);
+        const completionUpdatedItems = applyDeepWorkCompletionSemantics(progressUpdatedItems);
+        if (completionUpdatedItems !== newItems) {
+            newItems.splice(0, newItems.length, ...completionUpdatedItems);
+            hasChanges = true;
         }
     }
 

@@ -43,6 +43,10 @@ PRIORITY (TODO/EVENT ONLY):
 - low: "kapan-kapan", "nanti saja", "low priority", "tidak mendesak".
 - default: normal.
 
+DEEP WORK TODO (OPTIONAL):
+- If a TODO is abstract/multi-step (summary/research/plan/design/build/implement/audit/write/prepare), include meta.subtasks with 3-5 concrete action steps.
+- Do not add subtasks for concrete errands, payments, simple calls/messages, or already checklist-like input.
+
 MONEY META (FINANCE + money-related SHOPPING):
 - financeType ∈ {expense, income, transfer, saving}
 - budgetCategory ∈ {needs, wants, savings, sedekah, fixed, unintend}
@@ -186,7 +190,8 @@ export const classifyText = async (
                   commodity: { type: Type.STRING, description: "Main expenditure category" },
                   subcommodity: { type: Type.STRING, description: "Detailed sub-category" },
                   merchant: { type: Type.STRING, description: "Merchant/Vendor name" },
-                  priority: { type: Type.STRING, description: "Priority level: low, normal, high" }
+                  priority: { type: Type.STRING, description: "Priority level: low, normal, high" },
+                  subtasks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Optional nested todo steps for abstract deep-work TODOs" }
                 }
               }
             },
