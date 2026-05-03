@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.20',
+    date: 'May 2026',
+    items: [
+      'Deep Work suggestions now refresh through both parser updates and manual task edits, so turning a plain task into “summary IIMS” or “summary regulasi” immediately surfaces the structured plan instead of leaving hidden/stale metadata.',
+      'The Deep Work ship gate now validates the actual transformer output on Adan’s real IIMS 2026 and regulasi todos, including concrete next action, final output, estimate, blocker check, and non-generic subtasks.',
+    ],
+  },
+  {
     version: 'v0.3.19',
     date: 'May 2026',
     items: [

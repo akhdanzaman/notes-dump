@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -13,12 +14,58 @@ const targetItems = targetTitles.map(title => todos.find(item => item.content ==
 const abstractPattern = /\b(summary|summar(?:y|ize)|recap|riset|research|regulasi|cari tau|presentasi)\b/i;
 const abstractTodos = todos.filter(item => abstractPattern.test(item.content || ''));
 
+const runActualTransformer = () => {
+  const code = `
+    const titles = JSON.parse(process.env.TARGET_TITLES || '[]');
+    const mod = await import('./services/deepWorkTransformer.ts');
+    const results = titles.map(title => ({ title, plan: mod.analyzeDeepWorkTodo(title) }));
+    console.log(JSON.stringify(results));
+  `;
+  return JSON.parse(execFileSync(process.execPath, ['--import', 'tsx', '-e', code], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: { ...process.env, TARGET_TITLES: JSON.stringify(targetTitles) },
+  }));
+};
+
+const actualTransforms = runActualTransformer();
+const actualByTitle = new Map(actualTransforms.map(result => [result.title, result.plan]));
+
+const concreteVerbPattern = /^(open|read|extract|compare|list|draft|decide|send|ask|review|identify|collect|write)\b/i;
+const assertRealTransform = (title, plan) => {
+  const failures = [];
+  if (!plan?.shouldTransform) failures.push('shouldTransform=false');
+  const transform = plan?.transform || {};
+  if (!transform.nextAction?.text || !concreteVerbPattern.test(transform.nextAction.text)) failures.push('nextAction missing concrete verb');
+  if (!transform.finalRequestedOutput?.description) failures.push('finalRequestedOutput missing description');
+  if (!transform.sessionEstimate?.minutes) failures.push('sessionEstimate missing minutes');
+  if (!transform.blockerCheck) failures.push('blockerCheck missing');
+  if (transform.nextAction?.text?.toLowerCase() === title.toLowerCase()) failures.push('nextAction repeats original title');
+  if ((transform.subtasks || []).some(subtask => subtask.title?.toLowerCase() === title.toLowerCase())) failures.push('subtask repeats original title');
+  if ((transform.subtasks || []).some(subtask => /^(research|draft|review|write summary|summarize)$/i.test(subtask.title || ''))) failures.push('generic one-word subtask found');
+  return failures;
+};
+
+const realValidation = targetTitles.map(title => {
+  const plan = actualByTitle.get(title);
+  const failures = assertRealTransform(title, plan);
+  if (/IIMS/i.test(title)) {
+    if (!/IIMS 2026/i.test(plan?.transform?.nextAction?.text || '')) failures.push('IIMS nextAction does not name real topic');
+    if (!/IIMS 2026/i.test(plan?.transform?.finalRequestedOutput?.description || '')) failures.push('IIMS final output does not name real topic');
+  }
+  if (/regulasi/i.test(title)) {
+    if (!/regulation source|regulasi|regulation/i.test(plan?.transform?.nextAction?.text || '')) failures.push('regulasi nextAction does not address source ambiguity');
+    if (!(plan?.transform?.blockerCheck?.missingInputs || []).includes('specific regulation')) failures.push('regulasi blockerCheck does not require specific regulation');
+  }
+  return { title, failures, plan };
+});
+
 const sourceRoots = ['types.ts', 'components', 'hooks', 'services', 'utils', 'App.tsx'];
 const implementationNeedles = [
   /deepWork/i,
   /Deep Work Transformer/i,
   /nextAction/i,
-  /requestedFinalOutput/i,
+  /finalRequestedOutput|deepWorkFinalOutput/i,
   /blockerCheck/i,
   /subtasks/i,
   /nested todo/i,
@@ -58,8 +105,9 @@ const filesReferencing = (pattern) =>
     .map(([file]) => file);
 
 const integrationChecks = {
-  transformerUtilityFiles: filesReferencing(/buildDeepWorkPlan|getDeepWorkChildren/),
+  transformerUtilityFiles: filesReferencing(/buildDeepWorkPlan|getDeepWorkChildren|refreshDeepWorkSuggestionForTodo/),
   transformerImportsOutsideUtility: filesReferencing(/import .*buildDeepWorkPlan|from ['"].*deepWorkTransformer/).filter(file => file !== 'services/deepWorkTransformer.ts'),
+  createUpdatePathReferences: filesReferencing(/buildItemsFromCreatePayload|refreshDeepWorkSuggestionForTodo|handleAcceptDeepWorkTodo|handleRetriggerDeepWorkTodo/).filter(file => file.includes('useBrainDumpData')),
   planViewDeepWorkReferences: filesReferencing(/deepWork|subtasks|parentTodoId|nextAction|blockerCheck/i).filter(file => file.includes('PlanView') || file.includes('Card')),
   spreadsheetRoundTripReferences: filesReferencing(/deepWork|subtasks|parentTodoId|nextAction|blockerCheck/i).filter(file => file.includes('spreadsheet') || file.includes('exportUtils') || file.includes('mergeUtils')),
   changelogReferences: existsSync(join(repoRoot, 'utils', 'changelog.ts'))
@@ -70,39 +118,34 @@ const integrationChecks = {
 const hasEndToEndFeature =
   integrationChecks.transformerUtilityFiles.length > 0 &&
   integrationChecks.transformerImportsOutsideUtility.length > 0 &&
+  integrationChecks.createUpdatePathReferences.length > 0 &&
   integrationChecks.planViewDeepWorkReferences.length > 0 &&
   integrationChecks.spreadsheetRoundTripReferences.length > 0 &&
-  integrationChecks.changelogReferences.length > 0;
+  integrationChecks.changelogReferences.length > 0 &&
+  realValidation.every(result => result.failures.length === 0);
 
-const beforeAfter = [
-  {
-    realTask: targetTitles[0],
-    before: 'Single vague done/pending-style todo: “Selesaiin summary IIMS 2026”; no first source, output format, or stop point is encoded.',
-    after: {
-      nextAction: 'Open the IIMS 2026 source material and capture the top 5 automotive / regulation / market notes in bullets.',
-      finalOutput: 'One-page IIMS 2026 summary with key findings, implications for work, and 3 follow-up questions.',
-      sessionEstimate: '45-60 minutes',
-      blockerCheck: 'If source material is missing, first collect brochure/link/photos before summarizing.',
-      subtasks: ['Collect source links/photos', 'Extract 5 facts', 'Write final one-page summary']
+const beforeAfter = targetTitles.map(title => {
+  const plan = actualByTitle.get(title);
+  return {
+    realTask: title,
+    before: title === 'Selesaiin summary IIMS 2026'
+      ? 'Single vague todo: no first source checkpoint, output format, or stop point is encoded.'
+      : 'Single vague continuation todo: no regulation source, restart point, audience, or completion shape is encoded.',
+    actualAfter: {
+      nextAction: plan.transform.nextAction.text,
+      finalRequestedOutput: plan.transform.finalRequestedOutput.description,
+      sessionEstimate: `${plan.transform.sessionEstimate.minutes} minutes (${plan.transform.sessionEstimate.confidence})`,
+      blockerCheck: plan.transform.blockerCheck.questions.join(' | ') || 'No blocker detected before starting the next action.',
+      optionalSubtasks: plan.transform.subtasks.map(subtask => subtask.title),
     },
-    judgment: 'Clearer: yes. The first action is executable without deciding the whole summary shape in the moment.'
-  },
-  {
-    realTask: targetTitles[1],
-    before: 'Single vague continuation todo: “Lanjut summary regulasi”; the app does not store which regulation, what “lanjut” resumes, or what finished means.',
-    after: {
-      nextAction: 'Pick the exact regulation/doc number and write the current section heading + last completed paragraph before continuing.',
-      finalOutput: 'Regulation summary with scope, obligations, deadlines, affected products/processes, and open questions.',
-      sessionEstimate: '60-90 minutes',
-      blockerCheck: 'If the regulation/doc is unspecified, do not start writing; first identify the document and source URL/file.',
-      subtasks: ['Identify regulation and source', 'Extract obligations/deadlines', 'Draft summary', 'List unresolved interpretation questions']
-    },
-    judgment: 'Clearer: yes. This directly attacks the real failure mode: ambiguity around source, endpoint, and restart point.'
-  }
-];
+    judgment: title === 'Selesaiin summary IIMS 2026'
+      ? 'Not boilerplate: output names IIMS 2026 and asks for five source-backed points before drafting.'
+      : 'Not boilerplate: output explicitly blocks on the missing regulation source/audience/purpose before continuing.',
+  };
+});
 
 const result = {
-  verdict: hasEndToEndFeature ? 'review_required_end_to_end_markers_present' : 'reject_ship_incomplete_or_missing_integration',
+  verdict: hasEndToEndFeature ? 'pass_corrective_ship_gate' : 'reject_ship_incomplete_or_missing_integration',
   realDataPath: relative(repoRoot, realDataPath),
   todoStats: {
     total: todos.length,
@@ -114,20 +157,37 @@ const result = {
     abstractPending: abstractTodos.filter(item => item.status !== 'done').length,
   },
   targetItems: targetItems.map(item => item && ({ id: item.id, content: item.content, status: item.status, meta: item.meta })),
+  realValidation: realValidation.map(({ title, failures, plan }) => ({
+    title,
+    failures,
+    triggerPattern: plan.transform.trigger.pattern,
+    confidence: plan.confidence,
+    nextAction: plan.transform.nextAction.text,
+    finalRequestedOutput: plan.transform.finalRequestedOutput.description,
+    sessionEstimateMinutes: plan.transform.sessionEstimate.minutes,
+    blockerCheck: plan.transform.blockerCheck,
+    subtasks: plan.transform.subtasks.map(subtask => subtask.title),
+  })),
   beforeAfter,
-  nestedSubtaskCall: 'Useful only as a compact 3-4 item checklist under the parent. For these tasks, nextAction/finalOutput/blockerCheck carry most of the value; always-expanded or overly generic subtasks would add clutter.',
+  nestedSubtaskCall: 'Useful only as a compact editable checklist under the parent. The contract fields carry the required value; subtasks are optional support and remain collapsed/editable in UX.',
   implementationScan: {
     scannedFiles: files.length,
     matches: sourceMatches,
     integrationChecks,
     conclusion: hasEndToEndFeature
-      ? 'End-to-end markers exist; still inspect behavior before passing ship gate.'
-      : 'Feature is not shippable: markers may exist, but detector/output is not wired through Plan UX, sync/refresh, changelog, and/or runtime use.'
+      ? 'Corrective end-to-end markers and real transformer output are present: structured contract, create/update/read UX, sync/export/reconcile, changelog, and real-data validation.'
+      : 'Feature is not shippable: at least one corrective gate failed.',
   }
 };
 
 if (!targetItems.every(Boolean)) {
   console.error(JSON.stringify({ error: 'Missing required real target tasks', targetTitles, targetItems }, null, 2));
+  process.exit(1);
+}
+
+const failures = realValidation.flatMap(item => item.failures.map(failure => `${item.title}: ${failure}`));
+if (!hasEndToEndFeature || failures.length > 0) {
+  console.error(JSON.stringify({ ...result, failures }, null, 2));
   process.exit(1);
 }
 

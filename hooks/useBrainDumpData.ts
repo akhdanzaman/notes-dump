@@ -71,6 +71,57 @@ const safeArrayNumbers = (value: unknown): number[] | undefined => {
     return result.length > 0 ? result : undefined;
 };
 
+const stripDeepWorkFieldsFromMeta = (meta: ItemMeta = {}): ItemMeta => {
+    const {
+        parentTodoId,
+        childTodoIds,
+        deepWorkParent,
+        deepWorkPlanId,
+        deepWorkStatus,
+        deepWorkTriggerPattern,
+        deepWorkTriggerEvidence,
+        deepWorkConfidence,
+        deepWorkNextAction,
+        deepWorkNextActionDurationMinutes,
+        deepWorkNextActionAcceptanceCheck,
+        deepWorkFinalOutputFormat,
+        deepWorkFinalOutput,
+        deepWorkSessionEstimateMinutes,
+        deepWorkSessionEstimateConfidence,
+        deepWorkSessionEstimateReason,
+        deepWorkBlockerCheck,
+        deepWorkBlockerStatus,
+        deepWorkMissingInputs,
+        deepWorkCompletionMode,
+        deepWorkStepIndex,
+        deepWorkStepCount,
+        deepWorkGeneratedAt,
+        deepWorkAcceptedAt,
+        deepWorkDismissedAt,
+        deepWorkReason,
+        subtasks,
+        ...rest
+    } = meta;
+    return rest;
+};
+
+const refreshDeepWorkSuggestionForTodo = (
+    itemType: ItemType,
+    status: BrainDumpItem['status'],
+    content: string,
+    meta: ItemMeta = {}
+): ItemMeta => {
+    if (itemType !== ItemType.TODO || status !== 'pending') return normalizeDeepWorkTodoMeta(meta);
+    if (meta.parentTodoId || (meta.childTodoIds?.length || 0) > 0) return normalizeDeepWorkTodoMeta(meta);
+    if (meta.deepWorkStatus === 'active' || meta.deepWorkStatus === 'accepted' || meta.deepWorkStatus === 'done' || meta.deepWorkStatus === 'dismissed') {
+        return normalizeDeepWorkTodoMeta(meta);
+    }
+
+    const baseMeta = meta.deepWorkStatus === 'suggested' ? stripDeepWorkFieldsFromMeta(meta) : meta;
+    const suggestedMeta = buildDeepWorkSuggestionMeta(content, baseMeta);
+    return normalizeDeepWorkTodoMeta(suggestedMeta.deepWorkParent ? suggestedMeta : baseMeta);
+};
+
 const stripUndefined = <T extends Record<string, any>>(obj: T): T =>
     Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T;
 
@@ -995,7 +1046,7 @@ export const useBrainDumpData = () => {
                                 }
                             }
 
-                            const mergedMeta = normalizeDeepWorkTodoMeta({
+                            const mergedMeta = refreshDeepWorkSuggestionForTodo(i.type, newStatus, newContent, {
                                 ...i.meta,
                                 ...cleanMeta,
                                 parserAction: result.action,
@@ -1501,37 +1552,7 @@ export const useBrainDumpData = () => {
         saveAndSync(updatedItems);
     };
 
-    const stripDeepWorkFields = (meta: ItemMeta = {}): ItemMeta => {
-        const {
-            parentTodoId,
-            childTodoIds,
-            deepWorkParent,
-            deepWorkPlanId,
-            deepWorkStatus,
-            deepWorkTriggerPattern,
-            deepWorkTriggerEvidence,
-            deepWorkConfidence,
-            deepWorkNextAction,
-            deepWorkNextActionDurationMinutes,
-            deepWorkNextActionAcceptanceCheck,
-            deepWorkFinalOutputFormat,
-            deepWorkFinalOutput,
-            deepWorkSessionEstimateMinutes,
-            deepWorkSessionEstimateConfidence,
-            deepWorkSessionEstimateReason,
-            deepWorkBlockerCheck,
-            deepWorkBlockerStatus,
-            deepWorkMissingInputs,
-            deepWorkCompletionMode,
-            deepWorkStepIndex,
-            deepWorkStepCount,
-            deepWorkGeneratedAt,
-            deepWorkReason,
-            subtasks,
-            ...rest
-        } = meta;
-        return rest;
-    };
+    const stripDeepWorkFields = stripDeepWorkFieldsFromMeta;
 
     const saveDeepWorkItems = (nextItems: BrainDumpItem[]) => {
         const normalized = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(nextItems));
@@ -1742,39 +1763,41 @@ export const useBrainDumpData = () => {
                 }
             }
 
+            const mergedMeta = refreshDeepWorkSuggestionForTodo(item.type, newStatus, newContent, {
+                ...item.meta,
+                tags: newTags,
+                amount: newAmount,
+                date: finalDate,
+                start: newStart !== undefined ? newStart : item.meta.start,
+                end: newEnd !== undefined ? newEnd : item.meta.end,
+                hideFromCalendar: newHideFromCalendar !== undefined ? newHideFromCalendar : item.meta.hideFromCalendar,
+                paymentMethod: newPaymentMethod,
+                budgetCategory: newBudgetCategory,
+                durationMinutes: newDuration,
+                skillId: newSkillId,
+                toWallet: newToWallet,
+                financeType: newFinanceType || item.meta.financeType,
+                progress: newProgress,
+                progressNotes: newProgressNotes,
+                shoppingCategory: newShoppingCategory || item.meta.shoppingCategory,
+                recurrenceDays: newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays,
+                quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
+                isRoutine: newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine,
+                routineInterval: newRoutineInterval || item.meta.routineInterval,
+                routineDaysOfWeek: newRoutineDaysOfWeek || item.meta.routineDaysOfWeek,
+                routineDaysOfMonth: newRoutineDaysOfMonth || item.meta.routineDaysOfMonth,
+                routineMonthsOfYear: newRoutineMonthsOfYear || item.meta.routineMonthsOfYear,
+                savingGoalId: newSavingGoalId || item.meta.savingGoalId,
+                dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId,
+                priority: newPriority !== undefined ? newPriority : item.meta.priority
+            });
+
             return {
                 ...item,
                 content: newContent,
                 status: newStatus,
                 completed_at: completedAt,
-                meta: {
-                    ...item.meta,
-                    tags: newTags,
-                    amount: newAmount,
-                    date: finalDate,
-                    start: newStart !== undefined ? newStart : item.meta.start,
-                    end: newEnd !== undefined ? newEnd : item.meta.end,
-                    hideFromCalendar: newHideFromCalendar !== undefined ? newHideFromCalendar : item.meta.hideFromCalendar,
-                    paymentMethod: newPaymentMethod,
-                    budgetCategory: newBudgetCategory,
-                    durationMinutes: newDuration,
-                    skillId: newSkillId,
-                    toWallet: newToWallet,
-                    financeType: newFinanceType || item.meta.financeType,
-                    progress: newProgress,
-                    progressNotes: newProgressNotes,
-                    shoppingCategory: newShoppingCategory || item.meta.shoppingCategory,
-                    recurrenceDays: newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays,
-                    quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
-                    isRoutine: newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine,
-                    routineInterval: newRoutineInterval || item.meta.routineInterval,
-                    routineDaysOfWeek: newRoutineDaysOfWeek || item.meta.routineDaysOfWeek,
-                    routineDaysOfMonth: newRoutineDaysOfMonth || item.meta.routineDaysOfMonth,
-                    routineMonthsOfYear: newRoutineMonthsOfYear || item.meta.routineMonthsOfYear,
-                    savingGoalId: newSavingGoalId || item.meta.savingGoalId,
-                    dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId,
-                    priority: newPriority !== undefined ? newPriority : item.meta.priority
-                }
+                meta: mergedMeta
             };
         });
 

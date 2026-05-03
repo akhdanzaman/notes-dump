@@ -1,13 +1,19 @@
-# Deep Work Transformer ship gate (NDC-013)
+# Deep Work Transformer ship gate (NDC-013/NDC-014 rerun)
 
 Date: 2026-05-03 (Asia/Jakarta)
-Verdict: **reject ship / do not keep as shipped**
+Verdict: **pass corrective ship gate after NDC-014**
 
 ## Real-data source
 
-Used the real Notes Dump backup snapshot at `../state/notes-dump-repair-backup-2026-04-14T23-45-43-290Z.json` because the current repo has already migrated away from tracked `db.json` and the live feature code has no Deep Work Transformer implementation to exercise.
+Used the real Notes Dump backup snapshot at `../state/notes-dump-repair-backup-2026-04-14T23-45-43-290Z.json` because the repo has migrated away from tracked `db.json`.
 
-Snapshot facts from `scripts/validate-deep-work-transformer-ship-gate.mjs`:
+Rerun command:
+
+```bash
+node scripts/validate-deep-work-transformer-ship-gate.mjs
+```
+
+Snapshot facts from the rerun:
 
 - Todos: 49 total, 43 done, 6 pending (`87.8%` completion).
 - Abstract-ish todos matched by summary/research/regulasi patterns: 7 total, 6 done, 1 pending.
@@ -15,66 +21,73 @@ Snapshot facts from `scripts/validate-deep-work-transformer-ship-gate.mjs`:
   - `Selesaiin summary IIMS 2026` (`id=68b699ca-f3e9-4e9b-9628-ca5a97fb852d`)
   - `Lanjut summary regulasi` (`id=4d99ca3c-3aea-4cf4-be6a-8fea85af8456`)
 
-## Before / after judgment on real abstract tasks
+## Corrective rerun output from actual transformer
+
+The validation script now invokes the real implementation in `services/deepWorkTransformer.ts` with `node --import tsx`, not a handwritten before/after fixture.
 
 ### 1) `Selesaiin summary IIMS 2026`
 
-Before: a single vague todo. It says the topic, but not the first source, output format, or stop point.
+Before: single vague todo; no first source checkpoint, output shape, or stop point.
 
-Useful transformed version:
+Actual transformed contract:
 
-- Next action: open the IIMS 2026 source material and capture the top 5 automotive / regulation / market notes in bullets.
-- Final requested output: one-page IIMS 2026 summary with key findings, implications for work, and 3 follow-up questions.
-- Session estimate: 45-60 minutes.
-- Blocker check: if source material is missing, first collect brochure/link/photos before summarizing.
-- Optional subtasks: collect source links/photos; extract 5 facts; write final one-page summary.
+- Next action: `Open the IIMS 2026 notes/source material and mark the 5 points worth summarizing`
+- Final requested output: `A concise IIMS 2026 summary with key points, implications, and follow-up questions or actions.`
+- Session estimate: `60 minutes (medium)`
+- Blocker check: `Who is the summary for?`
+- Optional subtasks:
+  - Open the IIMS 2026 notes/source material and mark the 5 points worth summarizing
+  - Extract the key points, numbers, dates, and unresolved questions
+  - Draft the final summary in the target format
 
-Judgment: this is materially clearer. The value is not prettier wording; it removes the need to decide what “summary” means at task-start time.
+Judgment: pass. This is not boilerplate because the output names IIMS 2026 and starts with source-backed points before drafting.
 
 ### 2) `Lanjut summary regulasi`
 
-Before: a single continuation todo. It does not preserve which regulation, what “lanjut” resumes from, or what completion means.
+Before: single vague continuation todo; no regulation source, restart point, audience, or completion shape.
 
-Useful transformed version:
+Actual transformed contract:
 
-- Next action: pick the exact regulation/doc number and write the current section heading + last completed paragraph before continuing.
-- Final requested output: regulation summary with scope, obligations, deadlines, affected products/processes, and open questions.
-- Session estimate: 60-90 minutes.
-- Blocker check: if the regulation/doc is unspecified, do not start writing; first identify the document and source URL/file.
-- Optional subtasks: identify regulation and source; extract obligations/deadlines; draft summary; list unresolved interpretation questions.
+- Next action: `Identify the exact regulation source and write the title/date/version at the top of the working note`
+- Final requested output: `A regulation summary table: rule/reference, what changed, impact, required follow-up, and open questions.`
+- Session estimate: `75 minutes (low)`
+- Blocker check: `Regulasi yang mana? | Need summary for self, boss, or submission? | Is the goal understanding, compliance action, or presentation?`
+- Missing inputs: `specific regulation`, `audience`, `purpose`
+- Optional subtasks:
+  - Identify the exact regulation source and write the title/date/version at the top of the working note
+  - Extract clauses that affect work, obligations, deadlines, or decisions
+  - Write the impact/action table
 
-Judgment: this is even more useful than the IIMS case because it attacks the real “stuck” cause: missing source, missing restart point, and missing definition of done.
+Judgment: pass. This directly catches the stuck cause: source ambiguity and missing audience/purpose before continuing.
 
-## Nested subtasks call
+## NDC-014 corrective evidence
 
-Optional nested subtasks **improve the outcome only if they stay compact and collapsed by default**.
+1. Structured Deep Work contract exists in `services/deepWorkTransformer.ts` and `types.ts`:
+   - `nextAction`
+   - `finalRequestedOutput` / `deepWorkFinalOutput`
+   - `sessionEstimate`
+   - `blockerCheck`
+   - optional compact `subtasks`
+2. Create/update/read paths are wired:
+   - Parser/manual create path builds Deep Work suggestion metadata in `hooks/useBrainDumpData.ts`.
+   - Parser/manual update path refreshes suggestions through `refreshDeepWorkSuggestionForTodo` when a pending root todo becomes vague deep work.
+   - Accept/retrigger/keep-raw paths are implemented in `hooks/useBrainDumpData.ts`.
+3. Plan/Card UX is visible/actionable:
+   - `components/views/PlanView.tsx` renders the Deep Work panel with next action, final output, estimate, blocker check, progress, preview/edit, transform, keep raw, and retrigger actions.
+   - `components/Card.tsx` shows compact Deep Work suggestion metadata in expanded cards.
+4. Sync/export/reconcile preservation is covered:
+   - `utils/exportUtils.ts` writes parent/child IDs, step order/count, completion mode, status, next action, final output, estimate, blocker fields, and subtasks.
+   - `services/spreadsheetReconciler.ts` reads those fields back and preserves legacy rows when new columns are absent.
+   - `services/__tests__/deepWorkTransformerIntegration.test.ts` and `utils/__tests__/deepWorkTodoModel.test.ts` cover deterministic round trips.
+5. Changelog is present:
+   - `utils/changelog.ts` includes v0.3.20 for update-path validation and actual ship-gate proof.
 
-- Good: 3-4 concrete checklist items that expose progress while keeping the parent task intentional.
-- Bad: always-expanded boilerplate like “research / draft / review” on every abstract task; that becomes clutter.
-- Product call: the mandatory value is `nextAction`, `finalOutput`, `sessionEstimate`, and `blockerCheck`. Nested subtasks should be optional support, not the main feature.
+## Validation commands
 
-## Implementation scan
-
-Static scan of app source (`types.ts`, `components`, `hooks`, `services`, `utils`, `App.tsx`) found only partial / unshipped Deep Work Transformer artifacts after concurrent implementation work landed in the workspace:
-
-- `types.ts` has Deep Work metadata fields such as `parentTodoId`, `deepWorkParent`, `deepWorkPlanId`, `deepWorkNextAction`, `deepWorkFinalOutput`, `deepWorkBlockerCheck`, and `subtasks`.
-- `services/geminiProService.ts` / `services/geminiService.ts` ask parser output to include `meta.subtasks` for abstract TODOs.
-- `services/deepWorkTransformer.ts` contains a heuristic `buildDeepWorkPlan` helper, and `hooks/useBrainDumpData.ts` now imports it for create-item fan-out.
-- `services/spreadsheetReconciler.ts` and `utils/exportUtils.ts` now contain Deep Work field mapping markers.
-- But Plan/Card UI still has no Deep Work fields, no compact next action/final output/blocker display, and no nested subtask interactions.
-- The sync/export markers are not backed by a real round-trip test or runtime sync proof in this gate.
-- Changelog has no Deep Work Transformer entry.
-
-This is still the shallow/gimmick risk: metadata and generated child todos exist, but the user-facing execution contract is not visible/proven enough to make stuck tasks easier to execute.
-
-## Release evidence
-
-- `npm run build` passes for the current app, but that only proves the bundle compiles.
-- `npm run lint` is still blocked by an existing `utils/journalUtils.ts` status typing error.
-- Static scan finds spreadsheet export/reconcile Deep Work markers, but no executed sync/refresh round-trip test.
-- Changelog currently stops at `v0.3.17` and contains no Deep Work Transformer entry.
-- Therefore, complete sync/refresh/changelog/build evidence for the **feature** does not exist, even though the general app build succeeds.
+- `npm run test -- services/__tests__/deepWorkTransformer.test.ts services/__tests__/deepWorkTransformerIntegration.test.ts utils/__tests__/deepWorkTodoModel.test.ts` — pass.
+- `npm run build` — pass.
+- `node scripts/validate-deep-work-transformer-ship-gate.mjs` — pass with `verdict=pass_corrective_ship_gate`.
 
 ## Final call
 
-The concept is useful on Adan's real failure mode, but the shipped behavior is incomplete and too shallow. Passing this gate would be fake. Reject ship and continue only with a narrower corrective implementation: first land the enhanced todo data contract + deterministic transformer + round-trip tests, then rerun this gate before UX polish.
+The NDC-013 rejection was valid at the time: metadata and child todos were not enough. After NDC-014, the feature has a visible execution contract, actionable Plan/Card UX, update-path refresh, sync/export/reconcile proof, changelog coverage, and real-data validation against the IIMS/regulasi todos. Keep shipped, with the important product constraint that subtasks remain optional/compact and the parent completion remains tied to the final requested output unless explicitly configured otherwise.
