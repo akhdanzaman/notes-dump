@@ -41,7 +41,7 @@ type SystemSheetSnapshotMeta = {
 };
 
 export const SPREADSHEET_FETCH_RANGES = {
-  Transactions: 'A:I',
+  Transactions: 'A:K',
   Todos: 'A:AA',
   Shopping: 'A:I',
   Events: 'A:H',

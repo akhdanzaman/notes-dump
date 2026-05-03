@@ -73,9 +73,22 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     // 1. Transactions
     const txSheet = valueRanges.find(r => r.range && r.range.includes('Transactions'));
     if (txSheet && txSheet.values) {
+        const headers = txSheet.values[0] || [];
+        const cell = (row: unknown[], name: string, fallbackIndex: number) => {
+            const value = getHeaderCell(headers, row, name);
+            return value !== undefined ? value : row[fallbackIndex];
+        };
         const rows = txSheet.values.slice(1);
         for (const row of rows) {
-            const [date, type, category, description, amountStr, wallet, toWallet, tagsStr, idStr] = row;
+            const date = cell(row, 'Date', 0) as string;
+            const type = cell(row, 'Type', 1) as string;
+            const category = cell(row, 'Category', 2) as string;
+            const description = cell(row, 'Description', 3) as string;
+            const amountStr = cell(row, 'Amount', 4) as string;
+            const wallet = cell(row, 'Wallet', 5) as string;
+            const toWallet = cell(row, 'To_Wallet', 6) as string;
+            const tagsStr = cell(row, 'Tags', 7) as string;
+            const idStr = cell(row, 'ID', 8) as string;
             if (!date && !description && !amountStr && !idStr) continue;
             const amount = parseFloat(amountStr) || 0;
             const financeType = parseFinanceType(type) || 'expense';

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 
 import { generateExportData } from '../exportUtils';
 import { reconcileSpreadsheetData } from '../../services/spreadsheetReconciler';
-import { AppSettings, BrainDumpItem, BudgetConfig, DbSchema, ItemType } from '../../types';
+import { AppSettings, BrainDumpItem, BudgetConfig, DbSchema, ItemType, Wallet } from '../../types';
+import { getWalletStats } from '../selectors/moneySelectors';
 
 const budgetConfig: BudgetConfig = {
   monthlyIncome: 0,
@@ -16,6 +17,10 @@ const appSettings: AppSettings = {
   defaultCollapsed: false,
   hideMoney: false,
 };
+
+const wallets: Wallet[] = [
+  { id: 'bca-wallet', name: 'BCA', type: 'bank', initialBalance: 100_000, color: 'bg-blue-500' },
+];
 
 test('shopping/todo/event spreadsheet export round-trips without recreating items', () => {
   const shopping: BrainDumpItem = {
@@ -98,4 +103,52 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
   assert.ok(reconciledEvent);
   assert.equal(reconciledEvent?.meta.start, '2026-02-19T02:00:00.000Z');
   assert.equal(reconciledEvent?.meta.end, '2026-02-19T03:00:00.000Z');
+});
+
+test('transaction spreadsheet export round-trips ID after canonical columns and keeps wallet balance effective', () => {
+  const transaction: BrainDumpItem = {
+    id: 'txn-1',
+    type: ItemType.FINANCE,
+    content: 'makan gacoan',
+    status: 'done',
+    created_at: '2026-05-01T08:00:00.000Z',
+    completed_at: '2026-05-01T08:00:00.000Z',
+    meta: {
+      date: '2026-05-01T08:00:00.000Z',
+      amount: 25_000,
+      financeType: 'expense',
+      budgetCategory: 'wants',
+      paymentMethod: 'bca-wallet',
+      canonical: {
+        merchant: { rawValue: 'gacoan', value: 'Mie Gacoan', confidence: 0.95, source: 'learned_rule' },
+      },
+      tags: ['food'],
+    },
+  };
+
+  const db: DbSchema = {
+    data: [transaction],
+    budgetConfig,
+    skills: [],
+    wallets,
+    monthlyThemes: {},
+    appSettings,
+  };
+
+  const sheets = generateExportData(db.data, [], wallets, budgetConfig, {}, appSettings);
+  const transactionsSheet = sheets.find(sheet => sheet.name === 'Transactions');
+  assert.ok(transactionsSheet);
+  assert.equal(transactionsSheet!.data[0].indexOf('ID'), 10);
+
+  const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
+    range: "'Transactions'!A1:K",
+    values: transactionsSheet!.data,
+  }]);
+
+  assert.equal(reconciled.data.length, 1);
+  assert.equal(reconciled.data[0].id, 'txn-1');
+  assert.equal(reconciled.data[0].meta.paymentMethod, 'bca-wallet');
+
+  const { walletStats } = getWalletStats(reconciled.data, wallets);
+  assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 75_000);
 });

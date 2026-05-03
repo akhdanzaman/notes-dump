@@ -1,5 +1,5 @@
 import { BrainDumpItem, ItemType, Wallet, BudgetConfig, SortOrder } from '../../types';
-import { getCanonicalOrRawItemValue, itemMatchesCanonicalSearch } from '../canonicalization/accessors';
+import { getCanonicalMetaValue, getCanonicalOrRawItemValue, getRawMetaValue, itemMatchesCanonicalSearch } from '../canonicalization/accessors';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from '../financeTypeUtils';
 
 const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
@@ -7,6 +7,15 @@ const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
     if (!normalized) return '';
     const wallet = wallets.find(w => w.id.toLowerCase() === normalized || w.name.toLowerCase() === normalized);
     return wallet ? wallet.name.toLowerCase() : normalized;
+};
+
+const resolveItemWalletBalanceKey = (wallets: Wallet[], item: BrainDumpItem) => {
+    const canonicalPaymentMethod = getCanonicalMetaValue(item.meta, 'paymentMethod');
+    const canonicalKey = resolveWalletBalanceKey(wallets, canonicalPaymentMethod);
+    if (canonicalKey && wallets.some(w => w.name.toLowerCase() === canonicalKey)) return canonicalKey;
+
+    const rawPaymentMethod = getRawMetaValue(item.meta, 'paymentMethod');
+    return resolveWalletBalanceKey(wallets, rawPaymentMethod);
 };
 
 export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
@@ -29,7 +38,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         if (isImplicitExpense && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'routine')) return;
         
         const amount = item.meta.amount;
-        const walletName = resolveWalletBalanceKey(wallets, getCanonicalOrRawItemValue(item, 'paymentMethod')); // Source Wallet
+        const walletName = resolveItemWalletBalanceKey(wallets, item); // Source Wallet
         
         if (walletName && balanceMap.has(walletName)) {
             const current = balanceMap.get(walletName) || 0;
@@ -79,7 +88,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
     // Map back to wallet objects
     const walletStats = wallets.map(w => ({
         ...w,
-        currentBalance: balanceMap.get(w.name.toLowerCase()) || w.initialBalance
+        currentBalance: balanceMap.get(w.name.toLowerCase()) ?? w.initialBalance
     }));
 
     // Calculate Total Net Worth: (Total Assets) - (Total CC Debt)

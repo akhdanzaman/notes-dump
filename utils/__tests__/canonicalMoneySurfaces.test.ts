@@ -75,6 +75,49 @@ test('money wallet balances and wallet filters collapse paymentMethod aliases th
   assert.equal(filtered.totalExpense, 25_000);
 });
 
+test('wallet balances use wallet IDs from new manual transactions and keep legitimate zero balances', () => {
+  const manualById: BrainDumpItem = {
+    id: 'txn-manual-id',
+    type: ItemType.FINANCE,
+    content: 'manual expense',
+    status: 'done',
+    created_at: '2026-05-01T08:00:00.000Z',
+    completed_at: '2026-05-01T08:00:00.000Z',
+    meta: {
+      date: '2026-05-01T08:00:00.000Z',
+      amount: 100_000,
+      financeType: 'expense',
+      paymentMethod: 'bca-wallet',
+    },
+  };
+
+  const { walletStats } = getWalletStats([manualById], wallets);
+  assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 0);
+});
+
+test('wallet balances fall back to raw paymentMethod when canonical value is not a registered wallet', () => {
+  const itemWithBadCanonicalWallet: BrainDumpItem = {
+    id: 'txn-bad-canonical-wallet',
+    type: ItemType.FINANCE,
+    content: 'expense with stale canonical wallet',
+    status: 'done',
+    created_at: '2026-05-01T08:00:00.000Z',
+    completed_at: '2026-05-01T08:00:00.000Z',
+    meta: {
+      date: '2026-05-01T08:00:00.000Z',
+      amount: 12_000,
+      financeType: 'expense',
+      paymentMethod: 'BCA',
+      canonical: {
+        paymentMethod: { rawValue: 'BCA', value: 'not-a-wallet', confidence: 0.9, source: 'learned_rule' },
+      },
+    },
+  };
+
+  const { walletStats } = getWalletStats([itemWithBadCanonicalWallet], wallets);
+  assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 88_000);
+});
+
 test('money search matches canonical clusters and raw aliases without rewriting original fields', () => {
   const canonicalSearch = getFinanceItems(
     canonicalItems,

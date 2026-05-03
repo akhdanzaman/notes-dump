@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.22',
+    date: 'May 2026',
+    items: [
+      'New manual transactions now store wallet IDs directly, so wallet balances keep updating even if a wallet name changes later.',
+      'Wallet balance calculation now counts ID-based transactions reliably, keeps true zero balances, and falls back to the raw wallet when stale canonical metadata points somewhere invalid.',
+      'Google Sheets transaction sync now reads the full exported row including the ID after the canonical columns, preventing transaction reconciliation from losing its match key.',
+    ],
+  },
+  {
     version: 'v0.3.21',
     date: 'May 2026',
     items: [
