@@ -1161,7 +1161,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </div>
                                                     ) : (
                                                         <div className="text-center py-4">
-                                                            <p className="text-sm text-muted mb-4">Sign in to sync your settings and connect your spreadsheet.</p>
+                                                            <p className="text-sm text-muted mb-4">Google sign-in is optional. Use it only if service-account spreadsheet access is unavailable.</p>
                                                             <button 
                                                                 onClick={handleGoogleLogin}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
@@ -1179,11 +1179,13 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 </div>
                                             </section>
 
-                                            {/* Spreadsheet Config (Only show if logged in) */}
-                                            {googleProfile && (
-                                                <section>
+                                            {/* Spreadsheet Config */}
+                                            <section>
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Spreadsheet Connection</h3>
                                                     <div className="bg-background border border-border rounded-2xl p-4 space-y-4">
+                                                        <div className="text-xs text-muted bg-surface border border-border rounded-xl p-3 leading-relaxed">
+                                                            Share your spreadsheet with <span className="font-mono text-primary">openclaw-adan@gen-lang-client-0558606321.iam.gserviceaccount.com</span> as Editor, paste the link here, then connect. Google sign-in is only a fallback.
+                                                        </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-muted mb-1">Spreadsheet Link</label>
                                                             <div className="flex gap-2">
@@ -1235,7 +1237,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         )}
                                                     </div>
                                                 </section>
-                                            )}
 
                                             {/* Gemini */}
                                             <section>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, SyncStatus } from '../types';
-import { getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig } from '../services/spreadsheetService';
+import { checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
 import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, getGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
@@ -298,11 +298,41 @@ export const useControlCenter = ({
             return;
         }
 
-        // Check if we have a valid session
+        const spreadsheetId = match[1];
+
+        try {
+            const serviceAccountStatus = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
+            if (serviceAccountStatus.accessible) {
+                const newConfig: SpreadsheetConfig = {
+                    spreadsheetId,
+                    spreadsheetUrl: spreadsheetLink,
+                    authMode: 'service_account',
+                    serviceAccountEmail: serviceAccountStatus.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL
+                };
+
+                saveSpreadsheetConfig(newConfig);
+                setSpreadsheetConfig(newConfig);
+                alert("Spreadsheet connected via service account. No Google sign-in needed.");
+                onSyncClick(false);
+                return;
+            }
+
+            if (serviceAccountStatus.configured && serviceAccountStatus.needsSharing) {
+                alert(`Service account belum punya akses. Share spreadsheet ini ke ${serviceAccountStatus.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL} sebagai Editor, lalu klik Connect Spreadsheet lagi.`);
+                return;
+            }
+
+            if (serviceAccountStatus.configured && serviceAccountStatus.error) {
+                console.warn("Service account spreadsheet check failed", serviceAccountStatus);
+            }
+        } catch (error) {
+            console.warn("Service account spreadsheet check failed", error);
+        }
+
+        // Fallback: OAuth is only needed when service-account mode is unavailable.
         const session = getGoogleSession();
         
         if (!session) {
-            // If we have a profile but no session, something is wrong (likely expired)
             if (googleProfile) {
                 alert("Your session has expired. Please sign in again to connect your spreadsheet.");
             }
@@ -310,17 +340,15 @@ export const useControlCenter = ({
             return;
         }
 
-        // We have a token, just save the config
-        const spreadsheetId = match[1];
         const newConfig: SpreadsheetConfig = {
             spreadsheetId,
-            spreadsheetUrl: spreadsheetLink
+            spreadsheetUrl: spreadsheetLink,
+            authMode: 'oauth'
         };
         
         saveSpreadsheetConfig(newConfig);
         setSpreadsheetConfig(newConfig);
         
-        // Sync to Drive
         try {
             const token = await getValidGoogleAccessToken();
             if (token) {

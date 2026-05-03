@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
+import { checkServiceAccountSpreadsheetAccess, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from "./server/googleServiceAccount";
 
 dotenv.config();
 
@@ -116,6 +117,42 @@ async function startServer() {
       res.json(tokens);
     } catch (error: any) {
       console.error("Refresh token error:", error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/spreadsheets/service-account/status", async (req, res) => {
+    try {
+      const spreadsheetId = validateSpreadsheetId(req.query.spreadsheetId);
+      const status = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
+      res.status(status.accessible ? 200 : 403).json(status);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.all("/api/spreadsheets/service-account/proxy", async (req, res) => {
+    try {
+      const spreadsheetId = validateSpreadsheetId(req.query.spreadsheetId);
+      const path = validateSheetsPath(req.query.path);
+      const body = req.method === 'GET' || req.method === 'HEAD'
+        ? undefined
+        : typeof req.body === 'string'
+          ? req.body
+          : JSON.stringify(req.body || {});
+
+      const response = await fetchWithServiceAccount(spreadsheetId, path, {
+        method: req.method,
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body,
+      });
+
+      const text = await response.text();
+      res.status(response.status);
+      const contentType = response.headers.get('content-type');
+      if (contentType) res.setHeader('content-type', contentType);
+      res.send(text);
+    } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });

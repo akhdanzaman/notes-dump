@@ -104,6 +104,20 @@ const getRetryDelayMs = (attempt: number, retryAfterHeader: string | null) => {
 export interface SpreadsheetConfig {
   spreadsheetId: string;
   spreadsheetUrl: string;
+  authMode?: 'oauth' | 'service_account';
+  serviceAccountEmail?: string;
+}
+
+export const SERVICE_ACCOUNT_EMAIL = 'openclaw-adan@gen-lang-client-0558606321.iam.gserviceaccount.com';
+
+export interface ServiceAccountSpreadsheetStatus {
+  configured: boolean;
+  serviceAccountEmail: string;
+  accessible: boolean;
+  writable?: boolean;
+  needsSharing?: boolean;
+  status?: number;
+  error?: string;
 }
 
 let isHydrated = false;
@@ -575,6 +589,34 @@ export const cacheSpreadsheetDbForMigration = (db: DbSchema) => {
 
 const shouldRetrySpreadsheetRequest = (status: number) => status === 401 || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 
+export const checkServiceAccountSpreadsheetAccess = async (spreadsheetId: string): Promise<ServiceAccountSpreadsheetStatus> => {
+  const response = await fetch(`/api/spreadsheets/service-account/status?spreadsheetId=${encodeURIComponent(spreadsheetId)}`);
+  const data = await response.json().catch(() => ({}));
+  return {
+    configured: !!data.configured,
+    serviceAccountEmail: data.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL,
+    accessible: response.ok && !!data.accessible,
+    writable: !!data.writable,
+    needsSharing: !!data.needsSharing,
+    status: data.status || response.status,
+    error: data.error,
+  };
+};
+
+const serviceAccountSheetsFetch = async (
+  spreadsheetId: string,
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> => {
+  const headers = new Headers(init.headers || {});
+  const contentType = headers.get('content-type') || headers.get('Content-Type');
+  return fetch(`/api/spreadsheets/service-account/proxy?spreadsheetId=${encodeURIComponent(spreadsheetId)}&path=${encodeURIComponent(path)}`, {
+    method: init.method || 'GET',
+    headers: contentType ? { 'Content-Type': contentType } : undefined,
+    body: init.body,
+  });
+};
+
 const sheetsFetch = async (
   spreadsheetId: string,
   path: string,
@@ -582,6 +624,16 @@ const sheetsFetch = async (
   attempt = 0,
   tokenOverride?: string
 ): Promise<Response> => {
+  if (getSpreadsheetConfig()?.authMode === 'service_account') {
+    const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
+    if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
+      return response;
+    }
+    const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
+    await wait(delayMs);
+    return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
+  }
+
   const token = tokenOverride || await getValidGoogleAccessToken();
   if (!token) throw new Error('No valid Google access token available');
 

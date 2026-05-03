@@ -1,0 +1,17 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { checkServiceAccountSpreadsheetAccess, validateSpreadsheetId } from '../../../server/googleServiceAccount';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const spreadsheetId = validateSpreadsheetId(req.query.spreadsheetId);
+    const status = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
+    return res.status(status.accessible ? 200 : 403).json(status);
+  } catch (error: any) {
+    return res.status(400).json({ error: error.message });
+  }
+}

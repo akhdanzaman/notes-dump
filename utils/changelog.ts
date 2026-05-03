@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.25',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet connection no longer requires Google login first: paste a Google Sheets link and Notes Dump checks service-account access directly.',
+      'Added server-side Google Service Account Sheets access for shared spreadsheets, keeping the private key on the backend instead of exposing credentials in the browser.',
+      'If the linked spreadsheet has not been shared yet, the app now tells you to add openclaw-adan@gen-lang-client-0558606321.iam.gserviceaccount.com as an Editor and retry.',
+    ],
+  },
+  {
     version: 'v0.3.24',
     date: 'May 2026',
     items: [
