@@ -722,6 +722,7 @@ const App: React.FC = () => {
                           handleToggleStatus={handleToggleStatus}
                           handleDelete={requestDeleteItem}
                           appSettings={appSettings}
+                          setActiveTab={setActiveTab}
                       />
                   )}
               </div>

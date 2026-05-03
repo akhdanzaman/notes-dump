@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { BrainDumpItem, ItemType, AppSettings } from '../../types';
+import { BrainDumpItem, ItemType, AppSettings, Tab } from '../../types';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Calendar as CalendarIcon, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 
 interface CalendarViewProps {
     items: BrainDumpItem[];
     handleToggleStatus: (id: string) => void;
     handleDelete: (id: string, type: 'item' | 'wallet' | 'skill') => void;
     appSettings: AppSettings;
+    setActiveTab: (tab: Tab) => void;
 }
 
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -38,9 +40,10 @@ const getItemTypeLabel = (type: ItemType) => {
     }
 };
 
-const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, handleDelete, appSettings }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, handleDelete, appSettings, setActiveTab }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedItem, setSelectedItem] = useState<BrainDumpItem | null>(null);
+    const swipeHandlers = useSwipeTabs('calendar', setActiveTab);
 
     const nextMonth = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
@@ -198,61 +201,70 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
 
     return (
         <div className="min-h-screen bg-background pt-safe pb-36">
-            <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-xl">
-                <div className="flex items-center justify-between px-4 py-3">
+            <motion.div
+                layoutId="top-container"
+                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
+                transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                onTouchStart={swipeHandlers.onTouchStart}
+                onTouchMove={swipeHandlers.onTouchMove}
+                onTouchEnd={swipeHandlers.onTouchEnd}
+                style={{ x: swipeHandlers.dragOffset }}
+            >
+                <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-surface text-primary">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 text-primary dark:bg-white/10">
                             <CalendarIcon className="h-5 w-5" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-semibold text-primary">Calendar Wireframe</h1>
-                            <p className="text-xs text-muted">Month layout only, low-fidelity view</p>
+                            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted">Timeline</div>
+                            <h1 className="text-xl font-semibold text-primary">Calendar</h1>
+                            <p className="text-xs text-muted">Swipe header to move between app tabs</p>
                         </div>
                     </div>
                     <button
                         onClick={goToToday}
-                        className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-muted/10"
+                        className="rounded-full bg-black/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15"
                     >
                         Today
                     </button>
                 </div>
 
-                <div className="flex items-center justify-between px-4 pb-3">
-                    <button onClick={prevMonth} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-surface text-primary transition-colors hover:bg-muted/10">
+                <div className="flex items-center justify-between mb-4">
+                    <button onClick={prevMonth} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 text-primary transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15">
                         <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <div className="rounded-2xl border border-border bg-surface px-4 py-2 text-center min-w-[168px]">
+                    <div className="rounded-2xl bg-black/5 px-4 py-2 text-center min-w-[168px] dark:bg-white/10">
                         <div className="text-[11px] uppercase tracking-[0.22em] text-muted">Month</div>
                         <div className="text-sm font-semibold text-primary">
                             {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </div>
                     </div>
-                    <button onClick={nextMonth} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-surface text-primary transition-colors hover:bg-muted/10">
+                    <button onClick={nextMonth} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 text-primary transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15">
                         <ChevronRight className="h-5 w-5" />
                     </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 px-4 pb-4 sm:grid-cols-4">
-                    <div className="rounded-2xl border border-border bg-surface p-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="rounded-2xl bg-black/5 p-3 dark:bg-white/10">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Scheduled</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{scheduledCount}</div>
                     </div>
-                    <div className="rounded-2xl border border-border bg-surface p-3">
+                    <div className="rounded-2xl bg-black/5 p-3 dark:bg-white/10">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Done</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{doneCount}</div>
                     </div>
-                    <div className="rounded-2xl border border-border bg-surface p-3">
+                    <div className="rounded-2xl bg-black/5 p-3 dark:bg-white/10">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Routine</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{routineCount}</div>
                     </div>
-                    <div className="rounded-2xl border border-border bg-surface p-3">
+                    <div className="rounded-2xl bg-black/5 p-3 dark:bg-white/10">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Busiest</div>
                         <div className="mt-1 text-sm font-semibold text-primary">
                             {busiestDay.date ? `${busiestDay.date.getDate()} (${busiestDay.count})` : '—'}
                         </div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
             <div className="px-4 pb-2 pt-3">
                 <div className="rounded-[28px] border border-border bg-surface/40 overflow-hidden">

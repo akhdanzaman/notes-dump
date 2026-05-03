@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.21',
+    date: 'May 2026',
+    items: [
+      'Calendar now uses the same rounded bottom header container as the other main tabs, so the top area feels consistent instead of like a separate sticky toolbar.',
+      'The Calendar header now supports horizontal swipe navigation into the neighboring app tabs, matching the gesture behavior used by Summary, Plan, Library, and Money.',
+    ],
+  },
+  {
     version: 'v0.3.20',
     date: 'May 2026',
     items: [
