@@ -819,7 +819,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
                             {urgent.length > 0 ? (
                                 <div className="space-y-3">
-                                    {visibleUrgent.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} />)}
+                                    {visibleUrgent.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} budgetRules={budgetRules} wallets={wallets} />)}
                                     <LoadMoreButton remainingCount={visibleUrgent.remainingCount} onClick={visibleUrgent.loadMore} />
                                 </div>
                             ) : (
@@ -841,7 +841,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
                             {routine.length > 0 ? (
                                 <div className="space-y-3">
-                                    {visibleRoutineShopping.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} onResetRoutine={handleResetRoutine} />)}
+                                    {visibleRoutineShopping.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} budgetRules={budgetRules} wallets={wallets} onResetRoutine={handleResetRoutine} />)}
                                     <LoadMoreButton remainingCount={visibleRoutineShopping.remainingCount} onClick={visibleRoutineShopping.loadMore} />
                                 </div>
                             ) : (
@@ -861,7 +861,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
                             {normal.length > 0 ? (
                                 <div className="space-y-3">
-                                    {visibleNormalShopping.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} wallets={wallets} />)}
+                                    {visibleNormalShopping.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} budgetRules={budgetRules} wallets={wallets} />)}
                                     <LoadMoreButton remainingCount={visibleNormalShopping.remainingCount} onClick={visibleNormalShopping.loadMore} />
                                 </div>
                             ) : (

@@ -152,3 +152,94 @@ test('transaction spreadsheet export round-trips ID after canonical columns and 
   const { walletStats } = getWalletStats(reconciled.data, wallets);
   assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 75_000);
 });
+
+test('header-only spreadsheet ranges do not delete local shopping, transactions, or config', () => {
+  const doneShopping: BrainDumpItem = {
+    id: 'shop-done-1',
+    type: ItemType.SHOPPING,
+    content: 'sabun mandi',
+    status: 'done',
+    created_at: '2026-05-01T08:00:00.000Z',
+    completed_at: '2026-05-01T09:00:00.000Z',
+    meta: {
+      amount: 18_000,
+      shoppingCategory: 'urgent',
+      paymentMethod: 'bca-wallet',
+    },
+  };
+
+  const finance: BrainDumpItem = {
+    id: 'txn-local-1',
+    type: ItemType.FINANCE,
+    content: 'kopi',
+    status: 'done',
+    created_at: '2026-05-01T10:00:00.000Z',
+    completed_at: '2026-05-01T10:00:00.000Z',
+    meta: {
+      date: '2026-05-01T10:00:00.000Z',
+      amount: 20_000,
+      financeType: 'expense',
+      paymentMethod: 'bca-wallet',
+    },
+  };
+
+  const db: DbSchema = {
+    data: [doneShopping, finance],
+    budgetConfig,
+    skills: [{ id: 'skill-1', name: 'Coding', weeklyTargetMinutes: 120, created_at: '2026-05-01T00:00:00.000Z', color: 'bg-blue-500' }],
+    wallets,
+    monthlyThemes: { '2026-05': 'Focus' },
+    appSettings: { defaultCollapsed: true, hideMoney: true },
+  };
+
+  const reconciled = reconcileSpreadsheetData(structuredClone(db), [
+    { range: "'Transactions'!A1:K", values: [["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Merchant", "Canonical_Subcommodity", "ID"]] },
+    { range: "'Shopping'!A1:I", values: [["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Tags", "Completed_At", "ID"]] },
+    { range: "'Wallets Config'!A1:E", values: [["ID", "Name", "Type", "Initial_Balance", "Color"]] },
+    { range: "'Skills Config'!A1:E", values: [["ID", "Name", "Weekly_Target_Minutes", "Created_At", "Color"]] },
+    { range: "'Themes & Settings'!A1:C", values: [["Type", "Key", "Value"]] },
+  ]);
+
+  assert.deepEqual(reconciled.data.map(item => item.id).sort(), ['shop-done-1', 'txn-local-1']);
+  assert.equal(reconciled.wallets?.length, 1);
+  assert.equal(reconciled.skills?.length, 1);
+  assert.equal(reconciled.monthlyThemes?.['2026-05'], 'Focus');
+  assert.equal(reconciled.appSettings?.hideMoney, true);
+});
+
+test('transaction reconciliation parses Indonesian currency strings without shrinking amounts', () => {
+  const transaction: BrainDumpItem = {
+    id: 'txn-rp-1',
+    type: ItemType.FINANCE,
+    content: 'belanja bulanan',
+    status: 'done',
+    created_at: '2026-05-01T08:00:00.000Z',
+    completed_at: '2026-05-01T08:00:00.000Z',
+    meta: {
+      date: '2026-05-01T08:00:00.000Z',
+      amount: 75_000,
+      financeType: 'expense',
+      paymentMethod: 'bca-wallet',
+    },
+  };
+
+  const db: DbSchema = {
+    data: [transaction],
+    budgetConfig,
+    skills: [],
+    wallets,
+    monthlyThemes: {},
+    appSettings,
+  };
+
+  const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
+    range: "'Transactions'!A1:K",
+    values: [
+      ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Merchant", "Canonical_Subcommodity", "ID"],
+      ["5/1/2026 3:00:00 PM", "expense", "Wants", "belanja bulanan", "Rp75.000", "BCA", "", "", "", "", "txn-rp-1"],
+    ],
+  }]);
+
+  assert.equal(reconciled.data[0].meta.amount, 75_000);
+  assert.equal(reconciled.data[0].meta.paymentMethod, 'bca-wallet');
+});

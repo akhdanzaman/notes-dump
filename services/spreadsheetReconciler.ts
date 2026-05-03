@@ -59,6 +59,36 @@ const getHeaderCell = (headers: unknown[], row: unknown[], name: string): unknow
     return index >= 0 ? row[index] : undefined;
 };
 
+const getHeaderAwareCell = (headers: unknown[], row: unknown[], name: string, fallbackIndex: number): unknown => {
+    const index = headers.indexOf(name);
+    return index >= 0 ? row[index] : row[fallbackIndex];
+};
+
+const parseSheetAmount = (value: unknown): number => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    const raw = String(value || '').trim();
+    if (!raw) return 0;
+
+    const cleaned = raw.replace(/[Rp\s]/gi, '');
+    const hasComma = cleaned.includes(',');
+    const hasDot = cleaned.includes('.');
+    let normalized = cleaned;
+
+    if (hasComma && hasDot) {
+        normalized = cleaned.replace(/\./g, '').replace(',', '.');
+    } else if (hasComma) {
+        normalized = cleaned.replace(',', '.');
+    } else if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+        normalized = cleaned.replace(/\./g, '');
+    }
+
+    const parsed = parseFloat(normalized.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const hasAuthoritativeRows = (sheet: any): boolean =>
+    Array.isArray(sheet?.values) && sheet.values.length > 1;
+
 export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSchema => {
     if (!Array.isArray(valueRanges)) return db;
     const newItems = [...db.data];
@@ -74,10 +104,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     const txSheet = valueRanges.find(r => r.range && r.range.includes('Transactions'));
     if (txSheet && txSheet.values) {
         const headers = txSheet.values[0] || [];
-        const cell = (row: unknown[], name: string, fallbackIndex: number) => {
-            const value = getHeaderCell(headers, row, name);
-            return value !== undefined ? value : row[fallbackIndex];
-        };
+        const cell = (row: unknown[], name: string, fallbackIndex: number) => getHeaderAwareCell(headers, row, name, fallbackIndex);
         const rows = txSheet.values.slice(1);
         for (const row of rows) {
             const date = cell(row, 'Date', 0) as string;
@@ -90,7 +117,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const tagsStr = cell(row, 'Tags', 7) as string;
             const idStr = cell(row, 'ID', 8) as string;
             if (!date && !description && !amountStr && !idStr) continue;
-            const amount = parseFloat(amountStr) || 0;
+            const amount = parseSheetAmount(amountStr);
             const financeType = parseFinanceType(type) || 'expense';
             
             const match = newItems.find(i => 
@@ -422,7 +449,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             }
             
             if (!item && !amountStr && !idStr) continue;
-            const amount = parseFloat(amountStr) || 0;
+            const amount = parseSheetAmount(amountStr);
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
@@ -698,7 +725,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
     // 7. Settings Reconciliation
     const walletSheet = valueRanges.find(r => r.range && r.range.includes('Wallets Config'));
-    if (walletSheet && walletSheet.values) {
+    if (hasAuthoritativeRows(walletSheet)) {
         const rows = walletSheet.values.slice(1);
         db.wallets = rows.map(row => ({
             id: row[0],
@@ -711,9 +738,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const budgetSheet = valueRanges.find(r => r.range && r.range.includes('Budget Rules'));
-    console.log("Budget Sheet found:", !!budgetSheet);
-    if (budgetSheet && budgetSheet.values) {
-        console.log("Budget Sheet values:", budgetSheet.values);
+    if (hasAuthoritativeRows(budgetSheet)) {
         const rows = budgetSheet.values.slice(1);
         if (!db.budgetConfig) db.budgetConfig = { monthlyIncome: 0, rules: [] };
         
@@ -722,14 +747,12 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const prop = row[0];
             const val = row[1];
             const color = row[2];
-            console.log(`Processing budget row: prop=${prop}, val=${val}, color=${color}`);
             if (prop === 'Monthly Income') {
                 db.budgetConfig.monthlyIncome = parseFloat(val) || 0;
             } else if (prop && prop.startsWith('Rule: ')) {
                 const name = prop.replace('Rule: ', '');
                 // Parse "50% (ID: 123)"
                 const match = val ? val.match(/([\d.]+)%\s*\(ID:\s*(.+)\)/) : null;
-                console.log(`Rule match for ${name}:`, match);
                 if (match) {
                     newRules.push({
                         id: match[2],
@@ -747,7 +770,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const skillConfigSheet = valueRanges.find(r => r.range && r.range.includes('Skills Config'));
-    if (skillConfigSheet && skillConfigSheet.values) {
+    if (hasAuthoritativeRows(skillConfigSheet)) {
         const rows = skillConfigSheet.values.slice(1);
         db.skills = rows.map(row => ({
             id: row[0],
@@ -760,7 +783,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const settingsSheet = valueRanges.find(r => r.range && r.range.includes('Themes & Settings'));
-    if (settingsSheet && settingsSheet.values) {
+    if (hasAuthoritativeRows(settingsSheet)) {
         const rows = settingsSheet.values.slice(1);
         if (!db.appSettings) db.appSettings = { defaultCollapsed: false, hideMoney: false };
         if (!db.monthlyThemes) db.monthlyThemes = {};
@@ -781,15 +804,15 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const sheetsFetched = {
-        tx: !!txSheet,
-        todo: !!todoSheet,
-        shop: !!shopSheet,
-        event: !!eventSheet,
-        notes: !!notesSheet,
-        wallet: !!walletSheet,
-        budget: !!budgetSheet,
-        skillConfig: !!skillConfigSheet,
-        settings: !!settingsSheet
+        tx: hasAuthoritativeRows(txSheet),
+        todo: hasAuthoritativeRows(todoSheet),
+        shop: hasAuthoritativeRows(shopSheet),
+        event: hasAuthoritativeRows(eventSheet),
+        notes: hasAuthoritativeRows(notesSheet),
+        wallet: hasAuthoritativeRows(walletSheet),
+        budget: hasAuthoritativeRows(budgetSheet),
+        skillConfig: hasAuthoritativeRows(skillConfigSheet),
+        settings: hasAuthoritativeRows(settingsSheet)
     };
 
     const finalItems = newItems.filter(item => {

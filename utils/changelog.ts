@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.28',
+    date: 'May 2026',
+    items: [
+      'Google Sheets refresh now ignores header-only user sheets during reconciliation, preventing shopping todos and transactions from disappearing or reverting after save while sync is mid-refresh or partially loaded.',
+      'Transaction reconciliation now parses Indonesian currency strings like Rp75.000 correctly instead of shrinking them to 75 or 0.',
+      'Plan / Shopping edit cards now receive budget rules, so shopping item edits can keep/select budget categories consistently from the Plan tab.',
+    ],
+  },
+  {
     version: 'v0.3.27',
     date: 'May 2026',
     items: [
