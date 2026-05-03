@@ -242,6 +242,7 @@ export type ParserEntityType =
   | 'event'
   | 'finance'
   | 'journal'
+  | 'skill_log'
   | 'skill'
   | 'wallet'
   | 'theme'

@@ -16,6 +16,7 @@ TYPE (pick one):
 - EVENT: scheduled dates/times.
 - FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement OR adding funds to a saving goal. ALL FINANCE entries are considered DONE.
 - JOURNAL: personal diary entries, feelings, daily recaps, "Dear Diary", or explicit "Log to journal".
+- SKILL_LOG: explicit practice/training/study sessions with a skill name and duration. ALL SKILL_LOG entries are considered DONE.
 
 COMMON EXTRACTION:
 - amount: NUMBER only (strip currency symbols + thousand separators).
@@ -73,6 +74,11 @@ MONEY META (FINANCE + money-related SHOPPING):
 - toWallet: Destination wallet (transfer only).
 - merchant: Vendor name if mentioned.
 - amount: number.
+
+SKILL LOG META:
+- durationMinutes: practice duration in minutes.
+- skillName: exact skill mentioned by the user; if it matches a known skill, use that known skill name.
+- Example: "Skill log: English Speaking practice 45 menit" => SKILL_LOG, content "English Speaking practice", durationMinutes 45, skillName "English Speaking".
 
 CLASSIFICATION PRIORITY (FINANCE):
 1. Determine financeType.
@@ -167,7 +173,7 @@ export const classifyText = async (
             properties: {
               type: {
                 type: Type.STRING,
-                description: "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, JOURNAL",
+                description: "One of: TODO, SHOPPING, NOTE, EVENT, FINANCE, JOURNAL, SKILL_LOG",
               },
               content: {
                 type: Type.STRING,
@@ -190,6 +196,8 @@ export const classifyText = async (
                   commodity: { type: Type.STRING, description: "Main expenditure category" },
                   subcommodity: { type: Type.STRING, description: "Detailed sub-category" },
                   merchant: { type: Type.STRING, description: "Merchant/Vendor name" },
+                  durationMinutes: { type: Type.NUMBER, description: "Practice or focus duration in minutes" },
+                  skillName: { type: Type.STRING, description: "Skill name for skill logs" },
                   priority: { type: Type.STRING, description: "Priority level: low, normal, high" },
                   subtasks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Optional nested todo steps for abstract deep-work TODOs" }
                 }

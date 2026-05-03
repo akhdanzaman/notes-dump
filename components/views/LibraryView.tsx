@@ -262,9 +262,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
     const subTabs: LibrarySubTab[] = libraryTabs.map(tab => tab.key);
     const activeIndex = subTabs.indexOf(librarySubTab);
-    const sliderWidth = `${subTabs.length * 100}%`;
-    const slideWidth = `${100 / subTabs.length}%`;
-    const translatePercent = activeIndex * (100 / subTabs.length);
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -384,7 +381,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     return (
                         <motion.div 
                             key={skill.id}
-                            layout
+                            layout={!isDragging}
+                            transition={{ type: "tween", duration: 0.3 }}
                             className="bg-surface border border-border rounded-[24px] p-5"
                         >
                             <div className="flex justify-between items-start mb-4">
@@ -567,8 +565,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 <motion.div 
                     className="flex will-change-transform"
                     style={{
-                        width: sliderWidth,
-                        transform: `translateX(calc(-${translatePercent}% + ${dragOffset}px))`,
+                        transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
                         transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
                     }}
                 >
@@ -576,8 +573,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex-shrink-0 overflow-hidden px-4"
-                    style={{ width: slideWidth }}
+                    className="w-full flex-shrink-0 overflow-hidden px-4"
                 >
                     {renderContent(generalItems, 'general')}
                 </motion.div>
@@ -586,8 +582,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex-shrink-0 overflow-hidden px-4"
-                    style={{ width: slideWidth }}
+                    className="w-full flex-shrink-0 overflow-hidden px-4"
                 >
                     {renderSkills()}
                 </motion.div>
@@ -596,8 +591,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex-shrink-0 overflow-hidden px-4"
-                    style={{ width: slideWidth }}
+                    className="w-full flex-shrink-0 overflow-hidden px-4"
                 >
                     {renderContent(journalItems, 'journal')}
                 </motion.div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BookOpen, Check, X } from 'lucide-react';
+import { BookOpen, Check, Keyboard, MousePointerClick, X } from 'lucide-react';
 import { FeatureTutorial } from '../utils/featureTutorials';
 
 interface FeatureTutorialPopupProps {
@@ -47,6 +47,22 @@ const FeatureTutorialPopup: React.FC<FeatureTutorialPopupProps> = ({ tutorial, o
 
             <div className="p-5 space-y-5">
               <p className="text-sm text-muted leading-relaxed">{tutorial.body}</p>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="rounded-2xl border border-border bg-background/60 p-3">
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
+                    <MousePointerClick className="w-3 h-3" /> Manual entry
+                  </div>
+                  <p className="text-sm font-medium text-primary leading-relaxed">{tutorial.manualExample}</p>
+                </div>
+                <div className="rounded-2xl border border-indigo-500/25 bg-indigo-500/10 p-3">
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-indigo-500 mb-1">
+                    <Keyboard className="w-3 h-3" /> Input bar example
+                  </div>
+                  <p className="text-sm font-semibold text-primary leading-relaxed">{tutorial.inputBarExample}</p>
+                </div>
+              </div>
+
               <ul className="space-y-3">
                 {tutorial.bullets.map((bullet) => (
                   <li key={bullet} className="flex items-start gap-3 text-sm text-primary">

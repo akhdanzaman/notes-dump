@@ -146,6 +146,7 @@ const mapEntityTypeToItemType = (entityType: ParserEntityType, fallback: ItemTyp
         case 'event': return ItemType.EVENT;
         case 'finance': return ItemType.FINANCE;
         case 'journal': return ItemType.JOURNAL;
+        case 'skill_log': return ItemType.SKILL_LOG;
         case 'saving_goal': return ItemType.SHOPPING;
         default: return fallback;
     }
@@ -239,6 +240,7 @@ const convertLegacyResultsToNative = (legacyResults: Partial<BrainDumpItem>[], o
                 type === ItemType.EVENT ? 'event' :
                 type === ItemType.FINANCE ? 'finance' :
                 type === ItemType.JOURNAL ? 'journal' :
+                type === ItemType.SKILL_LOG ? 'skill_log' :
                 'unknown',
             content: partial.content || originalText,
             confidence: meta.parsingError ? 'low' : 'medium',
@@ -813,7 +815,7 @@ export const useBrainDumpData = () => {
         sourceText: string
     ): BrainDumpItem => {
         const type = mapEntityTypeToItemType(result.entityType, payload.itemType as ItemType);
-        const isRecord = type === ItemType.FINANCE || type === ItemType.JOURNAL;
+        const isRecord = type === ItemType.FINANCE || type === ItemType.JOURNAL || type === ItemType.SKILL_LOG;
 
         const meta = buildMetaFromParsed(
             payload.meta,

@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.27',
+    date: 'May 2026',
+    items: [
+      'Feature tips now show concrete manual-entry and input-bar examples for every tab/sub-feature, so tips teach by example instead of abstract explanation.',
+      'Onboarding parsing previews now become real BrainDump entries when setup finishes, and the starter sample data uses the same valid entry shape as the rest of the app.',
+      'Library / Skills sub-tab sliding now uses the same animation mechanics as the other sub-tabs, removing the odd transition mismatch.',
+    ],
+  },
+  {
     version: 'v0.3.26',
     date: 'May 2026',
     items: [

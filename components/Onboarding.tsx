@@ -12,17 +12,18 @@ import {
   Bot,
   Play
 } from 'lucide-react';
-import { AppSettings, BudgetConfig, Wallet } from '../types';
+import { AppSettings, BrainDumpItem, BudgetConfig, Wallet } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { createOnboardingSampleItems, ONBOARDING_DEFAULT_INPUT } from '../utils/onboardingExamples';
 
 interface OnboardingProps {
   onComplete: (
     settings: AppSettings, 
     wallet: Wallet | null, 
     budget: BudgetConfig | null, 
-    sampleItems: any[]
+    sampleItems: BrainDumpItem[]
   ) => void;
-  onTestParsing: (text: string) => Promise<any>;
+  onTestParsing: (text: string, context?: { wallet?: Wallet | null }) => Promise<BrainDumpItem[]>;
 }
 
 const STEPS = [
@@ -40,10 +41,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
   // State for setup
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [walletName, setWalletName] = useState('Main Bank');
+  const [walletDraftId] = useState(() => uuidv4());
   const [walletBalance, setWalletBalance] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [testInput, setTestInput] = useState('Lunch at McDonald 50k');
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testInput, setTestInput] = useState(ONBOARDING_DEFAULT_INPUT);
+  const [testResult, setTestResult] = useState<BrainDumpItem[]>([]);
+  const [testError, setTestError] = useState('');
   const [isTesting, setIsTesting] = useState(false);
   const [addSamples, setAddSamples] = useState(true);
 
@@ -73,11 +76,23 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
   const handleTestAI = async () => {
     if (!testInput.trim() || isTesting) return;
     setIsTesting(true);
+    setTestError('');
     try {
-      const result = await onTestParsing(testInput);
+      const previewWallet = walletName.trim()
+        ? {
+            id: walletDraftId,
+            name: walletName.trim(),
+            type: 'bank' as const,
+            initialBalance: Number(walletBalance) || 0,
+            color: 'indigo-500',
+          }
+        : null;
+      const result = await onTestParsing(testInput, { wallet: previewWallet });
       setTestResult(result);
     } catch (error) {
       console.error(error);
+      setTestResult([]);
+      setTestError(error instanceof Error ? error.message : 'Parsing preview failed');
     } finally {
       setIsTesting(false);
     }
@@ -93,7 +108,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
     let newWallet: Wallet | null = null;
     if (walletName.trim()) {
       newWallet = {
-        id: uuidv4(),
+        id: walletDraftId,
         name: walletName,
         type: 'bank',
         initialBalance: Number(walletBalance) || 0,
@@ -113,45 +128,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
       };
     }
 
-    const sampleItems = addSamples ? [
-      {
-        id: uuidv4(),
-        type: 'FINANCE',
-        rawText: 'Sample: Groceries 150k',
-        created_at: new Date().toISOString(),
-        finance: {
-          type: 'expense',
-          amount: 150000,
-          category: 'Food',
-          walletId: newWallet?.id,
-          date: new Date().toISOString()
-        }
+    const sampleItems = addSamples ? createOnboardingSampleItems(newWallet) : [];
+    const parsedPreviewItems = testResult.map(item => ({
+      ...item,
+      id: uuidv4(),
+      isOptimistic: false,
+      meta: {
+        ...item.meta,
+        tags: Array.from(new Set([...(item.meta.tags || []), 'onboarding-example'])),
       },
-      {
-        id: uuidv4(),
-        type: 'NOTE',
-        rawText: 'Sample: Read a book for 30 mins',
-        created_at: new Date(Date.now() - 3600000).toISOString(),
-        note: {
-          summary: 'Read a book for 30 mins',
-          tags: ['habit', 'reading']
-        }
-      },
-      {
-        id: uuidv4(),
-        type: 'TODO',
-        rawText: 'Sample: Buy milk tomorrow',
-        created_at: new Date(Date.now() - 7200000).toISOString(),
-        task: {
-          title: 'Buy milk',
-          dueDate: new Date(Date.now() + 86400000).toISOString(),
-          priority: 'medium',
-          completed: false
-        }
-      }
-    ] : [];
+    }));
 
-    onComplete(settings, newWallet, newBudget, sampleItems);
+    onComplete(settings, newWallet, newBudget, [...parsedPreviewItems, ...sampleItems]);
   };
 
   const renderStep = () => {
@@ -364,7 +352,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 </button>
               </div>
 
-              {testResult && (
+              {testResult.length > 0 && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -372,14 +360,31 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="px-2 py-1 bg-indigo-500/20 text-indigo-500 text-xs font-bold rounded uppercase">
-                      {testResult.type}
+                      {testResult.length} entr{testResult.length === 1 ? 'y' : 'ies'}
                     </span>
-                    <span className="text-sm text-muted">Parsed successfully</span>
+                    <span className="text-sm text-muted">Parsed successfully — this will be added as a real entry when you finish.</span>
                   </div>
-                  <pre className="text-xs text-primary overflow-x-auto p-2 bg-surface rounded-lg">
-                    {JSON.stringify(testResult.data, null, 2)}
-                  </pre>
+                  <div className="space-y-2">
+                    {testResult.map((item) => (
+                      <div key={item.id} className="p-3 bg-surface rounded-lg border border-border/60">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-0.5 rounded bg-black/5 dark:bg-white/10 text-[10px] font-bold text-muted uppercase">{item.type}</span>
+                          <span className="text-xs text-muted">{item.status}</span>
+                        </div>
+                        <div className="text-sm font-semibold text-primary">{item.content}</div>
+                        <pre className="mt-2 text-[10px] text-muted overflow-x-auto">
+                          {JSON.stringify(item.meta, null, 2)}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
                 </motion.div>
+              )}
+
+              {testError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">
+                  {testError}
+                </div>
               )}
 
               <div className="pt-6 mt-6 border-t border-border flex items-center gap-3">

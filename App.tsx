@@ -35,6 +35,7 @@ import FeatureTutorialPopup from './components/FeatureTutorialPopup';
 import { History, X, ClipboardCheck, ChevronDown } from 'lucide-react';
 import { LATEST_CHANGELOG, LATEST_CHANGELOG_VERSION, SEEN_CHANGELOG_STORAGE_KEY } from './utils/changelog';
 import { FEATURE_TUTORIALS, FEATURE_TUTORIALS_DISABLED_KEY, FEATURE_TUTORIALS_STORAGE_KEY, FeatureTutorialKey, getFeatureTutorialKey, parseSeenFeatureTutorials } from './utils/featureTutorials';
+import { classifyText } from './services/geminiService';
 
 const App: React.FC = () => {
   // Data Logic Hook
@@ -591,7 +592,7 @@ const App: React.FC = () => {
     settings: AppSettings, 
     wallet: Wallet | null, 
     budget: BudgetConfig | null, 
-    sampleItems: any[]
+    sampleItems: BrainDumpItem[]
   ) => {
     localStorage.setItem('braindump_onboarding_completed', 'true');
     setShowOnboarding(false);
@@ -616,32 +617,40 @@ const App: React.FC = () => {
     );
   };
 
-  const handleOnboardingTestParsing = async (text: string) => {
-    // We can use the existing parseInput logic from useBrainDumpData, 
-    // but since it's not exported directly, we can just simulate it or use the API directly.
-    // For simplicity, we'll just use the API directly here.
-    const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
-    if (!apiKey) throw new Error("API key not found");
-    
-    const { GoogleGenAI, Type } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Parse this text: "${text}". Return a JSON object with "type" (FINANCE, NOTE, TASK) and "data" containing the parsed details.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            type: { type: Type.STRING },
-            data: { type: Type.OBJECT }
-          }
-        }
-      }
+  const handleOnboardingTestParsing = async (text: string, context?: { wallet?: Wallet | null }): Promise<BrainDumpItem[]> => {
+    const previewWallets = context?.wallet ? [context.wallet] : wallets;
+    const parsed = await classifyText(
+      text,
+      [],
+      skills.map(s => s.name),
+      0,
+      customPrompt,
+      appSettings.parsingModel,
+      previewWallets,
+      budgetConfig?.rules || []
+    );
+
+    const now = new Date().toISOString();
+    return parsed.map((partial) => {
+      const type = partial.type && Object.values(ItemType).includes(partial.type as ItemType)
+        ? partial.type as ItemType
+        : ItemType.NOTE;
+      const isRecord = type === ItemType.FINANCE || type === ItemType.JOURNAL || type === ItemType.SKILL_LOG;
+      const meta = { ...(partial.meta || {}) };
+      if ((type === ItemType.TODO || type === ItemType.EVENT) && !meta.priority) meta.priority = 'normal';
+      if (type === ItemType.JOURNAL && !meta.date) meta.date = now;
+
+      return {
+        id: uuidv4(),
+        type,
+        content: partial.content || text,
+        status: isRecord ? 'done' : 'pending',
+        created_at: now,
+        completed_at: isRecord ? now : undefined,
+        meta,
+        isOptimistic: false,
+      };
     });
-    
-    return JSON.parse(response.text || "{}");
   };
 
   if (showOnboarding) {

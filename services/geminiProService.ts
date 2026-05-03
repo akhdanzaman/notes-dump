@@ -142,6 +142,7 @@ function sanitizeEntityType(value: unknown): ParserEntityType {
     'event',
     'finance',
     'journal',
+    'skill_log',
     'skill',
     'wallet',
     'theme',
@@ -161,6 +162,7 @@ function mapEntityTypeToItemType(entityType: ParserEntityType, fallback: ParsedI
     case 'event': return 'EVENT';
     case 'finance': return 'FINANCE';
     case 'journal': return 'JOURNAL';
+    case 'skill_log': return 'SKILL_LOG';
     case 'saving_goal': return 'SHOPPING';
     default: return fallback;
   }
@@ -407,6 +409,7 @@ Allowed entityType:
 - event
 - finance
 - journal
+- skill_log
 - skill
 - wallet
 - theme
@@ -434,6 +437,7 @@ Entity hints:
 - shopping = planned purchase, errand, shopping list, saving goal target
 - finance = already happened transaction, income, expense, transfer, saving funding
 - journal = diary/feelings/recap
+- skill_log = practice/training/study session entry with duration
 - skill = skill master entry
 - wallet = wallet/account master entry
 - theme = monthly theme/focus
