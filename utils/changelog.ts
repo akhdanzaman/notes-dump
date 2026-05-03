@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.24',
+    date: 'May 2026',
+    items: [
+      'Wallet balances now recalculate immediately from the transaction ledger when a transaction wallet is edited, instead of being pinned by stale canonical wallet metadata.',
+      'Transaction edit dropdowns now save registered wallet IDs directly, so moving a transaction between wallets updates the source/destination balances consistently.',
+    ],
+  },
+  {
     version: 'v0.3.23',
     date: 'May 2026',
     items: [

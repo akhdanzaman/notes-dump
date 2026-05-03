@@ -118,6 +118,30 @@ test('wallet balances fall back to raw paymentMethod when canonical value is not
   assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 88_000);
 });
 
+test('wallet balances follow edited raw wallet instead of stale canonical paymentMethod', () => {
+  const editedTransaction: BrainDumpItem = {
+    id: 'txn-edited-wallet',
+    type: ItemType.FINANCE,
+    content: 'expense moved from BCA to Cash',
+    status: 'done',
+    created_at: '2026-05-01T08:00:00.000Z',
+    completed_at: '2026-05-01T08:00:00.000Z',
+    meta: {
+      date: '2026-05-01T08:00:00.000Z',
+      amount: 10_000,
+      financeType: 'expense',
+      paymentMethod: 'cash-wallet',
+      canonical: {
+        paymentMethod: { rawValue: 'bca-wallet', value: 'bca-wallet', confidence: 0.95, source: 'system_rule' },
+      },
+    },
+  };
+
+  const { walletStats } = getWalletStats([editedTransaction], wallets);
+  assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 100_000);
+  assert.equal(walletStats.find(wallet => wallet.id === 'cash-wallet')?.currentBalance, 40_000);
+});
+
 test('money search matches canonical clusters and raw aliases without rewriting original fields', () => {
   const canonicalSearch = getFinanceItems(
     canonicalItems,

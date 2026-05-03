@@ -4,12 +4,20 @@ export type CanonicalMetaField = Extract<CanonicalField, 'merchant' | 'paymentMe
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
+const sameCanonicalSourceText = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
+
 export const getCanonicalMetaValue = (
   meta: Pick<ParsedItemMetaV2, CanonicalMetaField | 'canonical'>,
   field: CanonicalMetaField
 ): string => {
   const canonicalValue = meta.canonical?.[field];
   if (canonicalValue?.needsReview) return '';
+
+  const rawValue = text(meta[field]);
+  const canonicalRawValue = text(canonicalValue?.rawValue);
+  if (canonicalRawValue && !rawValue) return '';
+  if (canonicalRawValue && rawValue && !sameCanonicalSourceText(canonicalRawValue, rawValue)) return '';
+
   return text(canonicalValue?.value);
 };
 

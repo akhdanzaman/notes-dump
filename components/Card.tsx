@@ -229,8 +229,8 @@ const Card: React.FC<CardProps> = ({
     setEditAmount(meta.amount ? meta.amount.toString() : '');
     setEditTags(meta.tags?.join(', ') || '');
     setEditFinanceType(meta.financeType || 'expense');
-    setEditPaymentMethod(getWalletName(meta.paymentMethod) || '');
-    setEditToWallet(getWalletName(meta.toWallet) || '');
+    setEditPaymentMethod(getWalletValue(meta.paymentMethod) || '');
+    setEditToWallet(getWalletValue(meta.toWallet) || '');
     setEditBudgetCategory(meta.budgetCategory || '');
     setEditDuration(meta.durationMinutes ? meta.durationMinutes.toString() : '');
     setEditSkillId(meta.skillId || '');
@@ -307,7 +307,6 @@ const Card: React.FC<CardProps> = ({
 
       const finalBudgetCategory = editBudgetCategory === '' ? undefined : editBudgetCategory;
       const finalSkillId = editSkillId === '' ? undefined : editSkillId;
-      const wallet = wallets.find(w => w.name === editToWallet);
       const finalToWallet = editFinanceType === 'transfer' && editToWallet ? editToWallet : undefined;
       const finalSavingGoalId = (editFinanceType === 'saving' || editFinanceType === ACHIEVED_GOAL_FINANCE_TYPE) && editSavingGoalId ? editSavingGoalId : undefined;
 
@@ -475,6 +474,12 @@ const Card: React.FC<CardProps> = ({
       return w ? w.name : idOrName;
   };
 
+  const getWalletValue = (idOrName?: string) => {
+      if (!idOrName) return '';
+      const w = wallets.find(w => w.id === idOrName || w.name.toLowerCase() === idOrName.toLowerCase());
+      return w ? w.id : idOrName;
+  };
+
   const getWalletNameOptions = () => {
     const unique = new Map<string, {name: string, id: string}>();
     
@@ -490,7 +495,7 @@ const Card: React.FC<CardProps> = ({
     }
 
     return Array.from(unique.values()).map(w => (
-        <option key={w.id} value={w.name}>{w.name}</option>
+        <option key={w.id} value={w.id}>{w.name}</option>
     ));
   };
 

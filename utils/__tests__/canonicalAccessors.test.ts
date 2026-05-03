@@ -40,6 +40,18 @@ test('getCanonicalOrRawItemValue prefers canonical values without losing raw fal
     },
   };
   assert.equal(getCanonicalOrRawItemValue(needsReview, 'merchant'), 'gacoan jakal');
+
+  const staleCanonical = {
+    ...item,
+    meta: {
+      ...item.meta,
+      merchant: 'kopi klotok',
+      canonical: {
+        merchant: { rawValue: 'gacoan jakal', value: 'Mie Gacoan', confidence: 0.94, source: 'learned_rule' as const },
+      },
+    },
+  };
+  assert.equal(getCanonicalOrRawItemValue(staleCanonical, 'merchant'), 'kopi klotok');
 });
 
 test('itemMatchesCanonicalSearch matches both raw aliases and canonical clusters', () => {
