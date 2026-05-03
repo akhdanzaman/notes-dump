@@ -31,8 +31,10 @@ import AddNoteModal from './components/AddNoteModal';
 import FloatingChatBox from './components/FloatingChatBox';
 import ReviewCenterPanel from './components/ReviewCenterPanel';
 import Onboarding from './components/Onboarding';
+import FeatureTutorialPopup from './components/FeatureTutorialPopup';
 import { History, X, ClipboardCheck, ChevronDown } from 'lucide-react';
 import { LATEST_CHANGELOG, LATEST_CHANGELOG_VERSION, SEEN_CHANGELOG_STORAGE_KEY } from './utils/changelog';
+import { FEATURE_TUTORIALS, FEATURE_TUTORIALS_DISABLED_KEY, FEATURE_TUTORIALS_STORAGE_KEY, FeatureTutorialKey, getFeatureTutorialKey, parseSeenFeatureTutorials } from './utils/featureTutorials';
 
 const App: React.FC = () => {
   // Data Logic Hook
@@ -56,6 +58,9 @@ const App: React.FC = () => {
   const [showBalance, setShowBalance] = useState(false);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [showChangelogPopup, setShowChangelogPopup] = useState(false);
+  const [seenFeatureTutorials, setSeenFeatureTutorials] = useState<FeatureTutorialKey[]>(() => parseSeenFeatureTutorials(localStorage.getItem(FEATURE_TUTORIALS_STORAGE_KEY)));
+  const [activeFeatureTutorialKey, setActiveFeatureTutorialKey] = useState<FeatureTutorialKey | null>(null);
+  const [featureTutorialsDisabled, setFeatureTutorialsDisabled] = useState(() => localStorage.getItem(FEATURE_TUTORIALS_DISABLED_KEY) === 'true');
   const [themeNavDate, setThemeNavDate] = useState(new Date());
   
   // Focus View State
@@ -226,6 +231,53 @@ const App: React.FC = () => {
     setShowChangelogPopup(false);
   };
 
+  const currentFeatureTutorialKey = useMemo(() => getFeatureTutorialKey({
+    activeTab,
+    planSubTab,
+    librarySubTab,
+    moneyView,
+    isControlCenterOpen,
+  }), [activeTab, isControlCenterOpen, librarySubTab, moneyView, planSubTab]);
+
+  useEffect(() => {
+    if (showOnboarding || showChangelogPopup || featureTutorialsDisabled || activeFeatureTutorialKey) return;
+    if (seenFeatureTutorials.includes(currentFeatureTutorialKey)) return;
+
+    const timeout = window.setTimeout(() => {
+      setActiveFeatureTutorialKey(currentFeatureTutorialKey);
+    }, 450);
+
+    return () => window.clearTimeout(timeout);
+  }, [activeFeatureTutorialKey, currentFeatureTutorialKey, featureTutorialsDisabled, seenFeatureTutorials, showChangelogPopup, showOnboarding]);
+
+  const markFeatureTutorialSeen = (key: FeatureTutorialKey) => {
+    setSeenFeatureTutorials(prev => {
+      const next = prev.includes(key) ? prev : [...prev, key];
+      try {
+        localStorage.setItem(FEATURE_TUTORIALS_STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.warn('Failed to save feature tutorial state', e);
+      }
+      return next;
+    });
+  };
+
+  const handleCloseFeatureTutorial = () => {
+    if (activeFeatureTutorialKey) markFeatureTutorialSeen(activeFeatureTutorialKey);
+    setActiveFeatureTutorialKey(null);
+  };
+
+  const handleDisableFeatureTutorials = () => {
+    try {
+      localStorage.setItem(FEATURE_TUTORIALS_DISABLED_KEY, 'true');
+    } catch (e) {
+      console.warn('Failed to disable feature tutorials', e);
+    }
+    setFeatureTutorialsDisabled(true);
+    if (activeFeatureTutorialKey) markFeatureTutorialSeen(activeFeatureTutorialKey);
+    setActiveFeatureTutorialKey(null);
+  };
+
   // --- Handle Reply from URL ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -332,6 +384,7 @@ const App: React.FC = () => {
   useEffect(() => { if (walletModal.isOpen) return BackHandler.register(() => { setWalletModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [walletModal.isOpen]);
   useEffect(() => { if (routineModalOpen) return BackHandler.register(() => { setRoutineModalOpen(false); return true; }); }, [routineModalOpen]);
   useEffect(() => { if (showChangelogPopup) return BackHandler.register(() => { handleCloseChangelogPopup(); return true; }); }, [showChangelogPopup]);
+  useEffect(() => { if (activeFeatureTutorialKey) return BackHandler.register(() => { handleCloseFeatureTutorial(); return true; }); }, [activeFeatureTutorialKey]);
   useEffect(() => { if (addTaskModal.isOpen) return BackHandler.register(() => { setAddTaskModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [addTaskModal.isOpen]);
   useEffect(() => { if (addShoppingModal.isOpen) return BackHandler.register(() => { setAddShoppingModal(prev => ({ ...prev, isOpen: false })); return true; }); }, [addShoppingModal.isOpen]);
   useEffect(() => { if (addExpenseModalOpen) return BackHandler.register(() => { setAddExpenseModalOpen(false); return true; }); }, [addExpenseModalOpen]);
@@ -823,6 +876,12 @@ const App: React.FC = () => {
         monthlyThemes={monthlyThemes}
         onImportData={handleImportData}
         onClearData={handleClearData}
+      />
+
+      <FeatureTutorialPopup
+        tutorial={activeFeatureTutorialKey ? FEATURE_TUTORIALS[activeFeatureTutorialKey] : null}
+        onClose={handleCloseFeatureTutorial}
+        onDisableAll={handleDisableFeatureTutorials}
       />
 
       {typeof document !== 'undefined' && createPortal(

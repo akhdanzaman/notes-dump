@@ -169,8 +169,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             </div>
             <h1 className="text-3xl font-bold text-primary">Welcome to BrainDump</h1>
             <p className="text-muted text-lg max-w-md">
-              Your AI-powered second brain for tracking expenses, tasks, and notes effortlessly. Let's get you set up in just a few steps.
+              Your AI-powered second brain for tracking expenses, tasks, notes, shopping, habits, and calendar context. This setup covers the basics; detailed tips will appear only when you first open each tab or feature.
             </p>
+            <div className="grid grid-cols-2 gap-3 w-full max-w-md text-left">
+              {[
+                ['Summary', 'Daily overview and review queue'],
+                ['Plan', 'Tasks, shopping, routines, savings goals'],
+                ['Library', 'Notes, skills, journal memory'],
+                ['Money', 'Wallet ledger, budget, transactions'],
+              ].map(([title, body]) => (
+                <div key={title} className="p-3 rounded-2xl bg-surface border border-border">
+                  <div className="text-sm font-bold text-primary">{title}</div>
+                  <div className="text-xs text-muted mt-1 leading-relaxed">{body}</div>
+                </div>
+              ))}
+            </div>
           </motion.div>
         );
       case 1:
@@ -310,7 +323,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 </div>
                 <div>
                   <h3 className="font-medium text-primary">Google Sheets DB</h3>
-                  <p className="text-sm text-muted">Connect your spreadsheet from Control Center after onboarding. This device keeps only a cache for fast loading/offline display.</p>
+                  <p className="text-sm text-muted">Connect from Control Center after onboarding. Google login is optional: you can share the sheet with the service account and paste the link.</p>
                 </div>
               </div>
             </div>

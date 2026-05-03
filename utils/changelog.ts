@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.26',
+    date: 'May 2026',
+    items: [
+      'First-time users now get contextual tutorial popups when they discover each tab or sub-feature, instead of cramming every explanation into onboarding.',
+      'Main onboarding now stays focused on a general app overview and basic setup, while feature-specific guidance appears only when that area becomes relevant.',
+      'Feature tips remember what has been seen and include a “Don’t show tips” escape hatch for users who prefer exploring without coaching.',
+    ],
+  },
+  {
     version: 'v0.3.25',
     date: 'May 2026',
     items: [
