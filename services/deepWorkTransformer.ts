@@ -95,12 +95,14 @@ const inferFinalOutput = (content: string, pattern: DeepWorkPattern): NonNullabl
   if (pattern === 'research') return { format: 'brief', description: `A concise research brief for ${topic} with findings, tradeoffs, risks, and recommended next actions.` };
   if (pattern === 'decision') return { format: 'decision_memo', description: `A decision memo that names the options, criteria, chosen path, and immediate follow-up for ${topic}.` };
   if (pattern === 'review') return { format: 'notes', description: `Review notes for ${topic} that separate what is clear, what is still unclear, and what to do next.` };
+  if (/\brecap\b/i.test(content)) return { format: 'brief', description: `A concise ${topic} recap with key decisions, changes, follow-ups, and unresolved questions.` };
   if (pattern === 'summary' || /\b(summary|rangkum|ringkas|recap)\b/i.test(content)) return { format: 'brief', description: `A concise ${topic} summary with key points, implications, and follow-up questions or actions.` };
   return { format: 'brief', description: `A clear finished artifact for ${topic}, with enough detail to know the task is done.` };
 };
 
 const inferNextAction = (content: string, pattern: DeepWorkPattern): NonNullable<DeepWorkTransform['nextAction']> => {
   const topic = inferTopic(content);
+  if (/\brecap\b/i.test(content)) return { text: `Open the source notes for ${topic} and list the 5 moments, decisions, or changes worth recapping`, durationMinutes: 25, acceptanceCheck: 'Five recap candidates are listed with source/context notes' };
   if (/\bsummary\b/i.test(content) && /\bIIMS\b/i.test(content)) return { text: 'Open the IIMS 2026 notes/source material and mark the 5 points worth summarizing', durationMinutes: 25, acceptanceCheck: 'Five candidate points are listed with source references' };
   if (/\b(regulasi|peraturan)\b/i.test(content) && !specificRegulationPattern.test(content)) return { text: 'Identify the exact regulation source and write the title/date/version at the top of the working note', durationMinutes: 15, acceptanceCheck: 'The regulation source is named and linked or copied into the working note' };
   if (/\bkepmen\b/i.test(content) || (specificRegulationPattern.test(content) && /\b(komdigi|sdppi|regulasi|peraturan)\b/i.test(content))) return { text: `Open ${topic} and extract the 5 clauses that change obligations or workflow`, durationMinutes: 30, acceptanceCheck: 'Five relevant clauses are listed with references and initial impact notes' };

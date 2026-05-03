@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.23',
+    date: 'May 2026',
+    items: [
+      'Deep Work Transformer now handles recap-style todos with a recap-specific first action and final-output shape instead of falling back to generic summary wording.',
+      'Added stricter regression coverage for research/recap detection, low-confidence summary regulasi guidance, and false-positive counter-examples like concrete RFQs, packing tasks, and already-scoped desk-toys research.',
+    ],
+  },
+  {
     version: 'v0.3.22',
     date: 'May 2026',
     items: [
