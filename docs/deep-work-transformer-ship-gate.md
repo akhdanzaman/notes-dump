@@ -82,11 +82,26 @@ Judgment: pass. This directly catches the stuck cause: source ambiguity and miss
 5. Changelog is present:
    - `utils/changelog.ts` includes v0.3.20 for update-path validation and actual ship-gate proof.
 
+## Repo scan proof for requested bypass/read-path checks
+
+The corrective gate now emits an explicit `implementationScan.bypassReadPathProof` object so reviewers do not have to infer proof from generic `deepWork` matches.
+
+Static proof categories:
+
+- **No hidden bypass claim:** suggestions and subtasks are generated through the same transformer/data hooks, not through a separate unreviewed write path.
+- **Create path:** `hooks/useBrainDumpData.ts` and `services/deepWorkTransformer.ts` reference `buildDeepWorkSuggestionMeta` / create payload handling.
+- **Update/retrigger path:** `hooks/useBrainDumpData.ts` references `refreshDeepWorkSuggestionForTodo`, `handleRetriggerDeepWorkTodo`, and deep-work update fields.
+- **User accept path:** `hooks/useBrainDumpData.ts` and `services/deepWorkTransformer.ts` reference `createDeepWorkSubtaskItems` / `handleAcceptDeepWorkTodo`.
+- **Read path:** `components/views/PlanView.tsx` and `components/Card.tsx` read `deepWorkNextAction`, `deepWorkFinalOutput`, `deepWorkBlockerCheck`, and render `Deep Work Transformer` UI.
+- **Sync/export read path:** `services/spreadsheetReconciler.ts`, `utils/exportUtils.ts`, and `utils/deepWorkTodoModel.ts` reference `Parent_ID`, `Final_Output`, `Blocker_Check`, completion mode, and blocker status fields.
+- **Regression tests:** `services/__tests__/deepWorkTransformer.test.ts`, `services/__tests__/deepWorkTransformerIntegration.test.ts`, and `utils/__tests__/deepWorkTodoModel.test.ts` cover summary IIMS/regulasi, parent IDs, blocker fields, and final-output completion semantics.
+
 ## Validation commands
 
-- `npm run test -- services/__tests__/deepWorkTransformer.test.ts services/__tests__/deepWorkTransformerIntegration.test.ts utils/__tests__/deepWorkTodoModel.test.ts` — pass.
+- `npx tsx --test services/__tests__/deepWorkTransformer.test.ts services/__tests__/deepWorkTransformerIntegration.test.ts utils/__tests__/deepWorkTodoModel.test.ts` — pass.
+- `npm run lint` — pass.
 - `npm run build` — pass.
-- `node scripts/validate-deep-work-transformer-ship-gate.mjs` — pass with `verdict=pass_corrective_ship_gate`.
+- `node scripts/validate-deep-work-transformer-ship-gate.mjs` — pass with `verdict=pass_corrective_ship_gate` and non-empty `bypassReadPathProof` categories.
 
 ## Final call
 

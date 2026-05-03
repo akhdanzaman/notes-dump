@@ -115,6 +115,25 @@ const integrationChecks = {
     : [],
 };
 
+const bypassReadPathProof = {
+  requestedCheck: 'bypass/read-path static scan proof',
+  noBypassClaim: 'Deep Work suggestions are not created by a hidden bypass path: create/update/retrigger paths call the same transformer metadata builder and Plan/Card reads those stored fields.',
+  createPath: filesReferencing(/buildDeepWorkSuggestionMeta|buildItemsFromCreatePayload/).filter(file => file.includes('useBrainDumpData') || file.includes('deepWorkTransformer')),
+  updatePath: filesReferencing(/refreshDeepWorkSuggestionForTodo|handleRetriggerDeepWorkTodo|deepWorkNextAction: changes\.deepWorkNextAction/).filter(file => file.includes('useBrainDumpData')),
+  userAcceptPath: filesReferencing(/createDeepWorkSubtaskItems|handleAcceptDeepWorkTodo/).filter(file => file.includes('useBrainDumpData') || file.includes('deepWorkTransformer')),
+  readPath: filesReferencing(/deepWorkNextAction|deepWorkFinalOutput|deepWorkBlockerCheck|Deep Work Transformer/).filter(file => file.includes('PlanView') || file.includes('Card')),
+  syncExportReadPath: filesReferencing(/Parent_ID|Final_Output|Blocker_Check|deepWorkCompletionMode|deepWorkBlockerStatus/).filter(file => file.includes('spreadsheetReconciler') || file.includes('exportUtils') || file.includes('deepWorkTodoModel')),
+  regressionTests: filesReferencing(/summary IIMS|summary regulasi|Parent_ID|Blocker_Check|final_output_check/).filter(file => file.includes('__tests__')),
+};
+
+const hasBypassReadPathProof =
+  bypassReadPathProof.createPath.length > 0 &&
+  bypassReadPathProof.updatePath.length > 0 &&
+  bypassReadPathProof.userAcceptPath.length > 0 &&
+  bypassReadPathProof.readPath.length > 0 &&
+  bypassReadPathProof.syncExportReadPath.length > 0 &&
+  bypassReadPathProof.regressionTests.length > 0;
+
 const hasEndToEndFeature =
   integrationChecks.transformerUtilityFiles.length > 0 &&
   integrationChecks.transformerImportsOutsideUtility.length > 0 &&
@@ -122,6 +141,7 @@ const hasEndToEndFeature =
   integrationChecks.planViewDeepWorkReferences.length > 0 &&
   integrationChecks.spreadsheetRoundTripReferences.length > 0 &&
   integrationChecks.changelogReferences.length > 0 &&
+  hasBypassReadPathProof &&
   realValidation.every(result => result.failures.length === 0);
 
 const beforeAfter = targetTitles.map(title => {
@@ -174,9 +194,10 @@ const result = {
     scannedFiles: files.length,
     matches: sourceMatches,
     integrationChecks,
+    bypassReadPathProof,
     conclusion: hasEndToEndFeature
-      ? 'Corrective end-to-end markers and real transformer output are present: structured contract, create/update/read UX, sync/export/reconcile, changelog, and real-data validation.'
-      : 'Feature is not shippable: at least one corrective gate failed.',
+      ? 'Corrective end-to-end markers and requested bypass/read-path proof are present: structured contract, create/update/read UX, explicit no-bypass path evidence, sync/export/reconcile, changelog, and real-data validation.'
+      : 'Feature is not shippable: at least one corrective gate failed, including possible missing bypass/read-path proof.',
   }
 };
 
