@@ -5,6 +5,10 @@ export const DEFAULT_SERVICE_ACCOUNT_EMAIL = 'openclaw-adan@gen-lang-client-0558
 const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+const SERVICE_ACCOUNT_ALLOWED_ORIGINS = (process.env.SERVICE_ACCOUNT_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
 
 let cachedToken: { accessToken: string; expiresAtMs: number } | null = null;
 
@@ -126,6 +130,58 @@ export const validateSheetsPath = (path: unknown): string => {
   }
 
   throw new Error('Unsupported Google Sheets API path');
+};
+
+const getHeaderValue = (headers: Record<string, unknown>, name: string): string => {
+  const value = headers[name] ?? headers[name.toLowerCase()];
+  if (Array.isArray(value)) return String(value[0] || '');
+  return String(value || '');
+};
+
+const splitForwardedHeader = (value: string) => value.split(',')[0]?.trim() || '';
+
+const getRequestOrigin = (headers: Record<string, unknown>) => {
+  const host = splitForwardedHeader(getHeaderValue(headers, 'x-forwarded-host'))
+    || splitForwardedHeader(getHeaderValue(headers, 'host'));
+  if (!host) return '';
+  const proto = splitForwardedHeader(getHeaderValue(headers, 'x-forwarded-proto')) || 'https';
+  return `${proto}://${host}`;
+};
+
+const isAllowedOrigin = (candidate: string, headers: Record<string, unknown>) => {
+  if (!candidate) return false;
+  try {
+    const candidateOrigin = new URL(candidate).origin;
+    const requestOrigin = getRequestOrigin(headers);
+    const allowed = new Set([
+      requestOrigin ? new URL(requestOrigin).origin : '',
+      ...SERVICE_ACCOUNT_ALLOWED_ORIGINS.map(origin => new URL(origin).origin),
+    ].filter(Boolean));
+    return allowed.has(candidateOrigin);
+  } catch {
+    return false;
+  }
+};
+
+export const assertServiceAccountRequestAllowed = (headers: Record<string, unknown>) => {
+  const fetchSite = getHeaderValue(headers, 'sec-fetch-site').toLowerCase();
+  if (fetchSite && !['same-origin', 'same-site', 'none'].includes(fetchSite)) {
+    throw new Error('Service account spreadsheet API only accepts same-origin app requests.');
+  }
+
+  const origin = getHeaderValue(headers, 'origin');
+  if (origin && !isAllowedOrigin(origin, headers)) {
+    throw new Error('Service account spreadsheet API origin is not allowed.');
+  }
+
+  const referer = getHeaderValue(headers, 'referer');
+  if (referer && !isAllowedOrigin(referer, headers)) {
+    throw new Error('Service account spreadsheet API referer is not allowed.');
+  }
+
+  if (process.env.NODE_ENV === 'production' && !fetchSite && !origin && !referer) {
+    throw new Error('Service account spreadsheet API requires a same-origin browser request in production.');
+  }
 };
 
 export const fetchWithServiceAccount = async (

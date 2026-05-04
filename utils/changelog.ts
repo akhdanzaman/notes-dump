@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.29',
+    date: 'May 2026',
+    items: [
+      'Sheet1 now shows sync/data health, generated-vs-editable guidance, and richer today-vs-yesterday money driver copy based on structured finance metadata.',
+      'Added a generated-only Data Quality tab that flags duplicate IDs, missing/unknown wallet/category config, broken transfers, and deep-work parent/child linkage issues with suggested fixes.',
+      'Daily spend summaries now exclude transfers and savings from expense totals while still showing wallet movement separately.',
+    ],
+  },
+  {
     version: 'v0.3.28',
     date: 'May 2026',
     items: [

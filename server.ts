@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { checkServiceAccountSpreadsheetAccess, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from "./server/googleServiceAccount";
+import { assertServiceAccountRequestAllowed, checkServiceAccountSpreadsheetAccess, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from "./server/googleServiceAccount";
 
 dotenv.config();
 
@@ -123,6 +123,7 @@ async function startServer() {
 
   app.get("/api/spreadsheets/service-account/status", async (req, res) => {
     try {
+      assertServiceAccountRequestAllowed(req.headers);
       const spreadsheetId = validateSpreadsheetId(req.query.spreadsheetId);
       const status = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
       res.status(status.accessible ? 200 : 403).json(status);
@@ -132,7 +133,13 @@ async function startServer() {
   });
 
   app.all("/api/spreadsheets/service-account/proxy", async (req, res) => {
+    if (!['GET', 'HEAD', 'POST'].includes(req.method)) {
+      res.setHeader('Allow', 'GET, HEAD, POST');
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
     try {
+      assertServiceAccountRequestAllowed(req.headers);
       const spreadsheetId = validateSpreadsheetId(req.query.spreadsheetId);
       const path = validateSheetsPath(req.query.path);
       const body = req.method === 'GET' || req.method === 'HEAD'

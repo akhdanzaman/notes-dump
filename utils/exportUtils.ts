@@ -2,6 +2,12 @@ import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType } fro
 import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
 import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
+import {
+  buildDailyMoneyDriverSummary,
+  buildDataQualityIssues,
+  buildDataQualitySheetData,
+  buildSpreadsheetHealthSummary,
+} from './spreadsheetDiagnostics';
 
 export interface SheetData {
   name: string;
@@ -10,6 +16,7 @@ export interface SheetData {
 }
 
 export const DASHBOARD_SHEET_NAME = 'Sheet1';
+export const DATA_QUALITY_SHEET_NAME = 'Data Quality';
 export const DASHBOARD_HELPER_START_COLUMN_INDEX = 7; // Column H
 export const DASHBOARD_HELPER_END_COLUMN_INDEX = 31; // Up to AE (exclusive)
 
@@ -56,8 +63,8 @@ const fmtCurrency = (value: number) => new Intl.NumberFormat('id-ID', {
   maximumFractionDigits: 0,
 }).format(value || 0);
 
-const getDaySeries = (days: number, computeValue: (dayStart: Date, dayEnd: Date) => number) => {
-  const today = startOfDay(new Date());
+const getDaySeries = (days: number, now: Date, computeValue: (dayStart: Date, dayEnd: Date) => number) => {
+  const today = startOfDay(now);
   const start = new Date(today);
   start.setDate(start.getDate() - (days - 1));
 
@@ -81,9 +88,12 @@ const buildDashboardSheet = (
   skills: Skill[],
   wallets: Wallet[],
   budgetConfig: BudgetConfig,
-  monthlyThemes: Record<string, string>
+  monthlyThemes: Record<string, string>,
+  now = new Date()
 ): SheetData => {
-  const now = new Date();
+  const dataQualityIssues = buildDataQualityIssues(items, wallets, budgetConfig);
+  const healthSummary = buildSpreadsheetHealthSummary(items, wallets, budgetConfig, dataQualityIssues, now);
+  const moneyDrivers = buildDailyMoneyDriverSummary(items, wallets, budgetConfig, now);
   const todayStart = startOfDay(now);
   const yesterdayStart = new Date(todayStart);
   yesterdayStart.setDate(yesterdayStart.getDate() - 1);
@@ -166,7 +176,10 @@ const buildDashboardSheet = (
     .slice(0, 5);
 
   const merchantTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
-    const key = getCanonicalOrRawItemValue(item, 'merchant') || item.content;
+    const key = getCanonicalMetaValue(item.meta, 'merchant')
+      || getCanonicalMetaValue(item.meta, 'subcommodity')
+      || item.meta.tags?.[0]
+      || getCategoryName(item.meta.budgetCategory, budgetConfig);
     if (!key) return acc;
     acc[key] = (acc[key] || 0) + (item.meta.amount || 0);
     return acc;
@@ -197,7 +210,7 @@ const buildDashboardSheet = (
       return `${label} • ${item.content}`;
     });
 
-  const expenseSeries = getDaySeries(14, (dayStart, dayEnd) =>
+  const expenseSeries = getDaySeries(14, now, (dayStart, dayEnd) =>
     expenseLikeItems
       .filter(item => {
         const ts = getItemTimestamp(item);
@@ -208,7 +221,7 @@ const buildDashboardSheet = (
       .reduce((sum, item) => sum + (item.meta.amount || 0), 0)
   );
 
-  const incomeSeries = getDaySeries(14, (dayStart, dayEnd) =>
+  const incomeSeries = getDaySeries(14, now, (dayStart, dayEnd) =>
     items
       .filter(item => item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'income')
       .filter(item => {
@@ -218,7 +231,7 @@ const buildDashboardSheet = (
       .reduce((sum, item) => sum + (item.meta.amount || 0), 0)
   );
 
-  const completedTaskSeries = getDaySeries(14, (dayStart, dayEnd) =>
+  const completedTaskSeries = getDaySeries(14, now, (dayStart, dayEnd) =>
     items.filter(item =>
       (item.type === ItemType.TODO || item.type === ItemType.EVENT)
       && item.status === 'done'
@@ -228,7 +241,7 @@ const buildDashboardSheet = (
     ).length
   );
 
-  const captureSeries = getDaySeries(14, (dayStart, dayEnd) =>
+  const captureSeries = getDaySeries(14, now, (dayStart, dayEnd) =>
     items.filter(item => {
       const createdAt = new Date(item.created_at).getTime();
       return createdAt >= dayStart.getTime() && createdAt < dayEnd.getTime();
@@ -242,25 +255,6 @@ const buildDashboardSheet = (
 
   const activeWallets = wallets.length;
   const activeSkills = skills.length;
-  const monthTheme = getCurrentMonthTheme(monthlyThemes, now);
-
-  const getWindowExpense = (start: Date, end: Date) => expenseLikeItems
-    .filter(item => {
-      const ts = getItemTimestamp(item);
-      if (ts < start.getTime() || ts >= end.getTime()) return false;
-      if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0 && item.status === 'done' && item.meta.shoppingCategory !== 'saving';
-      return item.status === 'done' && item.meta.financeType !== 'income' && item.meta.financeType !== 'transfer' && item.meta.financeType !== 'saving' && item.meta.financeType !== ACHIEVED_GOAL_FINANCE_TYPE;
-    })
-    .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
-
-  const getWindowIncome = (start: Date, end: Date) => items
-    .filter(item => item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'income')
-    .filter(item => {
-      const ts = getItemTimestamp(item);
-      return ts >= start.getTime() && ts < end.getTime();
-    })
-    .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
-
   const getTasksDone = (start: Date, end: Date) => items.filter(item =>
     (item.type === ItemType.TODO || item.type === ItemType.EVENT)
     && item.status === 'done'
@@ -274,10 +268,10 @@ const buildDashboardSheet = (
     return ts >= start.getTime() && ts < end.getTime();
   }).length;
 
-  const todayExpense = getWindowExpense(todayStart, tomorrowStart);
-  const yesterdayExpense = getWindowExpense(yesterdayStart, todayStart);
-  const todayIncome = getWindowIncome(todayStart, tomorrowStart);
-  const yesterdayIncome = getWindowIncome(yesterdayStart, todayStart);
+  const todayExpense = moneyDrivers.todayExpense;
+  const yesterdayExpense = moneyDrivers.yesterdayExpense;
+  const todayIncome = moneyDrivers.todayIncome;
+  const yesterdayIncome = moneyDrivers.yesterdayIncome;
   const todayTasksDone = getTasksDone(todayStart, tomorrowStart);
   const yesterdayTasksDone = getTasksDone(yesterdayStart, todayStart);
   const todayCaptured = getCaptures(todayStart, tomorrowStart);
@@ -298,12 +292,6 @@ const buildDashboardSheet = (
       : budgetUsed < 0.75
         ? 'Masih aman, tapi mulai jagain burn rate'
         : 'Budget lagi panas, perlu lebih ketat';
-
-  const snapshotHeadline = [
-    budgetHealth,
-    upcomingWeek > 0 ? `${upcomingWeek} item upcoming 7 hari ke depan` : 'Upcoming week lagi cukup lega',
-    topCategories[0] ? `Top spend: ${topCategories[0][0]}` : 'Belum ada top spend bulan ini'
-  ].join(' • ');
 
   const visibleColumnCount = 7;
   const totalColumnCount = DASHBOARD_HELPER_END_COLUMN_INDEX;
@@ -339,21 +327,21 @@ const buildDashboardSheet = (
   const rows = [
     buildRow(['BRAINDUMP HQ'], Object.fromEntries(expenseSeries.labels.map((label, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, label]))),
     buildRow(['Auto-generated finance + life tracker command center'], Object.fromEntries(expenseSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
-    buildRow([monthTheme ? `Theme of the month: ${monthTheme}` : `Generated ${now.toLocaleString()}`], Object.fromEntries(incomeSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
-    buildRow([snapshotHeadline], Object.fromEntries(completedTaskSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
+    buildRow([healthSummary.guideLine], Object.fromEntries(incomeSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
+    buildRow([healthSummary.syncHealthLine], Object.fromEntries(completedTaskSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
     buildRow(['FINANCE PULSE', '', '', 'LIFE TRACKER'], Object.fromEntries(captureSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
     buildRow(['Net Cash Flow', netCashFlow, '', 'Open Todos', openTodos]),
     buildRow(['Income MTD', totalIncome, '', 'Done This Month', doneThisMonth]),
     buildRow(['Expense MTD', totalExpenses, '', 'Upcoming 7d', upcomingWeek]),
     buildRow(['Savings Added', totalSavings, '', 'Journal Entries', journalEntries]),
     buildRow(['Budget Used', budgetUsed, '', 'Goals / Skills / Wallets', `${activeSavingGoals} / ${activeSkills} / ${activeWallets}`]),
-    buildRow(['']),
+    buildRow(['SYNC HEALTH', healthSummary.dataHealthLine, '', 'GUIDE', healthSummary.itemCountLine]),
     buildRow(['TODAY VS YESTERDAY', '', '', 'BUDGET RADAR']),
-    buildRow(['Today Expense', todayExpense, `Yesterday: ${fmtCurrency(yesterdayExpense)}`, 'Top Category', topCategorySummary], { 22: categoryChartRows[0].label, 23: categoryChartRows[0].value }),
-    buildRow(['Today Income', todayIncome, `Yesterday: ${fmtCurrency(yesterdayIncome)}`, 'Budget Health', budgetHealth], { 22: categoryChartRows[1].label, 23: categoryChartRows[1].value }),
-    buildRow(['Tasks Done Today', todayTasksDone, `Yesterday: ${yesterdayTasksDone}`, 'Top Merchant', topMerchantSummary], { 22: categoryChartRows[2].label, 23: categoryChartRows[2].value }),
-    buildRow(['Captured Today', todayCaptured, `Yesterday: ${yesterdayCaptured}`, 'Projected Expense', fmtCurrency(projectedExpense)], { 22: categoryChartRows[3].label, 23: categoryChartRows[3].value }),
-    buildRow(['Skill Minutes MTD', totalSkillMinutes, `Journal entries: ${journalEntries}`, 'Avg Daily Burn', fmtCurrency(avgDailyExpense)], { 22: categoryChartRows[4].label, 23: categoryChartRows[4].value }),
+    buildRow(['Today Spend Driver', moneyDrivers.spendLine, '', 'Top Category', topCategorySummary], { 22: categoryChartRows[0].label, 23: categoryChartRows[0].value }),
+    buildRow(['Main Driver', moneyDrivers.mainDriverLine, '', 'Budget Health', budgetHealth], { 22: categoryChartRows[1].label, 23: categoryChartRows[1].value }),
+    buildRow(['Wallet Movement', moneyDrivers.walletMovementLine, '', 'Top Merchant', topMerchantSummary], { 22: categoryChartRows[2].label, 23: categoryChartRows[2].value }),
+    buildRow(['Pattern Check', moneyDrivers.patternLine, '', 'Projected Expense', fmtCurrency(projectedExpense)], { 22: categoryChartRows[3].label, 23: categoryChartRows[3].value }),
+    buildRow(['Income / Tasks / Captures', `Income ${fmtCurrency(todayIncome)} vs yesterday ${fmtCurrency(yesterdayIncome)} (${todayTasksDone} tasks, ${todayCaptured} captures today)`, `Yesterday tasks/captures: ${yesterdayTasksDone}/${yesterdayCaptured}`, 'Avg Daily Burn', fmtCurrency(avgDailyExpense)], { 22: categoryChartRows[4].label, 23: categoryChartRows[4].value }),
     buildRow(['']),
     buildRow(['UPCOMING RADAR', '', '', 'TOP MERCHANTS']),
     buildRow([upcomingRows[0], '', '', merchantChartRows[0].label, fmtCurrency(merchantChartRows[0].value)], { 25: merchantChartRows[0].label, 26: merchantChartRows[0].value, 28: 'Today Expense', 29: todayExpense }),
@@ -383,9 +371,18 @@ export const generateExportData = (
   wallets: Wallet[],
   budgetConfig: BudgetConfig,
   monthlyThemes: Record<string, string>,
-  appSettings: AppSettings
+  appSettings: AppSettings,
+  now = new Date()
 ): SheetData[] => {
-  const sheets: SheetData[] = [buildDashboardSheet(items, skills, wallets, budgetConfig, monthlyThemes)];
+  const dataQualityIssues = buildDataQualityIssues(items, wallets, budgetConfig);
+  const sheets: SheetData[] = [
+    buildDashboardSheet(items, skills, wallets, budgetConfig, monthlyThemes, now),
+    {
+      name: DATA_QUALITY_SHEET_NAME,
+      inputOption: 'RAW',
+      data: buildDataQualitySheetData(dataQualityIssues),
+    },
+  ];
 
   // --- Sheet 1: Transactions (Money Tab) ---
   const transactions = items

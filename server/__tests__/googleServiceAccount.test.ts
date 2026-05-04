@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  assertServiceAccountRequestAllowed,
   DEFAULT_SERVICE_ACCOUNT_EMAIL,
   checkServiceAccountSpreadsheetAccess,
   getConfiguredServiceAccountEmail,
@@ -51,4 +52,34 @@ test('service account proxy validators restrict spreadsheet ids and Sheets API p
   assert.throws(() => validateSpreadsheetId('../secret'), /Invalid spreadsheetId/);
   assert.throws(() => validateSheetsPath('https://sheets.googleapis.com/v4/spreadsheets/x'), /Invalid Google Sheets API path/);
   assert.throws(() => validateSheetsPath('/developerMetadata'), /Unsupported Google Sheets API path/);
+});
+
+test('service account request guard rejects cross-site browser calls', () => {
+  assert.doesNotThrow(() => assertServiceAccountRequestAllowed({
+    host: 'notes.example.com',
+    'x-forwarded-proto': 'https',
+    origin: 'https://notes.example.com',
+    'sec-fetch-site': 'same-origin',
+  }));
+
+  assert.throws(() => assertServiceAccountRequestAllowed({
+    host: 'notes.example.com',
+    'x-forwarded-proto': 'https',
+    origin: 'https://evil.example',
+    'sec-fetch-site': 'cross-site',
+  }), /same-origin app requests|origin is not allowed/);
+});
+
+test('service account request guard requires browser origin signal in production', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  try {
+    assert.throws(() => assertServiceAccountRequestAllowed({
+      host: 'notes.example.com',
+      'x-forwarded-proto': 'https',
+    }), /requires a same-origin browser request/);
+  } finally {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+  }
 });

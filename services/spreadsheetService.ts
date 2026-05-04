@@ -1,7 +1,7 @@
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule } from "../types";
 import { SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
-import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
+import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
 import { getValidGoogleAccessToken } from "./googleProfileService";
 
@@ -18,6 +18,7 @@ const SYSTEM_SNAPSHOT_MARKER = '__BRAINDUMP_STATE_V2__';
 const SYSTEM_SNAPSHOT_VERSION = 2;
 const MANAGED_USER_SHEET_NAMES = [
   DASHBOARD_SHEET_NAME,
+  DATA_QUALITY_SHEET_NAME,
   'Transactions',
   'Todos',
   'Shopping',
@@ -363,7 +364,6 @@ const buildDashboardFormattingRequests = (sheetId: number) => {
       { startRowIndex: 5, endRowIndex: 10, startColumnIndex: 1, endColumnIndex: 2, type: 'CURRENCY', pattern: 'Rp#,##0' },
       { startRowIndex: 9, endRowIndex: 10, startColumnIndex: 1, endColumnIndex: 2, type: 'PERCENT', pattern: '0%' },
       { startRowIndex: 5, endRowIndex: 10, startColumnIndex: 4, endColumnIndex: 5 },
-      { startRowIndex: 12, endRowIndex: 17, startColumnIndex: 1, endColumnIndex: 2, type: 'CURRENCY', pattern: 'Rp#,##0' },
       { startRowIndex: 12, endRowIndex: 17, startColumnIndex: 1, endColumnIndex: 2 },
     ].map(({ type, pattern, ...range }) => ({
       repeatCell: {
@@ -409,6 +409,96 @@ const buildDashboardFormattingRequests = (sheetId: number) => {
     }
   ];
 };
+
+const buildDataQualityFormattingRequests = (sheetId: number) => [
+  {
+    unmergeCells: {
+      range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 5 }
+    }
+  },
+  {
+    updateSheetProperties: {
+      properties: {
+        sheetId,
+        gridProperties: { frozenRowCount: 4 }
+      },
+      fields: 'gridProperties.frozenRowCount'
+    }
+  },
+  {
+    repeatCell: {
+      range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 5 },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: hexToRgb('#111827'),
+          textFormat: { foregroundColor: hexToRgb('#F9FAFB'), fontSize: 16, bold: true },
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'MIDDLE'
+        }
+      },
+      fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+    }
+  },
+  {
+    mergeCells: {
+      range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 5 },
+      mergeType: 'MERGE_ALL'
+    }
+  },
+  {
+    repeatCell: {
+      range: { sheetId, startRowIndex: 1, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 5 },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: hexToRgb('#FEF3C7'),
+          textFormat: { foregroundColor: hexToRgb('#92400E'), fontSize: 10, italic: true },
+          wrapStrategy: 'WRAP',
+          verticalAlignment: 'MIDDLE'
+        }
+      },
+      fields: 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)'
+    }
+  },
+  {
+    repeatCell: {
+      range: { sheetId, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 0, endColumnIndex: 5 },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: hexToRgb('#DBEAFE'),
+          textFormat: { foregroundColor: hexToRgb('#1E3A8A'), fontSize: 10, bold: true },
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'MIDDLE'
+        }
+      },
+      fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+    }
+  },
+  {
+    repeatCell: {
+      range: { sheetId, startRowIndex: 4, startColumnIndex: 0, endColumnIndex: 5 },
+      cell: {
+        userEnteredFormat: {
+          wrapStrategy: 'WRAP',
+          verticalAlignment: 'TOP'
+        }
+      },
+      fields: 'userEnteredFormat(wrapStrategy,verticalAlignment)'
+    }
+  },
+  ...[
+    { startIndex: 0, endIndex: 1, pixelSize: 110 },
+    { startIndex: 1, endIndex: 2, pixelSize: 220 },
+    { startIndex: 2, endIndex: 3, pixelSize: 160 },
+    { startIndex: 3, endIndex: 4, pixelSize: 460 },
+    { startIndex: 4, endIndex: 5, pixelSize: 460 },
+  ].map(({ startIndex, endIndex, pixelSize }) => ({
+    updateDimensionProperties: {
+      range: { sheetId, dimension: 'COLUMNS', startIndex, endIndex },
+      properties: { pixelSize },
+      fields: 'pixelSize'
+    }
+  }))
+];
 
 const buildDashboardChartRequests = (sheetId: number, existingChartIds: number[] = []) => {
   const deleteRequests = existingChartIds.map(objectId => ({
@@ -1058,6 +1148,24 @@ const performSync = async (
 
       if (!dashboardChartsRes.ok) {
         console.warn('Failed to render dashboard charts:', await dashboardChartsRes.text());
+      }
+    }
+
+    const dataQualitySheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DATA_QUALITY_SHEET_NAME);
+    const dataQualitySheetId = dataQualitySheetMeta?.properties?.sheetId;
+    if (typeof dataQualitySheetId === 'number') {
+      const dataQualityFormatRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          requests: buildDataQualityFormattingRequests(dataQualitySheetId)
+        })
+      });
+
+      if (!dataQualityFormatRes.ok) {
+        console.warn('Failed to format Data Quality sheet:', await dataQualityFormatRes.text());
       }
     }
 
