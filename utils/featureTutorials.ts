@@ -193,8 +193,8 @@ export const FEATURE_TUTORIALS: Record<FeatureTutorialKey, FeatureTutorial> = {
     manualExample: 'Manual: Control Center > Spreadsheet, paste your Google Sheets link after sharing Editor access.',
     inputBarExample: 'Input bar: “notes: spreadsheet utama sudah dishare ke service account”',
     bullets: [
-      'Spreadsheet connection works without Google login when the service account has Editor access.',
-      'Google login remains optional as a fallback.',
+      'Spreadsheet connection uses service-account access only, so there is no Google login popup to manage.',
+      'Share the Sheet with the service-account email as Editor, then paste the link in Control Center.',
       'Danger-zone actions stay separated so they are harder to trigger accidentally.',
     ],
   },

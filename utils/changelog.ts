@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.29',
+    date: 'May 2026',
+    items: [
+      'Removed the broken Google OAuth sign-in flow and callback route, so spreadsheet setup no longer sends users into a dead login path.',
+      'Sheets sync now uses the server-side service account path only, including older spreadsheet configs that were saved before service-account mode existed.',
+      'Environment examples now document service-account credentials instead of obsolete Google OAuth client secrets.',
+    ],
+  },
+  {
     version: 'v0.3.28',
     date: 'May 2026',
     items: [

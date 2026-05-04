@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, SyncStatus } from '../types';
-import { checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
+import { checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, ServiceAccountSpreadsheetStatus, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
-import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, getGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
 import { BackHandler } from '../utils/backHandler';
 
 export interface UseControlCenterProps {
@@ -60,8 +59,6 @@ export const useControlCenter = ({
 
     // Spreadsheet
     const [spreadsheetLink, setSpreadsheetLink] = useState('');
-    const spreadsheetLinkRef = useRef(spreadsheetLink);
-    useEffect(() => { spreadsheetLinkRef.current = spreadsheetLink; }, [spreadsheetLink]);
 
     const [spreadsheetConfig, setSpreadsheetConfig] = useState<SpreadsheetConfig | null>(null);
     const [isConnectingSpreadsheet, setIsConnectingSpreadsheet] = useState(false);
@@ -80,13 +77,6 @@ export const useControlCenter = ({
 
     // Local App Settings (buffered)
     const [localAppSettings, setLocalAppSettings] = useState<AppSettings>(appSettings);
-    const localAppSettingsRef = useRef(localAppSettings);
-    useEffect(() => { localAppSettingsRef.current = localAppSettings; }, [localAppSettings]);
-
-    // Google Profile
-    const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
-    const [isSyncingProfile, setIsSyncingProfile] = useState(false);
-
     useEffect(() => {
         if (currentBudgetConfig) {
             setMonthlyIncome(currentBudgetConfig.monthlyIncome || 0);
@@ -117,15 +107,6 @@ export const useControlCenter = ({
             setGCalKey(savedGCalKey);
             setGCalId(savedGCalId);
 
-            // Check if already logged in
-            getValidGoogleAccessToken().then(token => {
-                if (token) {
-                    fetchGoogleProfile(token).then(setGoogleProfile).catch(() => {
-                        // Token might be expired or invalid
-                    });
-                }
-            });
-
             // Load Spreadsheet
             const ss = getSpreadsheetConfig();
             if (ss) {
@@ -135,156 +116,6 @@ export const useControlCenter = ({
         }
     }, [isOpen]);
 
-    useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            if (event.data?.type === 'GOOGLE_OAUTH_SUCCESS' && event.data.tokens) {
-                handleGoogleLoginSuccess(event.data.tokens);
-            }
-        };
-
-        const handleStorage = (event: StorageEvent) => {
-            if (event.key === 'oauth_tokens' && event.newValue) {
-                try {
-                    const tokens = JSON.parse(event.newValue);
-                    if (tokens && tokens.access_token) {
-                        handleGoogleLoginSuccess(tokens);
-                        localStorage.removeItem('oauth_tokens');
-                    }
-                } catch (e) {
-                    console.error("Failed to parse oauth tokens from storage", e);
-                }
-            }
-        };
-
-        window.addEventListener('message', handleMessage);
-        window.addEventListener('storage', handleStorage);
-        
-        // Also check on mount in case the storage event was missed
-        const checkStoredTokens = () => {
-            const storedTokens = localStorage.getItem('oauth_tokens');
-            if (storedTokens) {
-                try {
-                    const tokens = JSON.parse(storedTokens);
-                    if (tokens && tokens.access_token) {
-                        handleGoogleLoginSuccess(tokens);
-                        localStorage.removeItem('oauth_tokens');
-                    }
-                } catch (e) {
-                    console.error("Failed to parse stored oauth tokens", e);
-                }
-            }
-        };
-        
-        checkStoredTokens();
-        
-        // Poll every second while waiting for login
-        const pollInterval = setInterval(checkStoredTokens, 1000);
-
-        return () => {
-            window.removeEventListener('message', handleMessage);
-            window.removeEventListener('storage', handleStorage);
-            clearInterval(pollInterval);
-        };
-    }, []);
-
-    const handleGoogleLoginSuccess = async (tokens: any) => {
-        setIsSyncingProfile(true);
-        try {
-            // Save Session
-            saveGoogleSession(tokens);
-
-            const token = await getValidGoogleAccessToken();
-            if (!token) {
-                throw new Error("Failed to get valid access token after login");
-            }
-
-            // 1. Fetch Profile
-            const profile = await fetchGoogleProfile(token);
-            setGoogleProfile(profile);
-
-            // 2. Try to load config from Drive
-            const cloudConfig = await loadConfigFromDrive(token);
-            
-            if (cloudConfig) {
-                // Restore settings from cloud
-                if (cloudConfig.spreadsheetId) {
-                    const newConfig: SpreadsheetConfig = {
-                        spreadsheetId: cloudConfig.spreadsheetId,
-                        spreadsheetUrl: cloudConfig.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${cloudConfig.spreadsheetId}/edit`
-                    };
-                    saveSpreadsheetConfig(newConfig);
-                    setSpreadsheetConfig(newConfig);
-                    setSpreadsheetLink(newConfig.spreadsheetUrl);
-                    alert(`Welcome back, ${profile.name}! Settings synced from cloud.`);
-                }
-                
-                if (cloudConfig.theme) {
-                    const newSettings = { ...localAppSettingsRef.current, theme: cloudConfig.theme };
-                    setLocalAppSettings(newSettings);
-                    setAppSettings(newSettings);
-                }
-            } else {
-                // No config found, this is a new login or first time using profile sync
-                // We don't overwrite local settings yet, but we save the token
-                // If we already have a spreadsheet link locally, we should save it to cloud now
-                const currentSpreadsheetLink = spreadsheetLinkRef.current;
-                if (currentSpreadsheetLink) {
-                     const match = currentSpreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                     const spreadsheetId = match ? match[1] : currentSpreadsheetLink;
-                     
-                     const newConfig: SpreadsheetConfig = {
-                        spreadsheetId,
-                        spreadsheetUrl: currentSpreadsheetLink
-                    };
-                    saveSpreadsheetConfig(newConfig);
-                    setSpreadsheetConfig(newConfig);
-                    
-                    // Save to Drive
-                    await saveConfigToDrive({
-                        spreadsheetId,
-                        spreadsheetUrl: currentSpreadsheetLink,
-                        theme: localAppSettingsRef.current.theme
-                    }, token);
-                    alert(`Welcome, ${profile.name}! Your current spreadsheet has been linked to your account.`);
-                } else {
-                    // Just save the token for future use (we need a dummy config or just store it separately)
-                    // For now, we wait for user to enter spreadsheet link
-                    alert(`Welcome, ${profile.name}! Please enter your spreadsheet link below to finish setup.`);
-                }
-            }
-        } catch (error) {
-            console.error("Profile sync error:", error);
-            alert("Failed to sync profile data. Please check your connection or try again.");
-        } finally {
-            setIsSyncingProfile(false);
-            // Trigger refresh to update UI
-            if (onRefreshClick) onRefreshClick();
-        }
-    };
-
-    const handleGoogleLogin = async () => {
-        try {
-            const origin = window.location.origin;
-            const response = await fetch(`/api/auth/google/url?origin=${encodeURIComponent(origin)}`);
-            if (!response.ok) throw new Error('Failed to get auth URL');
-            const { url } = await response.json();
-            
-            // Open the OAuth PROVIDER's URL directly in popup
-            const authWindow = window.open(
-                url,
-                'oauth_popup',
-                'width=600,height=700'
-            );
-
-            if (!authWindow) {
-                // Popup was blocked
-                alert('Please allow popups for this site to connect your account.');
-            }
-        } catch (error) {
-            console.error('Login error:', error);
-            alert('Failed to start login process.');
-        }
-    };
 
     const handleConnectSpreadsheet = async () => {
         if (!spreadsheetLink) {
@@ -299,9 +130,11 @@ export const useControlCenter = ({
         }
 
         const spreadsheetId = match[1];
+        let serviceAccountStatus: ServiceAccountSpreadsheetStatus | null = null;
 
+        setIsConnectingSpreadsheet(true);
         try {
-            const serviceAccountStatus = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
+            serviceAccountStatus = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
             if (serviceAccountStatus.accessible) {
                 const newConfig: SpreadsheetConfig = {
                     spreadsheetId,
@@ -327,44 +160,16 @@ export const useControlCenter = ({
             }
         } catch (error) {
             console.warn("Service account spreadsheet check failed", error);
+        } finally {
+            setIsConnectingSpreadsheet(false);
         }
 
-        // Fallback: OAuth is only needed when service-account mode is unavailable.
-        const session = getGoogleSession();
-        
-        if (!session) {
-            if (googleProfile) {
-                alert("Your session has expired. Please sign in again to connect your spreadsheet.");
-            }
-            handleGoogleLogin();
+        if (!serviceAccountStatus?.configured) {
+            alert("Service account belum dikonfigurasi di server. Tambahkan GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_SERVICE_ACCOUNT_KEY / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY di hosting, lalu coba lagi.");
             return;
         }
 
-        const newConfig: SpreadsheetConfig = {
-            spreadsheetId,
-            spreadsheetUrl: spreadsheetLink,
-            authMode: 'oauth'
-        };
-        
-        saveSpreadsheetConfig(newConfig);
-        setSpreadsheetConfig(newConfig);
-        
-        try {
-            const token = await getValidGoogleAccessToken();
-            if (token) {
-                await saveConfigToDrive({
-                    spreadsheetId,
-                    spreadsheetUrl: spreadsheetLink,
-                    theme: localAppSettings.theme
-                }, token);
-            }
-            alert("Spreadsheet connected and settings saved to Google Drive.");
-        } catch (e) {
-            console.warn("Failed to sync to Drive", e);
-            alert("Spreadsheet connected locally, but failed to sync to Google Drive.");
-        }
-        
-        onSyncClick(false);
+        alert(`Belum bisa connect via service account. Pastikan spreadsheet sudah di-share sebagai Editor ke ${serviceAccountStatus.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL}, lalu coba lagi.`);
     };
 
     const handleDisconnectSpreadsheet = () => {
@@ -391,21 +196,6 @@ export const useControlCenter = ({
         
         // Propagate changes
         onSave(newBudgetConfig, prompt, localAppSettings);
-        
-        // Save to Drive if connected
-        if (spreadsheetConfig) {
-             getValidGoogleAccessToken().then(token => {
-                 if (token) {
-                     saveConfigToDrive({
-                         spreadsheetId: spreadsheetConfig.spreadsheetId,
-                         spreadsheetUrl: spreadsheetConfig.spreadsheetUrl,
-                         theme: localAppSettings.theme
-                     }, token).catch(e => {
-                         console.warn("Failed to background sync to Drive", e);
-                     });
-                 }
-             });
-        }
         
         setTimeout(() => {
             setSettingsSaveStatus('idle');
@@ -482,8 +272,6 @@ export const useControlCenter = ({
         monthlyIncome,
         budgetRules,
         localAppSettings,
-        googleProfile,
-        isSyncingProfile,
         handleTabChange,
         setSpreadsheetLink,
         setGeminiKey,
@@ -492,7 +280,6 @@ export const useControlCenter = ({
         setGCalId,
         setMonthlyIncome,
         setLocalAppSettings,
-        handleGoogleLogin,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,

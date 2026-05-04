@@ -3,7 +3,6 @@ import { SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
-import { getValidGoogleAccessToken } from "./googleProfileService";
 
 const SETTINGS_KEY = 'braindump_spreadsheet_config';
 const SPREADSHEET_CACHE_KEY = 'braindump_spreadsheet_cache';
@@ -104,7 +103,7 @@ const getRetryDelayMs = (attempt: number, retryAfterHeader: string | null) => {
 export interface SpreadsheetConfig {
   spreadsheetId: string;
   spreadsheetUrl: string;
-  authMode?: 'oauth' | 'service_account';
+  authMode?: 'service_account';
   serviceAccountEmail?: string;
 }
 
@@ -621,37 +620,15 @@ const sheetsFetch = async (
   spreadsheetId: string,
   path: string,
   init: RequestInit = {},
-  attempt = 0,
-  tokenOverride?: string
+  attempt = 0
 ): Promise<Response> => {
-  if (getSpreadsheetConfig()?.authMode === 'service_account') {
-    const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
-    if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
-      return response;
-    }
-    const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
-    await wait(delayMs);
-    return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
-  }
-
-  const token = tokenOverride || await getValidGoogleAccessToken();
-  if (!token) throw new Error('No valid Google access token available');
-
-  const response = await fetch(`${GOOGLE_SHEETS_API_BASE}/${spreadsheetId}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init.headers || {})
-    }
-  });
-
+  const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
   if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
     return response;
   }
-
   const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
   await wait(delayMs);
-  return sheetsFetch(spreadsheetId, path, init, attempt + 1, response.status === 401 ? undefined : token);
+  return sheetsFetch(spreadsheetId, path, init, attempt + 1);
 };
 
 const readSpreadsheetCacheFallback = () => {

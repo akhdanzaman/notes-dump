@@ -311,7 +311,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 </div>
                 <div>
                   <h3 className="font-medium text-primary">Google Sheets DB</h3>
-                  <p className="text-sm text-muted">Connect from Control Center after onboarding. Google login is optional: you can share the sheet with the service account and paste the link.</p>
+                  <p className="text-sm text-muted">Connect from Control Center after onboarding: share the sheet with the service account as Editor, then paste the link. No Google login required.</p>
                 </div>
               </div>
             </div>

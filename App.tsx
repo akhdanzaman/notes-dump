@@ -168,41 +168,6 @@ const App: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-  const handleMessage = async (event: MessageEvent) => {
-    if (event.origin !== window.location.origin) return;
-
-    const { type, tokens, error } = event.data || {};
-
-    if (type === 'GOOGLE_OAUTH_SUCCESS') {
-      try {
-        // simpan session
-        localStorage.setItem('braindump_google_session', JSON.stringify({
-          ...tokens,
-          expires_at: Date.now() + ((tokens.expires_in || 3600) * 1000),
-        }));
-
-        console.log('Google login success');
-
-        // kalau mau, lanjut fetch profile / config di sini
-        // const profile = await fetchGoogleProfile(tokens.access_token);
-        // const config = await loadConfigFromDrive(tokens.access_token);
-
-        loadData(); // atau trigger refresh state
-      } catch (e) {
-        console.error('Failed to process OAuth success', e);
-      }
-    }
-
-    if (type === 'GOOGLE_OAUTH_ERROR') {
-      console.error('Google login failed:', error);
-      alert(`Login gagal: ${error}`);
-    }
-  };
-
-  window.addEventListener('message', handleMessage);
-  return () => window.removeEventListener('message', handleMessage);
-}, [loadData]);
 
   // --- Persistent Notification Effect ---
   useEffect(() => {
