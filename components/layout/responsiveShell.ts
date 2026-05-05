@@ -1,17 +1,54 @@
+import { LibrarySubTab, MoneyView, PlanSubTab, Tab } from '../../types';
+
 export const RESPONSIVE_SHELL = {
   desktopBreakpoint: 'lg',
   railWidth: '18rem',
-  contentMaxWidth: '80rem',
-  contentStandardMaxWidth: '72rem',
-  contentWideMaxWidth: '80rem',
+  contentMaxWidth: '96rem',
+  contentStandardMaxWidth: '80rem',
+  contentWideMaxWidth: '90rem',
+  contentWorkspaceMaxWidth: '96rem',
 } as const;
 
 export const responsiveShellContentClass = {
-  // NDZ-007 #1: rail-aware desktop origin with stepped caps instead of one centered 64rem island.
+  // NDZ-011: shared rail-aware container variants keep the post-rail workspace aligned without stretching every surface equally.
   standard: 'relative z-10 w-full lg:mr-auto lg:max-w-6xl 2xl:max-w-7xl',
-  wide: 'relative z-10 w-full lg:mr-auto lg:max-w-7xl',
-  workspace: 'relative z-10 w-full lg:max-w-none',
+  wide: 'relative z-10 w-full lg:mr-auto lg:max-w-7xl 2xl:max-w-[90rem]',
+  workspace: 'relative z-10 w-full lg:mr-auto lg:max-w-[96rem]',
 } as const;
+
+export type ResponsiveShellContentVariant = keyof typeof responsiveShellContentClass;
+
+interface ResponsiveShellSurfaceArgs {
+  activeTab: Tab;
+  planSubTab: PlanSubTab;
+  librarySubTab: LibrarySubTab;
+  moneyView: MoneyView;
+}
+
+export const getResponsiveShellContentVariant = ({
+  activeTab,
+  planSubTab,
+  librarySubTab,
+  moneyView,
+}: ResponsiveShellSurfaceArgs): ResponsiveShellContentVariant => {
+  if (activeTab === 'plan') {
+    return planSubTab === 'tasks' ? 'workspace' : 'wide';
+  }
+
+  if (activeTab === 'money') {
+    return moneyView === 'budget' ? 'wide' : 'workspace';
+  }
+
+  if (activeTab === 'library') {
+    return librarySubTab === 'skills' ? 'standard' : 'wide';
+  }
+
+  if (activeTab === 'summary') {
+    return 'wide';
+  }
+
+  return 'standard';
+};
 
 export const responsiveShellComposerClass = {
   // NDZ-007 #2: fixed composer follows the rail-aware content gutter/origin on desktop.

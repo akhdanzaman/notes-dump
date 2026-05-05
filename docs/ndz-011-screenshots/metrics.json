@@ -1,0 +1,98 @@
+[
+  {
+    "label": "summary-1280x900",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "variant": "wide",
+    "railRight": 288,
+    "contentLeft": 320,
+    "contentWidth": 913,
+    "mainWidth": 977
+  },
+  {
+    "label": "summary-1440x900",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "variant": "wide",
+    "railRight": 288,
+    "contentLeft": 320,
+    "contentWidth": 1073,
+    "mainWidth": 1137
+  },
+  {
+    "label": "summary-1680x900",
+    "viewport": {
+      "width": 1680,
+      "height": 900
+    },
+    "variant": "wide",
+    "railRight": 288,
+    "contentLeft": 320,
+    "contentWidth": 1313,
+    "mainWidth": 1377
+  },
+  {
+    "label": "summary-1920x900",
+    "viewport": {
+      "width": 1920,
+      "height": 900
+    },
+    "variant": "wide",
+    "railRight": 288,
+    "contentLeft": 320,
+    "contentWidth": 1440,
+    "mainWidth": 1617
+  },
+  {
+    "label": "plan-focus-1680x900",
+    "viewport": {
+      "width": 1680,
+      "height": 900
+    },
+    "variant": "workspace",
+    "railRight": 288,
+    "contentLeft": 320,
+    "contentWidth": 1313,
+    "mainWidth": 1377
+  },
+  {
+    "label": "library-notes-1680x900",
+    "viewport": {
+      "width": 1680,
+      "height": 900
+    },
+    "variant": "wide",
+    "railRight": 288,
+    "contentLeft": 320,
+    "contentWidth": 1313,
+    "mainWidth": 1377
+  },
+  {
+    "label": "money-transactions-1680x900",
+    "viewport": {
+      "width": 1680,
+      "height": 900
+    },
+    "variant": "workspace",
+    "railRight": 288,
+    "contentLeft": 320,
+    "contentWidth": 1313,
+    "mainWidth": 1377
+  },
+  {
+    "label": "money-budget-1680x900",
+    "viewport": {
+      "width": 1680,
+      "height": 900
+    },
+    "variant": "wide",
+    "railRight": 288,
+    "contentLeft": 320,
+    "contentWidth": 1313,
+    "mainWidth": 1377
+  }
+]

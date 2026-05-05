@@ -33,7 +33,7 @@ import ReviewCenterPanel from './components/ReviewCenterPanel';
 import Onboarding from './components/Onboarding';
 import FeatureTutorialPopup from './components/FeatureTutorialPopup';
 import DesktopNavRail from './components/layout/DesktopNavRail';
-import { responsiveShellClass } from './components/layout/responsiveShell';
+import { getResponsiveShellContentVariant, responsiveShellClass, responsiveShellContentClass } from './components/layout/responsiveShell';
 import { History, X, ClipboardCheck, ChevronDown } from 'lucide-react';
 import { LATEST_CHANGELOG, LATEST_CHANGELOG_VERSION, SEEN_CHANGELOG_STORAGE_KEY } from './utils/changelog';
 import { FEATURE_TUTORIALS, FEATURE_TUTORIALS_DISABLED_KEY, FEATURE_TUTORIALS_STORAGE_KEY, FeatureTutorialKey, getFeatureTutorialKey, parseSeenFeatureTutorials } from './utils/featureTutorials';
@@ -102,6 +102,12 @@ const App: React.FC = () => {
   // Finance Date Filter
   const [financeDate, setFinanceDate] = useState(new Date());
   const [moneyView, setMoneyView] = useState<MoneyView>('transactions');
+  const activeShellContentVariant = useMemo(() => getResponsiveShellContentVariant({
+    activeTab,
+    planSubTab,
+    librarySubTab,
+    moneyView,
+  }), [activeTab, planSubTab, librarySubTab, moneyView]);
 
   // Input Focus State
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false);
@@ -685,7 +691,7 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className={responsiveShellClass.main}>
         
-        <div className={responsiveShellClass.content}>
+        <div className={responsiveShellContentClass[activeShellContentVariant]} data-shell-variant={activeShellContentVariant}>
             {(loading && items.length === 0) ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted animate-pulse pt-24">
                 <div className="w-12 h-12 bg-surface rounded-full mb-4"></div>
