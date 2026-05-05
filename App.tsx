@@ -680,11 +680,13 @@ const App: React.FC = () => {
         librarySubTab={librarySubTab}
         setLibrarySubTab={setLibrarySubTab}
         pendingCount={pendingCount}
+        reviewQueueCount={reviewCenterBadgeCount}
         saveStatus={saveStatus}
         fetchStatus={fetchStatus}
         onSyncClick={() => saveAndSync(items)}
         onRefreshClick={() => loadData()}
         onSettingsClick={() => setIsControlCenterOpen(true)}
+        onOpenReviewCenter={openReviewCenterFromInput}
         error={error}
       />
       
