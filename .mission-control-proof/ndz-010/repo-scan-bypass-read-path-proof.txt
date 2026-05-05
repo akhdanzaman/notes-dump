@@ -1,0 +1,215 @@
+# NDZ-010 repo scan proof: bypass/read-path and guardrail checks
+
+Baseline..HEAD:
+940ba2b
+11a2c9f
+
+1) Changed files since baseline 940ba2b:
+- .mission-control-proof/ndz-010/build.txt
+- .mission-control-proof/ndz-010/diff-check.txt
+- .mission-control-proof/ndz-010/lint.txt
+- .mission-control-proof/ndz-010/metrics-summary.txt
+- .mission-control-proof/ndz-010/ndz010-capture.mjs
+- .mission-control-proof/ndz-010/qa-summary.json
+- .mission-control-proof/ndz-010/repo-scan-proof.txt
+- .mission-control-proof/ndz-010/runtime-viewport-proof.txt
+- .mission-control-proof/ndz-010/test.txt
+- .mission-control-proof/ndz-010/verification-summary.md
+- .mission-control-proof/ndz-010/viewports/add-expense-modal-1440x900.png
+- .mission-control-proof/ndz-010/viewports/add-expense-modal-wide-1680x900.png
+- .mission-control-proof/ndz-010/viewports/add-note-modal-1440x900.png
+- .mission-control-proof/ndz-010/viewports/add-shopping-modal-1440x900.png
+- .mission-control-proof/ndz-010/viewports/add-task-modal-1440x900.png
+- .mission-control-proof/ndz-010/viewports/add-task-modal-wide-1680x900.png
+- .mission-control-proof/ndz-010/viewports/calendar-1440x900.png
+- .mission-control-proof/ndz-010/viewports/calendar-wide-1680x900.png
+- .mission-control-proof/ndz-010/viewports/control-center-1440x900.png
+- .mission-control-proof/ndz-010/viewports/library-notes-1440x900.png
+- .mission-control-proof/ndz-010/viewports/library-notes-wide-1680x900.png
+- .mission-control-proof/ndz-010/viewports/metrics.json
+- .mission-control-proof/ndz-010/viewports/money-transactions-1440x900.png
+- .mission-control-proof/ndz-010/viewports/money-transactions-wide-1680x900.png
+- .mission-control-proof/ndz-010/viewports/plan-focus-1440x900.png
+- .mission-control-proof/ndz-010/viewports/plan-focus-wide-1680x900.png
+- .mission-control-proof/ndz-010/viewports/summary-1440x900.png
+- .mission-control-proof/ndz-010/viewports/summary-1680x900.png
+- .mission-control-proof/ndz-010/viewports/summary-1920x900.png
+- .mission-control-proof/ndz-010/viewports/summary-390x900.png
+- .mission-control-proof/ndz-010/viewports/summary-820x900.png
+- App.tsx
+- components/AddExpenseModal.tsx
+- components/AddNoteModal.tsx
+- components/AddShoppingModal.tsx
+- components/AddTaskModal.tsx
+- components/FloatingChatBox.tsx
+- components/InputBar.tsx
+- components/layout/contentSurface.ts
+- components/layout/responsiveShell.ts
+- components/views/LibraryView.tsx
+- components/views/MoneyView.tsx
+- components/views/PlanView.tsx
+- components/views/SummaryView.tsx
+- docs/ndz-007-desktop-layout-observation.md
+- docs/ndz-007-screenshots/add-expense-modal-1440x900.png
+- docs/ndz-007-screenshots/add-expense-modal-wide-1680x900.png
+- docs/ndz-007-screenshots/add-note-modal-1440x900.png
+- docs/ndz-007-screenshots/add-shopping-modal-1440x900.png
+- docs/ndz-007-screenshots/add-task-modal-1440x900.png
+- docs/ndz-007-screenshots/add-task-modal-wide-1680x900.png
+- docs/ndz-007-screenshots/calendar-1440x900.png
+- docs/ndz-007-screenshots/calendar-wide-1680x900.png
+- docs/ndz-007-screenshots/control-center-1440x900.png
+- docs/ndz-007-screenshots/library-notes-1440x900.png
+- docs/ndz-007-screenshots/library-notes-wide-1680x900.png
+- docs/ndz-007-screenshots/metrics.json
+- docs/ndz-007-screenshots/money-transactions-1440x900.png
+- docs/ndz-007-screenshots/money-transactions-wide-1680x900.png
+- docs/ndz-007-screenshots/plan-focus-1440x900.png
+- docs/ndz-007-screenshots/plan-focus-wide-1680x900.png
+- docs/ndz-007-screenshots/summary-1280x900.png
+- docs/ndz-007-screenshots/summary-1440x900.png
+- docs/ndz-007-screenshots/summary-1680x900.png
+- docs/ndz-007-screenshots/summary-1920x900.png
+- docs/ndz-008-desktop-shell-polish.md
+- docs/ndz-008-screenshots/add-expense-modal-1440x900.png
+- docs/ndz-008-screenshots/add-expense-modal-wide-1680x900.png
+- docs/ndz-008-screenshots/add-note-modal-1440x900.png
+- docs/ndz-008-screenshots/add-shopping-modal-1440x900.png
+- docs/ndz-008-screenshots/add-task-modal-1440x900.png
+- docs/ndz-008-screenshots/add-task-modal-wide-1680x900.png
+- docs/ndz-008-screenshots/calendar-1440x900.png
+- docs/ndz-008-screenshots/calendar-wide-1680x900.png
+- docs/ndz-008-screenshots/control-center-1440x900.png
+- docs/ndz-008-screenshots/library-notes-1440x900.png
+- docs/ndz-008-screenshots/library-notes-wide-1680x900.png
+- docs/ndz-008-screenshots/metrics.json
+- docs/ndz-008-screenshots/money-transactions-1440x900.png
+- docs/ndz-008-screenshots/money-transactions-wide-1680x900.png
+- docs/ndz-008-screenshots/plan-focus-1440x900.png
+- docs/ndz-008-screenshots/plan-focus-wide-1680x900.png
+- docs/ndz-008-screenshots/summary-1440x900.png
+- docs/ndz-008-screenshots/summary-1680x900.png
+- docs/ndz-008-screenshots/summary-390x900.png
+- docs/ndz-008-screenshots/summary-820x900.png
+- docs/ndz-009-runtime-proof.txt
+- docs/ndz-009-screenshots/add-expense-modal-1440x900.png
+- docs/ndz-009-screenshots/add-expense-modal-wide-1680x900.png
+- docs/ndz-009-screenshots/add-note-modal-1440x900.png
+- docs/ndz-009-screenshots/add-shopping-modal-1440x900.png
+- docs/ndz-009-screenshots/add-task-modal-1440x900.png
+- docs/ndz-009-screenshots/add-task-modal-wide-1680x900.png
+- docs/ndz-009-screenshots/calendar-1440x900.png
+- docs/ndz-009-screenshots/calendar-wide-1680x900.png
+- docs/ndz-009-screenshots/control-center-1440x900.png
+- docs/ndz-009-screenshots/library-notes-1440x900.png
+- docs/ndz-009-screenshots/library-notes-wide-1680x900.png
+- docs/ndz-009-screenshots/metrics.json
+- docs/ndz-009-screenshots/money-transactions-1440x900.png
+- docs/ndz-009-screenshots/money-transactions-wide-1680x900.png
+- docs/ndz-009-screenshots/plan-focus-1440x900.png
+- docs/ndz-009-screenshots/plan-focus-wide-1680x900.png
+- docs/ndz-009-screenshots/summary-1440x900.png
+- docs/ndz-009-screenshots/summary-1680x900.png
+- docs/ndz-009-screenshots/summary-1920x900.png
+- docs/ndz-009-screenshots/summary-390x900.png
+- docs/ndz-009-screenshots/summary-820x900.png
+- docs/ndz-009-summary-surface-polish.md
+- scripts/ndz007-capture.mjs
+- scripts/ndz008-capture.mjs
+- scripts/ndz009-capture.mjs
+- utils/changelog.ts
+
+2) Bypass/read-path restricted path scan (expected: no matches):
+NO_MATCHES: no sync/spreadsheet/canonicalizer/deep-work/server/API/read-path files changed.
+
+3) Bypass/read-path keyword scan in implementation diff (expected: no matches):
+NO_MATCHES: implementation diff does not add bypass/read-path/sync/canonicalizer/deep-work keywords.
+
+4) Shared layout primitive scan (required layout path evidence):
+App.tsx:36:import { responsiveShellClass } from './components/layout/responsiveShell';
+App.tsx:668:    <div className={responsiveShellClass.root}>
+App.tsx:686:      <main className={responsiveShellClass.main}>
+App.tsx:688:        <div className={responsiveShellClass.content}>
+App.tsx:815:        className={responsiveShellClass.fixedBottom}
+App.tsx:831:          <div className={responsiveShellClass.fixedBottomContent}>
+App.tsx:865:          <div className={`${responsiveShellClass.bottomNavWrap} ${isMobileKeyboardOpen ? "hidden md:block" : "block"}`}>
+components/AddExpenseModal.tsx:52:            <div className={responsiveModal.sheetOverlay}>
+components/AddExpenseModal.tsx:57:                    className={`${responsiveModal.denseFormPanel} max-h-[90vh]`}
+components/AddNoteModal.tsx:32:            <div className={responsiveModal.sheetOverlay}>
+components/AddNoteModal.tsx:37:                    className={`${responsiveModal.formPanel} max-h-[90vh]`}
+components/AddShoppingModal.tsx:152:            <div className={responsiveModal.sheetOverlay}>
+components/AddShoppingModal.tsx:157:                    className={`${responsiveModal.denseFormPanel} max-h-[90vh]`}
+components/AddTaskModal.tsx:42:            <div className={responsiveModal.sheetOverlay}>
+components/AddTaskModal.tsx:47:                    className={responsiveModal.formPanel}
+components/layout/responsiveShell.ts:9:export const responsiveShellContentClass = {
+components/layout/responsiveShell.ts:22:export const responsiveShellClass = {
+components/layout/responsiveShell.ts:31:  content: responsiveShellContentClass.standard,
+components/views/LibraryView.tsx:320:                <div className={`${contentSurface.emptyStateCard} mx-auto max-w-3xl`}>
+components/views/LibraryView.tsx:368:                <div className={contentSurface.masonryGrid}>
+components/views/LibraryView.tsx:381:                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+components/views/LibraryView.tsx:394:            <div className={contentSurface.cardGrid}>
+components/views/LibraryView.tsx:454:        <div className={contentSurface.pageShell}>
+components/views/LibraryView.tsx:458:                className={contentSurface.headerHero}
+components/views/LibraryView.tsx:592:                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
+components/views/LibraryView.tsx:601:                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
+components/views/LibraryView.tsx:610:                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
+components/views/MoneyView.tsx:201:        <div className={contentSurface.pageShell}>
+components/views/MoneyView.tsx:205:                className={contentSurface.headerHero}
+components/views/MoneyView.tsx:330:                        className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+components/views/MoneyView.tsx:332:                        <div className={contentSurface.cardGrid}>
+components/views/MoneyView.tsx:421:                        className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+components/views/MoneyView.tsx:424:                            {list.length === 0 ? <div className={contentSurface.emptyStateCard}>No transactions recorded.</div> : (
+components/views/MoneyView.tsx:425:                                <div className={contentSurface.denseList}>
+components/views/MoneyView.tsx:465:                        className={`w-full flex-shrink-0 ${contentSurface.contentPad} pb-8`}
+components/views/PlanView.tsx:558:        <div className={contentSurface.pageShell}>
+components/views/PlanView.tsx:562:                className={contentSurface.headerHero}
+components/views/PlanView.tsx:689:                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+components/views/PlanView.tsx:693:                            <div className={contentSurface.workflowGrid}>
+components/views/PlanView.tsx:694:                                <section className={contentSurface.workflowPanel}>
+components/views/PlanView.tsx:707:                                        <div className={contentSurface.denseList}>
+components/views/PlanView.tsx:716:                                <section className={contentSurface.workflowPanel}>
+components/views/PlanView.tsx:729:                                        <div className={contentSurface.denseList}>
+components/views/PlanView.tsx:738:                                <section className={contentSurface.workflowPanel}>
+components/views/PlanView.tsx:749:                                        <div className={contentSurface.denseList}>
+components/views/PlanView.tsx:758:                                <section className={contentSurface.workflowPanel}>
+components/views/PlanView.tsx:769:                                        <div className={contentSurface.denseList}>
+components/views/PlanView.tsx:780:                                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+components/views/PlanView.tsx:806:                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+components/views/PlanView.tsx:808:                    <div className={contentSurface.workflowGrid}>
+components/views/PlanView.tsx:809:                        <section className={contentSurface.workflowPanel}>
+components/views/PlanView.tsx:831:                        <section className={contentSurface.workflowPanel}>
+components/views/PlanView.tsx:853:                        <section className={contentSurface.workflowPanel}>
+components/views/PlanView.tsx:874:                            <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+components/views/PlanView.tsx:891:                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+components/views/PlanView.tsx:904:                        <div className={contentSurface.cardGrid}>
+components/views/PlanView.tsx:909:                        <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+components/views/PlanView.tsx:926:                    <div className={responsiveModal.sheetOverlay}>
+components/views/PlanView.tsx:931:                            className={`${responsiveModal.sheetPanel} max-w-md lg:max-w-lg border border-border`}
+components/views/SummaryView.tsx:535:        <div className={contentSurface.pageShell}>
+components/views/SummaryView.tsx:538:                className={`${contentSurface.headerHero} mb-6`}
+components/views/SummaryView.tsx:655:                className={contentSurface.dashboardGrid}
+components/views/SummaryView.tsx:657:                <section className={`${contentSurface.sideColumn} lg:order-2`}>
+components/views/SummaryView.tsx:707:                <section className={`${contentSurface.primaryColumn} lg:order-1 lg:row-span-2 lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-surface/35 lg:p-5 lg:shadow-sm`}>
+components/views/SummaryView.tsx:729:                        <div className={`${contentSurface.denseList} ${isDoneState ? 'opacity-60 grayscale' : ''}`}>
+components/views/SummaryView.tsx:735:                        <div className={`${contentSurface.emptyStateCard} lg:text-left`}>
+components/views/SummaryView.tsx:757:                    <section className={`${contentSurface.sideColumn} lg:order-3`}>
+components/views/SummaryView.tsx:781:                <section onClick={() => setActiveTab('money')} className={`${contentSurface.sideColumn} cursor-pointer group lg:order-4`}>
+
+5) Modal primitive adoption proof:
+components/AddTaskModal.tsx:47:                    className={responsiveModal.formPanel}
+components/AddNoteModal.tsx:37:                    className={`${responsiveModal.formPanel} max-h-[90vh]`}
+components/AddShoppingModal.tsx:157:                    className={`${responsiveModal.denseFormPanel} max-h-[90vh]`}
+components/AddExpenseModal.tsx:57:                    className={`${responsiveModal.denseFormPanel} max-h-[90vh]`}
+
+6) Layout primitive definitions proof:
+components/layout/responsiveShell.ts:9:export const responsiveShellContentClass = {
+components/layout/responsiveShell.ts:16:export const responsiveShellComposerClass = {
+components/layout/responsiveShell.ts:31:  content: responsiveShellContentClass.standard,
+components/layout/responsiveShell.ts:32:  fixedBottom: responsiveShellComposerClass.wrap,
+components/layout/responsiveShell.ts:33:  fixedBottomContent: responsiveShellComposerClass.container,
+components/layout/contentSurface.ts:10:  dashboardGrid: 'px-4 space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-6 xl:gap-7 lg:space-y-0 lg:px-0',
+components/layout/contentSurface.ts:16:  workflowGrid: 'space-y-6 lg:grid lg:grid-cols-[repeat(2,minmax(20rem,1fr))] xl:grid-cols-[minmax(21rem,1.15fr)_repeat(2,minmax(19rem,1fr))] lg:items-start lg:gap-5 xl:gap-6 lg:space-y-0',
+components/layout/contentSurface.ts:17:  workflowPanel: 'rounded-[28px] border border-border/70 bg-surface/55 p-4 shadow-sm',
+components/layout/contentSurface.ts:22:  emptyStateCard: 'rounded-[32px] border border-dashed border-border bg-surface/60 p-6 text-center shadow-sm lg:p-8',
+components/layout/contentSurface.ts:34:  formPanel: 'bg-surface rounded-t-[32px] sm:rounded-[32px] w-full max-w-md lg:max-w-2xl shadow-2xl overflow-hidden flex flex-col lg:border lg:border-border',
+components/layout/contentSurface.ts:35:  denseFormPanel: 'bg-surface rounded-t-[32px] sm:rounded-[32px] w-full max-w-md lg:max-w-3xl shadow-2xl overflow-hidden flex flex-col lg:border lg:border-border',
