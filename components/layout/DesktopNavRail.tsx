@@ -203,18 +203,18 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
 
             <div className="rounded-2xl border border-border bg-surface/80 p-3 text-primary">
               <div className="text-xs font-bold uppercase tracking-[0.18em] text-muted">Manual actions</div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="mt-2 grid grid-cols-1 gap-2">
                 <button
                   type="button"
                   onClick={onRefreshClick}
-                  className="rounded-xl border border-border bg-background/80 px-2 py-2 text-xs font-bold transition-colors hover:bg-background"
+                  className="min-w-0 rounded-xl border border-border bg-background/80 px-2 py-2 text-center text-xs font-bold leading-tight transition-colors hover:bg-background"
                 >
                   Refresh
                 </button>
                 <button
                   type="button"
                   onClick={onSyncClick}
-                  className="rounded-xl border border-border bg-background/80 px-2 py-2 text-xs font-bold transition-colors hover:bg-background"
+                  className="min-w-0 rounded-xl border border-border bg-background/80 px-2 py-2 text-center text-xs font-bold leading-tight transition-colors hover:bg-background"
                 >
                   {syncActionLabel}
                 </button>
