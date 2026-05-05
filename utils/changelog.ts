@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.33',
+    date: 'May 2026',
+    items: [
+      'Money > Transactions on mobile now keeps Income, Expense, and Used in one row, with a 40/40/20 split so the usage percent stays visible without pushing the stats into a second line.',
+      'Desktop transaction stats keep the existing wider layout; this release only tightens the mobile card proportions and spacing.',
+    ],
+  },
+  {
     version: 'v0.3.32',
     date: 'May 2026',
     items: [

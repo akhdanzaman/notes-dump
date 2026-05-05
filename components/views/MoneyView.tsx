@@ -239,9 +239,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         </div>
                         <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
                         
-                        <div className="grid grid-cols-2 gap-4 mb-4 lg:grid-cols-5">
+                        <div className="grid grid-cols-5 gap-3 mb-4 lg:gap-4 lg:grid-cols-5">
                             <div 
-                                className="col-span-2 bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
+                                className="col-span-5 bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
@@ -270,17 +270,17 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><ChevronRight className="w-4 h-4" /></button>
                                 </div>
                             </div>
-                            <div className="bg-black/5 rounded-[24px] p-4">
-                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingUp className="w-4 h-4 text-emerald-500" /> Income</div>
-                                <div className="text-xl font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(totalIncome) : '••••'}</div>
+                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
+                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
+                                <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-xl">{showBalance ? fmt(totalIncome) : '••••'}</div>
                             </div>
-                            <div className="bg-black/5 rounded-[24px] p-4">
-                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 text-[#FF5722]" /> Expense</div>
-                                <div className="text-xl font-bold text-[#FF5722]">{showBalance ? fmt(totalExpense) : '••••'}</div>
+                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
+                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 shrink-0 text-[#FF5722]" /> Expense</div>
+                                <div className="truncate text-lg font-bold text-[#FF5722] lg:text-xl">{showBalance ? fmt(totalExpense) : '••••'}</div>
                             </div>
-                            <div className="bg-black/5 rounded-[24px] p-4">
-                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><AlertCircle className="w-4 h-4 text-amber-500" /> Used</div>
-                                <div className="text-xl font-bold text-primary">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
+                            <div className="col-span-1 min-w-0 bg-black/5 rounded-[24px] p-3 lg:p-4">
+                                <div className="flex items-center justify-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1 lg:justify-start lg:text-xs"><AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-500 lg:block" /> Used</div>
+                                <div className="truncate text-center text-lg font-bold text-primary lg:text-left lg:text-xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
                             </div>
                         </div>
                         
