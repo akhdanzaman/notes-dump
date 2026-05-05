@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Calendar, AlertCircle } from 'lucide-react';
 import { Priority } from '../types';
+import { responsiveModal } from './layout/contentSurface';
 
 interface AddTaskModalProps {
     isOpen: boolean;
@@ -38,12 +39,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <div className={responsiveModal.sheetOverlay}>
                 <motion.div 
                     initial={{ opacity: 0, y: 100 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 100 }}
-                    className="bg-surface rounded-t-[32px] sm:rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col"
+                    className={responsiveModal.formPanel}
                 >
                     <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                         <h3 className="text-xl font-bold text-primary flex items-center gap-2">

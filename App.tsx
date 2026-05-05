@@ -828,7 +828,7 @@ const App: React.FC = () => {
               onResetChat={handleResetChat}
               chatModel={appSettings.chatModel}
           />
-          <div className="pointer-events-none flex flex-col items-center w-full">
+          <div className={responsiveShellClass.fixedBottomContent}>
             <InputBar 
                 onSend={handleAppSend} 
                 onFocus={() => { setIsSearchExpanded(false); }} 

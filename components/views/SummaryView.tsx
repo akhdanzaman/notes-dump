@@ -655,10 +655,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 className={contentSurface.dashboardGrid}
             >
                 <section className={`${contentSurface.sideColumn} lg:order-2`}>
-                    <div className="grid grid-cols-4 gap-3 lg:grid-cols-2 lg:rounded-[28px] lg:border lg:border-border lg:bg-surface/70 lg:p-4">
+                    <div className="grid grid-cols-4 gap-3 lg:grid-cols-2 lg:gap-3 lg:rounded-[28px] lg:border lg:border-border lg:bg-surface/70 lg:p-4">
+                        <div className="hidden lg:col-span-2 lg:flex lg:items-center lg:justify-between lg:pb-1">
+                            <div>
+                                <h2 className="text-sm font-bold uppercase tracking-[0.22em] text-muted">Quick add</h2>
+                                <p className="mt-1 text-xs text-muted">Most-used captures stay one click away.</p>
+                            </div>
+                        </div>
                         <button
                             onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
-                            className="flex flex-col items-center gap-2 group"
+                            className="flex flex-col items-center gap-2 group lg:rounded-2xl lg:bg-background/70 lg:p-3 lg:hover:bg-background"
                         >
                             <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
                                 <Plus className="w-6 h-6" />
@@ -668,7 +674,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                         <button
                             onClick={() => handleOpenAddShopping()}
-                            className="flex flex-col items-center gap-2 group"
+                            className="flex flex-col items-center gap-2 group lg:rounded-2xl lg:bg-background/70 lg:p-3 lg:hover:bg-background"
                         >
                             <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
                                 <ShoppingCart className="w-6 h-6" />
@@ -678,7 +684,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                         <button
                             onClick={handleOpenAddNote}
-                            className="flex flex-col items-center gap-2 group"
+                            className="flex flex-col items-center gap-2 group lg:rounded-2xl lg:bg-background/70 lg:p-3 lg:hover:bg-background"
                         >
                             <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
                                 <StickyNote className="w-6 h-6" />
@@ -688,7 +694,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                         <button
                             onClick={handleOpenAddExpense}
-                            className="flex flex-col items-center gap-2 group"
+                            className="flex flex-col items-center gap-2 group lg:rounded-2xl lg:bg-background/70 lg:p-3 lg:hover:bg-background"
                         >
                             <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
                                 <WalletIcon className="w-6 h-6" />
@@ -698,7 +704,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
                 </section>
 
-                <section className={`${contentSurface.primaryColumn} lg:order-1 lg:row-span-2`}>
+                <section className={`${contentSurface.primaryColumn} lg:order-1 lg:row-span-2 lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-surface/35 lg:p-5 lg:shadow-sm`}>
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex flex-col">
                             <h2 className="text-lg font-bold flex items-center gap-2">
@@ -726,9 +732,23 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
+                        <div className={`${contentSurface.emptyStateCard} lg:text-left`}>
                             <p className="text-muted font-medium">All clear!</p>
                             <p className="text-xs opacity-50 mt-1">Take a break or plan ahead.</p>
+                            <div className="mt-4 flex flex-col gap-2 sm:flex-row lg:justify-start">
+                                <button
+                                    onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
+                                    className="rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-600"
+                                >
+                                    Add task
+                                </button>
+                                <button
+                                    onClick={handleOpenAddNote}
+                                    className="rounded-2xl bg-black/5 px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15"
+                                >
+                                    Capture note
+                                </button>
+                            </div>
                         </div>
                     )}
                 </section>
@@ -739,12 +759,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             <h2 className="text-lg font-bold flex items-center gap-2">Rituals</h2>
                         </div>
 
-                        <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                        <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:p-0">
                             {pendingRoutines.map(routine => (
                                 <button
                                     key={routine.id}
                                     onClick={() => handleToggleStatus(routine.id)}
-                                    className="flex-shrink-0 flex flex-col items-center gap-2 min-w-[72px]"
+                                    className="flex-shrink-0 flex flex-col items-center gap-2 min-w-[72px] lg:min-w-0 lg:rounded-2xl lg:border lg:border-border/60 lg:bg-surface/70 lg:p-3"
                                 >
                                     <div className="w-16 h-16 bg-surface border-2 border-indigo-500/20 rounded-full flex items-center justify-center transition-all hover:border-indigo-500 hover:bg-indigo-500/10">
                                         <CheckCircle2 className="w-6 h-6 text-indigo-500 opacity-50" />
@@ -766,7 +786,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         <ArrowRight className="w-4 h-4 opacity-30 group-hover:opacity-100 transition-opacity" />
                     </div>
 
-                    <div className="bg-surface text-primary rounded-[24px] p-5 relative overflow-hidden">
+                    <div className="bg-surface text-primary rounded-[24px] border border-border/70 p-5 relative overflow-hidden shadow-sm">
                         <div className="absolute top-0 right-0 p-5 opacity-5">
                             <WalletIcon className="w-24 h-24" />
                         </div>

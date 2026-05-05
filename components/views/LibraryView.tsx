@@ -315,13 +315,28 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const renderContent = (data: BrainDumpItem[], type: 'general' | 'journal') => {
         const isEmpty = type === 'journal' ? filteredJournalDayGroups.length === 0 : data.length === 0;
         if (isEmpty) {
+            const isJournal = type === 'journal';
             return (
-                <div className="text-center text-muted py-10">
-                   {searchQuery 
-                    ? "No matching notes." 
-                    : (type === 'general' 
-                        ? "No notes found." 
-                        : "Write your first entry: \"Journal: Today was...\"")}
+                <div className={`${contentSurface.emptyStateCard} mx-auto max-w-3xl`}>
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500">
+                        {isJournal ? <BookText className="w-6 h-6" /> : <Library className="w-6 h-6" />}
+                    </div>
+                    <h3 className="mt-4 text-lg font-bold text-primary">
+                        {searchQuery ? 'No matching notes' : (isJournal ? 'Start this month’s journal' : 'No notes yet')}
+                    </h3>
+                    <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
+                        {searchQuery
+                            ? 'Try another search or capture the thought now so this space has something useful to scan.'
+                            : (isJournal
+                                ? 'Journal entries will group by day with completed tasks, shopping, events, and transactions alongside the reflection.'
+                                : 'Notes will use the wider desktop masonry grid once captured, instead of leaving the library as a blank field.')}
+                    </p>
+                    <button
+                        onClick={() => onAddItem(isJournal ? ItemType.JOURNAL : ItemType.NOTE)}
+                        className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-600"
+                    >
+                        <Plus className="w-4 h-4" /> {isJournal ? 'Write journal' : 'Add note'}
+                    </button>
                 </div>
             );
         }
@@ -363,7 +378,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const renderSkills = () => {
         if (skillStats.length === 0) {
             return (
-                <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
                     <p className="text-muted font-medium">No skills tracked yet.</p>
                     <button 
                         onClick={handleOpenAddSkill} 

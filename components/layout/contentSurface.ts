@@ -1,17 +1,25 @@
 export const contentSurface = {
   pageStack: 'space-y-6',
-  pageShell: 'pb-20 min-h-[50vh] overflow-hidden lg:pb-32',
+  // NDZ-007 #2: desktop pages reserve enough scroll room for the wider fixed composer/chat stack.
+  pageShell: 'pb-20 min-h-[50vh] overflow-hidden lg:pb-44',
   headerHero: 'bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y lg:mt-6 lg:rounded-[32px] lg:border lg:border-border lg:p-7 lg:shadow-sm',
   invertedHeaderHero: 'bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y lg:mt-6 lg:rounded-[32px] lg:border lg:border-border lg:p-7',
-  contentPad: 'px-4 lg:px-6',
-  dashboardGrid: 'px-4 space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6 lg:space-y-0 lg:px-6',
+  // NDZ-007 #1: keep mobile gutters, but let desktop content align to the shared shell edge.
+  contentPad: 'px-4 lg:px-0',
+  // NDZ-007 #3: Summary gets a wider, denser dashboard rhythm without adding new widgets.
+  dashboardGrid: 'px-4 space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-6 xl:gap-7 lg:space-y-0 lg:px-0',
   primaryColumn: 'lg:col-start-1',
   sideColumn: 'lg:col-start-2',
-  splitGrid: 'space-y-8 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:items-start lg:gap-6 lg:space-y-0',
+  sideStack: 'space-y-5 lg:space-y-6',
+  // NDZ-007 #4: shared split panes get stronger desktop minimums once the shell widens.
+  splitGrid: 'space-y-8 lg:grid lg:grid-cols-[repeat(2,minmax(18rem,1fr))] xl:grid-cols-[repeat(3,minmax(18rem,1fr))] lg:items-start lg:gap-6 lg:space-y-0',
+  workflowGrid: 'space-y-6 lg:grid lg:grid-cols-[repeat(2,minmax(20rem,1fr))] xl:grid-cols-[minmax(21rem,1.15fr)_repeat(2,minmax(19rem,1fr))] lg:items-start lg:gap-5 xl:gap-6 lg:space-y-0',
+  workflowPanel: 'rounded-[28px] border border-border/70 bg-surface/55 p-4 shadow-sm',
   detailSplitGrid: 'space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6 lg:space-y-0',
   cardGrid: 'space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0',
   masonryGrid: 'columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-4',
   denseList: 'space-y-3 lg:space-y-2',
+  emptyStateCard: 'rounded-[32px] border border-dashed border-border bg-surface/60 p-6 text-center shadow-sm lg:p-8',
   desktopSettingsGrid: 'space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0',
   desktopSettingsWide: 'lg:col-span-2',
   card: 'bg-background border border-border rounded-2xl shadow-sm',
@@ -22,6 +30,9 @@ export const responsiveModal = {
   sheetOverlay: 'fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm',
   panel: 'bg-surface border-border shadow-2xl',
   sheetPanel: 'bg-surface rounded-t-[32px] sm:rounded-[32px] w-full shadow-2xl overflow-hidden flex flex-col',
+  // NDZ-007 #5: creation/edit forms widen on desktop while confirmations can stay narrow.
+  formPanel: 'bg-surface rounded-t-[32px] sm:rounded-[32px] w-full max-w-md lg:max-w-2xl shadow-2xl overflow-hidden flex flex-col lg:border lg:border-border',
+  denseFormPanel: 'bg-surface rounded-t-[32px] sm:rounded-[32px] w-full max-w-md lg:max-w-3xl shadow-2xl overflow-hidden flex flex-col lg:border lg:border-border',
   fieldGrid: 'space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0',
   footer: 'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
 } as const;

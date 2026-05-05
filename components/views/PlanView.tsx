@@ -690,8 +690,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                 >
                     <div className="space-y-8">
                         {summary.todo > 0 ? (
-                            <div className={contentSurface.splitGrid}>
-                                <section>
+                            <div className={contentSurface.workflowGrid}>
+                                <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
                                             <span className="bg-red-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Today
@@ -713,7 +713,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     )}
                                 </section>
 
-                                <section>
+                                <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
                                             <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Routines
@@ -735,7 +735,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     )}
                                 </section>
 
-                                <section>
+                                <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider">Tomorrow</h3>
                                         <button 
@@ -755,7 +755,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     )}
                                 </section>
 
-                                <section>
+                                <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
                                         <button 
@@ -777,7 +777,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
                         ) : (
                             summary.todo === 0 && (
-                                <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
                                     <p className="text-muted font-medium">No pending tasks for this month.</p>
                                     <div className="flex gap-3">
                                         <button 
@@ -805,8 +805,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                     animate={{ opacity: 1 }}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
-                    <div className={contentSurface.splitGrid}>
-                        <section>
+                    <div className={contentSurface.workflowGrid}>
+                        <section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
                                     <span className="bg-red-500/10 p-1 rounded-md"><ShoppingCart className="w-3 h-3" /></span> Urgent
@@ -828,7 +828,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             )}
                         </section>
 
-                        <section>
+                        <section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
                                     <span className="bg-indigo-500/10 p-1 rounded-md"><History className="w-3 h-3" /></span> Routine
@@ -850,7 +850,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             )}
                         </section>
 
-                        <section>
+                        <section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Normal</h3>
                                 <button 
@@ -871,7 +871,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </section>
 
                         {isShoppingEmpty && (
-                            <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                            <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
                                 <p className="text-muted font-medium">Your shopping list is empty.</p>
                                 <button 
                                     onClick={() => handleOpenAddShopping('not_urgent')} 
@@ -906,7 +906,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <LoadMoreButton remainingCount={visibleSavings.remainingCount} onClick={visibleSavings.loadMore} />
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                        <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
                             <p className="text-muted font-medium">No saving goals yet.</p>
                             <button 
                                 onClick={() => handleOpenAddShopping('saving')} 

@@ -133,6 +133,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const incomeLabel = budgetConfig.monthlyIncome > 0 
         ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : 'Fixed Income') 
         : 'Recorded Income';
+    const monthUsagePercent = effectiveIncome > 0 ? Math.min(999, (totalExpense / effectiveIncome) * 100) : 0;
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -238,9 +239,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         </div>
                         <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
                         
-                        <div className="grid grid-cols-2 gap-4 mb-4 lg:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-4 mb-4 lg:grid-cols-5">
                             <div 
-                                className="bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
+                                className="col-span-2 bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
@@ -270,8 +271,16 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </div>
                             </div>
                             <div className="bg-black/5 rounded-[24px] p-4">
+                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingUp className="w-4 h-4 text-emerald-500" /> Income</div>
+                                <div className="text-xl font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(totalIncome) : '••••'}</div>
+                            </div>
+                            <div className="bg-black/5 rounded-[24px] p-4">
                                 <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 text-[#FF5722]" /> Expense</div>
                                 <div className="text-xl font-bold text-[#FF5722]">{showBalance ? fmt(totalExpense) : '••••'}</div>
+                            </div>
+                            <div className="bg-black/5 rounded-[24px] p-4">
+                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><AlertCircle className="w-4 h-4 text-amber-500" /> Used</div>
+                                <div className="text-xl font-bold text-primary">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
                             </div>
                         </div>
                         
@@ -411,8 +420,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         transition={{ duration: 0.4 }}
                         className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                     >
-                        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-6">
-                            {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
+                        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6">
+                            {list.length === 0 ? <div className={contentSurface.emptyStateCard}>No transactions recorded.</div> : (
                                 <div className={contentSurface.denseList}>
                                     {visibleTransactions.visibleItems.map(item => {
                                         const categoryName = budgetConfig.rules.find(r => r.id === item.meta.budgetCategory)?.name || item.meta.budgetCategory;

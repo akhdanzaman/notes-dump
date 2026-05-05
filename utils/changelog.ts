@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.32',
+    date: 'May 2026',
+    items: [
+      'Desktop shell polish now keeps the main workspace rail-aligned on wide monitors instead of centering every page inside a narrow island.',
+      'The bottom composer and chat panel now share the same desktop origin/width as the content area, with extra bottom breathing room for form-heavy views.',
+      'Add Task, Shopping, Expense, and Note creation forms now use wider shared desktop modal panels while preserving the mobile sheet behavior.',
+    ],
+  },
+  {
     version: 'v0.3.31',
     date: 'May 2026',
     items: [
