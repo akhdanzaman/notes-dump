@@ -10,6 +10,7 @@ import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
+import { contentSurface, responsiveModal } from '../layout/contentSurface';
 
 interface PlanViewProps {
     items: BrainDumpItem[];
@@ -474,7 +475,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                         {renderDeepWorkDetail(<Flag className="w-3 h-3" />, 'Next action', item.meta.deepWorkNextAction)}
                         {renderDeepWorkDetail(<ListChecks className="w-3 h-3" />, 'Final output', item.meta.deepWorkFinalOutput)}
                         {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
@@ -554,11 +555,11 @@ const PlanView: React.FC<PlanViewProps> = ({
     };
 
     return (
-        <div className="min-h-[50vh] overflow-hidden pb-20">
+        <div className={contentSurface.pageShell}>
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
+                className={contentSurface.headerHero}
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -685,11 +686,11 @@ const PlanView: React.FC<PlanViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     <div className="space-y-8">
                         {summary.todo > 0 ? (
-                            <div className="space-y-8">
+                            <div className={contentSurface.splitGrid}>
                                 <section>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
@@ -703,7 +704,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </button>
                                     </div>
                                     {rootToday.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div className={contentSurface.denseList}>
                                             {visibleToday.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleToday.remainingCount} onClick={visibleToday.loadMore} />
                                         </div>
@@ -725,7 +726,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </button>
                                     </div>
                                     {rootRoutines.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div className={contentSurface.denseList}>
                                             {visibleRoutines.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleRoutines.remainingCount} onClick={visibleRoutines.loadMore} />
                                         </div>
@@ -745,7 +746,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </button>
                                     </div>
                                     {rootTomorrow.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div className={contentSurface.denseList}>
                                             {visibleTomorrow.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleTomorrow.remainingCount} onClick={visibleTomorrow.loadMore} />
                                         </div>
@@ -765,7 +766,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </button>
                                     </div>
                                     {rootLater.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div className={contentSurface.denseList}>
                                             {visibleLater.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleLater.remainingCount} onClick={visibleLater.loadMore} />
                                         </div>
@@ -802,9 +803,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
-                    <div className="space-y-8">
+                    <div className={contentSurface.splitGrid}>
                         <section>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
@@ -887,7 +888,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     <div className="flex items-center justify-between mb-4 pl-1">
                         <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider">Saving Goals</h3>
@@ -900,7 +901,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </div>
 
                     {savings.length > 0 ? (
-                        <div className="space-y-4">
+                        <div className={contentSurface.cardGrid}>
                             {visibleSavings.visibleItems.map(goal => renderGoalCard(goal))}
                             <LoadMoreButton remainingCount={visibleSavings.remainingCount} onClick={visibleSavings.loadMore} />
                         </div>
@@ -922,12 +923,12 @@ const PlanView: React.FC<PlanViewProps> = ({
             {/* Add Funds Modal */}
             <AnimatePresence>
                 {addFundsModal?.isOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+                    <div className={responsiveModal.sheetOverlay}>
                         <motion.div 
                             initial={{ opacity: 0, y: 100 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 100 }}
-                            className="bg-surface border border-border rounded-t-[32px] sm:rounded-[32px] w-full max-w-md overflow-hidden flex flex-col"
+                            className={`${responsiveModal.sheetPanel} max-w-md lg:max-w-lg border border-border`}
                         >
                             <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                                 <h3 className="text-xl font-bold text-primary flex items-center gap-2">

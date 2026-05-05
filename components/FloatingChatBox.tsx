@@ -72,7 +72,7 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 20, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute bottom-full left-0 right-0 mb-4 mx-4 md:mx-auto max-w-2xl bg-surface/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col z-50 pointer-events-auto h-[400px] max-h-[60vh]"
+                    className="absolute bottom-full left-0 right-0 mb-4 mx-4 md:mx-auto max-w-2xl lg:max-w-3xl bg-surface/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col z-50 pointer-events-auto h-[400px] max-h-[60vh]"
                 >
                     {/* Controls */}
                     <div className="absolute top-4 right-4 z-10">

@@ -24,9 +24,9 @@ const FeatureTutorialPopup: React.FC<FeatureTutorialPopupProps> = ({ tutorial, o
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 24 }}
             transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-            className="bg-surface border border-border rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+            className="bg-surface border border-border rounded-3xl w-full max-w-md lg:max-w-2xl shadow-2xl overflow-hidden"
           >
-            <div className="p-5 border-b border-border flex items-start justify-between gap-4">
+            <div className="p-5 lg:p-6 border-b border-border flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-indigo-500/10 text-indigo-500 rounded-2xl">
                   <BookOpen className="w-5 h-5" />
@@ -45,10 +45,10 @@ const FeatureTutorialPopup: React.FC<FeatureTutorialPopupProps> = ({ tutorial, o
               </button>
             </div>
 
-            <div className="p-5 space-y-5">
+            <div className="p-5 lg:p-6 space-y-5">
               <p className="text-sm text-muted leading-relaxed">{tutorial.body}</p>
 
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-border bg-background/60 p-3">
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
                     <MousePointerClick className="w-3 h-3" /> Manual entry
@@ -74,10 +74,10 @@ const FeatureTutorialPopup: React.FC<FeatureTutorialPopupProps> = ({ tutorial, o
                 ))}
               </ul>
 
-              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <div className="flex flex-col sm:flex-row lg:justify-end gap-2 pt-1">
                 <button
                   onClick={onClose}
-                  className="flex-1 py-3 rounded-2xl bg-primary text-background font-bold hover:opacity-90 transition-opacity"
+                  className="flex-1 lg:flex-none lg:px-8 py-3 rounded-2xl bg-primary text-background font-bold hover:opacity-90 transition-opacity"
                 >
                   Got it
                 </button>

@@ -113,8 +113,8 @@ const InputBar: React.FC<InputBarProps> = ({
     (pendingCount !== undefined && pendingCount > 0);
 
   return (
-    <div className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none">
-      <div className="max-w-2xl mx-auto pointer-events-none">
+    <div className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none lg:pb-6">
+      <div className="max-w-2xl mx-auto pointer-events-none lg:max-w-3xl">
         <div className="relative">
           {/* Top Content (e.g. Pending Reviews) */}
           {topContent && (

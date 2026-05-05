@@ -1,17 +1,7 @@
 import React from 'react';
-import {
-  LayoutDashboard,
-  Target,
-  ShoppingCart,
-  StickyNote,
-  Wallet as WalletIcon,
-  Menu,
-  PiggyBank,
-  Book,
-  Wrench,
-  Calendar as CalendarIcon
-} from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Tab, PlanSubTab, LibrarySubTab } from '../types';
+import { getAppNavigationItems } from './navigationItems';
 
 interface BottomNavProps {
   activeTab: Tab;
@@ -32,35 +22,10 @@ const BottomNav: React.FC<BottomNavProps> = ({
   setLibrarySubTab,
   onMenuClick,
 }) => {
-  const getPlanTab = () => {
-    switch (planSubTab) {
-      case 'shopping': return { icon: ShoppingCart, label: 'Shopping' };
-      case 'savings': return { icon: PiggyBank, label: 'Goals' };
-      default: return { icon: Target, label: 'Focus' };
-    }
-  };
-
-  const getLibraryTab = () => {
-    switch (librarySubTab) {
-      case 'skills': return { icon: Wrench, label: 'Skills' };
-      case 'journal': return { icon: Book, label: 'Journal' };
-      default: return { icon: StickyNote, label: 'Notes' };
-    }
-  };
-
-  const planTabInfo = getPlanTab();
-  const libraryTabInfo = getLibraryTab();
-
-  const tabs: { id: Tab; icon: React.ElementType; label: string; subTab?: PlanSubTab | LibrarySubTab }[] = [
-    { id: 'summary', icon: LayoutDashboard, label: 'Home' },
-    { id: 'plan', icon: planTabInfo.icon, label: planTabInfo.label, subTab: 'tasks' },
-    { id: 'library', icon: libraryTabInfo.icon, label: libraryTabInfo.label, subTab: 'general' },
-    { id: 'money', icon: WalletIcon, label: 'Money' },
-    { id: 'calendar', icon: CalendarIcon, label: 'Calendar' },
-  ];
+  const tabs = getAppNavigationItems(planSubTab, librarySubTab);
 
   return (
-    <div className="w-full pb-6 px-4 z-40">
+    <div className="w-full pb-6 px-4 z-40" role="navigation" aria-label="Mobile bottom navigation">
       <div className="flex justify-center">
         <div className="w-fit">
           <div className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-2 backdrop-blur-xl">

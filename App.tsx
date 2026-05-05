@@ -32,6 +32,8 @@ import FloatingChatBox from './components/FloatingChatBox';
 import ReviewCenterPanel from './components/ReviewCenterPanel';
 import Onboarding from './components/Onboarding';
 import FeatureTutorialPopup from './components/FeatureTutorialPopup';
+import DesktopNavRail from './components/layout/DesktopNavRail';
+import { responsiveShellClass } from './components/layout/responsiveShell';
 import { History, X, ClipboardCheck, ChevronDown } from 'lucide-react';
 import { LATEST_CHANGELOG, LATEST_CHANGELOG_VERSION, SEEN_CHANGELOG_STORAGE_KEY } from './utils/changelog';
 import { FEATURE_TUTORIALS, FEATURE_TUTORIALS_DISABLED_KEY, FEATURE_TUTORIALS_STORAGE_KEY, FeatureTutorialKey, getFeatureTutorialKey, parseSeenFeatureTutorials } from './utils/featureTutorials';
@@ -663,12 +665,27 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-primary font-sans transition-colors duration-300 selection:bg-indigo-500/30">
+    <div className={responsiveShellClass.root}>
+      <DesktopNavRail
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        planSubTab={planSubTab}
+        setPlanSubTab={setPlanSubTab}
+        librarySubTab={librarySubTab}
+        setLibrarySubTab={setLibrarySubTab}
+        pendingCount={pendingCount}
+        saveStatus={saveStatus}
+        fetchStatus={fetchStatus}
+        onSyncClick={() => saveAndSync(items)}
+        onRefreshClick={() => loadData()}
+        onSettingsClick={() => setIsControlCenterOpen(true)}
+        error={error}
+      />
       
       {/* Main Content */}
-      <main className="pt-0 pb-48 max-w-2xl mx-auto min-h-screen relative">
+      <main className={responsiveShellClass.main}>
         
-        <div className="relative z-10">
+        <div className={responsiveShellClass.content}>
             {(loading && items.length === 0) ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted animate-pulse pt-24">
                 <div className="w-12 h-12 bg-surface rounded-full mb-4"></div>
@@ -795,7 +812,7 @@ const App: React.FC = () => {
       {/* Fixed Bottom Layout */}
       <div 
         ref={fixedBottomRef}
-        className="fixed bottom-0 w-full z-40 bg-transparent pointer-events-none"
+        className={responsiveShellClass.fixedBottom}
       >
           <FloatingChatBox 
               isOpen={isChatOpen} 
@@ -845,7 +862,7 @@ const App: React.FC = () => {
             />
           </div>
 
-          <div className={`pointer-events-auto ${isMobileKeyboardOpen ? "hidden md:block" : "block"}`}>
+          <div className={`${responsiveShellClass.bottomNavWrap} ${isMobileKeyboardOpen ? "hidden md:block" : "block"}`}>
              <BottomNav 
                 activeTab={activeTab} 
                 setActiveTab={setActiveTab} 
@@ -909,7 +926,7 @@ const App: React.FC = () => {
                 animate={{ opacity: 1, scale: 1, x: '-50%', y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, x: '-50%', y: 20 }}
                 transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                className="fixed left-1/2 bottom-28 z-[95] w-[calc(100vw-2rem)] max-w-2xl max-h-[70vh] bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+                className="fixed left-1/2 bottom-28 z-[95] w-[calc(100vw-2rem)] max-w-2xl max-h-[70vh] bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col lg:left-[calc(18rem+((100vw-18rem)/2))] lg:bottom-24 lg:max-w-3xl"
               >
                 <div className="flex items-center justify-between p-4 border-b border-border bg-surface shrink-0">
                   <h3 className="font-bold text-lg flex items-center gap-2">

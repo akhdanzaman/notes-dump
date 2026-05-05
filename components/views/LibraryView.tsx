@@ -8,6 +8,7 @@ import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
+import { contentSurface } from '../layout/contentSurface';
 import { formatFinanceTypeLabel } from '../../utils/financeTypeUtils';
 
 interface LibraryViewProps {
@@ -339,7 +340,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
         if (type === 'journal') {
             return (
-                <div className="space-y-8">
+                <div className="space-y-8 lg:space-y-10">
                     {visibleJournalGroups.visibleItems.map(renderJournalDay)}
                     <LoadMoreButton remainingCount={visibleJournalGroups.remainingCount} onClick={visibleJournalGroups.loadMore} />
                 </div>
@@ -349,7 +350,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         // Masonry layout for general notes
         return (
             <div className="space-y-4">
-                <div className="columns-1 sm:columns-2 gap-4">
+                <div className={contentSurface.masonryGrid}>
                     {visibleGeneralItems.visibleItems.map(item => (
                         <Card key={item.id} item={item} {...commonProps} />
                     ))}
@@ -375,7 +376,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         }
 
         return (
-            <div className="space-y-4">
+            <div className={contentSurface.cardGrid}>
                 {visibleSkillItems.visibleItems.map(skill => {
                     const progress = skill.weeklyProgress;
                     return (
@@ -435,11 +436,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     };
 
     return (
-        <div className="min-h-[50vh] overflow-hidden pb-20">
+        <div className={contentSurface.pageShell}>
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
+                className={contentSurface.headerHero}
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -573,7 +574,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 overflow-hidden px-4"
+                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
                 >
                     {renderContent(generalItems, 'general')}
                 </motion.div>
@@ -582,7 +583,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 overflow-hidden px-4"
+                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
                 >
                     {renderSkills()}
                 </motion.div>
@@ -591,7 +592,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 overflow-hidden px-4"
+                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
                 >
                     {renderContent(journalItems, 'journal')}
                 </motion.div>

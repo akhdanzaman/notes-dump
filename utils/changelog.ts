@@ -6,6 +6,24 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.31',
+    date: 'May 2026',
+    items: [
+      'Responsive desktop QA is complete: mobile and tablet keep the familiar touch-first flow, while desktop now uses the wider rail, content grids, and settings workspace added in this release.',
+      'Verified the desktop pass across app shell, cards/lists, forms, Control Center, search/chat overlays, sync status, and PWA build readiness.',
+      'No migration is needed; this release only changes how Notes Dump adapts across screen sizes.',
+    ],
+  },
+  {
+    version: 'v0.3.30',
+    date: 'May 2026',
+    items: [
+      'Control Center now becomes a desktop settings workspace with a persistent section rail, wider content pane, and two-column config sections while keeping the mobile bottom sheet flow.',
+      'Onboarding, feature tips, wallet setup, skill setup, and generated insight popovers now use desktop widths/density without changing the touch-first mobile path.',
+      'Added shared responsive surface helpers so later settings/modal polish can reuse the same lg-only contract instead of creating one-off desktop rules.',
+    ],
+  },
+  {
     version: 'v0.3.29',
     date: 'May 2026',
     items: [

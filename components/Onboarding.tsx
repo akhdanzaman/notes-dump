@@ -150,7 +150,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col items-center text-center space-y-6"
+            className="flex flex-col items-center text-center space-y-6 lg:max-w-3xl lg:mx-auto"
           >
             <div className="w-24 h-24 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4">
               <Sparkles className="w-12 h-12 text-indigo-500" />
@@ -180,7 +180,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col space-y-6 w-full max-w-md mx-auto"
+            className="flex flex-col space-y-6 w-full max-w-md lg:max-w-2xl mx-auto"
           >
             <div className="text-center mb-4">
               <h2 className="text-2xl font-bold text-primary">Choose your theme</h2>
@@ -218,7 +218,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col space-y-6 w-full max-w-md mx-auto"
+            className="flex flex-col space-y-6 w-full max-w-md lg:max-w-2xl mx-auto"
           >
             <div className="text-center mb-4">
               <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -227,7 +227,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <h2 className="text-2xl font-bold text-primary">Set up your first wallet</h2>
               <p className="text-muted">Track your spending accurately by starting with your main account.</p>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Wallet Name</label>
                 <input
@@ -260,7 +260,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col space-y-6 w-full max-w-md mx-auto"
+            className="flex flex-col space-y-6 w-full max-w-md lg:max-w-2xl mx-auto"
           >
             <div className="text-center mb-4">
               <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -295,7 +295,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col space-y-6 w-full max-w-md mx-auto"
+            className="flex flex-col space-y-6 w-full max-w-md lg:max-w-2xl mx-auto"
           >
             <div className="text-center mb-4">
               <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -323,7 +323,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col space-y-6 w-full max-w-md mx-auto"
+            className="flex flex-col space-y-6 w-full max-w-md lg:max-w-3xl mx-auto"
           >
             <div className="text-center mb-4">
               <div className="w-16 h-16 bg-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -408,7 +408,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-4 sm:p-8">
+    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-4 sm:p-8 lg:p-10">
       {/* Progress Bar */}
       <div className="absolute top-0 left-0 w-full h-1 bg-surface">
         <div 
@@ -417,7 +417,27 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         />
       </div>
 
-      <div className="w-full max-w-2xl flex-1 flex flex-col justify-center min-h-[400px]">
+      <div className="hidden lg:block absolute left-10 top-1/2 w-64 -translate-y-1/2 rounded-3xl border border-border bg-surface/70 p-4 shadow-2xl shadow-black/5 backdrop-blur-xl">
+        <div className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-muted">Setup path</div>
+        <div className="space-y-2">
+          {STEPS.map((step, i) => (
+            <div
+              key={step.id}
+              className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${i === currentStep ? 'bg-primary text-background' : 'text-muted'}`}
+            >
+              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i === currentStep ? 'bg-background/15' : i < currentStep ? 'bg-emerald-500/15 text-emerald-500' : 'bg-background text-muted'}`}>
+                {i < currentStep ? <Check className="h-4 w-4" /> : i + 1}
+              </span>
+              <span>
+                <span className="block text-sm font-bold">{step.title}</span>
+                <span className={`block text-xs ${i === currentStep ? 'text-background/70' : 'text-muted/80'}`}>{i < currentStep ? 'Done' : i === currentStep ? 'Now' : 'Next'}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="w-full max-w-2xl lg:max-w-5xl flex-1 flex flex-col justify-center min-h-[400px]">
         <AnimatePresence mode="wait">
           <div key={currentStep} className="w-full">
             {renderStep()}
@@ -426,7 +446,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
       </div>
 
       {/* Navigation */}
-      <div className="w-full max-w-md flex items-center justify-between mt-8 pt-8 border-t border-border">
+      <div className="w-full max-w-md lg:max-w-5xl flex items-center justify-between mt-8 pt-8 border-t border-border">
         <button
           onClick={handleBack}
           className={`px-6 py-3 font-medium rounded-xl transition-colors ${

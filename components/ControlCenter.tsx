@@ -14,6 +14,7 @@ import { useControlCenter } from '../hooks/useControlCenter';
 import { getDatabaseHistory } from '../services/syncFacade';
 import { SpreadsheetHistoryEntry } from '../services/spreadsheetService';
 import { CHANGELOG_ENTRIES, LATEST_CHANGELOG_VERSION } from '../utils/changelog';
+import { contentSurface, controlCenterSurface } from './layout/contentSurface';
 
 interface ControlCenterProps {
     isOpen: boolean;
@@ -253,17 +254,17 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                             duration: 0.4, 
                             ease: [0.32, 0.72, 0, 1] 
                         }}
-                        className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border rounded-t-3xl z-[70] shadow-2xl max-w-2xl mx-auto flex flex-col h-[85vh]"
+                        className={controlCenterSurface.panel}
                     >
                         
                         {/* Header */}
-                        <div className="p-6 pb-2 shrink-0">
-                            <div className="w-12 h-1.5 bg-border rounded-full mx-auto mb-6 opacity-50" />
+                        <div className={controlCenterSurface.header}>
+                            <div className={controlCenterSurface.handle} />
                             
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                     {activeTab !== 'main' && (
-                                        <button onClick={() => handleTabChange('main')} className="p-2 -ml-2 hover:bg-muted/10 rounded-full transition-colors">
+                                        <button onClick={() => handleTabChange('main')} className="p-2 -ml-2 hover:bg-muted/10 rounded-full transition-colors lg:hidden">
                                             <ArrowLeft className="w-6 h-6 text-primary" />
                                         </button>
                                     )}
@@ -289,7 +290,69 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                         </div>
 
                         {/* Scrollable Content */}
-                        <div className="overflow-y-auto p-6 pt-2 flex-1 relative">
+                        <div className={controlCenterSurface.contentWrap}>
+                            <div className={controlCenterSurface.desktopWorkspace}>
+                                <aside className={controlCenterSurface.desktopSidebar} aria-label="Control Center sections">
+                                    <div className={`${contentSurface.card} p-4 space-y-3`}>
+                                        <div className="text-xs font-bold uppercase tracking-[0.22em] text-muted">Status</div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            {renderSyncStatus()}
+                                            {pendingCount > 0 && (
+                                                <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-500">{pendingCount} pending</span>
+                                            )}
+                                        </div>
+                                        {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
+                                            <button
+                                                onClick={() => onSyncClick(syncMode === 'overwrite')}
+                                                className="w-full rounded-xl bg-primary px-3 py-2 text-sm font-bold text-background hover:opacity-90"
+                                            >
+                                                Sync now
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className={`${contentSurface.card} p-2`}>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleTabChange('main')}
+                                            className={`${controlCenterSurface.desktopNavButton} ${activeTab === 'main' ? 'border-primary/30 bg-primary text-background' : 'border-transparent text-muted hover:bg-surface hover:text-primary'}`}
+                                            aria-current={activeTab === 'main' ? 'page' : undefined}
+                                        >
+                                            <Settings className="w-5 h-5 shrink-0" />
+                                            <span>
+                                                <span className="block text-sm font-bold">Overview</span>
+                                                <span className={`block text-xs ${activeTab === 'main' ? 'text-background/70' : 'text-muted/80'}`}>Sync, theme, sections</span>
+                                            </span>
+                                        </button>
+                                        <div className="my-2 h-px bg-border" />
+                                        <nav className="space-y-1">
+                                            {menuItems.map(item => {
+                                                const isActive = activeTab === item.id;
+                                                return (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        onClick={() => handleTabChange(item.id as any)}
+                                                        className={`${controlCenterSurface.desktopNavButton} ${isActive ? 'border-primary/30 bg-primary text-background' : 'border-transparent text-muted hover:bg-surface hover:text-primary'}`}
+                                                        aria-current={isActive ? 'page' : undefined}
+                                                    >
+                                                        <span className="shrink-0">{item.icon}</span>
+                                                        <span className="min-w-0">
+                                                            <span className="block text-sm font-bold">{item.label}</span>
+                                                            <span className={`block truncate text-xs ${isActive ? 'text-background/70' : 'text-muted/80'}`}>{item.desc}</span>
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </nav>
+                                    </div>
+
+                                    <div className="px-2 text-xs text-muted flex items-center gap-2">
+                                        <Database className="w-3 h-3" />
+                                        <span>BrainDump AI {LATEST_CHANGELOG_VERSION}</span>
+                                    </div>
+                                </aside>
+
                             <AnimatePresence mode="wait" initial={false}>
                                 <motion.div
                                     key={activeTab}
@@ -300,7 +363,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         duration: 0.25,
                                         ease: "easeInOut"
                                     }}
-                                    className="w-full"
+                                    className={controlCenterSurface.contentPane}
                                 >
                                     {/* MAIN VIEW */}
                                     {activeTab === 'main' && (
@@ -388,7 +451,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             </div>
 
                                             {/* Menu List */}
-                                            <div className="space-y-2">
+                                            <div className="space-y-2 lg:hidden">
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider ml-1 mb-2">Settings</h3>
                                                 {menuItems.map(item => (
                                                     <button
@@ -422,7 +485,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                     {/* APPEARANCE TAB */}
                                     {activeTab === 'appearance' && (
-                                        <div className="space-y-6">
+                                        <div className={contentSurface.desktopSettingsGrid}>
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Theme</h3>
                                                 <div className="grid grid-cols-3 gap-3">
@@ -546,7 +609,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                     {/* BEHAVIOR TAB */}
                                     {activeTab === 'behavior' && (
-                                        <div className="space-y-6">
+                                        <div className={contentSurface.desktopSettingsGrid}>
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Parsing Mode</h3>
                                                 <div className="flex flex-col gap-3">
@@ -593,7 +656,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     </div>
                                                 </div>
                                             </section>
-                                            <section>
+                                            <section className={contentSurface.desktopSettingsWide}>
                                                 <div className="flex items-center justify-between mb-3">
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider ml-1">System Prompt</h3>
                                                     <button 
@@ -683,7 +746,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                     {/* NOTIFICATIONS TAB */}
                                     {activeTab === 'notifications' && (
-                                        <div className="space-y-6">
+                                        <div className={contentSurface.desktopSettingsGrid}>
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">System Permission</h3>
                                                 <div className="bg-background border border-border rounded-2xl p-4">
@@ -834,7 +897,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                     {/* BUDGET TAB */}
                                     {activeTab === 'budget' && (
-                                        <div className="space-y-6">
+                                        <div className={contentSurface.desktopSettingsGrid}>
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Income</h3>
                                                 <div>
@@ -919,7 +982,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                     {/* DATA TAB */}
                                     {activeTab === 'data' && (
-                                        <div className="space-y-6">
+                                        <div className={contentSurface.desktopSettingsGrid}>
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Export & Import</h3>
                                                 <div className="grid grid-cols-2 gap-3">
@@ -946,7 +1009,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             </section>
 
                                             {onRunCanonicalBackfill && (
-                                                <section>
+                                                <section className={contentSurface.desktopSettingsWide}>
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Canonical Cleanup</h3>
                                                     <div className="bg-background border border-border rounded-2xl p-4 space-y-3">
                                                         <div className="flex items-start gap-3">
@@ -1035,7 +1098,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             )}
 
                                             {spreadsheetConfig && (
-                                                <section>
+                                                <section className={contentSurface.desktopSettingsWide}>
                                                     <div className="flex items-center justify-between mb-3 ml-1">
                                                         <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Database History</h3>
                                                         <div className="flex items-center gap-3">
@@ -1103,7 +1166,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 </section>
                                             )}
 
-                                            <section>
+                                            <section className={contentSurface.desktopSettingsWide}>
                                                 <h3 className="text-xs font-bold text-red-500 uppercase tracking-wider mb-3 ml-1">Danger Zone</h3>
                                                 <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
                                                     <div className="flex items-start gap-3 mb-4">
@@ -1134,7 +1197,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                     {/* CONNECT TAB */}
                                     {activeTab === 'connect' && (
-                                        <div className="space-y-6">
+                                        <div className={contentSurface.desktopSettingsGrid}>
                                             {/* Google Profile Section */}
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Google Account</h3>
@@ -1296,7 +1359,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     )}
                                     {/* CHANGELOG TAB */}
                                     {activeTab === 'changelog' && (
-                                        <div className="space-y-6">
+                                        <div className={contentSurface.pageStack}>
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Version History</h3>
                                                 <div className="space-y-4">
@@ -1324,6 +1387,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     )}
                                 </motion.div>
                             </AnimatePresence>
+                            </div>
                         </div>
                     </motion.div>
                     

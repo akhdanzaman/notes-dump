@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Target } from 'lucide-react';
+import { responsiveModal } from './layout/contentSurface';
 
 interface SkillModalProps {
   isOpen: boolean;
@@ -31,8 +32,8 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface rounded-xl w-full max-w-sm shadow-2xl p-6">
+    <div className={`${responsiveModal.overlay} z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200`}>
+      <div className={`${responsiveModal.panel} rounded-3xl w-full max-w-sm lg:max-w-lg p-6 lg:p-7`}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-primary">{mode === 'add' ? 'Add New Skill' : 'Edit Skill'}</h3>
           <button onClick={onClose} className="text-muted hover:text-primary">
@@ -40,7 +41,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
           </button>
         </div>
         
-        <div className="space-y-4 mb-6">
+        <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 mb-6">
             <div>
                 <label className="block text-xs font-medium text-muted mb-1">Skill Name</label>
                 <input
@@ -71,12 +72,12 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
             </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-primary">Cancel</button>
+        <div className={responsiveModal.footer}>
+            <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm text-muted hover:text-primary hover:bg-muted/10">Cancel</button>
             <button 
                 onClick={handleSave}
                 disabled={!name.trim()}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
                 Save
             </button>

@@ -3,6 +3,7 @@ import { BrainDumpItem, ItemType, AppSettings, Tab } from '../../types';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Calendar as CalendarIcon, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+import { contentSurface, responsiveModal } from '../layout/contentSurface';
 
 interface CalendarViewProps {
     items: BrainDumpItem[];
@@ -200,10 +201,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
     const selectedItemDate = selectedItem?.meta.start || selectedItem?.meta.date || selectedItem?.meta.dateTime;
 
     return (
-        <div className="min-h-screen bg-background pt-safe pb-36">
+        <div className="min-h-screen bg-background pt-safe pb-36 lg:pb-32">
             <motion.div
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
+                className={contentSurface.headerHero}
                 transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -266,7 +267,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 </div>
             </motion.div>
 
-            <div className="px-4 pb-2 pt-3">
+            <div className={`${contentSurface.contentPad} pb-2 pt-3`}>
                 <div className="rounded-[28px] border border-border bg-surface/40 overflow-hidden">
                     <div className="grid grid-cols-7 border-b border-border bg-background/40">
                         {WEEK_DAYS.map(day => (
@@ -276,7 +277,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                         ))}
                     </div>
 
-                    <div className="grid grid-cols-7 auto-rows-[minmax(132px,auto)] sm:auto-rows-[minmax(148px,auto)]">
+                    <div className="grid grid-cols-7 auto-rows-[minmax(132px,auto)] sm:auto-rows-[minmax(148px,auto)] lg:auto-rows-[minmax(168px,auto)]">
                         {calendarDays.map((dayObj, idx) => {
                             const isToday = dayObj.date.getDate() === today.getDate() &&
                                 dayObj.date.getMonth() === today.getMonth() &&
@@ -289,7 +290,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 <div
                                     key={`${getDateKey(dayObj.date)}-${idx}`}
                                     className={[
-                                        'min-w-0 border-r border-b border-border/80 px-1 py-1.5 flex flex-col gap-1 overflow-hidden transition-colors last:border-r-0',
+                                        'min-w-0 border-r border-b border-border/80 px-1 py-1.5 lg:px-2 lg:py-2 flex flex-col gap-1 overflow-hidden transition-colors last:border-r-0',
                                         idx % 7 === 6 ? 'border-r-0' : '',
                                         dayObj.isCurrentMonth
                                             ? 'bg-surface/70'
@@ -317,7 +318,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                                 key={item.id}
                                                 onClick={() => setSelectedItem(item)}
                                                 className={[
-                                                    'block w-full min-w-0 rounded-md px-1.5 py-1 text-left text-[9px] leading-[1.15] transition-colors',
+                                                    'block w-full min-w-0 rounded-md px-1.5 py-1 lg:px-2 text-left text-[9px] lg:text-[10px] leading-[1.15] transition-colors',
                                                     item.status === 'done'
                                                         ? 'bg-muted/10 text-muted line-through opacity-70'
                                                         : item.type === ItemType.EVENT
@@ -347,7 +348,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+                        className={`${responsiveModal.overlay} z-50 flex items-center justify-center p-4`}
                         onClick={() => setSelectedItem(null)}
                     >
                         <motion.div
@@ -355,7 +356,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                             animate={{ y: 0, opacity: 1, scale: 1 }}
                             exit={{ y: 12, opacity: 0, scale: 0.98 }}
                             onClick={e => e.stopPropagation()}
-                            className="w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-surface shadow-xl"
+                            className={`${responsiveModal.panel} w-full max-w-md lg:max-w-xl overflow-hidden rounded-[28px] border bg-surface`}
                         >
                             <div className="flex items-center justify-between border-b border-border px-4 py-4">
                                 <div>

@@ -46,6 +46,7 @@ import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import Card from '../Card';
 import ReviewCenterPanel from '../ReviewCenterPanel';
+import { contentSurface } from '../layout/contentSurface';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -342,8 +343,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         const horizontalMargin = 16;
         const verticalGap = 8;
         const popupOffsetY = -6;
-        const preferredWidth = 380;
-        const minWidth = 280;
+        const preferredWidth = viewportWidth >= 1024 ? 520 : 380;
+        const minWidth = viewportWidth >= 1024 ? 420 : 280;
 
         const width = Math.min(
             preferredWidth,
@@ -354,7 +355,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         left = Math.max(horizontalMargin, left);
         left = Math.min(left, viewportWidth - width - horizontalMargin);
 
-        const estimatedHeight = Math.min(480, viewportHeight * 0.6);
+        const estimatedHeight = Math.min(viewportWidth >= 1024 ? 620 : 480, viewportHeight * (viewportWidth >= 1024 ? 0.7 : 0.6));
 
 
         let top = rect.bottom + verticalGap + popupOffsetY;
@@ -531,10 +532,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     };
 
     return (
-        <div className="pb-24">
+        <div className={contentSurface.pageShell}>
             <motion.div
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-6 touch-pan-y"
+                className={`${contentSurface.headerHero} mb-6`}
                 transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -651,10 +652,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="px-4 space-y-8"
+                className={contentSurface.dashboardGrid}
             >
-                <section>
-                    <div className="grid grid-cols-4 gap-3">
+                <section className={`${contentSurface.sideColumn} lg:order-2`}>
+                    <div className="grid grid-cols-4 gap-3 lg:grid-cols-2 lg:rounded-[28px] lg:border lg:border-border lg:bg-surface/70 lg:p-4">
                         <button
                             onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
                             className="flex flex-col items-center gap-2 group"
@@ -697,7 +698,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
                 </section>
 
-                <section>
+                <section className={`${contentSurface.primaryColumn} lg:order-1 lg:row-span-2`}>
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex flex-col">
                             <h2 className="text-lg font-bold flex items-center gap-2">
@@ -719,7 +720,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
 
                     {displayItems.length > 0 ? (
-                        <div className={`space-y-3 ${isDoneState ? 'opacity-60 grayscale' : ''}`}>
+                        <div className={`${contentSurface.denseList} ${isDoneState ? 'opacity-60 grayscale' : ''}`}>
                             {displayItems.map(item => (
                                 <Card key={item.id} item={item} {...cardProps} />
                             ))}
@@ -733,7 +734,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 </section>
 
                 {showRitualsSection && (
-                    <section>
+                    <section className={`${contentSurface.sideColumn} lg:order-3`}>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold flex items-center gap-2">Rituals</h2>
                         </div>
@@ -757,7 +758,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </section>
                 )}
 
-                <section onClick={() => setActiveTab('money')} className="cursor-pointer group">
+                <section onClick={() => setActiveTab('money')} className={`${contentSurface.sideColumn} cursor-pointer group lg:order-4`}>
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold flex items-center gap-2">
                             Financials
@@ -834,7 +835,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.92, y: -8 }}
                                         transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                                        className="fixed bg-surface border border-border rounded-3xl z-[9999] overflow-hidden flex flex-col max-h-[60vh]"
+                                        className="fixed bg-surface border border-border rounded-3xl z-[9999] overflow-hidden flex flex-col max-h-[60vh] lg:max-h-[70vh] lg:shadow-2xl"
                                         style={{
                                             top: popupPosition.top,
                                             left: popupPosition.left,
@@ -879,7 +880,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                             </div>
                                         </div>
 
-                                        <div className="p-4 overflow-y-auto space-y-3">
+                                        <div className="p-4 lg:p-5 overflow-y-auto space-y-3">
                                             {displayInsights.length > 0 ? (
                                                 displayInsights.map((insight, idx) => {
                                                     let bgColor = 'bg-black/5 dark:bg-white/10';

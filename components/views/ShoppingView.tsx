@@ -7,6 +7,7 @@ import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 
 import { Plus, ShoppingCart, PiggyBank, Target, Wallet as WalletIcon, Calendar, Check, X, ChevronDown, ChevronUp, Trash2, Pencil, Save } from 'lucide-react';
 import { ItemType } from '../../types';
+import { contentSurface, responsiveModal } from '../layout/contentSurface';
 
 interface ShoppingViewProps {
     items: BrainDumpItem[];
@@ -354,7 +355,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     const renderGroup = (title: string, list: BrainDumpItem[], colorClass: string, category: ShoppingCategory) => {
         // Always render the group header so the user can add items, even if empty
         return (
-            <div className="mb-6">
+            <div className="mb-6 lg:mb-0">
                 <div className="flex items-center justify-between mb-3 pl-1">
                     <h3 className={`text-sm font-bold ${colorClass} uppercase tracking-wider`}>{title}</h3>
                     <button 
@@ -365,7 +366,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                     </button>
                 </div>
                 {list.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className={contentSurface.denseList}>
                         {list?.map(item => (
                         <ShoppingItem 
                             key={item.id} 
@@ -387,11 +388,11 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
     };
 
     return (
-    <div className="pb-20 min-h-[50vh] overflow-hidden">
+    <div className={contentSurface.pageShell}>
         {/* Top Container */}
         <motion.div 
             layoutId="top-container"
-            className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
+            className={contentSurface.invertedHeaderHero}
             transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
             onTouchStart={swipeHandlers.onTouchStart}
             onTouchMove={swipeHandlers.onTouchMove}
@@ -474,7 +475,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     {isEmpty ? (
                         <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
@@ -489,11 +490,11 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                             </div>
                         </div>
                     ) : (
-                        <>
+                        <div className={contentSurface.splitGrid}>
                             {(urgent.length > 0 || !isEmpty) && renderGroup("Urgent", urgent, "text-red-500", "urgent")}
                             {(routine.length > 0 || !isEmpty) && renderGroup("Routine & Maintenance", routine, "text-acc-event", "routine")}
                             {(normal.length > 0 || !isEmpty) && renderGroup("To Do / To Buy", normal, "text-acc-shopping", "not_urgent")}
-                        </>
+                        </div>
                     )}
                 </motion.div>
 
@@ -501,7 +502,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="w-full flex-shrink-0 px-4"
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     <div className="flex items-center justify-between mb-4 pl-1">
                         <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider">Saving Goals</h3>
@@ -514,7 +515,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
                     </div>
 
                     {savings.length > 0 ? (
-                        <div className="space-y-4">
+                        <div className={contentSurface.cardGrid}>
                             {savings?.map(goal => renderGoalCard(goal))}
                         </div>
                     ) : (
@@ -535,12 +536,12 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
         {/* Add Funds Modal */}
         <AnimatePresence>
             {addFundsModal?.isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+                <div className={responsiveModal.sheetOverlay}>
                     <motion.div 
                         initial={{ opacity: 0, y: 100 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 100 }}
-                        className="bg-surface border border-border rounded-t-[32px] sm:rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col"
+                        className={`${responsiveModal.sheetPanel} max-w-md lg:max-w-lg border border-border`}
                     >
                         <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                             <h3 className="text-xl font-bold text-primary flex items-center gap-2">

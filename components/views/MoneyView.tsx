@@ -8,6 +8,7 @@ import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
+import { contentSurface } from '../layout/contentSurface';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -196,11 +197,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     };
 
     return (
-        <div className="min-h-[60vh] overflow-hidden pb-20">
+        <div className={contentSurface.pageShell}>
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y"
+                className={contentSurface.headerHero}
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -237,9 +238,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         </div>
                         <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
                         
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-2 gap-4 mb-4 lg:grid-cols-4">
                             <div 
-                                className="bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y"
+                                className="bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
@@ -317,9 +318,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="w-full flex-shrink-0 px-4"
+                        className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                     >
-                        <div className="space-y-4">
+                        <div className={contentSurface.cardGrid}>
                             {visibleWallets.visibleItems.map(wallet => (
                                 <div 
                                     key={wallet.id} 
@@ -408,11 +409,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.4 }}
-                        className="w-full flex-shrink-0 px-4"
+                        className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                     >
-                        <div>
+                        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-6">
                             {list.length === 0 ? <div className="text-center text-muted py-10">No transactions recorded.</div> : (
-                                <div className="space-y-2">
+                                <div className={contentSurface.denseList}>
                                     {visibleTransactions.visibleItems.map(item => {
                                         const categoryName = budgetConfig.rules.find(r => r.id === item.meta.budgetCategory)?.name || item.meta.budgetCategory;
                                         return (
@@ -427,6 +428,22 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     <LoadMoreButton remainingCount={visibleTransactions.remainingCount} onClick={visibleTransactions.loadMore} className="mt-4" />
                                 </div>
                             )}
+                            <aside className="hidden lg:block rounded-[28px] border border-border bg-surface/70 p-4 text-sm text-muted">
+                                <div className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-muted">Filters</div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between gap-3"><span>Wallet</span><strong className="text-primary">{filterWallet || 'All'}</strong></div>
+                                    <div className="flex justify-between gap-3"><span>Type</span><strong className="text-primary capitalize">{filterTransactionType || 'All'}</strong></div>
+                                    <div className="flex justify-between gap-3"><span>Category</span><strong className="text-primary">{filterCategory || 'All'}</strong></div>
+                                    {(filterMinAmount || filterMaxAmount) && (
+                                        <div className="flex justify-between gap-3"><span>Amount</span><strong className="text-primary">{filterMinAmount || '0'} - {filterMaxAmount || '∞'}</strong></div>
+                                    )}
+                                    {selectedTag && <div className="flex justify-between gap-3"><span>Tag</span><strong className="text-primary">#{selectedTag}</strong></div>}
+                                    {searchQuery && <div className="flex justify-between gap-3"><span>Search</span><strong className="text-primary truncate">{searchQuery}</strong></div>}
+                                </div>
+                                <div className="mt-4 border-t border-border pt-4 text-xs leading-relaxed">
+                                    Desktop keeps the same Floating Search filters; this panel mirrors active state for scanability.
+                                </div>
+                            </aside>
                         </div>
                     </motion.div>
 
@@ -436,7 +453,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.4 }}
-                        className="w-full flex-shrink-0 px-4 pb-8"
+                        className={`w-full flex-shrink-0 ${contentSurface.contentPad} pb-8`}
                     >
                         {effectiveIncome === 0 ? (
                             <div className="text-center p-6 bg-surface border border-border rounded-3xl">
