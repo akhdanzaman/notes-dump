@@ -1,3 +1,14 @@
+export const TABLET_BASELINE = {
+  minWidth: 640,
+  maxWidth: 1023,
+  desktopBreakpointClass: 'lg',
+  shellModel: 'bottom-stack-first',
+  modalCenteringClass: 'sm:items-center',
+  masonryColumnsClass: 'sm:columns-2',
+} as const;
+
+const tabletMasonryGridClass = 'columns-1 sm:columns-2 gap-4';
+
 export const contentSurface = {
   pageStack: 'space-y-6',
   // NDZ-012: desktop pages reserve enough scroll room for the wider fixed composer/chat stack and bottom actions.
@@ -17,7 +28,9 @@ export const contentSurface = {
   workflowPanel: 'rounded-[28px] border border-border/70 bg-surface/55 p-4 shadow-sm',
   detailSplitGrid: 'space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6 lg:space-y-0',
   cardGrid: 'space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0',
-  masonryGrid: 'columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-4',
+  // NDZ-016: tablet (640-1023px) is a locked baseline: two-column masonry, no desktop rail assumptions.
+  tabletMasonryGrid: tabletMasonryGridClass,
+  masonryGrid: `${tabletMasonryGridClass} lg:columns-3 2xl:columns-4`,
   denseList: 'space-y-3 lg:space-y-2',
   emptyStateCard: 'rounded-[32px] border border-dashed border-border bg-surface/60 p-6 text-center shadow-sm lg:p-8',
   desktopSettingsGrid: 'space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0',
@@ -27,6 +40,7 @@ export const contentSurface = {
 
 export const responsiveModal = {
   overlay: 'fixed inset-0 bg-black/60 backdrop-blur-sm',
+  // NDZ-016: sm is the tablet entry point; keep existing centered tablet modal behavior until a later task proves a change.
   sheetOverlay: 'fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm',
   panel: 'bg-surface border-border shadow-2xl',
   sheetPanel: 'bg-surface rounded-t-[32px] sm:rounded-[32px] w-full shadow-2xl overflow-hidden flex flex-col',

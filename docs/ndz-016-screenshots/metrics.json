@@ -1,0 +1,186 @@
+{
+  "staticGate": [
+    {
+      "name": "tablet min width is explicit",
+      "passed": true
+    },
+    {
+      "name": "tablet max width is explicit",
+      "passed": true
+    },
+    {
+      "name": "tablet masonry keeps sm two columns",
+      "passed": true
+    },
+    {
+      "name": "library masonry only expands at lg desktop",
+      "passed": true
+    },
+    {
+      "name": "modal overlay still centers at sm",
+      "passed": true
+    },
+    {
+      "name": "desktop shell rail starts at lg",
+      "passed": true
+    },
+    {
+      "name": "bottom nav stays active below lg",
+      "passed": true
+    },
+    {
+      "name": "runtime proof hook exists for library masonry",
+      "passed": true
+    },
+    {
+      "name": "runtime proof hook exists for add-note modal",
+      "passed": true
+    }
+  ],
+  "metrics": [
+    {
+      "label": "tablet-640x900-library",
+      "viewport": {
+        "width": 640,
+        "height": 900
+      },
+      "activeTab": "library",
+      "railVisible": false,
+      "bottomNavVisible": true,
+      "bottomStackVisible": true,
+      "mainLeft": 0,
+      "mainMaxWidth": "672px",
+      "masonryVisible": true,
+      "masonryColumnCount": "2",
+      "masonryChildCount": 6,
+      "modalVisible": false,
+      "modalOverlayAlignItems": null,
+      "modalOverlayPadding": null,
+      "modalPanelWidth": null,
+      "modalPanelTop": null,
+      "modalPanelBottomGap": null,
+      "modalCenterDelta": null,
+      "modalPanelMaxWidth": null
+    },
+    {
+      "label": "tablet-640x900-add-note-modal",
+      "viewport": {
+        "width": 640,
+        "height": 900
+      },
+      "activeTab": "library",
+      "railVisible": false,
+      "bottomNavVisible": true,
+      "bottomStackVisible": true,
+      "mainLeft": 0,
+      "mainMaxWidth": "672px",
+      "masonryVisible": true,
+      "masonryColumnCount": "2",
+      "masonryChildCount": 6,
+      "modalVisible": true,
+      "modalOverlayAlignItems": "center",
+      "modalOverlayPadding": "16px",
+      "modalPanelWidth": 448,
+      "modalPanelTop": 193.5,
+      "modalPanelBottomGap": 193.5,
+      "modalCenterDelta": 0,
+      "modalPanelMaxWidth": "448px"
+    },
+    {
+      "label": "tablet-820x1180-library",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "activeTab": "library",
+      "railVisible": false,
+      "bottomNavVisible": true,
+      "bottomStackVisible": true,
+      "mainLeft": 74,
+      "mainMaxWidth": "672px",
+      "masonryVisible": true,
+      "masonryColumnCount": "2",
+      "masonryChildCount": 6,
+      "modalVisible": false,
+      "modalOverlayAlignItems": null,
+      "modalOverlayPadding": null,
+      "modalPanelWidth": null,
+      "modalPanelTop": null,
+      "modalPanelBottomGap": null,
+      "modalCenterDelta": null,
+      "modalPanelMaxWidth": null
+    },
+    {
+      "label": "tablet-820x1180-add-note-modal",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "activeTab": "library",
+      "railVisible": false,
+      "bottomNavVisible": true,
+      "bottomStackVisible": true,
+      "mainLeft": 74,
+      "mainMaxWidth": "672px",
+      "masonryVisible": true,
+      "masonryColumnCount": "2",
+      "masonryChildCount": 6,
+      "modalVisible": true,
+      "modalOverlayAlignItems": "center",
+      "modalOverlayPadding": "16px",
+      "modalPanelWidth": 448,
+      "modalPanelTop": 333.5,
+      "modalPanelBottomGap": 333.5,
+      "modalCenterDelta": 0,
+      "modalPanelMaxWidth": "448px"
+    },
+    {
+      "label": "tablet-1023x900-library",
+      "viewport": {
+        "width": 1023,
+        "height": 900
+      },
+      "activeTab": "library",
+      "railVisible": false,
+      "bottomNavVisible": true,
+      "bottomStackVisible": true,
+      "mainLeft": 168,
+      "mainMaxWidth": "672px",
+      "masonryVisible": true,
+      "masonryColumnCount": "2",
+      "masonryChildCount": 6,
+      "modalVisible": false,
+      "modalOverlayAlignItems": null,
+      "modalOverlayPadding": null,
+      "modalPanelWidth": null,
+      "modalPanelTop": null,
+      "modalPanelBottomGap": null,
+      "modalCenterDelta": null,
+      "modalPanelMaxWidth": null
+    },
+    {
+      "label": "tablet-1023x900-add-note-modal",
+      "viewport": {
+        "width": 1023,
+        "height": 900
+      },
+      "activeTab": "library",
+      "railVisible": false,
+      "bottomNavVisible": true,
+      "bottomStackVisible": true,
+      "mainLeft": 168,
+      "mainMaxWidth": "672px",
+      "masonryVisible": true,
+      "masonryColumnCount": "2",
+      "masonryChildCount": 6,
+      "modalVisible": true,
+      "modalOverlayAlignItems": "center",
+      "modalOverlayPadding": "16px",
+      "modalPanelWidth": 448,
+      "modalPanelTop": 193.5,
+      "modalPanelBottomGap": 193.5,
+      "modalCenterDelta": 0,
+      "modalPanelMaxWidth": "448px"
+    }
+  ]
+}

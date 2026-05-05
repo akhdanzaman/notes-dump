@@ -39,12 +39,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
 
     return (
         <AnimatePresence>
-            <div className={responsiveModal.sheetOverlay}>
+            <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="add-task">
                 <motion.div 
                     initial={{ opacity: 0, y: 100 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 100 }}
                     className={responsiveModal.formPanel}
+                    data-tablet-modal-panel="add-task"
+                    data-ndz-tablet-baseline="modal"
                 >
                     <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                         <h3 className="text-xl font-bold text-primary flex items-center gap-2">

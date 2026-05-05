@@ -6,6 +6,7 @@ import { getJournalDayGroups, getNoteItems, JournalDayGroup } from '../../utils/
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { formatFinanceTypeLabel } from '../../utils/financeTypeUtils';
+import { contentSurface } from '../layout/contentSurface';
 
 interface NotesViewProps {
     items: BrainDumpItem[];
@@ -298,7 +299,11 @@ const NotesView: React.FC<NotesViewProps> = ({
         }
 
         return (
-            <div className="columns-1 sm:columns-2 gap-4">
+            <div
+                data-tablet-masonry="legacy-notes"
+                data-ndz-tablet-baseline="masonry"
+                className={contentSurface.tabletMasonryGrid}
+            >
                 {data?.map(item => {
                     const skillName = item.type === ItemType.SKILL_LOG 
                         ? (skills.find(s => s.id === item.meta.skillId)?.name || item.meta.skillName)

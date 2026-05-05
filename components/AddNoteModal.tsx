@@ -29,12 +29,14 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
 
     return (
         <AnimatePresence>
-            <div className={responsiveModal.sheetOverlay}>
+            <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="add-note">
                 <motion.div 
                     initial={{ opacity: 0, y: 100 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 100 }}
                     className={`${responsiveModal.formPanel} max-h-[90vh]`}
+                    data-tablet-modal-panel="add-note"
+                    data-ndz-tablet-baseline="modal"
                 >
                     <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                         <h3 className="text-xl font-bold text-primary flex items-center gap-2">

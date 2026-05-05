@@ -365,7 +365,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         // Masonry layout for general notes
         return (
             <div className="space-y-4">
-                <div className={contentSurface.masonryGrid}>
+                <div
+                    data-tablet-masonry="library-notes"
+                    data-ndz-tablet-baseline="masonry"
+                    className={contentSurface.masonryGrid}
+                >
                     {visibleGeneralItems.visibleItems.map(item => (
                         <Card key={item.id} item={item} {...commonProps} />
                     ))}
@@ -523,6 +527,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 </p>
                             </div>
                             <button
+                                data-library-add-button="true"
                                 onClick={() => {
                                     if (librarySubTab === 'general') onAddItem(ItemType.NOTE);
                                     if (librarySubTab === 'skills') handleOpenAddSkill();
