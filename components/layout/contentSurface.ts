@@ -1,7 +1,7 @@
 export const contentSurface = {
   pageStack: 'space-y-6',
-  // NDZ-007 #2: desktop pages reserve enough scroll room for the wider fixed composer/chat stack.
-  pageShell: 'pb-20 min-h-[50vh] overflow-hidden lg:pb-44',
+  // NDZ-012: desktop pages reserve enough scroll room for the wider fixed composer/chat stack and bottom actions.
+  pageShell: 'pb-20 min-h-[50vh] overflow-hidden lg:pb-52',
   headerHero: 'bg-surface text-primary rounded-b-[32px] p-6 pt-12 mb-4 touch-pan-y lg:mt-6 lg:rounded-[32px] lg:border lg:border-border lg:p-7 lg:shadow-sm',
   invertedHeaderHero: 'bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y lg:mt-6 lg:rounded-[32px] lg:border lg:border-border lg:p-7',
   // NDZ-007 #1: keep mobile gutters, but let desktop content align to the shared shell edge.

@@ -33,7 +33,7 @@ import ReviewCenterPanel from './components/ReviewCenterPanel';
 import Onboarding from './components/Onboarding';
 import FeatureTutorialPopup from './components/FeatureTutorialPopup';
 import DesktopNavRail from './components/layout/DesktopNavRail';
-import { getResponsiveShellContentVariant, responsiveShellClass, responsiveShellContentClass } from './components/layout/responsiveShell';
+import { getResponsiveShellContentVariant, responsiveShellClass, responsiveShellComposerContentClass, responsiveShellContentClass } from './components/layout/responsiveShell';
 import { History, X, ClipboardCheck, ChevronDown } from 'lucide-react';
 import { LATEST_CHANGELOG, LATEST_CHANGELOG_VERSION, SEEN_CHANGELOG_STORAGE_KEY } from './utils/changelog';
 import { FEATURE_TUTORIALS, FEATURE_TUTORIALS_DISABLED_KEY, FEATURE_TUTORIALS_STORAGE_KEY, FeatureTutorialKey, getFeatureTutorialKey, parseSeenFeatureTutorials } from './utils/featureTutorials';
@@ -820,21 +820,21 @@ const App: React.FC = () => {
         ref={fixedBottomRef}
         className={responsiveShellClass.fixedBottom}
       >
-          <FloatingChatBox 
-              isOpen={isChatOpen} 
-              onClose={() => setIsChatOpen(false)} 
-              items={items} 
-              budgetConfig={budgetConfig} 
-              wallets={wallets} 
-              skills={skills} 
-              monthlyThemes={monthlyThemes}
-              newMessage={newChatMessage} 
-              chatHistory={chatHistory}
-              onUpdateHistory={handleUpdateChatHistory}
-              onResetChat={handleResetChat}
-              chatModel={appSettings.chatModel}
-          />
-          <div className={responsiveShellClass.fixedBottomContent}>
+          <div className={responsiveShellComposerContentClass[activeShellContentVariant]} data-shell-composer-variant={activeShellContentVariant}>
+            <FloatingChatBox 
+                isOpen={isChatOpen} 
+                onClose={() => setIsChatOpen(false)} 
+                items={items} 
+                budgetConfig={budgetConfig} 
+                wallets={wallets} 
+                skills={skills} 
+                monthlyThemes={monthlyThemes}
+                newMessage={newChatMessage} 
+                chatHistory={chatHistory}
+                onUpdateHistory={handleUpdateChatHistory}
+                onResetChat={handleResetChat}
+                chatModel={appSettings.chatModel}
+            />
             <InputBar 
                 onSend={handleAppSend} 
                 onFocus={() => { setIsSearchExpanded(false); }} 

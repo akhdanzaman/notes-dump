@@ -50,10 +50,17 @@ export const getResponsiveShellContentVariant = ({
   return 'standard';
 };
 
+export const responsiveShellComposerContentClass = {
+  // NDZ-012: desktop composer/chat stays on the same gutter + width contract as the active surface.
+  standard: 'pointer-events-none relative flex flex-col items-center w-full lg:items-start lg:mx-0 lg:mr-auto lg:max-w-6xl 2xl:max-w-7xl',
+  wide: 'pointer-events-none relative flex flex-col items-center w-full lg:items-start lg:mx-0 lg:mr-auto lg:max-w-7xl 2xl:max-w-[90rem]',
+  workspace: 'pointer-events-none relative flex flex-col items-center w-full lg:items-start lg:mx-0 lg:mr-auto lg:max-w-[96rem]',
+} as const;
+
 export const responsiveShellComposerClass = {
   // NDZ-007 #2: fixed composer follows the rail-aware content gutter/origin on desktop.
   wrap: 'fixed bottom-0 left-0 w-full z-40 bg-transparent pointer-events-none lg:left-72 lg:w-[calc(100%-18rem)] lg:px-8',
-  container: 'pointer-events-none flex flex-col items-center w-full lg:items-start lg:mx-0 lg:mr-auto lg:max-w-6xl 2xl:max-w-7xl',
+  container: responsiveShellComposerContentClass.standard,
 } as const;
 
 export const responsiveShellClass = {
