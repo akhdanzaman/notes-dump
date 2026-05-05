@@ -37,6 +37,8 @@ Required invariants:
 Running the gate writes:
 
 - `docs/ndz-016-screenshots/metrics.json`
+- `docs/ndz-016-screenshots/runtime-proof.json`
+- `docs/ndz-016-screenshots/runtime-proof.txt`
 - `docs/ndz-016-screenshots/tablet-640x900-library.png`
 - `docs/ndz-016-screenshots/tablet-640x900-add-note-modal.png`
 - `docs/ndz-016-screenshots/tablet-820x1180-library.png`

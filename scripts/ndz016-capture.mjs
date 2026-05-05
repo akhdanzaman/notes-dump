@@ -24,7 +24,8 @@ const chrome = spawn('/usr/bin/google-chrome', [
 
 chrome.stderr.on('data', d => {
   const text = d.toString();
-  if (!text.includes('DevTools listening')) process.stderr.write(text);
+  if (text.includes('DevTools listening') || text.includes('DEPRECATED_ENDPOINT')) return;
+  process.stderr.write(text);
 });
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -69,7 +70,8 @@ class CDP {
   close() { this.ws.close(); }
 }
 
-const now = new Date('2026-05-05T05:00:00.000Z');
+const today = '2026-05-05';
+const now = new Date(`${today}T05:00:00.000Z`);
 const iso = d => d.toISOString();
 const note = (id, content, dayOffset = 0, tags = ['tablet']) => ({
   id,
@@ -88,7 +90,7 @@ const db = {
     note('n4', 'Library should still feel bottom-stack-first on tablets.', -2),
     note('n5', 'Two-column cards are easier to scan on 820px tablets.', -1),
     note('n6', 'NDZ-016 acceptance gate covers 640 through 1023.', 0),
-    { id: 't1', type: 'TODO', content: 'Keep tablet shell locked', status: 'pending', created_at: iso(now), meta: { date: '2026-05-05', priority: 'high' } },
+    { id: 't1', type: 'TODO', content: 'Keep tablet shell locked', status: 'pending', created_at: iso(now), meta: { date: today, priority: 'high' } },
   ],
   budgetConfig: { monthlyIncome: 9500000, rules: [
     { id: 'needs', name: 'Needs', percentage: 50, color: 'bg-blue-500' },
@@ -114,7 +116,7 @@ const seedScript = `(() => {
   localStorage.setItem('braindump_spreadsheet_cache', ${JSON.stringify(JSON.stringify(db))});
   localStorage.setItem('braindump_ai_insights', JSON.stringify([]));
   localStorage.setItem('braindump_ai_insights_version', 'v2');
-  localStorage.setItem('braindump_ai_insights_date', '2026-05-05');
+  localStorage.setItem('braindump_ai_insights_date', '${today}');
 })();`;
 
 async function createPage() {
@@ -275,6 +277,41 @@ try {
   if (failures.length) {
     throw new Error(`NDZ-016 tablet baseline gate failed:\n- ${failures.join('\n- ')}`);
   }
+
+  const runtimeProof = {
+    task: 'NDZ-016',
+    status: 'passed',
+    generatedAt: new Date().toISOString(),
+    command: `PREVIEW_URL=${previewUrl} node scripts/ndz016-capture.mjs`,
+    previewUrl,
+    deterministicSeedDate: today,
+    viewports: metrics.map(entry => ({
+      label: entry.label,
+      viewport: entry.viewport,
+      railVisible: entry.railVisible,
+      bottomNavVisible: entry.bottomNavVisible,
+      bottomStackVisible: entry.bottomStackVisible,
+      masonryColumnCount: entry.masonryColumnCount,
+      modalOverlayAlignItems: entry.modalOverlayAlignItems,
+      modalPanelWidth: entry.modalPanelWidth,
+      modalCenterDelta: entry.modalCenterDelta,
+    })),
+    staticGate,
+    assertions: {
+      railHiddenAcrossTablet: metrics.every(entry => entry.railVisible === false),
+      bottomStackVisibleAcrossTablet: metrics.every(entry => entry.bottomNavVisible === true && entry.bottomStackVisible === true),
+      libraryMasonryTwoColumnsAcrossTablet: metrics.filter(entry => !entry.label.includes('add-note-modal')).every(entry => entry.masonryColumnCount === '2'),
+      smModalCenteredAcrossTablet: metrics.filter(entry => entry.label.includes('add-note-modal')).every(entry => entry.modalOverlayAlignItems === 'center' && entry.modalCenterDelta === 0 && entry.modalPanelWidth <= 448),
+    },
+  };
+
+  await writeFile(path.join(outDir, 'runtime-proof.json'), JSON.stringify(runtimeProof, null, 2));
+  console.log('NDZ-016 runtime gate passed');
+  console.log(`Preview URL: ${previewUrl}`);
+  console.log('Viewports: 640x900, 820x1180, 1023x900');
+  console.log('Assertions: rail hidden; bottom stack visible; library masonry column-count=2; add-note modal centered at sm/max-w-md');
+  console.log(`Proof: ${path.relative(root, path.join(outDir, 'runtime-proof.json'))}`);
+  console.log(`Metrics: ${path.relative(root, path.join(outDir, 'metrics.json'))}`);
 } finally {
   page.close();
   browser.close();
