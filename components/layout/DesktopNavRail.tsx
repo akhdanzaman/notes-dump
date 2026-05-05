@@ -86,6 +86,51 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
 
   const StatusIcon = statusConfig.icon;
   const syncActionLabel = activeStatus === 'error' ? 'Retry sync' : activeStatus === 'local' ? 'Sync now' : 'Manual sync';
+  const queueTooltip = reviewQueueCount > 0 || pendingCount > 0
+    ? `${reviewQueueCount} waiting for review · ${pendingCount} pending write${pendingCount === 1 ? '' : 's'}`
+    : 'Review queue clear · no pending writes';
+  const syncTooltip = `${statusConfig.label} — ${statusConfig.helper}`;
+
+  const StatusSquare = ({
+    label,
+    description,
+    icon,
+    className,
+    onClick,
+  }: {
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+    className: string;
+    onClick?: () => void;
+  }) => {
+    const tooltip = `${label}: ${description}`;
+    const content = (
+      <>
+        {icon}
+        <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[16rem] -translate-x-1/2 rounded-xl border border-border bg-background/95 px-3 py-2 text-left text-xs leading-snug text-primary opacity-0 shadow-xl shadow-black/10 backdrop-blur-xl transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+          <span className="block font-bold">{label}</span>
+          <span className="block text-muted">{description}</span>
+        </span>
+      </>
+    );
+
+    const baseClass = `group relative flex h-12 min-w-0 items-center justify-center rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 ${className}`;
+
+    if (onClick) {
+      return (
+        <button type="button" onClick={onClick} title={tooltip} aria-label={tooltip} className={baseClass}>
+          {content}
+        </button>
+      );
+    }
+
+    return (
+      <div title={tooltip} aria-label={tooltip} className={baseClass}>
+        {content}
+      </div>
+    );
+  };
 
   return (
     <aside data-desktop-rail="true" className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-72 flex-col border-r border-border bg-surface/75 px-4 py-5 backdrop-blur-2xl shadow-2xl shadow-black/5">
@@ -145,14 +190,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
       </div>
 
       <div className="mt-auto space-y-3">
-        <section className="rounded-3xl border border-border bg-background/70 p-3 shadow-sm">
-          <div className="mb-3 flex items-center justify-between px-1">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted">Status</div>
-              <p className="mt-1 text-xs text-muted">Sync, review queue, and write state stay visible here.</p>
-            </div>
-          </div>
-
+        <section className="rounded-3xl border border-border bg-background/70 p-2 shadow-sm" aria-label="Desktop status shortcuts">
           {error && (
             <div className="mb-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-red-500">
               <div className="mb-1 flex items-center gap-2 text-sm font-bold">
@@ -163,63 +201,50 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className={`rounded-2xl border p-3 ${statusConfig.color}`}>
-              <div className="flex items-start gap-2">
-                <StatusIcon className={`mt-0.5 h-4 w-4 shrink-0 ${activeStatus === 'saving' || activeStatus === 'syncing' ? 'animate-spin' : ''}`} />
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-[0.18em]">Sync</div>
-                  <div className="mt-1 text-sm font-bold leading-tight">{statusConfig.label}</div>
-                  <div className="mt-1 text-[11px] leading-tight opacity-80">{statusConfig.helper}</div>
-                </div>
-              </div>
-            </div>
+          <div className="grid grid-cols-4 gap-2">
+            <StatusSquare
+              label="Sync"
+              description={syncTooltip}
+              onClick={statusConfig.onClick}
+              className={statusConfig.color}
+              icon={<StatusIcon className={`h-5 w-5 shrink-0 ${activeStatus === 'saving' || activeStatus === 'syncing' ? 'animate-spin' : ''}`} />}
+            />
 
-            <button
-              type="button"
+            <StatusSquare
+              label="Review + writes"
+              description={queueTooltip}
               onClick={onOpenReviewCenter}
-              className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-3 text-left text-indigo-500 transition-colors hover:bg-indigo-500/15"
-            >
-              <div className="flex items-start gap-2">
-                <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0" />
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-[0.18em]">Review queue</div>
-                  <div className="mt-1 text-sm font-bold leading-tight">{reviewQueueCount} waiting</div>
-                  <div className="mt-1 text-[11px] leading-tight opacity-80">Open parser + review center</div>
-                </div>
-              </div>
-            </button>
+              className="border-indigo-500/20 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/15"
+              icon={(
+                <span className="relative flex h-6 w-6 items-center justify-center">
+                  <ClipboardCheck className={`h-5 w-5 ${reviewQueueCount > 0 ? 'animate-pulse' : ''}`} />
+                  {reviewQueueCount > 0 && (
+                    <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-indigo-500 px-1 text-center text-[10px] font-black leading-4 text-white">
+                      {reviewQueueCount > 9 ? '9+' : reviewQueueCount}
+                    </span>
+                  )}
+                  {pendingCount > 0 && (
+                    <RefreshCw className="absolute -bottom-2 -right-2 h-3.5 w-3.5 animate-spin rounded-full bg-background text-blue-500" />
+                  )}
+                </span>
+              )}
+            />
 
-            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-3 text-blue-500">
-              <div className="flex items-start gap-2">
-                <RefreshCw className={`mt-0.5 h-4 w-4 shrink-0 ${pendingCount > 0 ? 'animate-spin' : ''}`} />
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-[0.18em]">Pending writes</div>
-                  <div className="mt-1 text-sm font-bold leading-tight">{pendingCount} item{pendingCount === 1 ? '' : 's'}</div>
-                  <div className="mt-1 text-[11px] leading-tight opacity-80">{pendingCount > 0 ? 'Unsynced local changes are still processing.' : 'No queued local writes.'}</div>
-                </div>
-              </div>
-            </div>
+            <StatusSquare
+              label="Refresh"
+              description="Pull the latest data from Sheets"
+              onClick={onRefreshClick}
+              className="border-border bg-surface/80 text-primary hover:bg-background"
+              icon={<RefreshCw className="h-5 w-5" />}
+            />
 
-            <div className="rounded-2xl border border-border bg-surface/80 p-3 text-primary">
-              <div className="text-xs font-bold uppercase tracking-[0.18em] text-muted">Manual actions</div>
-              <div className="mt-2 grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  onClick={onRefreshClick}
-                  className="min-w-0 rounded-xl border border-border bg-background/80 px-2 py-2 text-center text-xs font-bold leading-tight transition-colors hover:bg-background"
-                >
-                  Refresh
-                </button>
-                <button
-                  type="button"
-                  onClick={onSyncClick}
-                  className="min-w-0 rounded-xl border border-border bg-background/80 px-2 py-2 text-center text-xs font-bold leading-tight transition-colors hover:bg-background"
-                >
-                  {syncActionLabel}
-                </button>
-              </div>
-            </div>
+            <StatusSquare
+              label={syncActionLabel}
+              description={activeStatus === 'error' ? 'Retry the failed sync' : activeStatus === 'local' ? 'Push local changes to Sheets' : 'Run a manual sync'}
+              onClick={onSyncClick}
+              className="border-border bg-surface/80 text-primary hover:bg-background"
+              icon={<Save className="h-5 w-5" />}
+            />
           </div>
         </section>
 
