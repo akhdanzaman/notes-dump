@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { contentSurface, responsiveModal, TABLET_BASELINE } from '../contentSurface';
-import { RESPONSIVE_SHELL, responsiveShellClass } from '../responsiveShell';
+import { getResponsiveShellContentVariant, RESPONSIVE_SHELL, responsiveShellClass } from '../responsiveShell';
 
 test('NDZ-016 tablet baseline is explicit and bounded before desktop rail', () => {
   assert.equal(TABLET_BASELINE.minWidth, 640);
@@ -29,4 +29,34 @@ test('NDZ-016 keeps existing sm modal centering behavior', () => {
   assert.match(responsiveModal.formPanel, /max-w-md/);
   assert.match(responsiveModal.formPanel, /lg:max-w-2xl/);
   assert.doesNotMatch(responsiveModal.sheetOverlay, /md:items-start|md:items-end/);
+});
+
+test('NDZ-017 gives Summary the workspace shell without widening unrelated surfaces', () => {
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'summary',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'transactions',
+  }), 'workspace');
+
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'library',
+    planSubTab: 'tasks',
+    librarySubTab: 'skills',
+    moneyView: 'transactions',
+  }), 'standard');
+
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'money',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'budget',
+  }), 'wide');
+});
+
+test('NDZ-017 keeps Summary dashboard dense on wide desktop without new widget slots', () => {
+  assert.match(contentSurface.summaryDashboardGrid, /lg:grid-cols-\[minmax\(0,1fr\)_21rem\]/);
+  assert.match(contentSurface.summaryDashboardGrid, /xl:grid-cols-\[minmax\(0,1fr\)_23rem\]/);
+  assert.match(contentSurface.summaryDashboardGrid, /2xl:grid-cols-\[minmax\(0,1fr\)_25rem\]/);
+  assert.doesNotMatch(contentSurface.summaryDashboardGrid, /repeat\(|3fr|4fr/);
 });

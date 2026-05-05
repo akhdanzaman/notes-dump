@@ -17,8 +17,8 @@ export const contentSurface = {
   invertedHeaderHero: 'bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y lg:mt-6 lg:rounded-[32px] lg:border lg:border-border lg:p-7',
   // NDZ-007 #1: keep mobile gutters, but let desktop content align to the shared shell edge.
   contentPad: 'px-4 lg:px-0',
-  // NDZ-007 #3: Summary gets a wider, denser dashboard rhythm without adding new widgets.
-  dashboardGrid: 'px-4 space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-6 xl:gap-7 lg:space-y-0 lg:px-0',
+  // NDZ-017: Summary owns the wider desktop dashboard rhythm; keep side context useful without starving the primary scan column.
+  summaryDashboardGrid: 'px-4 space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem] 2xl:grid-cols-[minmax(0,1fr)_25rem] lg:items-start lg:gap-6 xl:gap-8 lg:space-y-0 lg:px-0',
   primaryColumn: 'lg:col-start-1',
   sideColumn: 'lg:col-start-2',
   sideStack: 'space-y-5 lg:space-y-6',

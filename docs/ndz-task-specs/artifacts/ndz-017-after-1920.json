@@ -1,0 +1,38 @@
+{
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "content": {
+    "x": 320,
+    "y": 0,
+    "width": 1536,
+    "height": 1181
+  },
+  "dashboard": {
+    "x": 320,
+    "y": 228,
+    "width": 1536,
+    "height": 746
+  },
+  "primary": {
+    "x": 320,
+    "y": 228,
+    "width": 1104,
+    "height": 496
+  },
+  "quickAdd": {
+    "x": 1456,
+    "y": 228,
+    "width": 400,
+    "height": 310
+  },
+  "financials": {
+    "x": 1456,
+    "y": 756,
+    "width": 400,
+    "height": 217
+  },
+  "dashboardClass": "px-4 space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem] 2xl:grid-cols-[minmax(0,1fr)_25rem] lg:items-start lg:gap-6 xl:gap-8 lg:space-y-0 lg:px-0",
+  "bodyText": "MY ASSISTANT\nBrainDump AI\nWORKSPACE\nHome\nOverview and daily pulse\nFocus\nFocus, shopping, and goals\nNotes\nNotes, skills, and journal\nMoney\nTransactions and wallets\nCalendar\nUpcoming dated work\nSync needs attention\n\nGagal menyimpan data ke cloud: Spreadsheet is not connected. Current data was kept as a temporary migration cache; connect Google Sheets to save it as the source of truth.\n\nSync\nSync failed — Click to retry\nReview + writes\nReview queue clear · no pending writes\nRefresh\nPull the latest "
+}

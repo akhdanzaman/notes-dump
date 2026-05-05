@@ -44,7 +44,7 @@ export const getResponsiveShellContentVariant = ({
   }
 
   if (activeTab === 'summary') {
-    return 'wide';
+    return 'workspace';
   }
 
   return 'standard';
