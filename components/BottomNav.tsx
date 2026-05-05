@@ -25,7 +25,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
   const tabs = getAppNavigationItems(planSubTab, librarySubTab);
 
   return (
-    <div className="w-full pb-6 px-4 z-40" role="navigation" aria-label="Mobile bottom navigation">
+    <div data-mobile-bottom-nav="true" className="w-full pb-6 px-4 z-40 lg:hidden" role="navigation" aria-label="Mobile bottom navigation">
       <div className="flex justify-center">
         <div className="w-fit">
           <div className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-2 backdrop-blur-xl">
@@ -36,6 +36,10 @@ const BottomNav: React.FC<BottomNavProps> = ({
               return (
                 <button
                   key={`${tab.id}-${tab.subTab || 'main'}`}
+                  data-mobile-nav-tab={tab.id}
+                  data-active={isActive ? 'true' : 'false'}
+                  aria-current={isActive ? 'page' : undefined}
+                  aria-label={tab.label}
                   onClick={() => {
                     setActiveTab(tab.id);
                     if (tab.subTab) {
@@ -79,7 +83,9 @@ const BottomNav: React.FC<BottomNavProps> = ({
             <div className="mx-1 h-5 w-px shrink-0 bg-border" />
 
             <button
+              data-mobile-nav-menu="true"
               onClick={onMenuClick}
+              aria-label="Menu"
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted transition-all duration-300 ease-in-out hover:bg-black/5 hover:text-primary dark:hover:bg-white/10"
             >
               <Menu className="h-5 w-5" />

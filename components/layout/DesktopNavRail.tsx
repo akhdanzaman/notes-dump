@@ -88,7 +88,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
   const syncActionLabel = activeStatus === 'error' ? 'Retry sync' : activeStatus === 'local' ? 'Sync now' : 'Manual sync';
 
   return (
-    <aside className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-72 flex-col border-r border-border bg-surface/75 px-4 py-5 backdrop-blur-2xl shadow-2xl shadow-black/5">
+    <aside data-desktop-rail="true" className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-72 flex-col border-r border-border bg-surface/75 px-4 py-5 backdrop-blur-2xl shadow-2xl shadow-black/5">
       <div className="flex items-center gap-3 px-2 pb-5">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-500 ring-1 ring-indigo-500/20">
           <Brain className="h-6 w-6" />

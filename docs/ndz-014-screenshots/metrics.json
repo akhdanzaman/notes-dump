@@ -1,0 +1,92 @@
+[
+  {
+    "label": "summary-390x844",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "railVisible": false,
+    "bottomNavVisible": true,
+    "composerVisible": true,
+    "menuVisible": true,
+    "controlCenterVisible": false,
+    "activeNavTab": "summary",
+    "activeNavLabel": "Home",
+    "composerBottomGap": 98
+  },
+  {
+    "label": "summary-820x1180",
+    "viewport": {
+      "width": 820,
+      "height": 1180
+    },
+    "railVisible": false,
+    "bottomNavVisible": true,
+    "composerVisible": true,
+    "menuVisible": true,
+    "controlCenterVisible": false,
+    "activeNavTab": "summary",
+    "activeNavLabel": "Home",
+    "composerBottomGap": 98
+  },
+  {
+    "label": "summary-1023x900",
+    "viewport": {
+      "width": 1023,
+      "height": 900
+    },
+    "railVisible": false,
+    "bottomNavVisible": true,
+    "composerVisible": true,
+    "menuVisible": true,
+    "controlCenterVisible": false,
+    "activeNavTab": "summary",
+    "activeNavLabel": "Home",
+    "composerBottomGap": 98
+  },
+  {
+    "label": "summary-1024x900",
+    "viewport": {
+      "width": 1024,
+      "height": 900
+    },
+    "railVisible": true,
+    "bottomNavVisible": false,
+    "composerVisible": true,
+    "menuVisible": false,
+    "controlCenterVisible": false,
+    "activeNavTab": "summary",
+    "activeNavLabel": "Home",
+    "composerBottomGap": 24
+  },
+  {
+    "label": "money-390x844",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "railVisible": false,
+    "bottomNavVisible": true,
+    "composerVisible": true,
+    "menuVisible": true,
+    "controlCenterVisible": false,
+    "activeNavTab": "money",
+    "activeNavLabel": "Money",
+    "composerBottomGap": 98
+  },
+  {
+    "label": "menu-390x844",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "railVisible": false,
+    "bottomNavVisible": true,
+    "composerVisible": true,
+    "menuVisible": true,
+    "controlCenterVisible": true,
+    "activeNavTab": "money",
+    "activeNavLabel": "Money",
+    "composerBottomGap": 98
+  }
+]

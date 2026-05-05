@@ -870,7 +870,7 @@ const App: React.FC = () => {
             />
           </div>
 
-          <div className={`${responsiveShellClass.bottomNavWrap} ${isMobileKeyboardOpen ? "hidden md:block" : "block"}`}>
+          <div data-mobile-bottom-stack-wrap="true" className={`${responsiveShellClass.bottomNavWrap} ${isMobileKeyboardOpen ? "hidden md:block" : "block"}`}>
              <BottomNav 
                 activeTab={activeTab} 
                 setActiveTab={setActiveTab} 

@@ -113,7 +113,7 @@ const InputBar: React.FC<InputBarProps> = ({
     (pendingCount !== undefined && pendingCount > 0);
 
   return (
-    <div className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none lg:px-0 lg:pb-6">
+    <div data-global-composer="true" className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none lg:px-0 lg:pb-6">
       <div className="max-w-2xl mx-auto pointer-events-none lg:mx-0 lg:max-w-none lg:w-full">
         <div className="relative">
           {/* Top Content (e.g. Pending Reviews) */}
@@ -218,7 +218,7 @@ const InputBar: React.FC<InputBarProps> = ({
           <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2rem] opacity-20 group-hover:opacity-40 transition duration-500 blur pointer-events-none"></div>
 
           {/* Input Area */}
-          <div className="relative flex items-end bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden min-h-[56px] pointer-events-auto">
+          <div data-composer-surface="true" className="relative flex items-end bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden min-h-[56px] pointer-events-auto">
             <button
               onClick={onOpenChat}
               className={`p-4 mb-0.5 transition-colors ${

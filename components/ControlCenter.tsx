@@ -254,6 +254,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                             duration: 0.4, 
                             ease: [0.32, 0.72, 0, 1] 
                         }}
+                        data-control-center-panel="true"
                         className={controlCenterSurface.panel}
                     >
                         
