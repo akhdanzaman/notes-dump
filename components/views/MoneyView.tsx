@@ -202,6 +202,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
+                data-swipe-tabs="money"
                 className={contentSurface.headerHero}
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
@@ -215,7 +216,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
+                    <div data-money-tabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
                         {tabs.map(tab => (
                             <button 
                                 key={tab}
@@ -241,6 +242,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         
                         <div className="grid grid-cols-5 gap-3 mb-4 lg:gap-4 lg:grid-cols-5">
                             <div 
+                                data-swipe-date="money-month"
                                 className="col-span-5 bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
@@ -252,6 +254,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     <AnimatePresence mode="wait">
                                         <motion.div 
                                             key={financeDate.toISOString()}
+                                            data-money-month-label="true"
                                             initial={{ opacity: 0, x: 10 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: -10 }}

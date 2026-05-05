@@ -19,18 +19,18 @@ interface LibraryViewProps {
     appSettings: AppSettings;
     handleDelete: (id: string) => void;
     handleUpdateItem: (
-        id: string, 
-        newContent: string, 
-        newTags: string[], 
-        newAmount?: number, 
-        newDate?: string, 
-        newPaymentMethod?: string, 
-        newBudgetCategory?: string, 
-        newDuration?: number, 
-        newSkillId?: string, 
-        newToWallet?: string, 
-        newFinanceType?: FinanceType, 
-        newProgress?: number, 
+        id: string,
+        newContent: string,
+        newTags: string[],
+        newAmount?: number,
+        newDate?: string,
+        newPaymentMethod?: string,
+        newBudgetCategory?: string,
+        newDuration?: number,
+        newSkillId?: string,
+        newToWallet?: string,
+        newFinanceType?: FinanceType,
+        newProgress?: number,
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
@@ -48,7 +48,7 @@ interface LibraryViewProps {
     handleOpenAddSkill: () => void;
     setDeleteId: (id: string) => void;
     setDeleteType: (type: 'skill' | 'wallet' | null) => void;
-    
+
     // Filters
     selectedTag: string;
     filterDate: string;
@@ -70,7 +70,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         { key: 'journal', label: 'Journal', title: 'Journal Entries', icon: <BookText className="w-4 h-4" /> },
     ];
 
-    
+
     // Data Preparation
     const generalItems = getNoteItems(items, 'general', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const journalItems = getNoteItems(items, 'journal', selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
@@ -272,7 +272,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
     const onTouchMove = (e: React.TouchEvent) => {
         if (!touchStartRef.current) return;
-        
+
         const dx = e.touches[0].clientX - touchStartRef.current.x;
         const dy = e.touches[0].clientY - touchStartRef.current.y;
 
@@ -306,12 +306,12 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 setLibrarySubTab(subTabs[activeIndex - 1]);
             }
         }
-        
+
         setDragOffset(0);
         touchStartRef.current = null;
         isHorizontalSwipe.current = null;
     };
-              
+
     const renderContent = (data: BrainDumpItem[], type: 'general' | 'journal') => {
         const isEmpty = type === 'journal' ? filteredJournalDayGroups.length === 0 : data.length === 0;
         if (isEmpty) {
@@ -322,7 +322,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         {isJournal ? <BookText className="w-6 h-6" /> : <Library className="w-6 h-6" />}
                     </div>
                     <h3 className="mt-4 text-lg font-bold text-primary">
-                        {searchQuery ? 'No matching notes' : (isJournal ? 'Start this month’s journal' : 'No notes yet')}
+                        {searchQuery ? 'No matching notes' : (isJournal ? "Start this month's journal" : 'No notes yet')}
                     </h3>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
                         {searchQuery
@@ -380,8 +380,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             return (
                 <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
                     <p className="text-muted font-medium">No skills tracked yet.</p>
-                    <button 
-                        onClick={handleOpenAddSkill} 
+                    <button
+                        onClick={handleOpenAddSkill}
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
                     >
                         <Plus className="w-4 h-4" /> Track Skill
@@ -395,7 +395,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 {visibleSkillItems.visibleItems.map(skill => {
                     const progress = skill.weeklyProgress;
                     return (
-                        <motion.div 
+                        <motion.div
                             key={skill.id}
                             layout={!isDragging}
                             transition={{ type: "tween", duration: 0.3 }}
@@ -410,13 +410,13 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button 
+                                    <button
                                         onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
                                         className="p-2 bg-black/5 hover:bg-black/10 rounded-xl transition-colors"
                                     >
                                         <Pencil className="w-4 h-4 text-muted" />
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
                                         className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors"
                                     >
@@ -428,7 +428,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             {skill.weeklyTargetMinutes && (
                                 <>
                                     <div className="w-full h-3 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                                        <div 
+                                        <div
                                             className="h-full bg-indigo-500 transition-all duration-1000 ease-out"
                                             style={{ width: `${progress}%` }}
                                         />
@@ -453,8 +453,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     return (
         <div className={contentSurface.pageShell}>
             {/* Top Container */}
-            <motion.div 
+            <motion.div
                 layoutId="top-container"
+                data-swipe-tabs="library"
                 className={contentSurface.headerHero}
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
@@ -468,9 +469,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
+                    <div data-library-subtabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
                         {libraryTabs.map(tab => (
-                            <button 
+                            <button
                                 key={tab.key}
                                 onClick={() => setLibrarySubTab(tab.key)}
                                 className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === tab.key ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
@@ -521,7 +522,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     )}
                                 </p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => {
                                     if (librarySubTab === 'general') onAddItem(ItemType.NOTE);
                                     if (librarySubTab === 'skills') handleOpenAddSkill();
@@ -536,6 +537,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
                     {librarySubTab === 'journal' && (
                         <div
+                            data-swipe-date="library-journal-month"
                             className="mt-4 bg-black/5 rounded-[24px] p-4 touch-pan-y"
                             onTouchStart={journalDateSwipeHandlers.onTouchStart}
                             onTouchMove={journalDateSwipeHandlers.onTouchMove}
@@ -548,6 +550,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 <AnimatePresence mode="wait">
                                     <motion.div
                                         key={journalDate.toISOString()}
+                                        data-library-journal-month-label="true"
                                         initial={{ opacity: 0, x: 10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -10 }}
@@ -578,7 +581,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
             >
-                <motion.div 
+                <motion.div
                     className="flex will-change-transform"
                     style={{
                         transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
@@ -586,7 +589,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     }}
                 >
                 {/* VIEW: General Notes */}
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
@@ -595,7 +598,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 </motion.div>
 
                 {/* VIEW: Skills */}
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
@@ -604,7 +607,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 </motion.div>
 
                 {/* VIEW: Journal */}
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}

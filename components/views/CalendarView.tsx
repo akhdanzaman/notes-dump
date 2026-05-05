@@ -204,6 +204,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
         <div className="min-h-screen bg-background pt-safe pb-36 lg:pb-32">
             <motion.div
                 layoutId="top-container"
+                data-swipe-tabs="calendar"
                 className={contentSurface.headerHero}
                 transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}

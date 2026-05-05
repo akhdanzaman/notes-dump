@@ -535,6 +535,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <div className={contentSurface.pageShell}>
             <motion.div
                 layoutId="top-container"
+                data-swipe-tabs="summary"
                 className={`${contentSurface.headerHero} mb-6`}
                 transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
@@ -556,6 +557,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                         <div className="flex items-center gap-2">
                             <div
+                                data-swipe-date="summary-theme-month"
                                 className="flex items-center bg-black/5 rounded-full p-1 touch-pan-y"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
@@ -571,6 +573,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                 <AnimatePresence mode="wait">
                                     <motion.span
                                         key={themeNavDate.toISOString()}
+                                        data-theme-month-label="true"
                                         initial={{ opacity: 0, x: 10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -10 }}

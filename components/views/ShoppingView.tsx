@@ -392,6 +392,7 @@ const ShoppingView: React.FC<ShoppingViewProps> = ({
         {/* Top Container */}
         <motion.div 
             layoutId="top-container"
+            data-swipe-tabs="shopping"
             className={contentSurface.invertedHeaderHero}
             transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
             onTouchStart={swipeHandlers.onTouchStart}

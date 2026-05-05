@@ -559,6 +559,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
+                data-swipe-tabs="plan"
                 className={contentSurface.headerHero}
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
@@ -572,7 +573,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
+                    <div data-plan-subtabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
                         <button 
                             onClick={() => setPlanSubTab('tasks')}
                             className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'tasks' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}

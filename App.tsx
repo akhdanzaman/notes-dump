@@ -671,7 +671,13 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={responsiveShellClass.root}>
+    <div
+      className={responsiveShellClass.root}
+      data-active-tab={activeTab}
+      data-plan-subtab={planSubTab}
+      data-library-subtab={librarySubTab}
+      data-money-view={moneyView}
+    >
       <DesktopNavRail
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -820,6 +826,7 @@ const App: React.FC = () => {
       {/* Fixed Bottom Layout */}
       <div 
         ref={fixedBottomRef}
+        data-keyboard-open={isMobileKeyboardOpen ? 'true' : 'false'}
         className={responsiveShellClass.fixedBottom}
       >
           <div className={responsiveShellComposerContentClass[activeShellContentVariant]} data-shell-composer-variant={activeShellContentVariant}>
