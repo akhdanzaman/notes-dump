@@ -62,3 +62,18 @@ test('summary display preserves Tomorrow fallback when there is no today focus o
   assert.equal(display.displayTitle, 'Tomorrow');
   assert.deepEqual(display.displayItems.map(item => item.id), ['focus-1']);
 });
+
+test('summary focus excludes child subtasks from top-level Today’s Focus lists', () => {
+  const parent = makeItem('parent-focus', ItemType.TODO, '2026-05-07T09:00:00.000Z');
+  const child = {
+    ...makeItem('child-subtask', ItemType.TODO, '2026-05-07T10:00:00.000Z'),
+    meta: { date: '2026-05-07T10:00:00.000Z', parentTodoId: 'parent-focus' },
+  };
+
+  const mixed = buildMixedTodayFocusItems([], [child, parent], 5);
+  assert.deepEqual(mixed.map(item => item.id), ['parent-focus']);
+
+  const display = buildSummaryFocusDisplay([], { ...emptyGroups, tomorrow: [child] }, [], 5);
+  assert.notEqual(display.displayTitle, 'Tomorrow');
+  assert.deepEqual(display.displayItems, []);
+});

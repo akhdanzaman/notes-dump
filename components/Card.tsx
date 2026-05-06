@@ -131,6 +131,10 @@ interface CardProps {
   hideMoney?: boolean;
   className?: string;
   editComfort?: 'default' | 'taskWorkspace';
+  collapsibleEditPanel?: boolean;
+  editPanelExpanded?: boolean;
+  onEditPanelExpandedChange?: (id: string, expanded: boolean) => void;
+  onCollapseChange?: (id: string, collapsed: boolean) => void;
   
   // Context Props
   skills?: Skill[];
@@ -157,6 +161,10 @@ const Card: React.FC<CardProps> = ({
     hideMoney = false,
     className = '',
     editComfort = 'default',
+    collapsibleEditPanel = false,
+    editPanelExpanded = false,
+    onEditPanelExpandedChange,
+    onCollapseChange,
     skills = [],
     wallets = [],
     budgetRules = [],
@@ -357,7 +365,13 @@ const Card: React.FC<CardProps> = ({
   const shouldStrike = status === 'done' && !noStrikethrough && type !== ItemType.JOURNAL;
 
   const toggleCollapse = () => {
-      if (enableCollapse) setIsCollapsed(!isCollapsed);
+      if (!enableCollapse) return;
+      const nextCollapsed = !isCollapsed;
+      setIsCollapsed(nextCollapsed);
+      onCollapseChange?.(item.id, nextCollapsed);
+      if (nextCollapsed && collapsibleEditPanel) {
+          onEditPanelExpandedChange?.(item.id, false);
+      }
   };
 
   const formatMoney = (amount?: number) => {
@@ -524,6 +538,9 @@ const Card: React.FC<CardProps> = ({
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
   const isTaskWorkspaceEdit = editComfort === 'taskWorkspace' && enableCollapse && !isCollapsed;
+  const showInlineEditPanel = !enableCollapse || !isCollapsed;
+  const showEditBody = showInlineEditPanel && (!collapsibleEditPanel || editPanelExpanded);
+  const showPreviewContent = enableCollapse && (isCollapsed || (collapsibleEditPanel && !editPanelExpanded));
   const editGridClass = isTaskWorkspaceEdit ? taskEditSurface.fieldGrid : 'grid grid-cols-2 gap-3 mb-3';
   const actionRowClass = isTaskWorkspaceEdit ? taskEditSurface.actions : 'flex justify-end gap-2 pt-2 border-t border-border/30';
   const actionButtonComfort = isTaskWorkspaceEdit ? taskEditSurface.actionButton : '';
@@ -636,7 +653,7 @@ const Card: React.FC<CardProps> = ({
         </div>
         
         {/* COLLAPSED CONTENT */}
-        {enableCollapse && isCollapsed ? (
+        {showPreviewContent ? (
             <div className="flex justify-between items-start gap-4 mt-1">
                 <div className="flex flex-col min-w-0 flex-1">
                     <div className={`text-base font-medium text-primary ${isNote ? 'line-clamp-1' : 'line-clamp-2'} ${shouldStrike ? 'line-through text-muted' : ''}`}>
@@ -689,7 +706,22 @@ const Card: React.FC<CardProps> = ({
       </div>
 
       {/* EXPANDED EDIT BODY */}
-      {(!enableCollapse || !isCollapsed) && (
+      {enableCollapse && !isCollapsed && collapsibleEditPanel && !readonly && onUpdate && (
+          <div className="mt-3 flex justify-end border-t border-border/30 pt-3" onClick={(e) => e.stopPropagation()}>
+              <button
+                  onClick={(e) => {
+                      e.stopPropagation();
+                      onEditPanelExpandedChange?.(item.id, !editPanelExpanded);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/15 text-xs font-bold transition-colors flex items-center gap-1"
+              >
+                  {editPanelExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {editPanelExpanded ? 'Hide edit' : 'Edit details'}
+              </button>
+          </div>
+      )}
+
+      {showEditBody && (
           <div className={`${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
                
                {/* Content Edit */}

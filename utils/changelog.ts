@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.46',
+    date: 'May 2026',
+    items: [
+      'Focus desktop task layout now lets the Later group span the workspace row so it no longer feels like a floating card in empty space.',
+      'Focus task cards now keep edit details and subtasks as mutually exclusive expanded panels: opening edit hides subtasks, and opening subtasks hides edit.',
+      'Subtask controls only appear after a task card is expanded, child subtasks stay hidden from top-level Today’s Focus lists, and the tutorial-style Subtask Progress copy was removed.',
+    ],
+  },
+  {
     version: 'v0.3.45',
     date: 'May 2026',
     items: [

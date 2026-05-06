@@ -32,6 +32,7 @@ const getValidDateTime = (value?: string) => {
 
 const getFocusDueTime = (item: BrainDumpItem) => getValidDateTime(item.meta.start || item.meta.date || item.meta.dateTime);
 const getShoppingDueTime = (item: BrainDumpItem) => getValidDateTime(getShoppingDueDate(item));
+const isRootFocusItem = (item: BrainDumpItem) => !item.meta.parentTodoId;
 
 const compareCandidates = (left: SummaryFocusCandidate, right: SummaryFocusCandidate) => {
   if (left.dueTime !== right.dueTime) return left.dueTime - right.dueTime;
@@ -74,7 +75,7 @@ export const buildMixedTodayFocusItems = (
   if (limit <= 0) return [];
 
   const pendingUrgentShopping = urgentShoppingItems.filter(item => item.status === 'pending');
-  const focusCandidates = [...todayFocusItems, ...upcomingFocusItems].filter(item => item.status === 'pending');
+  const focusCandidates = [...todayFocusItems, ...upcomingFocusItems].filter(item => item.status === 'pending' && isRootFocusItem(item));
 
   const focus = focusCandidates.map((item, sequence): SummaryFocusCandidate => ({
     item,
@@ -115,7 +116,7 @@ export const buildSummaryFocusDisplay = (
   limit = 5
 ): SummaryFocusDisplay => {
   const pendingUrgentShopping = urgentShoppingItems.filter(item => item.status === 'pending');
-  const pendingTodayFocus = pendingGroups.today.filter(item => item.status === 'pending');
+  const pendingTodayFocus = pendingGroups.today.filter(item => item.status === 'pending' && isRootFocusItem(item));
   const shouldBuildTodayFocus = pendingTodayFocus.length > 0 || pendingUrgentShopping.length > 0;
 
   if (shouldBuildTodayFocus) {
@@ -123,7 +124,7 @@ export const buildSummaryFocusDisplay = (
       pendingUrgentShopping,
       pendingTodayFocus,
       limit,
-      [...pendingGroups.tomorrow, ...pendingGroups.later]
+      [...pendingGroups.tomorrow, ...pendingGroups.later].filter(isRootFocusItem)
     );
 
     return {
@@ -134,16 +135,17 @@ export const buildSummaryFocusDisplay = (
     };
   }
 
-  if (pendingGroups.tomorrow.length > 0) {
+  const rootTomorrow = pendingGroups.tomorrow.filter(isRootFocusItem);
+  if (rootTomorrow.length > 0) {
     return {
-      displayItems: pendingGroups.tomorrow.slice(0, limit),
+      displayItems: rootTomorrow.slice(0, limit),
       displayTitle: 'Tomorrow',
       displaySubtitle: "Get a head start on tomorrow's tasks.",
       isDoneState: false,
     };
   }
 
-  const pendingRoutines = pendingGroups.routines.filter(routine => routine.status === 'pending');
+  const pendingRoutines = pendingGroups.routines.filter(routine => routine.status === 'pending' && isRootFocusItem(routine));
   if (pendingRoutines.length > 0) {
     return {
       displayItems: pendingRoutines.slice(0, limit),
@@ -153,9 +155,10 @@ export const buildSummaryFocusDisplay = (
     };
   }
 
-  if (pendingGroups.later.length > 0) {
+  const rootLater = pendingGroups.later.filter(isRootFocusItem);
+  if (rootLater.length > 0) {
     return {
-      displayItems: pendingGroups.later.slice(0, limit),
+      displayItems: rootLater.slice(0, limit),
       displayTitle: 'Upcoming',
       displaySubtitle: 'Tasks waiting for your attention.',
       isDoneState: false,
