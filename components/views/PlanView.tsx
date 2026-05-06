@@ -73,6 +73,8 @@ interface PlanViewProps {
     setActiveTab: (tab: Tab) => void;
 }
 
+type TaskPanel = 'edit' | 'subtasks';
+
 const PlanView: React.FC<PlanViewProps> = ({
     items, skills, planSubTab, setPlanSubTab,
     focusDate, setFocusDate,
@@ -110,7 +112,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [fundWallet, setFundWallet] = useState('');
     const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
     const [taskCardCollapsed, setTaskCardCollapsed] = useState<Record<string, boolean>>({});
-    const [activeTaskPanels, setActiveTaskPanels] = useState<Record<string, 'edit' | 'subtasks' | undefined>>({});
+    const [activeTaskPanels, setActiveTaskPanels] = useState<Record<string, TaskPanel | undefined>>({});
     const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>({});
 
     // Main Tab Swipe Logic
@@ -410,22 +412,45 @@ const PlanView: React.FC<PlanViewProps> = ({
         return collapsed === undefined ? !appSettings.defaultCollapsed : !collapsed;
     };
 
-    const setTaskPanel = (id: string, panel: 'edit' | 'subtasks' | undefined) => {
+    const setTaskPanel = (id: string, panel: TaskPanel) => {
         setActiveTaskPanels(prev => ({ ...prev, [id]: panel }));
     };
 
-    const toggleSubtasksPanel = (id: string) => {
-        setTaskPanel(id, activeTaskPanels[id] === 'subtasks' ? undefined : 'subtasks');
+    const resetTaskPanel = (id: string) => {
+        setActiveTaskPanels(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
     };
 
-    const getTaskCardProps = (item: BrainDumpItem) => ({
+    const getDefaultTaskPanel = (item: BrainDumpItem, children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
+        const hasSubtasks = children.length > 0 || !!item.meta.deepWorkParent || (item.meta.subtasks?.length || 0) > 0;
+        return isDeepWork && hasSubtasks ? 'subtasks' : 'edit';
+    };
+
+    const getActiveTaskPanel = (item: BrainDumpItem, children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
+        return activeTaskPanels[item.id] || getDefaultTaskPanel(item, children, isDeepWork);
+    };
+
+    const taskPanelButtonClass = (active: boolean, tone: 'edit' | 'subtasks' = 'edit') => {
+        if (active && tone === 'subtasks') return 'px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors flex items-center gap-1';
+        if (tone === 'subtasks') return 'px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1';
+        if (active) return 'px-3 py-2 rounded-xl bg-primary text-background text-xs font-bold hover:opacity-90 transition-colors flex items-center gap-1';
+        return 'px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/15 text-xs font-bold transition-colors flex items-center gap-1';
+    };
+
+    const getTaskCardProps = (item: BrainDumpItem, activePanel: TaskPanel, editPanelControls: React.ReactNode) => ({
         ...cardProps,
         collapsibleEditPanel: true,
-        editPanelExpanded: activeTaskPanels[item.id] === 'edit',
-        onEditPanelExpandedChange: (id: string, expanded: boolean) => setTaskPanel(id, expanded ? 'edit' : undefined),
+        editPanelExpanded: activePanel === 'edit',
+        editPanelControls,
+        onEditPanelExpandedChange: (id: string, expanded: boolean) => {
+            if (expanded) setTaskPanel(id, 'edit');
+        },
         onCollapseChange: (id: string, collapsed: boolean) => {
             setTaskCardCollapsed(prev => ({ ...prev, [id]: collapsed }));
-            if (collapsed) setTaskPanel(id, undefined);
+            if (collapsed) resetTaskPanel(id);
         }
     });
 
@@ -506,23 +531,39 @@ const PlanView: React.FC<PlanViewProps> = ({
         const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
         const canUseManualSubtasks = item.type === ItemType.TODO && !item.meta.parentTodoId;
         const isCardExpanded = isTaskCardExpanded(item.id);
-        const isSubtasksExpanded = activeTaskPanels[item.id] === 'subtasks';
-        const taskCardProps = getTaskCardProps(item);
+        const activePanel = getActiveTaskPanel(item, children, isDeepWork);
+        const isSubtasksExpanded = activePanel === 'subtasks';
 
         if (!isDeepWork) {
             const draft = getSubtaskDraft(item, children);
+            const hasManualSubtasks = children.length > 0 || draft.some(step => step.trim());
+            const editPanelControls = isCardExpanded ? (
+                <div className="flex flex-wrap gap-2 w-full">
+                    <button
+                        onClick={() => setTaskPanel(item.id, 'edit')}
+                        className={taskPanelButtonClass(activePanel === 'edit')}
+                    >
+                        {activePanel === 'edit' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        Show edit
+                    </button>
+                    {canUseManualSubtasks && (
+                        <button
+                            onClick={() => hasManualSubtasks ? setTaskPanel(item.id, 'subtasks') : openManualSubtaskDraft(item)}
+                            className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}
+                        >
+                            {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                            {hasManualSubtasks ? 'Subtasks' : 'Add subtask'}
+                        </button>
+                    )}
+                </div>
+            ) : null;
+            const taskCardProps = getTaskCardProps(item, activePanel, editPanelControls);
+
             return (
                 <div key={item.id} className="space-y-2 rounded-[24px] border border-border/60 bg-surface/40 p-2">
                     <Card item={item} {...taskCardProps} editComfort="taskWorkspace" />
-                    {canUseManualSubtasks && isCardExpanded && (
+                    {canUseManualSubtasks && isCardExpanded && isSubtasksExpanded && (
                         <div className="px-2 pb-2 space-y-2">
-                            <button
-                                onClick={() => isSubtasksExpanded ? toggleSubtasksPanel(item.id) : openManualSubtaskDraft(item)}
-                                className="px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1"
-                            >
-                                {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                                {isSubtasksExpanded ? 'Hide subtasks' : 'Add subtasks'}
-                            </button>
                             <AnimatePresence initial={false}>
                                 {isSubtasksExpanded && (
                                     <motion.div
@@ -553,6 +594,37 @@ const PlanView: React.FC<PlanViewProps> = ({
         const draft = getSubtaskDraft(item, children);
         const totalSteps = children.length || draft.length || item.meta.deepWorkStepCount || 0;
         const progressPercent = totalSteps > 0 ? Math.round((doneCount / totalSteps) * 100) : (item.meta.progress || 0);
+        const deepWorkPanelControls = isCardExpanded ? (
+            <div className="flex flex-wrap gap-2 w-full">
+                <button
+                    onClick={() => setTaskPanel(item.id, 'edit')}
+                    className={taskPanelButtonClass(activePanel === 'edit')}
+                >
+                    {activePanel === 'edit' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    Show edit
+                </button>
+                {isSuggested && (
+                    <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors">
+                        Transform into steps
+                    </button>
+                )}
+                <button onClick={() => setTaskPanel(item.id, 'subtasks')} className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}>
+                    {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {isSuggested ? 'Preview/edit steps' : 'Subtasks'}
+                </button>
+                {hasDeepWorkDetails && (
+                    <>
+                        <button onClick={() => handleKeepRawTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
+                            Keep raw
+                        </button>
+                        <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1">
+                            <RotateCcw className="w-3 h-3" /> Retrigger
+                        </button>
+                    </>
+                )}
+            </div>
+        ) : null;
+        const taskCardProps = getTaskCardProps(item, activePanel, deepWorkPanelControls);
 
         return (
             <div key={item.id} className="space-y-2 rounded-[24px] border border-purple-500/15 bg-purple-500/[0.03] p-2">
@@ -585,30 +657,6 @@ const PlanView: React.FC<PlanViewProps> = ({
                             {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
                             {renderDeepWorkDetail(<ShieldAlert className="w-3 h-3" />, 'Blocker check', item.meta.deepWorkBlockerCheck, isBlocked ? 'text-amber-500' : 'text-emerald-500')}
                         </div>
-                    )}
-
-                    {isCardExpanded && (
-                    <div className="flex flex-wrap gap-2">
-                        {isSuggested && (
-                            <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors">
-                                Transform into steps
-                            </button>
-                        )}
-                        <button onClick={() => toggleSubtasksPanel(item.id)} className="px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1">
-                            {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                            {isSubtasksExpanded ? 'Hide steps' : `${isSuggested ? 'Preview/edit' : 'Show'} steps`}
-                        </button>
-                        {hasDeepWorkDetails && (
-                            <>
-                                <button onClick={() => handleKeepRawTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
-                                    Keep raw
-                                </button>
-                                <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1">
-                                    <RotateCcw className="w-3 h-3" /> Retrigger
-                                </button>
-                            </>
-                        )}
-                    </div>
                     )}
 
                     <AnimatePresence initial={false}>

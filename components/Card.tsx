@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority } from '../types';
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
@@ -133,6 +133,7 @@ interface CardProps {
   editComfort?: 'default' | 'taskWorkspace';
   collapsibleEditPanel?: boolean;
   editPanelExpanded?: boolean;
+  editPanelControls?: React.ReactNode;
   onEditPanelExpandedChange?: (id: string, expanded: boolean) => void;
   onCollapseChange?: (id: string, collapsed: boolean) => void;
   
@@ -163,6 +164,7 @@ const Card: React.FC<CardProps> = ({
     editComfort = 'default',
     collapsibleEditPanel = false,
     editPanelExpanded = false,
+    editPanelControls,
     onEditPanelExpandedChange,
     onCollapseChange,
     skills = [],
@@ -708,20 +710,29 @@ const Card: React.FC<CardProps> = ({
       {/* EXPANDED EDIT BODY */}
       {enableCollapse && !isCollapsed && collapsibleEditPanel && !readonly && onUpdate && (
           <div className="mt-3 flex justify-end border-t border-border/30 pt-3" onClick={(e) => e.stopPropagation()}>
-              <button
-                  onClick={(e) => {
-                      e.stopPropagation();
-                      onEditPanelExpandedChange?.(item.id, !editPanelExpanded);
-                  }}
-                  className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/15 text-xs font-bold transition-colors flex items-center gap-1"
-              >
-                  {editPanelExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  {editPanelExpanded ? 'Hide edit' : 'Edit details'}
-              </button>
+              {editPanelControls || (
+                  <button
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          onEditPanelExpandedChange?.(item.id, !editPanelExpanded);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/15 text-xs font-bold transition-colors flex items-center gap-1"
+                  >
+                      {editPanelExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      {editPanelExpanded ? 'Hide edit' : 'Edit details'}
+                  </button>
+              )}
           </div>
       )}
 
+      <AnimatePresence initial={false}>
       {showEditBody && (
+          <motion.div
+              initial={collapsibleEditPanel ? { height: 0, opacity: 0 } : false}
+              animate={collapsibleEditPanel ? { height: 'auto', opacity: 1 } : undefined}
+              exit={collapsibleEditPanel ? { height: 0, opacity: 0 } : undefined}
+              className={collapsibleEditPanel ? 'overflow-hidden' : undefined}
+          >
           <div className={`${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
                
                {/* Content Edit */}
@@ -1228,7 +1239,9 @@ const Card: React.FC<CardProps> = ({
                    )}
                </div>
           </div>
+          </motion.div>
       )}
+      </AnimatePresence>
     </motion.div>
   );
 };

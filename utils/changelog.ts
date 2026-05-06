@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.49',
+    date: 'May 2026',
+    items: [
+      'Focus task cards now place Show edit and Subtasks/Add subtask in one shared action row, with exactly one expanded panel active while the card is open.',
+      'Expanded focus cards now default to Show edit when no subtasks exist, then default/switch to the subtask panel after subtasks are created, using matching expand-collapse animation for both panels.',
+    ],
+  },
+  {
     version: 'v0.3.48',
     date: 'May 2026',
     items: [
