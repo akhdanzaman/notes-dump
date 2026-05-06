@@ -1,0 +1,5 @@
+NDZ-019 runtime proof: PASS
+1680 content shell 1313px / post-rail 1328px; primary 881px; side 400px
+1920 content shell 1536px / post-rail 1568px; primary 1104px; side 400px
+Money uses workspace shell with fixed context rail and denser header/stat rhythm.
+Completed: 2026-05-06T00:36:30.446Z
