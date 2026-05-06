@@ -47,6 +47,14 @@ import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
+type ParsingUndoSnapshot = {
+    items: BrainDumpItem[];
+    skills: Skill[];
+    wallets: Wallet[];
+    monthlyThemes: Record<string, string>;
+    canonicalRules: CanonicalRule[];
+};
+
 const sanitizeNumber = (value: unknown): number | undefined => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (typeof value !== 'string') return undefined;
@@ -361,6 +369,7 @@ export const useBrainDumpData = () => {
         forceOverwrite: boolean;
     } | null>(null);
     const pendingFetchAfterParsingRef = useRef(false);
+    const parsingUndoSnapshotsRef = useRef<Record<string, ParsingUndoSnapshot>>({});
 
     const hasActiveParsing = () => parsingInFlightRef.current.size > 0;
 
@@ -925,8 +934,23 @@ export const useBrainDumpData = () => {
         tempId: string,
         canonicalRulesOverride?: CanonicalRule[]
     ) => {
+        const markParserCreatedItem = (item: BrainDumpItem): BrainDumpItem => ({
+            ...item,
+            meta: {
+                ...item.meta,
+                parserTaskId: tempId
+            }
+        });
+
         setItems((prev) => {
             const prevWithoutOptimistic = prev.filter(i => i.id !== tempId);
+            parsingUndoSnapshotsRef.current[tempId] = {
+                items: prevWithoutOptimistic,
+                skills: skillsRef.current,
+                wallets: walletsRef.current,
+                monthlyThemes: monthlyThemesRef.current,
+                canonicalRules: canonicalRulesRef.current,
+            };
 
             let updated = [...prevWithoutOptimistic];
             const itemsToAdd: BrainDumpItem[] = [];
@@ -946,10 +970,11 @@ export const useBrainDumpData = () => {
                         if (!payload) break;
                         const newItems = buildItemsFromCreatePayload(result, payload, sourceText);
                         newItems.forEach(newItem => {
-                            if (newItem.type === ItemType.JOURNAL) {
-                                updated = upsertDailyJournalEntry(updated, newItem);
+                            const createdItem = markParserCreatedItem(newItem);
+                            if (createdItem.type === ItemType.JOURNAL) {
+                                updated = upsertDailyJournalEntry(updated, createdItem);
                             } else {
-                                itemsToAdd.push(newItem);
+                                itemsToAdd.push(createdItem);
                             }
                         });
                         break;
@@ -959,7 +984,7 @@ export const useBrainDumpData = () => {
                         const payload = result.payload as UpdateItemPayload | undefined;
                         const targetId = payload?.match?.itemId || result.entityRefs?.itemId;
                         if (!targetId) {
-                            itemsToAdd.push({
+                            itemsToAdd.push(markParserCreatedItem({
                                 id: uuidv4(),
                                 type: ItemType.NOTE,
                                 content: sourceText,
@@ -973,7 +998,7 @@ export const useBrainDumpData = () => {
                                     parserConfidence: result.confidence,
                                     parserNeedsReview: true
                                 }
-                            });
+                            }));
                             break;
                         }
 
@@ -1075,7 +1100,7 @@ export const useBrainDumpData = () => {
                         const payload = result.payload as CompleteItemPayload | undefined;
                         const targetId = payload?.match?.itemId || result.entityRefs?.itemId;
                         if (!targetId) {
-                            itemsToAdd.push({
+                            itemsToAdd.push(markParserCreatedItem({
                                 id: uuidv4(),
                                 type: ItemType.NOTE,
                                 content: sourceText,
@@ -1089,7 +1114,7 @@ export const useBrainDumpData = () => {
                                     parserConfidence: result.confidence,
                                     parserNeedsReview: true
                                 }
-                            });
+                            }));
                             break;
                         }
 
@@ -1118,7 +1143,7 @@ export const useBrainDumpData = () => {
                         const payload = result.payload as DeleteItemPayload | undefined;
                         const targetId = payload?.match?.itemId || result.entityRefs?.itemId;
                         if (!targetId) {
-                            itemsToAdd.push({
+                            itemsToAdd.push(markParserCreatedItem({
                                 id: uuidv4(),
                                 type: ItemType.NOTE,
                                 content: sourceText,
@@ -1132,7 +1157,7 @@ export const useBrainDumpData = () => {
                                     parserConfidence: result.confidence,
                                     parserNeedsReview: true
                                 }
-                            });
+                            }));
                             break;
                         }
 
@@ -1192,7 +1217,7 @@ export const useBrainDumpData = () => {
                     case 'transfer_money': {
                         const payload = result.payload as TransferMoneyPayload | undefined;
                         if (!payload) break;
-                        const newItem = buildTransferItem(result, payload);
+                        const newItem = markParserCreatedItem(buildTransferItem(result, payload));
                         itemsToAdd.push(newItem);
                         break;
                     }
@@ -1200,7 +1225,7 @@ export const useBrainDumpData = () => {
                     case 'add_saving_funds': {
                         const payload = result.payload as AddSavingFundsPayload | undefined;
                         if (!payload) break;
-                        const newItem = buildSavingFundsItem(result, payload);
+                        const newItem = markParserCreatedItem(buildSavingFundsItem(result, payload));
                         itemsToAdd.push(newItem);
                         break;
                     }
@@ -1208,7 +1233,7 @@ export const useBrainDumpData = () => {
                     case 'query_only':
                     case 'unknown':
                     default: {
-                        itemsToAdd.push({
+                        itemsToAdd.push(markParserCreatedItem({
                             id: uuidv4(),
                             type: ItemType.NOTE,
                             content: result.content || sourceText,
@@ -1223,7 +1248,7 @@ export const useBrainDumpData = () => {
                                 parserReviewReason: result.reviewReason || 'Parser returned query/unknown action',
                                 parsingError: result.reviewReason || 'Parser returned query/unknown action'
                             }
-                        });
+                        }));
                         break;
                     }
                 }
@@ -1255,7 +1280,7 @@ export const useBrainDumpData = () => {
         setParsingTasks(prev => {
             const nextTask: ParsingTask = { id: tempId, text, status: 'pending', createdAt: Date.now() };
             return prev.some(t => t.id === tempId)
-                ? prev.map(t => t.id === tempId ? { ...t, text, status: 'pending', stage: undefined, error: undefined, results: undefined, completedAt: undefined } : t)
+                ? prev.map(t => t.id === tempId ? { ...t, text, status: 'pending', stage: undefined, error: undefined, results: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined, completedAt: undefined } : t)
                 : [nextTask, ...prev];
         });
         try {
@@ -1336,7 +1361,7 @@ export const useBrainDumpData = () => {
         const task = parsingTasks.find(t => t.id === taskId);
         if (!task) return;
         
-        setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending', error: undefined, stage: undefined } : t));
+        setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending', error: undefined, stage: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined } : t));
         setPendingCount(prev => prev + 1);
         
         processItemInBackground(task.text, taskId);
@@ -1344,6 +1369,89 @@ export const useBrainDumpData = () => {
 
     const clearParsingTask = (taskId: string) => {
         setParsingTasks(prev => prev.filter(t => t.id !== taskId));
+        delete parsingUndoSnapshotsRef.current[taskId];
+    };
+
+    const getResultTargetItemId = (result: ParserResultV2): string | undefined => {
+        const payload = result.payload as UpdateItemPayload | CompleteItemPayload | DeleteItemPayload | undefined;
+        if (payload && 'match' in payload) return payload.match?.itemId || result.entityRefs?.itemId;
+        return result.entityRefs?.itemId;
+    };
+
+    const undoSuccessfulParsingTask = (taskId: string) => {
+        const task = parsingTasks.find(t => t.id === taskId);
+        const snapshot = parsingUndoSnapshotsRef.current[taskId];
+        if (!task || task.status !== 'success' || !snapshot || task.undoStatus) return;
+
+        const targetIdsToRestore = new Set<string>();
+        let shouldRestoreSkills = false;
+        let shouldRestoreWallets = false;
+        let shouldRestoreThemes = false;
+
+        task.results?.forEach(result => {
+            if (result.action === 'update_item' || result.action === 'complete_item' || result.action === 'delete_item') {
+                const targetId = getResultTargetItemId(result);
+                if (targetId) targetIdsToRestore.add(targetId);
+            }
+            if (result.action === 'create_skill' || result.action === 'update_skill') shouldRestoreSkills = true;
+            if (result.action === 'create_wallet' || result.action === 'update_wallet') shouldRestoreWallets = true;
+            if (result.action === 'create_theme' || result.action === 'update_theme') shouldRestoreThemes = true;
+        });
+
+        const previousItemsById = new Map(snapshot.items.map(item => [item.id, item]));
+
+        setItems(prev => {
+            let updated = prev.filter(item => item.meta?.parserTaskId !== taskId);
+
+            if (targetIdsToRestore.size > 0) {
+                updated = updated.map(item => targetIdsToRestore.has(item.id) && previousItemsById.has(item.id)
+                    ? previousItemsById.get(item.id)!
+                    : item);
+
+                const existingIds = new Set(updated.map(item => item.id));
+                const missingRestoredItems = snapshot.items.filter(item => targetIdsToRestore.has(item.id) && !existingIds.has(item.id));
+                updated = [...missingRestoredItems, ...updated];
+            }
+
+            saveAndSync(
+                updated,
+                undefined,
+                undefined,
+                shouldRestoreSkills ? snapshot.skills : undefined,
+                shouldRestoreWallets ? snapshot.wallets : undefined,
+                shouldRestoreThemes ? snapshot.monthlyThemes : undefined,
+                undefined,
+                snapshot.canonicalRules
+            );
+
+            return updated;
+        });
+
+        if (shouldRestoreSkills) setSkills(snapshot.skills);
+        if (shouldRestoreWallets) setWallets(snapshot.wallets);
+        if (shouldRestoreThemes) setMonthlyThemes(snapshot.monthlyThemes);
+        setCanonicalRules(snapshot.canonicalRules);
+        setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, undoStatus: 'undone' } : t));
+    };
+
+    const deleteSuccessfulParsingTaskEntries = (taskId: string) => {
+        const task = parsingTasks.find(t => t.id === taskId);
+        if (!task || task.status !== 'success' || task.undoStatus) return;
+
+        const createdItems = itemsRef.current.filter(item => item.meta?.parserTaskId === taskId);
+        if (createdItems.length === 0) return;
+
+        if (typeof window !== 'undefined' && !window.confirm(`Delete ${createdItems.length} saved entr${createdItems.length === 1 ? 'y' : 'ies'} from this successful parse?`)) {
+            return;
+        }
+
+        const createdItemIds = new Set(createdItems.map(item => item.id));
+        setItems(prev => {
+            const updated = prev.filter(item => !createdItemIds.has(item.id));
+            saveAndSync(updated);
+            return updated;
+        });
+        setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, undoStatus: 'deleted' } : t));
     };
 
     const handleApproveReview = (id: string, updatedResults: ParserResultV2[]) => {
@@ -2064,6 +2172,8 @@ export const useBrainDumpData = () => {
         handleSend,
         retryParsing,
         clearParsingTask,
+        undoSuccessfulParsingTask,
+        deleteSuccessfulParsingTaskEntries,
         handleApproveReview,
         handleRejectReview,
         handleToggleStatus,

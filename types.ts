@@ -39,6 +39,7 @@ export interface ParsingTask {
   results?: ParserResultV2[];
   duplicateGuardRemovedCount?: number;
   duplicateGuardReason?: string;
+  undoStatus?: 'undone' | 'deleted';
   createdAt: number;
   completedAt?: number;
 }
@@ -161,6 +162,7 @@ export interface ItemMeta {
   parserConfidence?: ParserConfidence;
   parserNeedsReview?: boolean;
   parserReviewReason?: string;
+  parserTaskId?: string;
 }
 
 export interface BrainDumpItem {

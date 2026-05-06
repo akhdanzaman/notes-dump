@@ -101,6 +101,8 @@ interface SummaryViewProps {
     parsingTasks?: import('../../types').ParsingTask[];
     retryParsing?: (id: string) => void;
     clearParsingTask?: (id: string) => void;
+    undoParsingTask?: (id: string) => void;
+    deleteParsingTaskEntries?: (id: string) => void;
 }
 
 type PopupPosition = {
@@ -141,7 +143,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     handleRejectReview,
     parsingTasks = [],
     retryParsing,
-    clearParsingTask
+    clearParsingTask,
+    undoParsingTask,
+    deleteParsingTaskEntries
 }) => {
     const swipeHandlers = useSwipeTabs('summary', setActiveTab);
 
@@ -999,6 +1003,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                             onRejectReview={handleRejectReview}
                                             retryParsing={retryParsing}
                                             clearParsingTask={clearParsingTask}
+                                            undoParsingTask={undoParsingTask}
+                                            deleteParsingTaskEntries={deleteParsingTaskEntries}
                                         />
                                     </motion.div>
                                 </>

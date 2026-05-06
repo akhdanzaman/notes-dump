@@ -46,7 +46,7 @@ const App: React.FC = () => {
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
       loading, error, pendingCount, parsingTasks, pendingReviews, canonicalRules, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
-      handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, toggleCanonicalRuleDisabled, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleKeepRawTodo, handleRetriggerDeepWorkTodo, handleAcceptDeepWorkTodo, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, handleApproveReview, handleRejectReview
+      handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, toggleCanonicalRuleDisabled, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleKeepRawTodo, handleRetriggerDeepWorkTodo, handleAcceptDeepWorkTodo, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, undoSuccessfulParsingTask, deleteSuccessfulParsingTaskEntries, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
   // Onboarding State
@@ -723,6 +723,8 @@ const App: React.FC = () => {
                           parsingTasks={parsingTasks}
                           retryParsing={retryParsing}
                           clearParsingTask={clearParsingTask}
+                          undoParsingTask={undoSuccessfulParsingTask}
+                          deleteParsingTaskEntries={deleteSuccessfulParsingTaskEntries}
                           handleOpenAddTask={(date) => setAddTaskModal({ isOpen: true, initialDate: date })}
                           handleOpenAddShopping={(category) => setAddShoppingModal({ isOpen: true, initialCategory: category })}
                           handleOpenAddExpense={() => setAddExpenseModalOpen(true)}
@@ -975,6 +977,8 @@ const App: React.FC = () => {
                   onRejectReview={handleRejectReview}
                   retryParsing={retryParsing}
                   clearParsingTask={clearParsingTask}
+                  undoParsingTask={undoSuccessfulParsingTask}
+                  deleteParsingTaskEntries={deleteSuccessfulParsingTaskEntries}
                 />
               </motion.div>
             </>

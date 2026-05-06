@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, RefreshCw, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, RefreshCw, RotateCcw, Trash2, X } from 'lucide-react';
 import PendingReviewList from './PendingReviewList';
 import {
   ParserResultV2,
@@ -21,6 +21,8 @@ interface ReviewCenterPanelProps {
   onRejectReview?: (id: string) => void;
   retryParsing?: (id: string) => void;
   clearParsingTask?: (id: string) => void;
+  undoParsingTask?: (id: string) => void;
+  deleteParsingTaskEntries?: (id: string) => void;
 }
 
 const itemDestination: Record<string, string> = {
@@ -31,6 +33,14 @@ const itemDestination: Record<string, string> = {
   JOURNAL: 'Library > Journal',
   EVENT: 'Calendar',
 };
+
+const createsSavedEntry = (result: ParserResultV2) => (
+  result.action === 'create_item' ||
+  result.action === 'transfer_money' ||
+  result.action === 'add_saving_funds' ||
+  result.action === 'query_only' ||
+  result.action === 'unknown'
+);
 
 const actionDestination = (result: ParserResultV2) => {
   const payload = result.payload as any;
@@ -171,6 +181,8 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   onRejectReview,
   retryParsing,
   clearParsingTask,
+  undoParsingTask,
+  deleteParsingTaskEntries,
 }) => {
   const hasParsingTasks = parsingTasks.length > 0;
   const hasPendingReviews = pendingReviews.length > 0;
@@ -199,18 +211,38 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                       </span>
                     )}
                     {task.status === 'success' && (
-                      <span className="text-xs text-emerald-500 flex items-center gap-1 font-medium">
+                      <span className={`text-xs flex items-center gap-1 font-medium ${task.undoStatus === 'undone' ? 'text-amber-500' : task.undoStatus === 'deleted' ? 'text-red-500' : 'text-emerald-500'}`}>
                         <CheckCircle2 className="w-3 h-3" />
-                        Success
+                        {task.undoStatus === 'undone' ? 'Undone' : task.undoStatus === 'deleted' ? 'Deleted' : 'Success'}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center shrink-0">
+                <div className="flex items-center shrink-0 gap-1.5">
+                  {task.status === 'success' && !task.undoStatus && undoParsingTask && (
+                    <button
+                      onClick={() => undoParsingTask(task.id)}
+                      className="shrink-0 px-2.5 py-1.5 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 rounded-md text-xs font-bold transition-colors inline-flex items-center gap-1"
+                      title="Undo this successful parse"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Undo
+                    </button>
+                  )}
+                  {task.status === 'success' && !task.undoStatus && deleteParsingTaskEntries && task.results?.some(createsSavedEntry) && (
+                    <button
+                      onClick={() => deleteParsingTaskEntries(task.id)}
+                      className="shrink-0 px-2.5 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500/20 rounded-md text-xs font-bold transition-colors inline-flex items-center gap-1"
+                      title="Delete saved entries from this parse"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  )}
                   {task.status === 'failed' && retryParsing && (
                     <button
                       onClick={() => retryParsing(task.id)}
-                      className="ml-2 shrink-0 px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md text-xs font-bold transition-colors"
+                      className="shrink-0 px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md text-xs font-bold transition-colors"
                     >
                       Retry
                     </button>
@@ -218,7 +250,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                   {task.status !== 'pending' && clearParsingTask && (
                     <button
                       onClick={() => clearParsingTask(task.id)}
-                      className="ml-2 p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                      className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
                       title="Dismiss"
                     >
                       <X className="w-4 h-4" />

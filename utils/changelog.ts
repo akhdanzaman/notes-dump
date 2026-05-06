@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.36',
+    date: 'May 2026',
+    items: [
+      'Review Center successful parse cards now have explicit Undo and Delete actions, so users can reverse a saved AI result or remove the entries it created without hunting through the destination tab.',
+      'Undo restores updated/completed/deleted items from the pre-parse snapshot and removes parser-created entries, while Delete removes entries created by that successful parse after confirmation.',
+      'This main release also includes the AI expense duplicate guard, keeping one atomic expense input from becoming a repeated transaction batch.',
+    ],
+  },
+  {
     version: 'v0.3.35',
     date: 'May 2026',
     items: [
