@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.37',
+    date: 'May 2026',
+    items: [
+      'Money > Transactions restores the Assets, Debt, and Savings summary to a single horizontal row instead of stacking the three totals vertically.',
+      'The transaction month selector now sits in the card’s top-right action slot, while the hide/show balance eye moves down beside the Net Worth amount.',
+    ],
+  },
+  {
     version: 'v0.3.36',
     date: 'May 2026',
     items: [
