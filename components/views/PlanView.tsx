@@ -777,27 +777,49 @@ const PlanView: React.FC<PlanViewProps> = ({
                     <div className="space-y-8">
                         {summary.todo > 0 ? (
                             <div className={contentSurface.taskWorkspaceGrid} data-plan-workspace="tasks">
-                                <section className={contentSurface.workflowPanel}>
-                                    <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
-                                            <span className="bg-red-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Today
-                                        </h3>
-                                        <button 
-                                            onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} 
-                                            className="p-1 hover:bg-red-500/10 text-red-500 rounded-md transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    {rootToday.length > 0 ? (
-                                        <div className={contentSurface.denseList}>
-                                            {visibleToday.visibleItems.map(renderTaskCard)}
-                                            <LoadMoreButton remainingCount={visibleToday.remainingCount} onClick={visibleToday.loadMore} />
+                                <div className="space-y-4 lg:space-y-4">
+                                    <section className={contentSurface.workflowPanel}>
+                                        <div className="flex items-center justify-between mb-3 pl-1">
+                                            <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
+                                                <span className="bg-red-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Today
+                                            </h3>
+                                            <button 
+                                                onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} 
+                                                className="p-1 hover:bg-red-500/10 text-red-500 rounded-md transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                    ) : (
-                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                                    )}
-                                </section>
+                                        {rootToday.length > 0 ? (
+                                            <div className={contentSurface.denseList}>
+                                                {visibleToday.visibleItems.map(renderTaskCard)}
+                                                <LoadMoreButton remainingCount={visibleToday.remainingCount} onClick={visibleToday.loadMore} />
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                        )}
+                                    </section>
+
+                                    <section className={contentSurface.workflowPanel}>
+                                        <div className="flex items-center justify-between mb-3 pl-1">
+                                            <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
+                                            <button 
+                                                onClick={() => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0])} 
+                                                className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        {rootLater.length > 0 ? (
+                                            <div className={contentSurface.denseList}>
+                                                {visibleLater.visibleItems.map(renderTaskCard)}
+                                                <LoadMoreButton remainingCount={visibleLater.remainingCount} onClick={visibleLater.loadMore} />
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                        )}
+                                    </section>
+                                </div>
 
                                 <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
@@ -835,26 +857,6 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         <div className={contentSurface.denseList}>
                                             {visibleTomorrow.visibleItems.map(renderTaskCard)}
                                             <LoadMoreButton remainingCount={visibleTomorrow.remainingCount} onClick={visibleTomorrow.loadMore} />
-                                        </div>
-                                    ) : (
-                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
-                                    )}
-                                </section>
-
-                                <section className={`${contentSurface.workflowPanel} lg:col-span-full`}>
-                                    <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
-                                        <button 
-                                            onClick={() => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0])} 
-                                            className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    {rootLater.length > 0 ? (
-                                        <div className={contentSurface.denseList}>
-                                            {visibleLater.visibleItems.map(renderTaskCard)}
-                                            <LoadMoreButton remainingCount={visibleLater.remainingCount} onClick={visibleLater.loadMore} />
                                         </div>
                                     ) : (
                                         <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>

@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.48',
+    date: 'May 2026',
+    items: [
+      'Focus desktop tasks now group Today and Later vertically in the first column, matching the Today width while Routines and Tomorrow stay as the adjacent desktop columns.',
+    ],
+  },
+  {
     version: 'v0.3.47',
     date: 'May 2026',
     items: [
