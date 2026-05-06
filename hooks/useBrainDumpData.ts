@@ -43,6 +43,7 @@ import { canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoric
 import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
+import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -1191,14 +1192,16 @@ export const useBrainDumpData = () => {
                     case 'transfer_money': {
                         const payload = result.payload as TransferMoneyPayload | undefined;
                         if (!payload) break;
-                        itemsToAdd.push(buildTransferItem(result, payload));
+                        const newItem = buildTransferItem(result, payload);
+                        itemsToAdd.push(newItem);
                         break;
                     }
 
                     case 'add_saving_funds': {
                         const payload = result.payload as AddSavingFundsPayload | undefined;
                         if (!payload) break;
-                        itemsToAdd.push(buildSavingFundsItem(result, payload));
+                        const newItem = buildSavingFundsItem(result, payload);
+                        itemsToAdd.push(newItem);
                         break;
                     }
 
@@ -1299,6 +1302,9 @@ export const useBrainDumpData = () => {
                 rules: [...getSystemCanonicalRules(walletsRef.current), ...canonicalRulesRef.current],
             });
 
+            const guardedResults = guardParserResultMultiplicity(parsedResults, text);
+            parsedResults = guardedResults.results;
+
             const enableDraftReview = appSettingsRef.current.enableDraftReview ?? false;
             const originalResults = structuredClone(parsedResults);
             
@@ -1308,7 +1314,14 @@ export const useBrainDumpData = () => {
                 executeParserResults(parsedResults, text, tempId);
             }
 
-            setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'success', results: parsedResults, completedAt: Date.now() } : t));
+            setParsingTasks(prev => prev.map(t => t.id === tempId ? {
+                ...t,
+                status: 'success',
+                results: parsedResults,
+                duplicateGuardRemovedCount: guardedResults.removedCount || undefined,
+                duplicateGuardReason: guardedResults.reason,
+                completedAt: Date.now()
+            } : t));
         } catch (err: any) {
             console.error("Processing failed", err);
             setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'failed', error: err.message || 'Unknown error', completedAt: Date.now() } : t));
@@ -1344,7 +1357,8 @@ export const useBrainDumpData = () => {
         });
 
         setCanonicalRules(nextCanonicalRules);
-        executeParserResults(updatedResults, review.text, id, nextCanonicalRules);
+        const guardedResults = guardParserResultMultiplicity(updatedResults, review.text).results;
+        executeParserResults(guardedResults, review.text, id, nextCanonicalRules);
         setPendingReviews(prev => prev.filter(r => r.id !== id));
     };
 

@@ -227,6 +227,12 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                 </div>
               </div>
 
+              {task.status === 'success' && !!task.duplicateGuardRemovedCount && task.duplicateGuardRemovedCount > 0 && (
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] text-amber-600">
+                  Blocked {task.duplicateGuardRemovedCount} duplicate parser result{task.duplicateGuardRemovedCount === 1 ? '' : 's'} before saving.
+                </div>
+              )}
+
               {task.status === 'success' && task.results && task.results.length > 0 && (
                 <div className="space-y-2">
                   {task.results.map((result, index) => (

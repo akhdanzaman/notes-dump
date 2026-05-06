@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.35',
+    date: 'May 2026',
+    items: [
+      'AI expense parsing now blocks duplicate structured transaction results before saving, so one input like “expense: beli calliper 10000 gopaylater” creates one transaction instead of a repeated batch.',
+      'The pro parser prompt now explicitly treats one atomic user entry as one result and warns Gemini not to repeat identical finance outputs.',
+      'Review Center shows when duplicate parser results were blocked, making parser safeguards visible instead of silently hiding the recovery.',
+    ],
+  },
+  {
     version: 'v0.3.34',
     date: 'May 2026',
     items: [

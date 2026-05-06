@@ -462,6 +462,8 @@ Global rules:
 - never invent ids
 - if unsure, set needsReview=true
 - confidence must be low|medium|high
+- output exactly one result for one atomic user entry; only return multiple results when the text clearly contains multiple distinct entries
+- never repeat the same result to express certainty
 
 Routine rules:
 - Explicit recurring phrases should populate:
@@ -759,6 +761,11 @@ function buildFeaturePrompt(
     `Original user text:\n${text}`,
     `
 Extraction rules by action:
+
+Multiplicity rules:
+- One atomic input should produce exactly one structured result.
+- Return multiple results only for clearly separated distinct entries (new lines, semicolons, or explicit “and/dan” with separate amounts/actions).
+- Never duplicate identical finance/transaction results; if the same expense is mentioned once, output it once.
 
 1) create_item
 - itemType must be one of TODO, SHOPPING, NOTE, EVENT, FINANCE, JOURNAL

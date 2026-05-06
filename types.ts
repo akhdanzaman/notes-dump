@@ -37,6 +37,8 @@ export interface ParsingTask {
   stage?: 'stage1' | 'stage2' | 'legacy';
   error?: string;
   results?: ParserResultV2[];
+  duplicateGuardRemovedCount?: number;
+  duplicateGuardReason?: string;
   createdAt: number;
   completedAt?: number;
 }
