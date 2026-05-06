@@ -6,6 +6,7 @@ import { getFocusMonthData, getSkillItems } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
+import { contentSurface } from '../layout/contentSurface';
 
 interface FocusViewProps {
     items: BrainDumpItem[];
@@ -162,11 +163,11 @@ const FocusView: React.FC<FocusViewProps> = ({
     };
 
     return (
-        <div className="min-h-[50vh] overflow-hidden pb-20">
+        <div className={contentSurface.pageShell}>
             {/* Top Container */}
             <motion.div 
                 layoutId="top-container"
-                className="bg-white dark:bg-zinc-100 text-black rounded-b-[32px] p-6 pt-12 shadow-sm mb-4 touch-pan-y"
+                className={contentSurface.invertedHeaderHero}
                 transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
@@ -279,13 +280,13 @@ const FocusView: React.FC<FocusViewProps> = ({
                     <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="w-full flex-shrink-0 px-4"
+                        className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                     >
                         <div className="space-y-6">
                             {/* Pending Tasks Sections */}
                             {(today.length > 0 || tomorrow.length > 0 || later.length > 0 || (routines && routines.length > 0)) ? (
-                                <div className="space-y-6">
-                                    <section>
+                                <div className={contentSurface.taskWorkspaceGrid} data-focus-workspace="tasks">
+                                    <section className={contentSurface.desktopWorkflowPanel}>
                                         <div className="flex items-center justify-between mb-3 pl-1">
                                             <h3 className="text-sm font-bold text-acc-todo uppercase tracking-wider">Today / Overdue</h3>
                                             <button 
@@ -296,13 +297,13 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             </button>
                                         </div>
                                         {today.length > 0 ? (
-                                            <div className="space-y-3">{today?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                            <div className={contentSurface.denseList}>{today?.map(item => <Card key={item.id} item={item} {...cardProps} editComfort="taskWorkspace" />)}</div>
                                         ) : (
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
                                     </section>
 
-                                    <section>
+                                    <section className={contentSurface.desktopWorkflowPanel}>
                                         <div className="flex items-center justify-between mb-3 pl-1">
                                             <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
                                                 <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Routines
@@ -315,13 +316,13 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             </button>
                                         </div>
                                         {routines && routines.length > 0 ? (
-                                            <div className="space-y-3">{routines?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                            <div className={contentSurface.denseList}>{routines?.map(item => <Card key={item.id} item={item} {...cardProps} editComfort="taskWorkspace" />)}</div>
                                         ) : (
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
                                     </section>
 
-                                    <section>
+                                    <section className={contentSurface.desktopWorkflowPanel}>
                                         <div className="flex items-center justify-between mb-3 pl-1">
                                             <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider">Tomorrow</h3>
                                             <button 
@@ -332,13 +333,13 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             </button>
                                         </div>
                                         {tomorrow.length > 0 ? (
-                                            <div className="space-y-3">{tomorrow?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                            <div className={contentSurface.denseList}>{tomorrow?.map(item => <Card key={item.id} item={item} {...cardProps} editComfort="taskWorkspace" />)}</div>
                                         ) : (
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
                                     </section>
 
-                                    <section>
+                                    <section className={contentSurface.desktopWorkflowPanel}>
                                         <div className="flex items-center justify-between mb-3 pl-1">
                                             <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
                                             <button 
@@ -349,7 +350,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             </button>
                                         </div>
                                         {later.length > 0 ? (
-                                            <div className="space-y-3">{later?.map(item => <Card key={item.id} item={item} {...cardProps} />)}</div>
+                                            <div className={contentSurface.denseList}>{later?.map(item => <Card key={item.id} item={item} {...cardProps} editComfort="taskWorkspace" />)}</div>
                                         ) : (
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
@@ -357,7 +358,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                 </div>
                             ) : (
                                 summary.todo === 0 && (
-                                    <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-[32px] gap-4">
+                                    <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
                                         <p className="text-muted font-medium">No pending tasks for this month.</p>
                                         <div className="flex gap-3">
                                             <button 
@@ -383,7 +384,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                     <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="w-full flex-shrink-0 px-4"
+                        className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                     >
                         <div>
                             {/* Skill Dashboard Cards */}
@@ -464,6 +465,7 @@ const FocusView: React.FC<FocusViewProps> = ({
                                             item={log} 
                                             skillName={skill?.name || log.meta.skillName || 'Unknown'} 
                                             {...cardProps}
+                                            editComfort="taskWorkspace"
                                             />
                                         );
                                     })}

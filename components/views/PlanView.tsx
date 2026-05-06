@@ -440,7 +440,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const renderTaskCard = (item: BrainDumpItem) => {
         const children = getDeepWorkChildren(items, item.id);
         const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
-        if (!isDeepWork) return <Card key={item.id} item={item} {...cardProps} />;
+        if (!isDeepWork) return <Card key={item.id} item={item} {...cardProps} editComfort="taskWorkspace" />;
 
         const isExpanded = expandedDeepWorkIds.includes(item.id);
         const isSuggested = item.meta.deepWorkStatus === 'suggested';
@@ -452,7 +452,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
         return (
             <div key={item.id} className="space-y-2 rounded-[24px] border border-purple-500/15 bg-purple-500/[0.03] p-2">
-                <Card item={item} {...cardProps} />
+                <Card item={item} {...cardProps} editComfort="taskWorkspace" />
                 <div className="px-2 pb-2 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <div className="flex items-center gap-2 text-purple-500">
@@ -541,7 +541,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     ) : (
                                         <div className="space-y-2">
                                             {children.map(child => (
-                                                <Card key={child.id} item={child} {...cardProps} className="rounded-[14px]" />
+                                                <Card key={child.id} item={child} {...cardProps} editComfort="taskWorkspace" className="rounded-[14px]" />
                                             ))}
                                         </div>
                                     )}
@@ -691,7 +691,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 >
                     <div className="space-y-8">
                         {summary.todo > 0 ? (
-                            <div className={contentSurface.workflowGrid}>
+                            <div className={contentSurface.taskWorkspaceGrid} data-plan-workspace="tasks">
                                 <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">

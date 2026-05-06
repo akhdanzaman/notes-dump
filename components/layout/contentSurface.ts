@@ -25,7 +25,10 @@ export const contentSurface = {
   // NDZ-007 #4: shared split panes get stronger desktop minimums once the shell widens.
   splitGrid: 'space-y-8 lg:grid lg:grid-cols-[repeat(2,minmax(18rem,1fr))] xl:grid-cols-[repeat(3,minmax(18rem,1fr))] lg:items-start lg:gap-6 lg:space-y-0',
   workflowGrid: 'space-y-6 lg:grid lg:grid-cols-[repeat(2,minmax(20rem,1fr))] xl:grid-cols-[minmax(21rem,1.15fr)_repeat(2,minmax(19rem,1fr))] lg:items-start lg:gap-5 xl:gap-6 lg:space-y-0',
+  // NDZ-018: Plan/Focus task editing gets a true workspace grid; keep passive list density separate from edit-card comfort.
+  taskWorkspaceGrid: 'space-y-6 lg:grid lg:grid-cols-[repeat(2,minmax(22rem,1fr))] min-[1440px]:grid-cols-[minmax(23rem,1.2fr)_repeat(2,minmax(21rem,1fr))] 2xl:grid-cols-[minmax(24rem,1.2fr)_repeat(2,minmax(22rem,1fr))] lg:items-start lg:gap-6 2xl:gap-7 lg:space-y-0',
   workflowPanel: 'rounded-[28px] border border-border/70 bg-surface/55 p-4 shadow-sm',
+  desktopWorkflowPanel: 'lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-surface/55 lg:p-4 lg:shadow-sm',
   detailSplitGrid: 'space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6 lg:space-y-0',
   cardGrid: 'space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0',
   // NDZ-016: tablet (640-1023px) is a locked baseline: two-column masonry, no desktop rail assumptions.
@@ -36,6 +39,16 @@ export const contentSurface = {
   desktopSettingsGrid: 'space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0',
   desktopSettingsWide: 'lg:col-span-2',
   card: 'bg-background border border-border rounded-2xl shadow-sm',
+} as const;
+
+export const taskEditSurface = {
+  cardExpanded: 'lg:p-4 xl:p-5',
+  textarea: 'lg:min-h-[104px] lg:p-4 xl:text-[15px]',
+  fieldGrid: 'grid grid-cols-2 gap-3 mb-3 lg:gap-4',
+  priorityButton: 'lg:py-3',
+  progressPanel: 'lg:p-4',
+  actions: 'flex flex-col-reverse gap-2 pt-3 border-t border-border/30 sm:flex-row sm:justify-end lg:gap-3',
+  actionButton: 'lg:px-4 lg:py-2',
 } as const;
 
 export const responsiveModal = {
