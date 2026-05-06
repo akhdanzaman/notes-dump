@@ -39,8 +39,8 @@ export const getResponsiveShellContentVariant = ({
     return 'workspace';
   }
 
-  if (activeTab === 'library') {
-    return librarySubTab === 'skills' ? 'standard' : 'wide';
+  if (activeTab === 'library' || activeTab === 'calendar') {
+    return 'workspace';
   }
 
   if (activeTab === 'summary') {

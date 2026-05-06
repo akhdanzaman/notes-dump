@@ -44,7 +44,7 @@ export const contentSurface = {
   emptyStateCard: 'rounded-[32px] border border-dashed border-border bg-surface/60 p-6 text-center shadow-sm lg:p-8',
   libraryEmptyState: 'mx-auto max-w-3xl lg:mx-0 lg:max-w-4xl lg:text-left',
   libraryEmptyActions: 'mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start',
-  calendarFrame: 'mx-auto max-w-6xl rounded-[28px] border border-border bg-surface/40 overflow-hidden lg:max-w-6xl 2xl:max-w-6xl',
+  calendarFrame: 'w-full rounded-[28px] border border-border bg-surface/40 overflow-hidden',
   desktopSettingsGrid: 'space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0',
   desktopSettingsWide: 'lg:col-span-2',
   card: 'bg-background border border-border rounded-2xl shadow-sm',

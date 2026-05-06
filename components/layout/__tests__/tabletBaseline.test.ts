@@ -31,7 +31,7 @@ test('NDZ-016 keeps existing sm modal centering behavior', () => {
   assert.doesNotMatch(responsiveModal.sheetOverlay, /md:items-start|md:items-end/);
 });
 
-test('NDZ-017 gives Summary the workspace shell without widening unrelated surfaces', () => {
+test('NDZ-017 gives Summary and filled desktop tabs the workspace shell', () => {
   assert.equal(getResponsiveShellContentVariant({
     activeTab: 'summary',
     planSubTab: 'tasks',
@@ -44,7 +44,7 @@ test('NDZ-017 gives Summary the workspace shell without widening unrelated surfa
     planSubTab: 'tasks',
     librarySubTab: 'skills',
     moneyView: 'transactions',
-  }), 'standard');
+  }), 'workspace');
 
   assert.equal(getResponsiveShellContentVariant({
     activeTab: 'money',
@@ -122,17 +122,16 @@ test('NDZ-020 makes Library sparse states intentional without changing the table
   assert.doesNotMatch(contentSurface.libraryEmptyState, /md:/);
 });
 
-test('NDZ-021 keeps Calendar on a standard readable cap instead of workspace full-bleed', () => {
+test('Calendar uses the workspace width when desktop tabs fill the main shell', () => {
   assert.equal(getResponsiveShellContentVariant({
     activeTab: 'calendar',
     planSubTab: 'tasks',
     librarySubTab: 'general',
     moneyView: 'transactions',
-  }), 'standard');
+  }), 'workspace');
 
-  assert.match(contentSurface.calendarFrame, /max-w-6xl/);
-  assert.match(contentSurface.calendarFrame, /2xl:max-w-6xl/);
-  assert.doesNotMatch(contentSurface.calendarFrame, /max-w-\[96rem\]|max-w-7xl|2xl:max-w-\[90rem\]/);
+  assert.match(contentSurface.calendarFrame, /w-full/);
+  assert.doesNotMatch(contentSurface.calendarFrame, /max-w-6xl|2xl:max-w-6xl|max-w-\[96rem\]|max-w-7xl|2xl:max-w-\[90rem\]/);
 });
 
 test('NDZ-022 maps responsive modal form variants by density', () => {

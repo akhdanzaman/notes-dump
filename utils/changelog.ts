@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.42',
+    date: 'May 2026',
+    items: [
+      'Money > Transactions adds calmer desktop breathing room to the Income, Expense, and Used cards so the stat row no longer feels pressed against the footer divider.',
+      'Notes/Library and Calendar now use the same full desktop workspace width as the already-expanded tabs, removing the uneven narrow-container look across tabs.',
+    ],
+  },
+  {
     version: 'v0.3.41',
     date: 'May 2026',
     items: [
