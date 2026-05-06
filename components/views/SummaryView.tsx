@@ -655,7 +655,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className={contentSurface.dashboardGrid}
+                className={contentSurface.summaryDashboardGrid}
             >
                 <section className={`${contentSurface.sideColumn} lg:order-2`}>
                     <div className="grid grid-cols-4 gap-3 lg:grid-cols-2 lg:gap-3 lg:rounded-[28px] lg:border lg:border-border lg:bg-surface/70 lg:p-4">

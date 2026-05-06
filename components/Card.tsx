@@ -5,6 +5,7 @@ import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, T
 
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, formatFinanceTypeLabel } from '../utils/financeTypeUtils';
+import { taskEditSurface } from './layout/contentSurface';
 
 // Helper to calculate next due date based on schedule (Same as RoutineTaskModal)
 const calculateNextDate = (
@@ -128,6 +129,7 @@ interface CardProps {
   defaultCollapsed?: boolean;
   hideMoney?: boolean;
   className?: string;
+  editComfort?: 'default' | 'taskWorkspace';
   
   // Context Props
   skills?: Skill[];
@@ -153,6 +155,7 @@ const Card: React.FC<CardProps> = ({
     defaultCollapsed = false,
     hideMoney = false,
     className = '',
+    editComfort = 'default',
     skills = [],
     wallets = [],
     budgetRules = [],
@@ -512,13 +515,19 @@ const Card: React.FC<CardProps> = ({
   
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
+  const isTaskWorkspaceEdit = editComfort === 'taskWorkspace' && enableCollapse && !isCollapsed;
+  const editGridClass = isTaskWorkspaceEdit ? taskEditSurface.fieldGrid : 'grid grid-cols-2 gap-3 mb-3';
+  const actionRowClass = isTaskWorkspaceEdit ? taskEditSurface.actions : 'flex justify-end gap-2 pt-2 border-t border-border/30';
+  const actionButtonComfort = isTaskWorkspaceEdit ? taskEditSurface.actionButton : '';
 
   return (
     <motion.div 
         initial={{ scale: 1 }}
         animate={{ scale: !isCollapsed ? 1.02 : 1 }}
         transition={{ type: "tween", ease: "easeInOut", duration: 0.2 }}
-        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-lg' : ''} rounded-[16px] p-3 shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        data-edit-comfort={editComfort === 'taskWorkspace' ? 'task-workspace' : undefined}
+        data-card-expanded={!isCollapsed ? 'true' : 'false'}
+        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-lg' : ''} rounded-[16px] p-3 ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
@@ -681,7 +690,7 @@ const Card: React.FC<CardProps> = ({
                    className={`w-full text-primary focus:outline-none mb-3 resize-none overflow-hidden ${
                        isNote 
                            ? 'text-base bg-transparent border-none p-0 min-h-[120px] leading-relaxed' 
-                           : 'text-sm bg-background border border-border rounded-2xl p-3 focus:border-primary min-h-[80px]'
+                           : `text-sm bg-background border border-border rounded-2xl p-3 focus:border-primary min-h-[80px] ${isTaskWorkspaceEdit ? taskEditSurface.textarea : ''}`
                    }`}
                    value={editContent}
                    onChange={(e) => setEditContent(e.target.value)}
@@ -689,7 +698,7 @@ const Card: React.FC<CardProps> = ({
                />
 
                {/* Dynamic Fields Grid */}
-               <div className="grid grid-cols-2 gap-3 mb-3">
+               <div className={editGridClass} data-edit-field-grid={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
                        <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1 overflow-x-auto no-scrollbar">
@@ -777,7 +786,7 @@ const Card: React.FC<CardProps> = ({
                                    <button
                                        key={p}
                                        onClick={() => setEditPriority(p)}
-                                       className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+                                       className={`py-2 ${isTaskWorkspaceEdit ? taskEditSurface.priorityButton : ''} rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
                                            editPriority === p 
                                                ? 'bg-indigo-600 text-white shadow-sm' 
                                                : 'bg-background border border-border text-muted hover:border-indigo-500/50'
@@ -1037,7 +1046,7 @@ const Card: React.FC<CardProps> = ({
 
                {/* Progress Control (Only for Todo) */}
                {showProgress && (
-                   <div className="bg-acc-todo/5 border border-acc-todo/20 rounded-2xl p-3 mb-3">
+                   <div className={`bg-acc-todo/5 border border-acc-todo/20 rounded-2xl p-3 mb-3 ${isTaskWorkspaceEdit ? taskEditSurface.progressPanel : ''}`} data-edit-progress={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
                        <div className="flex justify-between items-center mb-2">
                            <span className="text-xs uppercase font-bold text-acc-todo flex items-center gap-1">
                                <Activity className="w-3.5 h-3.5" /> Progress
@@ -1159,11 +1168,11 @@ const Card: React.FC<CardProps> = ({
                </div>
 
                {/* Actions */}
-               <div className="flex justify-end gap-2 pt-2 border-t border-border/30">
+               <div className={actionRowClass} data-edit-actions={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
                    {onDelete && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 
-                      className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-2xl text-xs font-medium flex items-center gap-1 transition-colors"
+                      className={`px-3 py-1.5 ${actionButtonComfort} bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-2xl text-xs font-medium flex items-center gap-1 transition-colors`}
                     >
                        <Trash2 className="w-3.5 h-3.5" /> Delete
                     </button>
@@ -1172,7 +1181,7 @@ const Card: React.FC<CardProps> = ({
                    {!readonly && onUpdate && (
                        <button
                            onClick={(e) => { e.stopPropagation(); handleSave(); }}
-                           className="px-4 py-1.5 bg-indigo-600 text-white hover:bg-indigo-500 rounded-2xl text-xs font-medium flex items-center gap-1 transition-colors shadow-sm"
+                           className={`px-4 py-1.5 ${actionButtonComfort} bg-indigo-600 text-white hover:bg-indigo-500 rounded-2xl text-xs font-medium flex items-center gap-1 transition-colors shadow-sm`}
                        >
                            <Save className="w-3.5 h-3.5" /> Save Changes
                        </button>

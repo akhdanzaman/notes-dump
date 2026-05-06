@@ -1,0 +1,6 @@
+NDZ-018 runtime gate passed
+Preview URL: http://127.0.0.1:4178
+Viewports: 1440x900, 1680x950
+Assertions: workspace >1024px; task columns >=330px; date controls >=135px; priority buttons >=90x36px; progress/actions >=300px; actions do not overlap composer
+Proof: docs/ndz-task-specs/artifacts/ndz-018-runtime-proof.json
+Runtime screenshots: docs/ndz-task-specs/artifacts/ndz-018-runtime-1440.png, docs/ndz-task-specs/artifacts/ndz-018-runtime-1680.png

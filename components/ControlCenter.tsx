@@ -1167,9 +1167,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 </section>
                                             )}
 
-                                            <section className={contentSurface.desktopSettingsWide}>
+                                            <section className={contentSurface.desktopSettingsWide} data-ndz-danger-zone="separated-from-form-workflows">
                                                 <h3 className="text-xs font-bold text-red-500 uppercase tracking-wider mb-3 ml-1">Danger Zone</h3>
-                                                <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
+                                                <div className="max-w-xl bg-red-500/5 border border-red-500/20 rounded-2xl p-4 ring-1 ring-red-500/10">
                                                     <div className="flex items-start gap-3 mb-4">
                                                         <div className="p-2 bg-red-500/10 rounded-xl text-red-500 shrink-0">
                                                             <Trash2 className="w-5 h-5" />
@@ -1178,6 +1178,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <div className="font-bold text-red-500 text-sm">Clear All Data</div>
                                                             <div className="text-xs text-red-500/70 mt-1">
                                                                 This will permanently delete all your items, wallets, and settings. This action cannot be undone.
+                                                            </div>
+                                                            <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-red-500/70">
+                                                                Compact destructive flow — not a dense data-entry form
                                                             </div>
                                                         </div>
                                                     </div>

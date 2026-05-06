@@ -1,0 +1,157 @@
+{
+  "viewport": {
+    "width": 1680,
+    "height": 950
+  },
+  "activeTab": "plan",
+  "shellVariant": "workspace",
+  "railVisible": true,
+  "contentShell": {
+    "x": 320,
+    "y": -502,
+    "width": 1313,
+    "height": 1536,
+    "bottom": 1034,
+    "right": 1633
+  },
+  "workspace": {
+    "x": 320,
+    "y": -236,
+    "width": 1313,
+    "height": 1082,
+    "bottom": 846,
+    "right": 1633
+  },
+  "workspaceClass": "space-y-6 lg:grid lg:grid-cols-[repeat(2,minmax(22rem,1fr))] min-[1440px]:grid-cols-[minmax(23rem,1.2fr)_repeat(2,minmax(21rem,1fr))] 2xl:grid-cols-[minmax(24rem,1.2fr)_repeat(2,minmax(22rem,1fr))] lg:items-start lg:gap-6 2xl:gap-7 lg:space-y-0",
+  "sectionRects": [
+    {
+      "x": 320,
+      "y": -236,
+      "width": 471,
+      "height": 896,
+      "bottom": 660,
+      "right": 791
+    },
+    {
+      "x": 819,
+      "y": -236,
+      "width": 393,
+      "height": 146,
+      "bottom": -90,
+      "right": 1212
+    },
+    {
+      "x": 1240,
+      "y": -236,
+      "width": 393,
+      "height": 157,
+      "bottom": -79,
+      "right": 1633
+    },
+    {
+      "x": 320,
+      "y": 688,
+      "width": 471,
+      "height": 158,
+      "bottom": 846,
+      "right": 791
+    }
+  ],
+  "expandedCard": {
+    "x": 337,
+    "y": -183,
+    "width": 437,
+    "height": 719,
+    "bottom": 536,
+    "right": 774
+  },
+  "fieldGrid": {
+    "x": 357,
+    "y": 11,
+    "width": 397,
+    "height": 234,
+    "bottom": 245,
+    "right": 754
+  },
+  "dateInputs": [
+    {
+      "x": 357,
+      "y": 30,
+      "width": 397,
+      "height": 34,
+      "bottom": 64,
+      "right": 754
+    },
+    {
+      "x": 357,
+      "y": 99,
+      "width": 191,
+      "height": 34,
+      "bottom": 133,
+      "right": 548
+    },
+    {
+      "x": 564,
+      "y": 99,
+      "width": 191,
+      "height": 34,
+      "bottom": 133,
+      "right": 754
+    }
+  ],
+  "priorityButtons": [
+    {
+      "x": 357,
+      "y": 168,
+      "width": 127,
+      "height": 41,
+      "bottom": 209,
+      "right": 484
+    },
+    {
+      "x": 492,
+      "y": 168,
+      "width": 127,
+      "height": 41,
+      "bottom": 209,
+      "right": 619
+    },
+    {
+      "x": 627,
+      "y": 168,
+      "width": 127,
+      "height": 41,
+      "bottom": 209,
+      "right": 754
+    }
+  ],
+  "progress": {
+    "x": 357,
+    "y": 257,
+    "width": 397,
+    "height": 156,
+    "bottom": 413,
+    "right": 754
+  },
+  "actions": {
+    "x": 357,
+    "y": 471,
+    "width": 397,
+    "height": 45,
+    "bottom": 516,
+    "right": 754
+  },
+  "composer": {
+    "x": 320,
+    "y": 860,
+    "width": 1313,
+    "height": 90,
+    "bottom": 950,
+    "right": 1633
+  },
+  "editComfortClass": "bg-surface ring-2 ring-indigo-500/20 shadow-lg rounded-[16px] p-3 lg:p-4 xl:p-5 shadow-sm transition-all hover:bg-surface/80  break-inside-avoid  cursor-pointer",
+  "fieldGridClass": "grid grid-cols-2 gap-3 mb-3 lg:gap-4",
+  "progressClass": "bg-acc-todo/5 border border-acc-todo/20 rounded-2xl p-3 mb-3 lg:p-4",
+  "actionsClass": "flex flex-col-reverse gap-2 pt-3 border-t border-border/30 sm:flex-row sm:justify-end lg:gap-3",
+  "bodyScrollY": 502
+}

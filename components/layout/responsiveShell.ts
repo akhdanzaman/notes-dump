@@ -36,7 +36,7 @@ export const getResponsiveShellContentVariant = ({
   }
 
   if (activeTab === 'money') {
-    return moneyView === 'budget' ? 'wide' : 'workspace';
+    return 'workspace';
   }
 
   if (activeTab === 'library') {
@@ -44,7 +44,7 @@ export const getResponsiveShellContentVariant = ({
   }
 
   if (activeTab === 'summary') {
-    return 'wide';
+    return 'workspace';
   }
 
   return 'standard';

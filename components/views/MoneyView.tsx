@@ -216,7 +216,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div data-money-tabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
+                    <div data-money-tabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-5 lg:max-w-2xl">
                         {tabs.map(tab => (
                             <button 
                                 key={tab}
@@ -231,19 +231,41 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         ))}
                     </div>
 
-                    <div>
-                        <div className="flex justify-between items-start mb-2">
-                            <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
-                            <button onClick={() => setShowBalance(!showBalance)} className="opacity-60 hover:opacity-100 transition-opacity">
-                                {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                            </button>
-                        </div>
-                        <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
-                        
-                        <div className="grid grid-cols-5 gap-3 mb-4 lg:gap-4 lg:grid-cols-5">
+                    <div className={contentSurface.moneyHeaderGrid} data-money-header-grid="true">
+                        <section className="min-w-0 flex flex-col justify-between rounded-[28px] bg-black/5 p-4 lg:p-5 xl:p-6">
+                            <div>
+                                <div className="flex justify-between items-start gap-4 mb-2">
+                                    <div>
+                                        <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
+                                        <div className="text-xs font-medium opacity-50">Assets, debt, and savings across wallets</div>
+                                    </div>
+                                    <button onClick={() => setShowBalance(!showBalance)} className="rounded-full p-2 opacity-60 hover:bg-black/10 hover:opacity-100 transition-all">
+                                        {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                                <div className="mb-5 truncate text-4xl font-bold tracking-tight xl:text-5xl">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
+                            </div>
+
+                            <div className={contentSurface.moneyMetricGrid} data-money-metric-grid="true">
+                                <div className="min-w-0 rounded-[22px] bg-surface/65 p-3 lg:p-4">
+                                    <div className="mb-1 flex items-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider lg:text-xs"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
+                                    <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-xl">{showBalance ? fmt(totalIncome) : '••••'}</div>
+                                </div>
+                                <div className="min-w-0 rounded-[22px] bg-surface/65 p-3 lg:p-4">
+                                    <div className="mb-1 flex items-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider lg:text-xs"><TrendingDown className="w-4 h-4 shrink-0 text-[#FF5722]" /> Expense</div>
+                                    <div className="truncate text-lg font-bold text-[#FF5722] lg:text-xl">{showBalance ? fmt(totalExpense) : '••••'}</div>
+                                </div>
+                                <div className="min-w-0 rounded-[22px] bg-surface/65 p-3 lg:p-4">
+                                    <div className="mb-1 flex items-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider lg:text-xs"><AlertCircle className="w-4 h-4 shrink-0 text-amber-500" /> Used</div>
+                                    <div className="truncate text-lg font-bold text-primary lg:text-xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <aside className="rounded-[28px] bg-black/5 p-4 lg:p-5" data-money-header-side-card="true">
                             <div 
                                 data-swipe-date="money-month"
-                                className="col-span-5 bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
+                                className="mb-4 rounded-[24px] bg-surface/65 p-4 touch-pan-y"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
@@ -273,39 +295,30 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><ChevronRight className="w-4 h-4" /></button>
                                 </div>
                             </div>
-                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
-                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
-                                <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-xl">{showBalance ? fmt(totalIncome) : '••••'}</div>
-                            </div>
-                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
-                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 shrink-0 text-[#FF5722]" /> Expense</div>
-                                <div className="truncate text-lg font-bold text-[#FF5722] lg:text-xl">{showBalance ? fmt(totalExpense) : '••••'}</div>
-                            </div>
-                            <div className="col-span-1 min-w-0 bg-black/5 rounded-[24px] p-3 lg:p-4">
-                                <div className="flex items-center justify-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1 lg:justify-start lg:text-xs"><AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-500 lg:block" /> Used</div>
-                                <div className="truncate text-center text-lg font-bold text-primary lg:text-left lg:text-xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-4 pt-4 border-t border-border items-center justify-between">
-                            <div className="flex gap-4">
-                                <div className="text-sm font-medium opacity-80">
-                                Assets: <span className="text-emerald-600 dark:text-emerald-500 font-bold">{showBalance ? fmt(totalAssets) : '••'}</span>
+
+                            <div className="space-y-3 border-t border-border pt-4">
+                                <div className="flex items-center justify-between gap-4 text-sm font-medium opacity-80">
+                                    <span>Assets</span>
+                                    <span className="truncate text-right font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(totalAssets) : '••'}</span>
                                 </div>
-                                <div className="text-sm font-medium opacity-80">
-                                Debt: <span className="text-[#FF5722] font-bold">{showBalance ? fmt(totalDebt) : '••'}</span>
+                                <div className="flex items-center justify-between gap-4 text-sm font-medium opacity-80">
+                                    <span>Debt</span>
+                                    <span className="truncate text-right font-bold text-[#FF5722]">{showBalance ? fmt(totalDebt) : '••'}</span>
                                 </div>
-                                <div className="text-sm font-medium opacity-80 flex items-center gap-1">
-                                    Savings: <span className="text-[#6366F1] font-bold">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
+                                <div className="flex items-center justify-between gap-4 text-sm font-medium opacity-80">
+                                    <span>Savings</span>
+                                    <span className="truncate text-right font-bold text-[#6366F1]">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
                                 </div>
                             </div>
+
                             <button 
                                 onClick={() => onAddItem(ItemType.FINANCE)}
-                                className="w-10 h-10 flex items-center justify-center bg-black dark:bg-zinc-800 text-white dark:text-white rounded-full hover:scale-110 active:scale-95 transition-all"
+                                className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-black px-4 py-3 text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95 dark:bg-zinc-800 dark:text-white"
                             >
-                                <Plus className="w-6 h-6" />
+                                <Plus className="w-5 h-5" />
+                                Add finance
                             </button>
-                        </div>
+                        </aside>
                     </div>
                 </motion.div>
             </motion.div>
@@ -423,9 +436,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         transition={{ duration: 0.4 }}
                         className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                     >
-                        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6">
-                            {list.length === 0 ? <div className={contentSurface.emptyStateCard}>No transactions recorded.</div> : (
-                                <div className={contentSurface.denseList}>
+                        <div className={contentSurface.moneyWorkspaceGrid} data-money-workspace="transactions">
+                            {list.length === 0 ? <div className={`${contentSurface.emptyStateCard} ${contentSurface.moneyPrimaryPanel}`}>No transactions recorded.</div> : (
+                                <div className={`${contentSurface.denseList} ${contentSurface.moneyPrimaryPanel}`} data-money-primary-column="true">
                                     {visibleTransactions.visibleItems.map(item => {
                                         const categoryName = budgetConfig.rules.find(r => r.id === item.meta.budgetCategory)?.name || item.meta.budgetCategory;
                                         return (
@@ -440,7 +453,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     <LoadMoreButton remainingCount={visibleTransactions.remainingCount} onClick={visibleTransactions.loadMore} className="mt-4" />
                                 </div>
                             )}
-                            <aside className="hidden lg:block rounded-[28px] border border-border bg-surface/70 p-4 text-sm text-muted">
+                            <aside className={contentSurface.moneySideCard} data-money-side-card="filters">
                                 <div className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-muted">Filters</div>
                                 <div className="space-y-2">
                                     <div className="flex justify-between gap-3"><span>Wallet</span><strong className="text-primary">{filterWallet || 'All'}</strong></div>

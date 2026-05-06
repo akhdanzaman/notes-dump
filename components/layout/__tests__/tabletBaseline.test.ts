@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { contentSurface, responsiveModal, TABLET_BASELINE } from '../contentSurface';
-import { RESPONSIVE_SHELL, responsiveShellClass } from '../responsiveShell';
+import { contentSurface, responsiveModal, TABLET_BASELINE, taskEditSurface } from '../contentSurface';
+import { getResponsiveShellContentVariant, RESPONSIVE_SHELL, responsiveShellClass } from '../responsiveShell';
 
 test('NDZ-016 tablet baseline is explicit and bounded before desktop rail', () => {
   assert.equal(TABLET_BASELINE.minWidth, 640);
@@ -29,4 +29,124 @@ test('NDZ-016 keeps existing sm modal centering behavior', () => {
   assert.match(responsiveModal.formPanel, /max-w-md/);
   assert.match(responsiveModal.formPanel, /lg:max-w-2xl/);
   assert.doesNotMatch(responsiveModal.sheetOverlay, /md:items-start|md:items-end/);
+});
+
+test('NDZ-017 gives Summary the workspace shell without widening unrelated surfaces', () => {
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'summary',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'transactions',
+  }), 'workspace');
+
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'library',
+    planSubTab: 'tasks',
+    librarySubTab: 'skills',
+    moneyView: 'transactions',
+  }), 'standard');
+
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'money',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'budget',
+  }), 'workspace');
+});
+
+test('NDZ-017 keeps Summary dashboard dense on wide desktop without new widget slots', () => {
+  assert.match(contentSurface.summaryDashboardGrid, /lg:grid-cols-\[minmax\(0,1fr\)_21rem\]/);
+  assert.match(contentSurface.summaryDashboardGrid, /xl:grid-cols-\[minmax\(0,1fr\)_23rem\]/);
+  assert.match(contentSurface.summaryDashboardGrid, /2xl:grid-cols-\[minmax\(0,1fr\)_25rem\]/);
+  assert.doesNotMatch(contentSurface.summaryDashboardGrid, /repeat\(|3fr|4fr/);
+});
+
+test('NDZ-018 gives Plan/Focus task editing a wider workspace without changing the tablet breakpoint', () => {
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'plan',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'transactions',
+  }), 'workspace');
+
+  assert.match(contentSurface.taskWorkspaceGrid, /lg:grid-cols-\[repeat\(2,minmax\(22rem,1fr\)\)\]/);
+  assert.match(contentSurface.taskWorkspaceGrid, /min-\[1440px\]:grid-cols-\[minmax\(23rem,1\.2fr\)_repeat\(2,minmax\(21rem,1fr\)\)\]/);
+  assert.match(contentSurface.taskWorkspaceGrid, /2xl:grid-cols-\[minmax\(24rem,1\.2fr\)_repeat\(2,minmax\(22rem,1fr\)\)\]/);
+  assert.doesNotMatch(contentSurface.taskWorkspaceGrid, /md:grid|md:grid-cols/);
+});
+
+test('NDZ-018 separates passive list density from edit-card comfort controls', () => {
+  assert.match(contentSurface.denseList, /lg:space-y-2/);
+  assert.match(taskEditSurface.cardExpanded, /lg:p-4/);
+  assert.match(taskEditSurface.textarea, /lg:min-h-\[104px\]/);
+  assert.match(taskEditSurface.fieldGrid, /lg:gap-4/);
+  assert.match(taskEditSurface.priorityButton, /lg:py-3/);
+  assert.match(taskEditSurface.progressPanel, /lg:p-4/);
+  assert.match(taskEditSurface.actions, /sm:flex-row/);
+});
+
+test('NDZ-019 gives Money a workspace shell and fixed context rail', () => {
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'money',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'wallets',
+  }), 'workspace');
+
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'money',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'transactions',
+  }), 'workspace');
+
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'money',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'budget',
+  }), 'workspace');
+
+  assert.match(contentSurface.moneyHeaderGrid, /lg:grid-cols-\[minmax\(0,1fr\)_22rem\]/);
+  assert.match(contentSurface.moneyHeaderGrid, /xl:grid-cols-\[minmax\(0,1fr\)_24rem\]/);
+  assert.match(contentSurface.moneyWorkspaceGrid, /2xl:grid-cols-\[minmax\(0,1fr\)_25rem\]/);
+  assert.match(contentSurface.moneySideCard, /lg:sticky/);
+  assert.doesNotMatch(contentSurface.moneyWorkspaceGrid, /repeat\(|md:grid|3fr|4fr/);
+});
+
+test('NDZ-020 makes Library sparse states intentional without changing the tablet masonry contract', () => {
+  assert.match(contentSurface.libraryEmptyState, /max-w-3xl/);
+  assert.match(contentSurface.libraryEmptyState, /lg:max-w-4xl/);
+  assert.match(contentSurface.libraryEmptyActions, /sm:flex-row/);
+  assert.match(contentSurface.libraryEmptyActions, /lg:justify-start/);
+  assert.doesNotMatch(contentSurface.libraryEmptyState, /md:/);
+});
+
+test('NDZ-021 keeps Calendar on a standard readable cap instead of workspace full-bleed', () => {
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'calendar',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'transactions',
+  }), 'standard');
+
+  assert.match(contentSurface.calendarFrame, /max-w-6xl/);
+  assert.match(contentSurface.calendarFrame, /2xl:max-w-6xl/);
+  assert.doesNotMatch(contentSurface.calendarFrame, /max-w-\[96rem\]|max-w-7xl|2xl:max-w-\[90rem\]/);
+});
+
+test('NDZ-022 maps responsive modal form variants by density', () => {
+  assert.match(responsiveModal.formPanel, /max-w-md/);
+  assert.match(responsiveModal.formPanel, /lg:max-w-2xl/);
+  assert.match(responsiveModal.denseFormPanel, /max-w-md/);
+  assert.match(responsiveModal.denseFormPanel, /lg:max-w-3xl/);
+  assert.match(responsiveModal.fieldGrid, /lg:grid-cols-2/);
+  assert.doesNotMatch(responsiveModal.formPanel, /lg:max-w-3xl/);
+});
+
+test('NDZ-024 keeps destructive confirms compact and visually separate from dense forms', () => {
+  assert.match(responsiveModal.confirmPanel, /max-w-xs/);
+  assert.match(responsiveModal.destructiveConfirmPanel, /max-w-xs/);
+  assert.match(responsiveModal.destructiveConfirmPanel, /border-red-500\/30/);
+  assert.doesNotMatch(responsiveModal.destructiveConfirmPanel, /lg:max-w-2xl|lg:max-w-3xl/);
 });

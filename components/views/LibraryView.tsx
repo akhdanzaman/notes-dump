@@ -317,26 +317,33 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (isEmpty) {
             const isJournal = type === 'journal';
             return (
-                <div className={`${contentSurface.emptyStateCard} mx-auto max-w-3xl`}>
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500">
+                <div className={`${contentSurface.emptyStateCard} ${contentSurface.libraryEmptyState}`} data-ndz-library-empty-state="intentional">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 lg:mx-0">
                         {isJournal ? <BookText className="w-6 h-6" /> : <Library className="w-6 h-6" />}
                     </div>
                     <h3 className="mt-4 text-lg font-bold text-primary">
                         {searchQuery ? 'No matching notes' : (isJournal ? "Start this month's journal" : 'No notes yet')}
                     </h3>
-                    <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
+                    <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted lg:mx-0">
                         {searchQuery
                             ? 'Try another search or capture the thought now so this space has something useful to scan.'
                             : (isJournal
                                 ? 'Journal entries will group by day with completed tasks, shopping, events, and transactions alongside the reflection.'
                                 : 'Notes will use the wider desktop masonry grid once captured, instead of leaving the library as a blank field.')}
                     </p>
-                    <button
-                        onClick={() => onAddItem(isJournal ? ItemType.JOURNAL : ItemType.NOTE)}
-                        className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-600"
-                    >
-                        <Plus className="w-4 h-4" /> {isJournal ? 'Write journal' : 'Add note'}
-                    </button>
+                    <div className={contentSurface.libraryEmptyActions}>
+                        <button
+                            onClick={() => onAddItem(isJournal ? ItemType.JOURNAL : ItemType.NOTE)}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-600"
+                        >
+                            <Plus className="w-4 h-4" /> {isJournal ? 'Write journal' : 'Add note'}
+                        </button>
+                        {!isJournal && (
+                            <span className="rounded-full border border-border bg-background/60 px-3 py-2 text-xs font-medium text-muted">
+                                Search stays anchored to this content frame from the composer edge.
+                            </span>
+                        )}
+                    </div>
                 </div>
             );
         }
