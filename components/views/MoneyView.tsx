@@ -294,28 +294,26 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                         </section>
 
-                        <aside className="rounded-[28px] bg-black/5 p-4 lg:p-5" data-money-header-side-card="true">
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
-                                    <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Assets</div>
-                                    <div className="truncate text-sm font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(totalAssets) : '••'}</div>
-                                </div>
-                                <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
-                                    <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Debt</div>
-                                    <div className="truncate text-sm font-bold text-[#FF5722]">{showBalance ? fmt(totalDebt) : '••'}</div>
-                                </div>
-                                <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
-                                    <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Savings</div>
-                                    <div className="truncate text-sm font-bold text-[#6366F1]">{showBalance ? fmt(totalSavings || 0) : '••'}</div>
-                                </div>
+                        <aside className="grid grid-cols-[repeat(3,minmax(0,1fr))_3.5rem] items-stretch gap-2" data-money-header-side-card="true">
+                            <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
+                                <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Assets</div>
+                                <div className="truncate text-sm font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(totalAssets) : '••'}</div>
                             </div>
-
+                            <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
+                                <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Debt</div>
+                                <div className="truncate text-sm font-bold text-[#FF5722]">{showBalance ? fmt(totalDebt) : '••'}</div>
+                            </div>
+                            <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
+                                <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Savings</div>
+                                <div className="truncate text-sm font-bold text-[#6366F1]">{showBalance ? fmt(totalSavings || 0) : '••'}</div>
+                            </div>
                             <button 
                                 onClick={() => onAddItem(ItemType.FINANCE)}
-                                className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-black px-4 py-3 text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95 dark:bg-zinc-800 dark:text-white"
+                                className="flex aspect-square h-full min-h-14 w-14 shrink-0 items-center justify-center self-center rounded-full bg-black text-white shadow-sm transition-all hover:scale-[1.04] active:scale-95 dark:bg-zinc-800 dark:text-white"
+                                aria-label="Add finance"
+                                title="Add finance"
                             >
                                 <Plus className="w-5 h-5" />
-                                Add finance
                             </button>
                         </aside>
                     </div>

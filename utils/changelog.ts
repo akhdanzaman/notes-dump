@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.38',
+    date: 'May 2026',
+    items: [
+      'Money > Transactions removes the extra gray wrapper around the Assets, Debt, and Savings strip so the header matches the cleaner tab-header style.',
+      'The Add finance action now sits in the same row as those totals as a compact circular plus button with no extra label text.',
+    ],
+  },
+  {
     version: 'v0.3.37',
     date: 'May 2026',
     items: [
