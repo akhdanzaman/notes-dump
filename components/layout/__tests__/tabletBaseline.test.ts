@@ -51,7 +51,7 @@ test('NDZ-017 gives Summary the workspace shell without widening unrelated surfa
     planSubTab: 'tasks',
     librarySubTab: 'general',
     moneyView: 'budget',
-  }), 'wide');
+  }), 'workspace');
 });
 
 test('NDZ-017 keeps Summary dashboard dense on wide desktop without new widget slots', () => {
@@ -83,4 +83,33 @@ test('NDZ-018 separates passive list density from edit-card comfort controls', (
   assert.match(taskEditSurface.priorityButton, /lg:py-3/);
   assert.match(taskEditSurface.progressPanel, /lg:p-4/);
   assert.match(taskEditSurface.actions, /sm:flex-row/);
+});
+
+test('NDZ-019 gives Money a workspace shell and fixed context rail', () => {
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'money',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'wallets',
+  }), 'workspace');
+
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'money',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'transactions',
+  }), 'workspace');
+
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'money',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'budget',
+  }), 'workspace');
+
+  assert.match(contentSurface.moneyHeaderGrid, /lg:grid-cols-\[minmax\(0,1fr\)_22rem\]/);
+  assert.match(contentSurface.moneyHeaderGrid, /xl:grid-cols-\[minmax\(0,1fr\)_24rem\]/);
+  assert.match(contentSurface.moneyWorkspaceGrid, /2xl:grid-cols-\[minmax\(0,1fr\)_25rem\]/);
+  assert.match(contentSurface.moneySideCard, /lg:sticky/);
+  assert.doesNotMatch(contentSurface.moneyWorkspaceGrid, /repeat\(|md:grid|3fr|4fr/);
 });

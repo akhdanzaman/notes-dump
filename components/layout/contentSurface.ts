@@ -27,6 +27,12 @@ export const contentSurface = {
   workflowGrid: 'space-y-6 lg:grid lg:grid-cols-[repeat(2,minmax(20rem,1fr))] xl:grid-cols-[minmax(21rem,1.15fr)_repeat(2,minmax(19rem,1fr))] lg:items-start lg:gap-5 xl:gap-6 lg:space-y-0',
   // NDZ-018: Plan/Focus task editing gets a true workspace grid; keep passive list density separate from edit-card comfort.
   taskWorkspaceGrid: 'space-y-6 lg:grid lg:grid-cols-[repeat(2,minmax(22rem,1fr))] min-[1440px]:grid-cols-[minmax(23rem,1.2fr)_repeat(2,minmax(21rem,1fr))] 2xl:grid-cols-[minmax(24rem,1.2fr)_repeat(2,minmax(22rem,1fr))] lg:items-start lg:gap-6 2xl:gap-7 lg:space-y-0',
+  // NDZ-019: Money uses the workspace shell with a fixed context rail so the finance scan column can grow without becoming spreadsheet full-bleed.
+  moneyHeaderGrid: 'space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:grid-cols-[minmax(0,1fr)_25rem] lg:items-stretch lg:gap-5 xl:gap-6 lg:space-y-0',
+  moneyMetricGrid: 'grid grid-cols-3 gap-2 lg:gap-3 xl:gap-4',
+  moneyWorkspaceGrid: 'space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:grid-cols-[minmax(0,1fr)_25rem] lg:items-start lg:gap-6 xl:gap-8 lg:space-y-0',
+  moneyPrimaryPanel: 'lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-surface/35 lg:p-4 lg:shadow-sm xl:p-5',
+  moneySideCard: 'hidden lg:block lg:sticky lg:top-6 rounded-[28px] border border-border bg-surface/70 p-4 text-sm text-muted shadow-sm xl:p-5',
   workflowPanel: 'rounded-[28px] border border-border/70 bg-surface/55 p-4 shadow-sm',
   desktopWorkflowPanel: 'lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-surface/55 lg:p-4 lg:shadow-sm',
   detailSplitGrid: 'space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6 lg:space-y-0',
