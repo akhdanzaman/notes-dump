@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.41',
+    date: 'May 2026',
+    items: [
+      'Money tabs now let the tab switcher fill the full header width on desktop instead of stopping halfway across the main container.',
+      'Money > Transactions gets a more desktop-native header: Total Net Worth and the month selector form a wide two-column top row, while Income, Expense, and Used expand into equal desktop cards below.',
+    ],
+  },
+  {
     version: 'v0.3.40',
     date: 'May 2026',
     items: [

@@ -216,7 +216,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div data-money-tabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-5 lg:max-w-2xl">
+                    <div data-money-tabs="true" className="mb-5 flex w-full bg-black/5 dark:bg-white/20 rounded-2xl p-1">
                         {tabs.map(tab => (
                             <button 
                                 key={tab}
@@ -231,13 +231,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         ))}
                     </div>
 
-                    <div data-money-header-grid="true">
-                        <div className="mb-5 flex items-start justify-between gap-4">
-                            <div className="min-w-0">
+                    <div className="lg:space-y-6" data-money-header-grid="true">
+                        <div className="mb-5 flex items-start justify-between gap-4 lg:mb-0 lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_18rem]">
+                            <div className="min-w-0 lg:pt-1">
                                 <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
                                 <div className="text-xs font-medium opacity-50">Assets, debt, and savings across wallets</div>
-                                <div className="mt-2 flex min-w-0 items-center gap-3">
-                                    <div className="truncate text-4xl font-bold tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
+                                <div className="mt-2 flex min-w-0 items-center gap-3 lg:mt-3">
+                                    <div className="truncate text-4xl font-bold tracking-tight lg:text-5xl">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
                                     <button onClick={() => setShowBalance(!showBalance)} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity" aria-label={showBalance ? 'Hide balance' : 'Show balance'}>
                                         {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
@@ -245,13 +245,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                             <div 
                                 data-swipe-date="money-month"
-                                className="shrink-0 rounded-[20px] bg-black/5 px-2 py-2 touch-pan-y sm:px-3"
+                                className="shrink-0 rounded-[20px] bg-black/5 px-2 py-2 touch-pan-y sm:px-3 lg:w-full lg:rounded-[24px] lg:px-4 lg:py-3"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
                             >
-                                <div className="flex items-center justify-between gap-1">
-                                    <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors" aria-label="Previous month"><ChevronLeft className="w-4 h-4" /></button>
+                                <div className="flex items-center justify-between gap-1 lg:gap-2">
+                                    <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label="Previous month"><ChevronLeft className="w-4 h-4" /></button>
                                     <AnimatePresence mode="wait">
                                         <motion.div 
                                             key={financeDate.toISOString()}
@@ -260,33 +260,33 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: -10 }}
                                             transition={{ duration: 0.2 }}
-                                            className="flex min-w-16 flex-col items-center sm:min-w-20"
+                                            className="flex min-w-16 flex-col items-center sm:min-w-20 lg:min-w-24"
                                         >
-                                            <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider leading-none mb-1">
+                                            <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider leading-none mb-1 lg:text-xs">
                                                 {financeDate.getFullYear()}
                                             </span>
-                                            <span className="text-sm font-bold leading-none sm:text-base">
+                                            <span className="text-sm font-bold leading-none sm:text-base lg:text-lg">
                                                 {financeDate.toLocaleDateString(undefined, { month: 'short' })}
                                             </span>
                                         </motion.div>
                                     </AnimatePresence>
-                                    <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors" aria-label="Next month"><ChevronRight className="w-4 h-4" /></button>
+                                    <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label="Next month"><ChevronRight className="w-4 h-4" /></button>
                                 </div>
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-5 gap-3 mb-4 lg:gap-4 lg:grid-cols-5">
-                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
+                        <div className="grid grid-cols-5 gap-3 mb-4 lg:mb-0 lg:grid-cols-3 lg:gap-4 xl:gap-5">
+                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-5">
                                 <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
-                                <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-xl">{showBalance ? fmt(totalIncome) : '••••'}</div>
+                                <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-2xl">{showBalance ? fmt(totalIncome) : '••••'}</div>
                             </div>
-                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
+                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-5">
                                 <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 shrink-0 text-[#FF5722]" /> Expense</div>
-                                <div className="truncate text-lg font-bold text-[#FF5722] lg:text-xl">{showBalance ? fmt(totalExpense) : '••••'}</div>
+                                <div className="truncate text-lg font-bold text-[#FF5722] lg:text-2xl">{showBalance ? fmt(totalExpense) : '••••'}</div>
                             </div>
-                            <div className="col-span-1 min-w-0 bg-black/5 rounded-[24px] p-3 lg:p-4">
+                            <div className="col-span-1 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-5">
                                 <div className="flex items-center justify-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1 lg:justify-start lg:text-xs"><AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-500 lg:block" /> Used</div>
-                                <div className="truncate text-center text-lg font-bold text-primary lg:text-left lg:text-xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
+                                <div className="truncate text-center text-lg font-bold text-primary lg:text-left lg:text-2xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
                             </div>
                         </div>
                         
