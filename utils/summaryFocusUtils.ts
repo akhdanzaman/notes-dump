@@ -1,4 +1,5 @@
-import { BrainDumpItem } from '../types';
+import { BrainDumpItem, ItemType } from '../types';
+import { getShoppingDueDate } from './shoppingDateUtils';
 
 type PendingGroups = {
   today: BrainDumpItem[];
@@ -14,33 +15,97 @@ export type SummaryFocusDisplay = {
   isDoneState: boolean;
 };
 
-const addUnique = (target: BrainDumpItem[], seen: Set<string>, items: BrainDumpItem[], limit: number) => {
-  for (const item of items) {
+type FocusKind = 'focus' | 'shopping';
+
+type SummaryFocusCandidate = {
+  item: BrainDumpItem;
+  kind: FocusKind;
+  dueTime: number;
+  sequence: number;
+};
+
+const getValidDateTime = (value?: string) => {
+  if (!value) return Infinity;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : Infinity;
+};
+
+const getFocusDueTime = (item: BrainDumpItem) => getValidDateTime(item.meta.start || item.meta.date || item.meta.dateTime);
+const getShoppingDueTime = (item: BrainDumpItem) => getValidDateTime(getShoppingDueDate(item));
+
+const compareCandidates = (left: SummaryFocusCandidate, right: SummaryFocusCandidate) => {
+  if (left.dueTime !== right.dueTime) return left.dueTime - right.dueTime;
+
+  // Same due date: focus tasks/events are usually more actionable than shopping reminders.
+  if (left.kind !== right.kind) return left.kind === 'focus' ? -1 : 1;
+
+  return left.sequence - right.sequence;
+};
+
+const addUniqueCandidate = (
+  target: SummaryFocusCandidate[],
+  seen: Set<string>,
+  candidate: SummaryFocusCandidate,
+  limit: number
+) => {
+  if (target.length >= limit || seen.has(candidate.item.id)) return;
+  seen.add(candidate.item.id);
+  target.push(candidate);
+};
+
+const addUniqueCandidates = (
+  target: SummaryFocusCandidate[],
+  seen: Set<string>,
+  candidates: SummaryFocusCandidate[],
+  limit: number
+) => {
+  for (const candidate of candidates) {
+    addUniqueCandidate(target, seen, candidate, limit);
     if (target.length >= limit) break;
-    if (seen.has(item.id)) continue;
-    seen.add(item.id);
-    target.push(item);
   }
 };
 
 export const buildMixedTodayFocusItems = (
   urgentShoppingItems: BrainDumpItem[],
   todayFocusItems: BrainDumpItem[],
-  limit = 5
+  limit = 5,
+  upcomingFocusItems: BrainDumpItem[] = []
 ): BrainDumpItem[] => {
   if (limit <= 0) return [];
-  if (urgentShoppingItems.length === 0) return todayFocusItems.slice(0, limit);
-  if (todayFocusItems.length === 0) return urgentShoppingItems.slice(0, limit);
 
-  const result: BrainDumpItem[] = [];
+  const pendingUrgentShopping = urgentShoppingItems.filter(item => item.status === 'pending');
+  const focusCandidates = [...todayFocusItems, ...upcomingFocusItems].filter(item => item.status === 'pending');
+
+  const focus = focusCandidates.map((item, sequence): SummaryFocusCandidate => ({
+    item,
+    kind: 'focus',
+    dueTime: getFocusDueTime(item),
+    sequence,
+  })).sort(compareCandidates);
+
+  const shopping = pendingUrgentShopping.map((item, sequence): SummaryFocusCandidate => ({
+    item,
+    kind: 'shopping',
+    dueTime: getShoppingDueTime(item),
+    sequence,
+  })).sort(compareCandidates);
+
+  if (focus.length === 0) return shopping.slice(0, limit).map(candidate => candidate.item);
+  if (shopping.length === 0) return focus.slice(0, limit).map(candidate => candidate.item);
+
+  // Rule for Summary > Today's Focus:
+  // 1. Show both worlds when both exist: at least one focus task/event and one urgent shopping item.
+  // 2. Fill the rest by nearest due date across focus + urgent shopping.
+  // 3. If dates tie, focus tasks/events win before shopping.
+  // 4. Undated urgent shopping is allowed, but it sorts after dated focus/shopping.
+  const result: SummaryFocusCandidate[] = [];
   const seen = new Set<string>();
-  const initialShoppingSlots = Math.min(urgentShoppingItems.length, Math.ceil(limit / 2));
 
-  addUnique(result, seen, urgentShoppingItems.slice(0, initialShoppingSlots), limit);
-  addUnique(result, seen, todayFocusItems, limit);
-  addUnique(result, seen, urgentShoppingItems.slice(initialShoppingSlots), limit);
+  addUniqueCandidate(result, seen, focus[0], limit);
+  addUniqueCandidate(result, seen, shopping[0], limit);
+  addUniqueCandidates(result, seen, [...focus.slice(1), ...shopping.slice(1)].sort(compareCandidates), limit);
 
-  return result;
+  return result.sort(compareCandidates).map(candidate => candidate.item);
 };
 
 export const buildSummaryFocusDisplay = (
@@ -49,9 +114,18 @@ export const buildSummaryFocusDisplay = (
   urgentShoppingItems: BrainDumpItem[],
   limit = 5
 ): SummaryFocusDisplay => {
-  const todayItems = buildMixedTodayFocusItems(urgentShoppingItems, pendingGroups.today, limit);
+  const pendingUrgentShopping = urgentShoppingItems.filter(item => item.status === 'pending');
+  const pendingTodayFocus = pendingGroups.today.filter(item => item.status === 'pending');
+  const shouldBuildTodayFocus = pendingTodayFocus.length > 0 || pendingUrgentShopping.length > 0;
 
-  if (todayItems.length > 0) {
+  if (shouldBuildTodayFocus) {
+    const todayItems = buildMixedTodayFocusItems(
+      pendingUrgentShopping,
+      pendingTodayFocus,
+      limit,
+      [...pendingGroups.tomorrow, ...pendingGroups.later]
+    );
+
     return {
       displayItems: todayItems,
       displayTitle: "Today's Focus",
@@ -89,7 +163,7 @@ export const buildSummaryFocusDisplay = (
   }
 
   const recentDone = items
-    .filter(item => item.type === 'TODO' && item.status === 'done' && item.completed_at)
+    .filter(item => item.type === ItemType.TODO && item.status === 'done' && item.completed_at)
     .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
     .slice(0, 3);
 

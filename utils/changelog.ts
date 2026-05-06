@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.44',
+    date: 'May 2026',
+    items: [
+      'Summary > Today’s Focus now uses a clear date-aware rule: include pending focus tasks/events plus pending urgent shopping, reserve visibility for both when both exist, then sort by nearest due date with focus items winning same-date ties.',
+      'Urgent shopping dated later can no longer block nearer focus tasks/events, so a focus task on May 7 stays visible ahead of urgent shopping due May 10.',
+    ],
+  },
+  {
     version: 'v0.3.43',
     date: 'May 2026',
     items: [
