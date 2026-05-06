@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.39',
+    date: 'May 2026',
+    items: [
+      'Money > Transactions restores the v0.3.33-style Total Net Worth header with no extra gray wrapper behind the net worth amount.',
+      'Assets, Debt, Savings, and the Add finance plus button now return to the v0.3.33 inline footer strip beneath the monthly stats.',
+    ],
+  },
+  {
     version: 'v0.3.38',
     date: 'May 2026',
     items: [

@@ -231,91 +231,86 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         ))}
                     </div>
 
-                    <div className={contentSurface.moneyHeaderGrid} data-money-header-grid="true">
-                        <section className="min-w-0 flex flex-col justify-between rounded-[28px] bg-black/5 p-4 lg:p-5 xl:p-6">
+                    <div data-money-header-grid="true">
+                        <div className="flex justify-between items-start mb-2">
                             <div>
-                                <div className="flex justify-between items-start gap-4 mb-2">
-                                    <div>
-                                        <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
-                                        <div className="text-xs font-medium opacity-50">Assets, debt, and savings across wallets</div>
-                                    </div>
-                                    <div 
-                                        data-swipe-date="money-month"
-                                        className="shrink-0 rounded-2xl bg-surface/65 px-2 py-2 touch-pan-y"
-                                        onTouchStart={dateSwipeHandlers.onTouchStart}
-                                        onTouchMove={dateSwipeHandlers.onTouchMove}
-                                        onTouchEnd={dateSwipeHandlers.onTouchEnd}
-                                    >
-                                        <div className="flex items-center justify-between gap-1">
-                                            <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors" aria-label="Previous month"><ChevronLeft className="w-4 h-4" /></button>
-                                            <AnimatePresence mode="wait">
-                                                <motion.div 
-                                                    key={financeDate.toISOString()}
-                                                    data-money-month-label="true"
-                                                    initial={{ opacity: 0, x: 10 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    exit={{ opacity: 0, x: -10 }}
-                                                    transition={{ duration: 0.2 }}
-                                                    className="flex min-w-20 flex-col items-center"
-                                                >
-                                                    <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider leading-none mb-1">
-                                                        {financeDate.getFullYear()}
-                                                    </span>
-                                                    <span className="text-sm font-bold leading-none sm:text-base">
-                                                        {financeDate.toLocaleDateString(undefined, { month: 'short' })}
-                                                    </span>
-                                                </motion.div>
-                                            </AnimatePresence>
-                                            <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors" aria-label="Next month"><ChevronRight className="w-4 h-4" /></button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
-                                    <div className="truncate text-4xl font-bold tracking-tight xl:text-5xl">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
-                                    <button onClick={() => setShowBalance(!showBalance)} className="shrink-0 rounded-full p-2 opacity-60 hover:bg-black/10 hover:opacity-100 transition-all" aria-label={showBalance ? 'Hide balance' : 'Show balance'}>
-                                        {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                    </button>
-                                </div>
+                                <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
+                                <div className="text-xs font-medium opacity-50">Assets, debt, and savings across wallets</div>
                             </div>
+                            <button onClick={() => setShowBalance(!showBalance)} className="opacity-60 hover:opacity-100 transition-opacity" aria-label={showBalance ? 'Hide balance' : 'Show balance'}>
+                                {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+                        <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
+                        
+                        <div className="grid grid-cols-5 gap-3 mb-4 lg:gap-4 lg:grid-cols-5">
+                            <div 
+                                data-swipe-date="money-month"
+                                className="col-span-5 bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
+                                onTouchStart={dateSwipeHandlers.onTouchStart}
+                                onTouchMove={dateSwipeHandlers.onTouchMove}
+                                onTouchEnd={dateSwipeHandlers.onTouchEnd}
+                            >
+                                <div className="flex items-center justify-between w-full">
+                                    <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors" aria-label="Previous month"><ChevronLeft className="w-4 h-4" /></button>
+                                    
+                                    <AnimatePresence mode="wait">
+                                        <motion.div 
+                                            key={financeDate.toISOString()}
+                                            data-money-month-label="true"
+                                            initial={{ opacity: 0, x: 10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -10 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="flex flex-col items-center"
+                                        >
+                                            <span className="text-xs font-bold opacity-60 uppercase tracking-wider leading-none mb-1">
+                                                {financeDate.getFullYear()}
+                                            </span>
+                                            <span className="text-xl font-bold leading-none">
+                                                {financeDate.toLocaleDateString(undefined, { month: 'long' })}
+                                            </span>
+                                        </motion.div>
+                                    </AnimatePresence>
 
-                            <div className={contentSurface.moneyMetricGrid} data-money-metric-grid="true">
-                                <div className="min-w-0 rounded-[22px] bg-surface/65 p-3 lg:p-4">
-                                    <div className="mb-1 flex items-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider lg:text-xs"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
-                                    <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-xl">{showBalance ? fmt(totalIncome) : '••••'}</div>
-                                </div>
-                                <div className="min-w-0 rounded-[22px] bg-surface/65 p-3 lg:p-4">
-                                    <div className="mb-1 flex items-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider lg:text-xs"><TrendingDown className="w-4 h-4 shrink-0 text-[#FF5722]" /> Expense</div>
-                                    <div className="truncate text-lg font-bold text-[#FF5722] lg:text-xl">{showBalance ? fmt(totalExpense) : '••••'}</div>
-                                </div>
-                                <div className="min-w-0 rounded-[22px] bg-surface/65 p-3 lg:p-4">
-                                    <div className="mb-1 flex items-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider lg:text-xs"><AlertCircle className="w-4 h-4 shrink-0 text-amber-500" /> Used</div>
-                                    <div className="truncate text-lg font-bold text-primary lg:text-xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
+                                    <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors" aria-label="Next month"><ChevronRight className="w-4 h-4" /></button>
                                 </div>
                             </div>
-                        </section>
-
-                        <aside className="grid grid-cols-[repeat(3,minmax(0,1fr))_3.5rem] items-stretch gap-2" data-money-header-side-card="true">
-                            <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
-                                <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Assets</div>
-                                <div className="truncate text-sm font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(totalAssets) : '••'}</div>
+                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
+                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
+                                <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-xl">{showBalance ? fmt(totalIncome) : '••••'}</div>
                             </div>
-                            <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
-                                <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Debt</div>
-                                <div className="truncate text-sm font-bold text-[#FF5722]">{showBalance ? fmt(totalDebt) : '••'}</div>
+                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
+                                <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingDown className="w-4 h-4 shrink-0 text-[#FF5722]" /> Expense</div>
+                                <div className="truncate text-lg font-bold text-[#FF5722] lg:text-xl">{showBalance ? fmt(totalExpense) : '••••'}</div>
                             </div>
-                            <div className="min-w-0 rounded-[18px] bg-surface/65 p-3 text-center">
-                                <div className="mb-1 truncate text-[10px] font-bold uppercase tracking-wider opacity-60">Savings</div>
-                                <div className="truncate text-sm font-bold text-[#6366F1]">{showBalance ? fmt(totalSavings || 0) : '••'}</div>
+                            <div className="col-span-1 min-w-0 bg-black/5 rounded-[24px] p-3 lg:p-4">
+                                <div className="flex items-center justify-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1 lg:justify-start lg:text-xs"><AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-500 lg:block" /> Used</div>
+                                <div className="truncate text-center text-lg font-bold text-primary lg:text-left lg:text-xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-4 pt-4 border-t border-border items-center justify-between" data-money-header-side-card="true">
+                            <div className="flex gap-4">
+                                <div className="text-sm font-medium opacity-80">
+                                Assets: <span className="text-emerald-600 dark:text-emerald-500 font-bold">{showBalance ? fmt(totalAssets) : '••'}</span>
+                                </div>
+                                <div className="text-sm font-medium opacity-80">
+                                Debt: <span className="text-[#FF5722] font-bold">{showBalance ? fmt(totalDebt) : '••'}</span>
+                                </div>
+                                <div className="text-sm font-medium opacity-80 flex items-center gap-1">
+                                    Savings: <span className="text-[#6366F1] font-bold">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
+                                </div>
                             </div>
                             <button 
                                 onClick={() => onAddItem(ItemType.FINANCE)}
-                                className="flex aspect-square h-full min-h-14 w-14 shrink-0 items-center justify-center self-center rounded-full bg-black text-white shadow-sm transition-all hover:scale-[1.04] active:scale-95 dark:bg-zinc-800 dark:text-white"
+                                className="w-10 h-10 flex items-center justify-center bg-black dark:bg-zinc-800 text-white dark:text-white rounded-full hover:scale-110 active:scale-95 transition-all"
                                 aria-label="Add finance"
                                 title="Add finance"
                             >
-                                <Plus className="w-5 h-5" />
+                                <Plus className="w-6 h-6" />
                             </button>
-                        </aside>
+                        </div>
                     </div>
                 </motion.div>
             </motion.div>
