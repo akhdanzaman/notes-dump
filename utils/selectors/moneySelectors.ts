@@ -1,6 +1,7 @@
 import { BrainDumpItem, ItemType, Wallet, BudgetConfig, SortOrder } from '../../types';
 import { getCanonicalMetaValue, getCanonicalOrRawItemValue, getRawMetaValue, itemMatchesCanonicalSearch } from '../canonicalization/accessors';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from '../financeTypeUtils';
+import { getShoppingDueDate, getShoppingTransactionDate } from '../shoppingDateUtils';
 
 const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
     const normalized = value?.toLowerCase().trim();
@@ -156,7 +157,7 @@ export const getFinanceItems = (
         // Fallback to creation date.
         const dateStr = (i.type === ItemType.FINANCE) 
             ? (i.meta.date || i.created_at) 
-            : (i.completed_at || i.created_at);
+            : getShoppingTransactionDate(i);
             
         if (!dateStr) return false;
         
@@ -240,8 +241,8 @@ export const getFinanceItems = (
 
     // --- SORTING ---
     allTransactions.sort((a, b) => {
-        const da = (a.type === ItemType.FINANCE) ? new Date(a.meta.date || a.created_at).getTime() : new Date(a.completed_at || a.created_at).getTime();
-        const db = (b.type === ItemType.FINANCE) ? new Date(b.meta.date || b.created_at).getTime() : new Date(b.completed_at || b.created_at).getTime();
+        const da = (a.type === ItemType.FINANCE) ? new Date(a.meta.date || a.created_at).getTime() : new Date(getShoppingTransactionDate(a)).getTime();
+        const db = (b.type === ItemType.FINANCE) ? new Date(b.meta.date || b.created_at).getTime() : new Date(getShoppingTransactionDate(b)).getTime();
         
         if (sortOrder === 'newest') return db - da;
         if (sortOrder === 'oldest') return da - db;
@@ -265,7 +266,7 @@ export const getFinanceItems = (
     let baseTransactions = [...finance, ...implicitExpenses].filter(i => {
         const dateStr = (i.type === ItemType.FINANCE) 
             ? (i.meta.date || i.created_at) 
-            : (i.completed_at || i.created_at);
+            : getShoppingTransactionDate(i);
         if (!dateStr) return false;
         const d = new Date(dateStr);
         if (viewMode === 'yearly') {
@@ -438,7 +439,7 @@ export const getFinanceItems = (
 
     pendingShoppingItems.forEach(item => {
         // Check if the item's due date falls within the current view period
-        const dateStr = item.meta.date;
+        const dateStr = getShoppingDueDate(item);
         if (!dateStr) return; // Skip if no due date
 
         const d = new Date(dateStr);

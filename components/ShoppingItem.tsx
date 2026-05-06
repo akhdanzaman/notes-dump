@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet } from '../types';
 import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw } from 'lucide-react';
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
+import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 
 interface ShoppingItemProps {
   item: BrainDumpItem;
@@ -70,8 +71,9 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       setEditPaymentMethod(meta.paymentMethod || '');
       
       // Date Init
-      if (meta.date) {
-        const dateObj = new Date(meta.date);
+      const editableDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
+      if (editableDate) {
+        const dateObj = new Date(editableDate);
         if (!isNaN(dateObj.getTime())) {
              const offset = dateObj.getTimezoneOffset() * 60000;
              const localDate = new Date(dateObj.getTime() - offset);
@@ -147,8 +149,9 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
      nextDueText = `Next: ${nextDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
   }
 
-  if (meta.date) {
-      const d = new Date(meta.date);
+  const displayDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
+  if (displayDate) {
+      const d = new Date(displayDate);
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const itemDateStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -165,10 +168,10 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           if (isWaitingForNextCycle && nextDueText) {
               dateDisplay = nextDueText;
           } else {
-              dateDisplay = datePart;
+              dateDisplay = shouldShoppingDateEditCompletion(item) ? `Done: ${datePart}` : `Due: ${datePart}`;
           }
       } else {
-          dateDisplay = datePart;
+          dateDisplay = shouldShoppingDateEditCompletion(item) ? `Done: ${datePart}` : `Due: ${datePart}`;
       }
   } else if (isRoutine && isWaitingForNextCycle && nextDueText) {
       dateDisplay = nextDueText;
@@ -340,7 +343,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                            />
                       </div>
                       <div className="col-span-2">
-                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Date / Due</label>
+                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{shouldShoppingDateEditCompletion(item) ? 'Completed date' : 'Due date'}</label>
                            <input
                                 type="datetime-local"
                                 className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"

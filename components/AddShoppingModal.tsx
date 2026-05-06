@@ -202,7 +202,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Date</label>
+                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Due date</label>
                                 <input 
                                     type="date"
                                     value={date}

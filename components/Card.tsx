@@ -5,6 +5,7 @@ import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, T
 
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, formatFinanceTypeLabel } from '../utils/financeTypeUtils';
+import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { taskEditSurface } from './layout/contentSurface';
 
 // Helper to calculate next due date based on schedule (Same as RoutineTaskModal)
@@ -250,7 +251,9 @@ const Card: React.FC<CardProps> = ({
     setEditHideFromCalendar(meta.hideFromCalendar || false);
     
     // Date Init
-    const isoDate = (meta.date && meta.date !== 'null') ? meta.date : (completed_at || created_at);
+    const isoDate = type === ItemType.SHOPPING
+      ? (shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item))
+      : ((meta.date && meta.date !== 'null') ? meta.date : (completed_at || created_at));
     if (isoDate) {
         const dateObj = new Date(isoDate);
         if (!isNaN(dateObj.getTime())) {
@@ -397,8 +400,11 @@ const Card: React.FC<CardProps> = ({
 
   // --- Display Logic for Collapsed State ---
   let displayDate = null;
-  const rawDate = readonly && completed_at ? completed_at : (meta?.date && meta.date !== 'null' ? meta.date : created_at);
-  const isCreatedDate = !meta?.date || meta.date === 'null';
+  const isShoppingItem = type === ItemType.SHOPPING;
+  const rawDate = isShoppingItem
+    ? (shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item))
+    : (readonly && completed_at ? completed_at : (meta?.date && meta.date !== 'null' ? meta.date : created_at));
+  const isCreatedDate = !isShoppingItem && (!meta?.date || meta.date === 'null');
 
   // Routine next cycle logic
   let nextDueText = null;
@@ -734,7 +740,7 @@ const Card: React.FC<CardProps> = ({
                    {/* Date */}
                    {showDateField && !meta.isRoutine && (
                         <div className={(!showAmountField && !showSkillExtras) ? "col-span-2" : ""}>
-                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Date</label>
+                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{type === ItemType.SHOPPING ? (shouldShoppingDateEditCompletion(item) ? 'Completed date' : 'Due date') : 'Date'}</label>
                             <div className="relative">
                                 <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { BrainDumpItem, ItemType, BudgetRule, Skill, Wallet, FinanceType } from '../types';
 import { X, Save, DollarSign, Calendar, Wallet as WalletIcon, Hourglass, ArrowRight, Bold, Italic, List, Type, TrendingUp, FileText } from 'lucide-react';
+import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 
 interface EditModalProps {
   item: BrainDumpItem;
@@ -51,8 +52,10 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const getInitialDate = (item: BrainDumpItem) => {
-      // Priority: meta.date > completed_at > created_at
-      const isoDate = (item.meta.date && item.meta.date !== 'null') ? item.meta.date : (item.completed_at || item.created_at);
+      // Shopping keeps due date (meta.date) separate from completed/transaction date.
+      const isoDate = item.type === ItemType.SHOPPING
+          ? (shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item))
+          : ((item.meta.date && item.meta.date !== 'null') ? item.meta.date : (item.completed_at || item.created_at));
       if (!isoDate) return '';
       const date = new Date(isoDate);
       if (isNaN(date.getTime())) return '';
@@ -229,7 +232,7 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                {showDateField && (
                    <div className={(!showAmountField && !showSkillExtras) ? "col-span-2" : ""}>
                         <label className="block text-xs font-medium text-muted mb-1 flex items-center gap-1">
-                            <Calendar className="w-3 h-3" /> Date
+                            <Calendar className="w-3 h-3" /> {item.type === ItemType.SHOPPING ? (shouldShoppingDateEditCompletion(item) ? 'Completed date' : 'Due date') : 'Date'}
                         </label>
                         <input
                             type="datetime-local"

@@ -433,13 +433,30 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     const shopSheet = valueRanges.find(r => r.range && r.range.includes('Shopping'));
     if (shopSheet && shopSheet.values) {
         const headers = shopSheet.values[0] || [];
+        const headerIndex = (name: string) => headers.indexOf(name);
+        const readByHeader = (row: any[], name: string) => {
+            const idx = headerIndex(name);
+            return idx >= 0 ? row[idx] : undefined;
+        };
         const hasDueDate = headers.includes("Due_Date");
+        const hasCreatedAt = headers.includes("Created_At");
         const hasCompletedAt = headers.includes("Completed_At");
         const rows = shopSheet.values.slice(1);
         for (const row of rows) {
-            let status, item, amountStr, category, quantity, dueDateStr, tagsStr, completedAtStr, idStr;
+            let status, item, amountStr, category, quantity, dueDateStr, createdAtStr, tagsStr, completedAtStr, idStr;
             
-            if (hasDueDate && hasCompletedAt) {
+            if (hasDueDate && hasCompletedAt && hasCreatedAt) {
+                status = readByHeader(row, "Status");
+                item = readByHeader(row, "Item");
+                amountStr = readByHeader(row, "Amount");
+                category = readByHeader(row, "Category");
+                quantity = readByHeader(row, "Quantity");
+                dueDateStr = readByHeader(row, "Due_Date");
+                createdAtStr = readByHeader(row, "Created_At");
+                tagsStr = readByHeader(row, "Tags");
+                completedAtStr = readByHeader(row, "Completed_At");
+                idStr = readByHeader(row, "ID");
+            } else if (hasDueDate && hasCompletedAt) {
                 [status, item, amountStr, category, quantity, dueDateStr, tagsStr, completedAtStr, idStr] = row;
             } else if (hasDueDate) {
                 [status, item, amountStr, category, quantity, dueDateStr, tagsStr, idStr] = row;
@@ -524,13 +541,21 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     }
                 }
 
+                let isoCreatedAt = new Date().toISOString();
+                if (createdAtStr) {
+                    const parsedCreatedAt = new Date(createdAtStr);
+                    if (!isNaN(parsedCreatedAt.getTime())) {
+                        isoCreatedAt = parsedCreatedAt.toISOString();
+                    }
+                }
+
                 const newId = uuidv4();
                 newItems.push({
                     id: newId,
                     type: ItemType.SHOPPING,
                     content: item || 'Manual Item',
                     status: (status === 'done' ? 'done' : 'pending'),
-                    created_at: new Date().toISOString(),
+                    created_at: isoCreatedAt,
                     completed_at: isoCompletedAt,
                     meta: {
                         amount: amount,

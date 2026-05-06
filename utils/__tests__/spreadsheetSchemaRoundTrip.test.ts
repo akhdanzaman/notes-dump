@@ -80,6 +80,10 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
   };
 
   const sheets = generateExportData(db.data, [], [], budgetConfig, {}, appSettings);
+  const shoppingSheet = sheets.find(sheet => sheet.name === 'Shopping');
+  assert.ok(shoppingSheet);
+  assert.deepEqual(shoppingSheet!.data[0], ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "ID"]);
+
   const valueRanges = sheets.map((sheet) => ({
     range: `'${sheet.name}'!A1`,
     values: sheet.data,
@@ -91,6 +95,7 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
 
   const reconciledShopping = reconciled.data.find((item) => item.id === 'shop-1');
   assert.ok(reconciledShopping);
+  assert.equal(reconciledShopping?.created_at, '2026-02-04T12:03:55.738Z');
   assert.equal(reconciledShopping?.completed_at, '2026-02-15T14:01:52.000Z');
   assert.equal(reconciledShopping?.meta.date, '2026-02-14T11:45:00.000Z');
 

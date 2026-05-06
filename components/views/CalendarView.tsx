@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Calendar as CalendarIc
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { contentSurface, responsiveModal } from '../layout/contentSurface';
+import { getShoppingDueDate } from '../../utils/shoppingDateUtils';
 
 interface CalendarViewProps {
     items: BrainDumpItem[];
@@ -77,7 +78,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
             }
 
             if (item.meta.isRoutine || item.meta.shoppingCategory === 'routine') {
-                const anchorStr = item.meta.start || item.meta.date || item.meta.dateTime || item.created_at;
+                const anchorStr = item.meta.start || (item.type === ItemType.SHOPPING ? getShoppingDueDate(item) : (item.meta.date || item.meta.dateTime)) || item.created_at;
                 const anchorDate = anchorStr ? new Date(anchorStr) : new Date(item.created_at);
                 anchorDate.setHours(0, 0, 0, 0);
 
@@ -125,7 +126,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
 
             const startStr = item.meta.start;
             const endStr = item.meta.end;
-            const dateStr = item.meta.date || item.meta.dateTime;
+            const dateStr = item.type === ItemType.SHOPPING ? getShoppingDueDate(item) : (item.meta.date || item.meta.dateTime);
 
             if (startStr) {
                 const startDate = new Date(startStr);

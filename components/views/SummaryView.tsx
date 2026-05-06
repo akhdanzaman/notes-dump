@@ -47,6 +47,7 @@ import { useSwipeDate } from '../../hooks/useSwipeDate';
 import Card from '../Card';
 import ReviewCenterPanel from '../ReviewCenterPanel';
 import { contentSurface } from '../layout/contentSurface';
+import { buildSummaryFocusDisplay } from '../../utils/summaryFocusUtils';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -165,68 +166,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const { urgent } = getShoppingItems(items);
 
     const { displayItems, displayTitle, displaySubtitle, isDoneState } = useMemo(() => {
-        const todayItems = [
-            ...urgent.map(i => ({ ...i, _isUrgentShopping: true })),
-            ...pendingGroups.today
-        ];
-
-        if (todayItems.length > 0) {
-            return {
-                displayItems: todayItems.slice(0, 5),
-                displayTitle: "Today's Focus",
-                displaySubtitle: null,
-                isDoneState: false
-            };
-        }
-
-        if (pendingGroups.tomorrow.length > 0) {
-            return {
-                displayItems: pendingGroups.tomorrow.slice(0, 5),
-                displayTitle: 'Tomorrow',
-                displaySubtitle: "Get a head start on tomorrow's tasks.",
-                isDoneState: false
-            };
-        }
-
-        const pendingRoutines = pendingGroups.routines.filter(r => r.status === 'pending');
-        if (pendingRoutines.length > 0) {
-            return {
-                displayItems: pendingRoutines.slice(0, 5),
-                displayTitle: 'Daily Rituals',
-                displaySubtitle: 'Keep your momentum going.',
-                isDoneState: false
-            };
-        }
-
-        if (pendingGroups.later.length > 0) {
-            return {
-                displayItems: pendingGroups.later.slice(0, 5),
-                displayTitle: 'Upcoming',
-                displaySubtitle: 'Tasks waiting for your attention.',
-                isDoneState: false
-            };
-        }
-
-        const recentDone = items
-            .filter(i => i.type === 'TODO' && i.status === 'done' && i.completed_at)
-            .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
-            .slice(0, 3);
-
-        if (recentDone.length > 0) {
-            return {
-                displayItems: recentDone,
-                displayTitle: 'Recently Completed',
-                displaySubtitle: "Great job! You're all caught up.",
-                isDoneState: true
-            };
-        }
-
-        return {
-            displayItems: [],
-            displayTitle: 'All Clear',
-            displaySubtitle: 'Take a break or plan ahead.',
-            isDoneState: false
-        };
+        return buildSummaryFocusDisplay(items, pendingGroups, urgent, 5);
     }, [items, pendingGroups, urgent]);
 
     const pendingRoutines = pendingGroups.routines.filter(r => r.status === 'pending');

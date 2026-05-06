@@ -1,4 +1,5 @@
 import { BrainDumpItem, ItemType } from '../../types';
+import { getShoppingCreatedSortTime, getShoppingDueSortTime } from '../shoppingDateUtils';
 
 export const getShoppingItems = (items: BrainDumpItem[]) => {
     const visibleItems = items.filter(i => {
@@ -27,9 +28,10 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
 
     const sortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
         if (a.status !== b.status) return a.status === 'done' ? 1 : -1;
-        const da = a.meta.date ? new Date(a.meta.date).getTime() : 0;
-        const db = b.meta.date ? new Date(b.meta.date).getTime() : 0;
-        return da - db;
+        const da = getShoppingDueSortTime(a);
+        const db = getShoppingDueSortTime(b);
+        if (da !== db) return da - db;
+        return getShoppingCreatedSortTime(a) - getShoppingCreatedSortTime(b);
     };
 
     urgent.sort(sortFn);

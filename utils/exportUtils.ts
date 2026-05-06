@@ -2,6 +2,7 @@ import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType } fro
 import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
 import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
+import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils';
 import {
   buildDailyMoneyDriverSummary,
   buildDataQualityIssues,
@@ -47,6 +48,12 @@ const startOfDay = (date: Date) => {
 };
 
 const getItemTimestamp = (item: BrainDumpItem) => {
+  if (item.type === ItemType.SHOPPING) {
+    const shoppingRaw = getShoppingTimelineDate(item) || item.created_at;
+    const shoppingTs = new Date(shoppingRaw).getTime();
+    return Number.isFinite(shoppingTs) ? shoppingTs : new Date(item.created_at).getTime();
+  }
+
   const raw = item.completed_at || item.meta.date || item.meta.dateTime || item.meta.start || item.created_at;
   const ts = new Date(raw).getTime();
   return Number.isFinite(ts) ? ts : new Date(item.created_at).getTime();
@@ -389,7 +396,7 @@ export const generateExportData = (
     .filter(i => i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving'))
     .map(item => {
       const isShopping = item.type === ItemType.SHOPPING;
-      const date = isShopping ? (item.completed_at || item.created_at) : (item.meta.date || item.created_at);
+      const date = isShopping ? getShoppingTransactionDate(item) : (item.meta.date || item.created_at);
       
       return {
         Date: fmtDate(date),
@@ -470,7 +477,8 @@ export const generateExportData = (
       Amount: item.meta.amount || 0,
       Category: item.meta.shoppingCategory || '',
       Quantity: item.meta.quantity || '',
-      Due_Date: fmtDate(item.meta.date || item.meta.dateTime),
+      Due_Date: fmtDate(getShoppingDueDate(item)),
+      Created_At: fmtDate(item.created_at),
       Tags: item.meta.tags?.join(', ') || '',
       Completed_At: fmtDate(item.completed_at),
       ID: item.id
@@ -479,8 +487,8 @@ export const generateExportData = (
     sheets.push({
       name: "Shopping",
       data: [
-        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Tags", "Completed_At", "ID"],
-        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Tags, s.Completed_At, s.ID])
+        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "ID"],
+        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.ID])
       ]
     });
   }

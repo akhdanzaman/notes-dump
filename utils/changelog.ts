@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.43',
+    date: 'May 2026',
+    items: [
+      'Shopping items now keep due date, created date, and completed/transaction date separate: marking an item bought no longer overwrites its due date.',
+      'Shopping display, calendar scheduling, money transaction filtering, and spreadsheet export/reconcile now use the right date for each context, with clearer Due date / Completed date labels.',
+      'Summary > Today’s Focus now mixes urgent shopping items and focus tasks/events together, so shopping items can no longer hide every focus item when both exist.',
+    ],
+  },
+  {
     version: 'v0.3.42',
     date: 'May 2026',
     items: [

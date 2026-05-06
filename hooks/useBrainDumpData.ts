@@ -44,6 +44,7 @@ import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
 import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
+import { shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -1500,11 +1501,6 @@ export const useBrainDumpData = () => {
         const newProgress = newStatus === 'done' ? 100 : 0;
         const newProgressNotes = targetItem.meta.progressNotes;
 
-        let newDate = targetItem.meta.date;
-        if (newStatus === 'done' && targetItem.type === ItemType.SHOPPING) {
-            newDate = new Date().toISOString();
-        }
-
         const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
         const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
 
@@ -1526,7 +1522,6 @@ export const useBrainDumpData = () => {
                     ...item.meta,
                     progress: newProgress,
                     progressNotes: newProgressNotes,
-                    date: newDate,
                     lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
                 }
             } : item
@@ -1865,7 +1860,13 @@ export const useBrainDumpData = () => {
                 }
             }
 
-            let finalDate = newDate || item.meta.date;
+            const editsShoppingCompletionDate = item.type === ItemType.SHOPPING && shouldShoppingDateEditCompletion(item) && newDate !== undefined;
+            let finalDate = editsShoppingCompletionDate ? item.meta.date : (newDate || item.meta.date);
+            let finalCompletedAt = completedAt;
+
+            if (editsShoppingCompletionDate) {
+                finalCompletedAt = newDate;
+            }
 
             if (!newDate && (newIsRoutine || item.meta.isRoutine)) {
                 const interval = newRoutineInterval || item.meta.routineInterval || 'daily';
@@ -1920,7 +1921,7 @@ export const useBrainDumpData = () => {
                 ...item,
                 content: newContent,
                 status: newStatus,
-                completed_at: completedAt,
+                completed_at: finalCompletedAt,
                 meta: mergedMeta
             };
         });
