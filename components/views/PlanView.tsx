@@ -841,7 +841,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     )}
                                 </section>
 
-                                <section className={`${contentSurface.workflowPanel} lg:col-span-2 min-[1440px]:col-span-3`}>
+                                <section className={`${contentSurface.workflowPanel} lg:col-span-full`}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
                                         <button 

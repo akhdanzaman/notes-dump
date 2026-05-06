@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.47',
+    date: 'May 2026',
+    items: [
+      'Focus desktop Later group now uses a true full-row span at every desktop width, removing the awkward empty column that made the panel look like it was floating.',
+    ],
+  },
+  {
     version: 'v0.3.46',
     date: 'May 2026',
     items: [
