@@ -518,6 +518,8 @@ const Card: React.FC<CardProps> = ({
   const isRoutineDone = meta.isRoutine && status === 'done';
   const isParsingFailed = meta.tags?.includes('parsing_failed');
   const showDeepWorkSuggestion = type === ItemType.TODO && meta.deepWorkParent && meta.deepWorkStatus === 'suggested';
+  const canShowMoneyMetadata = type === ItemType.FINANCE || type === ItemType.SHOPPING;
+  const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
   
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
@@ -642,9 +644,9 @@ const Card: React.FC<CardProps> = ({
                     </div>
                     
                     {/* Extra Metadata Row */}
-                    {(meta.paymentMethod || meta.toWallet || skillName || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE))) && (
+                    {(hasMoneyMetadata || skillName) && (
                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
-                            {(meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE))) && (
+                            {hasMoneyMetadata && (
                                 <span className="flex items-center gap-0.5">
                                     <WalletIcon className="w-3 h-3" />
                                     {meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE) ? (() => {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { generateExportData } from '../exportUtils';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../deepWorkTodoModel';
+import { createDeepWorkSubtaskItems } from '../../services/deepWorkTransformer';
 import { reconcileSpreadsheetData } from '../../services/spreadsheetReconciler';
 import { AppSettings, BrainDumpItem, BudgetConfig, DbSchema, ItemType } from '../../types';
 
@@ -148,6 +149,38 @@ test('child completion updates progress but parent only auto-completes when expl
   assert.equal(completedParent?.meta.progress, 100);
   assert.equal(completedParent?.status, 'done');
   assert.equal(completedParent?.completed_at, '2026-05-01T03:00:00.000Z');
+});
+
+test('manual focus subtasks create child todos and roll up parent progress', () => {
+  const parent: BrainDumpItem = {
+    id: 'focus-1',
+    type: ItemType.TODO,
+    content: 'Prepare board deck',
+    status: 'pending',
+    created_at: '2026-05-06T09:00:00.000Z',
+    meta: normalizeDeepWorkTodoMeta({
+      date: '2026-05-07T09:00:00.000Z',
+      priority: 'high',
+      deepWorkParent: true,
+      deepWorkPlanId: 'focus-1',
+      deepWorkStatus: 'active',
+      subtasks: ['Collect numbers', 'Draft slides'],
+    }),
+  };
+
+  let counter = 0;
+  const children = createDeepWorkSubtaskItems(parent, () => `child-${++counter}`, '2026-05-06T10:00:00.000Z');
+
+  assert.deepEqual(children.map(child => child.content), ['Collect numbers', 'Draft slides']);
+  assert.equal(children[0].meta.parentTodoId, 'focus-1');
+  assert.equal(children[1].meta.deepWorkStepIndex, 2);
+
+  const withOneDone = [parent, { ...children[0], status: 'done' as const }, children[1]];
+  const rolledUp = applyDeepWorkChildProgress(withOneDone);
+  const updatedParent = rolledUp.find(item => item.id === 'focus-1');
+
+  assert.equal(updatedParent?.meta.progress, 50);
+  assert.equal(updatedParent?.status, 'pending');
 });
 
 test('legacy Todos sheet refresh does not erase existing nested metadata columns absent from old exports', () => {

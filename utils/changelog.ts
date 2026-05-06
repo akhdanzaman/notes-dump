@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.45',
+    date: 'May 2026',
+    items: [
+      'Focus task cards no longer show wallet/payment metadata icons when the item is not a finance or shopping entry.',
+      'Money > Transactions Income, Expense, and Used summary cards now use balanced top and bottom padding for a cleaner desktop rhythm.',
+      'Focus tasks can now add manual subtasks from the focus workspace; created subtasks roll up progress like Deep Work steps while keeping the parent task separate.',
+    ],
+  },
+  {
     version: 'v0.3.44',
     date: 'May 2026',
     items: [

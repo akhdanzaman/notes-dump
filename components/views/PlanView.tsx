@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory } from '../../types';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, ItemType } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
 import Card from '../Card';
@@ -420,8 +420,49 @@ const PlanView: React.FC<PlanViewProps> = ({
 
     const acceptDeepWorkPlan = (item: BrainDumpItem, children: BrainDumpItem[]) => {
         const draft = getSubtaskDraft(item, children).map(step => step.trim()).filter(Boolean);
+        if (draft.length === 0) return;
         handleAcceptDeepWorkTodo(item.id, draft);
         setExpandedDeepWorkIds(prev => prev.includes(item.id) ? prev : [...prev, item.id]);
+    };
+
+    const openManualSubtaskDraft = (item: BrainDumpItem) => {
+        const draft = getSubtaskDraft(item, []);
+        setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.length ? draft : [''] }));
+        setExpandedDeepWorkIds(prev => prev.includes(item.id) ? prev : [...prev, item.id]);
+    };
+
+    const renderSubtaskDraftEditor = (item: BrainDumpItem, children: BrainDumpItem[], saveLabel: string) => {
+        const draft = getSubtaskDraft(item, children);
+        return (
+            <div className="space-y-2">
+                {draft.map((step, index) => (
+                    <div key={`${item.id}-draft-${index}`} className="flex gap-2">
+                        <div className="mt-3 h-5 w-5 shrink-0 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-bold flex items-center justify-center">{index + 1}</div>
+                        <textarea
+                            value={step}
+                            onChange={(event) => updateSubtaskDraft(item.id, index, event.target.value, draft)}
+                            className="min-h-[44px] flex-1 resize-none rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-purple-500/60"
+                            placeholder="Subtask..."
+                        />
+                        <button
+                            onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.filter((_, draftIndex) => draftIndex !== index) }))}
+                            className="self-center p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                            aria-label="Remove subtask"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                ))}
+                <div className="flex flex-wrap gap-2 pt-1">
+                    <button onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: [...draft, ''] }))} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
+                        Add step
+                    </button>
+                    <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={draft.map(step => step.trim()).filter(Boolean).length === 0}>
+                        {saveLabel}
+                    </button>
+                </div>
+            </div>
+        );
     };
 
     const renderDeepWorkDetail = (icon: React.ReactNode, label: string, value?: string | number, tone = 'text-purple-500') => {
@@ -440,11 +481,50 @@ const PlanView: React.FC<PlanViewProps> = ({
     const renderTaskCard = (item: BrainDumpItem) => {
         const children = getDeepWorkChildren(items, item.id);
         const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
-        if (!isDeepWork) return <Card key={item.id} item={item} {...cardProps} editComfort="taskWorkspace" />;
+        const canUseManualSubtasks = item.type === ItemType.TODO && !item.meta.parentTodoId;
+        if (!isDeepWork) {
+            const isExpanded = expandedDeepWorkIds.includes(item.id);
+            const draft = getSubtaskDraft(item, children);
+            return (
+                <div key={item.id} className="space-y-2 rounded-[24px] border border-border/60 bg-surface/40 p-2">
+                    <Card item={item} {...cardProps} editComfort="taskWorkspace" />
+                    {canUseManualSubtasks && (
+                        <div className="px-2 pb-2 space-y-2">
+                            <button
+                                onClick={() => isExpanded ? toggleDeepWorkExpanded(item.id) : openManualSubtaskDraft(item)}
+                                className="px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1"
+                            >
+                                {isExpanded ? <ChevronUp className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                {isExpanded ? 'Hide subtasks' : 'Add subtasks'}
+                            </button>
+                            <AnimatePresence initial={false}>
+                                {isExpanded && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="mt-1 border-l-2 border-purple-500/25 pl-3 space-y-2">
+                                            <div>
+                                                <div className="text-[10px] font-bold uppercase tracking-wider text-purple-500/80">Manual subtasks</div>
+                                                <p className="text-xs text-muted">Add steps to track this focus task by subtask completion.</p>
+                                            </div>
+                                            {renderSubtaskDraftEditor({ ...item, meta: { ...item.meta, subtasks: draft } }, children, 'Create subtasks')}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
         const isExpanded = expandedDeepWorkIds.includes(item.id);
         const isSuggested = item.meta.deepWorkStatus === 'suggested';
         const isBlocked = item.meta.deepWorkBlockerStatus === 'blocked' || item.meta.deepWorkBlockerStatus === 'needs_input';
+        const hasDeepWorkDetails = !!(item.meta.deepWorkNextAction || item.meta.deepWorkFinalOutput || item.meta.deepWorkSessionEstimateMinutes || item.meta.deepWorkBlockerCheck || item.meta.deepWorkStatus === 'suggested');
         const doneCount = children.filter(child => child.status === 'done').length;
         const draft = getSubtaskDraft(item, children);
         const totalSteps = children.length || draft.length || item.meta.deepWorkStepCount || 0;
@@ -458,7 +538,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         <div className="flex items-center gap-2 text-purple-500">
                             <Sparkles className="w-4 h-4" />
                             <div>
-                                <div className="text-[10px] font-bold uppercase tracking-wider">Deep Work Transformer</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider">{hasDeepWorkDetails ? 'Deep Work Transformer' : 'Subtask Progress'}</div>
                                 <div className="text-xs text-muted">Parent stays separate; steps only show progress toward the final output.</div>
                             </div>
                         </div>
@@ -475,12 +555,14 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                        {renderDeepWorkDetail(<Flag className="w-3 h-3" />, 'Next action', item.meta.deepWorkNextAction)}
-                        {renderDeepWorkDetail(<ListChecks className="w-3 h-3" />, 'Final output', item.meta.deepWorkFinalOutput)}
-                        {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
-                        {renderDeepWorkDetail(<ShieldAlert className="w-3 h-3" />, 'Blocker check', item.meta.deepWorkBlockerCheck, isBlocked ? 'text-amber-500' : 'text-emerald-500')}
-                    </div>
+                    {hasDeepWorkDetails && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                            {renderDeepWorkDetail(<Flag className="w-3 h-3" />, 'Next action', item.meta.deepWorkNextAction)}
+                            {renderDeepWorkDetail(<ListChecks className="w-3 h-3" />, 'Final output', item.meta.deepWorkFinalOutput)}
+                            {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
+                            {renderDeepWorkDetail(<ShieldAlert className="w-3 h-3" />, 'Blocker check', item.meta.deepWorkBlockerCheck, isBlocked ? 'text-amber-500' : 'text-emerald-500')}
+                        </div>
+                    )}
 
                     <div className="flex flex-wrap gap-2">
                         {isSuggested && (
@@ -492,12 +574,16 @@ const PlanView: React.FC<PlanViewProps> = ({
                             {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             {isExpanded ? 'Hide steps' : `${isSuggested ? 'Preview/edit' : 'Show'} steps`}
                         </button>
-                        <button onClick={() => handleKeepRawTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
-                            Keep raw
-                        </button>
-                        <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1">
-                            <RotateCcw className="w-3 h-3" /> Retrigger
-                        </button>
+                        {hasDeepWorkDetails && (
+                            <>
+                                <button onClick={() => handleKeepRawTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
+                                    Keep raw
+                                </button>
+                                <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1">
+                                    <RotateCcw className="w-3 h-3" /> Retrigger
+                                </button>
+                            </>
+                        )}
                     </div>
 
                     <AnimatePresence initial={false}>
@@ -511,33 +597,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div className="mt-1 ml-1 border-l-2 border-purple-500/25 pl-3 space-y-2">
                                     <div className="text-[10px] font-bold uppercase tracking-wider text-purple-500/80">Optional subtasks</div>
                                     {isSuggested ? (
-                                        <div className="space-y-2">
-                                            {draft.map((step, index) => (
-                                                <div key={`${item.id}-draft-${index}`} className="flex gap-2">
-                                                    <div className="mt-3 h-5 w-5 shrink-0 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-bold flex items-center justify-center">{index + 1}</div>
-                                                    <textarea
-                                                        value={step}
-                                                        onChange={(event) => updateSubtaskDraft(item.id, index, event.target.value, draft)}
-                                                        className="min-h-[44px] flex-1 resize-none rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-purple-500/60"
-                                                    />
-                                                    <button
-                                                        onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.filter((_, draftIndex) => draftIndex !== index) }))}
-                                                        className="self-center p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                                                        aria-label="Remove subtask"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            <div className="flex flex-wrap gap-2 pt-1">
-                                                <button onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: [...draft, ''] }))} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
-                                                    Add step
-                                                </button>
-                                                <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors">
-                                                    Use these steps
-                                                </button>
-                                            </div>
-                                        </div>
+                                        renderSubtaskDraftEditor(item, children, 'Use these steps')
                                     ) : (
                                         <div className="space-y-2">
                                             {children.map(child => (
