@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.50',
+    date: 'May 2026',
+    items: [
+      'Money > Budget category rows now show a smaller amber used-plus-planned percentage directly beneath the used percentage, matching the planned spending accent without adding extra label text.',
+    ],
+  },
+  {
     version: 'v0.3.49',
     date: 'May 2026',
     items: [

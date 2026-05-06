@@ -530,6 +530,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         
                                         // Calculate percentage relative to CATEGORY limit for the text display
                                         const percentageOfCategorySpent = limit > 0 ? (spent / limit) * 100 : 0;
+                                        const percentageOfCategoryUsedPlanned = limit > 0 ? ((spent + planned) / limit) * 100 : 0;
                                         
                                         const textColorClass = rule.color ? rule.color.replace('bg-', 'text-') : 'text-gray-400';
 
@@ -541,7 +542,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                 </div>
                                                 <div className={`text-sm font-bold mb-2 ${textColorClass} flex items-center justify-between`}>
                                                     <div>
-                                                        {percentageOfCategorySpent.toFixed(1)} % <span className="text-muted font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
+                                                        <div>
+                                                            {percentageOfCategorySpent.toFixed(1)} % <span className="text-muted font-normal text-xs ml-1">({showBalance ? fmt(spent) : '•••'} / {showBalance ? fmt(limit) : '•••'})</span>
+                                                        </div>
+                                                        {planned > 0 && (
+                                                            <div className="text-amber-500 font-semibold text-[11px] leading-tight mt-0.5">
+                                                                {percentageOfCategoryUsedPlanned.toFixed(1)} %
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     {planned > 0 && (
                                                         <div className="text-amber-500 font-medium text-[10px] uppercase tracking-wider">
@@ -573,7 +581,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             </div>
                                             <div className="text-sm font-bold mb-2 text-gray-400 flex items-center justify-between">
                                                 <div>
-                                                    {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-muted font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
+                                                    <div>
+                                                        {effectiveIncome > 0 ? ((uncategorized / effectiveIncome) * 100).toFixed(1) : 0} % <span className="text-muted font-normal text-xs ml-1">({showBalance ? fmt(uncategorized) : '•••'})</span>
+                                                    </div>
+                                                    {projectedUncategorized > 0 && (
+                                                        <div className="text-amber-500 font-semibold text-[11px] leading-tight mt-0.5">
+                                                            {effectiveIncome > 0 ? (((uncategorized + projectedUncategorized) / effectiveIncome) * 100).toFixed(1) : 0} %
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 {projectedUncategorized > 0 && (
                                                     <div className="text-amber-500 font-medium text-[10px] uppercase tracking-wider">
