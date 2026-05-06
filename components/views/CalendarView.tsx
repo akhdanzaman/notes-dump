@@ -268,8 +268,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 </div>
             </motion.div>
 
-            <div className={`${contentSurface.contentPad} pb-2 pt-3`}>
-                <div className="rounded-[28px] border border-border bg-surface/40 overflow-hidden">
+            <div className={`${contentSurface.contentPad} pb-2 pt-3`} data-ndz-calendar-width-policy="validated-standard-cap">
+                <div className={contentSurface.calendarFrame}>
                     <div className="grid grid-cols-7 border-b border-border bg-background/40">
                         {WEEK_DAYS.map(day => (
                             <div key={day} className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">

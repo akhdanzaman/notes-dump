@@ -42,6 +42,9 @@ export const contentSurface = {
   masonryGrid: `${tabletMasonryGridClass} lg:columns-3 2xl:columns-4`,
   denseList: 'space-y-3 lg:space-y-2',
   emptyStateCard: 'rounded-[32px] border border-dashed border-border bg-surface/60 p-6 text-center shadow-sm lg:p-8',
+  libraryEmptyState: 'mx-auto max-w-3xl lg:mx-0 lg:max-w-4xl lg:text-left',
+  libraryEmptyActions: 'mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start',
+  calendarFrame: 'mx-auto max-w-6xl rounded-[28px] border border-border bg-surface/40 overflow-hidden lg:max-w-6xl 2xl:max-w-6xl',
   desktopSettingsGrid: 'space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0',
   desktopSettingsWide: 'lg:col-span-2',
   card: 'bg-background border border-border rounded-2xl shadow-sm',
@@ -66,6 +69,8 @@ export const responsiveModal = {
   // NDZ-007 #5: creation/edit forms widen on desktop while confirmations can stay narrow.
   formPanel: 'bg-surface rounded-t-[32px] sm:rounded-[32px] w-full max-w-md lg:max-w-2xl shadow-2xl overflow-hidden flex flex-col lg:border lg:border-border',
   denseFormPanel: 'bg-surface rounded-t-[32px] sm:rounded-[32px] w-full max-w-md lg:max-w-3xl shadow-2xl overflow-hidden flex flex-col lg:border lg:border-border',
+  confirmPanel: 'bg-surface rounded-[28px] w-full max-w-xs shadow-2xl border border-border p-6 text-center',
+  destructiveConfirmPanel: 'bg-surface rounded-[28px] w-full max-w-xs shadow-2xl border border-red-500/30 p-6 text-center ring-1 ring-red-500/10',
   fieldGrid: 'space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0',
   footer: 'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
 } as const;

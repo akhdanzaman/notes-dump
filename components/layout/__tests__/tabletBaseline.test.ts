@@ -113,3 +113,40 @@ test('NDZ-019 gives Money a workspace shell and fixed context rail', () => {
   assert.match(contentSurface.moneySideCard, /lg:sticky/);
   assert.doesNotMatch(contentSurface.moneyWorkspaceGrid, /repeat\(|md:grid|3fr|4fr/);
 });
+
+test('NDZ-020 makes Library sparse states intentional without changing the tablet masonry contract', () => {
+  assert.match(contentSurface.libraryEmptyState, /max-w-3xl/);
+  assert.match(contentSurface.libraryEmptyState, /lg:max-w-4xl/);
+  assert.match(contentSurface.libraryEmptyActions, /sm:flex-row/);
+  assert.match(contentSurface.libraryEmptyActions, /lg:justify-start/);
+  assert.doesNotMatch(contentSurface.libraryEmptyState, /md:/);
+});
+
+test('NDZ-021 keeps Calendar on a standard readable cap instead of workspace full-bleed', () => {
+  assert.equal(getResponsiveShellContentVariant({
+    activeTab: 'calendar',
+    planSubTab: 'tasks',
+    librarySubTab: 'general',
+    moneyView: 'transactions',
+  }), 'standard');
+
+  assert.match(contentSurface.calendarFrame, /max-w-6xl/);
+  assert.match(contentSurface.calendarFrame, /2xl:max-w-6xl/);
+  assert.doesNotMatch(contentSurface.calendarFrame, /max-w-\[96rem\]|max-w-7xl|2xl:max-w-\[90rem\]/);
+});
+
+test('NDZ-022 maps responsive modal form variants by density', () => {
+  assert.match(responsiveModal.formPanel, /max-w-md/);
+  assert.match(responsiveModal.formPanel, /lg:max-w-2xl/);
+  assert.match(responsiveModal.denseFormPanel, /max-w-md/);
+  assert.match(responsiveModal.denseFormPanel, /lg:max-w-3xl/);
+  assert.match(responsiveModal.fieldGrid, /lg:grid-cols-2/);
+  assert.doesNotMatch(responsiveModal.formPanel, /lg:max-w-3xl/);
+});
+
+test('NDZ-024 keeps destructive confirms compact and visually separate from dense forms', () => {
+  assert.match(responsiveModal.confirmPanel, /max-w-xs/);
+  assert.match(responsiveModal.destructiveConfirmPanel, /max-w-xs/);
+  assert.match(responsiveModal.destructiveConfirmPanel, /border-red-500\/30/);
+  assert.doesNotMatch(responsiveModal.destructiveConfirmPanel, /lg:max-w-2xl|lg:max-w-3xl/);
+});

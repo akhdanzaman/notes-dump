@@ -121,6 +121,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
         return (
             <button
                 onClick={() => setIsSearchExpanded(true)}
+                data-floating-search-trigger="content-anchored"
                 className={`pointer-events-auto relative w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
                     isFilterActive
                         ? 'bg-indigo-500 text-white shadow-indigo-500/30'
@@ -136,10 +137,10 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
     }
 
     return (
-        <div className="pointer-events-none w-full flex justify-center">
+        <div className="pointer-events-none w-full flex justify-start" data-floating-search-anchor="composer-content-frame">
             <div
                 ref={containerRef}
-                className="pointer-events-auto bg-surface/90 backdrop-blur-xl border border-white/20 rounded-[2.5rem] shadow-2xl p-6 relative w-full max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300 max-h-[85vh] overflow-y-auto scrollbar-hide"
+                className="pointer-events-auto bg-surface/90 backdrop-blur-xl border border-white/20 rounded-[2.5rem] shadow-2xl p-6 relative w-full max-w-xl lg:max-w-2xl lg:mx-0 animate-in fade-in slide-in-from-bottom-4 duration-300 max-h-[85vh] overflow-y-auto scrollbar-hide"
             >
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="min-w-0">
