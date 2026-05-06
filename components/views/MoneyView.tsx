@@ -232,28 +232,26 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     </div>
 
                     <div data-money-header-grid="true">
-                        <div className="flex justify-between items-start mb-2">
-                            <div>
+                        <div className="mb-5 flex items-start justify-between gap-4">
+                            <div className="min-w-0">
                                 <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
                                 <div className="text-xs font-medium opacity-50">Assets, debt, and savings across wallets</div>
+                                <div className="mt-2 flex min-w-0 items-center gap-3">
+                                    <div className="truncate text-4xl font-bold tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
+                                    <button onClick={() => setShowBalance(!showBalance)} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity" aria-label={showBalance ? 'Hide balance' : 'Show balance'}>
+                                        {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
                             </div>
-                            <button onClick={() => setShowBalance(!showBalance)} className="opacity-60 hover:opacity-100 transition-opacity" aria-label={showBalance ? 'Hide balance' : 'Show balance'}>
-                                {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                            </button>
-                        </div>
-                        <div className="text-4xl font-bold mb-6 tracking-tight">{showBalance ? fmt(totalNetWorth) : '••••••••'}</div>
-                        
-                        <div className="grid grid-cols-5 gap-3 mb-4 lg:gap-4 lg:grid-cols-5">
                             <div 
                                 data-swipe-date="money-month"
-                                className="col-span-5 bg-black/5 rounded-[24px] p-4 flex flex-col justify-center touch-pan-y lg:col-span-2"
+                                className="shrink-0 rounded-[20px] bg-black/5 px-2 py-2 touch-pan-y sm:px-3"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
                             >
-                                <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center justify-between gap-1">
                                     <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors" aria-label="Previous month"><ChevronLeft className="w-4 h-4" /></button>
-                                    
                                     <AnimatePresence mode="wait">
                                         <motion.div 
                                             key={financeDate.toISOString()}
@@ -262,20 +260,22 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: -10 }}
                                             transition={{ duration: 0.2 }}
-                                            className="flex flex-col items-center"
+                                            className="flex min-w-16 flex-col items-center sm:min-w-20"
                                         >
-                                            <span className="text-xs font-bold opacity-60 uppercase tracking-wider leading-none mb-1">
+                                            <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider leading-none mb-1">
                                                 {financeDate.getFullYear()}
                                             </span>
-                                            <span className="text-xl font-bold leading-none">
-                                                {financeDate.toLocaleDateString(undefined, { month: 'long' })}
+                                            <span className="text-sm font-bold leading-none sm:text-base">
+                                                {financeDate.toLocaleDateString(undefined, { month: 'short' })}
                                             </span>
                                         </motion.div>
                                     </AnimatePresence>
-
                                     <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors" aria-label="Next month"><ChevronRight className="w-4 h-4" /></button>
                                 </div>
                             </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-5 gap-3 mb-4 lg:gap-4 lg:grid-cols-5">
                             <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] p-3 lg:col-span-1 lg:p-4">
                                 <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
                                 <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-xl">{showBalance ? fmt(totalIncome) : '••••'}</div>

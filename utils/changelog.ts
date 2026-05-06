@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.40',
+    date: 'May 2026',
+    items: [
+      'Money > Transactions moves the month selector into the top-right header area instead of keeping it as the first monthly stat card.',
+      'The balance visibility eye now sits directly beside the Total Net Worth amount while the Income, Expense, and Used stat row keeps the v0.3.33 proportions.',
+    ],
+  },
+  {
     version: 'v0.3.39',
     date: 'May 2026',
     items: [
