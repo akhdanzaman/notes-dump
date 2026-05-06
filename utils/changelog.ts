@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.34',
+    date: 'May 2026',
+    items: [
+      'Finished the NDZ responsive UX closure pass: Library and Notes empty states now feel intentional on desktop, and global search opens from the same composer/content frame instead of floating as a detached island.',
+      'Calendar desktop width was validated and intentionally kept on the readable cap so dense month scanning stays comfortable instead of stretching too wide.',
+      'Task, note, shopping, expense, and destructive confirmation dialogs now use clear responsive panel variants, with overlay Escape/back/close handling covered by regression tests.',
+    ],
+  },
+  {
     version: 'v0.3.33',
     date: 'May 2026',
     items: [
