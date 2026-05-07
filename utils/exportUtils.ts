@@ -119,7 +119,7 @@ const buildDashboardSheet = (
   };
 
   const expenseLikeItems = items.filter(item => {
-    if (item.type === ItemType.SHOPPING && item.status === 'done' && item.meta.shoppingCategory !== 'saving') {
+    if (item.type === ItemType.SHOPPING && item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment') {
       return true;
     }
     return item.type === ItemType.FINANCE && item.status === 'done';
@@ -222,7 +222,7 @@ const buildDashboardSheet = (
       .filter(item => {
         const ts = getItemTimestamp(item);
         if (ts < dayStart.getTime() || ts >= dayEnd.getTime()) return false;
-        if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0 && item.status === 'done' && item.meta.shoppingCategory !== 'saving';
+        if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0 && item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment';
         return item.status === 'done' && item.meta.financeType !== 'income' && item.meta.financeType !== 'transfer' && item.meta.financeType !== 'saving' && item.meta.financeType !== ACHIEVED_GOAL_FINANCE_TYPE;
       })
       .reduce((sum, item) => sum + (item.meta.amount || 0), 0)
@@ -393,7 +393,7 @@ export const generateExportData = (
 
   // --- Sheet 1: Transactions (Money Tab) ---
   const transactions = items
-    .filter(i => i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving'))
+    .filter(i => i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment'))
     .map(item => {
       const isShopping = item.type === ItemType.SHOPPING;
       const date = isShopping ? getShoppingTransactionDate(item) : (item.meta.date || item.created_at);
@@ -481,14 +481,20 @@ export const generateExportData = (
       Created_At: fmtDate(item.created_at),
       Tags: item.meta.tags?.join(', ') || '',
       Completed_At: fmtDate(item.completed_at),
+      Investment_Type: item.meta.investmentAssetType || '',
+      Investment_Code: item.meta.investmentSymbol || '',
+      Investment_Units: item.meta.investmentUnits || '',
+      Investment_Avg_Buy: item.meta.investmentAveragePrice || '',
+      Investment_Current_Price: item.meta.investmentCurrentPrice || '',
+      Investment_Platform: item.meta.investmentPlatform || '',
       ID: item.id
   }));
   if (shopping.length > 0) {
     sheets.push({
       name: "Shopping",
       data: [
-        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "ID"],
-        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.ID])
+        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"],
+        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.Investment_Type, s.Investment_Code, s.Investment_Units, s.Investment_Avg_Buy, s.Investment_Current_Price, s.Investment_Platform, s.ID])
       ]
     });
   }
@@ -558,6 +564,12 @@ export const generateExportData = (
     Skill_ID: item.meta.skillId || '',
     Duration_Minutes: item.meta.durationMinutes || 0,
     Shopping_Category: item.meta.shoppingCategory || '',
+    Investment_Type: item.meta.investmentAssetType || '',
+    Investment_Code: item.meta.investmentSymbol || '',
+    Investment_Units: item.meta.investmentUnits || '',
+    Investment_Avg_Buy: item.meta.investmentAveragePrice || '',
+    Investment_Current_Price: item.meta.investmentCurrentPrice || '',
+    Investment_Platform: item.meta.investmentPlatform || '',
     Recurrence_Days: item.meta.recurrenceDays || '',
     Priority: item.meta.priority || 'normal',
     Parent_Todo_ID: item.meta.parentTodoId || '',
@@ -578,8 +590,8 @@ export const generateExportData = (
   sheets.push({
     name: "All Items (Raw)",
     data: [
-      ["ID", "Type", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Recurrence_Days", "Priority", "Parent_Todo_ID", "Child_Todo_IDs", "Deep_Work_Role", "Deep_Work_Status", "Deep_Work_Completion_Mode", "Deep_Work_Next_Action", "Deep_Work_Final_Output", "Deep_Work_Session_Estimate_Min", "Deep_Work_Blocker_Status", "Deep_Work_Blocker_Check", "Deep_Work_Step_Index", "Deep_Work_Step_Count", "Deep_Work_Subtasks"],
-      ...itemsData.map(i => [i.ID, i.Type, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.Canonical_Payment_Method, i.Merchant, i.Canonical_Merchant, i.Commodity, i.Canonical_Commodity, i.Subcommodity, i.Canonical_Subcommodity, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Recurrence_Days, i.Priority, i.Parent_Todo_ID, i.Child_Todo_IDs, i.Deep_Work_Role, i.Deep_Work_Status, i.Deep_Work_Completion_Mode, i.Deep_Work_Next_Action, i.Deep_Work_Final_Output, i.Deep_Work_Session_Estimate_Min, i.Deep_Work_Blocker_Status, i.Deep_Work_Blocker_Check, i.Deep_Work_Step_Index, i.Deep_Work_Step_Count, i.Deep_Work_Subtasks])
+      ["ID", "Type", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "Recurrence_Days", "Priority", "Parent_Todo_ID", "Child_Todo_IDs", "Deep_Work_Role", "Deep_Work_Status", "Deep_Work_Completion_Mode", "Deep_Work_Next_Action", "Deep_Work_Final_Output", "Deep_Work_Session_Estimate_Min", "Deep_Work_Blocker_Status", "Deep_Work_Blocker_Check", "Deep_Work_Step_Index", "Deep_Work_Step_Count", "Deep_Work_Subtasks"],
+      ...itemsData.map(i => [i.ID, i.Type, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.Canonical_Payment_Method, i.Merchant, i.Canonical_Merchant, i.Commodity, i.Canonical_Commodity, i.Subcommodity, i.Canonical_Subcommodity, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Investment_Type, i.Investment_Code, i.Investment_Units, i.Investment_Avg_Buy, i.Investment_Current_Price, i.Investment_Platform, i.Recurrence_Days, i.Priority, i.Parent_Todo_ID, i.Child_Todo_IDs, i.Deep_Work_Role, i.Deep_Work_Status, i.Deep_Work_Completion_Mode, i.Deep_Work_Next_Action, i.Deep_Work_Final_Output, i.Deep_Work_Session_Estimate_Min, i.Deep_Work_Blocker_Status, i.Deep_Work_Blocker_Check, i.Deep_Work_Step_Index, i.Deep_Work_Step_Count, i.Deep_Work_Subtasks])
     ]
   });
 

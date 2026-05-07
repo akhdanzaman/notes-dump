@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus } from '../types';
+import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory } from '../types';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
 
@@ -11,6 +11,20 @@ const fmtDate = (dateStr?: string) => {
 const parseNotesSheetItemType = (value: unknown): ItemType => {
     const normalized = String(value || '').trim().toLowerCase();
     return normalized === 'journal' ? ItemType.JOURNAL : ItemType.NOTE;
+};
+
+const parseInvestmentAssetType = (value: unknown): InvestmentAssetType | undefined => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return ['gold', 'stock', 'mutual_fund', 'crypto', 'bond', 'deposit', 'other'].includes(normalized)
+        ? normalized as InvestmentAssetType
+        : undefined;
+};
+
+const parseShoppingCategory = (value: unknown): ShoppingCategory | undefined => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return ['urgent', 'not_urgent', 'routine', 'saving', 'investment'].includes(normalized)
+        ? normalized as ShoppingCategory
+        : undefined;
 };
 
 const splitSheetList = (value: unknown): string[] | undefined => {
@@ -121,8 +135,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const financeType = parseFinanceType(type) || 'expense';
             
             const match = newItems.find(i => 
-                (idStr && i.id === idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving'))) ||
-                (!idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving')) &&
+                (idStr && i.id === idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment'))) ||
+                (!idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment')) &&
                 i.content === description &&
                 (i.meta.amount || 0) === amount &&
                 fmtDate(i.type === ItemType.SHOPPING ? (i.completed_at || i.created_at) : (i.meta.date || i.created_at)) === date)
@@ -444,6 +458,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         const rows = shopSheet.values.slice(1);
         for (const row of rows) {
             let status, item, amountStr, category, quantity, dueDateStr, createdAtStr, tagsStr, completedAtStr, idStr;
+            let investmentType, investmentCode, investmentUnitsStr, investmentAvgBuyStr, investmentCurrentPriceStr, investmentPlatform;
             
             if (hasDueDate && hasCompletedAt && hasCreatedAt) {
                 status = readByHeader(row, "Status");
@@ -455,6 +470,12 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 createdAtStr = readByHeader(row, "Created_At");
                 tagsStr = readByHeader(row, "Tags");
                 completedAtStr = readByHeader(row, "Completed_At");
+                investmentType = readByHeader(row, "Investment_Type");
+                investmentCode = readByHeader(row, "Investment_Code");
+                investmentUnitsStr = readByHeader(row, "Investment_Units");
+                investmentAvgBuyStr = readByHeader(row, "Investment_Avg_Buy");
+                investmentCurrentPriceStr = readByHeader(row, "Investment_Current_Price");
+                investmentPlatform = readByHeader(row, "Investment_Platform");
                 idStr = readByHeader(row, "ID");
             } else if (hasDueDate && hasCompletedAt) {
                 [status, item, amountStr, category, quantity, dueDateStr, tagsStr, completedAtStr, idStr] = row;
@@ -467,6 +488,11 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             
             if (!item && !amountStr && !idStr) continue;
             const amount = parseSheetAmount(amountStr);
+            const parsedCategory = parseShoppingCategory(category) || 'not_urgent';
+            const parsedInvestmentType = parseInvestmentAssetType(investmentType);
+            const investmentUnits = investmentUnitsStr !== undefined && investmentUnitsStr !== '' ? parseSheetAmount(investmentUnitsStr) : undefined;
+            const investmentAvgBuy = investmentAvgBuyStr !== undefined && investmentAvgBuyStr !== '' ? parseSheetAmount(investmentAvgBuyStr) : undefined;
+            const investmentCurrentPrice = investmentCurrentPriceStr !== undefined && investmentCurrentPriceStr !== '' ? parseSheetAmount(investmentCurrentPriceStr) : undefined;
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
@@ -484,14 +510,20 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     match.status = status;
                     updated = true;
                 }
-                if (category !== undefined && match.meta.shoppingCategory !== category) {
-                    match.meta.shoppingCategory = category;
+                if (category !== undefined && match.meta.shoppingCategory !== parsedCategory) {
+                    match.meta.shoppingCategory = parsedCategory;
                     updated = true;
                 }
                 if (quantity !== undefined && match.meta.quantity !== quantity) {
                     match.meta.quantity = quantity;
                     updated = true;
                 }
+                if (investmentType !== undefined && match.meta.investmentAssetType !== parsedInvestmentType) { match.meta.investmentAssetType = parsedInvestmentType; updated = true; }
+                if (investmentCode !== undefined && match.meta.investmentSymbol !== investmentCode) { match.meta.investmentSymbol = investmentCode; updated = true; }
+                if (investmentUnits !== undefined && match.meta.investmentUnits !== investmentUnits) { match.meta.investmentUnits = investmentUnits; updated = true; }
+                if (investmentAvgBuy !== undefined && match.meta.investmentAveragePrice !== investmentAvgBuy) { match.meta.investmentAveragePrice = investmentAvgBuy; updated = true; }
+                if (investmentCurrentPrice !== undefined && match.meta.investmentCurrentPrice !== investmentCurrentPrice) { match.meta.investmentCurrentPrice = investmentCurrentPrice; updated = true; }
+                if (investmentPlatform !== undefined && match.meta.investmentPlatform !== investmentPlatform) { match.meta.investmentPlatform = investmentPlatform; updated = true; }
                 const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
@@ -559,8 +591,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     completed_at: isoCompletedAt,
                     meta: {
                         amount: amount,
-                        shoppingCategory: category || 'not_urgent',
+                        shoppingCategory: parsedCategory,
                         quantity: quantity || '',
+                        investmentAssetType: parsedInvestmentType,
+                        investmentSymbol: investmentCode || undefined,
+                        investmentUnits,
+                        investmentAveragePrice: investmentAvgBuy,
+                        investmentCurrentPrice,
+                        investmentPlatform: investmentPlatform || undefined,
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [],
                         date: isoDueDate
                     }
@@ -847,7 +885,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         // Completed saving goals remain in Shopping; only their achieved-goal transaction lives in Transactions.
         if (item.type === ItemType.FINANCE) sheetWasFetched = sheetsFetched.tx;
         else if (item.type === ItemType.SHOPPING) {
-            if (item.status === 'done' && item.meta.shoppingCategory === 'saving') sheetWasFetched = sheetsFetched.shop;
+            if (item.status === 'done' && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment')) sheetWasFetched = sheetsFetched.shop;
             else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
             else sheetWasFetched = sheetsFetched.shop;
         }

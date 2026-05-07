@@ -39,7 +39,7 @@ export const getShoppingCreatedSortTime = (item: BrainDumpItem): number => {
 
 export const shouldShoppingDateEditCompletion = (item: BrainDumpItem): boolean => (
   item.status === 'done'
-  && item.meta.shoppingCategory !== 'saving'
+  && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment'
   && item.meta.shoppingCategory !== 'routine'
   && !item.meta.isRoutine
 );

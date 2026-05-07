@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, ItemType } from '../../types';
+import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, ItemType, InvestmentAssetType } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
 import Card from '../Card';
@@ -17,10 +17,10 @@ interface PlanViewProps {
     skills: Skill[];
     planSubTab: PlanSubTab;
     setPlanSubTab: (tab: PlanSubTab) => void;
-    
+
     focusDate: Date;
     setFocusDate: (d: Date) => void;
-    
+
     appSettings: AppSettings;
     handleToggleStatus: (id: string) => void;
     handleDelete: (id: string) => void;
@@ -28,18 +28,18 @@ interface PlanViewProps {
     handleRetriggerDeepWorkTodo: (id: string) => void;
     handleAcceptDeepWorkTodo: (id: string, subtasks?: string[]) => void;
     handleUpdateItem: (
-        id: string, 
-        newContent: string, 
-        newTags: string[], 
-        newAmount?: number, 
-        newDate?: string, 
-        newPaymentMethod?: string, 
-        newBudgetCategory?: string, 
-        newDuration?: number, 
-        newSkillId?: string, 
-        newToWallet?: string, 
-        newFinanceType?: FinanceType, 
-        newProgress?: number, 
+        id: string,
+        newContent: string,
+        newTags: string[],
+        newAmount?: number,
+        newDate?: string,
+        newPaymentMethod?: string,
+        newBudgetCategory?: string,
+        newDuration?: number,
+        newSkillId?: string,
+        newToWallet?: string,
+        newFinanceType?: FinanceType,
+        newProgress?: number,
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
@@ -51,7 +51,16 @@ interface PlanViewProps {
         newRoutineMonthsOfYear?: number[],
         newSavingGoalId?: string,
         newDedicatedWalletId?: string,
-        newPriority?: Priority
+        newPriority?: Priority,
+        newStart?: string,
+        newEnd?: string,
+        newHideFromCalendar?: boolean,
+        newInvestmentAssetType?: InvestmentAssetType,
+        newInvestmentSymbol?: string,
+        newInvestmentUnits?: number,
+        newInvestmentAveragePrice?: number,
+        newInvestmentCurrentPrice?: number,
+        newInvestmentPlatform?: string
     ) => void;
     handleOpenAddRoutine: () => void;
     handleOpenAddTask: (initialDate?: string) => void;
@@ -60,10 +69,10 @@ interface PlanViewProps {
     handleOpenAddSkill: () => void;
     setDeleteId: (id: string) => void;
     setDeleteType: (type: 'skill' | 'wallet' | null) => void;
-    
+
     searchQuery: string;
     selectedTag: string;
-    
+
     // Context
     wallets: Wallet[];
     budgetRules: BudgetRule[];
@@ -83,7 +92,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     searchQuery, selectedTag,
     wallets, budgetRules, handleResetRoutine, onAddFunds, onCompleteGoal, setActiveTab
 }) => {
-    
+
     // Data Preparation
     const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
     const { today, tomorrow, later, routines } = pendingGroups;
@@ -91,8 +100,8 @@ const PlanView: React.FC<PlanViewProps> = ({
     const rootTomorrow = tomorrow.filter(item => !item.meta.parentTodoId);
     const rootLater = later.filter(item => !item.meta.parentTodoId);
     const rootRoutines = (routines || []).filter(item => !item.meta.parentTodoId);
-    
-    const { urgent, routine, normal, savings } = getShoppingItems(items);
+
+    const { urgent, routine, normal, savings, investments } = getShoppingItems(items);
     const isShoppingEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
 
     const taskResetKey = `plan-tasks-${focusDate.getFullYear()}-${focusDate.getMonth()}-${searchQuery}-${selectedTag}`;
@@ -106,6 +115,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const visibleRoutineShopping = useLazyItems(routine, { resetKey: `${shoppingResetKey}-routine-${routine.length}` });
     const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal-${normal.length}` });
     const visibleSavings = useLazyItems(savings, { resetKey: `plan-savings-${savings.length}` });
+    const visibleInvestments = useLazyItems(investments, { resetKey: `plan-investments-${investments.length}` });
 
     const [addFundsModal, setAddFundsModal] = useState<{ isOpen: boolean, goalId: string, goalName: string, defaultWallet?: string } | null>(null);
     const [fundAmount, setFundAmount] = useState('');
@@ -147,10 +157,10 @@ const PlanView: React.FC<PlanViewProps> = ({
 
     const onTouchMove = (e: React.TouchEvent) => {
         if (!touchStartRef.current) return;
-        
+
         const dx = e.touches[0].clientX - touchStartRef.current.x;
         const dy = e.touches[0].clientY - touchStartRef.current.y;
-        
+
         if (isHorizontalSwipe.current === null) {
              if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
                  isHorizontalSwipe.current = true;
@@ -181,7 +191,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 setPlanSubTab(tabs[activeIndex - 1]);
             }
         }
-        
+
         setDragOffset(0);
         touchStartRef.current = null;
         isHorizontalSwipe.current = null;
@@ -201,6 +211,12 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [editAmount, setEditAmount] = useState('');
     const [editDate, setEditDate] = useState('');
     const [editDedicatedWalletId, setEditDedicatedWalletId] = useState('');
+    const [editInvestmentAssetType, setEditInvestmentAssetType] = useState<InvestmentAssetType>('gold');
+    const [editInvestmentSymbol, setEditInvestmentSymbol] = useState('');
+    const [editInvestmentUnits, setEditInvestmentUnits] = useState('');
+    const [editInvestmentAveragePrice, setEditInvestmentAveragePrice] = useState('');
+    const [editInvestmentCurrentPrice, setEditInvestmentCurrentPrice] = useState('');
+    const [editInvestmentPlatform, setEditInvestmentPlatform] = useState('');
 
     const handleSaveEdit = (goal: BrainDumpItem) => {
         handleUpdateItem(
@@ -237,17 +253,17 @@ const PlanView: React.FC<PlanViewProps> = ({
         const progress = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
         const isDone = goal.status === 'done';
         const isExpanded = expandedGoalId === goal.id;
-        
+
         const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
         return (
-            <motion.div 
+            <motion.div
                 layout={!isDragging}
                 transition={{ type: "tween", duration: 0.3 }}
-                key={goal.id} 
+                key={goal.id}
                 className={`bg-surface rounded-[24px] overflow-hidden ${isDone ? 'opacity-60' : ''}`}
             >
-                <div 
+                <div
                     className="p-5 cursor-pointer"
                     onClick={() => {
                         if (isExpanded) {
@@ -271,7 +287,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </div>
                         <div className="flex gap-2">
                             {isDone ? (
-                                <button 
+                                <button
                                     onClick={(e) => { e.stopPropagation(); handleToggleStatus(goal.id); }}
                                     className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
                                 >
@@ -279,9 +295,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 </button>
                             ) : (
                                 <>
-                                    <button 
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             setAddFundsModal({ isOpen: true, goalId: goal.id, goalName: goal.content, defaultWallet: goal.meta.dedicatedWalletId });
                                             if (goal.meta.dedicatedWalletId) setFundWallet(goal.meta.dedicatedWalletId);
                                         }}
@@ -290,7 +306,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         <Plus className="w-5 h-5" />
                                     </button>
                                     {progress >= 100 && (
-                                        <button 
+                                        <button
                                             onClick={(e) => { e.stopPropagation(); onCompleteGoal(goal); }}
                                             className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
                                         >
@@ -303,12 +319,12 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </div>
 
                     <div className="w-full h-3 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                        <div 
+                        <div
                             className={`h-full transition-all duration-1000 ease-out ${progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
                             style={{ width: `${progress}%` }}
                         />
                     </div>
-                    
+
                     <div className="flex justify-between items-center mt-3">
                         <span className="text-xs font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Complete</span>
                         {goal.meta.date && (
@@ -322,7 +338,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                 <AnimatePresence>
                     {isExpanded && (
-                        <motion.div 
+                        <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
@@ -331,7 +347,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <div className="p-5 space-y-4">
                                 <div>
                                     <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Goal Name</label>
-                                    <input 
+                                    <input
                                         type="text"
                                         value={editContent}
                                         onChange={e => setEditContent(e.target.value)}
@@ -341,7 +357,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Target Amount</label>
-                                        <input 
+                                        <input
                                             type="number"
                                             value={editAmount}
                                             onChange={e => setEditAmount(e.target.value)}
@@ -350,7 +366,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Target Date</label>
-                                        <input 
+                                        <input
                                             type="date"
                                             value={editDate}
                                             onChange={e => setEditDate(e.target.value)}
@@ -360,7 +376,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Dedicated Wallet (Optional)</label>
-                                    <select 
+                                    <select
                                         value={editDedicatedWalletId}
                                         onChange={e => setEditDedicatedWalletId(e.target.value)}
                                         className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500 appearance-none"
@@ -373,18 +389,209 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <p className="text-[10px] text-muted mt-1">If set, funds can only be added from this wallet.</p>
                                 </div>
                                 <div className="flex justify-end gap-2 pt-2">
-                                    <button 
+                                    <button
                                         onClick={() => handleDelete(goal.id)}
                                         className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => handleSaveEdit(goal)}
                                         className="px-4 py-2 bg-indigo-500 text-white rounded-xl text-sm font-bold hover:bg-indigo-600 transition-colors"
                                     >
                                         Save Changes
                                     </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
+        );
+    };
+
+    const investmentTypeLabels: Record<InvestmentAssetType, string> = {
+        gold: 'Gold',
+        stock: 'Stock',
+        mutual_fund: 'Mutual Fund',
+        crypto: 'Crypto',
+        bond: 'Bond',
+        deposit: 'Deposit',
+        other: 'Other',
+    };
+
+    const parseOptionalNumber = (value: string) => value.trim() === '' ? undefined : Number(value);
+
+    const handleSaveInvestmentEdit = (investment: BrainDumpItem) => {
+        const units = parseOptionalNumber(editInvestmentUnits);
+        const averagePrice = parseOptionalNumber(editInvestmentAveragePrice);
+        const currentPrice = parseOptionalNumber(editInvestmentCurrentPrice);
+        const resolvedAmount = editAmount.trim() !== ''
+            ? Number(editAmount)
+            : (units && averagePrice ? units * averagePrice : investment.meta.amount);
+
+        handleUpdateItem(
+            investment.id,
+            editContent,
+            investment.meta.tags || [],
+            resolvedAmount,
+            new Date(editDate).toISOString(),
+            investment.meta.paymentMethod,
+            investment.meta.budgetCategory,
+            investment.meta.durationMinutes,
+            investment.meta.skillId,
+            investment.meta.toWallet,
+            investment.meta.financeType,
+            investment.meta.progress,
+            investment.meta.progressNotes,
+            'investment',
+            investment.meta.recurrenceDays,
+            investment.meta.quantity,
+            false,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            investment.meta.savingGoalId,
+            investment.meta.dedicatedWalletId,
+            investment.meta.priority,
+            investment.meta.start,
+            investment.meta.end,
+            investment.meta.hideFromCalendar,
+            editInvestmentAssetType,
+            editInvestmentSymbol.trim() || undefined,
+            units,
+            averagePrice,
+            currentPrice,
+            editInvestmentPlatform.trim() || undefined
+        );
+        setExpandedGoalId(null);
+    };
+
+    const renderInvestmentCard = (investment: BrainDumpItem) => {
+        const invested = investment.meta.amount || ((investment.meta.investmentUnits || 0) * (investment.meta.investmentAveragePrice || 0));
+        const currentValue = investment.meta.investmentUnits && investment.meta.investmentCurrentPrice
+            ? investment.meta.investmentUnits * investment.meta.investmentCurrentPrice
+            : invested;
+        const gain = currentValue - invested;
+        const roi = invested > 0 ? (gain / invested) * 100 : 0;
+        const isExpanded = expandedGoalId === investment.id;
+        const assetType = investment.meta.investmentAssetType || 'other';
+        const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+
+        return (
+            <motion.div
+                layout={!isDragging}
+                transition={{ type: "tween", duration: 0.3 }}
+                key={investment.id}
+                className="bg-surface rounded-[24px] overflow-hidden border border-emerald-500/10"
+            >
+                <div
+                    className="p-5 cursor-pointer"
+                    onClick={() => {
+                        if (isExpanded) {
+                            setExpandedGoalId(null);
+                        } else {
+                            setExpandedGoalId(investment.id);
+                            setEditContent(investment.content);
+                            setEditAmount(investment.meta.amount?.toString() || '');
+                            setEditDate(investment.meta.date ? investment.meta.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+                            setEditInvestmentAssetType(investment.meta.investmentAssetType || 'other');
+                            setEditInvestmentSymbol(investment.meta.investmentSymbol || '');
+                            setEditInvestmentUnits(investment.meta.investmentUnits?.toString() || '');
+                            setEditInvestmentAveragePrice(investment.meta.investmentAveragePrice?.toString() || '');
+                            setEditInvestmentCurrentPrice(investment.meta.investmentCurrentPrice?.toString() || '');
+                            setEditInvestmentPlatform(investment.meta.investmentPlatform || '');
+                        }
+                    }}
+                >
+                    <div className="flex justify-between items-start gap-3 mb-4">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">{investmentTypeLabels[assetType]}</span>
+                                {investment.meta.investmentSymbol && <span className="text-[10px] font-bold text-muted bg-muted/10 px-2 py-1 rounded-full">{investment.meta.investmentSymbol}</span>}
+                            </div>
+                            <h4 className="font-bold text-lg text-primary truncate">{investment.content}</h4>
+                            <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-xl font-bold text-emerald-500">{fmt(currentValue)}</span>
+                                <span className="text-sm text-muted font-medium">current</span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleToggleStatus(investment.id); }}
+                            className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
+                            title={investment.status === 'done' ? 'Reactivate investment' : 'Archive investment'}
+                        >
+                            <CheckCircle2 className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
+                            <div className="font-bold text-muted uppercase tracking-wider text-[9px]">Invested</div>
+                            <div className="font-bold text-primary mt-1">{fmt(invested)}</div>
+                        </div>
+                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
+                            <div className="font-bold text-muted uppercase tracking-wider text-[9px]">Units</div>
+                            <div className="font-bold text-primary mt-1">{investment.meta.investmentUnits || '-'}</div>
+                        </div>
+                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
+                            <div className="font-bold text-muted uppercase tracking-wider text-[9px]">P/L</div>
+                            <div className={`font-bold mt-1 ${gain >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{gain >= 0 ? '+' : ''}{fmt(gain)} · {roi.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    {(investment.meta.investmentPlatform || investment.meta.date) && (
+                        <div className="flex justify-between items-center mt-3 text-xs text-muted font-medium">
+                            <span>{investment.meta.investmentPlatform || 'No platform'}</span>
+                            {investment.meta.date && <span>Since {new Date(investment.meta.date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</span>}
+                        </div>
+                    )}
+                </div>
+
+                <AnimatePresence>
+                    {isExpanded && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="border-t border-border bg-black/5 dark:bg-white/10"
+                        >
+                            <div className="p-5 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Asset / Product</label>
+                                    <input type="text" value={editContent} onChange={e => setEditContent(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Type</label>
+                                        <select value={editInvestmentAssetType} onChange={e => setEditInvestmentAssetType(e.target.value as InvestmentAssetType)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500 appearance-none">
+                                            {Object.entries(investmentTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Ticker / Code</label>
+                                        <input type="text" value={editInvestmentSymbol} onChange={e => setEditInvestmentSymbol(e.target.value.toUpperCase())} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Invested Capital</label>
+                                        <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Buy Date</label>
+                                        <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <input type="number" step="any" value={editInvestmentUnits} onChange={e => setEditInvestmentUnits(e.target.value)} placeholder="Units" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    <input type="number" value={editInvestmentAveragePrice} onChange={e => setEditInvestmentAveragePrice(e.target.value)} placeholder="Avg buy" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    <input type="number" value={editInvestmentCurrentPrice} onChange={e => setEditInvestmentCurrentPrice(e.target.value)} placeholder="Current" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                </div>
+                                <input type="text" value={editInvestmentPlatform} onChange={e => setEditInvestmentPlatform(e.target.value)} placeholder="Platform / broker / storage" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <button onClick={() => handleDelete(investment.id)} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                    <button onClick={() => handleSaveInvestmentEdit(investment)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors">Save Investment</button>
                                 </div>
                             </div>
                         </motion.div>
@@ -694,7 +901,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     return (
         <div className={contentSurface.pageShell}>
             {/* Top Container */}
-            <motion.div 
+            <motion.div
                 layoutId="top-container"
                 data-swipe-tabs="plan"
                 className={contentSurface.headerHero}
@@ -711,19 +918,19 @@ const PlanView: React.FC<PlanViewProps> = ({
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
                     <div data-plan-subtabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
-                        <button 
+                        <button
                             onClick={() => setPlanSubTab('tasks')}
                             className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'tasks' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
                             <CheckCircle2 className="w-4 h-4" /> Tasks
                         </button>
-                        <button 
+                        <button
                             onClick={() => setPlanSubTab('shopping')}
                             className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'shopping' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
                             <ShoppingCart className="w-4 h-4" /> Shopping
                         </button>
-                        <button 
+                        <button
                             onClick={() => setPlanSubTab('savings')}
                             className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'savings' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
                         >
@@ -763,8 +970,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             </button>
                                         </div>
                                     </div>
-                                    
-                                    
+
+
                                 </div>
                             )}
                             {planSubTab === 'shopping' && (
@@ -787,9 +994,11 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div>
                                     <div className="flex items-center justify-between mb-6">
                                         <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">Goals & Savings</h2>
+                                            <h2 className="text-2xl font-bold tracking-tight">Goals, Savings & Investments</h2>
                                             <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
                                                 <span>{savings.length} Goals</span>
+                                                <span>•</span>
+                                                <span>{investments.length} Investments</span>
                                                 <span>•</span>
                                                 <span className="text-emerald-500">
                                                     {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(savings.reduce((acc, curr) => acc + (curr.meta.savedAmount || 0), 0))} Saved
@@ -813,7 +1022,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
             >
-                <motion.div 
+                <motion.div
                     className="flex w-full will-change-transform"
                     style={{
                         transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
@@ -821,7 +1030,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     }}
                 >
                 {/* VIEW: Tasks */}
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
@@ -835,8 +1044,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
                                                 <span className="bg-red-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Today
                                             </h3>
-                                            <button 
-                                                onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])} 
+                                            <button
+                                                onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
                                                 className="p-1 hover:bg-red-500/10 text-red-500 rounded-md transition-colors"
                                             >
                                                 <Plus className="w-4 h-4" />
@@ -855,8 +1064,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <section className={contentSurface.workflowPanel}>
                                         <div className="flex items-center justify-between mb-3 pl-1">
                                             <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
-                                            <button 
-                                                onClick={() => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0])} 
+                                            <button
+                                                onClick={() => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0])}
                                                 className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
                                             >
                                                 <Plus className="w-4 h-4" />
@@ -878,7 +1087,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
                                             <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Routines
                                         </h3>
-                                        <button 
+                                        <button
                                             onClick={handleOpenAddRoutine}
                                             className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
                                         >
@@ -898,8 +1107,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider">Tomorrow</h3>
-                                        <button 
-                                            onClick={() => handleOpenAddTask(new Date(Date.now() + 86400000).toISOString().split('T')[0])} 
+                                        <button
+                                            onClick={() => handleOpenAddTask(new Date(Date.now() + 86400000).toISOString().split('T')[0])}
                                             className="p-1 hover:bg-acc-event/10 text-acc-event rounded-md transition-colors"
                                         >
                                             <Plus className="w-4 h-4" />
@@ -920,13 +1129,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
                                     <p className="text-muted font-medium">No pending tasks for this month.</p>
                                     <div className="flex gap-3">
-                                        <button 
-                                            onClick={() => handleOpenAddTask()} 
+                                        <button
+                                            onClick={() => handleOpenAddTask()}
                                             className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
                                         >
                                             <Plus className="w-4 h-4" /> Add Task
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={handleOpenAddRoutine}
                                             className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
                                         >
@@ -940,7 +1149,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 </motion.div>
 
                 {/* VIEW: Shopping */}
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
@@ -951,7 +1160,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
                                     <span className="bg-red-500/10 p-1 rounded-md"><ShoppingCart className="w-3 h-3" /></span> Urgent
                                 </h3>
-                                <button 
+                                <button
                                     onClick={() => handleOpenAddShopping('urgent')}
                                     className="p-1 hover:bg-red-500/10 text-red-500 rounded-md transition-colors"
                                 >
@@ -973,7 +1182,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
                                     <span className="bg-indigo-500/10 p-1 rounded-md"><History className="w-3 h-3" /></span> Routine
                                 </h3>
-                                <button 
+                                <button
                                     onClick={() => handleOpenAddShopping('routine')}
                                     className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
                                 >
@@ -993,7 +1202,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         <section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Normal</h3>
-                                <button 
+                                <button
                                     onClick={() => handleOpenAddShopping('not_urgent')}
                                     className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
                                 >
@@ -1013,8 +1222,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                         {isShoppingEmpty && (
                             <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
                                 <p className="text-muted font-medium">Your shopping list is empty.</p>
-                                <button 
-                                    onClick={() => handleOpenAddShopping('not_urgent')} 
+                                <button
+                                    onClick={() => handleOpenAddShopping('not_urgent')}
                                     className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
                                 >
                                     <Plus className="w-4 h-4" /> Add Item
@@ -1025,37 +1234,75 @@ const PlanView: React.FC<PlanViewProps> = ({
                 </motion.div>
 
                 {/* VIEW: Savings */}
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
-                    <div className="flex items-center justify-between mb-4 pl-1">
-                        <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider">Saving Goals</h3>
-                        <button 
-                            onClick={() => handleOpenAddShopping('saving')}
-                            className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
-                    </div>
+                    <div className="space-y-8">
+                        <section>
+                            <div className="flex items-center justify-between mb-4 pl-1">
+                                <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider">Saving Goals</h3>
+                                <button
+                                    onClick={() => handleOpenAddShopping('saving')}
+                                    className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                </button>
+                            </div>
 
-                    {savings.length > 0 ? (
-                        <div className={contentSurface.cardGrid}>
-                            {visibleSavings.visibleItems.map(goal => renderGoalCard(goal))}
-                            <LoadMoreButton remainingCount={visibleSavings.remainingCount} onClick={visibleSavings.loadMore} />
-                        </div>
-                    ) : (
-                        <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
-                            <p className="text-muted font-medium">No saving goals yet.</p>
-                            <button 
-                                onClick={() => handleOpenAddShopping('saving')} 
-                                className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
-                            >
-                                <Plus className="w-4 h-4" /> Create Goal
-                            </button>
-                        </div>
-                    )}
+                            {savings.length > 0 ? (
+                                <div className={contentSurface.cardGrid}>
+                                    {visibleSavings.visibleItems.map(goal => renderGoalCard(goal))}
+                                    <LoadMoreButton remainingCount={visibleSavings.remainingCount} onClick={visibleSavings.loadMore} />
+                                </div>
+                            ) : (
+                                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+                                    <p className="text-muted font-medium">No saving goals yet.</p>
+                                    <button
+                                        onClick={() => handleOpenAddShopping('saving')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" /> Create Goal
+                                    </button>
+                                </div>
+                            )}
+                        </section>
+
+                        <section>
+                            <div className="flex items-center justify-between mb-4 pl-1">
+                                <div>
+                                    <h3 className="text-sm font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-2">
+                                        <span className="bg-emerald-500/10 p-1 rounded-md"><TrendingUp className="w-3 h-3" /></span> Investments
+                                    </h3>
+                                    <p className="text-xs text-muted mt-1">Gold, stocks, mutual funds, crypto, deposits, bonds, and other real positions.</p>
+                                </div>
+                                <button
+                                    onClick={() => handleOpenAddShopping('investment')}
+                                    className="p-1 hover:bg-emerald-500/10 text-emerald-500 rounded-md transition-colors"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {investments.length > 0 ? (
+                                <div className={contentSurface.cardGrid}>
+                                    {visibleInvestments.visibleItems.map(investment => renderInvestmentCard(investment))}
+                                    <LoadMoreButton remainingCount={visibleInvestments.remainingCount} onClick={visibleInvestments.loadMore} />
+                                </div>
+                            ) : (
+                                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+                                    <p className="text-muted font-medium">No investments tracked yet.</p>
+                                    <button
+                                        onClick={() => handleOpenAddShopping('investment')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-2xl text-sm font-bold transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" /> Add Investment
+                                    </button>
+                                </div>
+                            )}
+                        </section>
+                    </div>
                 </motion.div>
                 </motion.div>
             </motion.div>
@@ -1064,7 +1311,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             <AnimatePresence>
                 {addFundsModal?.isOpen && (
                     <div className={responsiveModal.sheetOverlay}>
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 100 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 100 }}
@@ -1082,10 +1329,10 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                             <div className="p-6 space-y-4">
                                 <p className="text-sm font-medium text-muted">Adding funds to: <span className="text-primary font-bold">{addFundsModal.goalName}</span></p>
-                                
+
                                 <div>
                                     <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Amount</label>
-                                    <input 
+                                    <input
                                         type="number"
                                         autoFocus
                                         value={fundAmount}
@@ -1097,7 +1344,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                                 <div>
                                     <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">From Wallet</label>
-                                    <select 
+                                    <select
                                         value={fundWallet}
                                         onChange={e => setFundWallet(e.target.value)}
                                         className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1117,7 +1364,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Date</label>
                                     <div className="relative">
                                         <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                                        <input 
+                                        <input
                                             type="date"
                                             value={fundDate}
                                             onChange={e => setFundDate(e.target.value)}
@@ -1128,7 +1375,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
 
                             <div className="p-6 border-t border-border shrink-0">
-                                <button 
+                                <button
                                     onClick={handleSaveFunds}
                                     disabled={!fundAmount || !fundWallet}
                                     className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

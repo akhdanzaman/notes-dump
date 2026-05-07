@@ -7,6 +7,7 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
         if (i.status === 'pending') return true;
         if (i.status === 'done' && i.meta?.shoppingCategory === 'routine') return true;
         if (i.status === 'done' && i.meta?.shoppingCategory === 'saving') return true; // Keep savings visible even if done
+        if (i.status === 'done' && i.meta?.shoppingCategory === 'investment') return true; // Keep investment positions visible even if marked archived/done
         if (i.status === 'done' && i.completed_at) {
             const completedTime = new Date(i.completed_at).getTime();
             const now = new Date().getTime();
@@ -24,6 +25,7 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
             .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
         return { ...goal, meta: { ...goal.meta, savedAmount } };
     });
+    const investments = visibleItems.filter(i => i.meta?.shoppingCategory === 'investment');
     const normal = visibleItems.filter(i => !i.meta?.shoppingCategory || i.meta.shoppingCategory === 'not_urgent');
 
     const sortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
@@ -38,6 +40,7 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
     routine.sort(sortFn);
     normal.sort(sortFn);
     savings.sort(sortFn);
+    investments.sort(sortFn);
 
-    return { urgent, routine, normal, savings };
+    return { urgent, routine, normal, savings, investments };
 };

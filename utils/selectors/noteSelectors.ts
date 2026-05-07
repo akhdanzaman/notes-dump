@@ -95,7 +95,7 @@ export const getJournalDayGroups = (
   const sourceItems = items.filter(item => {
     if (item.type === ItemType.JOURNAL) return true;
     if (item.type === ItemType.TODO) return item.status === 'done';
-    if (item.type === ItemType.SHOPPING) return item.status === 'done' && item.meta.shoppingCategory !== 'saving';
+    if (item.type === ItemType.SHOPPING) return item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment';
     if (item.type === ItemType.EVENT) return true;
     if (item.type === ItemType.FINANCE) return item.status === 'done';
     return false;

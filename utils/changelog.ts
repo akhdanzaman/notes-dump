@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.52',
+    date: 'May 2026',
+    items: [
+      'Plan > Savings now supports investment entries alongside saving goals, with asset type, ticker/code, units, average buy price, current price, platform, buy date, and invested capital fields for gold, stocks, mutual funds, crypto, bonds, deposits, and other positions.',
+      'Investment cards show current value, invested capital, units, and profit/loss with ROI, while staying out of expense analytics and spreadsheet transaction rows.',
+      'Spreadsheet export/reconcile now preserves investment metadata in the Shopping sheet and raw backup sheet.',
+    ],
+  },
+  {
     version: 'v0.3.51',
     date: 'May 2026',
     items: [

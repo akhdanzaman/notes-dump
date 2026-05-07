@@ -28,7 +28,8 @@ import {
     AddSavingFundsPayload,
     ParsingTask,
     CanonicalRule,
-    ItemMeta
+    ItemMeta,
+    InvestmentAssetType
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
@@ -146,7 +147,10 @@ const isValidPriority = (value: unknown): value is Priority =>
     typeof value === 'string' && ['low', 'normal', 'high'].includes(value);
 
 const isValidShoppingCategory = (value: unknown): value is ShoppingCategory =>
-    typeof value === 'string' && ['urgent', 'not_urgent', 'routine', 'saving'].includes(value);
+    typeof value === 'string' && ['urgent', 'not_urgent', 'routine', 'saving', 'investment'].includes(value);
+
+const isValidInvestmentAssetType = (value: unknown): value is InvestmentAssetType =>
+    typeof value === 'string' && ['gold', 'stock', 'mutual_fund', 'crypto', 'bond', 'deposit', 'other'].includes(value);
 
 const mapEntityTypeToItemType = (entityType: ParserEntityType, fallback: ItemType = ItemType.NOTE): ItemType => {
     switch (entityType) {
@@ -311,6 +315,12 @@ const convertLegacyResultsToNative = (legacyResults: Partial<BrainDumpItem>[], o
                     savingGoalId: meta.savingGoalId,
                     savedAmount: meta.savedAmount,
                     dedicatedWalletId: meta.dedicatedWalletId,
+                    investmentAssetType: meta.investmentAssetType,
+                    investmentSymbol: meta.investmentSymbol,
+                    investmentUnits: meta.investmentUnits,
+                    investmentAveragePrice: meta.investmentAveragePrice,
+                    investmentCurrentPrice: meta.investmentCurrentPrice,
+                    investmentPlatform: meta.investmentPlatform,
                     isRoutine: meta.isRoutine,
                     routineInterval: meta.routineInterval,
                     routineDaysOfWeek: meta.routineDaysOfWeek,
@@ -807,6 +817,12 @@ export const useBrainDumpData = () => {
             savedAmount: meta?.savedAmount,
             savingGoalId: meta?.savingGoalId,
             dedicatedWalletId: meta?.dedicatedWalletId,
+            investmentAssetType: isValidInvestmentAssetType(meta?.investmentAssetType) ? meta?.investmentAssetType : undefined,
+            investmentSymbol: meta?.investmentSymbol,
+            investmentUnits: meta?.investmentUnits,
+            investmentAveragePrice: meta?.investmentAveragePrice,
+            investmentCurrentPrice: meta?.investmentCurrentPrice,
+            investmentPlatform: meta?.investmentPlatform,
             canonical: meta?.canonical,
             priority: meta?.priority,
             hideFromCalendar: meta?.hideFromCalendar,
@@ -1842,7 +1858,13 @@ export const useBrainDumpData = () => {
         newPriority?: Priority,
         newStart?: string,
         newEnd?: string,
-        newHideFromCalendar?: boolean
+        newHideFromCalendar?: boolean,
+        newInvestmentAssetType?: InvestmentAssetType,
+        newInvestmentSymbol?: string,
+        newInvestmentUnits?: number,
+        newInvestmentAveragePrice?: number,
+        newInvestmentCurrentPrice?: number,
+        newInvestmentPlatform?: string
     ) => {
         const updatedItems = itemsRef.current.map(item => {
             if (item.id !== id) return item;
@@ -1914,7 +1936,13 @@ export const useBrainDumpData = () => {
                 routineMonthsOfYear: newRoutineMonthsOfYear || item.meta.routineMonthsOfYear,
                 savingGoalId: newSavingGoalId || item.meta.savingGoalId,
                 dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId,
-                priority: newPriority !== undefined ? newPriority : item.meta.priority
+                priority: newPriority !== undefined ? newPriority : item.meta.priority,
+                investmentAssetType: newInvestmentAssetType || item.meta.investmentAssetType,
+                investmentSymbol: newInvestmentSymbol !== undefined ? newInvestmentSymbol : item.meta.investmentSymbol,
+                investmentUnits: newInvestmentUnits !== undefined ? newInvestmentUnits : item.meta.investmentUnits,
+                investmentAveragePrice: newInvestmentAveragePrice !== undefined ? newInvestmentAveragePrice : item.meta.investmentAveragePrice,
+                investmentCurrentPrice: newInvestmentCurrentPrice !== undefined ? newInvestmentCurrentPrice : item.meta.investmentCurrentPrice,
+                investmentPlatform: newInvestmentPlatform !== undefined ? newInvestmentPlatform : item.meta.investmentPlatform
             });
 
             return {
@@ -2023,7 +2051,13 @@ export const useBrainDumpData = () => {
         routineMonthsOfYear?: number[],
         dedicatedWalletId?: string,
         paymentMethod?: string,
-        hideFromCalendar?: boolean
+        hideFromCalendar?: boolean,
+        investmentAssetType?: InvestmentAssetType,
+        investmentSymbol?: string,
+        investmentUnits?: number,
+        investmentAveragePrice?: number,
+        investmentCurrentPrice?: number,
+        investmentPlatform?: string
     ) => {
         const newItem: BrainDumpItem = {
             id: uuidv4(),
@@ -2045,7 +2079,13 @@ export const useBrainDumpData = () => {
                 routineMonthsOfYear: category === 'routine' ? routineMonthsOfYear : undefined,
                 dedicatedWalletId: category === 'saving' ? dedicatedWalletId : undefined,
                 paymentMethod,
-                hideFromCalendar
+                hideFromCalendar,
+                investmentAssetType: category === 'investment' ? investmentAssetType : undefined,
+                investmentSymbol: category === 'investment' ? investmentSymbol : undefined,
+                investmentUnits: category === 'investment' ? investmentUnits : undefined,
+                investmentAveragePrice: category === 'investment' ? investmentAveragePrice : undefined,
+                investmentCurrentPrice: category === 'investment' ? investmentCurrentPrice : undefined,
+                investmentPlatform: category === 'investment' ? investmentPlatform : undefined
             }
         };
 

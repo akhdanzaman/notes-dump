@@ -70,8 +70,28 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
     },
   };
 
+  const investment: BrainDumpItem = {
+    id: 'investment-1',
+    type: ItemType.SHOPPING,
+    content: 'BBCA long-term position',
+    status: 'pending',
+    created_at: '2026-02-12T03:00:00.000Z',
+    meta: {
+      amount: 1_000_000,
+      shoppingCategory: 'investment',
+      date: '2026-02-12T03:00:00.000Z',
+      investmentAssetType: 'stock',
+      investmentSymbol: 'BBCA',
+      investmentUnits: 100,
+      investmentAveragePrice: 10_000,
+      investmentCurrentPrice: 10_500,
+      investmentPlatform: 'Ajaib',
+      tags: ['portfolio'],
+    },
+  };
+
   const db: DbSchema = {
-    data: [shopping, todo, event],
+    data: [shopping, todo, event, investment],
     budgetConfig,
     skills: [],
     wallets: [],
@@ -82,7 +102,7 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
   const sheets = generateExportData(db.data, [], [], budgetConfig, {}, appSettings);
   const shoppingSheet = sheets.find(sheet => sheet.name === 'Shopping');
   assert.ok(shoppingSheet);
-  assert.deepEqual(shoppingSheet!.data[0], ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "ID"]);
+  assert.deepEqual(shoppingSheet!.data[0], ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"]);
 
   const valueRanges = sheets.map((sheet) => ({
     range: `'${sheet.name}'!A1`,
@@ -91,7 +111,7 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
 
   const reconciled = reconcileSpreadsheetData(structuredClone(db), valueRanges);
 
-  assert.equal(reconciled.data.length, 3);
+  assert.equal(reconciled.data.length, 4);
 
   const reconciledShopping = reconciled.data.find((item) => item.id === 'shop-1');
   assert.ok(reconciledShopping);
@@ -108,6 +128,16 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
   assert.ok(reconciledEvent);
   assert.equal(reconciledEvent?.meta.start, '2026-02-19T02:00:00.000Z');
   assert.equal(reconciledEvent?.meta.end, '2026-02-19T03:00:00.000Z');
+
+  const reconciledInvestment = reconciled.data.find((item) => item.id === 'investment-1');
+  assert.ok(reconciledInvestment);
+  assert.equal(reconciledInvestment?.meta.shoppingCategory, 'investment');
+  assert.equal(reconciledInvestment?.meta.investmentAssetType, 'stock');
+  assert.equal(reconciledInvestment?.meta.investmentSymbol, 'BBCA');
+  assert.equal(reconciledInvestment?.meta.investmentUnits, 100);
+  assert.equal(reconciledInvestment?.meta.investmentAveragePrice, 10_000);
+  assert.equal(reconciledInvestment?.meta.investmentCurrentPrice, 10_500);
+  assert.equal(reconciledInvestment?.meta.investmentPlatform, 'Ajaib');
 });
 
 test('transaction spreadsheet export round-trips ID after canonical columns and keeps wallet balance effective', () => {

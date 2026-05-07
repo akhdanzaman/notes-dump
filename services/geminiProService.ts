@@ -100,8 +100,8 @@ function isValidPriority(value: unknown): value is Priority {
   return typeof value === 'string' && ['low', 'normal', 'high'].includes(value);
 }
 
-function isValidShoppingCategory(value: unknown): value is 'urgent' | 'routine' | 'not_urgent' | 'saving' {
-  return typeof value === 'string' && ['urgent', 'routine', 'not_urgent', 'saving'].includes(value);
+function isValidShoppingCategory(value: unknown): value is 'urgent' | 'routine' | 'not_urgent' | 'saving' | 'investment' {
+  return typeof value === 'string' && ['urgent', 'routine', 'not_urgent', 'saving', 'investment'].includes(value);
 }
 
 function isValidWalletType(value: unknown): value is ParsedWalletType {

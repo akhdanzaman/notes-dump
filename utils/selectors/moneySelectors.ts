@@ -36,7 +36,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         if (!item.meta.amount) return;
         
         // Exclude saving goals and routine shopping items from implicit expenses (routines generate separate finance items)
-        if (isImplicitExpense && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'routine')) return;
+        if (isImplicitExpense && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment' || item.meta.shoppingCategory === 'routine')) return;
         
         const amount = item.meta.amount;
         const walletName = resolveItemWalletBalanceKey(wallets, item); // Source Wallet
@@ -143,7 +143,7 @@ export const getFinanceItems = (
         (i.type === ItemType.SHOPPING || i.type === ItemType.TODO) && 
         i.status === 'done' && 
         (i.meta.amount || 0) > 0 &&
-        i.meta.shoppingCategory !== 'saving' &&
+        i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment' &&
         i.meta.shoppingCategory !== 'routine'
     );
 
@@ -432,7 +432,7 @@ export const getFinanceItems = (
     const pendingShoppingItems = items.filter(i => 
         i.type === ItemType.SHOPPING && 
         i.meta.shoppingCategory !== 'routine' &&
-        i.meta.shoppingCategory !== 'saving' &&
+        i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment' &&
         i.status !== 'done' &&
         (i.meta.amount || 0) > 0
     );

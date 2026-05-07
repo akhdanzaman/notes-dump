@@ -8,7 +8,8 @@ export enum ItemType {
   SKILL_LOG = 'SKILL_LOG'
 }
 
-export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving';
+export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving' | 'investment';
+export type InvestmentAssetType = 'gold' | 'stock' | 'mutual_fund' | 'crypto' | 'bond' | 'deposit' | 'other';
 export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving' | 'achieved_goal';
 export type Priority = 'low' | 'normal' | 'high';
 export type DeepWorkCompletionMode = 'manual' | 'all_subtasks' | 'final_output_check';
@@ -144,6 +145,13 @@ export interface ItemMeta {
   savedAmount?: number;
   savingGoalId?: string;
   dedicatedWalletId?: string;
+
+  investmentAssetType?: InvestmentAssetType;
+  investmentSymbol?: string;
+  investmentUnits?: number;
+  investmentAveragePrice?: number;
+  investmentCurrentPrice?: number;
+  investmentPlatform?: string;
 
   canonical?: ItemCanonicalMeta;
 
@@ -417,6 +425,13 @@ export interface ParsedItemMetaV2 {
   dedicatedWalletName?: string;
   savedAmount?: number;
 
+  investmentAssetType?: InvestmentAssetType;
+  investmentSymbol?: string;
+  investmentUnits?: number;
+  investmentAveragePrice?: number;
+  investmentCurrentPrice?: number;
+  investmentPlatform?: string;
+
   canonical?: ItemCanonicalMeta;
 
   isRoutine?: boolean;
@@ -498,6 +513,12 @@ export interface UpdateItemPayload {
     routineMonthsOfYear: number[];
     recurrenceDays: number;
     targetDay: string;
+    investmentAssetType: InvestmentAssetType;
+    investmentSymbol: string;
+    investmentUnits: number;
+    investmentAveragePrice: number;
+    investmentCurrentPrice: number;
+    investmentPlatform: string;
   }>;
 }
 

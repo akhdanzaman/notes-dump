@@ -84,7 +84,7 @@ const isExpenseFinanceType = (financeType: string | undefined) => (
 
 export const isSpreadsheetExpenseItem = (item: BrainDumpItem) => {
   if (item.type === ItemType.SHOPPING) {
-    return item.status === 'done' && item.meta.shoppingCategory !== 'saving' && (item.meta.amount || 0) > 0;
+    return item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment' && (item.meta.amount || 0) > 0;
   }
 
   return item.type === ItemType.FINANCE
@@ -103,7 +103,7 @@ const isSpendishTransaction = (item: BrainDumpItem) => (
 
 const isEditableTransactionRow = (item: BrainDumpItem) => (
   item.type === ItemType.FINANCE
-  || (item.type === ItemType.SHOPPING && item.status === 'done' && item.meta.shoppingCategory !== 'saving')
+  || (item.type === ItemType.SHOPPING && item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment')
 );
 
 export const buildDataQualityIssues = (
@@ -324,7 +324,7 @@ const buildWalletMovementLine = (todayItems: BrainDumpItem[], wallets: Wallet[])
     const amount = item.meta.amount || 0;
     if (amount <= 0 || item.status !== 'done') return;
 
-    if (item.type === ItemType.SHOPPING && item.meta.shoppingCategory !== 'saving') {
+    if (item.type === ItemType.SHOPPING && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment') {
       addMovement(getWalletKey(item), -amount);
       return;
     }
