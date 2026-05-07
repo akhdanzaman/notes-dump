@@ -160,6 +160,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             ? `${hoveredTrendPoint.label} ${financeDate.getFullYear()}`
             : `${hoveredTrendPoint.label} ${financeDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`)
         : undefined;
+    const hoveredTrendTooltipLeft = hoveredTrendIndex !== null && budgetTrendAnalytics.length > 0
+        ? Math.min(86, Math.max(14, ((hoveredTrendIndex + 0.5) / budgetTrendAnalytics.length) * 100))
+        : 50;
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -555,34 +558,38 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             </div>
                                         </div>
 
-                                        <div className="mb-3 min-h-[84px] rounded-2xl bg-white/60 px-3 py-2 text-xs dark:bg-black/10">
-                                            {hoveredTrendPoint ? (
-                                                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                                                    <div className="min-w-0">
-                                                        <div className="font-bold text-primary">{hoveredTrendLabel}</div>
-                                                        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-                                                            <div className="rounded-xl bg-black/5 px-2 py-1.5 dark:bg-white/5">
-                                                                <div className="text-muted">Spend</div>
-                                                                <div className="font-bold text-[#FF5722]">{showBalance ? fmt(hoveredTrendPoint.total) : '••••'}</div>
-                                                            </div>
-                                                            <div className="rounded-xl bg-black/5 px-2 py-1.5 dark:bg-white/5">
-                                                                <div className="text-muted">Income</div>
-                                                                <div className="font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(hoveredTrendPoint.income) : '••••'}</div>
-                                                            </div>
+                                        <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted">
+                                            <span>Hover bars untuk lihat spend, income, dan kategori.</span>
+                                            <span className="font-semibold">Peak {peakTrendPoint.label}</span>
+                                        </div>
+
+                                        <div className="relative flex h-40 items-end gap-1 rounded-2xl bg-white/50 px-2 pb-2 pt-14 dark:bg-black/10">
+                                            {hoveredTrendPoint && (
+                                                <div
+                                                    className="pointer-events-none absolute top-2 z-20 w-64 -translate-x-1/2 rounded-2xl border border-border bg-surface/95 p-3 text-xs shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30"
+                                                    style={{ left: `${hoveredTrendTooltipLeft}%` }}
+                                                >
+                                                    <div className="mb-2 flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <div className="font-bold text-primary">{hoveredTrendLabel}</div>
+                                                            {budgetViewMode === 'yearly' && hoveredTrendPoint.previousTotal !== undefined && (
+                                                                <div className="mt-0.5 text-[10px] font-semibold text-amber-500">
+                                                                    Prev spend {showBalance ? fmt(hoveredTrendPoint.previousTotal) : '••••'}
+                                                                    {hoveredTrendPoint.previousIncome !== undefined ? ` · income ${showBalance ? fmt(hoveredTrendPoint.previousIncome) : '••••'}` : ''}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        {budgetViewMode === 'yearly' && hoveredTrendPoint.previousTotal !== undefined && (
-                                                            <div className="mt-1.5 text-[11px] font-semibold text-amber-500">
-                                                                Prev year spend {showBalance ? fmt(hoveredTrendPoint.previousTotal) : '••••'}
-                                                                {hoveredTrendPoint.previousIncome !== undefined ? ` · income ${showBalance ? fmt(hoveredTrendPoint.previousIncome) : '••••'}` : ''}
-                                                            </div>
-                                                        )}
+                                                        <div className="text-right">
+                                                            <div className="font-bold text-[#FF5722]">{showBalance ? fmt(hoveredTrendPoint.total) : '••••'}</div>
+                                                            <div className="font-semibold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(hoveredTrendPoint.income) : '••••'}</div>
+                                                        </div>
                                                     </div>
-                                                    <div className="min-w-[9rem] text-left sm:text-right">
-                                                        <div className="mb-1 font-bold uppercase tracking-[0.16em] text-muted">Categories</div>
+                                                    <div className="border-t border-border pt-2">
+                                                        <div className="mb-1 font-bold uppercase tracking-[0.14em] text-muted">Categories</div>
                                                         {hoveredTrendPoint.categories.length > 0 ? (
                                                             <div className="space-y-1">
                                                                 {hoveredTrendPoint.categories.map(category => (
-                                                                    <div key={`${hoveredTrendLabel}-${category.name}`} className="flex items-center justify-between gap-2 sm:justify-end">
+                                                                    <div key={`${hoveredTrendLabel}-${category.name}`} className="flex items-center justify-between gap-2">
                                                                         <span className="truncate text-muted">{category.name}</span>
                                                                         <span className="shrink-0 font-bold text-primary">{showBalance ? fmt(category.total) : '••••'}</span>
                                                                     </div>
@@ -593,15 +600,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                         )}
                                                     </div>
                                                 </div>
-                                            ) : (
-                                                <div className="flex h-full items-center justify-between gap-3 text-muted">
-                                                    <span>Hover graph untuk lihat spend, income, dan kategori.</span>
-                                                    <span className="font-semibold">Peak {peakTrendPoint.label}</span>
-                                                </div>
                                             )}
-                                        </div>
-
-                                        <div className="flex h-28 items-end gap-1 rounded-2xl bg-white/50 px-2 pb-2 pt-4 dark:bg-black/10">
                                             {budgetTrendAnalytics.map((point, index) => {
                                                 const showLabel = budgetViewMode === 'yearly' || index === 0 || index === Math.floor(budgetTrendAnalytics.length / 2) || index === budgetTrendAnalytics.length - 1;
                                                 const isHovered = hoveredTrendIndex === index;

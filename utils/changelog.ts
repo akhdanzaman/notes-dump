@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.64',
+    date: 'May 2026',
+    items: [
+      'Money > Budget Spend Timeline hover details now appear as a floating tooltip over the graph instead of a fixed detail card inside the timeline container.',
+    ],
+  },
+  {
     version: 'v0.3.63',
     date: 'May 2026',
     items: [
