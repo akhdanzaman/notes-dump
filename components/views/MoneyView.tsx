@@ -9,7 +9,7 @@ import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
 import { contentSurface } from '../layout/contentSurface';
-import { getBudgetCategoryAnalytics } from '../../utils/budgetAnalytics';
+import { getBudgetCategoryAnalytics, getBudgetTrendAnalytics } from '../../utils/budgetAnalytics';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -83,22 +83,27 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('money', setActiveTab);
 
+    const [budgetViewMode, setBudgetViewMode] = useState<'monthly' | 'yearly'>('monthly');
+
     // Date Swipe Logic
-    const changeMonth = (offset: number) => {
+    const changePeriod = (offset: number) => {
         const newDate = new Date(financeDate);
-        newDate.setMonth(newDate.getMonth() + offset);
+        if (moneyView === 'budget' && budgetViewMode === 'yearly') {
+            newDate.setFullYear(newDate.getFullYear() + offset);
+        } else {
+            newDate.setMonth(newDate.getMonth() + offset);
+        }
         setFinanceDate(newDate);
     };
     
     const dateSwipeHandlers = useSwipeDate(
-        () => changeMonth(-1), // Swipe Right -> Prev Month
-        () => changeMonth(1)   // Swipe Left -> Next Month
+        () => changePeriod(-1), // Swipe Right -> Prev Period
+        () => changePeriod(1)   // Swipe Left -> Next Period
     );
 
     // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
-    const [budgetViewMode, setBudgetViewMode] = useState<'monthly' | 'yearly'>('monthly');
 
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -140,6 +145,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         () => getBudgetCategoryAnalytics(items, financeDate, budgetConfig, budgetViewMode),
         [items, financeDate, budgetConfig, budgetViewMode]
     );
+    const budgetTrendAnalytics = useMemo(
+        () => getBudgetTrendAnalytics(items, financeDate, budgetViewMode),
+        [items, financeDate, budgetViewMode]
+    );
+    const showBudgetYearSelector = moneyView === 'budget' && budgetViewMode === 'yearly';
+    const selectedPeriodTotal = budgetTrendAnalytics.reduce((sum, point) => sum + point.total, 0);
+    const previousPeriodTotal = budgetTrendAnalytics.reduce((sum, point) => sum + (point.previousTotal || 0), 0);
+    const peakTrendPoint = budgetTrendAnalytics.reduce((peak, point) => point.total > peak.total ? point : peak, budgetTrendAnalytics[0] || { label: '—', total: 0, percentage: 0 });
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -257,10 +270,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
                             >
                                 <div className="flex items-center justify-between gap-1 lg:gap-2">
-                                    <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label="Previous month"><ChevronLeft className="w-4 h-4" /></button>
+                                    <button onClick={() => changePeriod(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label={showBudgetYearSelector ? 'Previous year' : 'Previous month'}><ChevronLeft className="w-4 h-4" /></button>
                                     <AnimatePresence mode="wait">
                                         <motion.div 
-                                            key={financeDate.toISOString()}
+                                            key={`${showBudgetYearSelector ? 'year' : 'month'}-${financeDate.toISOString()}`}
                                             data-money-month-label="true"
                                             initial={{ opacity: 0, x: 10 }}
                                             animate={{ opacity: 1, x: 0 }}
@@ -269,15 +282,31 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             className="flex min-w-16 flex-col items-center sm:min-w-20 lg:min-w-24"
                                         >
                                             <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider leading-none mb-1 lg:text-xs">
-                                                {financeDate.getFullYear()}
+                                                {showBudgetYearSelector ? 'Year' : financeDate.getFullYear()}
                                             </span>
                                             <span className="text-sm font-bold leading-none sm:text-base lg:text-lg">
-                                                {financeDate.toLocaleDateString(undefined, { month: 'short' })}
+                                                {showBudgetYearSelector ? financeDate.getFullYear() : financeDate.toLocaleDateString(undefined, { month: 'short' })}
                                             </span>
                                         </motion.div>
                                     </AnimatePresence>
-                                    <button onClick={() => changeMonth(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label="Next month"><ChevronRight className="w-4 h-4" /></button>
+                                    <button onClick={() => changePeriod(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label={showBudgetYearSelector ? 'Next year' : 'Next month'}><ChevronRight className="w-4 h-4" /></button>
                                 </div>
+                                {moneyView === 'budget' && (
+                                    <div className="mt-2 flex bg-white/50 dark:bg-black/10 rounded-full p-1 cursor-pointer">
+                                        <button 
+                                            onClick={() => setBudgetViewMode('monthly')}
+                                            className={`${budgetViewMode === 'monthly' ? 'bg-surface text-primary shadow-sm dark:bg-white dark:text-black' : 'text-primary/50 hover:text-primary'} flex-1 rounded-full px-3 py-1 text-xs font-bold transition-colors`}
+                                        >
+                                            M
+                                        </button>
+                                        <button 
+                                            onClick={() => setBudgetViewMode('yearly')}
+                                            className={`${budgetViewMode === 'yearly' ? 'bg-surface text-primary shadow-sm dark:bg-white dark:text-black' : 'text-primary/50 hover:text-primary'} flex-1 rounded-full px-3 py-1 text-xs font-bold transition-colors`}
+                                        >
+                                            Y
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         
@@ -492,51 +521,62 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </button>
                             </div>
                         ) : (
-                            <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
-                                {/* Header */}
-                                <div className="flex justify-between items-center mb-8">
-                                    <h2 className="text-3xl font-bold tracking-tight">
-                                        {budgetConfig.rules.length} Categories
-                                    </h2>
-                                    <div className="flex bg-zinc-100 dark:bg-white/20 rounded-full p-1 cursor-pointer">
-                                        <button 
-                                            onClick={() => setBudgetViewMode('monthly')}
-                                            className={`${budgetViewMode === 'monthly' ? 'bg-white dark:bg-white text-black' : 'text-zinc-500 dark:text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
-                                        >
-                                            M
-                                        </button>
-                                        <button 
-                                            onClick={() => setBudgetViewMode('yearly')}
-                                            className={`${budgetViewMode === 'yearly' ? 'bg-white dark:bg-white text-black' : 'text-zinc-500 dark:text-white/60'} rounded-full px-3 py-1 text-xs font-bold transition-colors`}
-                                        >
-                                            Y
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Basis Fixed Income & Planned Spending */}
-                                <div className="flex justify-between items-end mb-8 pb-6 border-b border-border">
-                                    <div>
-                                        <div className="text-muted text-sm mb-1 font-medium">Basis: {incomeLabel}</div>
-                                        <div className="text-xl font-bold">{showBalance ? fmt(effectiveIncome) : '••••'}</div>
-                                    </div>
-                                    {projectedExpense > 0 && (
-                                        <div className="text-right">
-                                            <div className="text-muted text-sm mb-1 font-medium">Planned</div>
-                                            <div className="text-xl font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</div>
-                                        </div>
-                                    )}
-                                </div>
-
+                            <div className="space-y-6 text-primary">
                                 {budgetCategoryAnalytics.length > 0 && (
-                                    <div className="mb-8 space-y-4 rounded-3xl border border-border bg-black/[0.02] p-4 dark:bg-white/[0.04]">
-                                        <div className="flex items-start justify-between gap-3">
+                                    <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
+                                        <div className="mb-6 flex items-start justify-between gap-4">
                                             <div>
-                                                <div className="text-xs font-bold uppercase tracking-[0.2em] text-muted">Spend Anatomy</div>
-                                                <div className="mt-1 text-sm font-semibold text-primary">Category → commodity → subcommodity</div>
+                                                <h2 className="text-3xl font-bold tracking-tight">Spend Anatomy</h2>
+                                                <div className="mt-1 text-sm font-semibold text-muted">Category → commodity → subcommodity</div>
                                             </div>
-                                            <PieChart className="h-5 w-5 text-muted" />
+                                            <PieChart className="h-6 w-6 text-muted" />
                                         </div>
+
+                                        <div className="mb-6 rounded-3xl border border-border bg-black/[0.02] p-4 dark:bg-white/[0.04]">
+                                            <div className="mb-4 flex items-end justify-between gap-4">
+                                                <div>
+                                                    <div className="text-xs font-bold uppercase tracking-[0.2em] text-muted">{budgetViewMode === 'yearly' ? 'YoY Trend' : 'Month Trend'}</div>
+                                                    <div className="mt-1 text-xl font-bold">{showBalance ? fmt(selectedPeriodTotal) : '••••'}</div>
+                                                </div>
+                                                <div className="text-right text-xs text-muted">
+                                                    <div>Peak: <span className="font-bold text-primary">{peakTrendPoint.label}</span></div>
+                                                    {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
+                                                        <div>Prev year: <span className="font-bold text-amber-500">{showBalance ? fmt(previousPeriodTotal) : '••••'}</span></div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex h-28 items-end gap-1 rounded-2xl bg-white/50 px-2 pb-2 pt-4 dark:bg-black/10">
+                                                {budgetTrendAnalytics.map((point, index) => {
+                                                    const showLabel = budgetViewMode === 'yearly' || index === 0 || index === Math.floor(budgetTrendAnalytics.length / 2) || index === budgetTrendAnalytics.length - 1;
+                                                    return (
+                                                        <div key={`${point.label}-${index}`} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                                                            <div className="relative flex h-20 w-full items-end justify-center">
+                                                                {budgetViewMode === 'yearly' && point.previousTotal !== undefined && point.previousTotal > 0 && (
+                                                                    <div
+                                                                        className="absolute bottom-0 w-1/2 rounded-t-full bg-amber-400/40"
+                                                                        style={{ height: `${Math.max(point.previousPercentage || 0, 3)}%` }}
+                                                                        title={`${point.label} previous: ${fmt(point.previousTotal)}`}
+                                                                    />
+                                                                )}
+                                                                <div
+                                                                    className="relative z-10 w-full max-w-3 rounded-t-full bg-primary/80"
+                                                                    style={{ height: `${point.total > 0 ? Math.max(point.percentage, 4) : 1}%` }}
+                                                                    title={`${point.label}: ${fmt(point.total)}`}
+                                                                />
+                                                            </div>
+                                                            <div className={`h-3 text-[9px] font-bold uppercase leading-none ${showLabel ? 'text-muted' : 'text-transparent'}`}>{point.label}</div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
+                                                <div className="mt-3 flex items-center gap-4 text-[11px] font-semibold text-muted">
+                                                    <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary/80"></span>{financeDate.getFullYear()}</span>
+                                                    <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400/50"></span>{financeDate.getFullYear() - 1}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <div className="space-y-4">
                                             {budgetCategoryAnalytics.slice(0, 3).map(category => (
                                                 <div key={category.categoryId} className="space-y-2">
@@ -586,6 +626,28 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         </div>
                                     </div>
                                 )}
+
+                                <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
+                                {/* Header */}
+                                <div className="flex justify-between items-center mb-8">
+                                    <h2 className="text-3xl font-bold tracking-tight">
+                                        {budgetConfig.rules.length} Categories
+                                    </h2>
+                                </div>
+
+                                {/* Basis Fixed Income & Planned Spending */}
+                                <div className="flex justify-between items-end mb-8 pb-6 border-b border-border">
+                                    <div>
+                                        <div className="text-muted text-sm mb-1 font-medium">Basis: {incomeLabel}</div>
+                                        <div className="text-xl font-bold">{showBalance ? fmt(effectiveIncome) : '••••'}</div>
+                                    </div>
+                                    {projectedExpense > 0 && (
+                                        <div className="text-right">
+                                            <div className="text-muted text-sm mb-1 font-medium">Planned</div>
+                                            <div className="text-xl font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</div>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {/* Categories List */}
                                 <div className="space-y-6">
@@ -675,6 +737,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         </div>
                                     )}
                                 </div>
+                            </div>
                             </div>
                         )}
                     </motion.div>

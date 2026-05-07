@@ -27,6 +27,14 @@ export interface BudgetCategoryInsight {
   commodities: BudgetCommodityBreakdown[];
 }
 
+export interface BudgetTrendPoint {
+  label: string;
+  total: number;
+  previousTotal?: number;
+  percentage: number;
+  previousPercentage?: number;
+}
+
 const isInPeriod = (item: BrainDumpItem, financeDate: Date, viewMode: 'monthly' | 'yearly') => {
   const dateStr = item.type === ItemType.FINANCE
     ? (item.meta.date || item.created_at)
@@ -67,6 +75,67 @@ const sortedBreakdown = (map: Map<string, { total: number; count: number }>, lim
   .map(([name, stats]) => ({ name, total: stats.total, count: stats.count }))
   .sort((a, b) => b.total - a.total)
   .slice(0, limit);
+
+const getExpenseDate = (item: BrainDumpItem): Date | null => {
+  const dateStr = item.type === ItemType.FINANCE
+    ? (item.meta.date || item.completed_at || item.created_at)
+    : getShoppingTransactionDate(item);
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const buildTrendPoint = (label: string, total: number, maxTotal: number, previousTotal?: number): BudgetTrendPoint => ({
+  label,
+  total,
+  previousTotal,
+  percentage: maxTotal > 0 ? (total / maxTotal) * 100 : 0,
+  previousPercentage: previousTotal !== undefined && maxTotal > 0 ? (previousTotal / maxTotal) * 100 : undefined,
+});
+
+export const getBudgetTrendAnalytics = (
+  items: BrainDumpItem[],
+  financeDate: Date,
+  viewMode: 'monthly' | 'yearly'
+): BudgetTrendPoint[] => {
+  const expenseItems = items.filter(isExpenseLike);
+
+  if (viewMode === 'yearly') {
+    const currentYear = financeDate.getFullYear();
+    const monthlyTotals = Array.from({ length: 12 }, () => 0);
+    const previousMonthlyTotals = Array.from({ length: 12 }, () => 0);
+
+    expenseItems.forEach(item => {
+      const d = getExpenseDate(item);
+      if (!d) return;
+      const amount = item.meta.amount || 0;
+      if (d.getFullYear() === currentYear) monthlyTotals[d.getMonth()] += amount;
+      if (d.getFullYear() === currentYear - 1) previousMonthlyTotals[d.getMonth()] += amount;
+    });
+
+    const maxTotal = Math.max(...monthlyTotals, ...previousMonthlyTotals, 0);
+    return monthlyTotals.map((total, monthIndex) => buildTrendPoint(
+      new Date(currentYear, monthIndex, 1).toLocaleDateString(undefined, { month: 'short' }),
+      total,
+      maxTotal,
+      previousMonthlyTotals[monthIndex]
+    ));
+  }
+
+  const year = financeDate.getFullYear();
+  const month = financeDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const dailyTotals = Array.from({ length: daysInMonth }, () => 0);
+
+  expenseItems.forEach(item => {
+    const d = getExpenseDate(item);
+    if (!d || d.getFullYear() !== year || d.getMonth() !== month) return;
+    dailyTotals[d.getDate() - 1] += item.meta.amount || 0;
+  });
+
+  const maxTotal = Math.max(...dailyTotals, 0);
+  return dailyTotals.map((total, index) => buildTrendPoint(String(index + 1), total, maxTotal));
+};
 
 export const getBudgetCategoryAnalytics = (
   items: BrainDumpItem[],

@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.60',
+    date: 'May 2026',
+    items: [
+      'Money > Budget now shows Spend Anatomy as its own card outside the Categories container, using the same large heading hierarchy as the budget category card.',
+      'The Budget M/Y toggle now lives below the period selector; monthly mode keeps the month selector, while yearly mode switches the selector to year navigation.',
+      'Spend Anatomy now includes a time-over-time graph: daily spend bars for a selected month and YoY monthly comparison bars for a selected year.',
+    ],
+  },
+  {
     version: 'v0.3.59',
     date: 'May 2026',
     items: [

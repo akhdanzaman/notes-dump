@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { BrainDumpItem, BudgetConfig, ItemType } from '../../types';
-import { getBudgetCategoryAnalytics } from '../budgetAnalytics';
+import { getBudgetCategoryAnalytics, getBudgetTrendAnalytics } from '../budgetAnalytics';
 
 const budgetConfig: BudgetConfig = {
   monthlyIncome: 10_000_000,
@@ -18,16 +18,17 @@ const expense = (
   budgetCategory: string,
   commodity?: string,
   subcommodity?: string,
-  merchant?: string
+  merchant?: string,
+  date = '2026-05-01T08:00:00.000Z'
 ): BrainDumpItem => ({
   id,
   type: ItemType.FINANCE,
   content: id,
   status: 'done',
-  created_at: '2026-05-01T08:00:00.000Z',
-  completed_at: '2026-05-01T08:00:00.000Z',
+  created_at: date,
+  completed_at: date,
   meta: {
-    date: '2026-05-01T08:00:00.000Z',
+    date,
     amount,
     financeType: 'expense',
     budgetCategory,
@@ -39,6 +40,24 @@ const expense = (
       subcommodity: subcommodity ? { rawValue: subcommodity, value: subcommodity, confidence: 0.9, source: 'context_inference' } : undefined,
     },
   },
+});
+
+test('budget trend analytics groups month days and yearly YoY buckets', () => {
+  const items = [
+    expense('may-1', 10_000, 'needs', 'food', 'breakfast'),
+    expense('may-2', 20_000, 'needs', 'food', 'lunch', undefined, '2026-05-02T08:00:00.000Z'),
+    expense('last-year', 30_000, 'needs', 'transport', 'fuel', undefined, '2025-05-10T08:00:00.000Z'),
+  ];
+
+  const monthly = getBudgetTrendAnalytics(items, new Date('2026-05-15T00:00:00.000Z'), 'monthly');
+  assert.equal(monthly.length, 31);
+  assert.equal(monthly[0].total, 10_000);
+  assert.equal(monthly[1].total, 20_000);
+
+  const yearly = getBudgetTrendAnalytics(items, new Date('2026-05-15T00:00:00.000Z'), 'yearly');
+  assert.equal(yearly.length, 12);
+  assert.equal(yearly[4].total, 30_000);
+  assert.equal(yearly[4].previousTotal, 30_000);
 });
 
 test('budget category analytics groups category to commodity to subcommodity with merchant drilldown', () => {
