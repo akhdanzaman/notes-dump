@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.54',
+    date: 'May 2026',
+    items: [
+      'Investment cards now label the main amount as owned value and calculate it from units multiplied by current price.',
+      'Investment P/L now compares owned value against position cost basis (units multiplied by average buy), so unused funded capital in the platform wallet is not counted as a loss.',
+    ],
+  },
+  {
     version: 'v0.3.53',
     date: 'May 2026',
     items: [

@@ -11,6 +11,7 @@ import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
 import { contentSurface, responsiveModal } from '../layout/contentSurface';
+import { getInvestmentMetrics } from '../../utils/investmentMetrics';
 
 interface PlanViewProps {
     items: BrainDumpItem[];
@@ -467,12 +468,11 @@ const PlanView: React.FC<PlanViewProps> = ({
     };
 
     const renderInvestmentCard = (investment: BrainDumpItem) => {
-        const invested = investment.meta.savedAmount || 0;
-        const currentValue = investment.meta.investmentUnits && investment.meta.investmentCurrentPrice
-            ? investment.meta.investmentUnits * investment.meta.investmentCurrentPrice
-            : invested;
-        const gain = currentValue - invested;
-        const roi = invested > 0 ? (gain / invested) * 100 : 0;
+        const metrics = getInvestmentMetrics(investment);
+        const invested = metrics.investedCapital;
+        const currentValue = metrics.displayValue;
+        const gain = metrics.profitLoss;
+        const roi = metrics.roi;
         const isExpanded = expandedGoalId === investment.id;
         const assetType = investment.meta.investmentAssetType || 'other';
         const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
@@ -512,7 +512,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <h4 className="font-bold text-lg text-primary truncate">{investment.content}</h4>
                             <div className="flex items-baseline gap-2 mt-1">
                                 <span className="text-xl font-bold text-emerald-500">{fmt(currentValue)}</span>
-                                <span className="text-sm text-muted font-medium">current</span>
+                                <span className="text-sm text-muted font-medium">owned value</span>
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -551,6 +551,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3 border border-emerald-500/5">
                             <div className="font-bold text-muted uppercase tracking-wider text-[9px]">P/L</div>
                             <div className={`font-bold mt-1 ${gain >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{gain >= 0 ? '+' : ''}{fmt(gain)} · {roi.toFixed(1)}%</div>
+                            <div className="text-[9px] text-muted mt-0.5">vs cost basis</div>
                         </div>
                     </div>
                     {(investment.meta.investmentPlatform || investment.meta.date) && (
