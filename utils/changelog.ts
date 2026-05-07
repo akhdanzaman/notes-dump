@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.63',
+    date: 'May 2026',
+    items: [
+      'Money > Budget Spend Timeline details are now hover-only, removing the tap-sticky detail behavior while showing spend, income, and top category totals for the hovered date or month.',
+      'Budget layout now stacks the full-width Spend Timeline first, then places the 6 Categories card beside Spend Anatomy on desktop while keeping them stacked on smaller screens.',
+    ],
+  },
+  {
     version: 'v0.3.62',
     date: 'May 2026',
     items: [

@@ -12,6 +12,20 @@ const budgetConfig: BudgetConfig = {
   ],
 };
 
+const income = (id: string, amount: number, date = '2026-05-01T08:00:00.000Z'): BrainDumpItem => ({
+  id,
+  type: ItemType.FINANCE,
+  content: id,
+  status: 'done',
+  created_at: date,
+  completed_at: date,
+  meta: {
+    date,
+    amount,
+    financeType: 'income',
+  },
+});
+
 const expense = (
   id: string,
   amount: number,
@@ -44,20 +58,28 @@ const expense = (
 
 test('budget trend analytics groups month days and yearly YoY buckets', () => {
   const items = [
+    income('salary', 100_000),
+    income('last-year-salary', 90_000, '2025-05-10T08:00:00.000Z'),
     expense('may-1', 10_000, 'needs', 'food', 'breakfast'),
-    expense('may-2', 20_000, 'needs', 'food', 'lunch', undefined, '2026-05-02T08:00:00.000Z'),
+    expense('may-2', 20_000, 'wants', 'food', 'lunch', undefined, '2026-05-02T08:00:00.000Z'),
     expense('last-year', 30_000, 'needs', 'transport', 'fuel', undefined, '2025-05-10T08:00:00.000Z'),
   ];
 
-  const monthly = getBudgetTrendAnalytics(items, new Date('2026-05-15T00:00:00.000Z'), 'monthly');
+  const monthly = getBudgetTrendAnalytics(items, new Date('2026-05-15T00:00:00.000Z'), 'monthly', budgetConfig);
   assert.equal(monthly.length, 31);
   assert.equal(monthly[0].total, 10_000);
+  assert.equal(monthly[0].income, 100_000);
+  assert.deepEqual(monthly[0].categories.map(category => category.name), ['Needs']);
   assert.equal(monthly[1].total, 20_000);
+  assert.deepEqual(monthly[1].categories.map(category => category.name), ['Wants']);
 
-  const yearly = getBudgetTrendAnalytics(items, new Date('2026-05-15T00:00:00.000Z'), 'yearly');
+  const yearly = getBudgetTrendAnalytics(items, new Date('2026-05-15T00:00:00.000Z'), 'yearly', budgetConfig);
   assert.equal(yearly.length, 12);
   assert.equal(yearly[4].total, 30_000);
+  assert.equal(yearly[4].income, 100_000);
   assert.equal(yearly[4].previousTotal, 30_000);
+  assert.equal(yearly[4].previousIncome, 90_000);
+  assert.deepEqual(yearly[4].categories.map(category => category.name), ['Wants', 'Needs']);
 });
 
 test('budget category analytics groups category to commodity to subcommodity with merchant drilldown', () => {

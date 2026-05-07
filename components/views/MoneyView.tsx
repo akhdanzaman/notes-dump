@@ -147,8 +147,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         [items, financeDate, budgetConfig, budgetViewMode]
     );
     const budgetTrendAnalytics = useMemo(
-        () => getBudgetTrendAnalytics(items, financeDate, budgetViewMode),
-        [items, financeDate, budgetViewMode]
+        () => getBudgetTrendAnalytics(items, financeDate, budgetViewMode, budgetConfig),
+        [items, financeDate, budgetViewMode, budgetConfig]
     );
     const showBudgetYearSelector = moneyView === 'budget' && budgetViewMode === 'yearly';
     const selectedPeriodTotal = budgetTrendAnalytics.reduce((sum, point) => sum + point.total, 0);
@@ -555,23 +555,47 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             </div>
                                         </div>
 
-                                        <div className="mb-3 min-h-[52px] rounded-2xl bg-white/60 px-3 py-2 text-xs dark:bg-black/10">
+                                        <div className="mb-3 min-h-[84px] rounded-2xl bg-white/60 px-3 py-2 text-xs dark:bg-black/10">
                                             {hoveredTrendPoint ? (
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div>
+                                                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                                                    <div className="min-w-0">
                                                         <div className="font-bold text-primary">{hoveredTrendLabel}</div>
-                                                        <div className="mt-0.5 text-muted">{budgetViewMode === 'yearly' ? 'Selected month' : 'Selected date'}</div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="font-bold text-primary">{showBalance ? fmt(hoveredTrendPoint.total) : '••••'}</div>
+                                                        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                                                            <div className="rounded-xl bg-black/5 px-2 py-1.5 dark:bg-white/5">
+                                                                <div className="text-muted">Spend</div>
+                                                                <div className="font-bold text-[#FF5722]">{showBalance ? fmt(hoveredTrendPoint.total) : '••••'}</div>
+                                                            </div>
+                                                            <div className="rounded-xl bg-black/5 px-2 py-1.5 dark:bg-white/5">
+                                                                <div className="text-muted">Income</div>
+                                                                <div className="font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(hoveredTrendPoint.income) : '••••'}</div>
+                                                            </div>
+                                                        </div>
                                                         {budgetViewMode === 'yearly' && hoveredTrendPoint.previousTotal !== undefined && (
-                                                            <div className="mt-0.5 font-semibold text-amber-500">Prev: {showBalance ? fmt(hoveredTrendPoint.previousTotal) : '••••'}</div>
+                                                            <div className="mt-1.5 text-[11px] font-semibold text-amber-500">
+                                                                Prev year spend {showBalance ? fmt(hoveredTrendPoint.previousTotal) : '••••'}
+                                                                {hoveredTrendPoint.previousIncome !== undefined ? ` · income ${showBalance ? fmt(hoveredTrendPoint.previousIncome) : '••••'}` : ''}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-[9rem] text-left sm:text-right">
+                                                        <div className="mb-1 font-bold uppercase tracking-[0.16em] text-muted">Categories</div>
+                                                        {hoveredTrendPoint.categories.length > 0 ? (
+                                                            <div className="space-y-1">
+                                                                {hoveredTrendPoint.categories.map(category => (
+                                                                    <div key={`${hoveredTrendLabel}-${category.name}`} className="flex items-center justify-between gap-2 sm:justify-end">
+                                                                        <span className="truncate text-muted">{category.name}</span>
+                                                                        <span className="shrink-0 font-bold text-primary">{showBalance ? fmt(category.total) : '••••'}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-muted">No category spend</div>
                                                         )}
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <div className="flex h-full items-center justify-between gap-3 text-muted">
-                                                    <span>Hover graph untuk lihat detail tanggal/bulan.</span>
+                                                    <span>Hover graph untuk lihat spend, income, dan kategori.</span>
                                                     <span className="font-semibold">Peak {peakTrendPoint.label}</span>
                                                 </div>
                                             )}
@@ -582,16 +606,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                 const showLabel = budgetViewMode === 'yearly' || index === 0 || index === Math.floor(budgetTrendAnalytics.length / 2) || index === budgetTrendAnalytics.length - 1;
                                                 const isHovered = hoveredTrendIndex === index;
                                                 return (
-                                                    <button
+                                                    <div
                                                         key={`${point.label}-${index}`}
-                                                        type="button"
                                                         onMouseEnter={() => setHoveredTrendIndex(index)}
                                                         onMouseLeave={() => setHoveredTrendIndex(null)}
-                                                        onFocus={() => setHoveredTrendIndex(index)}
-                                                        onBlur={() => setHoveredTrendIndex(null)}
-                                                        onTouchStart={(event) => { event.stopPropagation(); setHoveredTrendIndex(index); }}
-                                                        className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1 focus:outline-none"
-                                                        aria-label={`${point.label}: ${showBalance ? fmt(point.total) : 'hidden'}`}
+                                                        className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
                                                     >
                                                         <div className="relative flex h-20 w-full items-end justify-center">
                                                             {budgetViewMode === 'yearly' && point.previousTotal !== undefined && point.previousTotal > 0 && (
@@ -606,7 +625,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                             />
                                                         </div>
                                                         <div className={`h-3 text-[9px] font-bold uppercase leading-none ${showLabel || isHovered ? 'text-muted' : 'text-transparent'}`}>{point.label}</div>
-                                                    </button>
+                                                    </div>
                                                 );
                                             })}
                                         </div>
@@ -618,66 +637,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         )}
                                     </div>
                                 </div>
-                                {budgetCategoryAnalytics.length > 0 && (
-                                    <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
-                                        <div className="mb-6 flex items-start justify-between gap-4">
-                                            <div>
-                                                <h2 className="text-3xl font-bold tracking-tight">Spend Anatomy</h2>
-                                                <div className="mt-1 text-sm font-semibold text-muted">Category → commodity → subcommodity</div>
-                                            </div>
-                                            <PieChart className="h-6 w-6 text-muted" />
-                                        </div>
 
-                                        <div className="space-y-4">
-                                            {budgetCategoryAnalytics.slice(0, 3).map(category => (
-                                                <div key={category.categoryId} className="space-y-2">
-                                                    <div className="flex items-center justify-between gap-3 text-xs">
-                                                        <div className="flex min-w-0 items-center gap-2 font-bold text-primary">
-                                                            <span className={`h-2 w-2 rounded-full ${category.color || 'bg-gray-400'}`}></span>
-                                                            <span className="truncate">{category.categoryName}</span>
-                                                        </div>
-                                                        <span className="shrink-0 font-semibold text-muted">{showBalance ? fmt(category.total) : '•••'}</span>
-                                                    </div>
-                                                    <div className="flex h-3 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                                                        {category.commodities.map((commodity, index) => (
-                                                            <div
-                                                                key={`${category.categoryId}-${commodity.name}`}
-                                                                className={`${index % 2 === 0 ? (category.color || 'bg-gray-500') : 'bg-amber-500'} ${index > 1 ? 'opacity-50' : index === 1 ? 'opacity-70' : ''}`}
-                                                                style={{ width: `${Math.max(commodity.percentage, 3)}%` }}
-                                                                title={`${commodity.name}: ${commodity.percentage.toFixed(1)}%`}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    <div className="grid gap-2 sm:grid-cols-2">
-                                                        {category.commodities.slice(0, 2).map(commodity => {
-                                                            const topSubs = commodity.subcommodities
-                                                                .slice(0, 2)
-                                                                .map(sub => sub.name)
-                                                                .join(' + ');
-                                                            const topMerchants = commodity.merchants
-                                                                .slice(0, 2)
-                                                                .map(merchant => merchant.name)
-                                                                .join(' / ');
-                                                            return (
-                                                                <div key={`${category.categoryId}-${commodity.name}-detail`} className="rounded-2xl bg-white/60 p-3 text-xs dark:bg-white/5">
-                                                                    <div className="flex items-center justify-between gap-2">
-                                                                        <span className="font-bold text-primary">{commodity.name}</span>
-                                                                        <span className="font-semibold text-muted">{commodity.percentage.toFixed(0)}%</span>
-                                                                    </div>
-                                                                    <div className="mt-1 text-[11px] leading-snug text-muted">
-                                                                        {topSubs ? `Dominated by ${topSubs}` : 'No subcommodity signal yet'}
-                                                                        {topMerchants ? ` · Vendor: ${topMerchants}` : ''}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
 
+                                <div className={`grid gap-6 ${budgetCategoryAnalytics.length > 0 ? 'lg:grid-cols-2 lg:items-start' : ''}`}>
                                 <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
                                 {/* Header */}
                                 <div className="flex justify-between items-center mb-8">
@@ -789,6 +751,66 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     )}
                                 </div>
                             </div>
+                                {budgetCategoryAnalytics.length > 0 && (
+                                    <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
+                                        <div className="mb-6 flex items-start justify-between gap-4">
+                                            <div>
+                                                <h2 className="text-3xl font-bold tracking-tight">Spend Anatomy</h2>
+                                                <div className="mt-1 text-sm font-semibold text-muted">Category → commodity → subcommodity</div>
+                                            </div>
+                                            <PieChart className="h-6 w-6 text-muted" />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {budgetCategoryAnalytics.slice(0, 3).map(category => (
+                                                <div key={category.categoryId} className="space-y-2">
+                                                    <div className="flex items-center justify-between gap-3 text-xs">
+                                                        <div className="flex min-w-0 items-center gap-2 font-bold text-primary">
+                                                            <span className={`h-2 w-2 rounded-full ${category.color || 'bg-gray-400'}`}></span>
+                                                            <span className="truncate">{category.categoryName}</span>
+                                                        </div>
+                                                        <span className="shrink-0 font-semibold text-muted">{showBalance ? fmt(category.total) : '•••'}</span>
+                                                    </div>
+                                                    <div className="flex h-3 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                                                        {category.commodities.map((commodity, index) => (
+                                                            <div
+                                                                key={`${category.categoryId}-${commodity.name}`}
+                                                                className={`${index % 2 === 0 ? (category.color || 'bg-gray-500') : 'bg-amber-500'} ${index > 1 ? 'opacity-50' : index === 1 ? 'opacity-70' : ''}`}
+                                                                style={{ width: `${Math.max(commodity.percentage, 3)}%` }}
+                                                                title={`${commodity.name}: ${commodity.percentage.toFixed(1)}%`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <div className="grid gap-2 sm:grid-cols-2">
+                                                        {category.commodities.slice(0, 2).map(commodity => {
+                                                            const topSubs = commodity.subcommodities
+                                                                .slice(0, 2)
+                                                                .map(sub => sub.name)
+                                                                .join(' + ');
+                                                            const topMerchants = commodity.merchants
+                                                                .slice(0, 2)
+                                                                .map(merchant => merchant.name)
+                                                                .join(' / ');
+                                                            return (
+                                                                <div key={`${category.categoryId}-${commodity.name}-detail`} className="rounded-2xl bg-white/60 p-3 text-xs dark:bg-white/5">
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <span className="font-bold text-primary">{commodity.name}</span>
+                                                                        <span className="font-semibold text-muted">{commodity.percentage.toFixed(0)}%</span>
+                                                                    </div>
+                                                                    <div className="mt-1 text-[11px] leading-snug text-muted">
+                                                                        {topSubs ? `Dominated by ${topSubs}` : 'No subcommodity signal yet'}
+                                                                        {topMerchants ? ` · Vendor: ${topMerchants}` : ''}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                </div>
                             </div>
                         )}
                     </motion.div>
