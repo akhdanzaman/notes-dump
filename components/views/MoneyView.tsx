@@ -104,6 +104,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     // Sub-Tab Swipe State
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
+    const [hoveredTrendIndex, setHoveredTrendIndex] = useState<number | null>(null);
 
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -153,6 +154,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const selectedPeriodTotal = budgetTrendAnalytics.reduce((sum, point) => sum + point.total, 0);
     const previousPeriodTotal = budgetTrendAnalytics.reduce((sum, point) => sum + (point.previousTotal || 0), 0);
     const peakTrendPoint = budgetTrendAnalytics.reduce((peak, point) => point.total > peak.total ? point : peak, budgetTrendAnalytics[0] || { label: '—', total: 0, percentage: 0 });
+    const hoveredTrendPoint = hoveredTrendIndex !== null ? budgetTrendAnalytics[hoveredTrendIndex] : undefined;
+    const hoveredTrendLabel = hoveredTrendPoint
+        ? (budgetViewMode === 'yearly'
+            ? `${hoveredTrendPoint.label} ${financeDate.getFullYear()}`
+            : `${hoveredTrendPoint.label} ${financeDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`)
+        : undefined;
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -525,6 +532,92 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                         ) : (
                             <div className="space-y-6 text-primary">
+                                <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
+                                    <div className="mb-6 flex items-start justify-between gap-4">
+                                        <div>
+                                            <h2 className="text-3xl font-bold tracking-tight">Spend Timeline</h2>
+                                            <div className="mt-1 text-sm font-semibold text-muted">{budgetViewMode === 'yearly' ? 'Monthly spend with YoY comparison' : 'Daily spend across the selected month'}</div>
+                                        </div>
+                                        <TrendingUp className="h-6 w-6 text-muted" />
+                                    </div>
+
+                                    <div className="rounded-3xl border border-border bg-black/[0.02] p-4 dark:bg-white/[0.04]">
+                                        <div className="mb-4 flex items-end justify-between gap-4">
+                                            <div>
+                                                <div className="text-xs font-bold uppercase tracking-[0.2em] text-muted">{budgetViewMode === 'yearly' ? 'YoY Trend' : 'Month Trend'}</div>
+                                                <div className="mt-1 text-xl font-bold">{showBalance ? fmt(selectedPeriodTotal) : '••••'}</div>
+                                            </div>
+                                            <div className="text-right text-xs text-muted">
+                                                <div>Peak: <span className="font-bold text-primary">{peakTrendPoint.label}</span></div>
+                                                {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
+                                                    <div>Prev year: <span className="font-bold text-amber-500">{showBalance ? fmt(previousPeriodTotal) : '••••'}</span></div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-3 min-h-[52px] rounded-2xl bg-white/60 px-3 py-2 text-xs dark:bg-black/10">
+                                            {hoveredTrendPoint ? (
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div className="font-bold text-primary">{hoveredTrendLabel}</div>
+                                                        <div className="mt-0.5 text-muted">{budgetViewMode === 'yearly' ? 'Selected month' : 'Selected date'}</div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="font-bold text-primary">{showBalance ? fmt(hoveredTrendPoint.total) : '••••'}</div>
+                                                        {budgetViewMode === 'yearly' && hoveredTrendPoint.previousTotal !== undefined && (
+                                                            <div className="mt-0.5 font-semibold text-amber-500">Prev: {showBalance ? fmt(hoveredTrendPoint.previousTotal) : '••••'}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex h-full items-center justify-between gap-3 text-muted">
+                                                    <span>Hover graph untuk lihat detail tanggal/bulan.</span>
+                                                    <span className="font-semibold">Peak {peakTrendPoint.label}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex h-28 items-end gap-1 rounded-2xl bg-white/50 px-2 pb-2 pt-4 dark:bg-black/10">
+                                            {budgetTrendAnalytics.map((point, index) => {
+                                                const showLabel = budgetViewMode === 'yearly' || index === 0 || index === Math.floor(budgetTrendAnalytics.length / 2) || index === budgetTrendAnalytics.length - 1;
+                                                const isHovered = hoveredTrendIndex === index;
+                                                return (
+                                                    <button
+                                                        key={`${point.label}-${index}`}
+                                                        type="button"
+                                                        onMouseEnter={() => setHoveredTrendIndex(index)}
+                                                        onMouseLeave={() => setHoveredTrendIndex(null)}
+                                                        onFocus={() => setHoveredTrendIndex(index)}
+                                                        onBlur={() => setHoveredTrendIndex(null)}
+                                                        onTouchStart={(event) => { event.stopPropagation(); setHoveredTrendIndex(index); }}
+                                                        className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1 focus:outline-none"
+                                                        aria-label={`${point.label}: ${showBalance ? fmt(point.total) : 'hidden'}`}
+                                                    >
+                                                        <div className="relative flex h-20 w-full items-end justify-center">
+                                                            {budgetViewMode === 'yearly' && point.previousTotal !== undefined && point.previousTotal > 0 && (
+                                                                <div
+                                                                    className={`absolute bottom-0 w-1/2 rounded-t-full bg-amber-400/40 transition-all ${isHovered ? 'bg-amber-400/70' : ''}`}
+                                                                    style={{ height: `${Math.max(point.previousPercentage || 0, 3)}%` }}
+                                                                />
+                                                            )}
+                                                            <div
+                                                                className={`relative z-10 w-full max-w-3 rounded-t-full bg-primary/80 transition-all group-hover:bg-primary group-focus:bg-primary ${isHovered ? 'max-w-4 bg-primary shadow-sm' : ''}`}
+                                                                style={{ height: `${point.total > 0 ? Math.max(point.percentage, 4) : 1}%` }}
+                                                            />
+                                                        </div>
+                                                        <div className={`h-3 text-[9px] font-bold uppercase leading-none ${showLabel || isHovered ? 'text-muted' : 'text-transparent'}`}>{point.label}</div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
+                                            <div className="mt-3 flex items-center gap-4 text-[11px] font-semibold text-muted">
+                                                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary/80"></span>{financeDate.getFullYear()}</span>
+                                                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400/50"></span>{financeDate.getFullYear() - 1}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                                 {budgetCategoryAnalytics.length > 0 && (
                                     <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
                                         <div className="mb-6 flex items-start justify-between gap-4">
@@ -533,51 +626,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                 <div className="mt-1 text-sm font-semibold text-muted">Category → commodity → subcommodity</div>
                                             </div>
                                             <PieChart className="h-6 w-6 text-muted" />
-                                        </div>
-
-                                        <div className="mb-6 rounded-3xl border border-border bg-black/[0.02] p-4 dark:bg-white/[0.04]">
-                                            <div className="mb-4 flex items-end justify-between gap-4">
-                                                <div>
-                                                    <div className="text-xs font-bold uppercase tracking-[0.2em] text-muted">{budgetViewMode === 'yearly' ? 'YoY Trend' : 'Month Trend'}</div>
-                                                    <div className="mt-1 text-xl font-bold">{showBalance ? fmt(selectedPeriodTotal) : '••••'}</div>
-                                                </div>
-                                                <div className="text-right text-xs text-muted">
-                                                    <div>Peak: <span className="font-bold text-primary">{peakTrendPoint.label}</span></div>
-                                                    {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
-                                                        <div>Prev year: <span className="font-bold text-amber-500">{showBalance ? fmt(previousPeriodTotal) : '••••'}</span></div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex h-28 items-end gap-1 rounded-2xl bg-white/50 px-2 pb-2 pt-4 dark:bg-black/10">
-                                                {budgetTrendAnalytics.map((point, index) => {
-                                                    const showLabel = budgetViewMode === 'yearly' || index === 0 || index === Math.floor(budgetTrendAnalytics.length / 2) || index === budgetTrendAnalytics.length - 1;
-                                                    return (
-                                                        <div key={`${point.label}-${index}`} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-                                                            <div className="relative flex h-20 w-full items-end justify-center">
-                                                                {budgetViewMode === 'yearly' && point.previousTotal !== undefined && point.previousTotal > 0 && (
-                                                                    <div
-                                                                        className="absolute bottom-0 w-1/2 rounded-t-full bg-amber-400/40"
-                                                                        style={{ height: `${Math.max(point.previousPercentage || 0, 3)}%` }}
-                                                                        title={`${point.label} previous: ${fmt(point.previousTotal)}`}
-                                                                    />
-                                                                )}
-                                                                <div
-                                                                    className="relative z-10 w-full max-w-3 rounded-t-full bg-primary/80"
-                                                                    style={{ height: `${point.total > 0 ? Math.max(point.percentage, 4) : 1}%` }}
-                                                                    title={`${point.label}: ${fmt(point.total)}`}
-                                                                />
-                                                            </div>
-                                                            <div className={`h-3 text-[9px] font-bold uppercase leading-none ${showLabel ? 'text-muted' : 'text-transparent'}`}>{point.label}</div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
-                                                <div className="mt-3 flex items-center gap-4 text-[11px] font-semibold text-muted">
-                                                    <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary/80"></span>{financeDate.getFullYear()}</span>
-                                                    <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400/50"></span>{financeDate.getFullYear() - 1}</span>
-                                                </div>
-                                            )}
                                         </div>
 
                                         <div className="space-y-4">

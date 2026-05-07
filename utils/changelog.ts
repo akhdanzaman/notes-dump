@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.62',
+    date: 'May 2026',
+    items: [
+      'Money > Budget now separates Spend Timeline into its own standalone card instead of nesting the time-series graph inside Spend Anatomy.',
+      'Spend Timeline bars can now be hovered, focused, or tapped to show the selected date/month spend details, including prior-year comparison in yearly mode.',
+      'Spend Anatomy now focuses only on category → commodity → subcommodity breakdown while using the same card heading hierarchy as Budget Categories.',
+    ],
+  },
+  {
     version: 'v0.3.61',
     date: 'May 2026',
     items: [
