@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.57',
+    date: 'May 2026',
+    items: [
+      'Summary focus cards now use the same expandable task workspace controls as the Focus view, including Show edit and Subtasks actions.',
+      'Deep Work tasks shown on Summary can now preview, edit, transform, retrigger, keep raw, and open existing subtasks without jumping to the Focus tab.',
+      'Manual subtasks can now be added from Summary focus cards while keeping the same in-card edit-field style used in Focus.',
+    ],
+  },
+  {
     version: 'v0.3.56',
     date: 'May 2026',
     items: [

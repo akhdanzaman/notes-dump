@@ -731,6 +731,10 @@ const App: React.FC = () => {
                           handleOpenAddNote={() => { setAddNoteModalType(ItemType.NOTE); setAddNoteModalOpen(true); }}
                           handleUpdateItem={handleUpdateItem}
                           handleDelete={requestDeleteItem}
+                          handleKeepRawTodo={handleKeepRawTodo}
+                          handleRetriggerDeepWorkTodo={handleRetriggerDeepWorkTodo}
+                          handleAcceptDeepWorkTodo={handleAcceptDeepWorkTodo}
+                          handleResetRoutine={handleResetRoutine}
                       />
                   )}
 

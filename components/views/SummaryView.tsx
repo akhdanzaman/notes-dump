@@ -21,7 +21,15 @@ import {
     Coffee,
     RefreshCw,
     ChevronDown,
+    ChevronUp,
     ClipboardCheck,
+    X,
+    Sparkles,
+    Timer,
+    Flag,
+    ShieldAlert,
+    ListChecks,
+    RotateCcw,
 } from 'lucide-react';
 import {
     BrainDumpItem,
@@ -32,7 +40,8 @@ import {
     FinanceType,
     Priority,
     ShoppingCategory,
-    AppSettings
+    AppSettings,
+    ItemType
 } from '../../types';
 import {
     getFocusMonthData,
@@ -48,6 +57,7 @@ import Card from '../Card';
 import ReviewCenterPanel from '../ReviewCenterPanel';
 import { contentSurface } from '../layout/contentSurface';
 import { buildSummaryFocusDisplay } from '../../utils/summaryFocusUtils';
+import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -96,6 +106,10 @@ interface SummaryViewProps {
         priority?: Priority
     ) => void;
     handleDelete: (id: string) => void;
+    handleKeepRawTodo: (id: string) => void;
+    handleRetriggerDeepWorkTodo: (id: string) => void;
+    handleAcceptDeepWorkTodo: (id: string, subtasks?: string[]) => void;
+    handleResetRoutine: (id: string) => void;
     pendingReviews?: { id: string; text: string; results: any[] }[];
     handleApproveReview?: (id: string, updatedResults: any[]) => void;
     handleRejectReview?: (id: string) => void;
@@ -112,6 +126,8 @@ type PopupPosition = {
     width: number;
     transformOrigin: string;
 };
+
+type TaskPanel = 'edit' | 'subtasks' | 'none';
 
 const AI_INSIGHTS_CACHE_KEY = 'braindump_ai_insights';
 const AI_INSIGHTS_CACHE_DATE_KEY = 'braindump_ai_insights_date';
@@ -139,6 +155,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     handleOpenAddNote,
     handleUpdateItem,
     handleDelete,
+    handleKeepRawTodo,
+    handleRetriggerDeepWorkTodo,
+    handleAcceptDeepWorkTodo,
+    handleResetRoutine,
     pendingReviews = [],
     handleApproveReview,
     handleRejectReview,
@@ -238,6 +258,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     });
 
     const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [taskCardCollapsed, setTaskCardCollapsed] = useState<Record<string, boolean>>({});
+    const [activeTaskPanels, setActiveTaskPanels] = useState<Record<string, TaskPanel | undefined>>({});
+    const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
         if (isNotificationOpen) {
@@ -469,10 +492,284 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         onDelete: handleDelete,
         enableCollapse: true,
         defaultCollapsed: true,
+        hideMoney: appSettings.hideMoney,
         skills,
         wallets,
         budgetRules: budgetConfig.rules,
-        onResetRoutine: (id: string) => {}
+        onResetRoutine: handleResetRoutine
+    };
+
+    const isTaskCardExpanded = (id: string) => {
+        const collapsed = taskCardCollapsed[id];
+        return collapsed === undefined ? false : !collapsed;
+    };
+
+    const setTaskPanel = (id: string, panel: TaskPanel) => {
+        setActiveTaskPanels(prev => ({ ...prev, [id]: panel }));
+    };
+
+    const toggleTaskPanel = (id: string, panel: Exclude<TaskPanel, 'none'>, activePanel: TaskPanel) => {
+        setTaskPanel(id, activePanel === panel ? 'none' : panel);
+    };
+
+    const resetTaskPanel = (id: string) => {
+        setActiveTaskPanels(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+    };
+
+    const getDefaultTaskPanel = (children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
+        return isDeepWork && children.length > 0 ? 'subtasks' : 'edit';
+    };
+
+    const getActiveTaskPanel = (item: BrainDumpItem, children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
+        return activeTaskPanels[item.id] || getDefaultTaskPanel(children, isDeepWork);
+    };
+
+    const taskPanelButtonClass = (active: boolean, tone: 'edit' | 'subtasks' = 'edit') => {
+        if (active && tone === 'subtasks') return 'px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors flex items-center gap-1';
+        if (tone === 'subtasks') return 'px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1';
+        if (active) return 'px-3 py-2 rounded-xl bg-primary text-background text-xs font-bold hover:opacity-90 transition-colors flex items-center gap-1';
+        return 'px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/15 text-xs font-bold transition-colors flex items-center gap-1';
+    };
+
+    const getTaskCardProps = (item: BrainDumpItem, activePanel: TaskPanel, editPanelControls: React.ReactNode, extraExpandedContent?: React.ReactNode) => ({
+        ...cardProps,
+        collapsibleEditPanel: true,
+        editPanelExpanded: activePanel === 'edit',
+        editPanelControls,
+        extraExpandedContent,
+        onEditPanelExpandedChange: (id: string, expanded: boolean) => {
+            if (expanded) setTaskPanel(id, 'edit');
+        },
+        onCollapseChange: (id: string, collapsed: boolean) => {
+            setTaskCardCollapsed(prev => ({ ...prev, [id]: collapsed }));
+            if (collapsed) resetTaskPanel(id);
+        }
+    });
+
+    const getChildCardProps = () => cardProps;
+
+    const getSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[]) => {
+        return subtaskDrafts[item.id] || item.meta.subtasks || children.map(child => child.content) || [];
+    };
+
+    const updateSubtaskDraft = (itemId: string, index: number, value: string, fallback: string[]) => {
+        const next = [...fallback];
+        next[index] = value;
+        setSubtaskDrafts(prev => ({ ...prev, [itemId]: next }));
+    };
+
+    const acceptDeepWorkPlan = (item: BrainDumpItem, children: BrainDumpItem[]) => {
+        const draft = getSubtaskDraft(item, children).map(step => step.trim()).filter(Boolean);
+        if (draft.length === 0) return;
+        handleAcceptDeepWorkTodo(item.id, draft);
+        setTaskPanel(item.id, 'subtasks');
+    };
+
+    const openManualSubtaskDraft = (item: BrainDumpItem) => {
+        const draft = getSubtaskDraft(item, []);
+        setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.length ? draft : [''] }));
+        setTaskPanel(item.id, 'subtasks');
+    };
+
+    const renderSubtaskDraftEditor = (item: BrainDumpItem, children: BrainDumpItem[], saveLabel: string) => {
+        const draft = getSubtaskDraft(item, children);
+        return (
+            <div className="space-y-2">
+                {draft.map((step, index) => (
+                    <div key={`${item.id}-draft-${index}`} className="flex gap-2">
+                        <div className="mt-3 h-5 w-5 shrink-0 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-bold flex items-center justify-center">{index + 1}</div>
+                        <textarea
+                            value={step}
+                            onChange={(event) => updateSubtaskDraft(item.id, index, event.target.value, draft)}
+                            className="min-h-[44px] flex-1 resize-none rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-purple-500/60"
+                            placeholder="Subtask..."
+                        />
+                        <button
+                            onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.filter((_, draftIndex) => draftIndex !== index) }))}
+                            className="self-center p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                            aria-label="Remove subtask"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                ))}
+                <div className="flex flex-wrap gap-2 pt-1">
+                    <button onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: [...draft, ''] }))} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
+                        Add step
+                    </button>
+                    <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={draft.map(step => step.trim()).filter(Boolean).length === 0}>
+                        {saveLabel}
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    const renderDeepWorkDetail = (icon: React.ReactNode, label: string, value?: string | number, tone = 'text-purple-500') => {
+        if (value === undefined || value === null || value === '') return null;
+        return (
+            <div className="rounded-2xl border border-border/60 bg-surface/70 px-3 py-2">
+                <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}>
+                    {icon}
+                    {label}
+                </div>
+                <div className="mt-1 text-sm font-medium text-primary leading-snug break-words">{value}</div>
+            </div>
+        );
+    };
+
+    const renderSummaryFocusCard = (item: BrainDumpItem) => {
+        const children = getDeepWorkChildren(items, item.id);
+        const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
+        const canUseManualSubtasks = item.type === ItemType.TODO && !item.meta.parentTodoId;
+        const isCardExpanded = isTaskCardExpanded(item.id);
+        const activePanel = getActiveTaskPanel(item, children, isDeepWork);
+        const isSubtasksExpanded = activePanel === 'subtasks';
+
+        if (!isDeepWork) {
+            const draft = getSubtaskDraft(item, children);
+            const hasManualSubtasks = children.length > 0 || draft.some(step => step.trim());
+            const editPanelControls = isCardExpanded ? (
+                <div className="flex flex-wrap gap-2 w-full">
+                    <button
+                        onClick={() => toggleTaskPanel(item.id, 'edit', activePanel)}
+                        className={taskPanelButtonClass(activePanel === 'edit')}
+                    >
+                        {activePanel === 'edit' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        Show edit
+                    </button>
+                    {canUseManualSubtasks && (
+                        <button
+                            onClick={() => hasManualSubtasks ? toggleTaskPanel(item.id, 'subtasks', activePanel) : openManualSubtaskDraft(item)}
+                            className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}
+                        >
+                            {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                            {hasManualSubtasks ? 'Subtasks' : 'Add subtask'}
+                        </button>
+                    )}
+                </div>
+            ) : null;
+            const manualSubtaskPanel = canUseManualSubtasks && isCardExpanded && isSubtasksExpanded ? (
+                <AnimatePresence initial={false}>
+                    {isSubtasksExpanded && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Manual subtasks</div>
+                                {renderSubtaskDraftEditor({ ...item, meta: { ...item.meta, subtasks: draft } }, children, 'Create subtasks')}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            ) : undefined;
+            const taskCardProps = getTaskCardProps(item, activePanel, editPanelControls, manualSubtaskPanel);
+            return <Card key={item.id} item={item} {...taskCardProps} editComfort="taskWorkspace" />;
+        }
+
+        const isSuggested = item.meta.deepWorkStatus === 'suggested';
+        const isBlocked = item.meta.deepWorkBlockerStatus === 'blocked' || item.meta.deepWorkBlockerStatus === 'needs_input';
+        const hasDeepWorkDetails = !!(item.meta.deepWorkNextAction || item.meta.deepWorkFinalOutput || item.meta.deepWorkSessionEstimateMinutes || item.meta.deepWorkBlockerCheck || item.meta.deepWorkStatus === 'suggested');
+        const doneCount = children.filter(child => child.status === 'done').length;
+        const draft = getSubtaskDraft(item, children);
+        const totalSteps = children.length || draft.length || item.meta.deepWorkStepCount || 0;
+        const progressPercent = totalSteps > 0 ? Math.round((doneCount / totalSteps) * 100) : (item.meta.progress || 0);
+        const deepWorkPanelControls = isCardExpanded ? (
+            <div className="flex flex-wrap gap-2 w-full">
+                <button
+                    onClick={() => toggleTaskPanel(item.id, 'edit', activePanel)}
+                    className={taskPanelButtonClass(activePanel === 'edit')}
+                >
+                    {activePanel === 'edit' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    Show edit
+                </button>
+                {isSuggested && (
+                    <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors">
+                        Transform into steps
+                    </button>
+                )}
+                <button onClick={() => toggleTaskPanel(item.id, 'subtasks', activePanel)} className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}>
+                    {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {isSuggested ? 'Preview/edit steps' : 'Subtasks'}
+                </button>
+                {hasDeepWorkDetails && (
+                    <>
+                        <button onClick={() => handleKeepRawTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
+                            Keep raw
+                        </button>
+                        <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1">
+                            <RotateCcw className="w-3 h-3" /> Retrigger
+                        </button>
+                    </>
+                )}
+            </div>
+        ) : null;
+        const deepWorkSubtaskPanel = isSubtasksExpanded ? (
+            <AnimatePresence initial={false}>
+                {isSubtasksExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                {hasDeepWorkDetails && (
+                                    <div className="flex items-center gap-2 text-purple-500">
+                                        <Sparkles className="w-4 h-4" />
+                                        <div className="text-[10px] font-bold uppercase tracking-wider">Deep Work Transformer</div>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2 text-[11px] font-bold text-muted">
+                                    <span>{doneCount}/{totalSteps} steps</span>
+                                    <span>•</span>
+                                    <span>{progressPercent}%</span>
+                                </div>
+                            </div>
+
+                            {totalSteps > 0 && (
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-purple-500/10">
+                                    <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${Math.max(progressPercent, doneCount > 0 ? 4 : 0)}%` }} />
+                                </div>
+                            )}
+
+                            {hasDeepWorkDetails && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                    {renderDeepWorkDetail(<Flag className="w-3 h-3" />, 'Next action', item.meta.deepWorkNextAction)}
+                                    {renderDeepWorkDetail(<ListChecks className="w-3 h-3" />, 'Final output', item.meta.deepWorkFinalOutput)}
+                                    {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
+                                    {renderDeepWorkDetail(<ShieldAlert className="w-3 h-3" />, 'Blocker check', item.meta.deepWorkBlockerCheck, isBlocked ? 'text-amber-500' : 'text-emerald-500')}
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Optional subtasks</div>
+                                {isSuggested ? (
+                                    renderSubtaskDraftEditor(item, children, 'Use these steps')
+                                ) : (
+                                    <div className="space-y-2">
+                                        {children.map(child => (
+                                            <Card key={child.id} item={child} {...getChildCardProps()} editComfort="taskWorkspace" className="rounded-[14px]" />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        ) : undefined;
+        const taskCardProps = getTaskCardProps(item, activePanel, deepWorkPanelControls, deepWorkSubtaskPanel);
+
+        return <Card key={item.id} item={item} {...taskCardProps} editComfort="taskWorkspace" />;
     };
 
     return (
@@ -674,9 +971,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                     {displayItems.length > 0 ? (
                         <div className={`${contentSurface.denseList} ${isDoneState ? 'opacity-60 grayscale' : ''}`}>
-                            {displayItems.map(item => (
-                                <Card key={item.id} item={item} {...cardProps} />
-                            ))}
+                            {displayItems.map(item => renderSummaryFocusCard(item))}
                         </div>
                     ) : (
                         <div className={`${contentSurface.emptyStateCard} lg:text-left`}>
