@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.56',
+    date: 'May 2026',
+    items: [
+      'Deep Work focus cards no longer add a separate purple wrapper around expanded task content, keeping the task card visually clean.',
+      'Deep Work and manual focus subtasks now render inside the expanded task card in an edit-field-style panel instead of as a separate container below the card.',
+      'Expanded Deep Work cards now default to edit details until subtasks have actually been created, then default to the subtasks panel for faster execution.',
+    ],
+  },
+  {
     version: 'v0.3.55',
     date: 'May 2026',
     items: [

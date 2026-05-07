@@ -134,6 +134,7 @@ interface CardProps {
   collapsibleEditPanel?: boolean;
   editPanelExpanded?: boolean;
   editPanelControls?: React.ReactNode;
+  extraExpandedContent?: React.ReactNode;
   onEditPanelExpandedChange?: (id: string, expanded: boolean) => void;
   onCollapseChange?: (id: string, collapsed: boolean) => void;
   
@@ -165,6 +166,7 @@ const Card: React.FC<CardProps> = ({
     collapsibleEditPanel = false,
     editPanelExpanded = false,
     editPanelControls,
+    extraExpandedContent,
     onEditPanelExpandedChange,
     onCollapseChange,
     skills = [],
@@ -1242,6 +1244,12 @@ const Card: React.FC<CardProps> = ({
           </motion.div>
       )}
       </AnimatePresence>
+
+      {enableCollapse && !isCollapsed && extraExpandedContent && (
+          <div className="pt-3 mt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+              {extraExpandedContent}
+          </div>
+      )}
     </motion.div>
   );
 };
