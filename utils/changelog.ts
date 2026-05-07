@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.61',
+    date: 'May 2026',
+    items: [
+      'Money header Used card now shows the planned-inclusive percentage inline beside the used percentage with a pipe separator instead of stacking it underneath.',
+      'The Money header stat row now gives Used a wider 25% column while Income and Expense share the remaining width evenly.',
+    ],
+  },
+  {
     version: 'v0.3.60',
     date: 'May 2026',
     items: [

@@ -310,21 +310,24 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-5 gap-3 mb-4 lg:mb-5 lg:grid-cols-3 lg:gap-4 xl:gap-5">
-                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] px-3 py-4 lg:col-span-1 lg:px-5 lg:py-5">
+                        <div className="grid grid-cols-8 gap-3 mb-4 lg:mb-5 lg:gap-4 xl:gap-5">
+                            <div className="col-span-3 min-w-0 bg-black/5 rounded-[24px] px-3 py-4 lg:px-5 lg:py-5">
                                 <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1 lg:mb-2"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
                                 <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-2xl">{showBalance ? fmt(totalIncome) : '••••'}</div>
                             </div>
-                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] px-3 py-4 lg:col-span-1 lg:px-5 lg:py-5">
+                            <div className="col-span-3 min-w-0 bg-black/5 rounded-[24px] px-3 py-4 lg:px-5 lg:py-5">
                                 <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1 lg:mb-2"><TrendingDown className="w-4 h-4 shrink-0 text-[#FF5722]" /> Expense</div>
                                 <div className="truncate text-lg font-bold text-[#FF5722] lg:text-2xl">{showBalance ? fmt(totalExpense) : '••••'}</div>
                             </div>
-                            <div className="col-span-1 min-w-0 bg-black/5 rounded-[24px] px-3 py-4 lg:col-span-1 lg:px-5 lg:py-5">
+                            <div className="col-span-2 min-w-0 bg-black/5 rounded-[24px] px-3 py-4 lg:px-5 lg:py-5">
                                 <div className="flex items-center justify-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1 lg:mb-2 lg:justify-start lg:text-xs"><AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-500 lg:block" /> Used</div>
-                                <div className="text-center lg:text-left">
-                                    <div className="truncate text-lg font-bold text-primary lg:text-2xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
+                                <div className="flex items-baseline justify-center gap-1 truncate lg:justify-start">
+                                    <span className="truncate text-lg font-bold text-primary lg:text-2xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</span>
                                     {effectiveIncome > 0 && projectedExpense > 0 && (
-                                        <div className="mt-0.5 truncate text-sm font-semibold leading-tight text-amber-500 lg:text-base">{`${monthUsageWithPlannedPercent.toFixed(0)}%`}</div>
+                                        <>
+                                            <span className="text-sm font-bold text-muted/50 lg:text-base">|</span>
+                                            <span className="truncate text-sm font-semibold leading-tight text-amber-500 lg:text-base">{`${monthUsageWithPlannedPercent.toFixed(0)}%`}</span>
+                                        </>
                                     )}
                                 </div>
                             </div>
