@@ -134,6 +134,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : 'Fixed Income') 
         : 'Recorded Income';
     const monthUsagePercent = effectiveIncome > 0 ? Math.min(999, (totalExpense / effectiveIncome) * 100) : 0;
+    const monthUsageWithPlannedPercent = effectiveIncome > 0 ? Math.min(999, ((totalExpense + projectedExpense) / effectiveIncome) * 100) : 0;
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -286,7 +287,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                             <div className="col-span-1 min-w-0 bg-black/5 rounded-[24px] px-3 py-4 lg:col-span-1 lg:px-5 lg:py-5">
                                 <div className="flex items-center justify-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1 lg:mb-2 lg:justify-start lg:text-xs"><AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-500 lg:block" /> Used</div>
-                                <div className="truncate text-center text-lg font-bold text-primary lg:text-left lg:text-2xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
+                                <div className="text-center lg:text-left">
+                                    <div className="truncate text-lg font-bold text-primary lg:text-2xl">{effectiveIncome > 0 ? `${monthUsagePercent.toFixed(0)}%` : '—'}</div>
+                                    {effectiveIncome > 0 && projectedExpense > 0 && (
+                                        <div className="mt-0.5 truncate text-sm font-semibold leading-tight text-amber-500 lg:text-base">{`${monthUsageWithPlannedPercent.toFixed(0)}%`}</div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         

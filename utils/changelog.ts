@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.58',
+    date: 'May 2026',
+    items: [
+      'Money > Budget header now shows the used-plus-planned percentage directly under the Used percentage as a smaller amber number with no extra label text.',
+    ],
+  },
+  {
     version: 'v0.3.57',
     date: 'May 2026',
     items: [
