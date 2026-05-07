@@ -1114,9 +1114,9 @@ const App: React.FC = () => {
       <AddExpenseModal
         isOpen={addExpenseModalOpen}
         onClose={() => setAddExpenseModalOpen(false)}
-        onSave={(amount, description, category, walletId, date, type, toWalletId, savingGoalId, savingGoalName) => {
+        onSave={(amount, description, category, walletId, date, type, toWalletId, savingGoalId, savingGoalName, investmentUnits, investmentUnitPrice) => {
             if (type === 'saving' && savingGoalId && savingGoalName) {
-                handleAddSavingTransaction(amount, walletId, date, savingGoalId, savingGoalName, toWalletId);
+                handleAddSavingTransaction(amount, walletId, date, savingGoalId, savingGoalName, toWalletId, investmentUnits, investmentUnitPrice);
             } else {
                 if (walletId) {
                     if (type === 'transfer') {

@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.55',
+    date: 'May 2026',
+    items: [
+      'Investment funding now auto-fills units from invested capital and buy price, or invested capital from units and buy price, while still allowing capital-only investments with no units.',
+      'Money > Transactions saving entries for investment targets now include optional units and buy price fields, then add those units to the linked investment with weighted average buy tracking.',
+      'Plan > Investments Add Capital uses the same units/capital auto-fill behavior so investment wallet transfers, invested capital, and owned units stay aligned.',
+    ],
+  },
+  {
     version: 'v0.3.54',
     date: 'May 2026',
     items: [

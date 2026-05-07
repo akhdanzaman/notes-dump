@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Wallet, Tag, Calendar, DollarSign } from 'lucide-react';
 import { BudgetConfig, Wallet as WalletType, BrainDumpItem } from '../types';
 import { responsiveModal } from './layout/contentSurface';
+import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 
 interface AddExpenseModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (amount: number, description: string, category: string, walletId: string, date: string, type: 'expense' | 'income' | 'transfer' | 'saving', toWalletId?: string, savingGoalId?: string, savingGoalName?: string) => void;
+    onSave: (amount: number, description: string, category: string, walletId: string, date: string, type: 'expense' | 'income' | 'transfer' | 'saving', toWalletId?: string, savingGoalId?: string, savingGoalName?: string, investmentUnits?: number, investmentUnitPrice?: number) => void;
     wallets: WalletType[];
     budgetConfig: BudgetConfig;
     savingGoals: BrainDumpItem[];
@@ -22,29 +23,87 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
     const [savingGoalId, setSavingGoalId] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [transactionType, setTransactionType] = useState<'expense' | 'income' | 'transfer' | 'saving'>('expense');
+    const [investmentUnits, setInvestmentUnits] = useState('');
+    const [investmentUnitPrice, setInvestmentUnitPrice] = useState('');
+
+    const selectedSavingGoal = transactionType === 'saving' ? savingGoals.find(g => g.id === savingGoalId) : undefined;
+    const isInvestmentTarget = selectedSavingGoal?.meta.shoppingCategory === 'investment';
+    const resolvedInvestmentFunding = resolveInvestmentFundingInput({
+        investedCapital: amount ? Number(amount) : undefined,
+        units: investmentUnits ? Number(investmentUnits) : undefined,
+        unitPrice: investmentUnitPrice ? Number(investmentUnitPrice) : undefined,
+    });
+
+    const formatInvestmentInputNumber = (value: number) => {
+        if (!Number.isFinite(value)) return '';
+        return Number.isInteger(value) ? String(value) : value.toFixed(8).replace(/\.?0+$/, '');
+    };
+
+    const handleAmountChange = (value: string) => {
+        setAmount(value);
+        if (!isInvestmentTarget) return;
+        const capital = Number(value);
+        const price = Number(investmentUnitPrice);
+        if (Number.isFinite(capital) && capital > 0 && Number.isFinite(price) && price > 0) {
+            setInvestmentUnits(formatInvestmentInputNumber(capital / price));
+        }
+    };
+
+    const handleInvestmentUnitsChange = (value: string) => {
+        setInvestmentUnits(value);
+        if (!isInvestmentTarget) return;
+        const units = Number(value);
+        const price = Number(investmentUnitPrice);
+        if (Number.isFinite(units) && units > 0 && Number.isFinite(price) && price > 0) {
+            setAmount(formatInvestmentInputNumber(units * price));
+        }
+    };
+
+    const handleInvestmentUnitPriceChange = (value: string) => {
+        setInvestmentUnitPrice(value);
+        if (!isInvestmentTarget) return;
+        const price = Number(value);
+        if (!Number.isFinite(price) || price <= 0) return;
+        const capital = Number(amount);
+        const units = Number(investmentUnits);
+        if ((!investmentUnits || !Number.isFinite(units) || units <= 0) && Number.isFinite(capital) && capital > 0) {
+            setInvestmentUnits(formatInvestmentInputNumber(capital / price));
+        } else if ((!amount || !Number.isFinite(capital) || capital <= 0) && Number.isFinite(units) && units > 0) {
+            setAmount(formatInvestmentInputNumber(units * price));
+        }
+    };
+
+    const resetInvestmentFundingFields = () => {
+        setInvestmentUnits('');
+        setInvestmentUnitPrice('');
+    };
 
     const handleSave = () => {
-        if (!amount) return;
+        if (transactionType !== 'saving' && !amount) return;
+        if (transactionType === 'saving' && isInvestmentTarget && !resolvedInvestmentFunding.investedCapital) return;
+        if (transactionType === 'saving' && !isInvestmentTarget && !amount) return;
         if (transactionType !== 'saving' && !description) return;
         if (transactionType === 'transfer' && (!walletId || !toWalletId)) return;
         if (transactionType === 'saving' && !savingGoalId) return;
         if (transactionType !== 'saving' && transactionType !== 'transfer' && !walletId) return;
 
-        const goal = savingGoals.find(g => g.id === savingGoalId);
-        const isInvestmentTarget = goal?.meta.shoppingCategory === 'investment';
+        const goal = selectedSavingGoal;
         if (transactionType === 'saving' && isInvestmentTarget && (!walletId || !toWalletId)) return;
         const goalName = goal ? goal.content : '';
         const finalWalletId = transactionType === 'saving' && !isInvestmentTarget ? (goal?.meta.dedicatedWalletId || walletId) : walletId;
         const finalToWalletId = transactionType === 'saving' && isInvestmentTarget ? toWalletId : toWalletId;
         const finalDescription = transactionType === 'saving' ? (isInvestmentTarget ? `Invested into: ${goalName}` : `Saved for: ${goalName}`) : description;
+        const finalAmount = isInvestmentTarget ? resolvedInvestmentFunding.investedCapital : parseFloat(amount);
+        if (!finalAmount) return;
 
-        onSave(parseFloat(amount), finalDescription, category, finalWalletId, date, transactionType, finalToWalletId, savingGoalId, goalName);
+        onSave(finalAmount, finalDescription, category, finalWalletId, date, transactionType, finalToWalletId, savingGoalId, goalName, isInvestmentTarget ? resolvedInvestmentFunding.units : undefined, isInvestmentTarget ? resolvedInvestmentFunding.unitPrice : undefined);
         setAmount('');
         setDescription('');
         setCategory('');
         setWalletId('');
         setToWalletId('');
         setSavingGoalId('');
+        resetInvestmentFundingFields();
         onClose();
     };
 
@@ -83,14 +142,14 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Amount</label>
+                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">{isInvestmentTarget ? 'Invested Capital' : 'Amount'}</label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-bold">Rp</span>
                                 <input 
                                     type="number"
                                     autoFocus
                                     value={amount}
-                                    onChange={e => setAmount(e.target.value)}
+                                    onChange={e => handleAmountChange(e.target.value)}
                                     placeholder="0"
                                     className="w-full bg-background border border-border rounded-2xl p-4 pl-12 text-primary focus:outline-none focus:border-indigo-500 font-bold text-lg"
                                 />
@@ -120,9 +179,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                             onChange={e => {
                                                 setSavingGoalId(e.target.value);
                                                 const goal = savingGoals.find(g => g.id === e.target.value);
+                                                resetInvestmentFundingFields();
                                                 if (goal?.meta.shoppingCategory === 'investment') {
+                                                    const defaultUnitPrice = getDefaultInvestmentUnitPrice(goal);
                                                     setToWalletId(goal.meta.dedicatedWalletId || '');
                                                     setWalletId('');
+                                                    setInvestmentUnitPrice(defaultUnitPrice?.toString() || '');
+                                                    if (amount && defaultUnitPrice) {
+                                                        setInvestmentUnits(formatInvestmentInputNumber(Number(amount) / defaultUnitPrice));
+                                                    }
                                                 } else if (goal?.meta.dedicatedWalletId) {
                                                     setWalletId(goal.meta.dedicatedWalletId);
                                                     setToWalletId('');
@@ -180,15 +245,47 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                             }
                                         })()}
                                     </div>
-                                    {savingGoals.find(g => g.id === savingGoalId)?.meta.shoppingCategory === 'investment' && (
-                                        <div className="col-span-2">
-                                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">To Investment Wallet</label>
-                                            <div className="w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium flex items-center gap-2">
-                                                <Wallet className="w-4 h-4" />
-                                                {wallets.find(w => w.id === toWalletId)?.name || 'No linked investment wallet'}
+                                    {isInvestmentTarget && (
+                                        <>
+                                            <div className="col-span-2">
+                                                <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">To Investment Wallet</label>
+                                                <div className="w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium flex items-center gap-2">
+                                                    <Wallet className="w-4 h-4" />
+                                                    {wallets.find(w => w.id === toWalletId)?.name || 'No linked investment wallet'}
+                                                </div>
+                                                <p className="text-[10px] text-muted mt-1">Investment savings are treated as a wallet transfer into the platform, so the source wallet balance decreases and the investment wallet increases.</p>
                                             </div>
-                                            <p className="text-[10px] text-muted mt-1">Investment savings are treated as a wallet transfer into the platform, so the source wallet balance decreases and the investment wallet increases.</p>
-                                        </div>
+                                            <div className="col-span-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3">
+                                                <div>
+                                                    <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Auto-fill units or capital</div>
+                                                    <p className="text-[10px] text-muted mt-1">Isi invested capital atau units. Kalau ada buy price, field satunya otomatis keisi dan units akan ditambahkan ke investment.</p>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Units bought</label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            value={investmentUnits}
+                                                            onChange={e => handleInvestmentUnitsChange(e.target.value)}
+                                                            placeholder="Optional"
+                                                            className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Buy price / unit</label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            value={investmentUnitPrice}
+                                                            onChange={e => handleInvestmentUnitPriceChange(e.target.value)}
+                                                            placeholder="Optional"
+                                                            className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
                                     <div className="col-span-2">
                                         <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Category</label>
@@ -266,7 +363,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                     <div className="p-6 border-t border-border shrink-0 bg-surface">
                         <button 
                             onClick={handleSave}
-                            disabled={!amount || (transactionType !== 'saving' && !description) || (transactionType !== 'saving' && !walletId) || (transactionType === 'transfer' && !toWalletId) || (transactionType === 'saving' && !savingGoalId) || (transactionType === 'saving' && savingGoals.find(g => g.id === savingGoalId)?.meta.shoppingCategory === 'investment' && (!walletId || !toWalletId))}
+                            disabled={!(transactionType === 'saving' && isInvestmentTarget ? resolvedInvestmentFunding.investedCapital : amount) || (transactionType !== 'saving' && !description) || (transactionType !== 'saving' && !walletId) || (transactionType === 'transfer' && !toWalletId) || (transactionType === 'saving' && !savingGoalId) || (transactionType === 'saving' && isInvestmentTarget && (!walletId || !toWalletId))}
                             className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <Check className="w-5 h-5" />

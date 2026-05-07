@@ -46,6 +46,7 @@ import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalize
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
 import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
 import { shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
+import { applyInvestmentFundingToInvestment, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -2153,25 +2154,47 @@ export const useBrainDumpData = () => {
         saveAndSync(updated, undefined, undefined, undefined, updatedWallets);
     };
 
-    const handleAddSavingTransaction = (amount: number, walletId: string, date: string, goalId: string, goalName: string, toWalletId?: string) => {
+    const handleAddSavingTransaction = (
+        amount: number,
+        walletId: string,
+        date: string,
+        goalId: string,
+        goalName: string,
+        toWalletId?: string,
+        investmentUnits?: number,
+        investmentUnitPrice?: number
+    ) => {
+        const resolvedFunding = resolveInvestmentFundingInput({
+            investedCapital: amount,
+            units: investmentUnits,
+            unitPrice: investmentUnitPrice
+        });
+        const normalizedAmount = resolvedFunding.investedCapital || amount;
+        const isInvestmentFunding = !!toWalletId;
         const newFinanceItem: BrainDumpItem = {
             id: uuidv4(),
             type: ItemType.FINANCE,
-            content: toWalletId ? `Invested into: ${goalName}` : `Saved for: ${goalName}`,
+            content: isInvestmentFunding ? `Invested into: ${goalName}` : `Saved for: ${goalName}`,
             status: 'done',
             created_at: new Date().toISOString(),
             completed_at: new Date(date).toISOString(),
             meta: {
                 tags: [],
-                amount,
+                amount: normalizedAmount,
                 paymentMethod: walletId,
                 toWallet: toWalletId,
                 financeType: 'saving',
-                savingGoalId: goalId
+                savingGoalId: goalId,
+                investmentUnits: isInvestmentFunding ? resolvedFunding.units : undefined,
+                investmentAveragePrice: isInvestmentFunding ? resolvedFunding.unitPrice : undefined
             }
         };
 
-        const updated = [newFinanceItem, ...itemsRef.current];
+        const updatedItems = itemsRef.current.map(item => {
+            if (!isInvestmentFunding || item.id !== goalId || item.type !== ItemType.SHOPPING || item.meta.shoppingCategory !== 'investment') return item;
+            return applyInvestmentFundingToInvestment(item, resolvedFunding);
+        });
+        const updated = [newFinanceItem, ...updatedItems];
         setItems(updated);
         saveAndSync(updated);
     };
