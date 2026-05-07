@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.51',
+    date: 'May 2026',
+    items: [
+      'Focus task cards with subtasks now keep the subtasks collapsed by default, so the card stays focused on the main task until the Subtasks control is expanded.',
+      'The Show edit and Subtasks controls now toggle closed as well as open, making task panels behave like true collapsed/expanded sections.',
+    ],
+  },
+  {
     version: 'v0.3.50',
     date: 'May 2026',
     items: [

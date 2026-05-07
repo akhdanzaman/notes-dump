@@ -73,7 +73,7 @@ interface PlanViewProps {
     setActiveTab: (tab: Tab) => void;
 }
 
-type TaskPanel = 'edit' | 'subtasks';
+type TaskPanel = 'edit' | 'subtasks' | 'none';
 
 const PlanView: React.FC<PlanViewProps> = ({
     items, skills, planSubTab, setPlanSubTab,
@@ -416,6 +416,10 @@ const PlanView: React.FC<PlanViewProps> = ({
         setActiveTaskPanels(prev => ({ ...prev, [id]: panel }));
     };
 
+    const toggleTaskPanel = (id: string, panel: Exclude<TaskPanel, 'none'>, activePanel: TaskPanel) => {
+        setTaskPanel(id, activePanel === panel ? 'none' : panel);
+    };
+
     const resetTaskPanel = (id: string) => {
         setActiveTaskPanels(prev => {
             const next = { ...prev };
@@ -426,7 +430,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
     const getDefaultTaskPanel = (item: BrainDumpItem, children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
         const hasSubtasks = children.length > 0 || !!item.meta.deepWorkParent || (item.meta.subtasks?.length || 0) > 0;
-        return isDeepWork && hasSubtasks ? 'subtasks' : 'edit';
+        return isDeepWork && hasSubtasks ? 'none' : 'edit';
     };
 
     const getActiveTaskPanel = (item: BrainDumpItem, children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
@@ -470,7 +474,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         const draft = getSubtaskDraft(item, children).map(step => step.trim()).filter(Boolean);
         if (draft.length === 0) return;
         handleAcceptDeepWorkTodo(item.id, draft);
-        setTaskPanel(item.id, 'subtasks');
+        setTaskPanel(item.id, 'none');
     };
 
     const openManualSubtaskDraft = (item: BrainDumpItem) => {
@@ -540,7 +544,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             const editPanelControls = isCardExpanded ? (
                 <div className="flex flex-wrap gap-2 w-full">
                     <button
-                        onClick={() => setTaskPanel(item.id, 'edit')}
+                        onClick={() => toggleTaskPanel(item.id, 'edit', activePanel)}
                         className={taskPanelButtonClass(activePanel === 'edit')}
                     >
                         {activePanel === 'edit' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -548,7 +552,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </button>
                     {canUseManualSubtasks && (
                         <button
-                            onClick={() => hasManualSubtasks ? setTaskPanel(item.id, 'subtasks') : openManualSubtaskDraft(item)}
+                            onClick={() => hasManualSubtasks ? toggleTaskPanel(item.id, 'subtasks', activePanel) : openManualSubtaskDraft(item)}
                             className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}
                         >
                             {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
@@ -597,7 +601,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         const deepWorkPanelControls = isCardExpanded ? (
             <div className="flex flex-wrap gap-2 w-full">
                 <button
-                    onClick={() => setTaskPanel(item.id, 'edit')}
+                    onClick={() => toggleTaskPanel(item.id, 'edit', activePanel)}
                     className={taskPanelButtonClass(activePanel === 'edit')}
                 >
                     {activePanel === 'edit' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -608,7 +612,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         Transform into steps
                     </button>
                 )}
-                <button onClick={() => setTaskPanel(item.id, 'subtasks')} className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}>
+                <button onClick={() => toggleTaskPanel(item.id, 'subtasks', activePanel)} className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}>
                     {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     {isSuggested ? 'Preview/edit steps' : 'Subtasks'}
                 </button>
@@ -629,44 +633,44 @@ const PlanView: React.FC<PlanViewProps> = ({
         return (
             <div key={item.id} className="space-y-2 rounded-[24px] border border-purple-500/15 bg-purple-500/[0.03] p-2">
                 <Card item={item} {...taskCardProps} editComfort="taskWorkspace" />
-                <div className="px-2 pb-2 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        {hasDeepWorkDetails && (
-                            <div className="flex items-center gap-2 text-purple-500">
-                                <Sparkles className="w-4 h-4" />
-                                <div className="text-[10px] font-bold uppercase tracking-wider">Deep Work Transformer</div>
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2 text-[11px] font-bold text-muted">
-                            <span>{doneCount}/{totalSteps} steps</span>
-                            <span>•</span>
-                            <span>{progressPercent}%</span>
-                        </div>
-                    </div>
+                <AnimatePresence initial={false}>
+                    {isSubtasksExpanded && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="px-2 pb-2 space-y-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    {hasDeepWorkDetails && (
+                                        <div className="flex items-center gap-2 text-purple-500">
+                                            <Sparkles className="w-4 h-4" />
+                                            <div className="text-[10px] font-bold uppercase tracking-wider">Deep Work Transformer</div>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2 text-[11px] font-bold text-muted">
+                                        <span>{doneCount}/{totalSteps} steps</span>
+                                        <span>•</span>
+                                        <span>{progressPercent}%</span>
+                                    </div>
+                                </div>
 
-                    {totalSteps > 0 && (
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-purple-500/10">
-                            <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${Math.max(progressPercent, doneCount > 0 ? 4 : 0)}%` }} />
-                        </div>
-                    )}
+                                {totalSteps > 0 && (
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-purple-500/10">
+                                        <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${Math.max(progressPercent, doneCount > 0 ? 4 : 0)}%` }} />
+                                    </div>
+                                )}
 
-                    {hasDeepWorkDetails && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                            {renderDeepWorkDetail(<Flag className="w-3 h-3" />, 'Next action', item.meta.deepWorkNextAction)}
-                            {renderDeepWorkDetail(<ListChecks className="w-3 h-3" />, 'Final output', item.meta.deepWorkFinalOutput)}
-                            {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
-                            {renderDeepWorkDetail(<ShieldAlert className="w-3 h-3" />, 'Blocker check', item.meta.deepWorkBlockerCheck, isBlocked ? 'text-amber-500' : 'text-emerald-500')}
-                        </div>
-                    )}
+                                {hasDeepWorkDetails && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                        {renderDeepWorkDetail(<Flag className="w-3 h-3" />, 'Next action', item.meta.deepWorkNextAction)}
+                                        {renderDeepWorkDetail(<ListChecks className="w-3 h-3" />, 'Final output', item.meta.deepWorkFinalOutput)}
+                                        {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
+                                        {renderDeepWorkDetail(<ShieldAlert className="w-3 h-3" />, 'Blocker check', item.meta.deepWorkBlockerCheck, isBlocked ? 'text-amber-500' : 'text-emerald-500')}
+                                    </div>
+                                )}
 
-                    <AnimatePresence initial={false}>
-                        {isSubtasksExpanded && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="overflow-hidden"
-                            >
                                 <div className="mt-1 ml-1 border-l-2 border-purple-500/25 pl-3 space-y-2">
                                     <div className="text-[10px] font-bold uppercase tracking-wider text-purple-500/80">Optional subtasks</div>
                                     {isSuggested ? (
@@ -679,10 +683,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </div>
                                     )}
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         );
     };
