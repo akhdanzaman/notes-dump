@@ -29,7 +29,7 @@ const KNOWN_COMMODITIES = new Set([
   'personal_care',
   'digital',
   'social',
-  'other',
+  'others',
 ]);
 
 const KNOWN_SUBCOMMODITIES = new Set([
@@ -77,7 +77,7 @@ const KNOWN_SUBCOMMODITIES = new Set([
   'tip',
 ]);
 
-const EMPTY_FIELD_VALUES = new Set(['', '-', '—', 'n/a', 'na', 'none', 'null', 'unknown', 'tidak diketahui', 'other']);
+const EMPTY_FIELD_VALUES = new Set(['', '-', '—', 'n/a', 'na', 'none', 'null', 'unknown', 'tidak diketahui', 'other', 'others']);
 const MERCHANT_STOP_WORDS = new Set([
   'cash', 'tunai', 'qris', 'gopay', 'go-pay', 'ovo', 'dana', 'shopeepay', 'bca', 'bni', 'bri', 'mandiri',
   'jago', 'blu', 'seabank', 'debit', 'kartu', 'card', 'bank', 'wallet', 'ewallet', 'e-wallet', 'pakai', 'via',
@@ -307,7 +307,7 @@ export function enrichFinanceMetaFromText({
   if (typeof next.merchant === 'string' && isEmptyField(next.merchant)) delete next.merchant;
   const normalizedCommodity = cleanCanonicalValue(next.commodity, KNOWN_COMMODITIES);
   if (normalizedCommodity !== undefined) next.commodity = normalizedCommodity;
-  else if (next.commodity) next.commodity = 'other';
+  else if (next.commodity) next.commodity = 'others';
 
   const normalizedSubcommodity = cleanCanonicalValue(next.subcommodity, KNOWN_SUBCOMMODITIES);
   if (normalizedSubcommodity !== undefined) next.subcommodity = normalizedSubcommodity;
@@ -320,7 +320,7 @@ export function enrichFinanceMetaFromText({
 
   const signal = inferCommoditySignal(evidence);
   if (signal) {
-    if (!next.commodity || next.commodity === 'other') next.commodity = signal.commodity;
+    if (!next.commodity || next.commodity === 'others') next.commodity = signal.commodity;
     if (!next.subcommodity) next.subcommodity = signal.subcommodity;
     if (!next.budgetCategory) {
       const budgetRuleId = findBudgetRuleId(signal.budgetHints, availableBudgetRules);
@@ -339,7 +339,7 @@ export function enrichFinanceMetaFromText({
 export const PARSER_SIGNAL_GUIDANCE = `
 Merchant / commodity extraction guardrails:
 - merchant is a vendor/place only when the user explicitly names one ("di/at/from/toko/warung/resto/cafe/kedai <name>", or an obvious brand). Never copy payment method, wallet, amount words, or a generic meal/category into merchant. Leave merchant blank when unknown.
-- commodity must use one of: food, transport, utilities, health, education, shopping, housing, personal_care, digital, social, other.
+- commodity must use one of: food, transport, utilities, health, education, shopping, housing, personal_care, digital, social, others.
 - subcommodity should be concrete when text supports it: sarapan/makan pagi/breakfast=>breakfast; makan siang=>lunch; makan malam=>dinner; parkir/parking=>parking; bensin=>fuel; gojek/grab/ojol=>ride_hailing; listrik/pln=>electricity; internet/wifi=>internet; sedekah/donasi=>donation.
 - If the text only says an amount plus wallet (for example "12000 cash" or "keluar 50k bni"), keep merchant blank and use commodity/subcommodity only if the spending purpose is stated.
 - paymentMethod/toWallet should match a known wallet ID when a wallet is explicitly mentioned (cash, gopay, bni, bca, etc.); otherwise leave blank.
@@ -348,5 +348,5 @@ Finance examples for raw signal quality:
 - "sarapan 14000 cash" => FINANCE expense; paymentMethod cash wallet if known; commodity food; subcommodity breakfast; merchant blank.
 - "parkir motor 3000 bni" => FINANCE expense; paymentMethod BNI wallet if known; commodity transport; subcommodity parking; merchant blank.
 - "makan siang di Warung Bu Sari 18000 gopay" => FINANCE expense; merchant "Warung Bu Sari"; commodity food; subcommodity lunch; paymentMethod Gopay wallet if known.
-- "bayar 12000 cash" => FINANCE expense; paymentMethod cash wallet if known; merchant blank; commodity/subcommodity blank or other because purpose is unknown.
+- "bayar 12000 cash" => FINANCE expense; paymentMethod cash wallet if known; merchant blank; commodity/subcommodity others because purpose is unknown.
 `;

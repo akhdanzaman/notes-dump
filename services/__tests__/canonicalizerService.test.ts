@@ -38,7 +38,7 @@ const ctx = {
   rules,
 };
 
-test('canonicalizeMeta auto-applies strong exact matches without overwriting raw field', () => {
+test('canonicalizeMeta treats commodity as the primary canonical spend field without overwriting raw merchant', () => {
   const result = canonicalizeMeta({
     merchant: 'gacoan',
     financeType: 'expense',
@@ -47,9 +47,10 @@ test('canonicalizeMeta auto-applies strong exact matches without overwriting raw
   }, ctx);
 
   assert.equal(result.meta.merchant, 'gacoan');
-  assert.equal(result.meta.canonical?.merchant?.value, 'Mie Gacoan');
-  assert.equal(result.meta.canonical?.merchant?.needsReview, false);
-  assert.deepEqual(result.autoApplied, ['merchant']);
+  assert.equal(result.meta.canonical?.merchant, undefined);
+  assert.equal(result.meta.canonical?.commodity?.value, 'food');
+  assert.equal(result.meta.canonical?.commodity?.needsReview, false);
+  assert.ok(result.autoApplied.includes('commodity'));
 });
 
 test('canonicalizeMeta suggests review for medium-confidence matches', () => {
@@ -342,8 +343,9 @@ test('repeated rejection degrades learned rules and blocks auto-application', ()
     rules: nextRules,
   });
 
-  assert.equal(canonicalized.autoApplied.length, 0);
-  assert.equal(canonicalized.meta.canonical?.merchant?.needsReview, true);
+  assert.equal(canonicalized.meta.canonical?.merchant, undefined);
+  assert.equal(canonicalized.meta.canonical?.commodity?.value, 'food');
+  assert.equal(canonicalized.meta.canonical?.subcommodity?.value, 'others');
 });
 
 test('manual review canonical values take precedence over rule rematching', () => {
@@ -384,13 +386,14 @@ test('sweepHistoricalCanonicalMeta backfills high-confidence canonical metadata 
 
   const sweep = sweepHistoricalCanonicalMeta(items, ctx);
 
-  assert.equal(sweep.autoAppliedCount, 1);
+  assert.equal(sweep.autoAppliedCount, 2);
   assert.deepEqual(sweep.changedItemIds, ['item-high-confidence']);
   assert.equal(sweep.reviews.length, 0);
   assert.equal(sweep.items[0].content, 'makan di gacoan');
   assert.equal(sweep.items[0].meta.merchant, 'gacoan');
-  assert.equal(sweep.items[0].meta.canonical?.merchant?.value, 'Mie Gacoan');
-  assert.equal(sweep.items[0].meta.canonical?.merchant?.needsReview, false);
+  assert.equal(sweep.items[0].meta.canonical?.merchant, undefined);
+  assert.equal(sweep.items[0].meta.canonical?.commodity?.value, 'food');
+  assert.equal(sweep.items[0].meta.canonical?.subcommodity?.value, 'others');
 });
 
 test('sweepHistoricalCanonicalMeta seeds ambiguous historical rows for review without applying them', () => {
@@ -443,13 +446,13 @@ test('sweepHistoricalCanonicalMeta reruns idempotently after auto-apply', () => 
   const first = sweepHistoricalCanonicalMeta(items, ctx);
   const second = sweepHistoricalCanonicalMeta(first.items, ctx);
 
-  assert.equal(first.autoAppliedCount, 1);
+  assert.equal(first.autoAppliedCount, 2);
   assert.equal(second.autoAppliedCount, 0);
   assert.deepEqual(second.changedItemIds, []);
   assert.deepEqual(second.items, first.items);
 });
 
-test('repeated approvals graduate exact learned aliases to auto-apply', () => {
+test('repeated merchant approvals remain learnable but do not become primary spend canonical auto-apply', () => {
   const original: ParserResultV2[] = [
     {
       action: 'create_item',
@@ -491,9 +494,8 @@ test('repeated approvals graduate exact learned aliases to auto-apply', () => {
     rules: nextRules,
   });
 
-  assert.equal(canonicalized.meta.canonical?.merchant?.value, 'Mie Gacoan');
-  assert.equal(canonicalized.meta.canonical?.merchant?.needsReview, false);
-  assert.deepEqual(canonicalized.autoApplied, ['merchant']);
+  assert.equal(canonicalized.meta.canonical?.merchant, undefined);
+  assert.deepEqual(canonicalized.autoApplied, []);
   assert.equal(canonicalized.suggestions.length, 0);
 });
 

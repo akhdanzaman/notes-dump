@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.59',
+    date: 'May 2026',
+    items: [
+      'Finance canonical analytics now use category → commodity → subcommodity as the primary spend hierarchy, with merchant kept as optional vendor drilldown only.',
+      'Transactions spreadsheet export now uses Canonical_Commodity instead of Canonical_Merchant while preserving raw merchant data in item metadata and raw exports.',
+      'Money > Budget now includes an in-place Spend Anatomy graphic that highlights which commodities and subcommodities dominate each budget category, with undefined values normalized to others.',
+    ],
+  },
+  {
     version: 'v0.3.58',
     date: 'May 2026',
     items: [

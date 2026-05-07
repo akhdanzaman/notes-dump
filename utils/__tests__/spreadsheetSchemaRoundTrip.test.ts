@@ -228,7 +228,7 @@ test('header-only spreadsheet ranges do not delete local shopping, transactions,
   };
 
   const reconciled = reconcileSpreadsheetData(structuredClone(db), [
-    { range: "'Transactions'!A1:K", values: [["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Merchant", "Canonical_Subcommodity", "ID"]] },
+    { range: "'Transactions'!A1:K", values: [["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Commodity", "Canonical_Subcommodity", "ID"]] },
     { range: "'Shopping'!A1:I", values: [["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Tags", "Completed_At", "ID"]] },
     { range: "'Wallets Config'!A1:E", values: [["ID", "Name", "Type", "Initial_Balance", "Color"]] },
     { range: "'Skills Config'!A1:E", values: [["ID", "Name", "Weekly_Target_Minutes", "Created_At", "Color"]] },
@@ -270,7 +270,7 @@ test('transaction reconciliation parses Indonesian currency strings without shri
   const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
     range: "'Transactions'!A1:K",
     values: [
-      ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Merchant", "Canonical_Subcommodity", "ID"],
+      ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Commodity", "Canonical_Subcommodity", "ID"],
       ["5/1/2026 3:00:00 PM", "expense", "Wants", "belanja bulanan", "Rp75.000", "BCA", "", "", "", "", "txn-rp-1"],
     ],
   }]);

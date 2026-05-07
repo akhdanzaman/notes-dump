@@ -1,5 +1,6 @@
 import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType } from '../types';
 import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
+import { getCommodityCanonicalForAnalytics, getSubcommodityCanonicalForAnalytics } from './canonicalization/defaults';
 import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils';
@@ -182,17 +183,29 @@ const buildDashboardSheet = (
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
-  const merchantTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
-    const key = getCanonicalMetaValue(item.meta, 'merchant')
-      || getCanonicalMetaValue(item.meta, 'subcommodity')
-      || item.meta.tags?.[0]
-      || getCategoryName(item.meta.budgetCategory, budgetConfig);
+  const spendDriverTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
+    const category = getCategoryName(item.meta.budgetCategory, budgetConfig) || 'Uncategorised';
+    const commodity = getCommodityCanonicalForAnalytics(item.meta);
+    const subcommodity = getSubcommodityCanonicalForAnalytics(item.meta);
+    const key = [category, commodity, subcommodity]
+      .filter(Boolean)
+      .join(' › ');
+    acc[key] = (acc[key] || 0) + (item.meta.amount || 0);
+    return acc;
+  }, {});
+
+  const topSpendDrivers = Object.entries(spendDriverTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const merchantDrilldownTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
+    const key = getCanonicalMetaValue(item.meta, 'merchant') || item.meta.merchant;
     if (!key) return acc;
     acc[key] = (acc[key] || 0) + (item.meta.amount || 0);
     return acc;
   }, {});
 
-  const topMerchants = Object.entries(merchantTotals)
+  const topMerchantDrilldowns = Object.entries(merchantDrilldownTotals)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
@@ -288,9 +301,13 @@ const buildDashboardSheet = (
     ? `${topCategories[0][0]} · ${fmtCurrency(topCategories[0][1])}`
     : 'Belum ada pengeluaran bulan ini';
 
-  const topMerchantSummary = topMerchants[0]
-    ? `${topMerchants[0][0]} · ${fmtCurrency(topMerchants[0][1])}`
-    : 'Belum ada merchant dominan';
+  const topSpendDriverSummary = topSpendDrivers[0]
+    ? `${topSpendDrivers[0][0]} · ${fmtCurrency(topSpendDrivers[0][1])}`
+    : 'Belum ada pola belanja dominan';
+
+  const topMerchantDrilldownSummary = topMerchantDrilldowns[0]
+    ? `${topMerchantDrilldowns[0][0]} · ${fmtCurrency(topMerchantDrilldowns[0][1])}`
+    : 'Belum ada vendor dominan';
 
   const budgetHealth = budgetConfig.monthlyIncome <= 0
     ? 'Budget baseline belum diset'
@@ -318,7 +335,6 @@ const buildDashboardSheet = (
 
   const fallbackRows = (entries: string[], count = 5) => Array.from({ length: count }, (_, i) => entries[i] || '—');
   const categoryRows = fallbackRows(topCategories.map(([name, amount]) => `${name} — ${amount}`));
-  const merchantRows = fallbackRows(topMerchants.map(([name, amount]) => `${name} — ${amount}`));
   const upcomingRows = fallbackRows(upcomingHighlights);
 
   const categoryChartRows = Array.from({ length: 5 }, (_, index) => ({
@@ -326,9 +342,9 @@ const buildDashboardSheet = (
     value: topCategories[index]?.[1] || 0,
   }));
 
-  const merchantChartRows = Array.from({ length: 5 }, (_, index) => ({
-    label: topMerchants[index]?.[0] || `Merchant ${index + 1}`,
-    value: topMerchants[index]?.[1] || 0,
+  const spendDriverChartRows = Array.from({ length: 5 }, (_, index) => ({
+    label: topSpendDrivers[index]?.[0] || `Spend Driver ${index + 1}`,
+    value: topSpendDrivers[index]?.[1] || 0,
   }));
 
   const rows = [
@@ -346,16 +362,16 @@ const buildDashboardSheet = (
     buildRow(['TODAY VS YESTERDAY', '', '', 'BUDGET RADAR']),
     buildRow(['Today Spend Driver', moneyDrivers.spendLine, '', 'Top Category', topCategorySummary], { 22: categoryChartRows[0].label, 23: categoryChartRows[0].value }),
     buildRow(['Main Driver', moneyDrivers.mainDriverLine, '', 'Budget Health', budgetHealth], { 22: categoryChartRows[1].label, 23: categoryChartRows[1].value }),
-    buildRow(['Wallet Movement', moneyDrivers.walletMovementLine, '', 'Top Merchant', topMerchantSummary], { 22: categoryChartRows[2].label, 23: categoryChartRows[2].value }),
-    buildRow(['Pattern Check', moneyDrivers.patternLine, '', 'Projected Expense', fmtCurrency(projectedExpense)], { 22: categoryChartRows[3].label, 23: categoryChartRows[3].value }),
+    buildRow(['Wallet Movement', moneyDrivers.walletMovementLine, '', 'Top Spend Driver', topSpendDriverSummary], { 22: categoryChartRows[2].label, 23: categoryChartRows[2].value }),
+    buildRow(['Pattern Check', moneyDrivers.patternLine, '', 'Top Vendor Drilldown', topMerchantDrilldownSummary], { 22: categoryChartRows[3].label, 23: categoryChartRows[3].value }),
     buildRow(['Income / Tasks / Captures', `Income ${fmtCurrency(todayIncome)} vs yesterday ${fmtCurrency(yesterdayIncome)} (${todayTasksDone} tasks, ${todayCaptured} captures today)`, `Yesterday tasks/captures: ${yesterdayTasksDone}/${yesterdayCaptured}`, 'Avg Daily Burn', fmtCurrency(avgDailyExpense)], { 22: categoryChartRows[4].label, 23: categoryChartRows[4].value }),
     buildRow(['']),
-    buildRow(['UPCOMING RADAR', '', '', 'TOP MERCHANTS']),
-    buildRow([upcomingRows[0], '', '', merchantChartRows[0].label, fmtCurrency(merchantChartRows[0].value)], { 25: merchantChartRows[0].label, 26: merchantChartRows[0].value, 28: 'Today Expense', 29: todayExpense }),
-    buildRow([upcomingRows[1], '', '', merchantChartRows[1].label, fmtCurrency(merchantChartRows[1].value)], { 25: merchantChartRows[1].label, 26: merchantChartRows[1].value, 28: 'Yesterday Expense', 29: yesterdayExpense }),
-    buildRow([upcomingRows[2], '', '', merchantChartRows[2].label, fmtCurrency(merchantChartRows[2].value)], { 25: merchantChartRows[2].label, 26: merchantChartRows[2].value }),
-    buildRow([upcomingRows[3], '', '', merchantChartRows[3].label, fmtCurrency(merchantChartRows[3].value)], { 25: merchantChartRows[3].label, 26: merchantChartRows[3].value }),
-    buildRow([upcomingRows[4], '', '', merchantChartRows[4].label, fmtCurrency(merchantChartRows[4].value)], { 25: merchantChartRows[4].label, 26: merchantChartRows[4].value }),
+    buildRow(['UPCOMING RADAR', '', '', 'TOP SPEND DRIVERS']),
+    buildRow([upcomingRows[0], '', '', spendDriverChartRows[0].label, fmtCurrency(spendDriverChartRows[0].value)], { 25: spendDriverChartRows[0].label, 26: spendDriverChartRows[0].value, 28: 'Today Expense', 29: todayExpense }),
+    buildRow([upcomingRows[1], '', '', spendDriverChartRows[1].label, fmtCurrency(spendDriverChartRows[1].value)], { 25: spendDriverChartRows[1].label, 26: spendDriverChartRows[1].value, 28: 'Yesterday Expense', 29: yesterdayExpense }),
+    buildRow([upcomingRows[2], '', '', spendDriverChartRows[2].label, fmtCurrency(spendDriverChartRows[2].value)], { 25: spendDriverChartRows[2].label, 26: spendDriverChartRows[2].value }),
+    buildRow([upcomingRows[3], '', '', spendDriverChartRows[3].label, fmtCurrency(spendDriverChartRows[3].value)], { 25: spendDriverChartRows[3].label, 26: spendDriverChartRows[3].value }),
+    buildRow([upcomingRows[4], '', '', spendDriverChartRows[4].label, fmtCurrency(spendDriverChartRows[4].value)], { 25: spendDriverChartRows[4].label, 26: spendDriverChartRows[4].value }),
     buildRow(['']),
     buildRow(['ANALYTICS DECK']),
     buildRow(['Charts below auto-refresh on every sync.']),
@@ -407,8 +423,8 @@ export const generateExportData = (
         Wallet: getWalletName(getCanonicalOrRawItemValue(item, 'paymentMethod') || item.meta.paymentMethod, wallets),
         To_Wallet: getWalletName(item.meta.toWallet, wallets),
         Tags: item.meta.tags?.join(', ') || '',
-        Canonical_Merchant: getCanonicalMetaValue(item.meta, 'merchant'),
-        Canonical_Subcommodity: getCanonicalMetaValue(item.meta, 'subcommodity'),
+        Canonical_Commodity: getCommodityCanonicalForAnalytics(item.meta),
+        Canonical_Subcommodity: getSubcommodityCanonicalForAnalytics(item.meta),
         ID: item.id
       };
     });
@@ -417,8 +433,8 @@ export const generateExportData = (
     sheets.push({
       name: "Transactions",
       data: [
-        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Merchant", "Canonical_Subcommodity", "ID"],
-        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Tags, t.Canonical_Merchant, t.Canonical_Subcommodity, t.ID])
+        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Commodity", "Canonical_Subcommodity", "ID"],
+        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Tags, t.Canonical_Commodity, t.Canonical_Subcommodity, t.ID])
       ]
     });
   }
@@ -554,9 +570,9 @@ export const generateExportData = (
     Merchant: item.meta.merchant || '',
     Canonical_Merchant: getCanonicalMetaValue(item.meta, 'merchant'),
     Commodity: item.meta.commodity || '',
-    Canonical_Commodity: getCanonicalMetaValue(item.meta, 'commodity'),
+    Canonical_Commodity: getCommodityCanonicalForAnalytics(item.meta),
     Subcommodity: item.meta.subcommodity || '',
-    Canonical_Subcommodity: getCanonicalMetaValue(item.meta, 'subcommodity'),
+    Canonical_Subcommodity: getSubcommodityCanonicalForAnalytics(item.meta),
     To_Wallet: item.meta.toWallet || '',
     Finance_Type: item.meta.financeType || '',
     Budget_Category: item.meta.budgetCategory || '',

@@ -9,6 +9,7 @@ import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
 import { contentSurface } from '../layout/contentSurface';
+import { getBudgetCategoryAnalytics } from '../../utils/budgetAnalytics';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -135,6 +136,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         : 'Recorded Income';
     const monthUsagePercent = effectiveIncome > 0 ? Math.min(999, (totalExpense / effectiveIncome) * 100) : 0;
     const monthUsageWithPlannedPercent = effectiveIncome > 0 ? Math.min(999, ((totalExpense + projectedExpense) / effectiveIncome) * 100) : 0;
+    const budgetCategoryAnalytics = useMemo(
+        () => getBudgetCategoryAnalytics(items, financeDate, budgetConfig, budgetViewMode),
+        [items, financeDate, budgetConfig, budgetViewMode]
+    );
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -522,6 +527,65 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         </div>
                                     )}
                                 </div>
+
+                                {budgetCategoryAnalytics.length > 0 && (
+                                    <div className="mb-8 space-y-4 rounded-3xl border border-border bg-black/[0.02] p-4 dark:bg-white/[0.04]">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="text-xs font-bold uppercase tracking-[0.2em] text-muted">Spend Anatomy</div>
+                                                <div className="mt-1 text-sm font-semibold text-primary">Category → commodity → subcommodity</div>
+                                            </div>
+                                            <PieChart className="h-5 w-5 text-muted" />
+                                        </div>
+                                        <div className="space-y-4">
+                                            {budgetCategoryAnalytics.slice(0, 3).map(category => (
+                                                <div key={category.categoryId} className="space-y-2">
+                                                    <div className="flex items-center justify-between gap-3 text-xs">
+                                                        <div className="flex min-w-0 items-center gap-2 font-bold text-primary">
+                                                            <span className={`h-2 w-2 rounded-full ${category.color || 'bg-gray-400'}`}></span>
+                                                            <span className="truncate">{category.categoryName}</span>
+                                                        </div>
+                                                        <span className="shrink-0 font-semibold text-muted">{showBalance ? fmt(category.total) : '•••'}</span>
+                                                    </div>
+                                                    <div className="flex h-3 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                                                        {category.commodities.map((commodity, index) => (
+                                                            <div
+                                                                key={`${category.categoryId}-${commodity.name}`}
+                                                                className={`${index % 2 === 0 ? (category.color || 'bg-gray-500') : 'bg-amber-500'} ${index > 1 ? 'opacity-50' : index === 1 ? 'opacity-70' : ''}`}
+                                                                style={{ width: `${Math.max(commodity.percentage, 3)}%` }}
+                                                                title={`${commodity.name}: ${commodity.percentage.toFixed(1)}%`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <div className="grid gap-2 sm:grid-cols-2">
+                                                        {category.commodities.slice(0, 2).map(commodity => {
+                                                            const topSubs = commodity.subcommodities
+                                                                .slice(0, 2)
+                                                                .map(sub => sub.name)
+                                                                .join(' + ');
+                                                            const topMerchants = commodity.merchants
+                                                                .slice(0, 2)
+                                                                .map(merchant => merchant.name)
+                                                                .join(' / ');
+                                                            return (
+                                                                <div key={`${category.categoryId}-${commodity.name}-detail`} className="rounded-2xl bg-white/60 p-3 text-xs dark:bg-white/5">
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <span className="font-bold text-primary">{commodity.name}</span>
+                                                                        <span className="font-semibold text-muted">{commodity.percentage.toFixed(0)}%</span>
+                                                                    </div>
+                                                                    <div className="mt-1 text-[11px] leading-snug text-muted">
+                                                                        {topSubs ? `Dominated by ${topSubs}` : 'No subcommodity signal yet'}
+                                                                        {topMerchants ? ` · Vendor: ${topMerchants}` : ''}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Categories List */}
                                 <div className="space-y-6">

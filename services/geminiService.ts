@@ -57,7 +57,7 @@ MONEY META (FINANCE + money-related SHOPPING):
   - sedekah: charity/giving/donation
   - fixed: rent/laundry/internet/electricity/parking
   - unintend: miss/extra charge/penalty/lost
-- commodity ∈ {food, transport, utilities, health, education, shopping, housing, personal_care, digital, social, other}
+- commodity ∈ {food, transport, utilities, health, education, shopping, housing, personal_care, digital, social, others}
 - subcommodity: detailed sub-category.
   - food: breakfast, lunch, dinner, snack, drink, groceries
   - transport: parking, fuel, public_transport, ride_hailing, toll
@@ -69,7 +69,7 @@ MONEY META (FINANCE + money-related SHOPPING):
   - personal_care: haircut, skincare, spa
   - digital: subscription, app, game, software
   - social: gift, donation, party, hangout
-  - other: miscellaneous
+  - others: miscellaneous
 - paymentMethod: EXACT text from user (Source Wallet), else "".
 - toWallet: Destination wallet (transfer only).
 - merchant: Vendor name if mentioned.
@@ -85,7 +85,7 @@ CLASSIFICATION PRIORITY (FINANCE):
 2. Determine budgetCategory.
 3. Determine commodity.
 4. Determine subcommodity.
-If ambiguous, choose the most conservative value. If commodity/subcommodity unclear, use 'other'.
+If ambiguous, choose the most conservative value. If commodity/subcommodity unclear, use 'others'.
 
 FINANCE META:
 - transfer: moving money between own accounts (withdraw, deposit, topup, pindah buku).

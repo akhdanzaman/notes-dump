@@ -187,7 +187,8 @@ test('exports expose canonical grouping columns while preserving raw item values
   const transactionsHeader = transactions!.data[0];
   const firstTransaction = transactions!.data[1];
   assert.equal(firstTransaction[transactionsHeader.indexOf('Wallet')], 'BCA');
-  assert.equal(firstTransaction[transactionsHeader.indexOf('Canonical_Merchant')], 'Mie Gacoan');
+  assert.equal(transactionsHeader.includes('Canonical_Merchant'), false);
+  assert.equal(firstTransaction[transactionsHeader.indexOf('Canonical_Commodity')], 'food');
   assert.equal(firstTransaction[transactionsHeader.indexOf('Canonical_Subcommodity')], 'breakfast');
 
   const allItemsHeader = allItems!.data[0];

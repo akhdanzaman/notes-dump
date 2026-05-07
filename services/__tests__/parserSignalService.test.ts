@@ -133,7 +133,8 @@ test('canonicalizer can use enriched raw parser signal for auto-apply and review
   assert.equal(payload.meta.paymentMethod, 'cash-wallet');
   assert.equal(payload.meta.subcommodity, 'breakfast');
   assert.equal(payload.meta.canonical.paymentMethod.value, 'cash-wallet');
+  assert.equal(payload.meta.canonical.commodity.value, 'food');
   assert.equal(payload.meta.canonical.subcommodity.value, 'breakfast');
-  assert.equal(payload.meta.canonical.merchant.value, 'Mie Gacoan');
+  assert.equal(payload.meta.canonical.merchant, undefined);
   assert.equal(result[0].canonicalReview?.length, 0);
 });

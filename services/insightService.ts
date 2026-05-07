@@ -4,6 +4,7 @@ import { getFinanceItems } from '../utils/selectors';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 import { generateBehaviorDriftInsights } from '../utils/behaviorDrift';
 import { getCanonicalOrRawItemValue } from '../utils/canonicalization/accessors';
+import { getCommodityCanonicalForAnalytics, getSubcommodityCanonicalForAnalytics } from '../utils/canonicalization/defaults';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -89,10 +90,15 @@ export const generateAIInsights = async (
   const currentTags = getTagBreakdown(currentMonthExpenses);
   const lastTags = getTagBreakdown(lastMonthExpenses);
 
-  const getCanonicalBreakdown = (arr: BrainDumpItem[], field: 'merchant' | 'subcommodity') => {
+  const getCanonicalBreakdown = (arr: BrainDumpItem[], field: 'merchant' | 'commodity' | 'subcommodity') => {
+    const resolveKey = (item: BrainDumpItem) => {
+      if (field === 'commodity') return getCommodityCanonicalForAnalytics(item.meta);
+      if (field === 'subcommodity') return getSubcommodityCanonicalForAnalytics(item.meta);
+      return getCanonicalOrRawItemValue(item, field).trim();
+    };
     const breakdown: Record<string, { total: number; count: number }> = {};
     arr.forEach(item => {
-      const key = getCanonicalOrRawItemValue(item, field).trim();
+      const key = resolveKey(item).trim();
       if (!key) return;
       if (!breakdown[key]) breakdown[key] = { total: 0, count: 0 };
       breakdown[key].total += item.meta.amount || 0;
@@ -197,8 +203,9 @@ export const generateAIInsights = async (
       totalExpense: currentTotalExpense,
       projectedTotalExpense: currentTotalExpense + projectedExpense,
       expenseByTag: currentTags,
-      topCanonicalMerchants: getCanonicalBreakdown(currentMonthExpenses, 'merchant'),
+      topCanonicalCommodities: getCanonicalBreakdown(currentMonthExpenses, 'commodity'),
       topCanonicalSubcommodities: getCanonicalBreakdown(currentMonthExpenses, 'subcommodity'),
+      topMerchantDrilldowns: getCanonicalBreakdown(currentMonthExpenses, 'merchant'),
       completedTasks: completedTasksCurrentMonth,
       dailyAverageTasks: completedTasksCurrentMonth / currentDay,
       skillProgress,
@@ -209,8 +216,9 @@ export const generateAIInsights = async (
       dailyAverageExpense: lastTotalExpense / currentDay,
       totalExpense: lastTotalExpense,
       expenseByTag: lastTags,
-      topCanonicalMerchants: getCanonicalBreakdown(lastMonthExpenses, 'merchant'),
+      topCanonicalCommodities: getCanonicalBreakdown(lastMonthExpenses, 'commodity'),
       topCanonicalSubcommodities: getCanonicalBreakdown(lastMonthExpenses, 'subcommodity'),
+      topMerchantDrilldowns: getCanonicalBreakdown(lastMonthExpenses, 'merchant'),
       completedTasks: completedTasksLastMonth,
       dailyAverageTasks: completedTasksLastMonth / currentDay,
       incompleteTasks: incompleteLastMonth

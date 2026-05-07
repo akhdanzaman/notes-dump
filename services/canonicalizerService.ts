@@ -16,6 +16,8 @@ import {
 import { findBestCanonicalCandidate } from '../utils/canonicalization/ruleMatcher';
 import { shouldAutoApply, shouldSuggestReview } from '../utils/canonicalization/scoring';
 import { consolidateCanonicalRules, incrementCanonicalRuleRejection, mergeLearnedRule } from '../utils/canonicalization/learnedRules';
+import { ensureFinanceCanonicalDefaults } from '../utils/canonicalization/defaults';
+import { enrichFinanceMetaFromText } from './parserSignalService';
 
 export interface CanonicalizerContext {
   existingItems: BrainDumpItem[];
@@ -25,7 +27,8 @@ export interface CanonicalizerContext {
   autoApplyHighConfidence?: boolean;
 }
 
-const CANONICAL_FIELDS: CanonicalField[] = ['merchant', 'paymentMethod', 'subcommodity'];
+const CANONICAL_FIELDS: CanonicalField[] = ['commodity', 'paymentMethod', 'subcommodity'];
+const LEARNABLE_CANONICAL_FIELDS: CanonicalField[] = ['merchant', 'commodity', 'paymentMethod', 'subcommodity'];
 const HISTORICAL_REVIEW_ID_PREFIX = 'canonical-backfill';
 
 export interface HistoricalCanonicalReview {
@@ -184,12 +187,29 @@ export function canonicalizeMeta(
     }
   }
 
+  const metaWithCoverage = ensureFinanceCanonicalDefaults(nextMeta);
+
+  (['commodity', 'subcommodity'] as CanonicalField[]).forEach(field => {
+    if (metaWithCoverage.canonical?.[field] && !nextMeta.canonical?.[field]) {
+      autoApplied.push(field);
+    }
+  });
+
   return {
-    meta: nextMeta,
+    meta: metaWithCoverage,
     suggestions,
     autoApplied,
   };
 }
+
+const enrichMetaWithContext = (result: ParserResultV2, meta: ParsedItemMetaV2, ctx: CanonicalizerContext): ParsedItemMetaV2 => enrichFinanceMetaFromText({
+  rawText: result.targetText || result.content || '',
+  content: result.content || '',
+  itemType: String(result.entityType || '').toUpperCase(),
+  meta,
+  availableWallets: ctx.wallets,
+  availableBudgetRules: ctx.budgetRules,
+});
 
 export function canonicalizeParserResults(
   results: ParserResultV2[],
@@ -200,7 +220,8 @@ export function canonicalizeParserResults(
       const payload = result.payload;
       if (!payload || !("meta" in payload) || !payload.meta) return result;
 
-      const canonicalized = canonicalizeMeta(payload.meta as ParsedItemMetaV2, ctx);
+      const enrichedMeta = enrichMetaWithContext(result, payload.meta as ParsedItemMetaV2, ctx);
+      const canonicalized = canonicalizeMeta(enrichedMeta, ctx);
       const nextResult: ParserResultV2 = {
         ...result,
         payload: {
@@ -226,13 +247,14 @@ export function canonicalizeParserResults(
       if (!payload || !("changes" in payload) || !payload.changes) return result;
 
       const partialMeta = payload.changes as ParsedItemMetaV2;
-      const canonicalized = canonicalizeMeta(partialMeta, ctx);
+      const enrichedMeta = enrichMetaWithContext(result, partialMeta, ctx);
+      const canonicalized = canonicalizeMeta(enrichedMeta, ctx);
       const nextResult: ParserResultV2 = {
         ...result,
         payload: {
           ...payload,
           changes: {
-            ...(payload.changes as ParsedItemMetaV2),
+            ...enrichedMeta,
             canonical: canonicalized.meta.canonical,
           } as ParsedItemMetaV2,
         },
@@ -264,14 +286,20 @@ export function sweepHistoricalCanonicalMeta(
   let reviewSuggestionCount = 0;
 
   const nextItems = items.map((item) => {
-    const canonicalized = canonicalizeMeta(item.meta as ParsedItemMetaV2, ctx);
+    const enrichedMeta = enrichFinanceMetaFromText({
+      rawText: item.content,
+      content: item.content,
+      itemType: item.type,
+      meta: item.meta as ParsedItemMetaV2,
+      availableWallets: ctx.wallets,
+      availableBudgetRules: ctx.budgetRules,
+    });
+    const canonicalized = canonicalizeMeta(enrichedMeta, ctx);
 
     if (canonicalized.suggestions.length > 0) {
       reviews.push(buildHistoricalReview(item, canonicalized.suggestions, canonicalized.meta));
       reviewSuggestionCount += canonicalized.suggestions.length;
     }
-
-    if (canonicalized.autoApplied.length === 0) return item;
 
     const nextCanonical = {
       ...(item.meta.canonical || {}),
@@ -280,7 +308,12 @@ export function sweepHistoricalCanonicalMeta(
 
     const nextMeta = {
       ...item.meta,
-      canonical: nextCanonical,
+      commodity: canonicalized.meta.commodity,
+      subcommodity: canonicalized.meta.subcommodity,
+      paymentMethod: canonicalized.meta.paymentMethod,
+      budgetCategory: canonicalized.meta.budgetCategory,
+      merchant: canonicalized.meta.merchant,
+      ...(Object.keys(nextCanonical).length > 0 || item.meta.canonical ? { canonical: nextCanonical } : {}),
     };
 
     if (JSON.stringify(nextMeta) === JSON.stringify(item.meta)) return item;
@@ -317,7 +350,7 @@ export function learnCanonicalRulesFromReview(params: {
 
     if (!approvedMeta) return;
 
-    for (const field of CANONICAL_FIELDS) {
+    for (const field of LEARNABLE_CANONICAL_FIELDS) {
       const approvedCanonical = approvedMeta.canonical?.[field];
       const originalCanonical = originalMeta?.canonical?.[field];
       const rawValue = approvedCanonical?.rawValue || originalCanonical?.rawValue || approvedMeta[field] || originalMeta?.[field];
