@@ -77,7 +77,7 @@ interface PlanViewProps {
     wallets: Wallet[];
     budgetRules: BudgetRule[];
     handleResetRoutine: (id: string) => void;
-    onAddFunds: (amount: number, walletId: string, date: string, goalId: string, goalName: string) => void;
+    onAddFunds: (amount: number, walletId: string, date: string, goalId: string, goalName: string, toWalletId?: string) => void;
     onCompleteGoal: (goal: BrainDumpItem) => void;
     setActiveTab: (tab: Tab) => void;
 }
@@ -117,7 +117,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const visibleSavings = useLazyItems(savings, { resetKey: `plan-savings-${savings.length}` });
     const visibleInvestments = useLazyItems(investments, { resetKey: `plan-investments-${investments.length}` });
 
-    const [addFundsModal, setAddFundsModal] = useState<{ isOpen: boolean, goalId: string, goalName: string, defaultWallet?: string } | null>(null);
+    const [addFundsModal, setAddFundsModal] = useState<{ isOpen: boolean, goalId: string, goalName: string, defaultWallet?: string, targetType?: 'saving' | 'investment', destinationWalletId?: string } | null>(null);
     const [fundAmount, setFundAmount] = useState('');
     const [fundWallet, setFundWallet] = useState('');
     const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
@@ -199,7 +199,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
     const handleSaveFunds = () => {
         if (!addFundsModal || !fundAmount || !fundWallet) return;
-        onAddFunds(Number(fundAmount), fundWallet, new Date(fundDate).toISOString(), addFundsModal.goalId, addFundsModal.goalName);
+        onAddFunds(Number(fundAmount), fundWallet, new Date(fundDate).toISOString(), addFundsModal.goalId, addFundsModal.goalName, addFundsModal.destinationWalletId);
         setAddFundsModal(null);
         setFundAmount('');
         setFundWallet('');
@@ -298,7 +298,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setAddFundsModal({ isOpen: true, goalId: goal.id, goalName: goal.content, defaultWallet: goal.meta.dedicatedWalletId });
+                                            setAddFundsModal({ isOpen: true, goalId: goal.id, goalName: goal.content, defaultWallet: goal.meta.dedicatedWalletId, targetType: 'saving' });
                                             if (goal.meta.dedicatedWalletId) setFundWallet(goal.meta.dedicatedWalletId);
                                         }}
                                         className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl hover:bg-indigo-500/20 transition-colors"
@@ -426,15 +426,13 @@ const PlanView: React.FC<PlanViewProps> = ({
         const units = parseOptionalNumber(editInvestmentUnits);
         const averagePrice = parseOptionalNumber(editInvestmentAveragePrice);
         const currentPrice = parseOptionalNumber(editInvestmentCurrentPrice);
-        const resolvedAmount = editAmount.trim() !== ''
-            ? Number(editAmount)
-            : (units && averagePrice ? units * averagePrice : investment.meta.amount);
+        const linkedInvestmentWallet = wallets.find(w => w.id === editDedicatedWalletId);
 
         handleUpdateItem(
             investment.id,
             editContent,
             investment.meta.tags || [],
-            resolvedAmount,
+            undefined,
             new Date(editDate).toISOString(),
             investment.meta.paymentMethod,
             investment.meta.budgetCategory,
@@ -453,7 +451,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             undefined,
             undefined,
             investment.meta.savingGoalId,
-            investment.meta.dedicatedWalletId,
+            editDedicatedWalletId || undefined,
             investment.meta.priority,
             investment.meta.start,
             investment.meta.end,
@@ -463,13 +461,13 @@ const PlanView: React.FC<PlanViewProps> = ({
             units,
             averagePrice,
             currentPrice,
-            editInvestmentPlatform.trim() || undefined
+            linkedInvestmentWallet?.name || editInvestmentPlatform.trim() || undefined
         );
         setExpandedGoalId(null);
     };
 
     const renderInvestmentCard = (investment: BrainDumpItem) => {
-        const invested = investment.meta.amount || ((investment.meta.investmentUnits || 0) * (investment.meta.investmentAveragePrice || 0));
+        const invested = investment.meta.savedAmount || 0;
         const currentValue = investment.meta.investmentUnits && investment.meta.investmentCurrentPrice
             ? investment.meta.investmentUnits * investment.meta.investmentCurrentPrice
             : invested;
@@ -484,7 +482,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 layout={!isDragging}
                 transition={{ type: "tween", duration: 0.3 }}
                 key={investment.id}
-                className="bg-surface rounded-[24px] overflow-hidden border border-emerald-500/10"
+                className="bg-surface rounded-[24px] overflow-hidden border border-emerald-500/10 shadow-sm"
             >
                 <div
                     className="p-5 cursor-pointer"
@@ -494,8 +492,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                         } else {
                             setExpandedGoalId(investment.id);
                             setEditContent(investment.content);
-                            setEditAmount(investment.meta.amount?.toString() || '');
                             setEditDate(investment.meta.date ? investment.meta.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+                            setEditDedicatedWalletId(investment.meta.dedicatedWalletId || '');
                             setEditInvestmentAssetType(investment.meta.investmentAssetType || 'other');
                             setEditInvestmentSymbol(investment.meta.investmentSymbol || '');
                             setEditInvestmentUnits(investment.meta.investmentUnits?.toString() || '');
@@ -517,25 +515,40 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <span className="text-sm text-muted font-medium">current</span>
                             </div>
                         </div>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); handleToggleStatus(investment.id); }}
-                            className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
-                            title={investment.status === 'done' ? 'Reactivate investment' : 'Archive investment'}
-                        >
-                            <CheckCircle2 className="w-5 h-5" />
-                        </button>
+                        <div className="flex gap-2">
+                            {investment.status !== 'done' && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAddFundsModal({ isOpen: true, goalId: investment.id, goalName: investment.content, targetType: 'investment', destinationWalletId: investment.meta.dedicatedWalletId });
+                                        setFundWallet('');
+                                    }}
+                                    className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
+                                    title="Add investment capital"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                </button>
+                            )}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleToggleStatus(investment.id); }}
+                                className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
+                                title={investment.status === 'done' ? 'Reactivate investment' : 'Archive investment'}
+                            >
+                                <CheckCircle2 className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
+                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3 border border-emerald-500/5">
                             <div className="font-bold text-muted uppercase tracking-wider text-[9px]">Invested</div>
                             <div className="font-bold text-primary mt-1">{fmt(invested)}</div>
                         </div>
-                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
+                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3 border border-emerald-500/5">
                             <div className="font-bold text-muted uppercase tracking-wider text-[9px]">Units</div>
                             <div className="font-bold text-primary mt-1">{investment.meta.investmentUnits || '-'}</div>
                         </div>
-                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3">
+                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3 border border-emerald-500/5">
                             <div className="font-bold text-muted uppercase tracking-wider text-[9px]">P/L</div>
                             <div className={`font-bold mt-1 ${gain >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{gain >= 0 ? '+' : ''}{fmt(gain)} · {roi.toFixed(1)}%</div>
                         </div>
@@ -554,7 +567,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="border-t border-border bg-black/5 dark:bg-white/10"
+                            className="border-t border-emerald-500/10 bg-surface"
                         >
                             <div className="p-5 space-y-4">
                                 <div>
@@ -576,7 +589,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Invested Capital</label>
-                                        <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                        <div className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary font-bold">{fmt(invested)}</div>
+                                        <p className="text-[10px] text-muted mt-1">From Saving transactions.</p>
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Buy Date</label>
@@ -584,11 +598,28 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
-                                    <input type="number" step="any" value={editInvestmentUnits} onChange={e => setEditInvestmentUnits(e.target.value)} placeholder="Units" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
-                                    <input type="number" value={editInvestmentAveragePrice} onChange={e => setEditInvestmentAveragePrice(e.target.value)} placeholder="Avg buy" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
-                                    <input type="number" value={editInvestmentCurrentPrice} onChange={e => setEditInvestmentCurrentPrice(e.target.value)} placeholder="Current" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    <div>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Units</label>
+                                        <input type="number" step="any" value={editInvestmentUnits} onChange={e => setEditInvestmentUnits(e.target.value)} placeholder="Units" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Avg Buy</label>
+                                        <input type="number" value={editInvestmentAveragePrice} onChange={e => setEditInvestmentAveragePrice(e.target.value)} placeholder="Avg buy" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Current</label>
+                                        <input type="number" value={editInvestmentCurrentPrice} onChange={e => setEditInvestmentCurrentPrice(e.target.value)} placeholder="Current" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                    </div>
                                 </div>
-                                <input type="text" value={editInvestmentPlatform} onChange={e => setEditInvestmentPlatform(e.target.value)} placeholder="Platform / broker / storage" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                                <div>
+                                    <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Investment Wallet / Platform</label>
+                                    <select value={editDedicatedWalletId} onChange={e => setEditDedicatedWalletId(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500 appearance-none">
+                                        <option value="">No linked investment wallet</option>
+                                        {wallets.filter(w => w.type === 'investment').map(w => (
+                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                                 <div className="flex justify-end gap-2 pt-2">
                                     <button onClick={() => handleDelete(investment.id)} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
                                     <button onClick={() => handleSaveInvestmentEdit(investment)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors">Save Investment</button>
@@ -1319,8 +1350,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                         >
                             <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                                 <h3 className="text-xl font-bold text-primary flex items-center gap-2">
-                                    <PiggyBank className="w-5 h-5 text-indigo-500" />
-                                    Add Funds
+                                    {addFundsModal.targetType === 'investment' ? <TrendingUp className="w-5 h-5 text-emerald-500" /> : <PiggyBank className="w-5 h-5 text-indigo-500" />}
+                                    {addFundsModal.targetType === 'investment' ? 'Add Investment Capital' : 'Add Funds'}
                                 </h3>
                                 <button onClick={() => setAddFundsModal(null)} className="p-2 bg-muted/10 hover:bg-muted/20 rounded-full text-muted transition-colors">
                                     <X className="w-5 h-5" />
@@ -1329,6 +1360,9 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                             <div className="p-6 space-y-4">
                                 <p className="text-sm font-medium text-muted">Adding funds to: <span className="text-primary font-bold">{addFundsModal.goalName}</span></p>
+                                {addFundsModal.targetType === 'investment' && (
+                                    <p className="text-xs text-muted -mt-2">This records a Saving transaction and transfers the balance into the linked investment wallet.</p>
+                                )}
 
                                 <div>
                                     <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Amount</label>
@@ -1351,7 +1385,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         disabled={!!addFundsModal.defaultWallet}
                                     >
                                         <option value="">Select Wallet</option>
-                                        {wallets.map(w => (
+                                        {wallets.filter(w => addFundsModal.targetType !== 'investment' || (w.type !== 'investment' && w.id !== addFundsModal.destinationWalletId)).map(w => (
                                             <option key={w.id} value={w.id}>{w.name} ({new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(w.initialBalance)})</option>
                                         ))}
                                     </select>
@@ -1359,6 +1393,15 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         <p className="text-xs text-muted mt-2">Locked to dedicated wallet for this goal.</p>
                                     )}
                                 </div>
+
+                                {addFundsModal.targetType === 'investment' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">To Investment Wallet</label>
+                                        <div className="w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium">
+                                            {wallets.find(w => w.id === addFundsModal.destinationWalletId)?.name || 'No linked investment wallet'}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Date</label>
@@ -1377,8 +1420,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <div className="p-6 border-t border-border shrink-0">
                                 <button
                                     onClick={handleSaveFunds}
-                                    disabled={!fundAmount || !fundWallet}
-                                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    disabled={!fundAmount || !fundWallet || (addFundsModal.targetType === 'investment' && !addFundsModal.destinationWalletId)}
+                                    className={`w-full py-4 text-white rounded-2xl font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${addFundsModal.targetType === 'investment' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}
                                 >
                                     <Plus className="w-5 h-5" />
                                     Add Funds

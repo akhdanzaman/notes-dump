@@ -71,8 +71,16 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
                     else balanceMap.set(destName, destCurrent + amount); // Transfer to Asset -> Increases Asset
                 }
             } else if (isSaving) {
-                // Savings do not reduce asset (wallet balance remains unchanged)
-                // but they will reduce net worth later
+                const destName = resolveWalletBalanceKey(wallets, item.meta.toWallet);
+                if (destName && balanceMap.has(destName)) {
+                    // Investment saving moves money from a source wallet into an investment platform wallet.
+                    if (isCC) balanceMap.set(walletName, current + amount);
+                    else balanceMap.set(walletName, current - amount);
+
+                    const destCurrent = balanceMap.get(destName) || 0;
+                    balanceMap.set(destName, destCurrent + amount);
+                }
+                // Regular saving goals without a destination wallet keep existing behavior: wallet balance remains unchanged.
             } else if (isAchievedGoal) {
                 // Achieved goals spend from the wallet now,
                 // while staying out of expense analytics.

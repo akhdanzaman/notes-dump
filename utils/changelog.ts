@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.53',
+    date: 'May 2026',
+    items: [
+      'Investment invested capital now comes from Saving transactions linked to the investment item, matching saving-goal progress instead of relying on manual card input.',
+      'Investment platforms are tracked as investment wallets, and saving into an investment moves money from the selected source wallet into the linked platform wallet.',
+      'Investment cards now keep their expanded styling intact and show invested capital as read-only transaction-derived data.',
+    ],
+  },
+  {
     version: 'v0.3.52',
     date: 'May 2026',
     items: [

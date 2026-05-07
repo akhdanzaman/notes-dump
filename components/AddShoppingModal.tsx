@@ -112,6 +112,11 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
             return;
         }
 
+        if (category === 'investment' && !investmentPlatform.trim()) {
+            alert('Please enter the investment platform/broker/storage. It will be tracked as an investment wallet.');
+            return;
+        }
+
         const parsedUnits = investmentUnits ? Number(investmentUnits) : undefined;
         const parsedAveragePrice = investmentAveragePrice ? Number(investmentAveragePrice) : undefined;
         const parsedCurrentPrice = investmentCurrentPrice ? Number(investmentCurrentPrice) : undefined;
@@ -123,7 +128,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
             content,
             category,
             quantity.trim() || undefined,
-            resolvedAmount,
+            category === 'investment' ? undefined : resolvedAmount,
             budgetCategory || undefined,
             new Date(date).toISOString(),
             category === 'routine' ? interval : undefined,
@@ -267,9 +272,10 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     />
                                 </div>
                             )}
-                            <div className={category === 'saving' || category === 'investment' ? 'col-span-2' : ''}>
+                            {category !== 'investment' && (
+                            <div className={category === 'saving' ? 'col-span-2' : ''}>
                                 <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">
-                                    {category === 'saving' ? 'Target Amount' : (category === 'investment' ? 'Invested Capital' : 'Est. Cost')}
+                                    {category === 'saving' ? 'Target Amount' : 'Est. Cost'}
                                 </label>
                                 <input
                                     type="number"
@@ -279,6 +285,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
                                 />
                             </div>
+                            )}
                         </div>
 
                         {category === 'saving' && (
@@ -364,7 +371,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-wider">Platform / Broker / Storage</label>
+                                    <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-wider">Investment Wallet / Platform</label>
                                     <input
                                         type="text"
                                         value={investmentPlatform}
@@ -372,7 +379,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                         placeholder="e.g. Bibit, Ajaib, Pegadaian, Bank"
                                         className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-emerald-500 font-medium"
                                     />
-                                    <p className="text-xs text-muted mt-2">Track it like a real position: capital invested, units/grams/lots, average buy, current price, and where it is held.</p>
+                                    <p className="text-xs text-muted mt-2">This platform becomes an investment wallet. Invested capital is added later via Money &gt; Saving transaction, so wallet movement stays accurate.</p>
                                 </div>
                             </div>
                         )}

@@ -592,8 +592,8 @@ const App: React.FC = () => {
   }, [items, activeTab, librarySubTab]);
 
   const savingGoals = useMemo(() => {
-      const { savings } = getShoppingItems(items);
-      return savings;
+      const { savings, investments } = getShoppingItems(items);
+      return [...savings, ...investments];
   }, [items]);
 
   const handleOnboardingComplete = (
@@ -1116,7 +1116,7 @@ const App: React.FC = () => {
         onClose={() => setAddExpenseModalOpen(false)}
         onSave={(amount, description, category, walletId, date, type, toWalletId, savingGoalId, savingGoalName) => {
             if (type === 'saving' && savingGoalId && savingGoalName) {
-                handleAddSavingTransaction(amount, walletId, date, savingGoalId, savingGoalName);
+                handleAddSavingTransaction(amount, walletId, date, savingGoalId, savingGoalName, toWalletId);
             } else {
                 if (walletId) {
                     if (type === 'transfer') {

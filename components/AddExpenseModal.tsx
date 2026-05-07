@@ -29,13 +29,16 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
         if (transactionType === 'transfer' && (!walletId || !toWalletId)) return;
         if (transactionType === 'saving' && !savingGoalId) return;
         if (transactionType !== 'saving' && transactionType !== 'transfer' && !walletId) return;
-        
+
         const goal = savingGoals.find(g => g.id === savingGoalId);
+        const isInvestmentTarget = goal?.meta.shoppingCategory === 'investment';
+        if (transactionType === 'saving' && isInvestmentTarget && (!walletId || !toWalletId)) return;
         const goalName = goal ? goal.content : '';
-        const finalWalletId = transactionType === 'saving' ? (goal?.meta.dedicatedWalletId || walletId) : walletId;
-        const finalDescription = transactionType === 'saving' ? `Saved for: ${goalName}` : description;
-        
-        onSave(parseFloat(amount), finalDescription, category, finalWalletId, date, transactionType, toWalletId, savingGoalId, goalName);
+        const finalWalletId = transactionType === 'saving' && !isInvestmentTarget ? (goal?.meta.dedicatedWalletId || walletId) : walletId;
+        const finalToWalletId = transactionType === 'saving' && isInvestmentTarget ? toWalletId : toWalletId;
+        const finalDescription = transactionType === 'saving' ? (isInvestmentTarget ? `Invested into: ${goalName}` : `Saved for: ${goalName}`) : description;
+
+        onSave(parseFloat(amount), finalDescription, category, finalWalletId, date, transactionType, finalToWalletId, savingGoalId, goalName);
         setAmount('');
         setDescription('');
         setCategory('');
@@ -117,22 +120,42 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                             onChange={e => {
                                                 setSavingGoalId(e.target.value);
                                                 const goal = savingGoals.find(g => g.id === e.target.value);
-                                                if (goal?.meta.dedicatedWalletId) {
+                                                if (goal?.meta.shoppingCategory === 'investment') {
+                                                    setToWalletId(goal.meta.dedicatedWalletId || '');
+                                                    setWalletId('');
+                                                } else if (goal?.meta.dedicatedWalletId) {
                                                     setWalletId(goal.meta.dedicatedWalletId);
+                                                    setToWalletId('');
+                                                } else {
+                                                    setToWalletId('');
                                                 }
                                             }}
                                             className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                         >
-                                            <option value="">Select Goal</option>
+                                            <option value="">Select Goal / Investment</option>
                                             {savingGoals.map(g => (
-                                                <option key={g.id} value={g.id}>{g.content}</option>
+                                                <option key={g.id} value={g.id}>{g.meta.shoppingCategory === 'investment' ? '📈 ' : '🎯 '}{g.content}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Wallet</label>
+                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">{savingGoals.find(g => g.id === savingGoalId)?.meta.shoppingCategory === 'investment' ? 'From Wallet' : 'Wallet'}</label>
                                         {(() => {
                                             const goal = savingGoals.find(g => g.id === savingGoalId);
+                                            if (goal?.meta.shoppingCategory === 'investment') {
+                                                return (
+                                                    <select
+                                                        value={walletId}
+                                                        onChange={e => setWalletId(e.target.value)}
+                                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                    >
+                                                        <option value="">Select Source Wallet</option>
+                                                        {wallets.filter(w => w.id !== goal.meta.dedicatedWalletId && w.type !== 'investment').map(w => (
+                                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                                        ))}
+                                                    </select>
+                                                );
+                                            }
                                             if (goal?.meta.dedicatedWalletId) {
                                                 const wallet = wallets.find(w => w.id === goal.meta.dedicatedWalletId);
                                                 return (
@@ -157,6 +180,16 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                             }
                                         })()}
                                     </div>
+                                    {savingGoals.find(g => g.id === savingGoalId)?.meta.shoppingCategory === 'investment' && (
+                                        <div className="col-span-2">
+                                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">To Investment Wallet</label>
+                                            <div className="w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium flex items-center gap-2">
+                                                <Wallet className="w-4 h-4" />
+                                                {wallets.find(w => w.id === toWalletId)?.name || 'No linked investment wallet'}
+                                            </div>
+                                            <p className="text-[10px] text-muted mt-1">Investment savings are treated as a wallet transfer into the platform, so the source wallet balance decreases and the investment wallet increases.</p>
+                                        </div>
+                                    )}
                                     <div className="col-span-2">
                                         <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Category</label>
                                         <select 
@@ -233,7 +266,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                     <div className="p-6 border-t border-border shrink-0 bg-surface">
                         <button 
                             onClick={handleSave}
-                            disabled={!amount || (transactionType !== 'saving' && !description) || (transactionType !== 'saving' && !walletId) || (transactionType === 'transfer' && !toWalletId) || (transactionType === 'saving' && !savingGoalId)}
+                            disabled={!amount || (transactionType !== 'saving' && !description) || (transactionType !== 'saving' && !walletId) || (transactionType === 'transfer' && !toWalletId) || (transactionType === 'saving' && !savingGoalId) || (transactionType === 'saving' && savingGoals.find(g => g.id === savingGoalId)?.meta.shoppingCategory === 'investment' && (!walletId || !toWalletId))}
                             className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <Check className="w-5 h-5" />

@@ -105,7 +105,7 @@ function isValidShoppingCategory(value: unknown): value is 'urgent' | 'routine' 
 }
 
 function isValidWalletType(value: unknown): value is ParsedWalletType {
-  return typeof value === 'string' && ['cash', 'bank', 'ewallet', 'cc', 'other'].includes(value);
+  return typeof value === 'string' && ['cash', 'bank', 'ewallet', 'cc', 'investment', 'other'].includes(value);
 }
 
 function coerceConfidence(value: unknown): ParserConfidence {
@@ -796,7 +796,7 @@ Multiplicity rules:
 
 6) create_wallet
 - payload.name = wallet name
-- payload.walletType = cash|bank|ewallet|cc|other
+- payload.walletType = cash|bank|ewallet|cc|investment|other
 - payload.initialBalance when present
 
 7) create_theme

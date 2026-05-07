@@ -240,6 +240,40 @@ const migrateAchievedGoalItems = (items: BrainDumpItem[]) => {
     });
 };
 
+const ensureInvestmentWalletsForItems = (items: BrainDumpItem[], wallets: Wallet[] = []) => {
+    let changed = false;
+    const nextWallets = [...wallets];
+    const nextItems = items.map(item => ({ ...item, meta: { ...item.meta } }));
+
+    nextItems.forEach(item => {
+        if (item.type !== ItemType.SHOPPING || item.meta.shoppingCategory !== 'investment') return;
+        if (item.meta.dedicatedWalletId && nextWallets.some(wallet => wallet.id === item.meta.dedicatedWalletId)) return;
+
+        const platformName = item.meta.investmentPlatform?.trim();
+        if (!platformName) return;
+
+        let wallet = nextWallets.find(w => w.name.trim().toLowerCase() === platformName.toLowerCase());
+        if (!wallet) {
+            wallet = {
+                id: uuidv4(),
+                name: platformName,
+                type: 'investment',
+                initialBalance: 0,
+                color: 'bg-emerald-500'
+            };
+            nextWallets.unshift(wallet);
+            changed = true;
+        }
+
+        if (item.meta.dedicatedWalletId !== wallet.id) {
+            item.meta.dedicatedWalletId = wallet.id;
+            changed = true;
+        }
+    });
+
+    return { items: nextItems, wallets: nextWallets, changed };
+};
+
 const convertLegacyResultsToNative = (legacyResults: Partial<BrainDumpItem>[], originalText: string): ParserResultV2[] => {
     return legacyResults.map((partial) => {
         const meta = partial.meta || {};
@@ -636,6 +670,7 @@ export const useBrainDumpData = () => {
             setError(null);
 
             const applyData = (data: DbSchema) => {
+                let walletsToApply = data.wallets || walletsRef.current;
                 if (Array.isArray(data.data)) {
                     const normalizedData = data.data.map(item => {
                         const meta = normalizeDeepWorkTodoMeta({
@@ -659,9 +694,11 @@ export const useBrainDumpData = () => {
                     const migratedData = migrateAchievedGoalItems(normalizedData);
                     const recoveredJournalData = recoverMisclassifiedJournalNotes(migratedData);
 
-                    const checkedData = checkRoutineResets(recoveredJournalData);
+                    const investmentWalletMigration = ensureInvestmentWalletsForItems(recoveredJournalData, data.wallets || walletsRef.current);
+                    const checkedData = checkRoutineResets(investmentWalletMigration.items);
                     const canonicalRulesForSweep = data.canonicalRules || canonicalRulesRef.current;
-                    const walletsForSweep = data.wallets || walletsRef.current;
+                    const walletsForSweep = investmentWalletMigration.wallets;
+                    walletsToApply = walletsForSweep;
                     const budgetRulesForSweep = data.budgetConfig?.rules || budgetConfigRef.current?.rules || [];
                     const canonicalSweep = sweepHistoricalCanonicalMeta(checkedData, {
                         existingItems: checkedData,
@@ -673,8 +710,8 @@ export const useBrainDumpData = () => {
                     replaceHistoricalCanonicalReviews(canonicalSweep.reviews);
                     setItems(canonicalSweep.items);
 
-                    if (JSON.stringify(canonicalSweep.items) !== JSON.stringify(data.data)) {
-                        saveAndSync(canonicalSweep.items, data.budgetConfig, data.customPrompt, data.skills, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
+                    if (investmentWalletMigration.changed || JSON.stringify(canonicalSweep.items) !== JSON.stringify(data.data)) {
+                        saveAndSync(canonicalSweep.items, data.budgetConfig, data.customPrompt, data.skills, walletsForSweep, data.monthlyThemes, data.appSettings, data.canonicalRules);
                     }
                 }
 
@@ -690,7 +727,7 @@ export const useBrainDumpData = () => {
                     saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
                 }
 
-                if (data.wallets) setWallets(data.wallets);
+                if (walletsToApply) setWallets(walletsToApply);
                 if (data.monthlyThemes) setMonthlyThemes(data.monthlyThemes);
                 if (data.appSettings) setAppSettings(data.appSettings);
                 if (data.chatHistory) setChatHistory(data.chatHistory);
@@ -1205,7 +1242,7 @@ export const useBrainDumpData = () => {
                         const walletName = payload?.name || result.content;
                         if (!walletName) break;
 
-                        const walletType = payload?.walletType && ['cash', 'bank', 'ewallet', 'cc'].includes(payload.walletType)
+                        const walletType = payload?.walletType && ['cash', 'bank', 'ewallet', 'cc', 'investment'].includes(payload.walletType)
                             ? payload.walletType as Wallet['type']
                             : 'cash';
 
@@ -2059,6 +2096,28 @@ export const useBrainDumpData = () => {
         investmentCurrentPrice?: number,
         investmentPlatform?: string
     ) => {
+        const normalizedInvestmentPlatform = category === 'investment' ? investmentPlatform?.trim() : undefined;
+        let updatedWallets = walletsRef.current;
+        let investmentWalletId: string | undefined;
+
+        if (category === 'investment' && normalizedInvestmentPlatform) {
+            const existingWallet = walletsRef.current.find(wallet => wallet.name.trim().toLowerCase() === normalizedInvestmentPlatform.toLowerCase());
+            if (existingWallet) {
+                investmentWalletId = existingWallet.id;
+            } else {
+                const newInvestmentWallet: Wallet = {
+                    id: uuidv4(),
+                    name: normalizedInvestmentPlatform,
+                    type: 'investment',
+                    initialBalance: 0,
+                    color: 'bg-emerald-500'
+                };
+                updatedWallets = [newInvestmentWallet, ...walletsRef.current];
+                investmentWalletId = newInvestmentWallet.id;
+                setWallets(updatedWallets);
+            }
+        }
+
         const newItem: BrainDumpItem = {
             id: uuidv4(),
             type: ItemType.SHOPPING,
@@ -2069,7 +2128,7 @@ export const useBrainDumpData = () => {
                 tags: [],
                 shoppingCategory: category,
                 quantity,
-                amount,
+                amount: category === 'investment' ? undefined : amount,
                 budgetCategory,
                 date: date || new Date().toISOString(),
                 isRoutine: category === 'routine',
@@ -2077,7 +2136,7 @@ export const useBrainDumpData = () => {
                 routineDaysOfWeek: category === 'routine' ? routineDaysOfWeek : undefined,
                 routineDaysOfMonth: category === 'routine' ? routineDaysOfMonth : undefined,
                 routineMonthsOfYear: category === 'routine' ? routineMonthsOfYear : undefined,
-                dedicatedWalletId: category === 'saving' ? dedicatedWalletId : undefined,
+                dedicatedWalletId: category === 'saving' ? dedicatedWalletId : (category === 'investment' ? investmentWalletId : undefined),
                 paymentMethod,
                 hideFromCalendar,
                 investmentAssetType: category === 'investment' ? investmentAssetType : undefined,
@@ -2085,20 +2144,20 @@ export const useBrainDumpData = () => {
                 investmentUnits: category === 'investment' ? investmentUnits : undefined,
                 investmentAveragePrice: category === 'investment' ? investmentAveragePrice : undefined,
                 investmentCurrentPrice: category === 'investment' ? investmentCurrentPrice : undefined,
-                investmentPlatform: category === 'investment' ? investmentPlatform : undefined
+                investmentPlatform: category === 'investment' ? normalizedInvestmentPlatform : undefined
             }
         };
 
         const updated = [newItem, ...itemsRef.current];
         setItems(updated);
-        saveAndSync(updated);
+        saveAndSync(updated, undefined, undefined, undefined, updatedWallets);
     };
 
-    const handleAddSavingTransaction = (amount: number, walletId: string, date: string, goalId: string, goalName: string) => {
+    const handleAddSavingTransaction = (amount: number, walletId: string, date: string, goalId: string, goalName: string, toWalletId?: string) => {
         const newFinanceItem: BrainDumpItem = {
             id: uuidv4(),
             type: ItemType.FINANCE,
-            content: `Saved for: ${goalName}`,
+            content: toWalletId ? `Invested into: ${goalName}` : `Saved for: ${goalName}`,
             status: 'done',
             created_at: new Date().toISOString(),
             completed_at: new Date(date).toISOString(),
@@ -2106,6 +2165,7 @@ export const useBrainDumpData = () => {
                 tags: [],
                 amount,
                 paymentMethod: walletId,
+                toWallet: toWalletId,
                 financeType: 'saving',
                 savingGoalId: goalId
             }

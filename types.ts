@@ -73,7 +73,7 @@ export interface Skill {
 export interface Wallet {
   id: string;
   name: string;
-  type: 'cash' | 'bank' | 'ewallet' | 'cc';
+  type: 'cash' | 'bank' | 'ewallet' | 'cc' | 'investment';
   initialBalance: number;
   color: string;
 }
@@ -229,7 +229,7 @@ export type ParsedItemType =
   | 'JOURNAL'
   | 'SKILL_LOG';
 
-export type ParsedWalletType = 'cash' | 'bank' | 'ewallet' | 'cc' | 'other';
+export type ParsedWalletType = 'cash' | 'bank' | 'ewallet' | 'cc' | 'investment' | 'other';
 
 export type ParserAction =
   | 'create_item'

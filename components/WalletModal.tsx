@@ -81,6 +81,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                         <option value="cash">Cash</option>
                         <option value="bank">Bank</option>
                         <option value="ewallet">E-Wallet</option>
+                        <option value="investment">Investment</option>
                         <option value="cc">Credit Card</option>
                     </select>
                 </div>
@@ -111,7 +112,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                     onChange={(e) => setInitialBalance(e.target.value)}
                 />
                 <p className="text-[10px] text-muted mt-1">
-                    {type === 'cc' ? 'Current outstanding debt amount (how much you owe).' : 'Starting amount before any recorded transactions.'}
+                    {type === 'cc' ? 'Current outstanding debt amount (how much you owe).' : type === 'investment' ? 'Starting portfolio/platform balance before any recorded investment transactions.' : 'Starting amount before any recorded transactions.'}
                 </p>
             </div>
         </div>

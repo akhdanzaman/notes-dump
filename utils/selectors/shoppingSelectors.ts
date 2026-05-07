@@ -19,13 +19,15 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
     
     const urgent = visibleItems.filter(i => i.meta?.shoppingCategory === 'urgent');
     const routine = visibleItems.filter(i => i.meta?.shoppingCategory === 'routine');
-    const savings = visibleItems.filter(i => i.meta?.shoppingCategory === 'saving').map(goal => {
+    const withSavedAmount = (target: BrainDumpItem) => {
         const savedAmount = items
-            .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId === goal.id)
+            .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId === target.id)
             .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
-        return { ...goal, meta: { ...goal.meta, savedAmount } };
-    });
-    const investments = visibleItems.filter(i => i.meta?.shoppingCategory === 'investment');
+        return { ...target, meta: { ...target.meta, savedAmount } };
+    };
+
+    const savings = visibleItems.filter(i => i.meta?.shoppingCategory === 'saving').map(withSavedAmount);
+    const investments = visibleItems.filter(i => i.meta?.shoppingCategory === 'investment').map(withSavedAmount);
     const normal = visibleItems.filter(i => !i.meta?.shoppingCategory || i.meta.shoppingCategory === 'not_urgent');
 
     const sortFn = (a: BrainDumpItem, b: BrainDumpItem) => {

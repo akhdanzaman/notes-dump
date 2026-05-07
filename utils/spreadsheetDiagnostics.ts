@@ -339,6 +339,7 @@ const buildWalletMovementLine = (todayItems: BrainDumpItem[], wallets: Wallet[])
       if (item.meta.toWallet) addMovement(item.meta.toWallet, amount);
     } else if (item.meta.financeType === 'saving') {
       addMovement(walletKey, -amount);
+      if (item.meta.toWallet) addMovement(item.meta.toWallet, amount);
     } else if (item.meta.financeType !== ACHIEVED_GOAL_FINANCE_TYPE) {
       addMovement(walletKey, -amount);
     }
