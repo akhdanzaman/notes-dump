@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.65',
+    date: 'May 2026',
+    items: [
+      'Money header now adds breathing room below the net worth and date selector row so the stats cards below do not feel cramped.',
+      'The desktop date selector now uses the same 25% header width as the Used stat card, with net worth taking the remaining 75%.',
+    ],
+  },
+  {
     version: 'v0.3.64',
     date: 'May 2026',
     items: [

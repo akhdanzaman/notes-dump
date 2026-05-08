@@ -261,8 +261,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     </div>
 
                     <div className="lg:space-y-6" data-money-header-grid="true">
-                        <div className="mb-5 flex items-start justify-between gap-4 lg:mb-0 lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_18rem]">
-                            <div className="min-w-0 lg:pt-1">
+                        <div className="mb-6 flex items-start justify-between gap-4 pb-2 lg:mb-0 lg:grid lg:grid-cols-8 lg:items-start lg:gap-4 lg:pb-3 xl:gap-5">
+                            <div className="min-w-0 lg:col-span-6 lg:pt-1">
                                 <div className="text-sm font-bold opacity-60 uppercase tracking-wider">Total Net Worth</div>
                                 <div className="text-xs font-medium opacity-50">Assets, debt, and savings across wallets</div>
                                 <div className="mt-2 flex min-w-0 items-center gap-3 lg:mt-3">
@@ -274,7 +274,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             </div>
                             <div 
                                 data-swipe-date="money-month"
-                                className="shrink-0 rounded-[20px] bg-black/5 px-2 py-2 touch-pan-y sm:px-3 lg:w-full lg:rounded-[24px] lg:px-4 lg:py-3"
+                                className="shrink-0 rounded-[20px] bg-black/5 px-2 py-2 touch-pan-y sm:px-3 lg:col-span-2 lg:w-full lg:rounded-[24px] lg:px-4 lg:py-3"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
                                 onTouchMove={dateSwipeHandlers.onTouchMove}
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
