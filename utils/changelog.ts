@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.68',
+    date: 'May 2026',
+    items: [
+      'Money > Budget Spend Anatomy category progress bars now reveal a floating hover card for each colored commodity segment, including amount, category share, transaction count, and top subcategories.',
+    ],
+  },
+  {
     version: 'v0.3.67',
     date: 'May 2026',
     items: [

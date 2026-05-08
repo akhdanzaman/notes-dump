@@ -9,7 +9,7 @@ import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
 import { contentSurface } from '../layout/contentSurface';
-import { getBudgetCategoryAnalytics, getBudgetTrendAnalytics, getWeekBounds, type BudgetAnalyticsViewMode } from '../../utils/budgetAnalytics';
+import { getBudgetCategoryAnalytics, getBudgetTrendAnalytics, getWeekBounds, type BudgetAnalyticsViewMode, type BudgetCommodityBreakdown } from '../../utils/budgetAnalytics';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -107,6 +107,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const [hoveredTrendIndex, setHoveredTrendIndex] = useState<number | null>(null);
+    const [hoveredAnatomySegment, setHoveredAnatomySegment] = useState<{ categoryId: string; commodityName: string } | null>(null);
 
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -228,6 +229,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         }
         return cards.slice(0, 3);
     }, [budgetConfig.rules, budgetMap, effectiveIncome, fmt, plannedBudgetMap, projectedExpense, topSpendBreakdowns.commodities]);
+    const getAnatomySegmentLeft = (commodities: BudgetCommodityBreakdown[], index: number) => {
+        const previousWidth = commodities.slice(0, index).reduce((sum, commodity) => sum + commodity.percentage, 0);
+        const center = previousWidth + ((commodities[index]?.percentage || 0) / 2);
+        return Math.min(88, Math.max(12, center));
+    };
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -920,15 +926,69 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                             </div>
                                                             <span className="shrink-0 font-semibold text-muted">{showBalance ? fmt(category.total) : '•••'}</span>
                                                         </div>
-                                                        <div className="flex h-3 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                                                            {category.commodities.map((commodity, index) => (
-                                                                <div
-                                                                    key={`${category.categoryId}-${commodity.name}`}
-                                                                    className={`${index % 2 === 0 ? (category.color || 'bg-gray-500') : 'bg-amber-500'} ${index > 1 ? 'opacity-50' : index === 1 ? 'opacity-70' : ''}`}
-                                                                    style={{ width: `${Math.max(commodity.percentage, 3)}%` }}
-                                                                    title={`${commodity.name}: ${commodity.percentage.toFixed(1)}%`}
-                                                                />
-                                                            ))}
+                                                        <div className="relative">
+                                                            {(() => {
+                                                                const hoveredCommodityIndex = category.commodities.findIndex(commodity => hoveredAnatomySegment?.categoryId === category.categoryId && hoveredAnatomySegment.commodityName === commodity.name);
+                                                                const hoveredCommodity = hoveredCommodityIndex >= 0 ? category.commodities[hoveredCommodityIndex] : undefined;
+                                                                return hoveredCommodity ? (
+                                                                    <div
+                                                                        className="pointer-events-none absolute -top-3 z-20 w-64 -translate-x-1/2 -translate-y-full rounded-2xl border border-border bg-surface/95 p-3 text-xs shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30"
+                                                                        style={{ left: `${getAnatomySegmentLeft(category.commodities, hoveredCommodityIndex)}%` }}
+                                                                    >
+                                                                        <div className="mb-2 flex items-start justify-between gap-3">
+                                                                            <div className="min-w-0">
+                                                                                <div className="truncate font-bold capitalize text-primary">{hoveredCommodity.name}</div>
+                                                                                <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{category.categoryName}</div>
+                                                                            </div>
+                                                                            <div className="shrink-0 text-right">
+                                                                                <div className="font-bold text-primary">{hoveredCommodity.percentage.toFixed(1)}%</div>
+                                                                                <div className="font-semibold text-muted">{showBalance ? fmt(hoveredCommodity.total) : '••••'}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 gap-2 border-t border-border pt-2 text-[11px]">
+                                                                            <div>
+                                                                                <div className="font-bold uppercase tracking-[0.12em] text-muted">Count</div>
+                                                                                <div className="mt-0.5 font-semibold text-primary">{hoveredCommodity.count} tx</div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="font-bold uppercase tracking-[0.12em] text-muted">Category share</div>
+                                                                                <div className="mt-0.5 font-semibold text-primary">{hoveredCommodity.percentage.toFixed(0)}%</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        {hoveredCommodity.subcommodities.length > 0 && (
+                                                                            <div className="mt-2 border-t border-border pt-2">
+                                                                                <div className="mb-1 font-bold uppercase tracking-[0.14em] text-muted">Subcategories</div>
+                                                                                <div className="space-y-1">
+                                                                                    {hoveredCommodity.subcommodities.slice(0, 3).map(sub => (
+                                                                                        <div key={`${category.categoryId}-${hoveredCommodity.name}-${sub.name}`} className="flex items-center justify-between gap-2">
+                                                                                            <span className="truncate text-muted capitalize">{sub.name}</span>
+                                                                                            <span className="shrink-0 font-bold text-primary">{showBalance ? fmt(sub.total) : '••••'}</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ) : null;
+                                                            })()}
+                                                            <div className="flex h-3 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                                                                {category.commodities.map((commodity, index) => {
+                                                                    const isHovered = hoveredAnatomySegment?.categoryId === category.categoryId && hoveredAnatomySegment.commodityName === commodity.name;
+                                                                    return (
+                                                                        <button
+                                                                            key={`${category.categoryId}-${commodity.name}`}
+                                                                            type="button"
+                                                                            onMouseEnter={() => setHoveredAnatomySegment({ categoryId: category.categoryId, commodityName: commodity.name })}
+                                                                            onMouseLeave={() => setHoveredAnatomySegment(null)}
+                                                                            onFocus={() => setHoveredAnatomySegment({ categoryId: category.categoryId, commodityName: commodity.name })}
+                                                                            onBlur={() => setHoveredAnatomySegment(null)}
+                                                                            className={`${index % 2 === 0 ? (category.color || 'bg-gray-500') : 'bg-amber-500'} ${index > 1 ? 'opacity-50' : index === 1 ? 'opacity-70' : ''} h-full cursor-help transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isHovered ? 'brightness-110 ring-1 ring-white/80' : ''}`}
+                                                                            style={{ width: `${Math.max(commodity.percentage, 3)}%` }}
+                                                                            aria-label={`${commodity.name}: ${commodity.percentage.toFixed(1)}% of ${category.categoryName}`}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         </div>
                                                         <div className="grid gap-2 sm:grid-cols-2">
                                                             {category.commodities.slice(0, 2).map(commodity => {
