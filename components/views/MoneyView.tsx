@@ -122,8 +122,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
     const {
         list, totalIncome, totalExpense, projectedExpense,
-        budgetMap, plannedBudgetMap, uncategorized, projectedUncategorized,
-        transactionIdentificationSummary
+        budgetMap, plannedBudgetMap, uncategorized, projectedUncategorized
     } = getFinanceItems(
         items, financeDate, budgetConfig,
         filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
@@ -279,15 +278,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         if (topSpendBreakdowns.commodities[0]) {
             cards.push({ title: `${topSpendBreakdowns.commodities[0].name} is the biggest spend`, detail: `${topSpendBreakdowns.commodities[0].percentage.toFixed(0)}% of expenses in this period.`, tone: 'indigo' });
         }
-        const topIdentityGap = transactionIdentificationSummary.qualityFlags[0];
-        if (topIdentityGap) {
-            cards.push({ title: `${topIdentityGap.count} transaction identity gaps`, detail: `${topIdentityGap.flag.replace(/_/g, ' ')} affects ${fmt(topIdentityGap.affectedAmount)}.`, tone: 'amber' });
-        }
         if (projectedExpense > 0) {
             cards.push({ title: 'Planned is included', detail: `${fmt(projectedExpense)} planned spend is reflected in amber progress.`, tone: 'emerald' });
         }
         return cards.slice(0, 3);
-    }, [budgetConfig.rules, budgetMap, effectiveIncome, fmt, plannedBudgetMap, projectedExpense, topSpendBreakdowns.commodities, transactionIdentificationSummary.qualityFlags]);
+    }, [budgetConfig.rules, budgetMap, effectiveIncome, fmt, plannedBudgetMap, projectedExpense, topSpendBreakdowns.commodities]);
     const getAnatomySegmentLeft = (commodities: BudgetCommodityBreakdown[], index: number) => {
         const previousWidth = commodities.slice(0, index).reduce((sum, commodity) => sum + commodity.percentage, 0);
         const center = previousWidth + ((commodities[index]?.percentage || 0) / 2);

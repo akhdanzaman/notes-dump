@@ -5,7 +5,6 @@ import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAU
 import { generateBehaviorDriftInsights } from '../utils/behaviorDrift';
 import { getCanonicalOrRawItemValue } from '../utils/canonicalization/accessors';
 import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from '../utils/canonicalization/transactionInference';
-import { identifyTransactions, summarizeTransactionIdentifications } from '../utils/transactionIdentification';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -66,8 +65,6 @@ export const generateAIInsights = async (
 
   const currentMonthExpenses = getMonthExpenses(currentMonth, currentYear, currentDay);
   const lastMonthExpenses = getMonthExpenses(lastMonth, lastYear, currentDay);
-  const currentTransactionIdentity = summarizeTransactionIdentifications(identifyTransactions(currentMonthExpenses, { wallets, budgetConfig }));
-  const lastTransactionIdentity = summarizeTransactionIdentifications(identifyTransactions(lastMonthExpenses, { wallets, budgetConfig }));
 
   const sumAmount = (arr: BrainDumpItem[]) => arr.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
   const currentTotalExpense = sumAmount(currentMonthExpenses);
@@ -209,7 +206,6 @@ export const generateAIInsights = async (
       topCanonicalCommodities: getCanonicalBreakdown(currentMonthExpenses, 'commodity'),
       topCanonicalSubcommodities: getCanonicalBreakdown(currentMonthExpenses, 'subcommodity'),
       topMerchantDrilldowns: getCanonicalBreakdown(currentMonthExpenses, 'merchant'),
-      transactionIdentity: currentTransactionIdentity,
       completedTasks: completedTasksCurrentMonth,
       dailyAverageTasks: completedTasksCurrentMonth / currentDay,
       skillProgress,
@@ -223,7 +219,6 @@ export const generateAIInsights = async (
       topCanonicalCommodities: getCanonicalBreakdown(lastMonthExpenses, 'commodity'),
       topCanonicalSubcommodities: getCanonicalBreakdown(lastMonthExpenses, 'subcommodity'),
       topMerchantDrilldowns: getCanonicalBreakdown(lastMonthExpenses, 'merchant'),
-      transactionIdentity: lastTransactionIdentity,
       completedTasks: completedTasksLastMonth,
       dailyAverageTasks: completedTasksLastMonth / currentDay,
       incompleteTasks: incompleteLastMonth

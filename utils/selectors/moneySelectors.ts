@@ -1,13 +1,24 @@
 import { BrainDumpItem, ItemType, Wallet, BudgetConfig, SortOrder } from '../../types';
-import { getCanonicalOrRawItemValue, itemMatchesCanonicalSearch } from '../canonicalization/accessors';
+import { getCanonicalMetaValue, getCanonicalOrRawItemValue, getRawMetaValue, itemMatchesCanonicalSearch } from '../canonicalization/accessors';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from '../financeTypeUtils';
 import { getShoppingDueDate, getShoppingTransactionDate } from '../shoppingDateUtils';
 import { BudgetAnalyticsViewMode, getWeekBounds } from '../budgetAnalytics';
 import { getInvestmentMetrics } from '../investmentMetrics';
-import { identifyTransaction, summarizeTransactionIdentifications, resolveTransactionWalletKey } from '../transactionIdentification';
 
 const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
-    return resolveTransactionWalletKey(wallets, value);
+    const normalized = value?.toLowerCase().trim();
+    if (!normalized) return '';
+    const wallet = wallets.find(w => w.id.toLowerCase() === normalized || w.name.toLowerCase() === normalized);
+    return wallet ? wallet.name.toLowerCase() : normalized;
+};
+
+const resolveItemWalletBalanceKey = (wallets: Wallet[], item: BrainDumpItem) => {
+    const canonicalPaymentMethod = getCanonicalMetaValue(item.meta, 'paymentMethod');
+    const canonicalKey = resolveWalletBalanceKey(wallets, canonicalPaymentMethod);
+    if (canonicalKey && wallets.some(w => w.name.toLowerCase() === canonicalKey)) return canonicalKey;
+
+    const rawPaymentMethod = getRawMetaValue(item.meta, 'paymentMethod');
+    return resolveWalletBalanceKey(wallets, rawPaymentMethod);
 };
 
 export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
@@ -16,19 +27,73 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
 
     wallets.forEach(w => balanceMap.set(w.name.toLowerCase(), w.initialBalance));
 
-    // Go through ALL finished items that involve money. The deep transaction
-    // identifier owns wallet effect semantics so balances and analytics do not
-    // drift into separate definitions of “transaction”.
+    // Go through ALL finished items that involve money
     items.forEach(item => {
-        const identity = identifyTransaction(item, { wallets });
-        identity.walletEffects.forEach(effect => {
-            if (!balanceMap.has(effect.walletKey)) return;
-            const current = balanceMap.get(effect.walletKey) || 0;
-            if (effect.direction === 'increase') balanceMap.set(effect.walletKey, current + effect.amount);
-            if (effect.direction === 'decrease') balanceMap.set(effect.walletKey, current - effect.amount);
-            if (effect.direction === 'debt_increase') balanceMap.set(effect.walletKey, current + effect.amount);
-            if (effect.direction === 'debt_decrease') balanceMap.set(effect.walletKey, Math.max(0, current - effect.amount));
-        });
+        // Include done FINANCE items, and done SHOPPING/TODO items that have an amount
+        const isFinance = item.type === ItemType.FINANCE;
+        const isImplicitExpense = (item.type === ItemType.SHOPPING || item.type === ItemType.TODO) && item.status === 'done';
+
+        if (!isFinance && !isImplicitExpense) return;
+        if (isFinance && item.status !== 'done') return;
+        if (!item.meta.amount) return;
+
+        // Exclude saving goals and routine shopping items from implicit expenses (routines generate separate finance items)
+        if (isImplicitExpense && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment' || item.meta.shoppingCategory === 'routine')) return;
+
+        const amount = item.meta.amount;
+        const walletName = resolveItemWalletBalanceKey(wallets, item); // Source Wallet
+
+        if (walletName && balanceMap.has(walletName)) {
+            const current = balanceMap.get(walletName) || 0;
+            const wallet = wallets.find(w => w.name.toLowerCase() === walletName);
+            const isCC = wallet?.type === 'cc';
+
+            const isIncome = isFinance && item.meta.financeType === 'income';
+            const isTransfer = isFinance && item.meta.financeType === 'transfer';
+            const isSaving = isFinance && item.meta.financeType === 'saving';
+            const isAchievedGoal = isFinance && item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE;
+
+            if (isIncome) {
+                 // Income adds to Asset. If CC, it reduces debt (by subtracting from the 'positive' debt balance).
+                 if (isCC) balanceMap.set(walletName, Math.max(0, current - amount));
+                 else balanceMap.set(walletName, current + amount);
+            } else if (isTransfer) {
+                // Source of Transfer
+                if (isCC) balanceMap.set(walletName, current + amount); // Cash Advance from CC -> Increases Debt
+                else balanceMap.set(walletName, current - amount); // Transfer from Asset -> Decreases Asset
+
+                // Destination of Transfer
+                const destName = resolveWalletBalanceKey(wallets, item.meta.toWallet);
+                if (destName && balanceMap.has(destName)) {
+                    const destCurrent = balanceMap.get(destName) || 0;
+                    const destWallet = wallets.find(w => w.name.toLowerCase() === destName);
+                    const isDestCC = destWallet?.type === 'cc';
+
+                    if (isDestCC) balanceMap.set(destName, Math.max(0, destCurrent - amount)); // Paying CC bill -> Decreases Debt
+                    else balanceMap.set(destName, destCurrent + amount); // Transfer to Asset -> Increases Asset
+                }
+            } else if (isSaving) {
+                const destName = resolveWalletBalanceKey(wallets, item.meta.toWallet);
+                if (destName && balanceMap.has(destName)) {
+                    // Investment saving moves money from a source wallet into an investment platform wallet.
+                    if (isCC) balanceMap.set(walletName, current + amount);
+                    else balanceMap.set(walletName, current - amount);
+
+                    const destCurrent = balanceMap.get(destName) || 0;
+                    balanceMap.set(destName, destCurrent + amount);
+                }
+                // Regular saving goals without a destination wallet keep existing behavior: wallet balance remains unchanged.
+            } else if (isAchievedGoal) {
+                // Achieved goals spend from the wallet now,
+                // while staying out of expense analytics.
+                if (isCC) balanceMap.set(walletName, current + amount);
+                else balanceMap.set(walletName, current - amount);
+            } else {
+                // Expense (Finance expense or implicit expense from Shopping/Todo)
+                if (isCC) balanceMap.set(walletName, current + amount); // Spending on CC -> Increases Debt
+                else balanceMap.set(walletName, current - amount); // Spending from Asset -> Decreases Asset
+            }
+        }
     });
 
     items
@@ -497,10 +562,6 @@ export const getFinanceItems = (
         }
     });
 
-    const transactionIdentificationSummary = summarizeTransactionIdentifications(
-        baseTransactions.map(item => identifyTransaction(item, { wallets, budgetConfig }))
-    );
-
     return {
         list: allTransactions,
         totalIncome,
@@ -510,7 +571,6 @@ export const getFinanceItems = (
         budgetMap,
         plannedBudgetMap,
         uncategorized,
-        projectedUncategorized,
-        transactionIdentificationSummary
+        projectedUncategorized
     };
 };
