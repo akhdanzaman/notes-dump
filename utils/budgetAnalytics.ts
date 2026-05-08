@@ -1,8 +1,6 @@
 import { BrainDumpItem, BudgetConfig, ItemType } from '../types';
-import { getCanonicalMetaValue } from './canonicalization/accessors';
-import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from './canonicalization/transactionInference';
-import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 import { getShoppingTransactionDate } from './shoppingDateUtils';
+import { identifyTransaction } from './transactionIdentification';
 
 export interface BudgetSubcommodityBreakdown {
   name: string;
@@ -77,21 +75,7 @@ const isInPeriod = (item: BrainDumpItem, financeDate: Date, viewMode: BudgetAnal
 };
 
 const isExpenseLike = (item: BrainDumpItem) => {
-  if ((item.meta.amount || 0) <= 0) return false;
-  if (item.type === ItemType.FINANCE) {
-    if (item.status !== 'done') return false;
-    const financeType = item.meta.financeType || 'expense';
-    return financeType !== 'income'
-      && financeType !== 'transfer'
-      && financeType !== 'saving'
-      && financeType !== ACHIEVED_GOAL_FINANCE_TYPE;
-  }
-
-  return (item.type === ItemType.SHOPPING || item.type === ItemType.TODO)
-    && item.status === 'done'
-    && item.meta.shoppingCategory !== 'saving'
-    && item.meta.shoppingCategory !== 'investment'
-    && item.meta.shoppingCategory !== 'routine';
+  return identifyTransaction(item).analytics.countsAsSpendAnatomy;
 };
 
 const increment = (map: Map<string, { total: number; count: number }>, key: string, amount: number) => {
@@ -116,9 +100,7 @@ const getExpenseDate = (item: BrainDumpItem): Date | null => {
 };
 
 const isIncomeItem = (item: BrainDumpItem) => item.type === ItemType.FINANCE
-  && item.status === 'done'
-  && item.meta.financeType === 'income'
-  && (item.meta.amount || 0) > 0;
+  && identifyTransaction(item).analytics.countsAsIncome;
 
 const resolveBudgetCategoryLabel = (item: BrainDumpItem, budgetConfig?: BudgetConfig) => {
   const raw = item.meta.budgetCategory;
@@ -289,6 +271,7 @@ export const getBudgetCategoryAnalytics = (
     .forEach(item => {
       const amount = item.meta.amount || 0;
       const category = resolveCategory(item.meta.budgetCategory);
+      const identity = identifyTransaction(item, { budgetConfig });
       const categoryBucket = categoryMap.get(category.id) || {
         categoryId: category.id,
         categoryName: category.name,
@@ -297,9 +280,9 @@ export const getBudgetCategoryAnalytics = (
         commodities: new Map(),
       };
 
-      const commodity = getCommodityForItemAnalytics(item);
-      const subcommodity = getSubcommodityForItemAnalytics(item);
-      const merchant = getCanonicalMetaValue(item.meta, 'merchant') || item.meta.merchant || '';
+      const commodity = identity.commodity;
+      const subcommodity = identity.subcommodity;
+      const merchant = identity.merchant || '';
       const commodityBucket = categoryBucket.commodities.get(commodity) || {
         total: 0,
         count: 0,
@@ -317,7 +300,7 @@ export const getBudgetCategoryAnalytics = (
         id: item.id,
         content: item.content,
         amount,
-        date: getExpenseDate(item)?.toISOString(),
+        date: identity.dateIso || getExpenseDate(item)?.toISOString(),
         categoryName: category.name,
         subcommodity,
       });

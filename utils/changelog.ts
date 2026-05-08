@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.72',
+    date: 'May 2026',
+    items: [
+      'Added deep transaction identification so each money item has one shared identity for wallet effects, budget actuals/planned spend, spend anatomy eligibility, and quality gaps.',
+      'Money analytics and AI insights now reuse the shared transaction identity summary, including commodity/category totals and weak identity flags for transactions that need cleanup.',
+    ],
+  },
+  {
     version: 'v0.3.71',
     date: 'May 2026',
     items: [
