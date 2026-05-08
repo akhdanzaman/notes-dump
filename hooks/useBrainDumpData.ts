@@ -1902,7 +1902,9 @@ export const useBrainDumpData = () => {
         newInvestmentUnits?: number,
         newInvestmentAveragePrice?: number,
         newInvestmentCurrentPrice?: number,
-        newInvestmentPlatform?: string
+        newInvestmentPlatform?: string,
+        newCommodity?: string,
+        newSubcommodity?: string
     ) => {
         const updatedItems = itemsRef.current.map(item => {
             if (item.id !== id) return item;
@@ -1958,6 +1960,8 @@ export const useBrainDumpData = () => {
                 hideFromCalendar: newHideFromCalendar !== undefined ? newHideFromCalendar : item.meta.hideFromCalendar,
                 paymentMethod: newPaymentMethod,
                 budgetCategory: newBudgetCategory,
+                commodity: newCommodity !== undefined ? (newCommodity || undefined) : item.meta.commodity,
+                subcommodity: newSubcommodity !== undefined ? (newSubcommodity || undefined) : item.meta.subcommodity,
                 durationMinutes: newDuration,
                 skillId: newSkillId,
                 toWallet: newToWallet,

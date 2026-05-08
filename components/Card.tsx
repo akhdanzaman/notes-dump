@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority } from '../types';
+import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType } from '../types';
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
@@ -116,7 +116,15 @@ interface CardProps {
     newPriority?: Priority,
     newStart?: string,
     newEnd?: string,
-    newHideFromCalendar?: boolean
+    newHideFromCalendar?: boolean,
+    newInvestmentAssetType?: InvestmentAssetType,
+    newInvestmentSymbol?: string,
+    newInvestmentUnits?: number,
+    newInvestmentAveragePrice?: number,
+    newInvestmentCurrentPrice?: number,
+    newInvestmentPlatform?: string,
+    newCommodity?: string,
+    newSubcommodity?: string
   ) => void;
   onResetRoutine?: (id: string) => void;
   onAcceptDeepWorkPlan?: (id: string) => void;
@@ -143,6 +151,7 @@ interface CardProps {
   wallets?: Wallet[];
   budgetRules?: BudgetRule[];
   savingGoals?: BrainDumpItem[];
+  commodityOptions?: { name: string; subcommodities: string[] }[];
 }
 
 const Card: React.FC<CardProps> = ({ 
@@ -172,7 +181,8 @@ const Card: React.FC<CardProps> = ({
     skills = [],
     wallets = [],
     budgetRules = [],
-    savingGoals = []
+    savingGoals = [],
+    commodityOptions = []
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [showFullText, setShowFullText] = useState(false);
@@ -192,6 +202,8 @@ const Card: React.FC<CardProps> = ({
   const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
   const [editToWallet, setEditToWallet] = useState(meta.toWallet || '');
   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
+  const [editCommodity, setEditCommodity] = useState(meta.commodity || '');
+  const [editSubcommodity, setEditSubcommodity] = useState(meta.subcommodity || '');
   const [editDuration, setEditDuration] = useState<string>(meta.durationMinutes ? meta.durationMinutes.toString() : '');
   const [editSkillId, setEditSkillId] = useState(meta.skillId || '');
   const [editSavingGoalId, setEditSavingGoalId] = useState(meta.savingGoalId || '');
@@ -248,6 +260,8 @@ const Card: React.FC<CardProps> = ({
     setEditPaymentMethod(getWalletValue(meta.paymentMethod) || '');
     setEditToWallet(getWalletValue(meta.toWallet) || '');
     setEditBudgetCategory(meta.budgetCategory || '');
+    setEditCommodity(meta.commodity || '');
+    setEditSubcommodity(meta.subcommodity || '');
     setEditDuration(meta.durationMinutes ? meta.durationMinutes.toString() : '');
     setEditSkillId(meta.skillId || '');
     setEditSavingGoalId(meta.savingGoalId || '');
@@ -324,6 +338,8 @@ const Card: React.FC<CardProps> = ({
       if (editEnd) finalEnd = new Date(editEnd).toISOString();
 
       const finalBudgetCategory = editBudgetCategory === '' ? undefined : editBudgetCategory;
+      const finalCommodity = showCommodityFields ? editCommodity.trim() : undefined;
+      const finalSubcommodity = showCommodityFields ? editSubcommodity.trim() : undefined;
       const finalSkillId = editSkillId === '' ? undefined : editSkillId;
       const finalToWallet = editFinanceType === 'transfer' && editToWallet ? editToWallet : undefined;
       const finalSavingGoalId = (editFinanceType === 'saving' || editFinanceType === ACHIEVED_GOAL_FINANCE_TYPE) && editSavingGoalId ? editSavingGoalId : undefined;
@@ -358,7 +374,15 @@ const Card: React.FC<CardProps> = ({
           editPriority,
           finalStart,
           finalEnd,
-          editHideFromCalendar
+          editHideFromCalendar,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          finalCommodity,
+          finalSubcommodity
       );
       
       if (enableCollapse) {
@@ -526,6 +550,12 @@ const Card: React.FC<CardProps> = ({
     ));
   };
 
+  const sortedCommodityOptions = [...commodityOptions].sort((a, b) => a.name.localeCompare(b.name));
+  const selectedCommodityOption = sortedCommodityOptions.find(option => option.name.toLowerCase() === editCommodity.trim().toLowerCase());
+  const subcommodityOptions = selectedCommodityOption
+      ? selectedCommodityOption.subcommodities
+      : Array.from(new Set(sortedCommodityOptions.flatMap(option => option.subcommodities))).sort((a, b) => a.localeCompare(b));
+
   // Determine if we should show the date next to the icon (For Notes/Journals/SkillLogs)
   const showDateInHeader = isNote && displayDate && isCollapsed;
 
@@ -538,6 +568,7 @@ const Card: React.FC<CardProps> = ({
   const showDeepWorkSuggestion = type === ItemType.TODO && meta.deepWorkParent && meta.deepWorkStatus === 'suggested';
   const canShowMoneyMetadata = type === ItemType.FINANCE || type === ItemType.SHOPPING;
   const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
+  const showCommodityFields = type === ItemType.FINANCE && editFinanceType === 'expense';
   
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
@@ -1092,6 +1123,36 @@ const Card: React.FC<CardProps> = ({
                                        {budgetRules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                                    </select>
                                </div>
+                           )}
+                           {showCommodityFields && (
+                               <>
+                                   <div>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Commodity</label>
+                                       <input
+                                           list={`commodity-options-${item.id}`}
+                                           className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           value={editCommodity}
+                                           onChange={(e) => setEditCommodity(e.target.value)}
+                                           placeholder="Choose or type..."
+                                       />
+                                       <datalist id={`commodity-options-${item.id}`}>
+                                           {sortedCommodityOptions.map(option => <option key={option.name} value={option.name} />)}
+                                       </datalist>
+                                   </div>
+                                   <div>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Sub Commodity</label>
+                                       <input
+                                           list={`subcommodity-options-${item.id}`}
+                                           className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           value={editSubcommodity}
+                                           onChange={(e) => setEditSubcommodity(e.target.value)}
+                                           placeholder={editCommodity ? 'Related or custom...' : 'Choose commodity first'}
+                                       />
+                                       <datalist id={`subcommodity-options-${item.id}`}>
+                                           {subcommodityOptions.map(option => <option key={option} value={option} />)}
+                                       </datalist>
+                                   </div>
+                               </>
                            )}
                        </>
                    )}

@@ -23,6 +23,7 @@ const investment: BrainDumpItem = {
     investmentAssetType: 'stock',
     investmentSymbol: 'BBCA',
     investmentUnits: 10,
+    investmentAveragePrice: 25_000,
     investmentCurrentPrice: 10_000,
     investmentPlatform: 'Bibit',
   },
@@ -55,4 +56,10 @@ test('saving into investment moves balance from source wallet to investment wall
   const { walletStats } = getWalletStats([savingIntoInvestment], wallets);
   assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 750_000);
   assert.equal(walletStats.find(wallet => wallet.id === 'bibit-wallet')?.currentBalance, 250_000);
+});
+
+test('investment wallet balance includes linked investment P/L after transfer-like saving', () => {
+  const { walletStats } = getWalletStats([investment, savingIntoInvestment], wallets);
+  assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 750_000);
+  assert.equal(walletStats.find(wallet => wallet.id === 'bibit-wallet')?.currentBalance, 100_000);
 });

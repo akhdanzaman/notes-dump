@@ -10,6 +10,7 @@ import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
 import { contentSurface } from '../layout/contentSurface';
 import { getBudgetCategoryAnalytics, getBudgetTrendAnalytics, getWeekBounds, type BudgetAnalyticsViewMode, type BudgetCommodityBreakdown } from '../../utils/budgetAnalytics';
+import { getCanonicalOrRawItemValue } from '../../utils/canonicalization/accessors';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -232,6 +233,23 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             .slice(0, 6);
         return { commodities, subcommodities };
     }, [budgetCategoryAnalytics, totalExpense]);
+    const commodityOptions = useMemo(() => {
+        const optionMap = new Map<string, Set<string>>();
+        items.forEach(item => {
+            const isTransactionLike = item.type === ItemType.FINANCE || item.type === ItemType.SHOPPING || item.type === ItemType.TODO;
+            if (!isTransactionLike) return;
+            const commodity = getCanonicalOrRawItemValue(item, 'commodity') || item.meta.commodity;
+            const subcommodity = getCanonicalOrRawItemValue(item, 'subcommodity') || item.meta.subcommodity;
+            if (!commodity) return;
+            if (!optionMap.has(commodity)) optionMap.set(commodity, new Set());
+            if (subcommodity) optionMap.get(commodity)!.add(subcommodity);
+        });
+
+        return Array.from(optionMap.entries()).map(([name, subcommodities]) => ({
+            name,
+            subcommodities: Array.from(subcommodities).sort((a, b) => a.localeCompare(b)),
+        }));
+    }, [items]);
     const budgetInsightCards = useMemo(() => {
         const cards: { title: string; detail: string; tone: 'red' | 'amber' | 'emerald' | 'indigo' }[] = [];
         const overspent = budgetConfig.rules
@@ -329,6 +347,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         wallets,
         budgetRules: budgetConfig.rules,
         savingGoals,
+        commodityOptions,
         noStrikethrough: true,
         noDarken: true
     };

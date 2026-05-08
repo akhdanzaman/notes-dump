@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.70',
+    date: 'May 2026',
+    items: [
+      'Expense transaction edit cards now include commodity and subcommodity fields with existing-value dropdown suggestions while still allowing custom entries.',
+      'Investment saving transfers now keep source-wallet movement behavior and add investment P/L into the linked investment wallet balance.',
+    ],
+  },
+  {
     version: 'v0.3.69',
     date: 'May 2026',
     items: [

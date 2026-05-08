@@ -3,6 +3,7 @@ import { getCanonicalMetaValue, getCanonicalOrRawItemValue, getRawMetaValue, ite
 import { ACHIEVED_GOAL_FINANCE_TYPE } from '../financeTypeUtils';
 import { getShoppingDueDate, getShoppingTransactionDate } from '../shoppingDateUtils';
 import { BudgetAnalyticsViewMode, getWeekBounds } from '../budgetAnalytics';
+import { getInvestmentMetrics } from '../investmentMetrics';
 
 const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
     const normalized = value?.toLowerCase().trim();
@@ -94,6 +95,28 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
             }
         }
     });
+
+    items
+        .filter(item => item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'investment' && item.meta.dedicatedWalletId)
+        .forEach(investment => {
+            const walletKey = resolveWalletBalanceKey(wallets, investment.meta.dedicatedWalletId);
+            if (!walletKey || !balanceMap.has(walletKey)) return;
+
+            const linkedCapital = items
+                .filter(item => item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'saving' && item.meta.savingGoalId === investment.id)
+                .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+            const metrics = getInvestmentMetrics({
+                ...investment,
+                meta: {
+                    ...investment.meta,
+                    savedAmount: linkedCapital || investment.meta.savedAmount,
+                },
+            });
+
+            if (metrics.profitLoss !== 0) {
+                balanceMap.set(walletKey, (balanceMap.get(walletKey) || 0) + metrics.profitLoss);
+            }
+        });
 
     // Map back to wallet objects
     const walletStats = wallets.map(w => ({
