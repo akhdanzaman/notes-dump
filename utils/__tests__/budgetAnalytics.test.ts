@@ -82,6 +82,26 @@ test('budget trend analytics groups month days and yearly YoY buckets', () => {
   assert.deepEqual(yearly[4].categories.map(category => category.name), ['Wants', 'Needs']);
 });
 
+
+test('budget trend analytics groups selected week by day', () => {
+  const items = [
+    income('weekly-income', 200_000, '2026-05-05T08:00:00.000Z'),
+    expense('weekly-monday', 50_000, 'needs', 'food', 'breakfast', undefined, '2026-05-04T08:00:00.000Z'),
+    expense('weekly-friday', 75_000, 'wants', 'hobby', 'tools', undefined, '2026-05-08T08:00:00.000Z'),
+    expense('next-week', 99_000, 'needs', 'transport', 'fuel', undefined, '2026-05-11T08:00:00.000Z'),
+  ];
+
+  const weekly = getBudgetTrendAnalytics(items, new Date('2026-05-08T00:00:00.000Z'), 'weekly', budgetConfig);
+
+  assert.equal(weekly.length, 7);
+  assert.deepEqual(weekly.map(point => point.label), ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  assert.equal(weekly[0].total, 50_000);
+  assert.equal(weekly[1].income, 200_000);
+  assert.equal(weekly[4].total, 75_000);
+  assert.deepEqual(weekly[4].categories.map(category => category.name), ['Wants']);
+  assert.equal(weekly.some(point => point.total === 99_000), false);
+});
+
 test('budget category analytics groups category to commodity to subcommodity with merchant drilldown', () => {
   const analytics = getBudgetCategoryAnalytics([
     expense('breakfast', 20_000, 'needs', 'food', 'breakfast', 'warung'),

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Calculator, Plus, AlertCircle } from 'lucide-react';
+import { EyeOff, Eye, TrendingUp, TrendingDown, Wallet as WalletIcon, List, PieChart, Pencil, Trash2, PiggyBank, CreditCard, ChevronLeft, ChevronRight, Calculator, Plus, AlertCircle, Target } from 'lucide-react';
 import { BrainDumpItem, Wallet, BudgetConfig, MoneyView, AppSettings, SortOrder, FinanceType, ItemType, Tab, Priority } from '../../types';
 import { getWalletStats, getFinanceItems } from '../../utils/selectors';
 import Card from '../Card';
@@ -9,7 +9,7 @@ import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
 import { contentSurface } from '../layout/contentSurface';
-import { getBudgetCategoryAnalytics, getBudgetTrendAnalytics } from '../../utils/budgetAnalytics';
+import { getBudgetCategoryAnalytics, getBudgetTrendAnalytics, getWeekBounds, type BudgetAnalyticsViewMode } from '../../utils/budgetAnalytics';
 
 interface MoneyViewProps {
     items: BrainDumpItem[];
@@ -25,18 +25,18 @@ interface MoneyViewProps {
 
     handleDelete: (id: string) => void;
     handleUpdateItem: (
-        id: string, 
-        newContent: string, 
-        newTags: string[], 
-        newAmount?: number, 
-        newDate?: string, 
-        newPaymentMethod?: string, 
-        newBudgetCategory?: string, 
-        newDuration?: number, 
-        newSkillId?: string, 
-        newToWallet?: string, 
-        newFinanceType?: FinanceType, 
-        newProgress?: number, 
+        id: string,
+        newContent: string,
+        newTags: string[],
+        newAmount?: number,
+        newDate?: string,
+        newPaymentMethod?: string,
+        newBudgetCategory?: string,
+        newDuration?: number,
+        newSkillId?: string,
+        newToWallet?: string,
+        newFinanceType?: FinanceType,
+        newProgress?: number,
         newProgressNotes?: string,
         newShoppingCategory?: any,
         newRecurrenceDays?: number,
@@ -79,23 +79,25 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
     savingGoals, setActiveTab, onAddItem
 }) => {
-    
+
     // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('money', setActiveTab);
 
-    const [budgetViewMode, setBudgetViewMode] = useState<'monthly' | 'yearly'>('monthly');
+    const [budgetViewMode, setBudgetViewMode] = useState<BudgetAnalyticsViewMode>('monthly');
 
     // Date Swipe Logic
     const changePeriod = (offset: number) => {
         const newDate = new Date(financeDate);
         if (moneyView === 'budget' && budgetViewMode === 'yearly') {
             newDate.setFullYear(newDate.getFullYear() + offset);
+        } else if (moneyView === 'budget' && budgetViewMode === 'weekly') {
+            newDate.setDate(newDate.getDate() + (offset * 7));
         } else {
             newDate.setMonth(newDate.getMonth() + offset);
         }
         setFinanceDate(newDate);
     };
-    
+
     const dateSwipeHandlers = useSwipeDate(
         () => changePeriod(-1), // Swipe Right -> Prev Period
         () => changePeriod(1)   // Swipe Left -> Next Period
@@ -114,12 +116,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
     // Calculate Data for All Views
     const { walletStats, totalNetWorth, totalAssets, totalDebt, totalSavings } = getWalletStats(items, wallets);
-    
-    const { 
-        list, totalIncome, totalExpense, projectedExpense, 
-        budgetMap, plannedBudgetMap, uncategorized, projectedUncategorized 
+
+    const {
+        list, totalIncome, totalExpense, projectedExpense,
+        budgetMap, plannedBudgetMap, uncategorized, projectedUncategorized
     } = getFinanceItems(
-        items, financeDate, budgetConfig, 
+        items, financeDate, budgetConfig,
         filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder,
         budgetViewMode,
         wallets
@@ -129,16 +131,16 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         resetKey: `money-wallets-${walletStats.length}-${savingGoals.length}`,
     });
     const visibleTransactions = useLazyItems(list, {
-        resetKey: `money-transactions-${financeDate.getFullYear()}-${financeDate.getMonth()}-${filterWallet}-${filterTransactionType}-${filterCategory}-${filterMinAmount}-${filterMaxAmount}-${selectedTag}-${searchQuery}-${sortOrder}-${list.length}`,
+        resetKey: `money-transactions-${budgetViewMode}-${financeDate.toISOString()}-${filterWallet}-${filterTransactionType}-${filterCategory}-${filterMinAmount}-${filterMaxAmount}-${selectedTag}-${searchQuery}-${sortOrder}-${list.length}`,
     });
 
     const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-               
-    const effectiveIncome = budgetConfig.monthlyIncome > 0 
-        ? (budgetViewMode === 'yearly' ? budgetConfig.monthlyIncome * 12 : budgetConfig.monthlyIncome) 
+
+    const effectiveIncome = budgetConfig.monthlyIncome > 0
+        ? (budgetViewMode === 'yearly' ? budgetConfig.monthlyIncome * 12 : budgetViewMode === 'weekly' ? (budgetConfig.monthlyIncome * 12) / 52 : budgetConfig.monthlyIncome)
         : totalIncome;
-    const incomeLabel = budgetConfig.monthlyIncome > 0 
-        ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : 'Fixed Income') 
+    const incomeLabel = budgetConfig.monthlyIncome > 0
+        ? (budgetViewMode === 'yearly' ? 'Fixed Income (Yearly)' : budgetViewMode === 'weekly' ? 'Fixed Income (Weekly)' : 'Fixed Income')
         : 'Recorded Income';
     const monthUsagePercent = effectiveIncome > 0 ? Math.min(999, (totalExpense / effectiveIncome) * 100) : 0;
     const monthUsageWithPlannedPercent = effectiveIncome > 0 ? Math.min(999, ((totalExpense + projectedExpense) / effectiveIncome) * 100) : 0;
@@ -150,19 +152,82 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         () => getBudgetTrendAnalytics(items, financeDate, budgetViewMode, budgetConfig),
         [items, financeDate, budgetViewMode, budgetConfig]
     );
-    const showBudgetYearSelector = moneyView === 'budget' && budgetViewMode === 'yearly';
     const selectedPeriodTotal = budgetTrendAnalytics.reduce((sum, point) => sum + point.total, 0);
     const previousPeriodTotal = budgetTrendAnalytics.reduce((sum, point) => sum + (point.previousTotal || 0), 0);
-    const peakTrendPoint = budgetTrendAnalytics.reduce((peak, point) => point.total > peak.total ? point : peak, budgetTrendAnalytics[0] || { label: '—', total: 0, percentage: 0 });
+    const peakTrendPoint = budgetTrendAnalytics.reduce((peak, point) => point.total > peak.total ? point : peak, budgetTrendAnalytics[0] || { label: '—', total: 0, income: 0, percentage: 0, categories: [] });
     const hoveredTrendPoint = hoveredTrendIndex !== null ? budgetTrendAnalytics[hoveredTrendIndex] : undefined;
+    const weekBounds = useMemo(() => getWeekBounds(financeDate), [financeDate]);
+    const periodTitle = budgetViewMode === 'yearly'
+        ? String(financeDate.getFullYear())
+        : budgetViewMode === 'weekly'
+            ? `${weekBounds.start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}–${new Date(weekBounds.end.getTime() - 86400000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+            : financeDate.toLocaleDateString(undefined, { month: 'short' });
+    const periodKicker = budgetViewMode === 'yearly'
+        ? 'Year'
+        : budgetViewMode === 'weekly'
+            ? financeDate.getFullYear().toString()
+            : financeDate.getFullYear().toString();
     const hoveredTrendLabel = hoveredTrendPoint
         ? (budgetViewMode === 'yearly'
             ? `${hoveredTrendPoint.label} ${financeDate.getFullYear()}`
-            : `${hoveredTrendPoint.label} ${financeDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`)
+            : budgetViewMode === 'weekly'
+                ? `${hoveredTrendPoint.label}, ${new Date(weekBounds.start.getFullYear(), weekBounds.start.getMonth(), weekBounds.start.getDate() + (hoveredTrendIndex || 0)).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                : `${hoveredTrendPoint.label} ${financeDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`)
         : undefined;
     const hoveredTrendTooltipLeft = hoveredTrendIndex !== null && budgetTrendAnalytics.length > 0
         ? Math.min(86, Math.max(14, ((hoveredTrendIndex + 0.5) / budgetTrendAnalytics.length) * 100))
         : 50;
+    const trendMaxAmount = Math.max(...budgetTrendAnalytics.flatMap(point => [point.total, point.income, Math.abs(point.income - point.total), point.previousTotal || 0, point.previousIncome || 0]), 0);
+    const topSpendBreakdowns = useMemo(() => {
+        const commodityTotals = new Map<string, number>();
+        const subcommodityTotals = new Map<string, number>();
+        budgetCategoryAnalytics.forEach(category => {
+            category.commodities.forEach(commodity => {
+                commodityTotals.set(commodity.name, (commodityTotals.get(commodity.name) || 0) + commodity.total);
+                commodity.subcommodities.forEach(sub => {
+                    subcommodityTotals.set(sub.name, (subcommodityTotals.get(sub.name) || 0) + sub.total);
+                });
+            });
+        });
+        const toSorted = (map: Map<string, number>) => Array.from(map.entries())
+            .map(([name, total]) => ({ name, total, percentage: totalExpense > 0 ? (total / totalExpense) * 100 : 0 }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 6);
+        return { commodities: toSorted(commodityTotals), subcommodities: toSorted(subcommodityTotals) };
+    }, [budgetCategoryAnalytics, totalExpense]);
+    const budgetInsightCards = useMemo(() => {
+        const cards: { title: string; detail: string; tone: 'red' | 'amber' | 'emerald' | 'indigo' }[] = [];
+        const overspent = budgetConfig.rules
+            .map(rule => {
+                const limit = effectiveIncome * (rule.percentage / 100);
+                const spent = budgetMap.get(rule.id) || 0;
+                return { rule, limit, spent, over: spent - limit };
+            })
+            .filter(row => row.limit > 0 && row.over > 0)
+            .sort((a, b) => b.over - a.over);
+        if (overspent[0]) {
+            cards.push({ title: `${overspent.length} category over budget`, detail: `${overspent[0].rule.name} leads by ${fmt(overspent[0].over)}.`, tone: 'red' });
+        }
+        const plannedRisk = budgetConfig.rules
+            .map(rule => {
+                const limit = effectiveIncome * (rule.percentage / 100);
+                const spent = budgetMap.get(rule.id) || 0;
+                const planned = plannedBudgetMap.get(rule.id) || 0;
+                return { rule, limit, spent, planned, over: spent + planned - limit };
+            })
+            .filter(row => row.limit > 0 && row.planned > 0 && row.over > 0)
+            .sort((a, b) => b.over - a.over);
+        if (plannedRisk[0]) {
+            cards.push({ title: 'Planned spend needs attention', detail: `${plannedRisk[0].rule.name} may exceed by ${fmt(plannedRisk[0].over)} including planned.`, tone: 'amber' });
+        }
+        if (topSpendBreakdowns.commodities[0]) {
+            cards.push({ title: `${topSpendBreakdowns.commodities[0].name} is the biggest spend`, detail: `${topSpendBreakdowns.commodities[0].percentage.toFixed(0)}% of expenses in this period.`, tone: 'indigo' });
+        }
+        if (projectedExpense > 0) {
+            cards.push({ title: 'Planned is included', detail: `${fmt(projectedExpense)} planned spend is reflected in amber progress.`, tone: 'emerald' });
+        }
+        return cards.slice(0, 3);
+    }, [budgetConfig.rules, budgetMap, effectiveIncome, fmt, plannedBudgetMap, projectedExpense, topSpendBreakdowns.commodities]);
 
     const onTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -172,7 +237,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
     const onTouchMove = (e: React.TouchEvent) => {
         if (!touchStartRef.current) return;
-        
+
         const dx = e.touches[0].clientX - touchStartRef.current.x;
         const dy = e.touches[0].clientY - touchStartRef.current.y;
 
@@ -206,7 +271,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 setMoneyView(tabs[activeIndex - 1]);
             }
         }
-        
+
         setDragOffset(0);
         touchStartRef.current = null;
         isHorizontalSwipe.current = null;
@@ -229,7 +294,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     return (
         <div className={contentSurface.pageShell}>
             {/* Top Container */}
-            <motion.div 
+            <motion.div
                 layoutId="top-container"
                 data-swipe-tabs="money"
                 className={contentSurface.headerHero}
@@ -247,7 +312,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 >
                     <div data-money-tabs="true" className="mb-5 flex w-full bg-black/5 dark:bg-white/20 rounded-2xl p-1">
                         {tabs.map(tab => (
-                            <button 
+                            <button
                                 key={tab}
                                 onClick={() => setMoneyView(tab)}
                                 className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${moneyView === tab ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
@@ -272,7 +337,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     </button>
                                 </div>
                             </div>
-                            <div 
+                            <div
                                 data-swipe-date="money-month"
                                 className="shrink-0 rounded-[20px] bg-black/5 px-2 py-2 touch-pan-y sm:px-3 lg:col-span-2 lg:w-full lg:rounded-[24px] lg:px-4 lg:py-3"
                                 onTouchStart={dateSwipeHandlers.onTouchStart}
@@ -280,10 +345,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
                             >
                                 <div className="flex items-center justify-between gap-1 lg:gap-2">
-                                    <button onClick={() => changePeriod(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label={showBudgetYearSelector ? 'Previous year' : 'Previous month'}><ChevronLeft className="w-4 h-4" /></button>
+                                    <button onClick={() => changePeriod(-1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label={budgetViewMode === 'yearly' ? 'Previous year' : budgetViewMode === 'weekly' ? 'Previous week' : 'Previous month'}><ChevronLeft className="w-4 h-4" /></button>
                                     <AnimatePresence mode="wait">
-                                        <motion.div 
-                                            key={`${showBudgetYearSelector ? 'year' : 'month'}-${financeDate.toISOString()}`}
+                                        <motion.div
+                                            key={`${budgetViewMode}-${financeDate.toISOString()}`}
                                             data-money-month-label="true"
                                             initial={{ opacity: 0, x: 10 }}
                                             animate={{ opacity: 1, x: 0 }}
@@ -292,34 +357,35 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             className="flex min-w-16 flex-col items-center sm:min-w-20 lg:min-w-24"
                                         >
                                             <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider leading-none mb-1 lg:text-xs">
-                                                {showBudgetYearSelector ? 'Year' : financeDate.getFullYear()}
+                                                {periodKicker}
                                             </span>
                                             <span className="text-sm font-bold leading-none sm:text-base lg:text-lg">
-                                                {showBudgetYearSelector ? financeDate.getFullYear() : financeDate.toLocaleDateString(undefined, { month: 'short' })}
+                                                {periodTitle}
                                             </span>
                                         </motion.div>
                                     </AnimatePresence>
-                                    <button onClick={() => changePeriod(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label={showBudgetYearSelector ? 'Next year' : 'Next month'}><ChevronRight className="w-4 h-4" /></button>
+                                    <button onClick={() => changePeriod(1)} className="p-1 hover:bg-black/10 rounded-full transition-colors lg:p-2" aria-label={budgetViewMode === 'yearly' ? 'Next year' : budgetViewMode === 'weekly' ? 'Next week' : 'Next month'}><ChevronRight className="w-4 h-4" /></button>
                                 </div>
                                 {moneyView === 'budget' && (
-                                    <div className="mt-2 flex bg-white/50 dark:bg-black/10 rounded-full p-1 cursor-pointer">
-                                        <button 
-                                            onClick={() => setBudgetViewMode('monthly')}
-                                            className={`${budgetViewMode === 'monthly' ? 'bg-surface text-primary shadow-sm dark:bg-white dark:text-black' : 'text-primary/50 hover:text-primary'} flex-1 rounded-full px-3 py-1 text-xs font-bold transition-colors`}
-                                        >
-                                            M
-                                        </button>
-                                        <button 
-                                            onClick={() => setBudgetViewMode('yearly')}
-                                            className={`${budgetViewMode === 'yearly' ? 'bg-surface text-primary shadow-sm dark:bg-white dark:text-black' : 'text-primary/50 hover:text-primary'} flex-1 rounded-full px-3 py-1 text-xs font-bold transition-colors`}
-                                        >
-                                            Y
-                                        </button>
+                                    <div className="mt-2 grid grid-cols-3 bg-white/50 dark:bg-black/10 rounded-full p-1 cursor-pointer">
+                                        {([
+                                            ['monthly', 'M'],
+                                            ['weekly', 'W'],
+                                            ['yearly', 'Y'],
+                                        ] as [BudgetAnalyticsViewMode, string][]).map(([mode, label]) => (
+                                            <button
+                                                key={mode}
+                                                onClick={() => setBudgetViewMode(mode)}
+                                                className={`${budgetViewMode === mode ? 'bg-surface text-primary shadow-sm dark:bg-white dark:text-black' : 'text-primary/50 hover:text-primary'} rounded-full px-2 py-1 text-xs font-bold transition-colors`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
                             </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-8 gap-3 mb-4 lg:mb-5 lg:gap-4 xl:gap-5">
                             <div className="col-span-3 min-w-0 bg-black/5 rounded-[24px] px-3 py-4 lg:px-5 lg:py-5">
                                 <div className="flex items-center gap-1 text-xs font-bold opacity-60 uppercase tracking-wider mb-1 lg:mb-2"><TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" /> Income</div>
@@ -342,7 +408,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="flex flex-wrap gap-4 pt-4 border-t border-border items-center justify-between" data-money-header-side-card="true">
                             <div className="flex gap-4">
                                 <div className="text-sm font-medium opacity-80">
@@ -355,7 +421,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     Savings: <span className="text-[#6366F1] font-bold">{showBalance ? fmt(totalSavings || 0) : '••'}</span>
                                 </div>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => onAddItem(ItemType.FINANCE)}
                                 className="w-10 h-10 flex items-center justify-center bg-black dark:bg-zinc-800 text-white dark:text-white rounded-full hover:scale-110 active:scale-95 transition-all"
                                 aria-label="Add finance"
@@ -367,7 +433,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     </div>
                 </motion.div>
             </motion.div>
-            
+
             {/* Sliding Container */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -377,7 +443,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
             >
-                <motion.div 
+                <motion.div
                     className="flex w-full will-change-transform"
                     style={{
                         transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
@@ -385,15 +451,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     }}
                 >
                     {/* VIEW: Wallets */}
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                     >
                         <div className={contentSurface.cardGrid}>
                             {visibleWallets.visibleItems.map(wallet => (
-                                <div 
-                                    key={wallet.id} 
+                                <div
+                                    key={wallet.id}
                                     className="bg-surface rounded-[24px] p-4 transition-all hover:bg-surface/80 relative group"
                                 >
                                     <div className="flex flex-col gap-1">
@@ -401,8 +467,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         <div className="flex justify-between items-center">
                                             <div className="flex items-center gap-2">
                                                 <div className={`w-5 h-5 rounded-full ${wallet.color} flex items-center justify-center text-white`}>
-                                                    {wallet.type === 'bank' ? <PiggyBank className="w-3 h-3" /> : 
-                                                        wallet.type === 'cc' ? <CreditCard className="w-3 h-3" /> : 
+                                                    {wallet.type === 'bank' ? <PiggyBank className="w-3 h-3" /> :
+                                                        wallet.type === 'cc' ? <CreditCard className="w-3 h-3" /> :
                                                         wallet.type === 'ewallet' ? <WalletIcon className="w-3 h-3" /> :
                                                         <WalletIcon className="w-3 h-3" />}
                                                 </div>
@@ -410,15 +476,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                     {wallet.type}
                                                 </span>
                                             </div>
-                                            
+
                                             <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                <button 
+                                                <button
                                                     onClick={() => handleOpenEditWallet(wallet)}
                                                     className="p-1.5 hover:bg-muted/10 rounded-xl text-muted hover:text-primary transition-colors"
                                                 >
                                                     <Pencil className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => { setDeleteId(wallet.id); setDeleteType('wallet'); }}
                                                     className="p-1.5 hover:bg-red-900/30 rounded-xl text-muted hover:text-red-400 transition-colors"
                                                 >
@@ -443,7 +509,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                         .filter(g => g.status !== 'done')
                                                         .filter(g => g.meta.dedicatedWalletId === wallet.id)
                                                         .reduce((sum, g) => sum + (g.meta.savedAmount || 0), 0);
-                                                    
+
                                                     if (walletSavings > 0) {
                                                         return (
                                                             <div className="mt-1">
@@ -474,7 +540,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     </motion.div>
 
                     {/* VIEW: Transactions */}
-                    <motion.div 
+                    <motion.div
                         key={"transactions-" + financeDate.toISOString()}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -487,9 +553,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                     {visibleTransactions.visibleItems.map(item => {
                                         const categoryName = budgetConfig.rules.find(r => r.id === item.meta.budgetCategory)?.name || item.meta.budgetCategory;
                                         return (
-                                            <Card 
-                                            key={item.id} 
-                                            item={item} 
+                                            <Card
+                                            key={item.id}
+                                            item={item}
                                             {...cardProps}
                                             categoryName={categoryName}
                                             />
@@ -518,7 +584,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     </motion.div>
 
                     {/* VIEW: Budget Dashboard */}
-                    <motion.div 
+                    <motion.div
                         key={"budget-" + financeDate.toISOString()}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -536,37 +602,63 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         ) : (
                             <div className="space-y-6 text-primary">
                                 <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
-                                    <div className="mb-6 flex items-start justify-between gap-4">
+                                    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                                         <div>
                                             <h2 className="text-3xl font-bold tracking-tight">Spend Timeline</h2>
-                                            <div className="mt-1 text-sm font-semibold text-muted">{budgetViewMode === 'yearly' ? 'Monthly spend with YoY comparison' : 'Daily spend across the selected month'}</div>
+                                            <div className="mt-1 text-sm font-semibold text-muted">
+                                                {budgetViewMode === 'yearly' ? 'Monthly income, expense, and net across the selected year' : budgetViewMode === 'weekly' ? 'Daily income, expense, and net across the selected week' : 'Daily income, expense, and net across the selected month'}
+                                            </div>
                                         </div>
-                                        <TrendingUp className="h-6 w-6 text-muted" />
+                                        <div className="rounded-full bg-black/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-muted dark:bg-white/10">
+                                            {budgetViewMode === 'yearly' ? 'Monthly' : 'Daily'}
+                                        </div>
                                     </div>
 
-                                    <div className="rounded-3xl border border-border bg-black/[0.02] p-4 dark:bg-white/[0.04]">
-                                        <div className="mb-4 flex items-end justify-between gap-4">
-                                            <div>
-                                                <div className="text-xs font-bold uppercase tracking-[0.2em] text-muted">{budgetViewMode === 'yearly' ? 'YoY Trend' : 'Month Trend'}</div>
-                                                <div className="mt-1 text-xl font-bold">{showBalance ? fmt(selectedPeriodTotal) : '••••'}</div>
+                                    <div className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
+                                        <div className="rounded-3xl bg-black/[0.03] p-4 dark:bg-white/[0.04]">
+                                            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
+                                                {budgetViewMode === 'yearly' ? 'Year Trend' : budgetViewMode === 'weekly' ? 'Week Trend' : 'Month Trend'}
                                             </div>
-                                            <div className="text-right text-xs text-muted">
-                                                <div>Peak: <span className="font-bold text-primary">{peakTrendPoint.label}</span></div>
-                                                {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
-                                                    <div>Prev year: <span className="font-bold text-amber-500">{showBalance ? fmt(previousPeriodTotal) : '••••'}</span></div>
+                                            <div className="mt-2 text-2xl font-bold text-primary">{showBalance ? fmt(selectedPeriodTotal) : '••••'}</div>
+                                            <div className="mt-2 text-xs leading-snug text-muted">How much has been spent, earned, and left in this period.</div>
+                                            <div className="mt-4 space-y-2 border-t border-border pt-4 text-xs">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <span className="text-muted">Income</span>
+                                                    <span className="font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(totalIncome) : '••••'}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <span className="text-muted">Expense</span>
+                                                    <span className="font-bold text-[#FF5722]">{showBalance ? fmt(totalExpense) : '••••'}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <span className="text-muted">Net</span>
+                                                    <span className={`font-bold ${totalIncome - totalExpense >= 0 ? 'text-[#6366F1]' : 'text-[#FF5722]'}`}>{showBalance ? fmt(totalIncome - totalExpense) : '••••'}</span>
+                                                </div>
+                                                {projectedExpense > 0 && (
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <span className="text-muted">Planned</span>
+                                                        <span className="font-bold text-amber-500">{showBalance ? fmt(projectedExpense) : '••••'}</span>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
 
-                                        <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted">
-                                            <span>Hover bars untuk lihat spend, income, dan kategori.</span>
-                                            <span className="font-semibold">Peak {peakTrendPoint.label}</span>
-                                        </div>
+                                        <div className="relative min-h-64 rounded-3xl border border-border bg-white/60 p-4 dark:bg-black/10">
+                                            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                                <div className="flex flex-wrap items-center gap-4 font-semibold text-muted">
+                                                    <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500"></span>Income</span>
+                                                    <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#FF5722]"></span>Expense</span>
+                                                    <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#6366F1]"></span>Net</span>
+                                                    {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
+                                                        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400/70"></span>{financeDate.getFullYear() - 1}</span>
+                                                    )}
+                                                </div>
+                                                <div className="font-semibold text-muted">Peak <span className="text-primary">{peakTrendPoint.label}</span></div>
+                                            </div>
 
-                                        <div className="relative flex h-40 items-end gap-1 rounded-2xl bg-white/50 px-2 pb-2 pt-14 dark:bg-black/10">
                                             {hoveredTrendPoint && (
                                                 <div
-                                                    className="pointer-events-none absolute top-2 z-20 w-64 -translate-x-1/2 rounded-2xl border border-border bg-surface/95 p-3 text-xs shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30"
+                                                    className="pointer-events-none absolute top-12 z-20 w-64 -translate-x-1/2 rounded-2xl border border-border bg-surface/95 p-3 text-xs shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30"
                                                     style={{ left: `${hoveredTrendTooltipLeft}%` }}
                                                 >
                                                     <div className="mb-2 flex items-start justify-between gap-3">
@@ -580,8 +672,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                             )}
                                                         </div>
                                                         <div className="text-right">
+                                                            <div className="font-bold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(hoveredTrendPoint.income) : '••••'}</div>
                                                             <div className="font-bold text-[#FF5722]">{showBalance ? fmt(hoveredTrendPoint.total) : '••••'}</div>
-                                                            <div className="font-semibold text-emerald-600 dark:text-emerald-500">{showBalance ? fmt(hoveredTrendPoint.income) : '••••'}</div>
+                                                            <div className="font-bold text-[#6366F1]">{showBalance ? fmt(hoveredTrendPoint.income - hoveredTrendPoint.total) : '••••'}</div>
                                                         </div>
                                                     </div>
                                                     <div className="border-t border-border pt-2">
@@ -601,39 +694,41 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                     </div>
                                                 </div>
                                             )}
-                                            {budgetTrendAnalytics.map((point, index) => {
-                                                const showLabel = budgetViewMode === 'yearly' || index === 0 || index === Math.floor(budgetTrendAnalytics.length / 2) || index === budgetTrendAnalytics.length - 1;
-                                                const isHovered = hoveredTrendIndex === index;
-                                                return (
-                                                    <div
-                                                        key={`${point.label}-${index}`}
-                                                        onMouseEnter={() => setHoveredTrendIndex(index)}
-                                                        onMouseLeave={() => setHoveredTrendIndex(null)}
-                                                        className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
-                                                    >
-                                                        <div className="relative flex h-20 w-full items-end justify-center">
-                                                            {budgetViewMode === 'yearly' && point.previousTotal !== undefined && point.previousTotal > 0 && (
-                                                                <div
-                                                                    className={`absolute bottom-0 w-1/2 rounded-t-full bg-amber-400/40 transition-all ${isHovered ? 'bg-amber-400/70' : ''}`}
-                                                                    style={{ height: `${Math.max(point.previousPercentage || 0, 3)}%` }}
-                                                                />
-                                                            )}
-                                                            <div
-                                                                className={`relative z-10 w-full max-w-3 rounded-t-full bg-primary/80 transition-all group-hover:bg-primary group-focus:bg-primary ${isHovered ? 'max-w-4 bg-primary shadow-sm' : ''}`}
-                                                                style={{ height: `${point.total > 0 ? Math.max(point.percentage, 4) : 1}%` }}
-                                                            />
+
+                                            <div className="relative flex h-44 items-end gap-1 overflow-hidden px-1 pb-5 pt-4">
+                                                <div className="pointer-events-none absolute inset-x-0 top-4 h-px border-t border-dashed border-border"></div>
+                                                <div className="pointer-events-none absolute inset-x-0 top-1/3 h-px border-t border-dashed border-border"></div>
+                                                <div className="pointer-events-none absolute inset-x-0 top-2/3 h-px border-t border-dashed border-border"></div>
+                                                <div className="pointer-events-none absolute inset-x-0 bottom-5 h-px border-t border-border"></div>
+                                                {budgetTrendAnalytics.map((point, index) => {
+                                                    const showLabel = budgetViewMode === 'yearly' || budgetViewMode === 'weekly' || index === 0 || index === Math.floor(budgetTrendAnalytics.length / 2) || index === budgetTrendAnalytics.length - 1;
+                                                    const isHovered = hoveredTrendIndex === index;
+                                                    const netAmount = point.income - point.total;
+                                                    const scale = (amount: number) => trendMaxAmount > 0 ? Math.max(Math.min((Math.abs(amount) / trendMaxAmount) * 100, 100), amount !== 0 ? 4 : 0) : 0;
+                                                    return (
+                                                        <div
+                                                            key={`${point.label}-${index}`}
+                                                            onMouseEnter={() => setHoveredTrendIndex(index)}
+                                                            onMouseLeave={() => setHoveredTrendIndex(null)}
+                                                            className="group relative flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
+                                                        >
+                                                            <div className="relative flex h-32 w-full items-end justify-center gap-0.5">
+                                                                {budgetViewMode === 'yearly' && point.previousTotal !== undefined && point.previousTotal > 0 && (
+                                                                    <div
+                                                                        className={`absolute bottom-0 w-full max-w-5 rounded-t-sm bg-amber-400/30 transition-all ${isHovered ? 'bg-amber-400/60' : ''}`}
+                                                                        style={{ height: `${scale(point.previousTotal)}%` }}
+                                                                    />
+                                                                )}
+                                                                <div className={`relative z-10 w-full max-w-2 rounded-t-sm bg-emerald-500 transition-all group-hover:max-w-2.5 ${isHovered ? 'shadow-sm' : ''}`} style={{ height: `${scale(point.income)}%` }} />
+                                                                <div className={`relative z-10 w-full max-w-2 rounded-t-sm bg-[#FF5722] transition-all group-hover:max-w-2.5 ${isHovered ? 'shadow-sm' : ''}`} style={{ height: `${scale(point.total)}%` }} />
+                                                                <div className={`relative z-10 w-full max-w-2 rounded-t-sm bg-[#6366F1] transition-all group-hover:max-w-2.5 ${isHovered ? 'shadow-sm' : ''}`} style={{ height: `${scale(netAmount)}%`, opacity: netAmount === 0 ? 0.25 : 1 }} />
+                                                            </div>
+                                                            <div className={`h-3 text-[9px] font-bold uppercase leading-none ${showLabel || isHovered ? 'text-muted' : 'text-transparent'}`}>{point.label}</div>
                                                         </div>
-                                                        <div className={`h-3 text-[9px] font-bold uppercase leading-none ${showLabel || isHovered ? 'text-muted' : 'text-transparent'}`}>{point.label}</div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {budgetViewMode === 'yearly' && previousPeriodTotal > 0 && (
-                                            <div className="mt-3 flex items-center gap-4 text-[11px] font-semibold text-muted">
-                                                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary/80"></span>{financeDate.getFullYear()}</span>
-                                                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400/50"></span>{financeDate.getFullYear() - 1}</span>
+                                                    );
+                                                })}
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -641,10 +736,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 <div className={`grid gap-6 ${budgetCategoryAnalytics.length > 0 ? 'lg:grid-cols-2 lg:items-start' : ''}`}>
                                 <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
                                 {/* Header */}
-                                <div className="flex justify-between items-center mb-8">
-                                    <h2 className="text-3xl font-bold tracking-tight">
-                                        {budgetConfig.rules.length} Categories
-                                    </h2>
+                                <div className="mb-8 flex items-start justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-3xl font-bold tracking-tight">Budget Performance</h2>
+                                        <div className="mt-1 text-sm font-semibold text-muted">{budgetConfig.rules.length} categories with actual + planned progress</div>
+                                    </div>
+                                    <Target className="h-6 w-6 text-muted" />
                                 </div>
 
                                 {/* Basis Fixed Income & Planned Spending */}
@@ -667,15 +764,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         const spent = budgetMap.get(rule.id) || 0;
                                         const planned = plannedBudgetMap.get(rule.id) || 0;
                                         const limit = effectiveIncome * (rule.percentage / 100);
-                                        
+
                                         // Calculate percentages relative to TOTAL income for the bars
                                         const percentageOfTotalSpent = effectiveIncome > 0 ? (spent / effectiveIncome) * 100 : 0;
                                         const percentageOfTotalPlanned = effectiveIncome > 0 ? (planned / effectiveIncome) * 100 : 0;
-                                        
+
                                         // Calculate percentage relative to CATEGORY limit for the text display
                                         const percentageOfCategorySpent = limit > 0 ? (spent / limit) * 100 : 0;
                                         const percentageOfCategoryUsedPlanned = limit > 0 ? ((spent + planned) / limit) * 100 : 0;
-                                        
+
                                         const textColorClass = rule.color ? rule.color.replace('bg-', 'text-') : 'text-gray-400';
 
                                         return (
@@ -707,7 +804,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                         <div className={`h-full ${rule.color || 'bg-gray-500'} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`} style={{ width: `${Math.min(percentageOfTotalPlanned, 100 - Math.min(percentageOfTotalSpent, 100))}%` }}></div>
                                                     )}
                                                     {/* Limit Marker at the rule's percentage of total */}
-                                                    <div 
+                                                    <div
                                                         className="h-full w-0.5 bg-zinc-400 dark:bg-white z-20 absolute top-0"
                                                         style={{ left: `${rule.percentage}%` }}
                                                     ></div>
@@ -749,6 +846,23 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         </div>
                                     )}
                                 </div>
+
+                                {budgetInsightCards.length > 0 && (
+                                    <div className="mt-8 border-t border-border pt-5">
+                                        <div className="mb-3 text-sm font-bold tracking-tight">Budget Insights</div>
+                                        <div className="space-y-2">
+                                            {budgetInsightCards.map(card => (
+                                                <div key={card.title} className="flex items-start gap-3 rounded-2xl bg-black/[0.03] p-3 text-xs dark:bg-white/[0.04]">
+                                                    <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${card.tone === 'red' ? 'bg-[#FF5722]' : card.tone === 'amber' ? 'bg-amber-500' : card.tone === 'emerald' ? 'bg-emerald-500' : 'bg-[#6366F1]'}`}></span>
+                                                    <div className="min-w-0">
+                                                        <div className="font-bold text-primary">{card.title}</div>
+                                                        <div className="mt-0.5 leading-snug text-muted">{showBalance ? card.detail : 'Hidden while balance is private.'}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                                 {budgetCategoryAnalytics.length > 0 && (
                                     <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
@@ -760,52 +874,86 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             <PieChart className="h-6 w-6 text-muted" />
                                         </div>
 
-                                        <div className="space-y-4">
-                                            {budgetCategoryAnalytics.slice(0, 3).map(category => (
-                                                <div key={category.categoryId} className="space-y-2">
-                                                    <div className="flex items-center justify-between gap-3 text-xs">
-                                                        <div className="flex min-w-0 items-center gap-2 font-bold text-primary">
-                                                            <span className={`h-2 w-2 rounded-full ${category.color || 'bg-gray-400'}`}></span>
-                                                            <span className="truncate">{category.categoryName}</span>
-                                                        </div>
-                                                        <span className="shrink-0 font-semibold text-muted">{showBalance ? fmt(category.total) : '•••'}</span>
+                                        <div className="space-y-5">
+                                            {topSpendBreakdowns.commodities.length > 0 && (
+                                                <div>
+                                                    <div className="mb-3 flex items-center justify-between gap-3 text-xs">
+                                                        <span className="font-bold uppercase tracking-[0.16em] text-muted">By Commodity</span>
+                                                        <span className="font-semibold text-muted">Total {showBalance ? fmt(totalExpense) : '••••'}</span>
                                                     </div>
-                                                    <div className="flex h-3 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                                                        {category.commodities.map((commodity, index) => (
-                                                            <div
-                                                                key={`${category.categoryId}-${commodity.name}`}
-                                                                className={`${index % 2 === 0 ? (category.color || 'bg-gray-500') : 'bg-amber-500'} ${index > 1 ? 'opacity-50' : index === 1 ? 'opacity-70' : ''}`}
-                                                                style={{ width: `${Math.max(commodity.percentage, 3)}%` }}
-                                                                title={`${commodity.name}: ${commodity.percentage.toFixed(1)}%`}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    <div className="grid gap-2 sm:grid-cols-2">
-                                                        {category.commodities.slice(0, 2).map(commodity => {
-                                                            const topSubs = commodity.subcommodities
-                                                                .slice(0, 2)
-                                                                .map(sub => sub.name)
-                                                                .join(' + ');
-                                                            const topMerchants = commodity.merchants
-                                                                .slice(0, 2)
-                                                                .map(merchant => merchant.name)
-                                                                .join(' / ');
+                                                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                                        {topSpendBreakdowns.commodities.map((item, index) => {
+                                                            const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-violet-500', 'bg-orange-500', 'bg-amber-500', 'bg-pink-500'];
                                                             return (
-                                                                <div key={`${category.categoryId}-${commodity.name}-detail`} className="rounded-2xl bg-white/60 p-3 text-xs dark:bg-white/5">
-                                                                    <div className="flex items-center justify-between gap-2">
-                                                                        <span className="font-bold text-primary">{commodity.name}</span>
-                                                                        <span className="font-semibold text-muted">{commodity.percentage.toFixed(0)}%</span>
-                                                                    </div>
-                                                                    <div className="mt-1 text-[11px] leading-snug text-muted">
-                                                                        {topSubs ? `Dominated by ${topSubs}` : 'No subcommodity signal yet'}
-                                                                        {topMerchants ? ` · Vendor: ${topMerchants}` : ''}
-                                                                    </div>
+                                                                <div key={`commodity-${item.name}`} className={`${colors[index % colors.length]} min-h-24 rounded-2xl p-3 text-white shadow-sm`}>
+                                                                    <div className="text-sm font-bold capitalize leading-tight">{item.name}</div>
+                                                                    <div className="mt-2 text-2xl font-bold">{item.percentage.toFixed(0)}%</div>
+                                                                    <div className="mt-1 text-[11px] font-semibold text-white/80">{showBalance ? fmt(item.total) : '••••'}</div>
                                                                 </div>
                                                             );
                                                         })}
                                                     </div>
                                                 </div>
-                                            ))}
+                                            )}
+
+                                            {topSpendBreakdowns.subcommodities.length > 0 && (
+                                                <div className="rounded-3xl bg-black/[0.03] p-4 dark:bg-white/[0.04]">
+                                                    <div className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-muted">By Subcategory</div>
+                                                    <div className="space-y-2">
+                                                        {topSpendBreakdowns.subcommodities.slice(0, 4).map(item => (
+                                                            <div key={`subcommodity-${item.name}`} className="flex items-center justify-between gap-3 text-xs">
+                                                                <span className="truncate font-semibold text-primary capitalize">{item.name}</span>
+                                                                <span className="shrink-0 text-muted">{item.percentage.toFixed(0)}% · {showBalance ? fmt(item.total) : '••••'}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-4 border-t border-border pt-5">
+                                                {budgetCategoryAnalytics.slice(0, 3).map(category => (
+                                                    <div key={category.categoryId} className="space-y-2">
+                                                        <div className="flex items-center justify-between gap-3 text-xs">
+                                                            <div className="flex min-w-0 items-center gap-2 font-bold text-primary">
+                                                                <span className={`h-2 w-2 rounded-full ${category.color || 'bg-gray-400'}`}></span>
+                                                                <span className="truncate">{category.categoryName}</span>
+                                                            </div>
+                                                            <span className="shrink-0 font-semibold text-muted">{showBalance ? fmt(category.total) : '•••'}</span>
+                                                        </div>
+                                                        <div className="flex h-3 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                                                            {category.commodities.map((commodity, index) => (
+                                                                <div
+                                                                    key={`${category.categoryId}-${commodity.name}`}
+                                                                    className={`${index % 2 === 0 ? (category.color || 'bg-gray-500') : 'bg-amber-500'} ${index > 1 ? 'opacity-50' : index === 1 ? 'opacity-70' : ''}`}
+                                                                    style={{ width: `${Math.max(commodity.percentage, 3)}%` }}
+                                                                    title={`${commodity.name}: ${commodity.percentage.toFixed(1)}%`}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <div className="grid gap-2 sm:grid-cols-2">
+                                                            {category.commodities.slice(0, 2).map(commodity => {
+                                                                const topSubs = commodity.subcommodities
+                                                                    .slice(0, 2)
+                                                                    .map(sub => sub.name)
+                                                                    .join(' + ');
+                                                                return (
+                                                                    <div key={`${category.categoryId}-${commodity.name}-detail`} className="rounded-2xl bg-white/60 p-3 text-xs dark:bg-white/5">
+                                                                        <div className="flex items-center justify-between gap-2">
+                                                                            <span className="font-bold text-primary capitalize">{commodity.name}</span>
+                                                                            <span className="font-semibold text-muted">{commodity.percentage.toFixed(0)}%</span>
+                                                                        </div>
+                                                                        {topSubs && (
+                                                                            <div className="mt-1 text-[11px] leading-snug text-muted">
+                                                                                Main subcategory: {topSubs}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 )}

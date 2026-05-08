@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.67',
+    date: 'May 2026',
+    items: [
+      'Money > Budget now supports weekly period navigation beside monthly and yearly, with actual and planned budget calculations scoped to the selected week.',
+      'Spend Timeline now uses income, expense, and net bars with a floating hover breakdown while keeping planned spend visible in the timeline summary.',
+      'Budget Performance and Spend Anatomy now surface data-backed insights from category, commodity, and subcategory totals without placeholder metrics.',
+    ],
+  },
+  {
     version: 'v0.3.66',
     date: 'May 2026',
     items: [
