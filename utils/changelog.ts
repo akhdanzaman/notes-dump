@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.72',
+    date: 'May 2026',
+    items: [
+      'Transaction edit cards now merge Achieved Goal into Saving so users have one consistent saving transaction type to edit.',
+      'Saving transaction edits now show the same wallet-from behavior as saving creation: goal wallets are locked to the wallet configured in Goals, while investment funding lets users choose any source wallet except the linked investment wallet.',
+    ],
+  },
+  {
     version: 'v0.3.71',
     date: 'May 2026',
     items: [

@@ -198,7 +198,8 @@ const Card: React.FC<CardProps> = ({
   const [editHideFromCalendar, setEditHideFromCalendar] = useState<boolean>(meta.hideFromCalendar || false);
   
   // Specifics
-  const [editFinanceType, setEditFinanceType] = useState<FinanceType>(meta.financeType || 'expense');
+  const normalizeEditableFinanceType = (financeType?: FinanceType): FinanceType => financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'saving' : (financeType || 'expense');
+  const [editFinanceType, setEditFinanceType] = useState<FinanceType>(normalizeEditableFinanceType(meta.financeType));
   const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
   const [editToWallet, setEditToWallet] = useState(meta.toWallet || '');
   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
@@ -256,7 +257,7 @@ const Card: React.FC<CardProps> = ({
     setEditContent(content);
     setEditAmount(meta.amount ? meta.amount.toString() : '');
     setEditTags(meta.tags?.join(', ') || '');
-    setEditFinanceType(meta.financeType || 'expense');
+    setEditFinanceType(normalizeEditableFinanceType(meta.financeType));
     setEditPaymentMethod(getWalletValue(meta.paymentMethod) || '');
     setEditToWallet(getWalletValue(meta.toWallet) || '');
     setEditBudgetCategory(meta.budgetCategory || '');
@@ -341,8 +342,20 @@ const Card: React.FC<CardProps> = ({
       const finalCommodity = showCommodityFields ? editCommodity.trim() : undefined;
       const finalSubcommodity = showCommodityFields ? editSubcommodity.trim() : undefined;
       const finalSkillId = editSkillId === '' ? undefined : editSkillId;
-      const finalToWallet = editFinanceType === 'transfer' && editToWallet ? editToWallet : undefined;
-      const finalSavingGoalId = (editFinanceType === 'saving' || editFinanceType === ACHIEVED_GOAL_FINANCE_TYPE) && editSavingGoalId ? editSavingGoalId : undefined;
+      const selectedSavingGoal = editFinanceType === 'saving'
+          ? savingGoals.find(goal => goal.id === editSavingGoalId)
+          : undefined;
+      const selectedSavingGoalWalletId = selectedSavingGoal?.meta.dedicatedWalletId;
+      const selectedSavingGoalIsInvestment = selectedSavingGoal?.meta.shoppingCategory === 'investment';
+      const finalPaymentMethod = editFinanceType === 'saving'
+          ? (selectedSavingGoalIsInvestment ? editPaymentMethod : selectedSavingGoalWalletId)
+          : editPaymentMethod;
+      const finalToWallet = editFinanceType === 'transfer'
+          ? (editToWallet || undefined)
+          : selectedSavingGoalIsInvestment
+              ? (selectedSavingGoalWalletId || undefined)
+              : undefined;
+      const finalSavingGoalId = editFinanceType === 'saving' && editSavingGoalId ? editSavingGoalId : undefined;
 
       const numRecurrence = editRecurrenceDays ? parseInt(editRecurrenceDays) : undefined;
 
@@ -352,7 +365,7 @@ const Card: React.FC<CardProps> = ({
           tagArray,
           numAmount,
           finalDate,
-          editPaymentMethod,
+          finalPaymentMethod,
           finalBudgetCategory,
           numDuration,
           finalSkillId,
@@ -548,6 +561,26 @@ const Card: React.FC<CardProps> = ({
     return Array.from(unique.values()).map(w => (
         <option key={w.id} value={w.id}>{w.name}</option>
     ));
+  };
+
+  const selectedEditSavingGoal = savingGoals.find(goal => goal.id === editSavingGoalId);
+  const selectedEditSavingGoalWalletId = selectedEditSavingGoal?.meta.dedicatedWalletId;
+  const selectedEditSavingGoalIsInvestment = selectedEditSavingGoal?.meta.shoppingCategory === 'investment';
+  const selectableSavingSourceWallets = selectedEditSavingGoalIsInvestment
+      ? wallets.filter(wallet => wallet.id !== selectedEditSavingGoalWalletId)
+      : wallets;
+  const syncSavingGoalWalletSelection = (goalId: string) => {
+      const goal = savingGoals.find(g => g.id === goalId);
+      setEditSavingGoalId(goalId);
+      if (goal?.meta.shoppingCategory === 'investment') {
+          const destinationWalletId = goal.meta.dedicatedWalletId || '';
+          setEditToWallet(destinationWalletId);
+          setEditPaymentMethod(current => current && current !== destinationWalletId ? current : '');
+          return;
+      }
+
+      setEditPaymentMethod(goal?.meta.dedicatedWalletId || '');
+      setEditToWallet('');
   };
 
   const sortedCommodityOptions = [...commodityOptions].sort((a, b) => a.name.localeCompare(b.name));
@@ -786,7 +819,7 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
                        <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1 overflow-x-auto no-scrollbar">
-                           {(['expense', 'income', 'transfer', 'saving', 'achieved_goal'] as FinanceType[]).map(ft => (
+                           {(['expense', 'income', 'transfer', 'saving'] as FinanceType[]).map(ft => (
                                <button
                                    key={ft}
                                    onClick={() => setEditFinanceType(ft)}
@@ -1044,7 +1077,7 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Extras (Payment/Budget) */}
                    {showFinanceExtras && (
                        <>
-                           {editFinanceType !== 'saving' && editFinanceType !== ACHIEVED_GOAL_FINANCE_TYPE && (
+                           {editFinanceType !== 'saving' && (
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">
                                        {editFinanceType === 'transfer' ? 'From' : editFinanceType === 'income' ? 'To' : 'Wallet'}
@@ -1072,31 +1105,50 @@ const Card: React.FC<CardProps> = ({
                                        {getWalletNameOptions()}
                                    </select>
                                </div>
-                           ) : editFinanceType === 'saving' || editFinanceType === ACHIEVED_GOAL_FINANCE_TYPE ? (
+                           ) : editFinanceType === 'saving' ? (
                                <>
                                    <div>
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Saving Goal</label>
                                        <select
                                            className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                            value={editSavingGoalId}
-                                           onChange={(e) => setEditSavingGoalId(e.target.value)}
+                                           onChange={(e) => syncSavingGoalWalletSelection(e.target.value)}
                                        >
-                                           <option value="">Select Goal...</option>
-                                           {savingGoals.map(g => <option key={g.id} value={g.id}>{g.content}</option>)}
+                                           <option value="">Select Goal / Investment...</option>
+                                           {savingGoals.map(g => <option key={g.id} value={g.id}>{g.meta.shoppingCategory === 'investment' ? '📈 ' : '🎯 '}{g.content}</option>)}
                                        </select>
                                    </div>
                                    <div>
-                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Wallet</label>
-                                       <div className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-muted flex items-center gap-2">
-                                           <WalletIcon className="w-3 h-3" />
-                                           {(() => {
-                                               const goal = savingGoals.find(g => g.id === editSavingGoalId);
-                                               const walletId = goal?.meta.dedicatedWalletId;
-                                               const wallet = wallets.find(w => w.id === walletId);
-                                               return wallet ? wallet.name : (getWalletName(editPaymentMethod) || 'Linked to Goal');
-                                           })()}
-                                       </div>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">From Wallet</label>
+                                       {selectedEditSavingGoalIsInvestment ? (
+                                           <select
+                                               className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                               value={editPaymentMethod === selectedEditSavingGoalWalletId ? '' : editPaymentMethod}
+                                               onChange={(e) => setEditPaymentMethod(e.target.value)}
+                                           >
+                                               <option value="">Select Source Wallet...</option>
+                                               {selectableSavingSourceWallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                                           </select>
+                                       ) : (
+                                           <select
+                                               className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-muted opacity-75 cursor-not-allowed"
+                                               value={selectedEditSavingGoalWalletId || ''}
+                                               disabled
+                                           >
+                                               <option value="">{selectedEditSavingGoal ? 'No wallet set in Goals' : 'Select a goal first'}</option>
+                                               {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
+                                           </select>
+                                       )}
                                    </div>
+                                   {selectedEditSavingGoalIsInvestment && (
+                                       <div className="col-span-2">
+                                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">To Investment Wallet</label>
+                                           <div className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-muted flex items-center gap-2">
+                                               <WalletIcon className="w-3 h-3" />
+                                               {getWalletName(selectedEditSavingGoalWalletId) || 'No linked investment wallet'}
+                                           </div>
+                                       </div>
+                                   )}
                                    {editFinanceType === 'saving' && (
                                    <div className="col-span-2">
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget Category</label>

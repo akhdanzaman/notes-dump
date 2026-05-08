@@ -215,7 +215,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                                         className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                                     >
                                                         <option value="">Select Source Wallet</option>
-                                                        {wallets.filter(w => w.id !== goal.meta.dedicatedWalletId && w.type !== 'investment').map(w => (
+                                                        {wallets.filter(w => w.id !== goal.meta.dedicatedWalletId).map(w => (
                                                             <option key={w.id} value={w.id}>{w.name}</option>
                                                         ))}
                                                     </select>
