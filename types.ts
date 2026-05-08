@@ -31,13 +31,24 @@ export interface BudgetConfig {
   rules: BudgetRule[];
 }
 
+export type ParserRouterRoute = 'local_save' | 'review' | 'deep_ai';
+export type ParserIntent = 'finance' | 'todo' | 'shopping' | 'note' | 'journal' | 'event' | 'query_only' | 'unknown' | 'mixed';
+
+export interface ParserRouterDecisionMetadata {
+  route: ParserRouterRoute;
+  intent: ParserIntent;
+  confidenceScore: number;
+  reasonCodes: string[];
+}
+
 export interface ParsingTask {
   id: string;
   text: string;
   status: 'pending' | 'failed' | 'success';
-  stage?: 'stage1' | 'stage2' | 'legacy';
+  stage?: 'router' | 'local' | 'stage1' | 'stage2' | 'legacy';
   error?: string;
   results?: ParserResultV2[];
+  routerDecision?: ParserRouterDecisionMetadata;
   duplicateGuardRemovedCount?: number;
   duplicateGuardReason?: string;
   undoStatus?: 'undone' | 'deleted';
@@ -603,6 +614,7 @@ export interface AddSavingFundsPayload {
   savingGoalId?: string;
   amount?: number;
   fromWallet?: string;
+  toWallet?: string;
   date?: string;
   note?: string;
   budgetCategory?: string;

@@ -38,7 +38,6 @@ const createsSavedEntry = (result: ParserResultV2) => (
   result.action === 'create_item' ||
   result.action === 'transfer_money' ||
   result.action === 'add_saving_funds' ||
-  result.action === 'query_only' ||
   result.action === 'unknown'
 );
 
@@ -121,10 +120,10 @@ const resultAttributes = (result: ParserResultV2): Array<[string, string]> => {
     pushAttrs(attrs, payload as CreateWalletPayload as Record<string, unknown>, { walletType: 'wallet type', initialBalance: 'initial balance' });
   } else if ('monthKey' in payload) {
     pushAttrs(attrs, payload as ThemePayload as Record<string, unknown>, { monthKey: 'month' });
+  } else if ('savingGoalName' in payload || 'savingGoalId' in payload) {
+    pushAttrs(attrs, payload as AddSavingFundsPayload as Record<string, unknown>, { savingGoalName: 'saving goal', fromWallet: 'from wallet', toWallet: 'to wallet', budgetCategory: 'budget' });
   } else if ('fromWallet' in payload || 'toWallet' in payload) {
     pushAttrs(attrs, payload as TransferMoneyPayload as Record<string, unknown>, { fromWallet: 'from wallet', toWallet: 'to wallet' });
-  } else if ('savingGoalName' in payload || 'savingGoalId' in payload) {
-    pushAttrs(attrs, payload as AddSavingFundsPayload as Record<string, unknown>, { savingGoalName: 'saving goal', fromWallet: 'from wallet', budgetCategory: 'budget' });
   } else {
     pushAttrs(attrs, payload as Record<string, unknown>);
   }

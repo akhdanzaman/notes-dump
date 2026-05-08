@@ -45,6 +45,7 @@ import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
 import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
+import { routeParserInput } from '../services/parserRouter';
 import { shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { applyInvestmentFundingToInvestment, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 
@@ -976,6 +977,7 @@ export const useBrainDumpData = () => {
                 amount: sanitizeNumber(payload.amount),
                 financeType: 'saving',
                 paymentMethod: payload.fromWallet,
+                toWallet: payload.toWallet,
                 budgetCategory: payload.budgetCategory || 'savings',
                 savingGoalId: payload.savingGoalId,
                 tags: ['saving']
@@ -1285,7 +1287,10 @@ export const useBrainDumpData = () => {
                         break;
                     }
 
-                    case 'query_only':
+                    case 'query_only': {
+                        break;
+                    }
+
                     case 'unknown':
                     default: {
                         itemsToAdd.push(markParserCreatedItem({
@@ -1300,8 +1305,8 @@ export const useBrainDumpData = () => {
                                 parserEntityType: result.entityType,
                                 parserConfidence: result.confidence,
                                 parserNeedsReview: true,
-                                parserReviewReason: result.reviewReason || 'Parser returned query/unknown action',
-                                parsingError: result.reviewReason || 'Parser returned query/unknown action'
+                                parserReviewReason: result.reviewReason || 'Parser returned unknown action',
+                                parsingError: result.reviewReason || 'Parser returned unknown action'
                             }
                         }));
                         break;
@@ -1335,45 +1340,71 @@ export const useBrainDumpData = () => {
         setParsingTasks(prev => {
             const nextTask: ParsingTask = { id: tempId, text, status: 'pending', createdAt: Date.now() };
             return prev.some(t => t.id === tempId)
-                ? prev.map(t => t.id === tempId ? { ...t, text, status: 'pending', stage: undefined, error: undefined, results: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined, completedAt: undefined } : t)
+                ? prev.map(t => t.id === tempId ? { ...t, text, status: 'pending', stage: undefined, error: undefined, results: undefined, routerDecision: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined, completedAt: undefined } : t)
                 : [nextTask, ...prev];
         });
         try {
             const currentTags = new Set<string>();
             itemsRef.current.forEach(i => i.meta?.tags?.forEach(t => currentTags.add(t)));
 
-            let parsedResults: ParserResultV2[] = [];
+            setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'router' } : t));
 
-            if (appSettingsRef.current.useProParser) {
-                setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'stage1' } : t));
-                parsedResults = await parsePro(
-                    text,
-                    Array.from(currentTags),
-                    skillsRef.current,
-                    walletsRef.current,
-                    budgetConfigRef.current?.rules || [],
-                    itemsRef.current,
-                    customPromptRef.current,
-                    appSettingsRef.current.parsingModel,
-                    0,
-                    (stage) => {
-                        setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage } : t));
+            const routed = await routeParserInput(
+                text,
+                {
+                    existingTags: Array.from(currentTags),
+                    availableSkills: skillsRef.current,
+                    availableWallets: walletsRef.current,
+                    availableBudgetRules: budgetConfigRef.current?.rules || [],
+                    existingItems: itemsRef.current,
+                },
+                async () => {
+                    if (appSettingsRef.current.useProParser) {
+                        setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'stage1' } : t));
+                        return parsePro(
+                            text,
+                            Array.from(currentTags),
+                            skillsRef.current,
+                            walletsRef.current,
+                            budgetConfigRef.current?.rules || [],
+                            itemsRef.current,
+                            customPromptRef.current,
+                            appSettingsRef.current.parsingModel,
+                            0,
+                            (stage) => {
+                                setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage } : t));
+                            }
+                        );
                     }
-                );
-            } else {
-                setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'legacy' } : t));
-                const legacy = await classifyText(
-                    text,
-                    Array.from(currentTags),
-                    skillsRef.current.map(s => s.name),
-                    0,
-                    customPromptRef.current,
-                    appSettingsRef.current.parsingModel,
-                    walletsRef.current,
-                    budgetConfigRef.current?.rules || []
-                );
-                parsedResults = convertLegacyResultsToNative(legacy, text);
+
+                    setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'legacy' } : t));
+                    const legacy = await classifyText(
+                        text,
+                        Array.from(currentTags),
+                        skillsRef.current.map(s => s.name),
+                        0,
+                        customPromptRef.current,
+                        appSettingsRef.current.parsingModel,
+                        walletsRef.current,
+                        budgetConfigRef.current?.rules || []
+                    );
+                    return convertLegacyResultsToNative(legacy, text);
+                }
+            );
+
+            if (routed.decision.route !== 'deep_ai') {
+                setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'local' } : t));
             }
+
+            console.debug('[parser-router]', {
+                taskId: tempId,
+                route: routed.decision.route,
+                intent: routed.decision.intent,
+                confidenceScore: routed.decision.confidenceScore,
+                reasonCodes: routed.decision.reasonCodes,
+            });
+
+            let parsedResults: ParserResultV2[] = routed.results;
 
             parsedResults = canonicalizeParserResults(parsedResults, {
                 existingItems: itemsRef.current,
@@ -1388,7 +1419,7 @@ export const useBrainDumpData = () => {
             const enableDraftReview = appSettingsRef.current.enableDraftReview ?? false;
             const originalResults = structuredClone(parsedResults);
             
-            if (enableDraftReview) {
+            if (routed.decision.route === 'review' || (enableDraftReview && routed.decision.route === 'deep_ai')) {
                 setPendingReviews(prev => [{ id: tempId, text, results: parsedResults, originalResults }, ...prev]);
             } else {
                 executeParserResults(parsedResults, text, tempId);
@@ -1398,6 +1429,7 @@ export const useBrainDumpData = () => {
                 ...t,
                 status: 'success',
                 results: parsedResults,
+                routerDecision: routed.decision,
                 duplicateGuardRemovedCount: guardedResults.removedCount || undefined,
                 duplicateGuardReason: guardedResults.reason,
                 completedAt: Date.now()
@@ -1416,7 +1448,7 @@ export const useBrainDumpData = () => {
         const task = parsingTasks.find(t => t.id === taskId);
         if (!task) return;
         
-        setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending', error: undefined, stage: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined } : t));
+        setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending', error: undefined, stage: undefined, routerDecision: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined } : t));
         setPendingCount(prev => prev + 1);
         
         processItemInBackground(task.text, taskId);

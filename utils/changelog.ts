@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.74',
+    date: 'May 2026',
+    items: [
+      'The parser now routes obvious local entries directly without calling deep AI, sends medium-confidence local parses to Review Center, and keeps mixed or low-confidence inputs on the deep AI fallback path.',
+      'Review Center parser drafts now show structured parsed details for routed local outputs and avoid noisy internal router/canonical metadata in user-facing cards.',
+    ],
+  },
+  {
     version: 'v0.3.73',
     date: 'May 2026',
     items: [

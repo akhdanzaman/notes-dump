@@ -201,7 +201,7 @@ const ReviewCard: React.FC<{
     ...(payload?.meta || {}),
     ...(payload?.changes || {}),
     ...(payload?.match || {}),
-  }).filter(([, value]) => value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0));
+  }).filter(([key, value]) => key !== 'canonical' && value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0));
 
   return (
     <motion.div
@@ -216,7 +216,7 @@ const ReviewCard: React.FC<{
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
               <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
-                AI Draft
+                Parser Draft
               </span>
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${confidenceColor}`}>
                 {primaryResult.confidence}
