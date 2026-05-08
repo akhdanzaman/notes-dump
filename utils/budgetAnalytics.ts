@@ -1,6 +1,6 @@
 import { BrainDumpItem, BudgetConfig, ItemType } from '../types';
 import { getCanonicalMetaValue } from './canonicalization/accessors';
-import { getCommodityCanonicalForAnalytics, getSubcommodityCanonicalForAnalytics } from './canonicalization/defaults';
+import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from './canonicalization/transactionInference';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 import { getShoppingTransactionDate } from './shoppingDateUtils';
 
@@ -230,8 +230,8 @@ export const getBudgetCategoryAnalytics = (
         commodities: new Map(),
       };
 
-      const commodity = getCommodityCanonicalForAnalytics(item.meta);
-      const subcommodity = getSubcommodityCanonicalForAnalytics(item.meta);
+      const commodity = getCommodityForItemAnalytics(item);
+      const subcommodity = getSubcommodityForItemAnalytics(item);
       const merchant = getCanonicalMetaValue(item.meta, 'merchant') || item.meta.merchant || '';
       const commodityBucket = categoryBucket.commodities.get(commodity) || {
         total: 0,

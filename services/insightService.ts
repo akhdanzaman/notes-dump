@@ -4,7 +4,7 @@ import { getFinanceItems } from '../utils/selectors';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 import { generateBehaviorDriftInsights } from '../utils/behaviorDrift';
 import { getCanonicalOrRawItemValue } from '../utils/canonicalization/accessors';
-import { getCommodityCanonicalForAnalytics, getSubcommodityCanonicalForAnalytics } from '../utils/canonicalization/defaults';
+import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from '../utils/canonicalization/transactionInference';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -92,8 +92,8 @@ export const generateAIInsights = async (
 
   const getCanonicalBreakdown = (arr: BrainDumpItem[], field: 'merchant' | 'commodity' | 'subcommodity') => {
     const resolveKey = (item: BrainDumpItem) => {
-      if (field === 'commodity') return getCommodityCanonicalForAnalytics(item.meta);
-      if (field === 'subcommodity') return getSubcommodityCanonicalForAnalytics(item.meta);
+      if (field === 'commodity') return getCommodityForItemAnalytics(item);
+      if (field === 'subcommodity') return getSubcommodityForItemAnalytics(item);
       return getCanonicalOrRawItemValue(item, field).trim();
     };
     const breakdown: Record<string, { total: number; count: number }> = {};

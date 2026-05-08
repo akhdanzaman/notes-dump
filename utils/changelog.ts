@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.66',
+    date: 'May 2026',
+    items: [
+      'Money > Budget Spend Anatomy now treats low-confidence “others” canonical values as fallback-only and infers clearer commodity/subcommodity labels from transaction text and tags.',
+      'Finance parsing recognizes more everyday spend signals such as rent, laundry, home goods, hobby tools, clothing, AI subscriptions, and transfers so new transactions are less likely to land in others.',
+    ],
+  },
+  {
     version: 'v0.3.65',
     date: 'May 2026',
     items: [

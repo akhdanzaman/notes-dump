@@ -1,6 +1,6 @@
 import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType } from '../types';
 import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
-import { getCommodityCanonicalForAnalytics, getSubcommodityCanonicalForAnalytics } from './canonicalization/defaults';
+import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from './canonicalization/transactionInference';
 import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils';
@@ -185,8 +185,8 @@ const buildDashboardSheet = (
 
   const spendDriverTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
     const category = getCategoryName(item.meta.budgetCategory, budgetConfig) || 'Uncategorised';
-    const commodity = getCommodityCanonicalForAnalytics(item.meta);
-    const subcommodity = getSubcommodityCanonicalForAnalytics(item.meta);
+    const commodity = getCommodityForItemAnalytics(item);
+    const subcommodity = getSubcommodityForItemAnalytics(item);
     const key = [category, commodity, subcommodity]
       .filter(Boolean)
       .join(' › ');
@@ -423,8 +423,8 @@ export const generateExportData = (
         Wallet: getWalletName(getCanonicalOrRawItemValue(item, 'paymentMethod') || item.meta.paymentMethod, wallets),
         To_Wallet: getWalletName(item.meta.toWallet, wallets),
         Tags: item.meta.tags?.join(', ') || '',
-        Canonical_Commodity: getCommodityCanonicalForAnalytics(item.meta),
-        Canonical_Subcommodity: getSubcommodityCanonicalForAnalytics(item.meta),
+        Canonical_Commodity: getCommodityForItemAnalytics(item),
+        Canonical_Subcommodity: getSubcommodityForItemAnalytics(item),
         ID: item.id
       };
     });
@@ -570,9 +570,9 @@ export const generateExportData = (
     Merchant: item.meta.merchant || '',
     Canonical_Merchant: getCanonicalMetaValue(item.meta, 'merchant'),
     Commodity: item.meta.commodity || '',
-    Canonical_Commodity: getCommodityCanonicalForAnalytics(item.meta),
+    Canonical_Commodity: getCommodityForItemAnalytics(item),
     Subcommodity: item.meta.subcommodity || '',
-    Canonical_Subcommodity: getSubcommodityCanonicalForAnalytics(item.meta),
+    Canonical_Subcommodity: getSubcommodityForItemAnalytics(item),
     To_Wallet: item.meta.toWallet || '',
     Finance_Type: item.meta.financeType || '',
     Budget_Category: item.meta.budgetCategory || '',

@@ -102,3 +102,47 @@ test('budget category analytics groups category to commodity to subcommodity wit
   assert.equal(wants!.commodities[0].name, 'others');
   assert.equal(wants!.commodities[0].subcommodities[0].name, 'others');
 });
+
+test('budget category analytics infers commodity when stale canonical others would dominate', () => {
+  const staleOtherExpense: BrainDumpItem = {
+    id: 'airbrush',
+    type: ItemType.FINANCE,
+    content: 'beli set airbrush',
+    status: 'done',
+    created_at: '2026-05-02T08:00:00.000Z',
+    completed_at: '2026-05-02T08:00:00.000Z',
+    meta: {
+      date: '2026-05-02T08:00:00.000Z',
+      amount: 756_000,
+      financeType: 'expense',
+      budgetCategory: 'wants',
+      tags: ['electronics', 'purchase'],
+      canonical: {
+        commodity: {
+          value: 'others',
+          confidence: 0.2,
+          source: 'system_rule',
+          needsReview: false,
+          reason: 'No commodity signal was available, so analytics use others.',
+        },
+        subcommodity: {
+          value: 'others',
+          confidence: 0.2,
+          source: 'system_rule',
+          needsReview: false,
+          reason: 'No subcommodity signal was available, so analytics use others.',
+        },
+      },
+    },
+  };
+
+  const analytics = getBudgetCategoryAnalytics([
+    staleOtherExpense,
+    expense('snack', 20_000, 'wants', 'food', 'snack'),
+  ], new Date('2026-05-15T00:00:00.000Z'), budgetConfig, 'monthly');
+
+  const wants = analytics.find(category => category.categoryId === 'wants');
+  assert.ok(wants);
+  assert.equal(wants!.commodities[0].name, 'hobby');
+  assert.equal(wants!.commodities[0].subcommodities[0].name, 'airbrush');
+});
