@@ -43,3 +43,44 @@ test('distinct multi-entry finance input is preserved', () => {
   assert.equal(guarded.results.length, 2);
   assert.equal(guarded.removedCount, 0);
 });
+
+test('single expense variants collapse even when parser disagrees on optional metadata', () => {
+  const guarded = guardParserResultMultiplicity([
+    expenseResult({
+      confidence: 'medium',
+      payload: {
+        itemType: 'FINANCE',
+        content: 'makan bebek goreng',
+        meta: {
+          amount: 37_500,
+          financeType: 'expense',
+          paymentMethod: 'gopay-wallet',
+          toWallet: 'Gopay is usually just source wallet for expenses',
+          commodity: 'food',
+          subcommodity: 'lunch',
+        },
+      } as any,
+    }),
+    expenseResult({
+      confidence: 'medium',
+      payload: {
+        itemType: 'FINANCE',
+        content: 'makan bebek goreng',
+        meta: {
+          amount: 37_500,
+          financeType: 'expense',
+          paymentMethod: 'gopay-wallet',
+          date: '2026-05-09T01:06:17.000+07:00',
+          commodity: 'food',
+          subcommodity: 'dinner',
+        },
+      } as any,
+    }),
+  ], 'Expense: makan bebek goreng 37500 gopay');
+
+  assert.equal(guarded.results.length, 1);
+  assert.equal(guarded.removedCount, 1);
+  assert.equal(guarded.reason, 'single_finance_duplicate_guard');
+  assert.equal((guarded.results[0].payload as any).meta.toWallet, undefined);
+  assert.equal((guarded.results[0].payload as any).meta.date, '2026-05-09T01:06:17.000+07:00');
+});

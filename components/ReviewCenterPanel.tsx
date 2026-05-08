@@ -96,7 +96,9 @@ const resultAttributes = (result: ParserResultV2): Array<[string, string]> => {
     attrs.push(['item type', itemPayload.itemType]);
     attrs.push(['content', itemPayload.content]);
     if (itemPayload.status) attrs.push(['status', itemPayload.status]);
-    pushAttrs(attrs, itemPayload.meta as Record<string, unknown>, {
+    const visibleMeta = { ...((itemPayload.meta || {}) as Record<string, unknown>) };
+    delete visibleMeta.canonical;
+    pushAttrs(attrs, visibleMeta, {
       financeType: 'finance type',
       paymentMethod: 'from wallet',
       toWallet: 'to wallet',
@@ -275,7 +277,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
 
               {task.status === 'success' && (!task.results || task.results.length === 0) && (
                 <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-[11px] text-emerald-600">
-                  Parsing completed, but no structured result detail was returned.
+                  Saved successfully. No extra review details needed.
                 </div>
               )}
 

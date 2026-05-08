@@ -934,6 +934,9 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         const walletId = findClosestMatch(meta.toWallet, ctx.availableWallets);
         if (walletId) meta.toWallet = walletId;
       }
+      if (itemType === 'FINANCE' && meta.financeType !== 'transfer' && meta.financeType !== 'saving') {
+        delete meta.toWallet;
+      }
       if (meta.budgetCategory) {
         const bgId = findClosestMatch(meta.budgetCategory, ctx.availableBudgetRules);
         if (bgId) meta.budgetCategory = bgId;

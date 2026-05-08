@@ -44,6 +44,37 @@ const financeCoreSignature = (result: ParserResultV2): string => {
   });
 };
 
+const financeLooseSingleInputSignature = (result: ParserResultV2): string => {
+  const payload = result.payload as Partial<CreateItemPayload> | undefined;
+  const meta = payload?.meta || {};
+  return stableStringify({
+    itemType: payload?.itemType || 'FINANCE',
+    financeType: meta.financeType || 'expense',
+    amount: meta.amount,
+    paymentMethod: meta.paymentMethod,
+    content: normalizeText(payload?.content || result.content),
+  });
+};
+
+const scoreFinanceResult = (result: ParserResultV2): number => {
+  const payload = result.payload as Partial<CreateItemPayload> | undefined;
+  const meta = payload?.meta || {};
+  const financeType = meta.financeType || 'expense';
+  const toWallet = normalizeText(meta.toWallet);
+
+  let score = 0;
+  score += result.confidence === 'high' ? 6 : result.confidence === 'medium' ? 3 : 0;
+  if (!result.needsReview) score += 2;
+  if (meta.date) score += 1;
+  if (meta.budgetCategory) score += 1;
+  if (meta.commodity) score += 1;
+  if (meta.subcommodity) score += 1;
+  if ((financeType === 'expense' || financeType === 'income') && toWallet) score -= 3;
+  if (/\b(usually|should|because|based on|source|destination|not needed|tidak perlu)\b/.test(toWallet)) score -= 5;
+
+  return score;
+};
+
 const looksLikeSingleFinanceInput = (sourceText: string): boolean => {
   const text = normalizeText(sourceText);
   if (!text) return false;
@@ -83,14 +114,16 @@ export function guardParserResultMultiplicity(results: ParserResultV2[], sourceT
   }
 
   const coreSignatures = new Set(financeResults.map(financeCoreSignature));
-  if (coreSignatures.size !== 1) {
+  const looseSignatures = new Set(financeResults.map(financeLooseSingleInputSignature));
+  if (coreSignatures.size !== 1 && looseSignatures.size !== 1) {
     return { results: deduped, removedCount, reason: removedCount > 0 ? 'exact_duplicate_parser_results' : undefined };
   }
 
+  const bestFinance = financeResults.slice().sort((a, b) => scoreFinanceResult(b) - scoreFinanceResult(a))[0];
   let keptFinance = false;
   const collapsed = deduped.filter((result) => {
     if (!isCreateFinanceResult(result)) return true;
-    if (!keptFinance) {
+    if (!keptFinance && result === bestFinance) {
       keptFinance = true;
       return true;
     }

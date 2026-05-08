@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.73',
+    date: 'May 2026',
+    items: [
+      'Review Center now collapses single-transaction parser variants into one saved transaction even when optional metadata like date, subcommodity, or destination wallet differs.',
+      'Expense parsing now strips destination-wallet text from normal expenses, and Review Center hides noisy canonical internals so parser details are easier to scan.',
+    ],
+  },
+  {
     version: 'v0.3.72',
     date: 'May 2026',
     items: [
