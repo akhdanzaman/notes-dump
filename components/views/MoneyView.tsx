@@ -108,6 +108,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     const [isDragging, setIsDragging] = useState(false);
     const [hoveredTrendIndex, setHoveredTrendIndex] = useState<number | null>(null);
     const [hoveredAnatomySegment, setHoveredAnatomySegment] = useState<{ categoryId: string; commodityName: string } | null>(null);
+    const [hoveredCommodityBox, setHoveredCommodityBox] = useState<string | null>(null);
 
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -180,21 +181,56 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         : 50;
     const trendMaxAmount = Math.max(...budgetTrendAnalytics.flatMap(point => [point.total, point.income, Math.abs(point.income - point.total), point.previousTotal || 0, point.previousIncome || 0]), 0);
     const topSpendBreakdowns = useMemo(() => {
-        const commodityTotals = new Map<string, number>();
+        const commodityTotals = new Map<string, {
+            total: number;
+            count: number;
+            subcommodities: Map<string, { total: number; count: number }>;
+            transactions: BudgetCommodityBreakdown['transactions'];
+        }>();
         const subcommodityTotals = new Map<string, number>();
         budgetCategoryAnalytics.forEach(category => {
             category.commodities.forEach(commodity => {
-                commodityTotals.set(commodity.name, (commodityTotals.get(commodity.name) || 0) + commodity.total);
+                const current = commodityTotals.get(commodity.name) || {
+                    total: 0,
+                    count: 0,
+                    subcommodities: new Map<string, { total: number; count: number }>(),
+                    transactions: [],
+                };
+                current.total += commodity.total;
+                current.count += commodity.count;
+                current.transactions.push(...commodity.transactions);
                 commodity.subcommodities.forEach(sub => {
+                    current.subcommodities.set(sub.name, {
+                        total: (current.subcommodities.get(sub.name)?.total || 0) + sub.total,
+                        count: (current.subcommodities.get(sub.name)?.count || 0) + sub.count,
+                    });
                     subcommodityTotals.set(sub.name, (subcommodityTotals.get(sub.name) || 0) + sub.total);
                 });
+                commodityTotals.set(commodity.name, current);
             });
         });
-        const toSorted = (map: Map<string, number>) => Array.from(map.entries())
+        const commodities = Array.from(commodityTotals.entries())
+            .map(([name, stats]) => ({
+                name,
+                total: stats.total,
+                count: stats.count,
+                percentage: totalExpense > 0 ? (stats.total / totalExpense) * 100 : 0,
+                subcommodities: Array.from(stats.subcommodities.entries())
+                    .map(([subName, subStats]) => ({ name: subName, total: subStats.total, count: subStats.count }))
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 4),
+                transactions: stats.transactions
+                    .slice()
+                    .sort((a, b) => b.amount - a.amount)
+                    .slice(0, 6),
+            }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 6);
+        const subcommodities = Array.from(subcommodityTotals.entries())
             .map(([name, total]) => ({ name, total, percentage: totalExpense > 0 ? (total / totalExpense) * 100 : 0 }))
             .sort((a, b) => b.total - a.total)
             .slice(0, 6);
-        return { commodities: toSorted(commodityTotals), subcommodities: toSorted(subcommodityTotals) };
+        return { commodities, subcommodities };
     }, [budgetCategoryAnalytics, totalExpense]);
     const budgetInsightCards = useMemo(() => {
         const cards: { title: string; detail: string; tone: 'red' | 'amber' | 'emerald' | 'indigo' }[] = [];
@@ -890,11 +926,73 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                                         {topSpendBreakdowns.commodities.map((item, index) => {
                                                             const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-violet-500', 'bg-orange-500', 'bg-amber-500', 'bg-pink-500'];
+                                                            const isHovered = hoveredCommodityBox === item.name;
                                                             return (
-                                                                <div key={`commodity-${item.name}`} className={`${colors[index % colors.length]} min-h-24 rounded-2xl p-3 text-white shadow-sm`}>
-                                                                    <div className="text-sm font-bold capitalize leading-tight">{item.name}</div>
-                                                                    <div className="mt-2 text-2xl font-bold">{item.percentage.toFixed(0)}%</div>
-                                                                    <div className="mt-1 text-[11px] font-semibold text-white/80">{showBalance ? fmt(item.total) : '••••'}</div>
+                                                                <div key={`commodity-${item.name}`} className="relative">
+                                                                    {isHovered && (
+                                                                        <div className="pointer-events-none absolute left-1/2 top-0 z-30 w-72 -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-2xl border border-border bg-surface/95 p-3 text-xs text-primary shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30">
+                                                                            <div className="mb-2 flex items-start justify-between gap-3">
+                                                                                <div className="min-w-0">
+                                                                                    <div className="truncate font-bold capitalize text-primary">{item.name}</div>
+                                                                                    <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{item.count} transactions</div>
+                                                                                </div>
+                                                                                <div className="shrink-0 text-right">
+                                                                                    <div className="font-bold text-primary">{item.percentage.toFixed(1)}%</div>
+                                                                                    <div className="font-semibold text-muted">{showBalance ? fmt(item.total) : '••••'}</div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {item.subcommodities.length > 0 && (
+                                                                                <div className="border-t border-border pt-2">
+                                                                                    <div className="mb-1 font-bold uppercase tracking-[0.14em] text-muted">Sub commodities</div>
+                                                                                    <div className="space-y-1">
+                                                                                        {item.subcommodities.slice(0, 4).map(sub => (
+                                                                                            <div key={`${item.name}-${sub.name}`} className="flex items-center justify-between gap-2">
+                                                                                                <span className="truncate text-muted capitalize">{sub.name} · {sub.count}x</span>
+                                                                                                <span className="shrink-0 font-bold text-primary">{showBalance ? fmt(sub.total) : '••••'}</span>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {item.transactions.length > 0 && (
+                                                                                <div className="mt-2 border-t border-border pt-2">
+                                                                                    <div className="mb-1 font-bold uppercase tracking-[0.14em] text-muted">Transactions</div>
+                                                                                    <div className="max-h-40 space-y-1 overflow-hidden">
+                                                                                        {item.transactions.slice(0, 5).map(transaction => (
+                                                                                            <div key={`${item.name}-${transaction.id}`} className="rounded-xl bg-black/[0.03] px-2 py-1.5 dark:bg-white/[0.04]">
+                                                                                                <div className="flex items-start justify-between gap-2">
+                                                                                                    <span className="min-w-0 flex-1 truncate font-semibold text-primary">{transaction.content}</span>
+                                                                                                    <span className="shrink-0 font-bold text-primary">{showBalance ? fmt(transaction.amount) : '••••'}</span>
+                                                                                                </div>
+                                                                                                <div className="mt-0.5 flex items-center justify-between gap-2 text-[10px] text-muted">
+                                                                                                    <span className="truncate capitalize">{transaction.subcommodity}</span>
+                                                                                                    {transaction.date && <span className="shrink-0">{new Date(transaction.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                    {item.transactions.length > 5 && (
+                                                                                        <div className="mt-1 text-[10px] font-semibold text-muted">+{item.transactions.length - 5} more transactions</div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                    <button
+                                                                        type="button"
+                                                                        onMouseEnter={() => setHoveredCommodityBox(item.name)}
+                                                                        onMouseLeave={() => setHoveredCommodityBox(null)}
+                                                                        onFocus={() => setHoveredCommodityBox(item.name)}
+                                                                        onBlur={() => setHoveredCommodityBox(null)}
+                                                                        className={`${colors[index % colors.length]} min-h-24 w-full cursor-help rounded-2xl p-3 text-left text-white shadow-sm transition-all hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isHovered ? '-translate-y-0.5 brightness-105' : ''}`}
+                                                                        aria-label={`${item.name}: ${item.percentage.toFixed(1)}% with ${item.count} transactions`}
+                                                                    >
+                                                                        <div className="text-sm font-bold capitalize leading-tight">{item.name}</div>
+                                                                        <div className="mt-2 text-2xl font-bold">{item.percentage.toFixed(0)}%</div>
+                                                                        <div className="mt-1 text-[11px] font-semibold text-white/80">{showBalance ? fmt(item.total) : '••••'} · {item.count} tx</div>
+                                                                    </button>
                                                                 </div>
                                                             );
                                                         })}

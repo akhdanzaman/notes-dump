@@ -10,6 +10,15 @@ export interface BudgetSubcommodityBreakdown {
   count: number;
 }
 
+export interface BudgetCommodityTransaction {
+  id: string;
+  content: string;
+  amount: number;
+  date?: string;
+  categoryName: string;
+  subcommodity: string;
+}
+
 export interface BudgetCommodityBreakdown {
   name: string;
   total: number;
@@ -17,6 +26,7 @@ export interface BudgetCommodityBreakdown {
   percentage: number;
   subcommodities: BudgetSubcommodityBreakdown[];
   merchants: BudgetSubcommodityBreakdown[];
+  transactions: BudgetCommodityTransaction[];
 }
 
 export interface BudgetCategoryInsight {
@@ -265,6 +275,7 @@ export const getBudgetCategoryAnalytics = (
       count: number;
       subcommodities: Map<string, { total: number; count: number }>;
       merchants: Map<string, { total: number; count: number }>;
+      transactions: BudgetCommodityTransaction[];
     }>;
   }>();
 
@@ -294,6 +305,7 @@ export const getBudgetCategoryAnalytics = (
         count: 0,
         subcommodities: new Map(),
         merchants: new Map(),
+        transactions: [],
       };
 
       categoryBucket.total += amount;
@@ -301,6 +313,14 @@ export const getBudgetCategoryAnalytics = (
       commodityBucket.count += 1;
       increment(commodityBucket.subcommodities, subcommodity, amount);
       if (merchant) increment(commodityBucket.merchants, merchant, amount);
+      commodityBucket.transactions.push({
+        id: item.id,
+        content: item.content,
+        amount,
+        date: getExpenseDate(item)?.toISOString(),
+        categoryName: category.name,
+        subcommodity,
+      });
 
       categoryBucket.commodities.set(commodity, commodityBucket);
       categoryMap.set(category.id, categoryBucket);
@@ -320,6 +340,9 @@ export const getBudgetCategoryAnalytics = (
           percentage: category.total > 0 ? (stats.total / category.total) * 100 : 0,
           subcommodities: sortedBreakdown(stats.subcommodities, 3),
           merchants: sortedBreakdown(stats.merchants, 2),
+          transactions: stats.transactions
+            .slice()
+            .sort((a, b) => b.amount - a.amount),
         }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 4),

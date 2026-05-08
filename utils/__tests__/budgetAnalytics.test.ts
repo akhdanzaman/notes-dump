@@ -117,6 +117,8 @@ test('budget category analytics groups category to commodity to subcommodity wit
   assert.equal(needs!.commodities[0].percentage.toFixed(0), '86');
   assert.deepEqual(needs!.commodities[0].subcommodities.map(sub => sub.name), ['dinner', 'breakfast']);
   assert.deepEqual(needs!.commodities[0].merchants.map(merchant => merchant.name), ['gacoan', 'warung']);
+  assert.deepEqual(needs!.commodities[0].transactions.map(transaction => transaction.content), ['dinner', 'breakfast']);
+  assert.deepEqual(needs!.commodities[0].transactions.map(transaction => transaction.subcommodity), ['dinner', 'breakfast']);
 
   const wants = analytics.find(category => category.categoryId === 'wants');
   assert.equal(wants!.commodities[0].name, 'others');

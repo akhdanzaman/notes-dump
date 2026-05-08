@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.69',
+    date: 'May 2026',
+    items: [
+      'Money > Budget Spend Anatomy commodity tiles now show floating hover details with subcommodity breakdowns and top transactions for that commodity.',
+    ],
+  },
+  {
     version: 'v0.3.68',
     date: 'May 2026',
     items: [
