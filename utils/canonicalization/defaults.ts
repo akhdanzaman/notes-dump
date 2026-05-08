@@ -19,7 +19,16 @@ export const isFinanceCanonicalCandidate = (meta: ParsedItemMetaV2): boolean => 
   || meta.subcommodity
 );
 
-const hasAcceptedCanonical = (value?: CanonicalValue): boolean => Boolean(value?.value && !value.needsReview);
+const hasAcceptedCanonical = (value?: CanonicalValue, rawValue?: string): boolean => {
+  if (!value?.value || value.needsReview) return false;
+  if (value.source === 'manual_review') return true;
+
+  const canonicalValue = normalizeCanonicalFallback(value.value);
+  const rawCanonicalValue = normalizeCanonicalFallback(rawValue);
+  if (canonicalValue === CANONICAL_OTHER_VALUE && rawCanonicalValue !== CANONICAL_OTHER_VALUE) return false;
+
+  return true;
+};
 
 const buildDefaultCanonical = (rawValue: string | undefined, field: 'commodity' | 'subcommodity'): CanonicalValue => {
   const value = normalizeCanonicalFallback(rawValue);
@@ -41,11 +50,11 @@ export const ensureFinanceCanonicalDefaults = (meta: ParsedItemMetaV2): ParsedIt
 
   const canonical = { ...(meta.canonical || {}) };
 
-  if (!hasAcceptedCanonical(canonical.commodity)) {
+  if (!hasAcceptedCanonical(canonical.commodity, meta.commodity)) {
     canonical.commodity = buildDefaultCanonical(meta.commodity, 'commodity');
   }
 
-  if (!hasAcceptedCanonical(canonical.subcommodity)) {
+  if (!hasAcceptedCanonical(canonical.subcommodity, meta.subcommodity)) {
     canonical.subcommodity = buildDefaultCanonical(meta.subcommodity, 'subcommodity');
   }
 

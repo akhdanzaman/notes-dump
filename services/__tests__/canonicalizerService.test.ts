@@ -393,7 +393,8 @@ test('sweepHistoricalCanonicalMeta backfills high-confidence canonical metadata 
   assert.equal(sweep.items[0].meta.merchant, 'gacoan');
   assert.equal(sweep.items[0].meta.canonical?.merchant, undefined);
   assert.equal(sweep.items[0].meta.canonical?.commodity?.value, 'food');
-  assert.equal(sweep.items[0].meta.canonical?.subcommodity?.value, 'others');
+  assert.equal(sweep.items[0].meta.subcommodity, 'meal');
+  assert.equal(sweep.items[0].meta.canonical?.subcommodity?.value, 'meal');
 });
 
 test('sweepHistoricalCanonicalMeta seeds ambiguous historical rows for review without applying them', () => {
@@ -423,6 +424,75 @@ test('sweepHistoricalCanonicalMeta seeds ambiguous historical rows for review wi
   assert.equal((sweep.reviews[0].results[0].payload as any).changes.canonical, undefined);
   assert.equal(sweep.reviews[0].results[0].canonicalReview?.[0].suggestedValue, 'BCA');
   assert.equal((sweep.reviews[0].originalResults[0].payload as any).changes.canonical.paymentMethod.value, 'BCA');
+});
+
+
+test('sweepHistoricalCanonicalMeta fills commodity fields from current user behavior for repeated merchants', () => {
+  const items: BrainDumpItem[] = [
+    {
+      id: 'behavior-source',
+      type: ItemType.FINANCE,
+      content: 'kopi langganan 28000',
+      status: 'done',
+      created_at: '2026-05-01T08:00:00.000Z',
+      completed_at: '2026-05-01T08:00:00.000Z',
+      meta: {
+        merchant: 'Kedai Sore',
+        financeType: 'expense',
+        commodity: 'food',
+        subcommodity: 'drink',
+      },
+    },
+    {
+      id: 'behavior-target',
+      type: ItemType.FINANCE,
+      content: 'kedai sore 30000',
+      status: 'done',
+      created_at: '2026-05-02T08:00:00.000Z',
+      completed_at: '2026-05-02T08:00:00.000Z',
+      meta: {
+        merchant: 'Kedai Sore',
+        financeType: 'expense',
+      },
+    },
+  ];
+
+  const sweep = sweepHistoricalCanonicalMeta(items, ctx);
+  const target = sweep.items.find(item => item.id === 'behavior-target')!;
+
+  assert.equal(target.meta.commodity, 'food');
+  assert.equal(target.meta.subcommodity, 'drink');
+  assert.equal(target.meta.canonical?.commodity?.value, 'food');
+  assert.equal(target.meta.canonical?.subcommodity?.value, 'drink');
+});
+
+test('canonicalizeParserResults fills commodity fields from transaction behavior signals', () => {
+  const parsed: ParserResultV2[] = [
+    {
+      action: 'create_item',
+      entityType: 'finance',
+      content: 'sarapan 14000 cash',
+      targetText: 'sarapan 14000 cash',
+      confidence: 'high',
+      needsReview: false,
+      payload: {
+        itemType: 'FINANCE',
+        content: 'sarapan',
+        meta: {
+          amount: 14000,
+          financeType: 'expense',
+        },
+      },
+    },
+  ];
+
+  const next = canonicalizeParserResults(parsed, ctx);
+  const meta = (next[0].payload as any).meta;
+
+  assert.equal(meta.commodity, 'food');
+  assert.equal(meta.subcommodity, 'breakfast');
+  assert.equal(meta.canonical.commodity.value, 'food');
+  assert.equal(meta.canonical.subcommodity.value, 'breakfast');
 });
 
 test('sweepHistoricalCanonicalMeta reruns idempotently after auto-apply', () => {

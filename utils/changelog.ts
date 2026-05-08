@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.71',
+    date: 'May 2026',
+    items: [
+      'Canonical backfill now fills blank or weak “others” commodity/subcommodity fields from current user behavior, including repeated merchant patterns, before falling back to transaction signal inference.',
+      'New parsed finance transactions now receive commodity/subcommodity raw fields and canonical values from the same behavior-aware inference path so Budget analytics stays aligned with recent user tagging habits.',
+    ],
+  },
+  {
     version: 'v0.3.70',
     date: 'May 2026',
     items: [

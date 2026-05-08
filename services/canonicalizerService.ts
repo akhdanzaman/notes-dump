@@ -16,7 +16,8 @@ import {
 import { findBestCanonicalCandidate } from '../utils/canonicalization/ruleMatcher';
 import { shouldAutoApply, shouldSuggestReview } from '../utils/canonicalization/scoring';
 import { consolidateCanonicalRules, incrementCanonicalRuleRejection, mergeLearnedRule } from '../utils/canonicalization/learnedRules';
-import { ensureFinanceCanonicalDefaults } from '../utils/canonicalization/defaults';
+import { CANONICAL_OTHER_VALUE, ensureFinanceCanonicalDefaults, normalizeCanonicalFallback } from '../utils/canonicalization/defaults';
+import { inferTransactionCommodity } from '../utils/canonicalization/transactionInference';
 import { enrichFinanceMetaFromText } from './parserSignalService';
 
 export interface CanonicalizerContext {
@@ -30,6 +31,13 @@ export interface CanonicalizerContext {
 const CANONICAL_FIELDS: CanonicalField[] = ['commodity', 'paymentMethod', 'subcommodity'];
 const LEARNABLE_CANONICAL_FIELDS: CanonicalField[] = ['merchant', 'commodity', 'paymentMethod', 'subcommodity'];
 const HISTORICAL_REVIEW_ID_PREFIX = 'canonical-backfill';
+
+type BehaviorCommodityPair = {
+  commodity: string;
+  subcommodity?: string;
+  count: number;
+  evidence: string;
+};
 
 export interface HistoricalCanonicalReview {
   id: string;
@@ -98,6 +106,122 @@ const pickCanonicalFields = (
 }, {});
 
 const hasCanonicalFields = (canonical?: ItemCanonicalMeta) => !!canonical && Object.keys(canonical).length > 0;
+
+const normalizeBehaviorText = (value?: string): string => (value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/rp\s*/g, ' ')
+  .replace(/\b\d+(?:[.,]\d+)?\s*(?:rb|ribu|k|jt|juta|m)?\b/g, ' ')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const meaningfulCanonicalValue = (value?: string): string | undefined => {
+  const normalized = normalizeCanonicalFallback(value);
+  return normalized && normalized !== CANONICAL_OTHER_VALUE ? normalized : undefined;
+};
+
+const acceptedCanonicalOrRaw = (meta: ParsedItemMetaV2, field: 'commodity' | 'subcommodity'): string | undefined => {
+  const canonical = meta.canonical?.[field];
+  if (canonical?.value && !canonical.needsReview) {
+    const accepted = meaningfulCanonicalValue(canonical.value);
+    if (accepted) return accepted;
+  }
+  return meaningfulCanonicalValue(meta[field]);
+};
+
+const behaviorKeysForMeta = (content: string | undefined, meta: ParsedItemMetaV2): string[] => {
+  const keys = new Set<string>();
+  const merchant = normalizeBehaviorText(meta.merchant);
+  const contentKey = normalizeBehaviorText(content);
+  const tagsKey = (meta.tags || []).map(normalizeBehaviorText).filter(Boolean).sort().join(' ');
+
+  if (merchant) keys.add(`merchant:${merchant}`);
+  if (contentKey) keys.add(`content:${contentKey}`);
+  if (tagsKey && contentKey) keys.add(`tags-content:${tagsKey}:${contentKey}`);
+
+  return Array.from(keys);
+};
+
+const buildBehaviorCommodityIndex = (items: BrainDumpItem[]): Map<string, BehaviorCommodityPair[]> => {
+  const grouped = new Map<string, Map<string, BehaviorCommodityPair>>();
+
+  items.forEach(item => {
+    const commodity = acceptedCanonicalOrRaw(item.meta, 'commodity');
+    if (!commodity) return;
+    const subcommodity = acceptedCanonicalOrRaw(item.meta, 'subcommodity');
+    const keys = behaviorKeysForMeta(item.content, item.meta);
+    if (keys.length === 0) return;
+
+    keys.forEach(key => {
+      if (!grouped.has(key)) grouped.set(key, new Map());
+      const pairKey = `${commodity}::${subcommodity || ''}`;
+      const current = grouped.get(key)!.get(pairKey) || {
+        commodity,
+        subcommodity,
+        count: 0,
+        evidence: key,
+      };
+      current.count += 1;
+      grouped.get(key)!.set(pairKey, current);
+    });
+  });
+
+  const index = new Map<string, BehaviorCommodityPair[]>();
+  grouped.forEach((pairs, key) => {
+    index.set(key, Array.from(pairs.values()).sort((a, b) => b.count - a.count));
+  });
+  return index;
+};
+
+const inferCommodityFromUserBehavior = (
+  content: string | undefined,
+  meta: ParsedItemMetaV2,
+  ctx: CanonicalizerContext
+): BehaviorCommodityPair | undefined => {
+  const index = buildBehaviorCommodityIndex(ctx.existingItems);
+  const keys = behaviorKeysForMeta(content, meta);
+  for (const key of keys) {
+    const pair = index.get(key)?.[0];
+    if (pair) return pair;
+  }
+  return undefined;
+};
+
+const fillCommodityFromContext = (
+  content: string | undefined,
+  itemType: string | undefined,
+  meta: ParsedItemMetaV2,
+  ctx: CanonicalizerContext
+): ParsedItemMetaV2 => {
+  const next: ParsedItemMetaV2 = { ...meta };
+  const hasCommodity = meaningfulCanonicalValue(next.commodity);
+  const hasSubcommodity = meaningfulCanonicalValue(next.subcommodity);
+  if (hasCommodity && hasSubcommodity) return next;
+
+  const behavior = inferCommodityFromUserBehavior(content, next, ctx);
+  if (behavior) {
+    if (!hasCommodity) next.commodity = behavior.commodity;
+    if (!hasSubcommodity && behavior.subcommodity) next.subcommodity = behavior.subcommodity;
+  }
+
+  const stillMissingCommodity = !meaningfulCanonicalValue(next.commodity);
+  const stillMissingSubcommodity = !meaningfulCanonicalValue(next.subcommodity);
+  if (stillMissingCommodity || stillMissingSubcommodity) {
+    const inferred = inferTransactionCommodity({
+      id: 'canonical-context-inference',
+      type: itemType === 'SHOPPING' ? ItemType.SHOPPING : ItemType.FINANCE,
+      content: content || '',
+      status: 'done',
+      created_at: new Date(0).toISOString(),
+      meta: next,
+    });
+    if (stillMissingCommodity && meaningfulCanonicalValue(inferred.commodity)) next.commodity = inferred.commodity;
+    if (stillMissingSubcommodity && meaningfulCanonicalValue(inferred.subcommodity)) next.subcommodity = inferred.subcommodity;
+  }
+
+  return next;
+};
 
 const buildHistoricalReview = (
   item: BrainDumpItem,
@@ -202,14 +326,20 @@ export function canonicalizeMeta(
   };
 }
 
-const enrichMetaWithContext = (result: ParserResultV2, meta: ParsedItemMetaV2, ctx: CanonicalizerContext): ParsedItemMetaV2 => enrichFinanceMetaFromText({
-  rawText: result.targetText || result.content || '',
-  content: result.content || '',
-  itemType: String(result.entityType || '').toUpperCase(),
-  meta,
-  availableWallets: ctx.wallets,
-  availableBudgetRules: ctx.budgetRules,
-});
+const enrichMetaWithContext = (result: ParserResultV2, meta: ParsedItemMetaV2, ctx: CanonicalizerContext): ParsedItemMetaV2 => {
+  const itemType = String(result.entityType || '').toUpperCase();
+  const content = result.targetText || result.content || '';
+  const signalEnriched = enrichFinanceMetaFromText({
+    rawText: content,
+    content: result.content || '',
+    itemType,
+    meta,
+    availableWallets: ctx.wallets,
+    availableBudgetRules: ctx.budgetRules,
+  });
+
+  return fillCommodityFromContext(content, itemType, signalEnriched, ctx);
+};
 
 export function canonicalizeParserResults(
   results: ParserResultV2[],
@@ -280,13 +410,14 @@ export function sweepHistoricalCanonicalMeta(
   items: BrainDumpItem[],
   ctx: CanonicalizerContext
 ): HistoricalCanonicalSweepResult {
+  const sweepContext = { ...ctx, existingItems: ctx.existingItems.length > 0 ? ctx.existingItems : items };
   const reviews: HistoricalCanonicalReview[] = [];
   const changedItemIds: string[] = [];
   let autoAppliedCount = 0;
   let reviewSuggestionCount = 0;
 
   const nextItems = items.map((item) => {
-    const enrichedMeta = enrichFinanceMetaFromText({
+    const signalEnriched = enrichFinanceMetaFromText({
       rawText: item.content,
       content: item.content,
       itemType: item.type,
@@ -294,7 +425,8 @@ export function sweepHistoricalCanonicalMeta(
       availableWallets: ctx.wallets,
       availableBudgetRules: ctx.budgetRules,
     });
-    const canonicalized = canonicalizeMeta(enrichedMeta, ctx);
+    const enrichedMeta = fillCommodityFromContext(item.content, item.type, signalEnriched, sweepContext);
+    const canonicalized = canonicalizeMeta(enrichedMeta, sweepContext);
 
     if (canonicalized.suggestions.length > 0) {
       reviews.push(buildHistoricalReview(item, canonicalized.suggestions, canonicalized.meta));
