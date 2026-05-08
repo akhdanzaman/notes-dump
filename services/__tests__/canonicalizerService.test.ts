@@ -495,6 +495,53 @@ test('canonicalizeParserResults fills commodity fields from transaction behavior
   assert.equal(meta.canonical.subcommodity.value, 'breakfast');
 });
 
+test('canonicalizeParserResults does not infer spend commodity for non-money notes', () => {
+  const parsed: ParserResultV2[] = [
+    {
+      action: 'create_item',
+      entityType: 'note',
+      content: 'sarapan ideas for trip planning',
+      targetText: 'sarapan ideas for trip planning',
+      confidence: 'high',
+      needsReview: false,
+      payload: {
+        itemType: 'NOTE',
+        content: 'sarapan ideas for trip planning',
+        meta: {
+          tags: ['travel'],
+        },
+      },
+    },
+  ];
+
+  const next = canonicalizeParserResults(parsed, ctx);
+  const meta = (next[0].payload as any).meta;
+
+  assert.equal(meta.commodity, undefined);
+  assert.equal(meta.subcommodity, undefined);
+  assert.deepEqual(meta.canonical || {}, {});
+});
+
+test('sweepHistoricalCanonicalMeta keeps non-money todos out of commodity backfill', () => {
+  const items: BrainDumpItem[] = [
+    {
+      id: 'todo-non-money',
+      type: ItemType.TODO,
+      content: 'review makan siang event plan',
+      status: 'pending',
+      created_at: '2026-05-01T08:00:00.000Z',
+      meta: {
+        tags: ['planning'],
+      },
+    },
+  ];
+
+  const sweep = sweepHistoricalCanonicalMeta(items, ctx);
+
+  assert.deepEqual(sweep.changedItemIds, []);
+  assert.deepEqual(sweep.items, items);
+});
+
 test('sweepHistoricalCanonicalMeta reruns idempotently after auto-apply', () => {
   const items: BrainDumpItem[] = [
     {

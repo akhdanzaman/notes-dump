@@ -2185,6 +2185,7 @@ export const useBrainDumpData = () => {
             meta: {
                 tags: [],
                 amount: normalizedAmount,
+                date: new Date(date).toISOString(),
                 paymentMethod: walletId,
                 toWallet: toWalletId,
                 financeType: 'saving',

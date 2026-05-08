@@ -188,12 +188,30 @@ const inferCommodityFromUserBehavior = (
   return undefined;
 };
 
+const isCommodityContextCandidate = (itemType: string | undefined, meta: ParsedItemMetaV2): boolean => {
+  const normalizedType = String(itemType || '').toUpperCase();
+  if (normalizedType === 'FINANCE') return true;
+  if (normalizedType !== 'SHOPPING' && normalizedType !== 'TODO') return false;
+
+  return Boolean(
+    meta.amount
+    || meta.financeType
+    || meta.paymentMethod
+    || meta.toWallet
+    || meta.budgetCategory
+    || meta.commodity
+    || meta.subcommodity
+  );
+};
+
 const fillCommodityFromContext = (
   content: string | undefined,
   itemType: string | undefined,
   meta: ParsedItemMetaV2,
   ctx: CanonicalizerContext
 ): ParsedItemMetaV2 => {
+  if (!isCommodityContextCandidate(itemType, meta)) return meta;
+
   const next: ParsedItemMetaV2 = { ...meta };
   const hasCommodity = meaningfulCanonicalValue(next.commodity);
   const hasSubcommodity = meaningfulCanonicalValue(next.subcommodity);

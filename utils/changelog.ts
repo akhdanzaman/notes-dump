@@ -11,6 +11,8 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     items: [
       'Canonical backfill now fills blank or weak “others” commodity/subcommodity fields from current user behavior, including repeated merchant patterns, before falling back to transaction signal inference.',
       'New parsed finance transactions now receive commodity/subcommodity raw fields and canonical values from the same behavior-aware inference path so Budget analytics stays aligned with recent user tagging habits.',
+      'Commodity backfill is now scoped to real transaction candidates so non-money notes and todos are not mislabeled from everyday words like food or transport terms.',
+      'Saving and investment funding transactions now keep the selected transaction date in Money filters instead of falling back to the creation date.',
     ],
   },
   {
