@@ -39,7 +39,7 @@ type AmountMatch = { amount: number; raw: string; index: number };
 type WalletMatch = { wallet: Wallet; alias: string; raw: string; index: number; end: number };
 type DateHint = { date: string; raw: string };
 
-const EXPENSE_KEYWORDS = ['expense', 'pengeluaran', 'keluar', 'bayar', 'beli', 'jajan', 'spent', 'spend', 'buy', 'paid'];
+const EXPENSE_KEYWORDS = ['expense', 'pengeluaran', 'keluar', 'bayar', 'jajan', 'spent', 'spend', 'paid'];
 const INCOME_KEYWORDS = ['income', 'pemasukan', 'masuk', 'gaji', 'salary', 'bonus', 'refund', 'cashback', 'reimburse', 'reimbursement'];
 const TRANSFER_KEYWORDS = ['transfer', 'tf', 'trf', 'pindah', 'mutasi'];
 const SAVING_KEYWORDS = ['saving', 'savings', 'tabung', 'nabung', 'simpan', 'invest', 'investasi', 'investment'];

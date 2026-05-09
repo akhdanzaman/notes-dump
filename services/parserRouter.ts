@@ -193,20 +193,7 @@ const classifyQueryOnly = (rawText: string): LocalClassification => {
 export const classifyLocalIntent = (rawText: string, ctx: LocalClassifierContext = {}): LocalClassification => {
   const normalized = normalizeWhitespace(rawText);
   if (!normalized) return decision('unknown', 0, ['empty_input']);
-  if (isComplexInput(rawText)) return decision('mixed', 0.45, ['mixed_or_complex_input']);
-
   const text = lower(normalized);
-
-  if (/^(note|catatan|idea|ide)\s*[:\-]/.test(text)) return classifyExplicitItem(normalized, ItemType.NOTE, 'note', 'explicit_note_prefix', ctx);
-  if (/^(journal|jurnal|diary|dear diary)\b/.test(text)) return classifyExplicitItem(normalized, ItemType.JOURNAL, 'journal', 'explicit_journal_prefix', ctx);
-  if (/^(todo|task|tugas)\s*[:\-]/.test(text) || /^(remind me to|ingatkan(?: saya)? untuk)\b/.test(text)) return classifyExplicitItem(normalized, ItemType.TODO, 'todo', 'explicit_todo_prefix', ctx);
-  if (/^(event|calendar|jadwal|schedule)\s*[:\-]/.test(text)) return classifyExplicitItem(normalized, ItemType.EVENT, 'event', 'explicit_event_prefix', ctx);
-  if (/\?$/.test(text) || /^(what|how|why|when|where|who|apa|berapa|kenapa|kapan|dimana|siapa)\b/.test(text)) return classifyQueryOnly(normalized);
-
-  if (/^(shopping|belanja)\s*[:\-]/.test(text) || /^(buy|beli)\b/.test(text)) {
-    const hasPaidSignal = /\b(expense|spent|paid|bayar|dibayar|sudah|done)\b/.test(text);
-    if (!hasPaidSignal) return classifyExplicitItem(normalized, ItemType.SHOPPING, 'shopping', 'obvious_shopping_intent', ctx);
-  }
 
   const localFinance = parseLocalFinanceCommand(normalized, ctx);
   if (localFinance) {
@@ -219,7 +206,20 @@ export const classifyLocalIntent = (rawText: string, ctx: LocalClassifierContext
     );
   }
 
+  if (isComplexInput(rawText)) return decision('mixed', 0.45, ['mixed_or_complex_input']);
   if (isLocalFinanceFallbackCandidate(text)) return decision('finance', 0.45, ['finance_fast_path_fallback_to_ai', 'mixed_or_complex_input']);
+
+  if (/^(note|catatan|idea|ide)\s*[:\-]/.test(text)) return classifyExplicitItem(normalized, ItemType.NOTE, 'note', 'explicit_note_prefix', ctx);
+  if (/^(journal|jurnal|diary|dear diary)\b/.test(text)) return classifyExplicitItem(normalized, ItemType.JOURNAL, 'journal', 'explicit_journal_prefix', ctx);
+  if (/^(todo|task|tugas)\s*[:\-]/.test(text) || /^(remind me to|ingatkan(?: saya)? untuk)\b/.test(text)) return classifyExplicitItem(normalized, ItemType.TODO, 'todo', 'explicit_todo_prefix', ctx);
+  if (/^(event|calendar|jadwal|schedule)\s*[:\-]/.test(text)) return classifyExplicitItem(normalized, ItemType.EVENT, 'event', 'explicit_event_prefix', ctx);
+  if (/\?$/.test(text) || /^(what|how|why|when|where|who|apa|berapa|kenapa|kapan|dimana|siapa)\b/.test(text)) return classifyQueryOnly(normalized);
+
+  if (/^(shopping|belanja)\s*[:\-]/.test(text) || /^(buy|beli)\b/.test(text)) {
+    const hasPaidSignal = /\b(expense|spent|paid|bayar|dibayar|sudah|done)\b/.test(text);
+    if (!hasPaidSignal) return classifyExplicitItem(normalized, ItemType.SHOPPING, 'shopping', 'obvious_shopping_intent', ctx);
+  }
+
   if (/\b(expense|spent|paid|bayar|income|gaji|salary|transfer|topup|tarik tunai|setor|saved?\s+\d|saving funds?)\b/.test(text)) return classifyFinance(normalized, ctx);
   if (parseAmount(normalized) && /\b(makan|sarapan|breakfast|lunch|dinner|kopi|coffee|parkir|parking|bensin|grab|gojek|token|listrik|laundry)\b/.test(text)) {
     return classifyFinance(normalized, ctx, 0.88, ['obvious_spend_phrase_with_amount']);

@@ -28,6 +28,7 @@ import {
 import { DEFAULT_PROMPT } from './geminiService';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_PRO_MODEL } from './aiService';
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
+import { parseLocalFinanceResults } from './localFinanceParser';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -1311,6 +1312,15 @@ export const parsePro = async (
   retryCount = 0,
   onProgress?: (stage: 'stage1' | 'stage2') => void
 ): Promise<ParserResultV2[]> => {
+  const localFinanceResults = parseLocalFinanceResults(text, {
+    availableWallets,
+    availableBudgetRules,
+    existingItems,
+  });
+  if (localFinanceResults) {
+    return localFinanceResults;
+  }
+
   const apiKey = getGeminiKey();
 
   if (!apiKey) {

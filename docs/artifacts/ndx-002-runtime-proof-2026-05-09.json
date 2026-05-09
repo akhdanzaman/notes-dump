@@ -1,0 +1,86 @@
+{
+  "task": "NDX-002",
+  "generatedAt": "2026-05-09T02:34:08.919Z",
+  "cwd": "/home/ubuntu/.openclaw/workspace/notes-dump",
+  "routeProof": [
+    {
+      "text": "expense makan 37500 gopay",
+      "route": "local_save",
+      "action": "create_item",
+      "deepAiCallsSoFar": 0,
+      "elapsedMs": 6.058,
+      "reasonCodes": [
+        "local_finance_fast_path",
+        "local_finance_expense"
+      ],
+      "payload": {
+        "itemType": "FINANCE",
+        "content": "makan",
+        "status": "done",
+        "meta": {
+          "amount": 37500,
+          "currency": "IDR",
+          "when": "unspecified",
+          "financeType": "expense",
+          "paymentMethod": "gopay"
+        }
+      }
+    },
+    {
+      "text": "transfer 100rb bca ke gopay",
+      "route": "local_save",
+      "action": "transfer_money",
+      "deepAiCallsSoFar": 0,
+      "elapsedMs": 1.356,
+      "reasonCodes": [
+        "local_finance_fast_path",
+        "local_finance_transfer"
+      ],
+      "payload": {
+        "amount": 100000,
+        "fromWallet": "bca",
+        "toWallet": "gopay"
+      }
+    },
+    {
+      "text": "saving 250rb emergency dari bca ke gopay",
+      "route": "review",
+      "action": "add_saving_funds",
+      "deepAiCallsSoFar": 0,
+      "elapsedMs": 0.544,
+      "reasonCodes": [
+        "local_finance_fast_path",
+        "local_finance_saving",
+        "missing_savingGoal:notMatched"
+      ],
+      "payload": {
+        "savingGoalName": "emergency",
+        "amount": 250000,
+        "fromWallet": "bca",
+        "toWallet": "gopay",
+        "note": "emergency"
+      }
+    },
+    {
+      "text": "expense makan kemarin di warung pak budi pakai gopay kayaknya 37.500 tapi split sama rani",
+      "route": "deep_ai",
+      "action": "unknown",
+      "deepAiCallsSoFar": 1,
+      "elapsedMs": 1.488,
+      "reasonCodes": [
+        "finance_fast_path_fallback_to_ai",
+        "mixed_or_complex_input"
+      ]
+    }
+  ],
+  "finalDeepAiCalls": 1,
+  "parseProNoKeyFastPath": {
+    "action": "create_item",
+    "confidence": "high",
+    "paymentMethod": "gopay"
+  },
+  "parseProNoKeyFallback": {
+    "action": "unknown",
+    "reviewReason": "Missing Gemini API key"
+  }
+}
