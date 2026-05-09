@@ -47,7 +47,7 @@ const ALL_KEYWORDS = [...EXPENSE_KEYWORDS, ...INCOME_KEYWORDS, ...TRANSFER_KEYWO
 const CONNECTOR_WORDS = ['dari', 'from', 'pakai', 'pake', 'via', 'with', 'ke', 'to', 'into', 'tujuan', 'buat', 'untuk', 'di', 'on'];
 const UNKNOWN_WALLET_HINTS = ['cash', 'tunai', 'qris', 'gopay', 'go-pay', 'ovo', 'dana', 'shopeepay', 'shoppepay', 'spay', 'bca', 'bni', 'bri', 'mandiri', 'jago', 'blu', 'seabank', 'jenius', 'permata', 'cimb', 'bsi', 'bibit', 'ajaib'];
 const AMBIGUOUS_FALLBACK_PATTERN = /\b(split|patungan|utang|hutang|pinjam|reimburse(?:ment)?|dibalikin|kayaknya|kayanya|mungkin|kurang lebih|approx|maybe)\b/i;
-const TOKEN_STOP_WORDS = new Set([...ALL_KEYWORDS, ...CONNECTOR_WORDS, 'rp', 'idr', 'rupiah', 'hari', 'ini']);
+const TOKEN_STOP_WORDS = new Set([...CONNECTOR_WORDS, 'rp', 'idr', 'rupiah', 'hari', 'ini']);
 
 const normalizeWhitespace = (input: string): string => input.replace(/\s+/g, ' ').trim();
 const normalizeKey = (input: string): string => input.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -56,8 +56,7 @@ const nowMs = (): number => (typeof performance !== 'undefined' ? performance.no
 
 const toLocalDateISOString = (date: Date): string => {
   const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  return next.toISOString();
+  return new Date(Date.UTC(next.getFullYear(), next.getMonth(), next.getDate())).toISOString();
 };
 
 const parseAmountValue = (rawInput: string): number | undefined => {
@@ -241,13 +240,16 @@ export const parseLocalFinanceCommand = (text: string, options: LocalFinancePars
   if (!trigger) return null;
   const tokenCount = normalizedText.split(/\s+/).length;
   if (tokenCount > 14 || normalizedText.length > 120 || AMBIGUOUS_FALLBACK_PATTERN.test(normalizedText)) return null;
-  const amountMatches = findAmountMatches(normalizedText);
+  const dateHint = extractDateHint(normalizedText, options.now || new Date());
+  const textWithoutDateHint = dateHint
+    ? normalizeWhitespace(normalizedText.replace(new RegExp(escapeRegExp(dateHint.raw), 'i'), ' '))
+    : normalizedText;
+  const amountMatches = findAmountMatches(textWithoutDateHint);
   if (amountMatches.length > 1) return null;
 
   const amount = amountMatches[0];
   const wallets = findWalletMatches(normalizedText, options.availableWallets || []);
   const unknownWalletHints = detectUnknownWalletHints(normalizedText, wallets);
-  const dateHint = extractDateHint(normalizedText, options.now || new Date());
   const label = buildContentLabel(normalizedText, trigger, amount, wallets, dateHint);
   const roles = resolveWalletRoles(trigger.kind, normalizedText, wallets);
   const missingFields: string[] = [];

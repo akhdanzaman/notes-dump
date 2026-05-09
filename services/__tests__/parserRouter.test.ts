@@ -35,6 +35,14 @@ const ctx = {
   now: new Date('2026-05-09T01:21:00+07:00'),
 };
 
+const assertLocalDate = (isoDate: string | undefined, year: number, month: number, day: number) => {
+  assert.ok(isoDate);
+  const date = new Date(isoDate);
+  assert.equal(date.getFullYear(), year);
+  assert.equal(date.getMonth(), month - 1);
+  assert.equal(date.getDate(), day);
+};
+
 test('router thresholds are explicit and ordered', () => {
   assert.equal(PARSER_ROUTER_THRESHOLDS.localSave, 0.85);
   assert.equal(PARSER_ROUTER_THRESHOLDS.review, 0.6);
@@ -88,6 +96,40 @@ test('local finance parser supports Indonesian currency forms and unknown-wallet
   const unknownWallet = await routeParserInput('expense makan 37500 jenius', ctx, async () => []);
   assert.equal(unknownWallet.decision.route, 'deep_ai');
   assert.equal(unknownWallet.results.length, 0);
+});
+
+test('router uses local finance parser for income without deep AI', async () => {
+  let deepCalls = 0;
+  const routed = await routeParserInput('income gaji 5jt bca', ctx, async () => {
+    deepCalls += 1;
+    return [];
+  });
+
+  assert.equal(deepCalls, 0);
+  assert.equal(routed.decision.route, 'local_save');
+  assert.ok(routed.decision.reasonCodes.includes('local_finance_income'));
+  assert.equal(routed.results[0].action, 'create_item');
+  assert.equal((routed.results[0].payload as any).content, 'gaji');
+  assert.equal((routed.results[0].payload as any).meta.amount, 5_000_000);
+  assert.equal((routed.results[0].payload as any).meta.financeType, 'income');
+  assert.equal((routed.results[0].payload as any).meta.paymentMethod, 'bca');
+  assert.equal((routed.results[0].payload as any).meta.toWallet, undefined);
+});
+
+test('local finance parser extracts dated finance hints', async () => {
+  const datedCtx = { ...ctx, now: new Date('2026-05-09T12:00:00.000Z') };
+
+  const income = await routeParserInput('income gaji 5jt bca kemarin', datedCtx, async () => []);
+  assert.equal(income.decision.route, 'local_save');
+  assert.equal((income.results[0].payload as any).content, 'gaji');
+  assert.equal((income.results[0].payload as any).meta.financeType, 'income');
+  assertLocalDate((income.results[0].payload as any).meta.date, 2026, 5, 8);
+  assert.equal((income.results[0].payload as any).meta.when, undefined);
+
+  const expense = await routeParserInput('expense parkir 10k cash 2026-05-02', datedCtx, async () => []);
+  assert.equal(expense.decision.route, 'local_save');
+  assert.equal((expense.results[0].payload as any).content, 'parkir');
+  assertLocalDate((expense.results[0].payload as any).meta.date, 2026, 5, 2);
 });
 
 test('router keeps future buy wording as shopping instead of paid finance', async () => {
