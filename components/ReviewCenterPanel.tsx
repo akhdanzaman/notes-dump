@@ -12,10 +12,12 @@ import {
   ThemePayload,
   TransferMoneyPayload,
   AddSavingFundsPayload,
+  EnrichmentTask,
 } from '../types';
 
 interface ReviewCenterPanelProps {
   parsingTasks?: ParsingTask[];
+  enrichmentTasks?: EnrichmentTask[];
   pendingReviews?: { id: string; text: string; results: ParserResultV2[] }[];
   onApproveReview?: (id: string, updatedResults: ParserResultV2[]) => void;
   onRejectReview?: (id: string) => void;
@@ -177,6 +179,7 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
 
 const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   parsingTasks = [],
+  enrichmentTasks = [],
   pendingReviews = [],
   onApproveReview,
   onRejectReview,
@@ -185,7 +188,9 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   undoParsingTask,
   deleteParsingTaskEntries,
 }) => {
+  const visibleEnrichmentTasks = enrichmentTasks.filter(task => task.status === 'running' || task.status === 'failed' || task.reviewCount || (task.appliedFields?.length || 0) > 0);
   const hasParsingTasks = parsingTasks.length > 0;
+  const hasEnrichmentTasks = visibleEnrichmentTasks.length > 0;
   const hasPendingReviews = pendingReviews.length > 0;
 
   return (
@@ -293,6 +298,41 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
         </div>
       )}
 
+      {hasEnrichmentTasks && (
+        <div className="mb-6 flex flex-col gap-2">
+          <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Background Enrichment</span>
+          {visibleEnrichmentTasks.map(task => (
+            <div key={task.id} className="bg-surface border border-border rounded-xl p-3 shadow-sm space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-primary truncate" title={task.sourceText || task.itemId}>
+                  {task.sourceText || task.itemId}
+                </span>
+                {task.status === 'running' ? (
+                  <span className="text-xs text-amber-500 flex items-center gap-1 font-medium">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Enriching...
+                  </span>
+                ) : task.status === 'failed' ? (
+                  <span className="text-xs text-red-500 flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3 h-3" /> Failed
+                  </span>
+                ) : task.reviewCount ? (
+                  <span className="text-xs text-indigo-500 font-bold">Needs review</span>
+                ) : (
+                  <span className="text-xs text-emerald-500 font-bold">Updated</span>
+                )}
+              </div>
+              {task.appliedFields && task.appliedFields.length > 0 && (
+                <p className="text-[11px] text-muted">Applied: {task.appliedFields.join(', ')}</p>
+              )}
+              {!!task.reviewCount && (
+                <p className="text-[11px] text-amber-600">{task.reviewCount} ambiguous suggestion{task.reviewCount === 1 ? '' : 's'} moved to Review Center.</p>
+              )}
+              {task.error && <p className="text-[11px] text-red-500">{task.error}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
       {hasPendingReviews ? (
         <PendingReviewList
           reviews={pendingReviews}
@@ -300,7 +340,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
           onReject={(id) => onRejectReview?.(id)}
         />
       ) : (
-        !hasParsingTasks && (
+        !hasParsingTasks && !hasEnrichmentTasks && (
           <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
             <div className="w-12 h-12 rounded-full border border-current flex items-center justify-center mb-3">
               <CheckCircle2 className="w-6 h-6" />

@@ -6,6 +6,30 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.78',
+    date: 'May 2026',
+    items: [
+      'Fast parser saves now defer commodity, subcommodity, and canonical enrichment to a background queue so capture is not blocked by deep metadata cleanup.',
+      'Background enrichment is merge-safe: high-confidence suggestions apply only to untouched fields, while ambiguous canonical suggestions move to Review Center instead of silently overwriting manual data.',
+    ],
+  },
+  {
+    version: 'v0.3.77',
+    date: 'May 2026',
+    items: [
+      'Deep AI parser calls now send intent-specific context slices so simple finance, task, and shopping requests do not include unrelated app data.',
+      'Parser cleanup now removes invalid wallet, budget, date, and low-confidence commodity fields from structured results and sends the ambiguity to Review Center instead of saving prose as IDs.',
+    ],
+  },
+  {
+    version: 'v0.3.76',
+    date: 'May 2026',
+    items: [
+      'Finance parsing now reuses high-confidence recent behavior to fill repeated wallet, budget category, commodity, and subcommodity metadata locally without calling deep AI.',
+      'Behavior suggestions use only the newest approved finance history, ignore weak others/unknown rows, and never override explicit parser fields or manual review corrections.',
+    ],
+  },
+  {
     version: 'v0.3.74',
     date: 'May 2026',
     items: [

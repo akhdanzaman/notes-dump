@@ -165,6 +165,7 @@ export interface ItemMeta {
   investmentPlatform?: string;
 
   canonical?: ItemCanonicalMeta;
+  enrichment?: EnrichmentMeta;
 
   lastGeneratedHistoryId?: string;
   priority?: Priority;
@@ -306,6 +307,32 @@ export interface ItemCanonicalMeta {
   subcommodity?: CanonicalValue;
   label?: CanonicalValue;
   family?: CanonicalValue;
+}
+
+export interface EnrichmentMeta {
+  status: 'queued' | 'processing' | 'applied' | 'review' | 'skipped' | 'error';
+  version: number;
+  taskId?: string;
+  parserTaskId?: string;
+  updatedAt: string;
+  appliedFields?: string[];
+  reviewCount?: number;
+  error?: string;
+}
+
+export interface EnrichmentTask {
+  id: string;
+  itemId: string;
+  parserTaskId?: string;
+  sourceText?: string;
+  status: 'pending' | 'running' | 'success' | 'review' | 'skipped' | 'failed';
+  baseMeta?: ItemMeta;
+  attempts: number;
+  createdAt: number;
+  completedAt?: number;
+  appliedFields?: string[];
+  reviewCount?: number;
+  error?: string;
 }
 
 export interface CanonicalRule {

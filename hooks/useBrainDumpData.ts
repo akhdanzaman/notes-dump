@@ -29,7 +29,8 @@ import {
     ParsingTask,
     CanonicalRule,
     ItemMeta,
-    InvestmentAssetType
+    InvestmentAssetType,
+    EnrichmentTask
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
@@ -41,6 +42,7 @@ import { parsePro } from '../services/geminiProService';
 import { calculateNextDueDate, calculateFirstDueDate } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, isLegacyCompletedGoalContent } from '../utils/financeTypeUtils';
 import { canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta, HistoricalCanonicalReview } from '../services/canonicalizerService';
+import { ASYNC_ENRICHMENT_REVIEW_PREFIX, queueCanonicalEnrichmentTasks, runCanonicalEnrichmentTasks } from '../services/asyncEnrichmentService';
 import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
@@ -398,6 +400,7 @@ export const useBrainDumpData = () => {
     const [loading, setLoading] = useState(true);
     const [pendingCount, setPendingCount] = useState(0);
     const [parsingTasks, setParsingTasks] = useState<ParsingTask[]>([]);
+    const [enrichmentTasks, setEnrichmentTasks] = useState<EnrichmentTask[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<SyncStatus>('synced');
     const [fetchStatus, setFetchStatus] = useState<SyncStatus>('synced');
@@ -417,11 +420,14 @@ export const useBrainDumpData = () => {
     } | null>(null);
     const pendingFetchAfterParsingRef = useRef(false);
     const parsingUndoSnapshotsRef = useRef<Record<string, ParsingUndoSnapshot>>({});
+    const enrichmentTasksRef = useRef<EnrichmentTask[]>([]);
 
     const hasActiveParsing = () => parsingInFlightRef.current.size > 0;
 
     const itemsRef = useRef(items);
     itemsRef.current = items;
+
+    enrichmentTasksRef.current = enrichmentTasks;
 
     const canonicalRulesRef = useRef(canonicalRules);
     canonicalRulesRef.current = canonicalRules;
@@ -1139,6 +1145,7 @@ export const useBrainDumpData = () => {
                                 parserConfidence: result.confidence,
                                 parserNeedsReview: result.needsReview,
                                 parserReviewReason: result.reviewReason,
+                                parserTaskId: tempId,
                                 parsingError: result.reviewReason
                             });
 
@@ -1320,6 +1327,8 @@ export const useBrainDumpData = () => {
             if (hasWalletChange) setWallets(newWallets);
             if (hasThemeChange) setMonthlyThemes(newThemes);
 
+            itemsRef.current = updated;
+
             saveAndSync(
                 updated,
                 undefined,
@@ -1334,6 +1343,76 @@ export const useBrainDumpData = () => {
             return updated;
         });
     };
+
+    const replaceAsyncEnrichmentReviews = useCallback((reviews: HistoricalCanonicalReview[]) => {
+        if (reviews.length === 0) return;
+        const reviewIds = new Set(reviews.map(review => review.id));
+        setPendingReviews(prev => [
+            ...reviews,
+            ...prev.filter(review => !reviewIds.has(review.id) && !review.id.startsWith(ASYNC_ENRICHMENT_REVIEW_PREFIX))
+        ]);
+    }, []);
+
+    const processEnrichmentTasks = useCallback(async (tasks: EnrichmentTask[]) => {
+        if (tasks.length === 0) return;
+
+        setEnrichmentTasks(prev => prev.map(task =>
+            tasks.some(nextTask => nextTask.id === task.id)
+                ? { ...task, status: 'running', attempts: task.attempts + 1 }
+                : task
+        ));
+
+        try {
+            const result = runCanonicalEnrichmentTasks({
+                items: itemsRef.current,
+                tasks,
+                ctx: {
+                    existingItems: itemsRef.current,
+                    wallets: walletsRef.current,
+                    budgetRules: budgetConfigRef.current?.rules || [],
+                    rules: [...getSystemCanonicalRules(walletsRef.current), ...canonicalRulesRef.current],
+                },
+            });
+
+            if (result.reviews.length > 0) replaceAsyncEnrichmentReviews(result.reviews);
+
+            if (result.changedItemIds.length > 0) {
+                itemsRef.current = result.items;
+                setItems(result.items);
+                saveAndSync(result.items, undefined, undefined, undefined, undefined, undefined, undefined, canonicalRulesRef.current);
+            }
+
+            setEnrichmentTasks(prev => {
+                const resultsById = new Map(result.taskResults.map(task => [task.id, task]));
+                return prev.map(task => resultsById.get(task.id) || task);
+            });
+        } catch (err: any) {
+            setEnrichmentTasks(prev => prev.map(task =>
+                tasks.some(nextTask => nextTask.id === task.id)
+                    ? { ...task, status: 'failed', error: err?.message || 'Async enrichment failed', completedAt: Date.now() }
+                    : task
+            ));
+        }
+    }, [replaceAsyncEnrichmentReviews, saveAndSync]);
+
+    const enqueueEnrichmentForParserTask = useCallback((parserTaskId: string, sourceText: string) => {
+        const targetItemIds = itemsRef.current
+            .filter(item => item.meta?.parserTaskId === parserTaskId)
+            .map(item => item.id);
+
+        const queuedTasks = queueCanonicalEnrichmentTasks({
+            items: itemsRef.current,
+            itemIds: targetItemIds,
+            parserTaskId,
+            sourceText,
+        }).filter(task => !enrichmentTasksRef.current.some(existing => existing.id === task.id));
+
+        if (queuedTasks.length === 0) return;
+
+        setEnrichmentTasks(prev => [...queuedTasks, ...prev]);
+        enrichmentTasksRef.current = [...queuedTasks, ...enrichmentTasksRef.current];
+        Promise.resolve().then(() => processEnrichmentTasks(queuedTasks));
+    }, [processEnrichmentTasks]);
 
     const processItemInBackground = async (text: string, tempId: string) => {
         parsingInFlightRef.current.add(tempId);
@@ -1405,24 +1484,28 @@ export const useBrainDumpData = () => {
             });
 
             let parsedResults: ParserResultV2[] = routed.results;
+            const enableDraftReview = appSettingsRef.current.enableDraftReview ?? false;
+            const requiresParserReview = routed.decision.route === 'review' || (enableDraftReview && routed.decision.route === 'deep_ai');
 
-            parsedResults = canonicalizeParserResults(parsedResults, {
-                existingItems: itemsRef.current,
-                wallets: walletsRef.current,
-                budgetRules: budgetConfigRef.current?.rules || [],
-                rules: [...getSystemCanonicalRules(walletsRef.current), ...canonicalRulesRef.current],
-            });
+            if (requiresParserReview) {
+                parsedResults = canonicalizeParserResults(parsedResults, {
+                    existingItems: itemsRef.current,
+                    wallets: walletsRef.current,
+                    budgetRules: budgetConfigRef.current?.rules || [],
+                    rules: [...getSystemCanonicalRules(walletsRef.current), ...canonicalRulesRef.current],
+                });
+            }
 
             const guardedResults = guardParserResultMultiplicity(parsedResults, text);
             parsedResults = guardedResults.results;
 
-            const enableDraftReview = appSettingsRef.current.enableDraftReview ?? false;
             const originalResults = structuredClone(parsedResults);
             
-            if (routed.decision.route === 'review' || (enableDraftReview && routed.decision.route === 'deep_ai')) {
+            if (requiresParserReview) {
                 setPendingReviews(prev => [{ id: tempId, text, results: parsedResults, originalResults }, ...prev]);
             } else {
                 executeParserResults(parsedResults, text, tempId);
+                enqueueEnrichmentForParserTask(tempId, text);
             }
 
             setParsingTasks(prev => prev.map(t => t.id === tempId ? {
@@ -2322,6 +2405,7 @@ export const useBrainDumpData = () => {
         error,
         pendingCount,
         parsingTasks,
+        enrichmentTasks,
         pendingReviews,
         canonicalRules,
         saveStatus,

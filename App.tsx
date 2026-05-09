@@ -45,7 +45,7 @@ const App: React.FC = () => {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
-      loading, error, pendingCount, parsingTasks, pendingReviews, canonicalRules, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
+      loading, error, pendingCount, parsingTasks, enrichmentTasks, pendingReviews, canonicalRules, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
       handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, toggleCanonicalRuleDisabled, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleKeepRawTodo, handleRetriggerDeepWorkTodo, handleAcceptDeepWorkTodo, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, undoSuccessfulParsingTask, deleteSuccessfulParsingTaskEntries, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
@@ -122,18 +122,21 @@ const App: React.FC = () => {
   const [lastReviewCenterOpenedAt, setLastReviewCenterOpenedAt] = useState(0);
 
   const latestParsingTaskAt = useMemo(() => {
-    return parsingTasks.reduce((latest, task) => Math.max(latest, task.createdAt || 0, task.completedAt || 0), 0);
-  }, [parsingTasks]);
+    const latestParsing = parsingTasks.reduce((latest, task) => Math.max(latest, task.createdAt || 0, task.completedAt || 0), 0);
+    return enrichmentTasks.reduce((latest, task) => Math.max(latest, task.createdAt || 0, task.completedAt || 0), latestParsing);
+  }, [enrichmentTasks, parsingTasks]);
 
   const hasRunningProcess = useMemo(() => {
     return pendingCount > 0
       || parsingTasks.some(task => task.status === 'pending')
+      || enrichmentTasks.some(task => task.status === 'pending' || task.status === 'running')
       || saveStatus === 'saving'
       || fetchStatus === 'syncing';
-  }, [fetchStatus, parsingTasks, pendingCount, saveStatus]);
+  }, [enrichmentTasks, fetchStatus, parsingTasks, pendingCount, saveStatus]);
 
-  const showReviewCenterNudge = parsingTasks.length > 0 && latestParsingTaskAt > lastReviewCenterOpenedAt;
-  const reviewCenterBadgeCount = pendingReviews.length + parsingTasks.length;
+  const noisyEnrichmentCount = enrichmentTasks.filter(task => task.status === 'failed' || task.reviewCount || (task.appliedFields?.length || 0) > 0).length;
+  const showReviewCenterNudge = (parsingTasks.length > 0 || pendingReviews.length > 0 || noisyEnrichmentCount > 0) && latestParsingTaskAt > lastReviewCenterOpenedAt;
+  const reviewCenterBadgeCount = pendingReviews.length + parsingTasks.length + noisyEnrichmentCount;
 
   const openReviewCenterFromInput = () => {
     setLastReviewCenterOpenedAt(Date.now());
@@ -913,6 +916,7 @@ const App: React.FC = () => {
         error={error}
         pendingCount={pendingCount}
         parsingTasks={parsingTasks}
+        enrichmentTasks={enrichmentTasks}
         retryParsing={retryParsing}
         onSave={handleSettingsSaved}
         currentBudgetConfig={budgetConfig}
@@ -976,6 +980,7 @@ const App: React.FC = () => {
                 </div>
                 <ReviewCenterPanel
                   parsingTasks={parsingTasks}
+                  enrichmentTasks={enrichmentTasks}
                   pendingReviews={pendingReviews}
                   onApproveReview={handleApproveReview}
                   onRejectReview={handleRejectReview}

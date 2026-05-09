@@ -8,7 +8,7 @@ import {
     Check, Smartphone, CheckCircle2, PieChart, Plus, Sparkles,
     MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History
 } from 'lucide-react';
-import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, CanonicalRule, ParserResultV2 } from '../types';
+import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, CanonicalRule, ParserResultV2, EnrichmentTask } from '../types';
 import { DEFAULT_PROMPT } from '../services/geminiService';
 import { useControlCenter } from '../hooks/useControlCenter';
 import { getDatabaseHistory } from '../services/syncFacade';
@@ -34,6 +34,7 @@ interface ControlCenterProps {
     error: string | null;
     pendingCount: number;
     parsingTasks?: import('../types').ParsingTask[];
+    enrichmentTasks?: EnrichmentTask[];
     retryParsing?: (taskId: string) => void;
 
     // Settings Props
@@ -86,7 +87,7 @@ const ClockDisplay = () => {
 
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
     isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
-    appSettings, setAppSettings, error, pendingCount, parsingTasks, retryParsing,
+    appSettings, setAppSettings, error, pendingCount, parsingTasks, enrichmentTasks = [], retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes,
     onImportData, onClearData
@@ -106,6 +107,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         rejected: canonicalRules.filter(rule => rule.rejectionCount > 0).length,
     };
     const canonicalizedItemCount = allItems.filter(item => Object.keys(item.meta.canonical || {}).length > 0).length;
+    const usefulEnrichmentTasks = enrichmentTasks.filter(task => task.status === 'running' || task.status === 'failed' || task.reviewCount || (task.appliedFields?.length || 0) > 0);
+    const runningEnrichmentCount = enrichmentTasks.filter(task => task.status === 'pending' || task.status === 'running').length;
     const pendingCanonicalSuggestionCount = pendingReviews.reduce((sum, review) =>
         sum + review.results.reduce((inner, result) => inner + (result.canonicalReview?.length || 0), 0), 0);
     const learnedCanonicalRules = canonicalRules
@@ -298,9 +301,17 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         <div className="text-xs font-bold uppercase tracking-[0.22em] text-muted">Status</div>
                                         <div className="flex items-center justify-between gap-3">
                                             {renderSyncStatus()}
-                                            {pendingCount > 0 && (
-                                                <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-500">{pendingCount} pending</span>
-                                            )}
+                                            <div className="flex flex-wrap justify-end gap-1.5">
+                                                {pendingCount > 0 && (
+                                                    <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-500">{pendingCount} pending</span>
+                                                )}
+                                                {runningEnrichmentCount > 0 && (
+                                                    <span className="rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-500">{runningEnrichmentCount} enriching</span>
+                                                )}
+                                                {usefulEnrichmentTasks.some(task => task.reviewCount) && (
+                                                    <span className="rounded-full bg-purple-500/10 px-2 py-1 text-xs font-bold text-purple-500">enrichment review</span>
+                                                )}
+                                            </div>
                                         </div>
                                         {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
                                             <button

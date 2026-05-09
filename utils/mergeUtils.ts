@@ -1,5 +1,69 @@
-import { BrainDumpItem, DbSchema, Skill, Wallet } from '../types';
+import { BrainDumpItem, DbSchema, ItemCanonicalMeta, ItemMeta, Skill, Wallet } from '../types';
 import { consolidateCanonicalRules } from './canonicalization/learnedRules';
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+const pickField = <T>(localValue: T, remoteValue: T, baseValue: T): T => {
+    const localChanged = !same(localValue, baseValue);
+    const remoteChanged = !same(remoteValue, baseValue);
+    if (localChanged && !remoteChanged) return localValue;
+    return remoteValue;
+};
+
+const mergeCanonicalMeta = (
+    localCanonical: ItemCanonicalMeta | undefined,
+    remoteCanonical: ItemCanonicalMeta | undefined,
+    baseCanonical: ItemCanonicalMeta | undefined
+): ItemCanonicalMeta | undefined => {
+    const merged: ItemCanonicalMeta = {};
+    const fields = new Set([
+        ...Object.keys(localCanonical || {}),
+        ...Object.keys(remoteCanonical || {}),
+        ...Object.keys(baseCanonical || {}),
+    ] as Array<keyof ItemCanonicalMeta>);
+
+    fields.forEach(field => {
+        const selected = pickField(localCanonical?.[field], remoteCanonical?.[field], baseCanonical?.[field]);
+        if (selected) merged[field] = selected as any;
+    });
+
+    return Object.keys(merged).length > 0 ? merged : undefined;
+};
+
+const mergeItemMeta = (localMeta: ItemMeta = {}, remoteMeta: ItemMeta = {}, baseMeta: ItemMeta = {}): ItemMeta => {
+    const merged: ItemMeta = {};
+    const keys = new Set([...Object.keys(localMeta), ...Object.keys(remoteMeta), ...Object.keys(baseMeta)] as Array<keyof ItemMeta>);
+
+    keys.forEach(key => {
+        if (key === 'canonical') return;
+        const selected = pickField(localMeta[key], remoteMeta[key], baseMeta[key]);
+        if (selected !== undefined) (merged as Record<string, unknown>)[key] = selected;
+    });
+
+    const canonical = mergeCanonicalMeta(localMeta.canonical, remoteMeta.canonical, baseMeta.canonical);
+    if (canonical) merged.canonical = canonical;
+
+    return merged;
+};
+
+const mergeConcurrentItem = (localItem: BrainDumpItem, remoteItem: BrainDumpItem, baseItem?: BrainDumpItem): BrainDumpItem => {
+    if (!baseItem) return localItem;
+
+    const localChanged = !same(localItem, baseItem);
+    const remoteChanged = !same(remoteItem, baseItem);
+    if (!localChanged || !remoteChanged) return localItem;
+
+    return {
+        id: localItem.id,
+        type: pickField(localItem.type, remoteItem.type, baseItem.type),
+        content: pickField(localItem.content, remoteItem.content, baseItem.content),
+        status: pickField(localItem.status, remoteItem.status, baseItem.status),
+        created_at: pickField(localItem.created_at, remoteItem.created_at, baseItem.created_at),
+        completed_at: pickField(localItem.completed_at, remoteItem.completed_at, baseItem.completed_at),
+        isOptimistic: pickField(localItem.isOptimistic, remoteItem.isOptimistic, baseItem.isOptimistic),
+        meta: mergeItemMeta(localItem.meta, remoteItem.meta, baseItem.meta),
+    };
+};
 
 // Helper for merging data (3-way merge to handle deletions correctly)
 export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema): DbSchema => {
@@ -12,9 +76,11 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     // 1. Items from Remote
     remote.data.forEach(remoteItem => {
         if (localItemIds.has(remoteItem.id)) {
-            // In both: Local wins (LWW) to preserve current session edits
+            // In both: merge concurrent field-level changes so background enrichment can
+            // round-trip without clobbering remote/manual edits made on the same row.
             const localItem = local.data.find(i => i.id === remoteItem.id)!;
-            itemMap.set(remoteItem.id, localItem);
+            const baseItem = base?.data.find(i => i.id === remoteItem.id);
+            itemMap.set(remoteItem.id, mergeConcurrentItem(localItem, remoteItem, baseItem));
         } else {
             // In remote but not in local
             if (baseItemIds.has(remoteItem.id)) {
