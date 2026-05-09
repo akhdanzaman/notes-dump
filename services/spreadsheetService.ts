@@ -612,14 +612,37 @@ const buildDashboardChartRequests = (sheetId: number, existingChartIds: number[]
   ];
 };
 
+export const normalizeSpreadsheetConfig = (config: SpreadsheetConfig | null | undefined): SpreadsheetConfig | null => {
+  if (!config?.spreadsheetId) return null;
+  const authMode = config.authMode || 'service_account';
+  return {
+    ...config,
+    authMode,
+    ...(authMode === 'service_account'
+      ? { serviceAccountEmail: config.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL }
+      : {})
+  };
+};
+
+export const isServiceAccountSpreadsheetConfig = (config: SpreadsheetConfig | null | undefined) => (
+  normalizeSpreadsheetConfig(config)?.authMode === 'service_account'
+);
+
 export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
-  const parsed = safeJsonParse<SpreadsheetConfig | null>(safeLocalStorageGet(SETTINGS_KEY), null);
-  return parsed?.spreadsheetId ? parsed : null;
+  const raw = safeLocalStorageGet(SETTINGS_KEY);
+  const parsed = safeJsonParse<SpreadsheetConfig | null>(raw, null);
+  const normalized = normalizeSpreadsheetConfig(parsed);
+  if (normalized && raw !== JSON.stringify(normalized)) {
+    safeLocalStorageSet(SETTINGS_KEY, JSON.stringify(normalized));
+  }
+  return normalized;
 };
 
 export const saveSpreadsheetConfig = (config: SpreadsheetConfig) => {
+  const normalized = normalizeSpreadsheetConfig(config);
+  if (!normalized) return;
   const existingStr = safeLocalStorageGet(SETTINGS_KEY);
-  const next = JSON.stringify({ ...config });
+  const next = JSON.stringify(normalized);
   if (existingStr === next) return;
 
   safeLocalStorageSet(SETTINGS_KEY, next);

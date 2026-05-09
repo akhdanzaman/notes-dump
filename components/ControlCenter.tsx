@@ -12,7 +12,7 @@ import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill
 import { DEFAULT_PROMPT } from '../services/geminiService';
 import { useControlCenter } from '../hooks/useControlCenter';
 import { getDatabaseHistory } from '../services/syncFacade';
-import { SpreadsheetHistoryEntry } from '../services/spreadsheetService';
+import { SERVICE_ACCOUNT_EMAIL, SpreadsheetHistoryEntry } from '../services/spreadsheetService';
 import { CHANGELOG_ENTRIES, LATEST_CHANGELOG_VERSION } from '../utils/changelog';
 import { contentSurface, controlCenterSurface } from './layout/contentSurface';
 
@@ -172,6 +172,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         setMonthlyIncome,
         setLocalAppSettings,
         handleGoogleLogin,
+        handleGoogleSignOut,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,
@@ -1231,15 +1232,38 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 </div>
                                                             </div>
                                                             <button 
-                                                                onClick={handleDisconnectSpreadsheet}
+                                                                onClick={handleGoogleSignOut}
                                                                 className="text-xs text-red-500 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
                                                             >
                                                                 Sign Out
                                                             </button>
                                                         </div>
+                                                    ) : spreadsheetConfig?.authMode === 'service_account' ? (
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-start gap-3">
+                                                                <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500 shrink-0">
+                                                                    <CheckCircle2 className="w-5 h-5" />
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-medium text-primary text-sm">Service account active</div>
+                                                                    <p className="text-xs text-muted mt-1 leading-relaxed">
+                                                                        Spreadsheet sync uses the server-side service account, so Google login and popup permission are not required.
+                                                                    </p>
+                                                                    <div className="mt-2 text-[11px] font-mono text-muted break-all">
+                                                                        {spreadsheetConfig.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={handleGoogleLogin}
+                                                                className="w-full py-2.5 bg-surface border border-border text-primary font-medium rounded-xl hover:bg-muted/10 transition-colors text-xs"
+                                                            >
+                                                                Optional: sign in for Google profile sync
+                                                            </button>
+                                                        </div>
                                                     ) : (
                                                         <div className="text-center py-4">
-                                                            <p className="text-sm text-muted mb-4">Google sign-in is optional. Use it only if service-account spreadsheet access is unavailable.</p>
+                                                            <p className="text-sm text-muted mb-4">Google sign-in is optional. Spreadsheet sync should connect with the service account below first.</p>
                                                             <button 
                                                                 onClick={handleGoogleLogin}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
@@ -1262,7 +1286,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Spreadsheet Connection</h3>
                                                     <div className="bg-background border border-border rounded-2xl p-4 space-y-4">
                                                         <div className="text-xs text-muted bg-surface border border-border rounded-xl p-3 leading-relaxed">
-                                                            Share your spreadsheet with <span className="font-mono text-primary">openclaw-adan@gen-lang-client-0558606321.iam.gserviceaccount.com</span> as Editor, paste the link here, then connect. Google sign-in is only a fallback.
+                                                            Share your spreadsheet with <span className="font-mono text-primary">{SERVICE_ACCOUNT_EMAIL}</span> as Editor, paste the link here, then connect. Google sign-in is not needed for spreadsheet sync.
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-muted mb-1">Spreadsheet Link</label>
@@ -1299,10 +1323,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                     }
                                                                     handleConnectSpreadsheet(); 
                                                                 }}
-                                                                disabled={!spreadsheetLink}
+                                                                disabled={!spreadsheetLink || isConnectingSpreadsheet}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
-                                                                Connect Spreadsheet
+                                                                {isConnectingSpreadsheet ? 'Checking service-account access…' : 'Connect Spreadsheet'}
                                                             </button>
                                                         )}
                                                         {spreadsheetConfig && (

@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SPREADSHEET_FETCH_RANGES } from '../spreadsheetService';
+import {
+  getSpreadsheetConfig,
+  normalizeSpreadsheetConfig,
+  saveSpreadsheetConfig,
+  SERVICE_ACCOUNT_EMAIL,
+  SPREADSHEET_FETCH_RANGES,
+} from '../spreadsheetService';
 
 test('spreadsheet fetch ranges include the expanded schema columns', () => {
   assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:K');
@@ -9,4 +15,57 @@ test('spreadsheet fetch ranges include the expanded schema columns', () => {
   assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:I');
   assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:H');
   assert.equal(Object.prototype.hasOwnProperty.call(SPREADSHEET_FETCH_RANGES, 'Data Quality'), false);
+});
+
+const installLocalStorage = () => {
+  const store = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => { store.set(key, value); },
+      removeItem: (key: string) => { store.delete(key); },
+      clear: () => { store.clear(); },
+    },
+  });
+  return store;
+};
+
+test('spreadsheet config defaults legacy configs to service-account mode', () => {
+  const normalized = normalizeSpreadsheetConfig({
+    spreadsheetId: 'sheet-123',
+    spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/sheet-123/edit',
+  });
+
+  assert.equal(normalized?.authMode, 'service_account');
+  assert.equal(normalized?.serviceAccountEmail, SERVICE_ACCOUNT_EMAIL);
+});
+
+test('getSpreadsheetConfig migrates stored spreadsheet configs without requiring OAuth', () => {
+  const store = installLocalStorage();
+  store.set('braindump_spreadsheet_config', JSON.stringify({
+    spreadsheetId: 'sheet-456',
+    spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/sheet-456/edit',
+  }));
+
+  const config = getSpreadsheetConfig();
+  assert.equal(config?.authMode, 'service_account');
+  assert.equal(config?.serviceAccountEmail, SERVICE_ACCOUNT_EMAIL);
+
+  const persisted = JSON.parse(store.get('braindump_spreadsheet_config') || '{}');
+  assert.equal(persisted.authMode, 'service_account');
+  assert.equal(persisted.serviceAccountEmail, SERVICE_ACCOUNT_EMAIL);
+});
+
+test('saveSpreadsheetConfig persists service-account identity for Sheets sync', () => {
+  const store = installLocalStorage();
+
+  saveSpreadsheetConfig({
+    spreadsheetId: 'sheet-789',
+    spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/sheet-789/edit',
+  });
+
+  const persisted = JSON.parse(store.get('braindump_spreadsheet_config') || '{}');
+  assert.equal(persisted.authMode, 'service_account');
+  assert.equal(persisted.serviceAccountEmail, SERVICE_ACCOUNT_EMAIL);
 });

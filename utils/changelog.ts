@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.80',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet connection now stays in service-account mode by default, including older saved configs that did not yet store an auth mode.',
+      'Control Center no longer opens Google OAuth/login popups when a service-account spreadsheet is connected; Google sign-in is clearly optional profile sync only.',
+      'Signing out of the optional Google profile no longer disconnects the spreadsheet, and service-account connection checks are guarded against duplicate clicks.',
+    ],
+  },
+  {
     version: 'v0.3.78',
     date: 'May 2026',
     items: [

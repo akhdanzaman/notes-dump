@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, SyncStatus } from '../types';
-import { checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
+import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
+import { checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL, isServiceAccountSpreadsheetConfig } from '../services/spreadsheetService';
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
-import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, getGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
+import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
 import { BackHandler } from '../utils/backHandler';
 
 export interface UseControlCenterProps {
@@ -117,20 +117,25 @@ export const useControlCenter = ({
             setGCalKey(savedGCalKey);
             setGCalId(savedGCalId);
 
-            // Check if already logged in
-            getValidGoogleAccessToken().then(token => {
-                if (token) {
-                    fetchGoogleProfile(token).then(setGoogleProfile).catch(() => {
-                        // Token might be expired or invalid
-                    });
-                }
-            });
-
             // Load Spreadsheet
             const ss = getSpreadsheetConfig();
             if (ss) {
                 setSpreadsheetConfig(ss);
                 setSpreadsheetLink(ss.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${ss.spreadsheetId}/edit`);
+            }
+
+            // Check optional Google profile only when the spreadsheet is not already
+            // connected through the server-side service account. Service-account mode
+            // must not depend on browser OAuth refresh tokens, because those expire or
+            // get revoked and previously made the app look disconnected unnecessarily.
+            if (!isServiceAccountSpreadsheetConfig(ss)) {
+                getValidGoogleAccessToken().then(token => {
+                    if (token) {
+                        fetchGoogleProfile(token).then(setGoogleProfile).catch(() => {
+                            // Token might be expired or invalid
+                        });
+                    }
+                });
             }
         }
     }, [isOpen]);
@@ -208,9 +213,14 @@ export const useControlCenter = ({
             if (cloudConfig) {
                 // Restore settings from cloud
                 if (cloudConfig.spreadsheetId) {
-                    const newConfig: SpreadsheetConfig = {
+                    const currentConfig = getSpreadsheetConfig();
+                    const newConfig: SpreadsheetConfig = currentConfig?.spreadsheetId === cloudConfig.spreadsheetId
+                        ? currentConfig
+                        : {
                         spreadsheetId: cloudConfig.spreadsheetId,
-                        spreadsheetUrl: cloudConfig.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${cloudConfig.spreadsheetId}/edit`
+                        spreadsheetUrl: cloudConfig.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${cloudConfig.spreadsheetId}/edit`,
+                        authMode: cloudConfig.authMode || 'service_account',
+                        serviceAccountEmail: cloudConfig.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL
                     };
                     saveSpreadsheetConfig(newConfig);
                     setSpreadsheetConfig(newConfig);
@@ -232,9 +242,14 @@ export const useControlCenter = ({
                      const match = currentSpreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
                      const spreadsheetId = match ? match[1] : currentSpreadsheetLink;
                      
-                     const newConfig: SpreadsheetConfig = {
+                     const currentConfig = getSpreadsheetConfig();
+                     const newConfig: SpreadsheetConfig = currentConfig?.spreadsheetId === spreadsheetId
+                        ? currentConfig
+                        : {
                         spreadsheetId,
-                        spreadsheetUrl: currentSpreadsheetLink
+                        spreadsheetUrl: currentSpreadsheetLink,
+                        authMode: 'service_account',
+                        serviceAccountEmail: SERVICE_ACCOUNT_EMAIL
                     };
                     saveSpreadsheetConfig(newConfig);
                     setSpreadsheetConfig(newConfig);
@@ -243,6 +258,8 @@ export const useControlCenter = ({
                     await saveConfigToDrive({
                         spreadsheetId,
                         spreadsheetUrl: currentSpreadsheetLink,
+                        authMode: newConfig.authMode,
+                        serviceAccountEmail: newConfig.serviceAccountEmail,
                         theme: localAppSettingsRef.current.theme
                     }, token);
                     alert(`Welcome, ${profile.name}! Your current spreadsheet has been linked to your account.`);
@@ -287,6 +304,7 @@ export const useControlCenter = ({
     };
 
     const handleConnectSpreadsheet = async () => {
+        if (isConnectingSpreadsheet) return;
         if (!spreadsheetLink) {
             alert("Please enter a spreadsheet link first.");
             return;
@@ -300,6 +318,7 @@ export const useControlCenter = ({
 
         const spreadsheetId = match[1];
 
+        setIsConnectingSpreadsheet(true);
         try {
             const serviceAccountStatus = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
             if (serviceAccountStatus.accessible) {
@@ -327,44 +346,16 @@ export const useControlCenter = ({
             }
         } catch (error) {
             console.warn("Service account spreadsheet check failed", error);
+        } finally {
+            setIsConnectingSpreadsheet(false);
         }
 
-        // Fallback: OAuth is only needed when service-account mode is unavailable.
-        const session = getGoogleSession();
-        
-        if (!session) {
-            if (googleProfile) {
-                alert("Your session has expired. Please sign in again to connect your spreadsheet.");
-            }
-            handleGoogleLogin();
-            return;
-        }
+        alert(`Belum bisa connect via service account. Pastikan spreadsheet sudah di-share ke ${SERVICE_ACCOUNT_EMAIL} sebagai Editor, lalu klik Connect Spreadsheet lagi. Google login tidak diperlukan untuk mode ini.`);
+    };
 
-        const newConfig: SpreadsheetConfig = {
-            spreadsheetId,
-            spreadsheetUrl: spreadsheetLink,
-            authMode: 'oauth'
-        };
-        
-        saveSpreadsheetConfig(newConfig);
-        setSpreadsheetConfig(newConfig);
-        
-        try {
-            const token = await getValidGoogleAccessToken();
-            if (token) {
-                await saveConfigToDrive({
-                    spreadsheetId,
-                    spreadsheetUrl: spreadsheetLink,
-                    theme: localAppSettings.theme
-                }, token);
-            }
-            alert("Spreadsheet connected and settings saved to Google Drive.");
-        } catch (e) {
-            console.warn("Failed to sync to Drive", e);
-            alert("Spreadsheet connected locally, but failed to sync to Google Drive.");
-        }
-        
-        onSyncClick(false);
+    const handleGoogleSignOut = () => {
+        clearGoogleSession();
+        setGoogleProfile(null);
     };
 
     const handleDisconnectSpreadsheet = () => {
@@ -392,15 +383,18 @@ export const useControlCenter = ({
         // Propagate changes
         onSave(newBudgetConfig, prompt, localAppSettings);
         
-        // Save to Drive if connected
-        if (spreadsheetConfig) {
+        // Save optional Google profile settings only for OAuth configs. Service-account
+        // spreadsheet sync is server-side and must not refresh browser Google tokens.
+        if (spreadsheetConfig && spreadsheetConfig.authMode !== 'service_account') {
              getValidGoogleAccessToken().then(token => {
                  if (token) {
-                     saveConfigToDrive({
-                         spreadsheetId: spreadsheetConfig.spreadsheetId,
-                         spreadsheetUrl: spreadsheetConfig.spreadsheetUrl,
-                         theme: localAppSettings.theme
-                     }, token).catch(e => {
+                         saveConfigToDrive({
+                             spreadsheetId: spreadsheetConfig.spreadsheetId,
+                             spreadsheetUrl: spreadsheetConfig.spreadsheetUrl,
+                             authMode: spreadsheetConfig.authMode,
+                             serviceAccountEmail: spreadsheetConfig.serviceAccountEmail,
+                             theme: localAppSettings.theme
+                         }, token).catch(e => {
                          console.warn("Failed to background sync to Drive", e);
                      });
                  }
@@ -493,6 +487,7 @@ export const useControlCenter = ({
         setMonthlyIncome,
         setLocalAppSettings,
         handleGoogleLogin,
+        handleGoogleSignOut,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,

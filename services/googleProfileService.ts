@@ -8,6 +8,8 @@ export interface GoogleProfile {
 export interface AppConfig {
   spreadsheetId?: string;
   spreadsheetUrl?: string;
+  authMode?: 'oauth' | 'service_account';
+  serviceAccountEmail?: string;
   theme?: 'light' | 'dark';
   // Add other settings here
 }
