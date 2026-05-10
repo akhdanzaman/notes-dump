@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.84',
+    date: 'May 2026',
+    items: [
+      'Control Center now includes a compact, local-only Parser Health card with fast-path rate, AI fallback count, average latency, and Review Center pressure.',
+      'Parser guardrails now warn when failed parses, noisy review queues, or repeated AI fallbacks suggest the acceleration path needs attention.',
+    ],
+  },
+  {
     version: 'v0.3.83',
     date: 'May 2026',
     items: [

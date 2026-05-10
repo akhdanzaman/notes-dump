@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-10T05:12:18.924Z",
+  "generatedAt": "2026-05-10T05:25:24.384Z",
   "repo": "notes-dump",
   "task": "NDX-010",
   "note": "No committed NDX-008 harness artifact was present; this script implements the NDX-008 offline mocked-AI benchmark handoff shape and uses real NDX router/model-routing code.",
@@ -20,7 +20,7 @@
         "local_finance_fast_path",
         "local_finance_expense"
       ],
-      "latencyMs": 14,
+      "latencyMs": 4,
       "resultCount": 1,
       "needsReviewCount": 0
     },
@@ -36,7 +36,7 @@
         "local_finance_fast_path",
         "local_finance_expense"
       ],
-      "latencyMs": 6,
+      "latencyMs": 1,
       "resultCount": 1,
       "needsReviewCount": 0
     },
@@ -54,7 +54,7 @@
         "batch_local_items_3",
         "batch_ai_items_0"
       ],
-      "latencyMs": 6,
+      "latencyMs": 3,
       "resultCount": 3,
       "needsReviewCount": 0,
       "batchItems": 3,
@@ -75,7 +75,7 @@
         "batch_local_items_3",
         "batch_ai_items_0"
       ],
-      "latencyMs": 5,
+      "latencyMs": 1,
       "resultCount": 3,
       "needsReviewCount": 0,
       "batchItems": 3,
@@ -126,7 +126,7 @@
       "escalationReasonCodes": [
         "no_local_intent_match"
       ],
-      "latencyMs": 2,
+      "latencyMs": 0,
       "resultCount": 1,
       "needsReviewCount": 0
     },
@@ -184,7 +184,7 @@
       "fastModel": "gemini-2.5-flash",
       "deepModel": "gemini-2.5-pro",
       "escalationReasonCodes": [],
-      "latencyMs": 3,
+      "latencyMs": 1,
       "resultCount": 3,
       "needsReviewCount": 0,
       "batchItems": 3,

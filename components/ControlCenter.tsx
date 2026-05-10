@@ -15,6 +15,7 @@ import { getDatabaseHistory } from '../services/syncFacade';
 import { SERVICE_ACCOUNT_EMAIL, SpreadsheetHistoryEntry } from '../services/spreadsheetService';
 import { CHANGELOG_ENTRIES, LATEST_CHANGELOG_VERSION } from '../utils/changelog';
 import { contentSurface, controlCenterSurface } from './layout/contentSurface';
+import { buildParserHealthSummary } from '../utils/parserHealth';
 
 interface ControlCenterProps {
     isOpen: boolean;
@@ -111,6 +112,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const runningEnrichmentCount = enrichmentTasks.filter(task => task.status === 'pending' || task.status === 'running').length;
     const pendingCanonicalSuggestionCount = pendingReviews.reduce((sum, review) =>
         sum + review.results.reduce((inner, result) => inner + (result.canonicalReview?.length || 0), 0), 0);
+    const parserHealth = buildParserHealthSummary({ parsingTasks, pendingReviews });
+    const parserHealthToneClass = parserHealth.healthTone === 'bad'
+        ? 'text-red-500 bg-red-500/10 border-red-500/20'
+        : parserHealth.healthTone === 'watch'
+            ? 'text-amber-500 bg-amber-500/10 border-amber-500/20'
+            : parserHealth.healthTone === 'good'
+                ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
+                : 'text-muted bg-surface border-border';
     const learnedCanonicalRules = canonicalRules
         .filter(rule => rule.source === 'learned')
         .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
@@ -1023,6 +1032,61 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                             {onRunCanonicalBackfill && (
                                                 <section className={contentSurface.desktopSettingsWide}>
+                                                    <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Parser Health</h3>
+                                                    <div className="bg-background border border-border rounded-2xl p-4 space-y-3 mb-4" data-testid="parser-health-card">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500 shrink-0">
+                                                                <Sparkles className="w-5 h-5" />
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <div className="font-medium text-primary text-sm">Parser Health</div>
+                                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide ${parserHealthToneClass}`}>
+                                                                        {parserHealth.healthTone === 'empty' ? 'No recent parser activity' : parserHealth.healthTone}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-xs text-muted mt-1">
+                                                                    Local-only aggregate metrics. No captured text or private content leaves this device.
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                            <div className="bg-surface border border-border rounded-xl p-3">
+                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Fast path</div>
+                                                                <div className="text-lg font-bold text-emerald-500">{parserHealth.fastPathRate}%</div>
+                                                                <div className="text-[10px] text-muted">{parserHealth.localSavedUnits} local save(s)</div>
+                                                            </div>
+                                                            <div className="bg-surface border border-border rounded-xl p-3">
+                                                                <div className="text-[10px] text-muted uppercase tracking-wide">AI fallback</div>
+                                                                <div className="text-lg font-bold text-primary">{parserHealth.aiCallCount}</div>
+                                                                <div className="text-[10px] text-muted">{parserHealth.aiFallbackUnits} routed item(s)</div>
+                                                            </div>
+                                                            <div className="bg-surface border border-border rounded-xl p-3">
+                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Avg latency</div>
+                                                                <div className="text-lg font-bold text-primary">{parserHealth.averageLatencyMs === null ? '—' : `${parserHealth.averageLatencyMs}ms`}</div>
+                                                                <div className="text-[10px] text-muted">completed parser tasks</div>
+                                                            </div>
+                                                            <div className="bg-surface border border-border rounded-xl p-3">
+                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Review rate</div>
+                                                                <div className="text-lg font-bold text-amber-500">{parserHealth.reviewRate}%</div>
+                                                                <div className="text-[10px] text-muted">{parserHealth.reviewUnits} review unit(s)</div>
+                                                            </div>
+                                                        </div>
+                                                        {parserHealth.warnings.length > 0 ? (
+                                                            <div className="space-y-2">
+                                                                {parserHealth.warnings.map(warning => (
+                                                                    <div key={warning} className="flex items-start gap-2 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-xl p-2">
+                                                                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                                                        <span>{warning}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-xs text-muted bg-surface border border-border rounded-xl p-3">
+                                                                Guardrails clear: no repeated parser failures or noisy Review Center pressure detected.
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Canonical Cleanup</h3>
                                                     <div className="bg-background border border-border rounded-2xl p-4 space-y-3">
                                                         <div className="flex items-start gap-3">

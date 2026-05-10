@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-10T05:12:14.816Z",
+  "generatedAt": "2026-05-10T05:25:22.338Z",
   "repo": "notes-dump",
   "task": "NDX-001",
   "benchmarkCases": [
@@ -64,7 +64,7 @@
       "reasonCodes": [
         "obvious_spend_phrase_with_amount"
       ],
-      "latencyMs": 32,
+      "latencyMs": 26,
       "aiCallCount": 0,
       "avoidedAiCalls": 1,
       "maxRetryCallCount": 0,
@@ -88,7 +88,7 @@
         "local_finance_fast_path",
         "local_finance_transfer"
       ],
-      "latencyMs": 5,
+      "latencyMs": 4,
       "aiCallCount": 0,
       "avoidedAiCalls": 1,
       "maxRetryCallCount": 0,
@@ -112,7 +112,7 @@
         "local_finance_fast_path",
         "local_finance_saving"
       ],
-      "latencyMs": 2,
+      "latencyMs": 1,
       "aiCallCount": 0,
       "avoidedAiCalls": 1,
       "maxRetryCallCount": 0,
@@ -158,7 +158,7 @@
       "reasonCodes": [
         "obvious_shopping_intent"
       ],
-      "latencyMs": 5,
+      "latencyMs": 3,
       "aiCallCount": 0,
       "avoidedAiCalls": 1,
       "maxRetryCallCount": 0,
@@ -181,7 +181,7 @@
       "reasonCodes": [
         "mixed_or_complex_input"
       ],
-      "latencyMs": 3,
+      "latencyMs": 5,
       "aiCallCount": 1,
       "avoidedAiCalls": 0,
       "maxRetryCallCount": 9,
@@ -205,7 +205,7 @@
       "reasonCodes": [
         "mixed_or_complex_input"
       ],
-      "latencyMs": 3,
+      "latencyMs": 0,
       "aiCallCount": 1,
       "avoidedAiCalls": 0,
       "maxRetryCallCount": 9,

@@ -1,6 +1,6 @@
 {
   "task": "NDX-004",
-  "generatedAt": "2026-05-10T05:12:16.113Z",
+  "generatedAt": "2026-05-10T05:25:23.277Z",
   "method": "char_count_div_4_token_estimate; representative parser context with 48 tasks, 30 shopping items, 60 finance transactions, 3 wallets, 4 budgets, 8 skills",
   "rows": [
     {
