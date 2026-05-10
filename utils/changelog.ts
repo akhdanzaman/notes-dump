@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.89',
+    date: 'May 2026',
+    items: [
+      'System snapshot writes are now split into bounded row batches so large cloud saves no longer send one oversized proxy request to the service-account function.',
+      'Spreadsheet save errors now identify the exact system snapshot batch phase when Google Sheets or the proxy rejects a write.',
+    ],
+  },
+  {
     version: 'v0.3.88',
     date: 'May 2026',
     items: [

@@ -14,6 +14,7 @@ const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const MAX_WRITE_BATCH_SIZE = 8;
 const MAX_FETCH_RETRIES = 3;
 const SPREADSHEET_SYNC_DEBOUNCE_MS = 1200;
+const SYSTEM_SNAPSHOT_WRITE_BATCH_ROWS = 20;
 const MAX_HISTORY_COLUMNS = 'ZZZ';
 const SYSTEM_SNAPSHOT_MARKER = '__BRAINDUMP_STATE_V2__';
 const SYSTEM_SNAPSHOT_VERSION = 2;
@@ -294,6 +295,24 @@ const columnLabel = (index: number) => {
     n = Math.floor((n - 1) / 26);
   }
   return label;
+};
+
+const buildColumnWriteBatches = (
+  sheetName: string,
+  rows: SheetData['data'],
+  maxRows = SYSTEM_SNAPSHOT_WRITE_BATCH_ROWS
+) => {
+  const batches: { range: string; values: SheetData['data'] }[] = [];
+  for (let i = 0; i < rows.length; i += maxRows) {
+    const values = rows.slice(i, i + maxRows);
+    const startRow = i + 1;
+    const endRow = startRow + values.length - 1;
+    batches.push({
+      range: `${escapeSheetName(sheetName)}!A${startRow}:A${endRow}`,
+      values,
+    });
+  }
+  return batches;
 };
 
 const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
@@ -1206,6 +1225,32 @@ const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb:
   return { data: reconciledDb, reconciled, meta, existingTitles, reliableMeta: reliable };
 };
 
+const writeSystemSheetSnapshotInBatches = async (
+  config: SpreadsheetConfig,
+  sheet: SheetData,
+  phase: SystemSheetSyncStatus
+) => {
+  const batches = buildColumnWriteBatches(sheet.name, sheet.data);
+  for (let i = 0; i < batches.length; i += 1) {
+    const batch = batches[i];
+    const response = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        valueInputOption: 'RAW',
+        data: [batch]
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Google Sheets API error (System Sheet / ${phase} batch ${i + 1}/${batches.length}): ${response.status} ${response.statusText} - ${errorText}`);
+    }
+  }
+};
+
 const performSync = async (
   items: BrainDumpItem[], 
   budgetConfig?: BudgetConfig, 
@@ -1359,24 +1404,7 @@ const performSync = async (
 
     // 4. Write the system snapshot first so refreshes never see an empty source-of-truth.
     console.log("Writing system snapshot...");
-    const updateSystemWritingRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        valueInputOption: 'RAW',
-        data: [{
-          range: `'${systemSheetWritingData.name}'!A1`,
-          values: systemSheetWritingData.data
-        }]
-      })
-    });
-
-    if (!updateSystemWritingRes.ok) {
-      const errorText = await updateSystemWritingRes.text();
-      throw new Error(`Google Sheets API error (System Sheet / writing): ${updateSystemWritingRes.status} ${updateSystemWritingRes.statusText} - ${errorText}`);
-    }
+    await writeSystemSheetSnapshotInBatches(config, systemSheetWritingData, 'writing');
 
     const incrementalPlan = buildIncrementalUserSheetPlan(
       previousDb,
@@ -1574,24 +1602,7 @@ const performSync = async (
     }
 
     // 7. Finalize the system snapshot only after user-facing sheets are fully updated.
-    const updateSystemReadyRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        valueInputOption: 'RAW',
-        data: [{
-          range: `'${systemSheetData.name}'!A1`,
-          values: systemSheetData.data
-        }]
-      })
-    });
-
-    if (!updateSystemReadyRes.ok) {
-      const errorText = await updateSystemReadyRes.text();
-      throw new Error(`Google Sheets API error (System Sheet / ready): ${updateSystemReadyRes.status} ${updateSystemReadyRes.statusText} - ${errorText}`);
-    }
+    await writeSystemSheetSnapshotInBatches(config, systemSheetData, 'ready');
 
     // 8. Append to History Sheet on every change
     const now = Date.now();
@@ -1775,6 +1786,7 @@ export const __test__ = {
   shouldApplyManagedSheetFormatting,
   shouldRenderDashboardCharts,
   buildIncrementalUserSheetPlan,
+  buildColumnWriteBatches,
   columnLabel,
   getItemExportSheetNames,
 };

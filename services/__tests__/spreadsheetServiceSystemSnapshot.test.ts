@@ -42,6 +42,18 @@ test('dashboard charts render only during setup or when charts are missing', () 
   assert.equal(__test__.shouldRenderDashboardCharts(true, [101]), true);
 });
 
+test('system snapshot write batches keep proxy payloads bounded', () => {
+  const rows = Array.from({ length: 45 }, (_, index) => [`row-${index + 1}`]);
+  const batches = __test__.buildColumnWriteBatches('App_State_Do_Not_Edit', rows, 20);
+
+  assert.deepEqual(batches.map(batch => batch.range), [
+    "'App_State_Do_Not_Edit'!A1:A20",
+    "'App_State_Do_Not_Edit'!A21:A40",
+    "'App_State_Do_Not_Edit'!A41:A45",
+  ]);
+  assert.deepEqual(batches.map(batch => batch.values.length), [20, 20, 5]);
+});
+
 const existingExportSheetTitles = new Set([
   'Sheet1',
   'Data Quality',
