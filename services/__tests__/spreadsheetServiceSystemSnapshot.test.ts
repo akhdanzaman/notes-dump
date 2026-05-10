@@ -27,3 +27,15 @@ test('legacy system sheet snapshot remains readable', () => {
   assert.equal(snapshot.format, 'legacy');
   assert.deepEqual(JSON.parse(snapshot.jsonString), { data: [{ id: 'legacy-1' }] });
 });
+
+test('managed sheet formatting is limited to setup or newly-created sheets', () => {
+  assert.equal(__test__.shouldApplyManagedSheetFormatting('Dashboard', new Set(), false), false);
+  assert.equal(__test__.shouldApplyManagedSheetFormatting('Dashboard', new Set(['Dashboard']), false), true);
+  assert.equal(__test__.shouldApplyManagedSheetFormatting('Dashboard', new Set(), true), true);
+});
+
+test('dashboard charts render only during setup or when charts are missing', () => {
+  assert.equal(__test__.shouldRenderDashboardCharts(false, [101]), false);
+  assert.equal(__test__.shouldRenderDashboardCharts(false, []), true);
+  assert.equal(__test__.shouldRenderDashboardCharts(true, [101]), true);
+});

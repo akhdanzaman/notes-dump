@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.86',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet saves now debounce rapid consecutive edits so multiple quick changes collapse into one cloud sync instead of several back-to-back writes.',
+      'Dashboard, chart, and Data Quality formatting now runs only during setup, newly-created sheet repair, or missing-chart recovery instead of every save.',
+    ],
+  },
+  {
     version: 'v0.3.85',
     date: 'May 2026',
     items: [

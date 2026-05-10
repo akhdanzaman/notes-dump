@@ -13,6 +13,7 @@ const HISTORY_SHEET_NAME = 'App_State_History';
 const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const MAX_WRITE_BATCH_SIZE = 8;
 const MAX_FETCH_RETRIES = 3;
+const SPREADSHEET_SYNC_DEBOUNCE_MS = 1200;
 const MAX_HISTORY_COLUMNS = 'ZZZ';
 const SYSTEM_SNAPSHOT_MARKER = '__BRAINDUMP_STATE_V2__';
 const SYSTEM_SNAPSHOT_VERSION = 2;
@@ -125,6 +126,27 @@ let isHydrated = false;
 let lastSnapshot: string | null = null;
 let needsInitialSpreadsheetWrite = false;
 let operationQueue: Promise<any> = Promise.resolve();
+type SpreadsheetSyncArgs = [
+  BrainDumpItem[],
+  BudgetConfig | undefined,
+  string | undefined,
+  Skill[] | undefined,
+  Wallet[] | undefined,
+  Record<string, string> | undefined,
+  AppSettings | undefined,
+  ChatMessage[] | undefined,
+  CanonicalRule[] | undefined,
+  boolean | undefined,
+];
+type PendingDebouncedSync = {
+  args: SpreadsheetSyncArgs;
+  resolvers: Array<{
+    resolve: (value: SyncResult) => void;
+    reject: (reason?: unknown) => void;
+  }>;
+};
+let pendingDebouncedSync: PendingDebouncedSync | null = null;
+let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const hexToRgb = (hex: string) => {
   const normalized = hex.replace('#', '');
@@ -211,6 +233,17 @@ const isValidSystemSnapshotSheet = (sheet: any) => {
     return false;
   }
 };
+
+const shouldApplyManagedSheetFormatting = (
+  sheetName: string,
+  createdSheetTitles: Set<string>,
+  isInitialSpreadsheetWrite: boolean
+) => isInitialSpreadsheetWrite || createdSheetTitles.has(sheetName);
+
+const shouldRenderDashboardCharts = (
+  shouldFormatDashboard: boolean,
+  existingChartIds: number[]
+) => shouldFormatDashboard || existingChartIds.length === 0;
 
 const buildSourceRange = (
   sheetId: number,
@@ -1028,8 +1061,10 @@ const performSync = async (
     // 3. Create missing sheets
     console.log("Creating missing sheets...");
     const requests = [];
+    const createdSheetTitles = new Set<string>();
     for (const sheet of allSheets) {
       if (!existingSheetTitles.has(sheet.name)) {
+        createdSheetTitles.add(sheet.name);
         requests.push({
           addSheet: {
             properties: { title: sheet.name }
@@ -1040,6 +1075,7 @@ const performSync = async (
     
     // Also create history sheet if missing
     if (!existingSheetTitles.has(HISTORY_SHEET_NAME)) {
+        createdSheetTitles.add(HISTORY_SHEET_NAME);
         requests.push({
           addSheet: {
             properties: { title: HISTORY_SHEET_NAME }
@@ -1139,18 +1175,26 @@ const performSync = async (
     const dashboardSheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DASHBOARD_SHEET_NAME);
     const dashboardSheetId = dashboardSheetMeta?.properties?.sheetId;
     if (typeof dashboardSheetId === 'number') {
-      const dashboardRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          requests: buildDashboardFormattingRequests(dashboardSheetId)
-        })
-      });
+      const shouldFormatDashboard = shouldApplyManagedSheetFormatting(
+        DASHBOARD_SHEET_NAME,
+        createdSheetTitles,
+        needsInitialSpreadsheetWrite
+      );
 
-      if (!dashboardRes.ok) {
-        console.warn('Failed to format dashboard sheet:', await dashboardRes.text());
+      if (shouldFormatDashboard) {
+        const dashboardRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            requests: buildDashboardFormattingRequests(dashboardSheetId)
+          })
+        });
+
+        if (!dashboardRes.ok) {
+          console.warn('Failed to format dashboard sheet:', await dashboardRes.text());
+        }
       }
 
       const existingChartIds = Array.isArray(dashboardSheetMeta?.charts)
@@ -1159,24 +1203,29 @@ const performSync = async (
             .filter((id: unknown): id is number => typeof id === 'number')
         : [];
 
-      const dashboardChartsRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          requests: buildDashboardChartRequests(dashboardSheetId, existingChartIds)
-        })
-      });
+      if (shouldRenderDashboardCharts(shouldFormatDashboard, existingChartIds)) {
+        const dashboardChartsRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            requests: buildDashboardChartRequests(dashboardSheetId, existingChartIds)
+          })
+        });
 
-      if (!dashboardChartsRes.ok) {
-        console.warn('Failed to render dashboard charts:', await dashboardChartsRes.text());
+        if (!dashboardChartsRes.ok) {
+          console.warn('Failed to render dashboard charts:', await dashboardChartsRes.text());
+        }
       }
     }
 
     const dataQualitySheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DATA_QUALITY_SHEET_NAME);
     const dataQualitySheetId = dataQualitySheetMeta?.properties?.sheetId;
-    if (typeof dataQualitySheetId === 'number') {
+    if (
+      typeof dataQualitySheetId === 'number'
+      && shouldApplyManagedSheetFormatting(DATA_QUALITY_SHEET_NAME, createdSheetTitles, needsInitialSpreadsheetWrite)
+    ) {
       const dataQualityFormatRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
         method: 'POST',
         headers: {
@@ -1258,6 +1307,53 @@ const performSync = async (
   }
 };
 
+const enqueueSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<SyncResult> => {
+  const task = () => performSync(...args);
+  const queuedTask = operationQueue.then(() => task(), () => task());
+  operationQueue = queuedTask;
+  return queuedTask;
+};
+
+const cancelPendingDebouncedSync = (result: SyncResult) => {
+  if (syncDebounceTimer) {
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = null;
+  }
+
+  if (!pendingDebouncedSync) return;
+  const pending = pendingDebouncedSync;
+  pendingDebouncedSync = null;
+  pending.resolvers.forEach(({ resolve }) => resolve(result));
+};
+
+const scheduleDebouncedSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<SyncResult> => {
+  return new Promise<SyncResult>((resolve, reject) => {
+    if (pendingDebouncedSync) {
+      pendingDebouncedSync.args = args;
+      pendingDebouncedSync.resolvers.push({ resolve, reject });
+    } else {
+      pendingDebouncedSync = {
+        args,
+        resolvers: [{ resolve, reject }],
+      };
+    }
+
+    if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+
+    syncDebounceTimer = setTimeout(() => {
+      const pending = pendingDebouncedSync;
+      pendingDebouncedSync = null;
+      syncDebounceTimer = null;
+
+      if (!pending) return;
+
+      enqueueSpreadsheetSync(pending.args)
+        .then(result => pending.resolvers.forEach(({ resolve }) => resolve(result)))
+        .catch(error => pending.resolvers.forEach(({ reject }) => reject(error)));
+    }, SPREADSHEET_SYNC_DEBOUNCE_MS);
+  });
+};
+
 export const syncSpreadsheetData = (
   items: BrainDumpItem[], 
   budgetConfig?: BudgetConfig, 
@@ -1270,10 +1366,14 @@ export const syncSpreadsheetData = (
   canonicalRules?: CanonicalRule[],
   forceOverwrite = false
 ): Promise<SyncResult> => {
-  const task = () => performSync(items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite);
-  const queuedTask = operationQueue.then(() => task(), () => task());
-  operationQueue = queuedTask;
-  return queuedTask;
+  const args: SpreadsheetSyncArgs = [items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite];
+
+  if (forceOverwrite) {
+    cancelPendingDebouncedSync({ success: true, method: 'skipped_no_changes' });
+    return enqueueSpreadsheetSync(args);
+  }
+
+  return scheduleDebouncedSpreadsheetSync(args);
 };
 
 export interface SpreadsheetHistoryEntry {
@@ -1322,4 +1422,6 @@ export const getSpreadsheetHistory = async (): Promise<SpreadsheetHistoryEntry[]
 export const __test__ = {
   buildSystemSheetRows,
   extractSystemSheetSnapshot,
+  shouldApplyManagedSheetFormatting,
+  shouldRenderDashboardCharts,
 };
