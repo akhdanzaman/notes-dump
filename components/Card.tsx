@@ -6,6 +6,7 @@ import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, T
 import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, formatFinanceTypeLabel } from '../utils/financeTypeUtils';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
+import { getNoteDisplayParts } from '../utils/noteDisplay';
 import { taskEditSurface } from './layout/contentSurface';
 
 // Helper to calculate next due date based on schedule (Same as RoutineTaskModal)
@@ -124,7 +125,8 @@ interface CardProps {
     newInvestmentCurrentPrice?: number,
     newInvestmentPlatform?: string,
     newCommodity?: string,
-    newSubcommodity?: string
+    newSubcommodity?: string,
+    newNoteTitle?: string
   ) => void;
   onResetRoutine?: (id: string) => void;
   onAcceptDeepWorkPlan?: (id: string) => void;
@@ -190,6 +192,7 @@ const Card: React.FC<CardProps> = ({
   
   // --- Edit State ---
   const [editContent, setEditContent] = useState(content);
+  const [editTitle, setEditTitle] = useState(meta.title || '');
   const [editAmount, setEditAmount] = useState<string>(meta.amount ? meta.amount.toString() : '');
   const [editTags, setEditTags] = useState(meta.tags?.join(', ') || '');
   const [editDate, setEditDate] = useState<string>('');
@@ -255,6 +258,7 @@ const Card: React.FC<CardProps> = ({
   // Initialize Edit State on Expand or Item Change
   useEffect(() => {
     setEditContent(content);
+    setEditTitle(meta.title || '');
     setEditAmount(meta.amount ? meta.amount.toString() : '');
     setEditTags(meta.tags?.join(', ') || '');
     setEditFinanceType(normalizeEditableFinanceType(meta.financeType));
@@ -395,7 +399,8 @@ const Card: React.FC<CardProps> = ({
           undefined,
           undefined,
           finalCommodity,
-          finalSubcommodity
+          finalSubcommodity,
+          isNote ? editTitle.trim() : undefined
       );
       
       if (enableCollapse) {
@@ -602,6 +607,7 @@ const Card: React.FC<CardProps> = ({
   const canShowMoneyMetadata = type === ItemType.FINANCE || type === ItemType.SHOPPING;
   const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
   const showCommodityFields = type === ItemType.FINANCE && editFinanceType === 'expense';
+  const noteDisplay = isNote ? getNoteDisplayParts(item) : null;
   
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
@@ -724,9 +730,22 @@ const Card: React.FC<CardProps> = ({
         {showPreviewContent ? (
             <div className="flex justify-between items-start gap-4 mt-1">
                 <div className="flex flex-col min-w-0 flex-1">
-                    <div className={`text-base font-medium text-primary ${isNote ? 'line-clamp-1' : 'line-clamp-2'} ${shouldStrike ? 'line-through text-muted' : ''}`}>
-                        {isNote ? content.split('\n')[0] : content}
-                    </div>
+                    {isNote && noteDisplay ? (
+                        <div className="space-y-1">
+                            <div className={`text-base font-bold text-primary leading-snug line-clamp-1 ${shouldStrike ? 'line-through text-muted' : ''}`}>
+                                {noteDisplay.title}
+                            </div>
+                            {noteDisplay.preview && (
+                                <div className="text-sm text-muted leading-relaxed line-clamp-2">
+                                    {noteDisplay.preview}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className={`text-base font-medium text-primary line-clamp-2 ${shouldStrike ? 'line-through text-muted' : ''}`}>
+                            {content}
+                        </div>
+                    )}
                     
                     {/* Extra Metadata Row */}
                     {(hasMoneyMetadata || skillName) && (
@@ -801,7 +820,20 @@ const Card: React.FC<CardProps> = ({
           >
           <div className={`${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
                
+               {isNote && (
+                   <div className="mb-3">
+                       <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Title</label>
+                       <input
+                           className="w-full bg-transparent border-none p-0 text-xl font-bold text-primary placeholder-muted/40 focus:outline-none"
+                           value={editTitle}
+                           onChange={(e) => setEditTitle(e.target.value)}
+                           placeholder="Note title"
+                       />
+                   </div>
+               )}
+
                {/* Content Edit */}
+               {isNote && <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Content</label>}
                <textarea
                    ref={textareaRef}
                    className={`w-full text-primary focus:outline-none mb-3 resize-none overflow-hidden ${

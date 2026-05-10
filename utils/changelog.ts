@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.83',
+    date: 'May 2026',
+    items: [
+      'Notes now have a dedicated title field separate from body content, including add/edit flows and spreadsheet sync support.',
+      'Note cards now use a clearer hierarchy: metadata first, title as the primary line, and a muted content preview underneath for faster scanning.',
+    ],
+  },
+  {
     version: 'v0.3.80',
     date: 'May 2026',
     items: [

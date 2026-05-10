@@ -540,6 +540,7 @@ export const generateExportData = (
   const notes = items.filter(i => i.type === ItemType.NOTE || i.type === ItemType.JOURNAL).map(item => ({
       Date: fmtDate(item.created_at),
       Type: item.type,
+      Title: item.meta.title || '',
       Content: item.content,
       Tags: item.meta.tags?.join(', ') || '',
       ID: item.id
@@ -548,8 +549,8 @@ export const generateExportData = (
     sheets.push({
       name: "Notes & Journals",
       data: [
-        ["Date", "Type", "Content", "Tags", "ID"],
-        ...notes.map(n => [n.Date, n.Type, n.Content, n.Tags, n.ID])
+        ["Date", "Type", "Title", "Content", "Tags", "ID"],
+        ...notes.map(n => [n.Date, n.Type, n.Title, n.Content, n.Tags, n.ID])
       ]
     });
   }
@@ -558,6 +559,7 @@ export const generateExportData = (
   const itemsData = items.map(item => ({
     ID: item.id,
     Type: item.type,
+    Title: item.meta.title || '',
     Content: item.content,
     Status: item.status,
     Created_At: item.created_at,
@@ -606,8 +608,8 @@ export const generateExportData = (
   sheets.push({
     name: "All Items (Raw)",
     data: [
-      ["ID", "Type", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "Recurrence_Days", "Priority", "Parent_Todo_ID", "Child_Todo_IDs", "Deep_Work_Role", "Deep_Work_Status", "Deep_Work_Completion_Mode", "Deep_Work_Next_Action", "Deep_Work_Final_Output", "Deep_Work_Session_Estimate_Min", "Deep_Work_Blocker_Status", "Deep_Work_Blocker_Check", "Deep_Work_Step_Index", "Deep_Work_Step_Count", "Deep_Work_Subtasks"],
-      ...itemsData.map(i => [i.ID, i.Type, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.Canonical_Payment_Method, i.Merchant, i.Canonical_Merchant, i.Commodity, i.Canonical_Commodity, i.Subcommodity, i.Canonical_Subcommodity, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Investment_Type, i.Investment_Code, i.Investment_Units, i.Investment_Avg_Buy, i.Investment_Current_Price, i.Investment_Platform, i.Recurrence_Days, i.Priority, i.Parent_Todo_ID, i.Child_Todo_IDs, i.Deep_Work_Role, i.Deep_Work_Status, i.Deep_Work_Completion_Mode, i.Deep_Work_Next_Action, i.Deep_Work_Final_Output, i.Deep_Work_Session_Estimate_Min, i.Deep_Work_Blocker_Status, i.Deep_Work_Blocker_Check, i.Deep_Work_Step_Index, i.Deep_Work_Step_Count, i.Deep_Work_Subtasks])
+      ["ID", "Type", "Title", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "Recurrence_Days", "Priority", "Parent_Todo_ID", "Child_Todo_IDs", "Deep_Work_Role", "Deep_Work_Status", "Deep_Work_Completion_Mode", "Deep_Work_Next_Action", "Deep_Work_Final_Output", "Deep_Work_Session_Estimate_Min", "Deep_Work_Blocker_Status", "Deep_Work_Blocker_Check", "Deep_Work_Step_Index", "Deep_Work_Step_Count", "Deep_Work_Subtasks"],
+      ...itemsData.map(i => [i.ID, i.Type, i.Title, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.Canonical_Payment_Method, i.Merchant, i.Canonical_Merchant, i.Commodity, i.Canonical_Commodity, i.Subcommodity, i.Canonical_Subcommodity, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Investment_Type, i.Investment_Code, i.Investment_Units, i.Investment_Avg_Buy, i.Investment_Current_Price, i.Investment_Platform, i.Recurrence_Days, i.Priority, i.Parent_Todo_ID, i.Child_Todo_IDs, i.Deep_Work_Role, i.Deep_Work_Status, i.Deep_Work_Completion_Mode, i.Deep_Work_Next_Action, i.Deep_Work_Final_Output, i.Deep_Work_Session_Estimate_Min, i.Deep_Work_Blocker_Status, i.Deep_Work_Blocker_Check, i.Deep_Work_Step_Index, i.Deep_Work_Step_Count, i.Deep_Work_Subtasks])
     ]
   });
 

@@ -90,6 +90,7 @@ export interface Wallet {
 }
 
 export interface ItemMeta {
+  title?: string;
   date?: string;
   dateTime?: string;
   start?: string;
@@ -398,6 +399,7 @@ export interface ParserEntityRefs {
 }
 
 export interface ParsedItemMetaV2 {
+  title?: string;
   date?: string;
   dateTime?: string;
   start?: string;
@@ -494,6 +496,7 @@ export interface UpdateItemPayload {
     itemName?: string;
   };
   changes?: Partial<{
+    title: string;
     content: string;
     status: 'pending' | 'done';
     priority: Priority;

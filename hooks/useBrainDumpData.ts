@@ -302,6 +302,7 @@ const convertLegacyResultsToNative = (legacyResults: Partial<BrainDumpItem>[], o
                 itemType: type,
                 content: partial.content || originalText,
                 meta: {
+                    title: meta.title,
                     date: meta.date,
                     dateTime: meta.dateTime,
                     when: meta.when,
@@ -804,6 +805,7 @@ export const useBrainDumpData = () => {
     const buildMetaFromParsed = (meta?: ParsedItemMetaV2, action?: ParserAction, entityType?: ParserEntityType, confidence?: string, needsReview?: boolean, reviewReason?: string) => {
         const cleanMeta = stripUndefined({
             date: meta?.date,
+            title: meta?.title,
             dateTime: meta?.dateTime,
             start: meta?.start,
             end: meta?.end,
@@ -1071,6 +1073,7 @@ export const useBrainDumpData = () => {
                             const changes = payload?.changes || {};
                             const cleanMeta = stripUndefined({
                                 date: changes.date,
+                                title: changes.title,
                                 tags: changes.tags,
                                 amount: sanitizeNumber(changes.amount),
                                 financeType: changes.financeType,
@@ -2019,7 +2022,8 @@ export const useBrainDumpData = () => {
         newInvestmentCurrentPrice?: number,
         newInvestmentPlatform?: string,
         newCommodity?: string,
-        newSubcommodity?: string
+        newSubcommodity?: string,
+        newNoteTitle?: string
     ) => {
         const updatedItems = itemsRef.current.map(item => {
             if (item.id !== id) return item;
@@ -2068,6 +2072,7 @@ export const useBrainDumpData = () => {
             const mergedMeta = refreshDeepWorkSuggestionForTodo(item.type, newStatus, newContent, {
                 ...item.meta,
                 tags: newTags,
+                title: newNoteTitle !== undefined ? (newNoteTitle.trim() || undefined) : item.meta.title,
                 amount: newAmount,
                 date: finalDate,
                 start: newStart !== undefined ? newStart : item.meta.start,
@@ -2351,8 +2356,9 @@ export const useBrainDumpData = () => {
         saveAndSync(updated);
     };
 
-    const handleAddNote = async (content: string, tags: string[], type: ItemType.NOTE | ItemType.JOURNAL = ItemType.NOTE) => {
+    const handleAddNote = async (title: string, content: string, tags: string[], type: ItemType.NOTE | ItemType.JOURNAL = ItemType.NOTE) => {
         const now = new Date().toISOString();
+        const cleanTitle = title.trim() || undefined;
 
         const newItem: BrainDumpItem = type === ItemType.JOURNAL
             ? {
@@ -2363,6 +2369,7 @@ export const useBrainDumpData = () => {
                 created_at: now,
                 completed_at: now,
                 meta: {
+                    title: cleanTitle,
                     tags,
                     date: now
                 }
@@ -2374,6 +2381,7 @@ export const useBrainDumpData = () => {
                 status: 'pending',
                 created_at: now,
                 meta: {
+                    title: cleanTitle,
                     tags
                 }
             };

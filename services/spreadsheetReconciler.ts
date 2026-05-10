@@ -726,9 +726,15 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     // 5. Notes & Journals
     const notesSheet = valueRanges.find(r => r.range && r.range.includes('Notes & Journals'));
     if (notesSheet && notesSheet.values) {
+        const header = (notesSheet.values[0] || []).map((cell: unknown) => String(cell || '').trim().toLowerCase());
+        const hasTitleColumn = header.includes('title');
         const rows = notesSheet.values.slice(1);
         for (const row of rows) {
-            const [date, type, content, tagsStr, idStr] = row;
+            const [date, type, titleOrContent, contentOrTags, tagsOrId, maybeId] = row;
+            const title = hasTitleColumn ? titleOrContent : undefined;
+            const content = hasTitleColumn ? contentOrTags : titleOrContent;
+            const tagsStr = hasTitleColumn ? tagsOrId : contentOrTags;
+            const idStr = hasTitleColumn ? maybeId : tagsOrId;
             if (!content && !date && !idStr) continue;
             
             const match = newItems.find(i => 
@@ -742,6 +748,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 seenItemIds.add(match.id);
                 let updated = false;
                 if (match.content !== content) { match.content = content; updated = true; }
+                const nextTitle = title ? String(title) : undefined;
+                if ((match.meta.title || undefined) !== nextTitle) { match.meta.title = nextTitle; updated = true; }
                 const newType = parseNotesSheetItemType(type);
                 if (match.type !== newType) { match.type = newType; updated = true; }
 
@@ -774,6 +782,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     created_at: isoDate,
                     completed_at: itemType === ItemType.JOURNAL ? isoDate : undefined,
                     meta: {
+                        title: title ? String(title) : undefined,
                         date: itemType === ItemType.JOURNAL ? isoDate : undefined,
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : []
                     }

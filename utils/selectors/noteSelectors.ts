@@ -16,6 +16,7 @@ const matchesSearch = (item: BrainDumpItem, searchQuery: string) => {
   if (!searchQuery) return true;
   const lowerQ = searchQuery.toLowerCase();
   const searchable = [
+    item.meta.title || '',
     item.content,
     ...(item.meta.tags || []),
     item.meta.paymentMethod || '',

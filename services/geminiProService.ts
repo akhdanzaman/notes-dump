@@ -303,6 +303,7 @@ function normalizeMeta(meta: any): ParsedItemMetaV2 {
   if (!meta || typeof meta !== 'object') return {};
 
   const normalized: ParsedItemMetaV2 = {
+    title: typeof meta.title === 'string' ? normalizeWhitespace(meta.title) : undefined,
     date: typeof meta.date === 'string' ? meta.date : undefined,
     dateTime: typeof meta.dateTime === 'string' ? meta.dateTime : undefined,
     start: typeof meta.start === 'string' ? meta.start : undefined,
@@ -579,6 +580,7 @@ const stage2Schema = {
           changes: {
             type: Type.OBJECT,
             properties: {
+              title: { type: Type.STRING },
               content: { type: Type.STRING },
               status: { type: Type.STRING },
               priority: { type: Type.STRING },
@@ -628,6 +630,7 @@ const stage2Schema = {
           meta: {
             type: Type.OBJECT,
             properties: {
+              title: { type: Type.STRING },
               date: { type: Type.STRING },
               dateTime: { type: Type.STRING },
               start: { type: Type.STRING },
@@ -984,6 +987,7 @@ function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: ParserC
         content: `${targetText} ${typeof changes.content === 'string' ? changes.content : ''}`,
         itemType: resolved.entityType === 'finance' ? 'FINANCE' : resolved.entityType === 'shopping' ? 'SHOPPING' : undefined,
         meta: stripUndefined({
+          title: typeof changes.title === 'string' ? normalizeWhitespace(changes.title) : undefined,
           content: typeof changes.content === 'string' ? normalizeWhitespace(changes.content) : undefined,
           status: changes.status === 'done' || changes.status === 'pending' ? changes.status : undefined,
           priority: isValidPriority(changes.priority) ? changes.priority : undefined,

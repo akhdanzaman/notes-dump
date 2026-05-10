@@ -23,7 +23,8 @@ interface EditModalProps {
     progressNotes?: string,
     shoppingCategory?: any,
     recurrenceDays?: number,
-    quantity?: string
+    quantity?: string,
+    noteTitle?: string
   ) => void;
   existingPaymentMethods?: string[];
   budgetRules?: BudgetRule[];
@@ -33,6 +34,7 @@ interface EditModalProps {
 
 const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, existingPaymentMethods = [], budgetRules = [], skills = [], wallets = [] }) => {
   const [content, setContent] = useState(item.content);
+  const [title, setTitle] = useState(item.meta.title || '');
   const [tags, setTags] = useState(item.meta.tags?.join(', ') || '');
   const [amount, setAmount] = useState<string>(item.meta.amount ? item.meta.amount.toString() : '');
   
@@ -98,7 +100,8 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
         progressNotes,
         item.meta.shoppingCategory,
         item.meta.recurrenceDays,
-        item.meta.quantity
+        item.meta.quantity,
+        isNote ? title.trim() : undefined
     );
     onClose();
   };
@@ -189,6 +192,19 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
                       </button>
                   ))}
               </div>
+          )}
+
+          {/* Content Area with Toolbar for Notes */}
+          {isNote && (
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1">Title</label>
+              <input
+                className="w-full bg-background border border-border rounded-lg p-3 text-primary font-semibold focus:outline-none focus:border-indigo-500 placeholder-muted/50"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Note title"
+              />
+            </div>
           )}
 
           {/* Content Area with Toolbar for Notes */}

@@ -1144,7 +1144,7 @@ const App: React.FC = () => {
       <AddNoteModal
         isOpen={addNoteModalOpen}
         onClose={() => setAddNoteModalOpen(false)}
-        onSave={(content, tags) => handleAddNote(content, tags, addNoteModalType)}
+        onSave={(title, content, tags) => handleAddNote(title, content, tags, addNoteModalType)}
         mode={addNoteModalType === ItemType.JOURNAL ? 'journal' : 'note'}
       />
 

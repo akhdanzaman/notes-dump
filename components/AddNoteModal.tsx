@@ -6,20 +6,22 @@ import { responsiveModal } from './layout/contentSurface';
 interface AddNoteModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (content: string, tags: string[]) => void;
+    onSave: (title: string, content: string, tags: string[]) => void;
     mode?: 'note' | 'journal';
 }
 
 const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mode = 'note' }) => {
+    const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [tags, setTags] = useState('');
 
     const isJournal = mode === 'journal';
 
     const handleSave = () => {
-        if (!content.trim()) return;
+        if (!title.trim() && !content.trim()) return;
         const tagList = tags.split(',').map(t => t.trim()).filter(t => t);
-        onSave(content, tagList);
+        onSave(title.trim(), content, tagList);
+        setTitle('');
         setContent('');
         setTags('');
         onClose();
@@ -50,9 +52,20 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
 
                     <div className="p-6 space-y-4 overflow-y-auto">
                         <div>
+                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Title</label>
+                            <input
+                                autoFocus
+                                type="text"
+                                value={title}
+                                onChange={e => setTitle(e.target.value)}
+                                placeholder={isJournal ? 'Today in one line' : 'Give this note a clear title'}
+                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-bold text-lg"
+                            />
+                        </div>
+
+                        <div>
                             <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Content</label>
                             <textarea 
-                                autoFocus
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
                                 placeholder={isJournal ? 'What happened today, and how did it feel?' : "What's on your mind?"}
@@ -75,7 +88,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
                     <div className="p-6 border-t border-border shrink-0 bg-surface">
                         <button 
                             onClick={handleSave}
-                            disabled={!content.trim()}
+                            disabled={!title.trim() && !content.trim()}
                             className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <Check className="w-5 h-5" />

@@ -39,7 +39,19 @@ interface NotesViewProps {
         newRoutineMonthsOfYear?: number[],
         newSavingGoalId?: string,
         newDedicatedWalletId?: string,
-        newPriority?: Priority
+        newPriority?: Priority,
+        newStart?: string,
+        newEnd?: string,
+        newHideFromCalendar?: boolean,
+        newInvestmentAssetType?: any,
+        newInvestmentSymbol?: string,
+        newInvestmentUnits?: number,
+        newInvestmentAveragePrice?: number,
+        newInvestmentCurrentPrice?: number,
+        newInvestmentPlatform?: string,
+        newCommodity?: string,
+        newSubcommodity?: string,
+        newNoteTitle?: string
     ) => void;
     
     // Filters
