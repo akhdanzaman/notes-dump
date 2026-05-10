@@ -152,7 +152,7 @@ async function capture(width, height) {
     await page.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false, screenWidth: width, screenHeight: height });
     await page.send('Page.navigate', { url: previewUrl });
     await wait(1800);
-    await waitFor(page, `Boolean(document.querySelector('[data-active-tab="summary"]') && document.body.innerText.includes('BrainDump'))`, 'seeded app');
+    await waitFor(page, `Boolean(document.querySelector('[data-active-tab="summary"]') && document.body.innerText.includes('Arkaiv'))`, 'seeded app');
     await evaluate(page, `Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Money'))?.click()`);
     await waitFor(page, `Boolean(document.querySelector('[data-active-tab]')?.getAttribute('data-active-tab') === 'money' && document.querySelector('[data-money-header-grid="true"]'))`, 'Money workspace');
     await evaluate(page, `Array.from(document.querySelectorAll('[data-money-tabs="true"] button')).find(b => b.textContent?.includes('Transactions'))?.click()`);

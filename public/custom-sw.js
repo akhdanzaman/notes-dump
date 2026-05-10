@@ -23,7 +23,7 @@ self.addEventListener('notificationclick', function(event) {
       }
     }).then(function() {
       if (isPersistent) {
-        return self.registration.showNotification('BrainDump Quick Input', {
+        return self.registration.showNotification('Arkaiv Quick Input', {
           body: 'Type your thoughts here...',
           icon: '/icon.svg',
           badge: '/mask-icon.svg',

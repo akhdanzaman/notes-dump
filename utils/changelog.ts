@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.85',
+    date: 'May 2026',
+    items: [
+      'The app has been rebranded to Arkaiv with the tagline “Ngarsip Harian” across the browser title, PWA manifest, onboarding, navigation, and Control Center surfaces.',
+      'The web header and desktop navigation now show the same app logo used by the PWA icon for consistent branding.',
+    ],
+  },
+  {
     version: 'v0.3.84',
     date: 'May 2026',
     items: [

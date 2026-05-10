@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Brain, ClipboardCheck, CloudCheck, CloudOff, RefreshCw, Save, Settings } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, CloudCheck, CloudOff, RefreshCw, Save, Settings } from 'lucide-react';
 import { LibrarySubTab, PlanSubTab, SyncStatus, Tab } from '../../types';
 import { getAppNavigationItems } from '../navigationItems';
 
@@ -135,12 +135,10 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
   return (
     <aside data-desktop-rail="true" className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-72 flex-col border-r border-border bg-surface/75 px-4 py-5 backdrop-blur-2xl shadow-2xl shadow-black/5">
       <div className="flex items-center gap-3 px-2 pb-5">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-500 ring-1 ring-indigo-500/20">
-          <Brain className="h-6 w-6" />
-        </div>
+        <img src="/icon.svg" alt="Arkaiv logo" className="h-12 w-12 rounded-2xl bg-zinc-950 ring-1 ring-indigo-500/20" />
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">My Assistant</div>
-          <h1 className="text-xl font-black tracking-tight text-primary">BrainDump <span className="text-indigo-500">AI</span></h1>
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Ngarsip Harian</div>
+          <h1 className="text-xl font-black tracking-tight text-primary">Arkaiv</h1>
         </div>
       </div>
 

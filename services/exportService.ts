@@ -21,5 +21,5 @@ export const exportToExcel = (
 
   // --- Generate File ---
   const dateStr = new Date().toISOString().split('T')[0];
-  XLSX.writeFile(workbook, `BrainDump_Export_${dateStr}.xlsx`);
+  XLSX.writeFile(workbook, `Arkaiv_Export_${dateStr}.xlsx`);
 };

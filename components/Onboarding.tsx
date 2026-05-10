@@ -155,9 +155,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             <div className="w-24 h-24 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4">
               <Sparkles className="w-12 h-12 text-indigo-500" />
             </div>
-            <h1 className="text-3xl font-bold text-primary">Welcome to BrainDump</h1>
+            <h1 className="text-3xl font-bold text-primary">Welcome to Arkaiv</h1>
             <p className="text-muted text-lg max-w-md">
-              Your AI-powered second brain for tracking expenses, tasks, notes, shopping, habits, and calendar context. This setup covers the basics; detailed tips will appear only when you first open each tab or feature.
+              Ngarsip Harian — your AI-powered second brain for tracking expenses, tasks, notes, shopping, habits, and calendar context. This setup covers the basics; detailed tips will appear only when you first open each tab or feature.
             </p>
             <div className="grid grid-cols-2 gap-3 w-full max-w-md text-left">
               {[
@@ -302,7 +302,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 <Cloud className="w-8 h-8 text-purple-500" />
               </div>
               <h2 className="text-2xl font-bold text-primary">Spreadsheet-first database</h2>
-              <p className="text-muted">BrainDump now uses Google Sheets as the source of truth.</p>
+              <p className="text-muted">Arkaiv now uses Google Sheets as the source of truth.</p>
             </div>
             <div className="space-y-4">
               <div className="w-full p-4 rounded-xl border-2 border-indigo-500 bg-indigo-500/10 flex items-center gap-4 text-left">

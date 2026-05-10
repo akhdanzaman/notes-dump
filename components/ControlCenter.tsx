@@ -371,7 +371,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                     <div className="px-2 text-xs text-muted flex items-center gap-2">
                                         <Database className="w-3 h-3" />
-                                        <span>BrainDump AI {LATEST_CHANGELOG_VERSION}</span>
+                                        <span>Arkaiv {LATEST_CHANGELOG_VERSION}</span>
                                     </div>
                                 </aside>
 
@@ -499,7 +499,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <div className="text-center pt-4">
                                                 <p className="text-xs text-muted flex items-center justify-center gap-2">
                                                     <Database className="w-3 h-3" />
-                                                    <span>BrainDump AI {LATEST_CHANGELOG_VERSION}</span>
+                                                    <span>Arkaiv {LATEST_CHANGELOG_VERSION}</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -779,7 +779,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                             <div>
                                                                 <div className="font-medium text-primary text-sm">Browser Notifications</div>
-                                                                <div className="text-xs text-muted mb-3">Allow BrainDump to send you desktop and mobile notifications.</div>
+                                                                <div className="text-xs text-muted mb-3">Allow Arkaiv to send you desktop and mobile notifications.</div>
                                                                 <div className="flex gap-2">
                                                                     <button 
                                                                         onClick={async () => {

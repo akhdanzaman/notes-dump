@@ -67,7 +67,7 @@ export const showPromptNotification = async () => {
         ]
       }, settings.notificationMode);
 
-      registration.showNotification('BrainDump AI', options as any);
+      registration.showNotification('Arkaiv', options as any);
     } catch (e) {
       console.error('Failed to show notification', e);
     }
@@ -92,7 +92,7 @@ export const sendTestNotification = async (customSettings?: any) => {
         tag: 'braindump-test'
       }, settings.notificationMode);
 
-      registration.showNotification('BrainDump AI Test', options as any);
+      registration.showNotification('Arkaiv Test', options as any);
     } catch (e) {
       console.error('Failed to show test notification', e);
       alert('Failed to show test notification.');
@@ -128,7 +128,7 @@ export const updatePersistentNotification = async (enabled: boolean) => {
             ]
           }, settings.notificationMode);
           
-          registration.showNotification('BrainDump Quick Input', options as any);
+          registration.showNotification('Arkaiv Quick Input', options as any);
         }
       } else {
         notifications.forEach(n => n.close());

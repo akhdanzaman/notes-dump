@@ -1,5 +1,5 @@
 {
-  "name": " BrainDump AI v3.75 Calendar",
-  "description": "A personal productivity tool that transforms unstructured chat messages into organized dashboard cards using Google Gemini and GitHub as a backend.",
+  "name": "Arkaiv",
+  "description": "Ngarsip Harian",
   "requestFramePermissions": []
 }

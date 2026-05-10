@@ -21,9 +21,9 @@ export default defineConfig(({ mode }) => {
             importScripts: ['custom-sw.js']
           },
           manifest: {
-            name: 'BrainDump AI',
-            short_name: 'BrainDump',
-            description: 'A personal productivity tool that transforms unstructured chat messages into organized dashboard cards.',
+            name: 'Arkaiv',
+            short_name: 'Arkaiv',
+            description: 'Ngarsip Harian',
             theme_color: '#09090b',
             background_color: '#09090b',
             display: 'standalone',

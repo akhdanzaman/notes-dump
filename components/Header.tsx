@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Brain, RefreshCw, CloudCheck, CloudOff, Save, Settings, AlertTriangle } from 'lucide-react';
+import { RefreshCw, CloudCheck, CloudOff, Save, Settings, AlertTriangle } from 'lucide-react';
 import { SyncStatus } from '../types';
 
 interface HeaderProps {
@@ -73,11 +73,12 @@ const Header: React.FC<HeaderProps> = ({ pendingCount, saveStatus, fetchStatus, 
         <>
             <header className="fixed top-0 w-full bg-background/80 backdrop-blur-xl z-40 transition-all duration-300">
                 <div className="max-w-2xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <div className="flex flex-col justify-center">
-                        <span className="text-xs font-semibold text-muted uppercase tracking-wider mb-0.5">My Assistant</span>
-                        <h1 className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
-                            BrainDump <span className="text-indigo-500">AI</span>
-                        </h1>
+                    <div className="flex items-center gap-3">
+                        <img src="/icon.svg" alt="Arkaiv logo" className="w-10 h-10 rounded-2xl ring-1 ring-border bg-zinc-950" />
+                        <div className="flex flex-col justify-center">
+                            <span className="text-xs font-semibold text-muted uppercase tracking-wider mb-0.5">Ngarsip Harian</span>
+                            <h1 className="text-2xl font-bold tracking-tight text-primary">Arkaiv</h1>
+                        </div>
                     </div>
                     
                     <div className="flex items-center gap-3">
