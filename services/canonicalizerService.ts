@@ -276,6 +276,7 @@ const enrichMetaWithContext = (
     meta,
     availableWallets: ctx.wallets,
     availableBudgetRules: ctx.budgetRules,
+    existingItems: ctx.existingItems,
   });
 
   return fillCommodityFromContext(content, itemType, signalEnriched, ctx, behaviorCache);

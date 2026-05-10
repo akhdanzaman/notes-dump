@@ -46,6 +46,32 @@ const recentFinancePatterns = (ctx: IntentParserContext): string => {
   return patterns.length ? `Recent finance patterns: ${patterns.join(' | ')}` : 'Recent finance patterns: none';
 };
 
+const spreadsheetBudgetCategoryExamples = (ctx: IntentParserContext): string => {
+  const namesById = new Map(ctx.availableBudgetRules.map(rule => [rule.id, rule.name]));
+  const examplesByCategory = new Map<string, string[]>();
+
+  ctx.existingItems
+    .filter(item => item.type === ItemType.FINANCE && item.meta?.budgetCategory)
+    .sort((a, b) => Date.parse(b.completed_at || b.created_at) - Date.parse(a.completed_at || a.created_at))
+    .forEach(item => {
+      const category = item.meta?.budgetCategory;
+      if (!category) return;
+      const label = namesById.get(category) ? `${namesById.get(category)} [${category}]` : category;
+      const current = examplesByCategory.get(label) || [];
+      if (current.length >= 3) return;
+      current.push([
+        item.content,
+        item.meta?.commodity ? `commodity=${item.meta.commodity}` : '',
+        item.meta?.subcommodity ? `subcommodity=${item.meta.subcommodity}` : '',
+        item.meta?.merchant ? `merchant=${item.meta.merchant}` : '',
+      ].filter(Boolean).join(' '));
+      examplesByCategory.set(label, current);
+    });
+
+  const lines = Array.from(examplesByCategory.entries()).slice(0, 8).map(([category, examples]) => `${category}: ${examples.join('; ')}`);
+  return lines.length ? `Spreadsheet budget category examples: ${lines.join(' | ')}` : 'Spreadsheet budget category examples: none';
+};
+
 const shoppingPatterns = (ctx: IntentParserContext): string => {
   const patterns = ctx.existingItems
     .filter(item => item.type === ItemType.SHOPPING)
@@ -93,6 +119,8 @@ export function buildContextTextForIntent(ctx: IntentParserContext, intent: Pars
       ctx.availableBudgetRules.length ? `Known budget categories: ${ctx.availableBudgetRules.map(rule => `${rule.name} [${rule.id}]`).join(', ')}` : 'Known budget categories: none',
       savingGoalContext(ctx),
       recentFinancePatterns(ctx),
+      spreadsheetBudgetCategoryExamples(ctx),
+      'Budget category rule: prefer spreadsheet examples first; otherwise infer the closest known budget category id from purpose/commodity/merchant instead of returning none. Leave blank only for income, transfers, or truly purpose-less amount-only input.',
     );
     return lines.join('\n');
   }

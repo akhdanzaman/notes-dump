@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.91',
+    date: 'May 2026',
+    items: [
+      'Finance parsing now uses current spreadsheet budget categories and recent transaction history to infer budgetCategory before falling back to generic parser guesses.',
+      'Budget category fallback is more creative but bounded: recognizable expense purposes map to the closest configured category instead of returning none, while income, transfers, and purpose-less amount-only inputs stay uncategorized.',
+    ],
+  },
+  {
     version: 'v0.3.90',
     date: 'May 2026',
     items: [

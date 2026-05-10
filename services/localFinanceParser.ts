@@ -10,6 +10,7 @@ import {
   TransferMoneyPayload,
   Wallet,
 } from '../types';
+import { enrichFinanceMetaFromText } from './parserSignalService';
 
 export type LocalFinanceFastPathKind = 'expense' | 'income' | 'transfer' | 'saving';
 
@@ -294,6 +295,15 @@ export const parseLocalFinanceCommand = (text: string, options: LocalFinancePars
       itemType: 'FINANCE', content: label || normalizedText, status: 'done',
       meta: { amount: amount?.amount, currency: 'IDR', date: dateHint?.date, when: dateHint ? undefined : 'unspecified', financeType, paymentMethod: roles.fromWallet?.wallet.id },
     };
+    payload.meta = enrichFinanceMetaFromText({
+      rawText: normalizedText,
+      content: payload.content,
+      itemType: 'FINANCE',
+      meta: payload.meta,
+      availableWallets: options.availableWallets || [],
+      availableBudgetRules: options.availableBudgetRules || [],
+      existingItems: options.existingItems || [],
+    });
     result = {
       action: 'create_item', entityType: 'finance', content: label || normalizedText, confidence,
       needsReview: missingFields.length > 0, reviewReason: reviewReasonFromMissing(missingFields),

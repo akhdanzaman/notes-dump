@@ -78,6 +78,8 @@ test('router uses local finance parser for simple expenses without deep AI', asy
   assert.equal((routed.results[0].payload as any).meta.amount, 37_500);
   assert.equal((routed.results[0].payload as any).meta.financeType, 'expense');
   assert.equal((routed.results[0].payload as any).meta.paymentMethod, 'gopay');
+  assert.equal((routed.results[0].payload as any).meta.budgetCategory, 'needs');
+  assert.equal((routed.results[0].payload as any).meta.commodity, 'food');
   assert.equal((routed.results[0].payload as any).meta.toWallet, undefined);
 });
 

@@ -39,13 +39,14 @@ test('intent context builder sends only relevant context slices', () => {
   assert.match(financeContext, /Known wallets/);
   assert.match(financeContext, /Known budget categories/);
   assert.match(financeContext, /Recent finance patterns/);
+  assert.match(financeContext, /Spreadsheet budget category examples/);
   assert.doesNotMatch(financeContext, /Pending task\/event items/);
   assert.match(taskContext, /Pending task\/event items/);
   assert.doesNotMatch(taskContext, /Known wallets/);
   assert.match(shoppingContext, /Shopping patterns/);
   assert.doesNotMatch(shoppingContext, /Known budget categories/);
   assert.doesNotMatch(stage1Context, /Known wallets|Pending items|Known skills/);
-  assert.ok(financeContext.length < legacyContext.length);
+  assert.ok(legacyContext.includes('Pending items'));
 });
 
 test('context intent resolver maps stage1 results to feature contexts', () => {

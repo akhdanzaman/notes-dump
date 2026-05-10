@@ -162,6 +162,7 @@ const classifyFinance = (rawText: string, ctx: LocalClassifierContext, scoreOver
     meta: { amount: amount?.amount, financeType, date: (ctx.now || new Date()).toISOString() },
     availableWallets: ctx.availableWallets || [],
     availableBudgetRules: ctx.availableBudgetRules || [],
+    existingItems: ctx.existingItems || [],
   });
   const reviewReason = score < PARSER_ROUTER_THRESHOLDS.localSave
     ? 'Local parser recognized a finance entry, but key transaction details need review before saving.'

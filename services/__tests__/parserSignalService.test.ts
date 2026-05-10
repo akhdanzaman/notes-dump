@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { canonicalizeParserResults } from '../canonicalizerService';
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from '../parserSignalService';
 import { getSystemCanonicalRules } from '../../utils/canonicalization/systemRules';
-import { BudgetRule, ParserResultV2, Wallet } from '../../types';
+import { BudgetRule, ItemType, ParserResultV2, Wallet } from '../../types';
 
 const wallets: Wallet[] = [
   { id: 'cash-wallet', name: 'Cash', type: 'cash', initialBalance: 0, color: 'bg-green-500' },
@@ -85,6 +85,48 @@ test('enrichFinanceMetaFromText leaves ambiguous amount plus wallet text uncateg
   assert.equal(meta.commodity, undefined);
   assert.equal(meta.subcommodity, undefined);
   assert.equal(meta.merchant, undefined);
+});
+
+test('enrichFinanceMetaFromText uses spreadsheet history before generic budget fallback', () => {
+  const customBudgetRules: BudgetRule[] = [
+    { id: 'daily-core', name: 'Daily Core', percentage: 60, color: 'bg-blue-500' },
+    { id: 'joy-fund', name: 'Joy Fund', percentage: 25, color: 'bg-pink-500' },
+  ];
+  const meta = enrichFinanceMetaFromText({
+    rawText: 'kopi tuku 28000 cash',
+    itemType: 'FINANCE',
+    meta: { amount: 28_000, financeType: 'expense', merchant: 'Tuku' },
+    availableWallets: wallets,
+    availableBudgetRules: customBudgetRules,
+    existingItems: [{
+      id: 'old-kopi',
+      type: ItemType.FINANCE,
+      content: 'kopi tuku',
+      status: 'done',
+      created_at: '2026-05-01T00:00:00.000Z',
+      completed_at: '2026-05-01T00:00:00.000Z',
+      meta: { financeType: 'expense', budgetCategory: 'joy-fund', commodity: 'food', subcommodity: 'drink', merchant: 'Tuku' },
+    }],
+  });
+
+  assert.equal(meta.budgetCategory, 'joy-fund');
+});
+
+test('enrichFinanceMetaFromText creatively chooses closest configured category instead of none', () => {
+  const customBudgetRules: BudgetRule[] = [
+    { id: 'daily-core', name: 'Daily Core', percentage: 60, color: 'bg-blue-500' },
+    { id: 'joy-fund', name: 'Joy Fund', percentage: 25, color: 'bg-pink-500' },
+    { id: 'giving', name: 'Giving', percentage: 5, color: 'bg-green-500' },
+  ];
+  const meta = enrichFinanceMetaFromText({
+    rawText: 'sedekah masjid 10000 cash',
+    itemType: 'FINANCE',
+    meta: { amount: 10_000, financeType: 'expense' },
+    availableWallets: wallets,
+    availableBudgetRules: customBudgetRules,
+  });
+
+  assert.equal(meta.budgetCategory, 'giving');
 });
 
 test('canonicalizer can use enriched raw parser signal for auto-apply and review suggestions', () => {

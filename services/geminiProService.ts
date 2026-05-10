@@ -751,7 +751,7 @@ Multiplicity rules:
 - completed expense/income => FINANCE
 - diary/feeling/recap => JOURNAL
 - saving target like "nabung buat laptop 15jt" => SHOPPING + shoppingCategory=saving
-- IMPORTANT FOR FINANCE/SHOPPING: For 'budgetCategory', do NOT lazily default to "finance" or a generic term. Intelligently deduce the most appropriate category based on context (e.g., 'makan', 'kopi', 'gofood' -> Food; 'bensin', 'grab' -> Transportation) AND then strictly use the EXACT ID from the 'Known budget categories' list.
+- IMPORTANT FOR FINANCE/SHOPPING: For 'budgetCategory', do NOT lazily default to "finance" and do NOT return "none" for expenses with a recognizable purpose. Use spreadsheet examples first, then creatively infer the closest EXACT ID from the 'Known budget categories' list based on purpose, commodity, merchant, and wording (e.g., 'makan', 'kopi', 'gofood' -> Food/Needs; 'bensin', 'grab' -> Transportation/Needs; 'donasi' -> Giving). Leave blank only for income, transfer, or totally purpose-less amount-only input.
 - For paymentMethod/toWallet find the exact ID too. Do not make up arbitrary wallets or categories.
 - For abstract TODOs, include meta.subtasks with 3-5 concrete steps so the app can save an optional nested todo plan.
 
@@ -889,6 +889,7 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
         meta,
         availableWallets: ctx.availableWallets,
         availableBudgetRules: ctx.availableBudgetRules,
+        existingItems: ctx.existingItems,
       });
 
       if (itemType === 'SHOPPING' && !meta.shoppingCategory) {
@@ -1009,6 +1010,7 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
         }) as ParsedItemMetaV2,
         availableWallets: ctx.availableWallets,
         availableBudgetRules: ctx.availableBudgetRules,
+        existingItems: ctx.existingItems,
       });
 
       if (normalizedChanges.paymentMethod) {

@@ -1,4 +1,5 @@
 import { BudgetRule, FinanceType, ParserResultV2, Wallet } from '../types';
+import { resolveBudgetCategoryIdFromRules } from './budgetCategoryService';
 
 export type ParserValidationContext = {
   availableWallets: Wallet[];
@@ -87,11 +88,16 @@ const sanitizeMeta = (result: ParserResultV2, meta: any, ctx: ParserValidationCo
   }
 
   if (next.budgetCategory) {
-    const budgetId = strictReferenceMatch(next.budgetCategory, ctx.availableBudgetRules);
-    if (budgetId) next.budgetCategory = budgetId;
-    else {
+    if (looksLikeExplanation(next.budgetCategory)) {
       delete next.budgetCategory;
       appendReviewReason(result, 'Unmatched budget category was omitted from structured fields.');
+    } else {
+      const budgetId = resolveBudgetCategoryIdFromRules(next.budgetCategory, ctx.availableBudgetRules);
+      if (budgetId) next.budgetCategory = budgetId;
+      else {
+        delete next.budgetCategory;
+        appendReviewReason(result, 'Unmatched budget category was omitted from structured fields.');
+      }
     }
   }
 

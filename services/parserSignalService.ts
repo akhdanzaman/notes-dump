@@ -1,4 +1,5 @@
-import { BudgetRule, ParsedItemMetaV2, Wallet } from '../types';
+import { BrainDumpItem, BudgetRule, ParsedItemMetaV2, Wallet } from '../types';
+import { inferBudgetCategoryId, resolveBudgetCategoryIdFromRules } from './budgetCategoryService';
 
 type ParserItemKind = 'FINANCE' | 'SHOPPING' | 'TODO' | 'NOTE' | 'EVENT' | 'JOURNAL' | string | undefined;
 
@@ -9,6 +10,7 @@ interface EnrichFinanceMetaInput {
   meta: ParsedItemMetaV2;
   availableWallets?: Pick<Wallet, 'id' | 'name'>[];
   availableBudgetRules?: Pick<BudgetRule, 'id' | 'name'>[];
+  existingItems?: BrainDumpItem[];
 }
 
 type PatternSpec = {
@@ -238,6 +240,12 @@ const SIGNAL_PATTERNS: PatternSpec[] = [
   },
   {
     commodity: 'food',
+    subcommodity: 'meal',
+    patterns: [/\b(makan|meal|gofood|grabfood|shopee\s*food)\b/i],
+    budgetHints: ['needs', 'wants'],
+  },
+  {
+    commodity: 'food',
     subcommodity: 'drink',
     patterns: [/\b(kopi|coffee|es\s+teh|teh|boba|minum(?:an)?)\b/i],
     budgetHints: ['wants'],
@@ -344,15 +352,6 @@ function cleanCanonicalValue(value: unknown, allowed: Set<string>, fallback?: st
   return allowed.has(normalized) ? normalized : fallback;
 }
 
-function findBudgetRuleId(hints: string[] | undefined, rules: Pick<BudgetRule, 'id' | 'name'>[]): string | undefined {
-  if (!hints?.length) return undefined;
-  for (const hint of hints) {
-    const direct = rules.find(rule => normalizeToken(rule.id) === hint || normalizeToken(rule.name) === hint);
-    if (direct) return direct.id;
-  }
-  return undefined;
-}
-
 function walletAliases(wallet: Pick<Wallet, 'id' | 'name'>): string[] {
   const raw = [wallet.id, wallet.name];
   const aliases = new Set<string>();
@@ -433,9 +432,14 @@ export function enrichFinanceMetaFromText({
   meta,
   availableWallets = [],
   availableBudgetRules = [],
+  existingItems = [],
 }: EnrichFinanceMetaInput): ParsedItemMetaV2 {
   const next: ParsedItemMetaV2 = { ...meta };
   const evidence = compact(`${rawText} ${content}`);
+
+  const normalizedBudget = resolveBudgetCategoryIdFromRules(next.budgetCategory, availableBudgetRules);
+  if (normalizedBudget) next.budgetCategory = normalizedBudget;
+  else if (next.budgetCategory && isEmptyField(next.budgetCategory)) delete next.budgetCategory;
 
   if (typeof next.merchant === 'string' && isEmptyField(next.merchant)) delete next.merchant;
   const normalizedCommodity = cleanCanonicalValue(next.commodity, KNOWN_COMMODITIES);
@@ -456,9 +460,25 @@ export function enrichFinanceMetaFromText({
     if (!next.commodity || next.commodity === 'others') next.commodity = signal.commodity;
     if (!next.subcommodity) next.subcommodity = signal.subcommodity;
     if (!next.budgetCategory) {
-      const budgetRuleId = findBudgetRuleId(signal.budgetHints, availableBudgetRules);
+      const budgetRuleId = inferBudgetCategoryId({
+        text: evidence,
+        meta: next,
+        budgetRules: availableBudgetRules,
+        existingItems,
+        hints: signal.budgetHints,
+      });
       if (budgetRuleId) next.budgetCategory = budgetRuleId;
     }
+  }
+
+  if (!next.budgetCategory) {
+    const budgetRuleId = inferBudgetCategoryId({
+      text: evidence,
+      meta: next,
+      budgetRules: availableBudgetRules,
+      existingItems,
+    });
+    if (budgetRuleId) next.budgetCategory = budgetRuleId;
   }
 
   if (!next.merchant) {

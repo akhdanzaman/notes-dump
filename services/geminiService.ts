@@ -50,7 +50,7 @@ DEEP WORK TODO (OPTIONAL):
 
 MONEY META (FINANCE + money-related SHOPPING):
 - financeType ∈ {expense, income, transfer, saving}
-- budgetCategory ∈ {needs, wants, savings, sedekah, fixed, unintend}
+- budgetCategory: use the exact configured budget category id when Known Budget Categories are provided. If no configured categories are provided, use a sensible broad value from {needs, wants, savings, sedekah, fixed, unintend}.
   - needs: groceries/electricity/health
   - wants: dining/hobby/entertainment/subscription entertainment
   - savings: investment/emergency/debt repayment
@@ -92,7 +92,9 @@ FINANCE META:
     - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.
 - saving: adding funds to an existing saving goal (e.g., "saved 500k for car from BCA").
     - IF saving: set 'paymentMethod' = Source Wallet, 'financeType' = 'saving'.
-- IMPORTANT: You MUST ALWAYS set 'budgetCategory' for 'expense' and 'saving' transactions.
+- IMPORTANT: You MUST ALWAYS set 'budgetCategory' for 'expense' and 'saving' transactions when the spending purpose is present.
+  - Prefer the user's spreadsheet/configured categories. If there is no exact rule or reference, creatively infer the closest configured category from purpose, commodity, merchant, and wording instead of returning "none".
+  - Leave budgetCategory blank only for income, transfer, or totally purpose-less amount-only inputs.
   - For 'saving', choose the category based on the goal (e.g. saving for emergency fund -> 'savings', saving for a new car -> 'wants').
 
 TAG RULES (STRICT):
@@ -144,7 +146,7 @@ export const classifyText = async (
   const tagsContext = existingTags.length > 0 ? `Existing tags context: ${existingTags.join(', ')}` : '';
   const skillsContext = availableSkills.length > 0 ? `Known User Skills (match 'skillName' to one of these if possible): ${availableSkills.join(', ')}` : '';
   const walletsContext = availableWallets.length > 0 ? `Known Wallets (for paymentMethod/toWallet): ${availableWallets.map(w => `${w.name} [ID: ${w.id}]`).join(', ')}` : '';
-  const budgetContext = availableBudgetRules.length > 0 ? `Known Budget Categories (for budgetCategory): ${availableBudgetRules.map(b => `${b.name} [ID: ${b.id}]`).join(', ')}` : '';
+  const budgetContext = availableBudgetRules.length > 0 ? `Known Budget Categories (for budgetCategory): ${availableBudgetRules.map(b => `${b.name} [ID: ${b.id}]`).join(', ')}. Use these exact IDs. If no exact match exists, infer the closest category id from the transaction purpose instead of returning none.` : '';
 
   const promptToUse = customPrompt || DEFAULT_PROMPT;
   const activeModel = parsingModel || DEFAULT_FLASH_MODEL;
@@ -159,7 +161,7 @@ export const classifyText = async (
       ${walletsContext}
       ${budgetContext}
       
-      ***CRITICAL FOR BUDGET CATEGORIES***: For 'budgetCategory', do NOT lazily default to "finance" or a generic term. Intelligently deduce the most appropriate category based on context (e.g., 'makan', 'kopi', 'gofood' -> Food; 'bensin', 'grab' -> Transportation) AND then strictly output ONLY the exact matched ID from Known Budget Categories.
+      ***CRITICAL FOR BUDGET CATEGORIES***: For 'budgetCategory', do NOT output "none" for expenses with a recognizable purpose. Intelligently deduce the most appropriate category based on context (e.g., 'makan', 'kopi', 'gofood' -> Food/Needs; 'bensin', 'grab' -> Transportation/Needs; 'donasi' -> Giving) AND then output ONLY the closest exact ID from Known Budget Categories.
       ***CRITICAL FOR MULTIPLICITY***: Return EXACTLY ONE object in the array for a single logical transaction/input. Do NOT split an expense into multiple array elements. A single sentence MUST result in exactly 1 array item.
       ***CRITICAL FOR WALLETS***: For paymentMethod and toWallet, use ONLY the exact ID.
 
