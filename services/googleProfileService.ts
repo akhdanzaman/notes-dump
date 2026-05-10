@@ -11,6 +11,8 @@ export interface AppConfig {
   authMode?: 'oauth' | 'service_account';
   serviceAccountEmail?: string;
   theme?: 'light' | 'dark';
+  googleCalendarSyncEnabled?: boolean;
+  googleCalendarId?: string;
   // Add other settings here
 }
 

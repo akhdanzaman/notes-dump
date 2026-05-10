@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.92',
+    date: 'May 2026',
+    items: [
+      'Connect now treats Google account login and Spreadsheet connection as separate states, so a signed-in Google account still appears even when Sheets uses the service account.',
+      'Google Calendar sync can now be toggled on from Control Center and syncs dated todos, shopping items, events, and routines through the connected Google account.',
+    ],
+  },
+  {
     version: 'v0.3.91',
     date: 'May 2026',
     items: [

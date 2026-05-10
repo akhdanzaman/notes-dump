@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
-import { checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL, isServiceAccountSpreadsheetConfig } from '../services/spreadsheetService';
+import { checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
 import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
+import { syncItemsToGoogleCalendar } from '../services/googleCalendarService';
 import { BackHandler } from '../utils/backHandler';
 
 export interface UseControlCenterProps {
@@ -86,6 +87,8 @@ export const useControlCenter = ({
     // Google Profile
     const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
     const [isSyncingProfile, setIsSyncingProfile] = useState(false);
+    const [calendarSyncStatus, setCalendarSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+    const [calendarSyncError, setCalendarSyncError] = useState<string | null>(null);
 
     useEffect(() => {
         if (currentBudgetConfig) {
@@ -113,7 +116,7 @@ export const useControlCenter = ({
 
             // Load GCal Keys
             const savedGCalKey = localStorage.getItem('braindump_gcal_key') || '';
-            const savedGCalId = localStorage.getItem('braindump_gcal_id') || '';
+            const savedGCalId = appSettings.googleCalendarId || localStorage.getItem('braindump_gcal_id') || 'primary';
             setGCalKey(savedGCalKey);
             setGCalId(savedGCalId);
 
@@ -124,21 +127,18 @@ export const useControlCenter = ({
                 setSpreadsheetLink(ss.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${ss.spreadsheetId}/edit`);
             }
 
-            // Check optional Google profile only when the spreadsheet is not already
-            // connected through the server-side service account. Service-account mode
-            // must not depend on browser OAuth refresh tokens, because those expire or
-            // get revoked and previously made the app look disconnected unnecessarily.
-            if (!isServiceAccountSpreadsheetConfig(ss)) {
-                getValidGoogleAccessToken().then(token => {
-                    if (token) {
-                        fetchGoogleProfile(token).then(setGoogleProfile).catch(() => {
-                            // Token might be expired or invalid
-                        });
-                    }
-                });
-            }
+            // Google account state is independent from spreadsheet sync mode. Even when
+            // Sheets uses the service account, the UI should still show an active Google
+            // login because Calendar sync and profile backup use browser OAuth.
+            getValidGoogleAccessToken().then(token => {
+                if (token) {
+                    fetchGoogleProfile(token).then(setGoogleProfile).catch(() => {
+                        // Token might be expired or invalid
+                    });
+                }
+            });
         }
-    }, [isOpen]);
+    }, [isOpen, appSettings.googleCalendarId]);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -228,10 +228,18 @@ export const useControlCenter = ({
                     alert(`Welcome back, ${profile.name}! Settings synced from cloud.`);
                 }
                 
-                if (cloudConfig.theme) {
-                    const newSettings = { ...localAppSettingsRef.current, theme: cloudConfig.theme };
+                if (cloudConfig.theme || cloudConfig.googleCalendarId || typeof cloudConfig.googleCalendarSyncEnabled === 'boolean') {
+                    const newSettings = {
+                        ...localAppSettingsRef.current,
+                        theme: cloudConfig.theme || localAppSettingsRef.current.theme,
+                        googleCalendarSyncEnabled: typeof cloudConfig.googleCalendarSyncEnabled === 'boolean'
+                            ? cloudConfig.googleCalendarSyncEnabled
+                            : localAppSettingsRef.current.googleCalendarSyncEnabled,
+                        googleCalendarId: cloudConfig.googleCalendarId || localAppSettingsRef.current.googleCalendarId || 'primary',
+                    };
                     setLocalAppSettings(newSettings);
                     setAppSettings(newSettings);
+                    setGCalId(newSettings.googleCalendarId || 'primary');
                 }
             } else {
                 // No config found, this is a new login or first time using profile sync
@@ -260,7 +268,9 @@ export const useControlCenter = ({
                         spreadsheetUrl: currentSpreadsheetLink,
                         authMode: newConfig.authMode,
                         serviceAccountEmail: newConfig.serviceAccountEmail,
-                        theme: localAppSettingsRef.current.theme
+                        theme: localAppSettingsRef.current.theme,
+                        googleCalendarSyncEnabled: localAppSettingsRef.current.googleCalendarSyncEnabled,
+                        googleCalendarId: localAppSettingsRef.current.googleCalendarId
                     }, token);
                     alert(`Welcome, ${profile.name}! Your current spreadsheet has been linked to your account.`);
                 } else {
@@ -371,9 +381,15 @@ export const useControlCenter = ({
         // Save Gemini
         saveGeminiKey(geminiKey);
 
-        // Save GCal
+        // Save Google Calendar config. Calendar writes use OAuth, not an API key;
+        // keep the legacy key only so older local setups do not lose it abruptly.
         localStorage.setItem('braindump_gcal_key', gCalKey);
-        localStorage.setItem('braindump_gcal_id', gCalId);
+        const calendarIdToSave = (gCalId || 'primary').trim() || 'primary';
+        localStorage.setItem('braindump_gcal_id', calendarIdToSave);
+        const settingsToSave: AppSettings = {
+            ...localAppSettings,
+            googleCalendarId: calendarIdToSave,
+        };
 
         // Prepare Objects
         const newBudgetConfig: BudgetConfig = { monthlyIncome, rules: budgetRules };
@@ -381,7 +397,7 @@ export const useControlCenter = ({
         setSettingsSaveStatus('saved');
         
         // Propagate changes
-        onSave(newBudgetConfig, prompt, localAppSettings);
+        onSave(newBudgetConfig, prompt, settingsToSave);
         
         // Save optional Google profile settings only for OAuth configs. Service-account
         // spreadsheet sync is server-side and must not refresh browser Google tokens.
@@ -393,7 +409,9 @@ export const useControlCenter = ({
                              spreadsheetUrl: spreadsheetConfig.spreadsheetUrl,
                              authMode: spreadsheetConfig.authMode,
                              serviceAccountEmail: spreadsheetConfig.serviceAccountEmail,
-                             theme: localAppSettings.theme
+                             theme: settingsToSave.theme,
+                             googleCalendarSyncEnabled: settingsToSave.googleCalendarSyncEnabled,
+                             googleCalendarId: settingsToSave.googleCalendarId
                          }, token).catch(e => {
                          console.warn("Failed to background sync to Drive", e);
                      });
@@ -404,6 +422,46 @@ export const useControlCenter = ({
         setTimeout(() => {
             setSettingsSaveStatus('idle');
         }, 2000);
+    };
+
+    const handleToggleCalendarSync = async (enabled: boolean) => {
+        const calendarIdToSave = (gCalId || 'primary').trim() || 'primary';
+        const nextSettings: AppSettings = {
+            ...localAppSettingsRef.current,
+            googleCalendarSyncEnabled: enabled,
+            googleCalendarId: calendarIdToSave,
+        };
+        setLocalAppSettings(nextSettings);
+        setAppSettings(nextSettings);
+        localStorage.setItem('braindump_gcal_id', calendarIdToSave);
+        onSave(undefined, undefined, nextSettings);
+
+        if (enabled) {
+            await handleSyncCalendarNow(nextSettings);
+        } else {
+            setCalendarSyncStatus('idle');
+            setCalendarSyncError(null);
+        }
+    };
+
+    const handleSyncCalendarNow = async (settingsOverride?: AppSettings) => {
+        const effectiveSettings = settingsOverride || {
+            ...localAppSettingsRef.current,
+            googleCalendarId: (gCalId || 'primary').trim() || 'primary',
+        };
+        setCalendarSyncStatus('syncing');
+        setCalendarSyncError(null);
+        try {
+            await syncItemsToGoogleCalendar(allItems, {
+                googleCalendarSyncEnabled: true,
+                googleCalendarId: effectiveSettings.googleCalendarId,
+            });
+            setCalendarSyncStatus('success');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown Calendar sync error';
+            setCalendarSyncStatus('error');
+            setCalendarSyncError(message);
+        }
     };
 
     const handleExportExcel = () => {
@@ -478,6 +536,8 @@ export const useControlCenter = ({
         localAppSettings,
         googleProfile,
         isSyncingProfile,
+        calendarSyncStatus,
+        calendarSyncError,
         handleTabChange,
         setSpreadsheetLink,
         setGeminiKey,
@@ -488,6 +548,8 @@ export const useControlCenter = ({
         setLocalAppSettings,
         handleGoogleLogin,
         handleGoogleSignOut,
+        handleToggleCalendarSync,
+        handleSyncCalendarNow,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,

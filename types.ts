@@ -127,6 +127,8 @@ export interface AppSettings {
   insightModel?: string;
   useProParser?: boolean;
   parserModelRouting?: ParserModelRoutingSettings;
+  googleCalendarSyncEnabled?: boolean;
+  googleCalendarId?: string;
 }
 
 export interface Skill {

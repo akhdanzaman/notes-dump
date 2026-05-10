@@ -35,6 +35,7 @@ import {
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
 import { getCachedSpreadsheetDb } from '../services/spreadsheetService';
+import { syncItemsToGoogleCalendar } from '../services/googleCalendarService';
 import { recoverMisclassifiedJournalNotes, upsertDailyJournalEntry } from '../utils/journalUtils';
 import { mergeDbData } from '../utils/mergeUtils';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
@@ -567,6 +568,15 @@ export const useBrainDumpData = () => {
 
                 if (remoteSchema.monthlyThemes) setMonthlyThemes(prev => ({ ...remoteSchema.monthlyThemes, ...prev }));
                 if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
+            }
+
+            if (settingsToSave.googleCalendarSyncEnabled) {
+                try {
+                    await syncItemsToGoogleCalendar(itemsToSave, settingsToSave);
+                } catch (calendarError) {
+                    console.warn('Google Calendar sync failed after data save', calendarError);
+                    setError(`Data tersimpan, tapi sync Google Calendar gagal: ${calendarError instanceof Error ? calendarError.message : 'Unknown error'}`);
+                }
             }
 
             setSaveStatus('synced');

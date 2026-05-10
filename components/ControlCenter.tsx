@@ -165,23 +165,25 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         isConnectingSpreadsheet,
         geminiKey,
         prompt,
-        gCalKey,
         gCalId,
         monthlyIncome,
         budgetRules,
         localAppSettings,
         googleProfile,
         isSyncingProfile,
+        calendarSyncStatus,
+        calendarSyncError,
         handleTabChange,
         setSpreadsheetLink,
         setGeminiKey,
         setPrompt,
-        setGCalKey,
         setGCalId,
         setMonthlyIncome,
         setLocalAppSettings,
         handleGoogleLogin,
         handleGoogleSignOut,
+        handleToggleCalendarSync,
+        handleSyncCalendarNow,
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,
@@ -1311,7 +1313,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <div>
                                                                     <div className="font-medium text-primary text-sm">Service account active</div>
                                                                     <p className="text-xs text-muted mt-1 leading-relaxed">
-                                                                        Spreadsheet sync uses the server-side service account, so Google login and popup permission are not required.
+                                                                        Spreadsheet sync uses the server-side service account. Google sign-in is still shown separately when connected, and is used for Calendar sync/profile backup.
                                                                     </p>
                                                                     <div className="mt-2 text-[11px] font-mono text-muted break-all">
                                                                         {spreadsheetConfig.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL}
@@ -1322,12 +1324,12 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 onClick={handleGoogleLogin}
                                                                 className="w-full py-2.5 bg-surface border border-border text-primary font-medium rounded-xl hover:bg-muted/10 transition-colors text-xs"
                                                             >
-                                                                Optional: sign in for Google profile sync
+                                                                Sign in for Calendar/profile sync
                                                             </button>
                                                         </div>
                                                     ) : (
                                                         <div className="text-center py-4">
-                                                            <p className="text-sm text-muted mb-4">Google sign-in is optional. Spreadsheet sync should connect with the service account below first.</p>
+                                                            <p className="text-sm text-muted mb-4">Google sign-in is independent from Spreadsheet. Use it for Calendar sync and profile backup; Sheets can still use the service account below.</p>
                                                             <button 
                                                                 onClick={handleGoogleLogin}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
@@ -1431,23 +1433,30 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Integrations</h3>
                                                 <div className="bg-background border border-border rounded-2xl p-4 space-y-3">
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
                                                             <Calendar className="w-5 h-5" />
                                                         </div>
                                                         <div>
                                                             <div className="font-medium text-primary text-sm">Google Calendar</div>
-                                                            <div className="text-xs text-muted">Sync events (Coming Soon)</div>
+                                                            <div className="text-xs text-muted">
+                                                                {localAppSettings.googleCalendarSyncEnabled ? 'Sync is on' : 'Sync dated tasks, shopping, and events'}
+                                                            </div>
                                                         </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            role="switch"
+                                                            aria-checked={!!localAppSettings.googleCalendarSyncEnabled}
+                                                            onClick={() => handleToggleCalendarSync(!localAppSettings.googleCalendarSyncEnabled)}
+                                                            disabled={calendarSyncStatus === 'syncing'}
+                                                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${localAppSettings.googleCalendarSyncEnabled ? 'bg-blue-500' : 'bg-muted/30'}`}
+                                                        >
+                                                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${localAppSettings.googleCalendarSyncEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                                        </button>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <input
-                                                            type="text"
-                                                            className="w-full bg-surface border border-border rounded-xl p-3 text-primary focus:outline-none focus:border-blue-500 transition-colors placeholder:text-muted/20 text-xs"
-                                                            value={gCalKey}
-                                                            onChange={(e) => setGCalKey(e.target.value)}
-                                                            placeholder="Google Calendar API Key"
-                                                        />
                                                         <input
                                                             type="text"
                                                             className="w-full bg-surface border border-border rounded-xl p-3 text-primary focus:outline-none focus:border-blue-500 transition-colors placeholder:text-muted/20 text-xs"
@@ -1455,6 +1464,28 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             onChange={(e) => setGCalId(e.target.value)}
                                                             placeholder="Calendar ID (e.g. primary or email)"
                                                         />
+                                                        <div className="text-[11px] text-muted leading-relaxed">
+                                                            Uses your connected Google account OAuth access, not a standalone API key. Use <span className="font-mono text-primary">primary</span> for your default calendar.
+                                                        </div>
+                                                        {calendarSyncError && (
+                                                            <div className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl p-3 leading-relaxed">
+                                                                {calendarSyncError}
+                                                            </div>
+                                                        )}
+                                                        {calendarSyncStatus === 'success' && !calendarSyncError && (
+                                                            <div className="text-xs text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                                                                Calendar synced.
+                                                            </div>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSyncCalendarNow()}
+                                                            disabled={calendarSyncStatus === 'syncing'}
+                                                            className="w-full py-2.5 bg-blue-500/10 text-blue-500 font-medium rounded-xl hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                        >
+                                                            {calendarSyncStatus === 'syncing' && <RefreshCw className="w-4 h-4 animate-spin" />}
+                                                            {calendarSyncStatus === 'syncing' ? 'Syncing Calendar…' : 'Sync Calendar Now'}
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </section>
