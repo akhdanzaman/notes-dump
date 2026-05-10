@@ -1,4 +1,4 @@
-import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule, ItemType } from "../types";
 import { SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
@@ -31,6 +31,7 @@ const MANAGED_USER_SHEET_NAMES = [
   'Budget Rules',
   'Themes & Settings',
 ] as const;
+const BACKGROUND_REBUILD_DELAY_MS = 5000;
 
 type SystemSheetSyncStatus = 'ready' | 'writing';
 
@@ -147,6 +148,7 @@ type PendingDebouncedSync = {
 };
 let pendingDebouncedSync: PendingDebouncedSync | null = null;
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let backgroundRebuildTimer: ReturnType<typeof setTimeout> | null = null;
 
 const hexToRgb = (hex: string) => {
   const normalized = hex.replace('#', '');
@@ -244,6 +246,186 @@ const shouldRenderDashboardCharts = (
   shouldFormatDashboard: boolean,
   existingChartIds: number[]
 ) => shouldFormatDashboard || existingChartIds.length === 0;
+
+const escapeSheetName = (name: string) => `'${name.replace(/'/g, "''")}'`;
+
+const columnLabel = (index: number) => {
+  let label = '';
+  let n = index + 1;
+  while (n > 0) {
+    const remainder = (n - 1) % 26;
+    label = String.fromCharCode(65 + remainder) + label;
+    n = Math.floor((n - 1) / 26);
+  }
+  return label;
+};
+
+const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
+  const sheets = ['All Items (Raw)'];
+
+  if (item.type === ItemType.FINANCE) {
+    sheets.push('Transactions');
+  } else if (item.type === ItemType.TODO) {
+    sheets.push('Todos');
+  } else if (item.type === ItemType.SHOPPING) {
+    sheets.push('Shopping');
+    if (item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment') {
+      sheets.push('Transactions');
+    }
+  } else if (item.type === ItemType.EVENT) {
+    sheets.push('Events');
+  } else if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) {
+    sheets.push('Notes & Journals');
+  }
+
+  return sheets;
+};
+
+type SheetRowIndex = {
+  sheet: SheetData;
+  idColumnIndex: number;
+  rowById: Map<string, number>;
+};
+
+const buildSheetRowIndexes = (sheets: SheetData[]) => {
+  const indexes = new Map<string, SheetRowIndex>();
+
+  for (const sheet of sheets) {
+    const header = sheet.data[0] || [];
+    const idColumnIndex = header.indexOf('ID');
+    if (idColumnIndex < 0) continue;
+
+    const rowById = new Map<string, number>();
+    sheet.data.slice(1).forEach((row, offset) => {
+      const id = row[idColumnIndex];
+      if (typeof id === 'string' && id.trim()) {
+        rowById.set(id, offset + 2);
+      }
+    });
+
+    indexes.set(sheet.name, { sheet, idColumnIndex, rowById });
+  }
+
+  return indexes;
+};
+
+type IncrementalUserSheetPlan = {
+  canIncremental: boolean;
+  reason?: string;
+  updates: { range: string; values: SheetData['data'] }[];
+  appends: { sheetName: string; values: SheetData['data']; inputOption: 'RAW' | 'USER_ENTERED' }[];
+};
+
+const buildIncrementalUserSheetPlan = (
+  previousDb: DbSchema,
+  nextDb: DbSchema,
+  exportSheets: SheetData[],
+  existingSheetTitles: Set<string>,
+  createdSheetTitles: Set<string>,
+  isInitialSpreadsheetWrite: boolean,
+): IncrementalUserSheetPlan => {
+  if (isInitialSpreadsheetWrite) {
+    return { canIncremental: false, reason: 'initial_write', updates: [], appends: [] };
+  }
+
+  const previousItems = previousDb.data || [];
+  const nextItems = nextDb.data || [];
+  const previousById = new Map(previousItems.map(item => [item.id, item]));
+  const nextById = new Map(nextItems.map(item => [item.id, item]));
+  const deletedIds = previousItems.filter(item => !nextById.has(item.id)).map(item => item.id);
+  if (deletedIds.length > 0) {
+    return { canIncremental: false, reason: 'deleted_items', updates: [], appends: [] };
+  }
+
+  const configChanged = JSON.stringify({
+    budgetConfig: previousDb.budgetConfig,
+    skills: previousDb.skills,
+    wallets: previousDb.wallets,
+    monthlyThemes: previousDb.monthlyThemes,
+    appSettings: previousDb.appSettings,
+  }) !== JSON.stringify({
+    budgetConfig: nextDb.budgetConfig,
+    skills: nextDb.skills,
+    wallets: nextDb.wallets,
+    monthlyThemes: nextDb.monthlyThemes,
+    appSettings: nextDb.appSettings,
+  });
+
+  if (configChanged) {
+    return { canIncremental: false, reason: 'config_changed', updates: [], appends: [] };
+  }
+
+  const changedIds = nextItems
+    .filter(item => JSON.stringify(previousById.get(item.id)) !== JSON.stringify(item))
+    .map(item => item.id);
+
+  if (changedIds.length === 0) {
+    return { canIncremental: true, reason: 'no_item_changes', updates: [], appends: [] };
+  }
+
+  const previousSheets = generateExportData(
+    previousItems,
+    previousDb.skills || [],
+    previousDb.wallets || [],
+    previousDb.budgetConfig || { monthlyIncome: 0, rules: [] },
+    previousDb.monthlyThemes || {},
+    previousDb.appSettings || { defaultCollapsed: false, hideMoney: false }
+  );
+
+  const previousIndexes = buildSheetRowIndexes(previousSheets);
+  const nextIndexes = buildSheetRowIndexes(exportSheets);
+  const updates: IncrementalUserSheetPlan['updates'] = [];
+  const appends: IncrementalUserSheetPlan['appends'] = [];
+
+  for (const id of changedIds) {
+    const previousItem = previousById.get(id);
+    const nextItem = nextById.get(id);
+    if (!nextItem) continue;
+
+    const previousSheetNames = previousItem ? getItemExportSheetNames(previousItem) : [];
+    const nextSheetNames = getItemExportSheetNames(nextItem);
+    const movedBetweenSheets = previousSheetNames.length > 0
+      && JSON.stringify([...previousSheetNames].sort()) !== JSON.stringify([...nextSheetNames].sort());
+
+    if (movedBetweenSheets) {
+      return { canIncremental: false, reason: 'item_sheet_changed', updates: [], appends: [] };
+    }
+
+    for (const sheetName of nextSheetNames) {
+      if (!existingSheetTitles.has(sheetName) || createdSheetTitles.has(sheetName)) {
+        return { canIncremental: false, reason: 'missing_or_new_sheet', updates: [], appends: [] };
+      }
+
+      const nextIndex = nextIndexes.get(sheetName);
+      if (!nextIndex) {
+        return { canIncremental: false, reason: 'missing_next_row', updates: [], appends: [] };
+      }
+
+      const row = nextIndex.sheet.data.find(candidate => candidate[nextIndex.idColumnIndex] === id);
+      if (!row) {
+        return { canIncremental: false, reason: 'missing_next_row', updates: [], appends: [] };
+      }
+
+      const previousRowNumber = previousIndexes.get(sheetName)?.rowById.get(id);
+      const inputOption = nextIndex.sheet.inputOption || 'RAW';
+
+      if (previousRowNumber) {
+        updates.push({
+          range: `${escapeSheetName(sheetName)}!A${previousRowNumber}:${columnLabel(row.length - 1)}${previousRowNumber}`,
+          values: [row],
+        });
+      } else {
+        appends.push({
+          sheetName,
+          values: [row],
+          inputOption,
+        });
+      }
+    }
+  }
+
+  return { canIncremental: true, updates, appends };
+};
 
 const buildSourceRange = (
   sheetId: number,
@@ -961,6 +1143,35 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
   return { data: dbData, sha: 'spreadsheet-sha', systemStatus: snapshot.status }; 
 };
 
+const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb: DbSchema) => {
+  const metaRes = await sheetsFetch(config.spreadsheetId, '');
+  if (!metaRes.ok) throw new Error(`Failed to fetch spreadsheet metadata: ${await metaRes.text()}`);
+  const meta = await metaRes.json();
+  const existingTitles = new Set<string>((meta.sheets || []).map((s: any) => s.properties.title));
+  const rangesToFetch = Object.entries(SPREADSHEET_FETCH_RANGES)
+    .filter(([sheetName]) => existingTitles.has(sheetName))
+    .map(([sheetName, range]) => `${escapeSheetName(sheetName)}!${range}`);
+
+  if (rangesToFetch.length === 0) {
+    return { data: baseDb, reconciled: false, meta, existingTitles };
+  }
+
+  const path = `/values:batchGet?ranges=${rangesToFetch.map(encodeURIComponent).join('&ranges=')}`;
+  const res = await sheetsFetch(config.spreadsheetId, path);
+  if (!res.ok) throw new Error(`Failed to fetch user-editable sheets: ${res.status} ${res.statusText} - ${await res.text()}`);
+
+  const batchData = await res.json();
+  const reconciledDb = reconcileSpreadsheetData(baseDb, batchData.valueRanges || []);
+  const reconciled = JSON.stringify(reconciledDb.data) !== JSON.stringify(baseDb.data)
+    || JSON.stringify(reconciledDb.budgetConfig) !== JSON.stringify(baseDb.budgetConfig)
+    || JSON.stringify(reconciledDb.skills) !== JSON.stringify(baseDb.skills)
+    || JSON.stringify(reconciledDb.wallets) !== JSON.stringify(baseDb.wallets)
+    || JSON.stringify(reconciledDb.monthlyThemes) !== JSON.stringify(baseDb.monthlyThemes)
+    || JSON.stringify(reconciledDb.appSettings) !== JSON.stringify(baseDb.appSettings);
+
+  return { data: reconciledDb, reconciled, meta, existingTitles };
+};
+
 const performSync = async (
   items: BrainDumpItem[], 
   budgetConfig?: BudgetConfig, 
@@ -1010,17 +1221,23 @@ const performSync = async (
   let finalItems = items;
   let finalDb = updatedDb;
   let reconciled = false;
+  let prefetchedMeta: any | null = null;
+  let prefetchedExistingSheetTitles: Set<string> | null = null;
 
   try {
     if (!forceOverwrite) {
-        // 1. Fetch latest data from spreadsheet and merge
-        const { data: remoteDb } = await performFetchSpreadsheetDb(false);
+        // 1. Fetch only user-editable sheets for manual spreadsheet edits.
+        // The system snapshot is intentionally skipped here because it can be large and local lastSnapshot is our base.
+        const manualFetch = await fetchUserEditableSpreadsheetDb(config, previousDb);
+        const remoteDb = manualFetch.data;
+        prefetchedMeta = manualFetch.meta;
+        prefetchedExistingSheetTitles = manualFetch.existingTitles;
         
         const baseDb = previousDb;
         
         finalDb = mergeDbData(updatedDb, remoteDb, baseDb);
         finalItems = finalDb.data;
-        reconciled = true;
+        reconciled = manualFetch.reconciled;
     }
 
     const finalJsonString = JSON.stringify(finalDb);
@@ -1052,11 +1269,13 @@ const performSync = async (
     ];
 
     // 2. Get existing sheets to determine what needs to be created
-    const metaRes = await sheetsFetch(config.spreadsheetId, '');
-    if (!metaRes.ok) throw new Error(`Failed to fetch spreadsheet metadata: ${await metaRes.text()}`);
-    const meta = await metaRes.json();
+    const meta = prefetchedMeta || await (async () => {
+      const metaRes = await sheetsFetch(config.spreadsheetId, '');
+      if (!metaRes.ok) throw new Error(`Failed to fetch spreadsheet metadata: ${await metaRes.text()}`);
+      return metaRes.json();
+    })();
     let liveMeta = meta;
-    let existingSheetTitles = new Set((liveMeta.sheets || []).map((s: any) => s.properties.title));
+    let existingSheetTitles = prefetchedExistingSheetTitles || new Set<string>((liveMeta.sheets || []).map((s: any) => s.properties.title));
 
     // 3. Create missing sheets
     console.log("Creating missing sheets...");
@@ -1120,124 +1339,198 @@ const performSync = async (
       throw new Error(`Google Sheets API error (System Sheet / writing): ${updateSystemWritingRes.status} ${updateSystemWritingRes.statusText} - ${errorText}`);
     }
 
-    // 5. Clear existing user-facing data only after the system snapshot is safely published.
-    console.log("Clearing user-facing sheets...");
-    const userSheetNamesToClear = Array.from(new Set([
-      ...MANAGED_USER_SHEET_NAMES.filter(name => existingSheetTitles.has(name)),
-      ...exportSheets.map(sheet => sheet.name),
-    ]));
+    const incrementalPlan = buildIncrementalUserSheetPlan(
+      previousDb,
+      finalDb,
+      exportSheets,
+      existingSheetTitles,
+      createdSheetTitles,
+      needsInitialSpreadsheetWrite || forceOverwrite,
+    );
 
-    const clearRes = userSheetNamesToClear.length === 0 ? null : await sheetsFetch(config.spreadsheetId, '/values:batchClear', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ ranges: userSheetNamesToClear.map(name => `'${name}'`) })
-    });
-    if (clearRes && !clearRes.ok) throw new Error(`Failed to clear sheets: ${await clearRes.text()}`);
-
-    // 6. Write new data - Split into chunks to avoid payload limits
-    console.log("Writing new data...");
-
-    const groupedUserSheets = exportSheets.reduce<Record<string, { range: string; values: SheetData['data'] }[]>>((acc, sheet) => {
-        const inputOption = sheet.inputOption || 'RAW';
-        if (!acc[inputOption]) acc[inputOption] = [];
-        acc[inputOption].push({
-          range: `'${sheet.name}'!A1`,
-          values: sheet.data
-        });
-        return acc;
-    }, {});
-
-    // Update User Sheets
-    for (const [inputOption, userSheetsData] of Object.entries(groupedUserSheets)) {
-      for (let i = 0; i < userSheetsData.length; i += MAX_WRITE_BATCH_SIZE) {
-            const batch = userSheetsData.slice(i, i + MAX_WRITE_BATCH_SIZE);
-            const updateUserRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    valueInputOption: inputOption,
-                    data: batch
-                })
-            });
-
-            if (!updateUserRes.ok) {
-                const errorText = await updateUserRes.text();
-                console.error(`Google Sheets API error (User Sheets): ${updateUserRes.status} ${updateUserRes.statusText} - ${errorText}`);
-                throw new Error(`Failed to write user-facing sheets: ${updateUserRes.status} ${updateUserRes.statusText}`);
-            }
-        }
-    }
-
-    const dashboardSheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DASHBOARD_SHEET_NAME);
-    const dashboardSheetId = dashboardSheetMeta?.properties?.sheetId;
-    if (typeof dashboardSheetId === 'number') {
-      const shouldFormatDashboard = shouldApplyManagedSheetFormatting(
-        DASHBOARD_SHEET_NAME,
-        createdSheetTitles,
-        needsInitialSpreadsheetWrite
-      );
-
-      if (shouldFormatDashboard) {
-        const dashboardRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            requests: buildDashboardFormattingRequests(dashboardSheetId)
-          })
-        });
-
-        if (!dashboardRes.ok) {
-          console.warn('Failed to format dashboard sheet:', await dashboardRes.text());
-        }
-      }
-
-      const existingChartIds = Array.isArray(dashboardSheetMeta?.charts)
-        ? dashboardSheetMeta.charts
-            .map((chart: any) => chart?.chartId ?? chart?.embeddedObjectId)
-            .filter((id: unknown): id is number => typeof id === 'number')
-        : [];
-
-      if (shouldRenderDashboardCharts(shouldFormatDashboard, existingChartIds)) {
-        const dashboardChartsRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            requests: buildDashboardChartRequests(dashboardSheetId, existingChartIds)
-          })
-        });
-
-        if (!dashboardChartsRes.ok) {
-          console.warn('Failed to render dashboard charts:', await dashboardChartsRes.text());
-        }
-      }
-    }
-
-    const dataQualitySheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DATA_QUALITY_SHEET_NAME);
-    const dataQualitySheetId = dataQualitySheetMeta?.properties?.sheetId;
-    if (
-      typeof dataQualitySheetId === 'number'
-      && shouldApplyManagedSheetFormatting(DATA_QUALITY_SHEET_NAME, createdSheetTitles, needsInitialSpreadsheetWrite)
-    ) {
-      const dataQualityFormatRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          requests: buildDataQualityFormattingRequests(dataQualitySheetId)
-        })
+    if (incrementalPlan.canIncremental) {
+      console.log("Writing incremental user-facing sheet updates...", {
+        updates: incrementalPlan.updates.length,
+        appends: incrementalPlan.appends.length,
       });
 
-      if (!dataQualityFormatRes.ok) {
-        console.warn('Failed to format Data Quality sheet:', await dataQualityFormatRes.text());
+      for (let i = 0; i < incrementalPlan.updates.length; i += MAX_WRITE_BATCH_SIZE) {
+        const batch = incrementalPlan.updates.slice(i, i + MAX_WRITE_BATCH_SIZE);
+        const updateUserRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            valueInputOption: 'RAW',
+            data: batch
+          })
+        });
+
+        if (!updateUserRes.ok) {
+          const errorText = await updateUserRes.text();
+          console.error(`Google Sheets API error (Incremental User Sheets): ${updateUserRes.status} ${updateUserRes.statusText} - ${errorText}`);
+          throw new Error(`Failed to incrementally write user-facing sheets: ${updateUserRes.status} ${updateUserRes.statusText}`);
+        }
+      }
+
+      for (const append of incrementalPlan.appends) {
+        const width = append.values[0]?.length || 1;
+        const appendRes = await sheetsFetch(
+          config.spreadsheetId,
+          `/values/${escapeSheetName(append.sheetName)}!A:${columnLabel(width - 1)}:append?valueInputOption=${append.inputOption}&insertDataOption=INSERT_ROWS`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ values: append.values })
+          }
+        );
+
+        if (!appendRes.ok) {
+          const errorText = await appendRes.text();
+          console.error(`Google Sheets API error (Append User Sheet): ${appendRes.status} ${appendRes.statusText} - ${errorText}`);
+          throw new Error(`Failed to append user-facing sheet row: ${appendRes.status} ${appendRes.statusText}`);
+        }
+      }
+
+      if (incrementalPlan.updates.length > 0 || incrementalPlan.appends.length > 0) {
+        scheduleBackgroundUserSheetRebuild([
+          finalItems,
+          finalDb.budgetConfig,
+          finalDb.customPrompt,
+          finalDb.skills,
+          finalDb.wallets,
+          finalDb.monthlyThemes,
+          finalDb.appSettings,
+          finalDb.chatHistory,
+          finalDb.canonicalRules,
+          true,
+        ]);
+      }
+    } else {
+      console.log("Falling back to full user-facing sheet rebuild...", incrementalPlan.reason);
+
+      // 5. Clear existing user-facing data only after the system snapshot is safely published.
+      console.log("Clearing user-facing sheets...");
+      const userSheetNamesToClear = Array.from(new Set([
+        ...MANAGED_USER_SHEET_NAMES.filter(name => existingSheetTitles.has(name)),
+        ...exportSheets.map(sheet => sheet.name),
+      ]));
+
+      const clearRes = userSheetNamesToClear.length === 0 ? null : await sheetsFetch(config.spreadsheetId, '/values:batchClear', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ranges: userSheetNamesToClear.map(name => escapeSheetName(name)) })
+      });
+      if (clearRes && !clearRes.ok) throw new Error(`Failed to clear sheets: ${await clearRes.text()}`);
+
+      // 6. Write new data - Split into chunks to avoid payload limits
+      console.log("Writing new data...");
+
+      const groupedUserSheets = exportSheets.reduce<Record<string, { range: string; values: SheetData['data'] }[]>>((acc, sheet) => {
+          const inputOption = sheet.inputOption || 'RAW';
+          if (!acc[inputOption]) acc[inputOption] = [];
+          acc[inputOption].push({
+            range: `${escapeSheetName(sheet.name)}!A1`,
+            values: sheet.data
+          });
+          return acc;
+      }, {});
+
+      // Update User Sheets
+      for (const [inputOption, userSheetsData] of Object.entries(groupedUserSheets)) {
+        for (let i = 0; i < userSheetsData.length; i += MAX_WRITE_BATCH_SIZE) {
+              const batch = userSheetsData.slice(i, i + MAX_WRITE_BATCH_SIZE);
+              const updateUserRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                      valueInputOption: inputOption,
+                      data: batch
+                  })
+              });
+
+              if (!updateUserRes.ok) {
+                  const errorText = await updateUserRes.text();
+                  console.error(`Google Sheets API error (User Sheets): ${updateUserRes.status} ${updateUserRes.statusText} - ${errorText}`);
+                  throw new Error(`Failed to write user-facing sheets: ${updateUserRes.status} ${updateUserRes.statusText}`);
+              }
+          }
+      }
+
+      const dashboardSheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DASHBOARD_SHEET_NAME);
+      const dashboardSheetId = dashboardSheetMeta?.properties?.sheetId;
+      if (typeof dashboardSheetId === 'number') {
+        const shouldFormatDashboard = shouldApplyManagedSheetFormatting(
+          DASHBOARD_SHEET_NAME,
+          createdSheetTitles,
+          needsInitialSpreadsheetWrite
+        );
+
+        if (shouldFormatDashboard) {
+          const dashboardRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              requests: buildDashboardFormattingRequests(dashboardSheetId)
+            })
+          });
+
+          if (!dashboardRes.ok) {
+            console.warn('Failed to format dashboard sheet:', await dashboardRes.text());
+          }
+        }
+
+        const existingChartIds = Array.isArray(dashboardSheetMeta?.charts)
+          ? dashboardSheetMeta.charts
+              .map((chart: any) => chart?.chartId ?? chart?.embeddedObjectId)
+              .filter((id: unknown): id is number => typeof id === 'number')
+          : [];
+
+        if (shouldRenderDashboardCharts(shouldFormatDashboard, existingChartIds)) {
+          const dashboardChartsRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              requests: buildDashboardChartRequests(dashboardSheetId, existingChartIds)
+            })
+          });
+
+          if (!dashboardChartsRes.ok) {
+            console.warn('Failed to render dashboard charts:', await dashboardChartsRes.text());
+          }
+        }
+      }
+
+      const dataQualitySheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DATA_QUALITY_SHEET_NAME);
+      const dataQualitySheetId = dataQualitySheetMeta?.properties?.sheetId;
+      if (
+        typeof dataQualitySheetId === 'number'
+        && shouldApplyManagedSheetFormatting(DATA_QUALITY_SHEET_NAME, createdSheetTitles, needsInitialSpreadsheetWrite)
+      ) {
+        const dataQualityFormatRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            requests: buildDataQualityFormattingRequests(dataQualitySheetId)
+          })
+        });
+
+        if (!dataQualityFormatRes.ok) {
+          console.warn('Failed to format Data Quality sheet:', await dataQualityFormatRes.text());
+        }
       }
     }
 
@@ -1314,6 +1607,23 @@ const enqueueSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<SyncResult> 
   return queuedTask;
 };
 
+const scheduleBackgroundUserSheetRebuild = (args: SpreadsheetSyncArgs) => {
+  if (backgroundRebuildTimer) clearTimeout(backgroundRebuildTimer);
+
+  backgroundRebuildTimer = setTimeout(() => {
+    backgroundRebuildTimer = null;
+    enqueueSpreadsheetSync(args).catch(error => {
+      console.warn('Background spreadsheet rebuild failed:', error);
+    });
+  }, BACKGROUND_REBUILD_DELAY_MS);
+};
+
+const cancelPendingBackgroundRebuild = () => {
+  if (!backgroundRebuildTimer) return;
+  clearTimeout(backgroundRebuildTimer);
+  backgroundRebuildTimer = null;
+};
+
 const cancelPendingDebouncedSync = (result: SyncResult) => {
   if (syncDebounceTimer) {
     clearTimeout(syncDebounceTimer);
@@ -1370,6 +1680,7 @@ export const syncSpreadsheetData = (
 
   if (forceOverwrite) {
     cancelPendingDebouncedSync({ success: true, method: 'skipped_no_changes' });
+    cancelPendingBackgroundRebuild();
     return enqueueSpreadsheetSync(args);
   }
 
@@ -1424,4 +1735,7 @@ export const __test__ = {
   extractSystemSheetSnapshot,
   shouldApplyManagedSheetFormatting,
   shouldRenderDashboardCharts,
+  buildIncrementalUserSheetPlan,
+  columnLabel,
+  getItemExportSheetNames,
 };

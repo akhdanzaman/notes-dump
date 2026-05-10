@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.87',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet sync now uses incremental row writes for safe item-only changes, updating or appending the affected item rows instead of rebuilding every user-facing sheet during the save path.',
+      'Heavy spreadsheet export rebuilds now run as a delayed background repair pass, while saves still publish the source-of-truth system snapshot first.',
+      'Pre-save manual spreadsheet reconciliation now fetches only user-editable ranges instead of the large system snapshot, keeping manual edits supported with a faster merge check.',
+    ],
+  },
+  {
     version: 'v0.3.86',
     date: 'May 2026',
     items: [
