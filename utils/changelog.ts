@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.88',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet saves now tolerate temporary metadata fetch failures from the service-account proxy by falling back to known managed sheet names and continuing the save path where safe.',
+      'Manual spreadsheet reconciliation still prefers live metadata, but no longer blocks cloud save when the metadata endpoint returns an opaque serverless failure.',
+    ],
+  },
+  {
     version: 'v0.3.87',
     date: 'May 2026',
     items: [

@@ -32,6 +32,11 @@ const MANAGED_USER_SHEET_NAMES = [
   'Themes & Settings',
 ] as const;
 const BACKGROUND_REBUILD_DELAY_MS = 5000;
+const ASSUMED_EXISTING_SHEET_TITLES = new Set<string>([
+  SYSTEM_SHEET_NAME,
+  HISTORY_SHEET_NAME,
+  ...MANAGED_USER_SHEET_NAMES,
+]);
 
 type SystemSheetSyncStatus = 'ready' | 'writing';
 
@@ -246,6 +251,37 @@ const shouldRenderDashboardCharts = (
   shouldFormatDashboard: boolean,
   existingChartIds: number[]
 ) => shouldFormatDashboard || existingChartIds.length === 0;
+
+const buildSyntheticSpreadsheetMeta = (titles = ASSUMED_EXISTING_SHEET_TITLES) => ({
+  sheets: Array.from(titles).map(title => ({ properties: { title } })),
+});
+
+const fetchSpreadsheetMetadata = async (
+  config: SpreadsheetConfig,
+  allowAssumedExistingSheets = false
+): Promise<{ meta: any; existingTitles: Set<string>; reliable: boolean }> => {
+  const metaRes = await sheetsFetch(config.spreadsheetId, '');
+  if (metaRes.ok) {
+    const meta = await metaRes.json();
+    return {
+      meta,
+      existingTitles: new Set<string>((meta.sheets || []).map((s: any) => s.properties.title)),
+      reliable: true,
+    };
+  }
+
+  const errorText = await metaRes.text();
+  if (!allowAssumedExistingSheets) {
+    throw new Error(`Failed to fetch spreadsheet metadata: ${errorText}`);
+  }
+
+  console.warn('Spreadsheet metadata fetch failed; assuming existing managed sheets for save fallback:', errorText);
+  return {
+    meta: buildSyntheticSpreadsheetMeta(),
+    existingTitles: new Set(ASSUMED_EXISTING_SHEET_TITLES),
+    reliable: false,
+  };
+};
 
 const escapeSheetName = (name: string) => `'${name.replace(/'/g, "''")}'`;
 
@@ -1016,13 +1052,7 @@ export const fetchSpreadsheetDb = (skipLocalStorage = false): Promise<{ data: Db
 };
 
 const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalStorage: boolean) => {
-    const metaRes = await sheetsFetch(config.spreadsheetId, '');
-    if (!metaRes.ok) {
-        const errText = await metaRes.text();
-        throw new Error(`Failed to fetch metadata: ${metaRes.status} ${metaRes.statusText} - ${errText}`);
-    }
-    const meta = await metaRes.json();
-    const existingTitles = new Set((meta.sheets || []).map((s: any) => s.properties.title));
+    const { meta, existingTitles } = await fetchSpreadsheetMetadata(config, false);
 
     const rangesToFetch = [];
     let systemSheetName = SYSTEM_SHEET_NAME;
@@ -1144,21 +1174,25 @@ const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
 };
 
 const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb: DbSchema) => {
-  const metaRes = await sheetsFetch(config.spreadsheetId, '');
-  if (!metaRes.ok) throw new Error(`Failed to fetch spreadsheet metadata: ${await metaRes.text()}`);
-  const meta = await metaRes.json();
-  const existingTitles = new Set<string>((meta.sheets || []).map((s: any) => s.properties.title));
+  const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config, true);
   const rangesToFetch = Object.entries(SPREADSHEET_FETCH_RANGES)
     .filter(([sheetName]) => existingTitles.has(sheetName))
     .map(([sheetName, range]) => `${escapeSheetName(sheetName)}!${range}`);
 
   if (rangesToFetch.length === 0) {
-    return { data: baseDb, reconciled: false, meta, existingTitles };
+    return { data: baseDb, reconciled: false, meta, existingTitles, reliableMeta: reliable };
   }
 
   const path = `/values:batchGet?ranges=${rangesToFetch.map(encodeURIComponent).join('&ranges=')}`;
   const res = await sheetsFetch(config.spreadsheetId, path);
-  if (!res.ok) throw new Error(`Failed to fetch user-editable sheets: ${res.status} ${res.statusText} - ${await res.text()}`);
+  if (!res.ok) {
+    const errorText = await res.text();
+    if (!reliable) {
+      console.warn('User-editable sheet fetch failed after metadata fallback; continuing save without manual spreadsheet merge:', errorText);
+      return { data: baseDb, reconciled: false, meta, existingTitles, reliableMeta: reliable };
+    }
+    throw new Error(`Failed to fetch user-editable sheets: ${res.status} ${res.statusText} - ${errorText}`);
+  }
 
   const batchData = await res.json();
   const reconciledDb = reconcileSpreadsheetData(baseDb, batchData.valueRanges || []);
@@ -1169,7 +1203,7 @@ const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb:
     || JSON.stringify(reconciledDb.monthlyThemes) !== JSON.stringify(baseDb.monthlyThemes)
     || JSON.stringify(reconciledDb.appSettings) !== JSON.stringify(baseDb.appSettings);
 
-  return { data: reconciledDb, reconciled, meta, existingTitles };
+  return { data: reconciledDb, reconciled, meta, existingTitles, reliableMeta: reliable };
 };
 
 const performSync = async (
@@ -1223,6 +1257,7 @@ const performSync = async (
   let reconciled = false;
   let prefetchedMeta: any | null = null;
   let prefetchedExistingSheetTitles: Set<string> | null = null;
+  let hasReliableSpreadsheetMeta = false;
 
   try {
     if (!forceOverwrite) {
@@ -1232,6 +1267,7 @@ const performSync = async (
         const remoteDb = manualFetch.data;
         prefetchedMeta = manualFetch.meta;
         prefetchedExistingSheetTitles = manualFetch.existingTitles;
+        hasReliableSpreadsheetMeta = manualFetch.reliableMeta;
         
         const baseDb = previousDb;
         
@@ -1269,13 +1305,13 @@ const performSync = async (
     ];
 
     // 2. Get existing sheets to determine what needs to be created
-    const meta = prefetchedMeta || await (async () => {
-      const metaRes = await sheetsFetch(config.spreadsheetId, '');
-      if (!metaRes.ok) throw new Error(`Failed to fetch spreadsheet metadata: ${await metaRes.text()}`);
-      return metaRes.json();
-    })();
+    const metadataLookup = prefetchedMeta
+      ? { meta: prefetchedMeta, existingTitles: prefetchedExistingSheetTitles || new Set<string>(), reliable: hasReliableSpreadsheetMeta }
+      : await fetchSpreadsheetMetadata(config, true);
+    const meta = metadataLookup.meta;
     let liveMeta = meta;
-    let existingSheetTitles = prefetchedExistingSheetTitles || new Set<string>((liveMeta.sheets || []).map((s: any) => s.properties.title));
+    let existingSheetTitles = metadataLookup.existingTitles;
+    hasReliableSpreadsheetMeta = metadataLookup.reliable;
 
     // 3. Create missing sheets
     console.log("Creating missing sheets...");
@@ -1302,7 +1338,7 @@ const performSync = async (
         });
     }
 
-    if (requests.length > 0) {
+    if (requests.length > 0 && hasReliableSpreadsheetMeta) {
       const batchRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
         method: 'POST',
         headers: { 
@@ -1316,6 +1352,9 @@ const performSync = async (
       if (!refreshedMetaRes.ok) throw new Error(`Failed to refresh spreadsheet metadata: ${await refreshedMetaRes.text()}`);
       liveMeta = await refreshedMetaRes.json();
       existingSheetTitles = new Set((liveMeta.sheets || []).map((s: any) => s.properties.title));
+    } else if (requests.length > 0) {
+      console.warn('Spreadsheet metadata was unavailable; skipping missing-sheet creation and attempting writes against assumed existing sheets.');
+      createdSheetTitles.clear();
     }
 
     // 4. Write the system snapshot first so refreshes never see an empty source-of-truth.
