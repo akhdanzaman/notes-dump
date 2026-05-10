@@ -4,16 +4,15 @@ import PendingReviewList from './PendingReviewList';
 import {
   ParserResultV2,
   ParsingTask,
-  ParserPayloadV2,
-  CreateItemPayload,
-  UpdateItemPayload,
-  CreateSkillPayload,
-  CreateWalletPayload,
-  ThemePayload,
-  TransferMoneyPayload,
-  AddSavingFundsPayload,
   EnrichmentTask,
 } from '../types';
+import {
+  getParserResultDetails,
+  getParserResultSummary,
+  getParserTaskDuplicateSummary,
+  parserActionDestination,
+  shouldShowParserTaskInReviewCenter,
+} from '../utils/parserResultSummary';
 
 interface ReviewCenterPanelProps {
   parsingTasks?: ParsingTask[];
@@ -27,15 +26,6 @@ interface ReviewCenterPanelProps {
   deleteParsingTaskEntries?: (id: string) => void;
 }
 
-const itemDestination: Record<string, string> = {
-  FINANCE: 'Money > Transactions',
-  TODO: 'Plan > Tasks',
-  SHOPPING: 'Plan > Shopping',
-  NOTE: 'Library > Notes',
-  JOURNAL: 'Library > Journal',
-  EVENT: 'Calendar',
-};
-
 const createsSavedEntry = (result: ParserResultV2) => (
   result.action === 'create_item' ||
   result.action === 'transfer_money' ||
@@ -43,98 +33,26 @@ const createsSavedEntry = (result: ParserResultV2) => (
   result.action === 'unknown'
 );
 
-const actionDestination = (result: ParserResultV2) => {
-  const payload = result.payload as any;
-
-  if (result.action === 'create_item') {
-    return itemDestination[payload?.itemType] || `${result.entityType || 'Item'} list`;
-  }
-
-  if (result.action === 'update_item') return `Update ${result.entityType || 'item'}`;
-  if (result.action === 'complete_item') return `Complete ${result.entityType || 'item'}`;
-  if (result.action === 'delete_item') return `Delete ${result.entityType || 'item'}`;
-  if (result.action === 'create_skill' || result.action === 'update_skill') return 'Plan > Skills';
-  if (result.action === 'create_wallet' || result.action === 'update_wallet') return 'Money > Wallets';
-  if (result.action === 'create_theme' || result.action === 'update_theme') return 'Summary > Monthly Theme';
-  if (result.action === 'transfer_money') return 'Money > Wallet transfer';
-  if (result.action === 'add_saving_funds') return 'Plan > Savings + Money';
-  if (result.action === 'query_only') return 'No data saved';
-
-  return result.entityType ? `${result.entityType}` : 'Needs review';
+const formatBatchSummary = (task: ParsingTask): string | undefined => {
+  const batch = task.batch || task.routerDecision?.batch;
+  if (!batch) return undefined;
+  const reviewText = batch.reviewItemCount ? ` · ${batch.reviewItemCount} review` : '';
+  const failedText = batch.failedItemCount ? ` · ${batch.failedItemCount} failed` : '';
+  return `Batch parse: ${batch.itemCount} items · ${batch.localItemCount} local · ${batch.aiItemCount} AI fallback · ${batch.aiCallCount} AI batch call${batch.aiCallCount === 1 ? '' : 's'}${reviewText}${failedText}`;
 };
 
-const cleanValue = (value: unknown): string | undefined => {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (Array.isArray(value)) return value.length ? value.join(', ') : undefined;
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, v]) => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0));
-    if (entries.length === 0) return undefined;
-    return entries.map(([k, v]) => `${k}: ${cleanValue(v) || '—'}`).join(' · ');
-  }
-  return String(value);
-};
-
-const pushAttrs = (attrs: Array<[string, string]>, source?: Record<string, unknown>, labels?: Record<string, string>) => {
-  if (!source) return;
-  Object.entries(source).forEach(([key, value]) => {
-    const cleaned = cleanValue(value);
-    if (!cleaned) return;
-    attrs.push([labels?.[key] || key, cleaned]);
-  });
-};
-
-const resultAttributes = (result: ParserResultV2): Array<[string, string]> => {
-  const payload = result.payload as ParserPayloadV2 | undefined;
-  const attrs: Array<[string, string]> = [];
-
-  if (result.content) attrs.push(['parser content', result.content]);
-  if (result.targetText) attrs.push(['target', result.targetText]);
-  if (!payload) return attrs;
-
-  if ('itemType' in payload) {
-    const itemPayload = payload as CreateItemPayload;
-    attrs.push(['item type', itemPayload.itemType]);
-    attrs.push(['content', itemPayload.content]);
-    if (itemPayload.status) attrs.push(['status', itemPayload.status]);
-    const visibleMeta = { ...((itemPayload.meta || {}) as Record<string, unknown>) };
-    delete visibleMeta.canonical;
-    pushAttrs(attrs, visibleMeta, {
-      financeType: 'finance type',
-      paymentMethod: 'from wallet',
-      toWallet: 'to wallet',
-      budgetCategory: 'budget',
-      durationMinutes: 'duration',
-      shoppingCategory: 'shopping category',
-      skillName: 'skill',
-      isRoutine: 'routine',
-      routineInterval: 'repeat',
-      savingGoalName: 'saving goal',
-      dedicatedWalletName: 'dedicated wallet',
-    });
-  } else if ('changes' in payload || 'match' in payload) {
-    const updatePayload = payload as UpdateItemPayload;
-    pushAttrs(attrs, updatePayload.match as Record<string, unknown>, { itemId: 'matched id', itemName: 'matched item' });
-    pushAttrs(attrs, updatePayload.changes as Record<string, unknown>, { financeType: 'finance type', paymentMethod: 'from wallet', budgetCategory: 'budget' });
-  } else if ('name' in payload || 'targetHours' in payload || 'targetMinutes' in payload) {
-    pushAttrs(attrs, payload as CreateSkillPayload as Record<string, unknown>, { targetHours: 'target hours', targetMinutes: 'target minutes' });
-  } else if ('walletType' in payload || 'initialBalance' in payload || 'isDebtAccount' in payload) {
-    pushAttrs(attrs, payload as CreateWalletPayload as Record<string, unknown>, { walletType: 'wallet type', initialBalance: 'initial balance' });
-  } else if ('monthKey' in payload) {
-    pushAttrs(attrs, payload as ThemePayload as Record<string, unknown>, { monthKey: 'month' });
-  } else if ('savingGoalName' in payload || 'savingGoalId' in payload) {
-    pushAttrs(attrs, payload as AddSavingFundsPayload as Record<string, unknown>, { savingGoalName: 'saving goal', fromWallet: 'from wallet', toWallet: 'to wallet', budgetCategory: 'budget' });
-  } else if ('fromWallet' in payload || 'toWallet' in payload) {
-    pushAttrs(attrs, payload as TransferMoneyPayload as Record<string, unknown>, { fromWallet: 'from wallet', toWallet: 'to wallet' });
-  } else {
-    pushAttrs(attrs, payload as Record<string, unknown>);
-  }
-
-  return attrs;
+const formatModelRoutingSummary = (task: ParsingTask): string | undefined => {
+  const routing = task.routerDecision?.modelRouting || task.routerDecision?.batch?.modelRouting || task.batch?.modelRouting;
+  if (!routing || !routing.enabled) return undefined;
+  const tier = routing.selectedTier === 'fast_extraction' ? 'fast extraction' : 'deep parse';
+  const escalation = routing.escalationReasonCodes.length ? ` · escalated: ${routing.escalationReasonCodes.join(', ')}` : '';
+  const warnings = routing.warnings?.length ? ` · warnings: ${routing.warnings.join(', ')}` : '';
+  return `Model routing: ${tier} (${routing.finalModel || 'unknown model'}) · fast=${routing.fastModel || 'n/a'} · deep=${routing.deepModel || 'n/a'} · AI calls=${routing.aiCallCount}${escalation}${warnings}`;
 };
 
 const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }> = ({ result, index = 0 }) => {
-  const attrs = resultAttributes(result);
+  const attrs = getParserResultDetails(result);
+  const summary = getParserResultSummary(result);
   const confidenceColor =
     result.confidence === 'high' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' :
     result.confidence === 'medium' ? 'text-amber-500 bg-amber-500/10 border-amber-500/20' :
@@ -144,7 +62,7 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
     <div className="rounded-lg border border-border bg-background/70 p-2.5 space-y-2">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 font-bold uppercase tracking-wide">
-          {index + 1}. {actionDestination(result)}
+          {result.batchItem ? `Item ${result.batchItem.index + 1}` : `${index + 1}.`} {parserActionDestination(result)}
         </span>
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted capitalize">
           {result.action.replace(/_/g, ' ')}
@@ -157,7 +75,19 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
         </span>
       </div>
 
-      {attrs.length > 0 ? (
+      {result.batchItem && (
+        <div className="rounded-md bg-indigo-500/5 border border-indigo-500/15 px-2 py-1.5">
+          <div className="text-[9px] uppercase tracking-wide text-indigo-600 font-bold">Batch source</div>
+          <div className="text-[11px] text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
+        </div>
+      )}
+
+      <div className="rounded-md bg-emerald-500/5 border border-emerald-500/15 px-2 py-1.5">
+        <div className="text-[9px] uppercase tracking-wide text-emerald-600 font-bold">Result summary</div>
+        <div className="text-[11px] text-primary font-medium leading-snug">{summary.title}</div>
+      </div>
+
+      {attrs.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {attrs.slice(0, 14).map(([key, value]) => (
             <div key={`${key}-${value}`} className="min-w-0 rounded-md bg-surface/70 border border-border px-2 py-1">
@@ -166,8 +96,6 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
             </div>
           ))}
         </div>
-      ) : (
-        <p className="text-[11px] text-muted">No structured attributes returned.</p>
       )}
 
       {result.reviewReason && (
@@ -189,7 +117,8 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   deleteParsingTaskEntries,
 }) => {
   const visibleEnrichmentTasks = enrichmentTasks.filter(task => task.status === 'running' || task.status === 'failed' || task.reviewCount || (task.appliedFields?.length || 0) > 0);
-  const hasParsingTasks = parsingTasks.length > 0;
+  const visibleParsingTasks = parsingTasks.filter(shouldShowParserTaskInReviewCenter);
+  const hasParsingTasks = visibleParsingTasks.length > 0;
   const hasEnrichmentTasks = visibleEnrichmentTasks.length > 0;
   const hasPendingReviews = pendingReviews.length > 0;
 
@@ -198,7 +127,12 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
       {hasParsingTasks && (
         <div className="mb-6 flex flex-col gap-2">
           <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Parsing Queue</span>
-          {parsingTasks.map(task => (
+          {visibleParsingTasks.map(task => {
+            const duplicateSummary = getParserTaskDuplicateSummary(task);
+            const batchSummary = formatBatchSummary(task);
+            const modelRoutingSummary = formatModelRoutingSummary(task);
+            const visibleResults = (task.results || []).filter(result => !getParserResultSummary(result).noop);
+            return (
             <div key={task.id} className="bg-surface border border-border rounded-xl p-3 shadow-sm space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col gap-1 overflow-hidden flex-1">
@@ -265,23 +199,29 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                 </div>
               </div>
 
-              {task.status === 'success' && !!task.duplicateGuardRemovedCount && task.duplicateGuardRemovedCount > 0 && (
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] text-amber-600">
-                  Blocked {task.duplicateGuardRemovedCount} duplicate parser result{task.duplicateGuardRemovedCount === 1 ? '' : 's'} before saving.
+              {task.status === 'success' && batchSummary && (
+                <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2 text-[11px] text-indigo-600">
+                  {batchSummary}
                 </div>
               )}
 
-              {task.status === 'success' && task.results && task.results.length > 0 && (
+              {task.status === 'success' && modelRoutingSummary && (
+                <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-2 text-[11px] text-sky-600">
+                  {modelRoutingSummary}
+                </div>
+              )}
+
+              {task.status === 'success' && duplicateSummary && (
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] text-amber-600">
+                  {duplicateSummary}
+                </div>
+              )}
+
+              {task.status === 'success' && visibleResults.length > 0 && (
                 <div className="space-y-2">
-                  {task.results.map((result, index) => (
+                  {visibleResults.map((result, index) => (
                     <ParsingResultDetails key={`${task.id}-${index}`} result={result} index={index} />
                   ))}
-                </div>
-              )}
-
-              {task.status === 'success' && (!task.results || task.results.length === 0) && (
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-[11px] text-emerald-600">
-                  Saved successfully. No extra review details needed.
                 </div>
               )}
 
@@ -294,7 +234,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                 </div>
               )}
             </div>
-          ))}
+          );})}
         </div>
       )}
 

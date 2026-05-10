@@ -188,3 +188,82 @@ test('query-only input is classified without creating a save payload', () => {
   assert.equal(classified.result?.action, 'query_only');
   assert.equal((classified.result?.payload as any)?.question, 'berapa pengeluaran hari ini?');
 });
+
+test('router classifies every P1 local intent without calling deep AI', async () => {
+  const cases = [
+    {
+      label: 'finance',
+      input: 'expense kopi 10rb cash',
+      intent: 'finance',
+      action: 'create_item',
+      entityType: 'finance',
+      itemType: ItemType.FINANCE,
+    },
+    {
+      label: 'todo',
+      input: 'todo: follow up investor deck',
+      intent: 'todo',
+      action: 'create_item',
+      entityType: 'todo',
+      itemType: ItemType.TODO,
+    },
+    {
+      label: 'shopping',
+      input: 'shopping: oats and milk',
+      intent: 'shopping',
+      action: 'create_item',
+      entityType: 'shopping',
+      itemType: ItemType.SHOPPING,
+    },
+    {
+      label: 'note',
+      input: 'note: parser router should stay quiet',
+      intent: 'note',
+      action: 'create_item',
+      entityType: 'note',
+      itemType: ItemType.NOTE,
+    },
+    {
+      label: 'journal',
+      input: 'journal: feeling focused today',
+      intent: 'journal',
+      action: 'create_item',
+      entityType: 'journal',
+      itemType: ItemType.JOURNAL,
+    },
+    {
+      label: 'event',
+      input: 'event: strategy sync tomorrow 10am',
+      intent: 'event',
+      action: 'create_item',
+      entityType: 'event',
+      itemType: ItemType.EVENT,
+    },
+    {
+      label: 'query-only',
+      input: 'berapa pengeluaran hari ini?',
+      intent: 'query_only',
+      action: 'query_only',
+      entityType: 'unknown',
+    },
+  ] as const;
+
+  for (const expected of cases) {
+    let deepCalls = 0;
+    const routed = await routeParserInput(expected.input, ctx, async () => {
+      deepCalls += 1;
+      return [];
+    });
+
+    assert.equal(deepCalls, 0, expected.label);
+    assert.equal(routed.decision.route, 'local_save', expected.label);
+    assert.equal(routed.decision.intent, expected.intent, expected.label);
+    assert.equal(routed.results[0].action, expected.action, expected.label);
+    assert.equal(routed.results[0].entityType, expected.entityType, expected.label);
+    if ('itemType' in expected) {
+      assert.equal((routed.results[0].payload as any).itemType, expected.itemType, expected.label);
+    } else {
+      assert.equal((routed.results[0].payload as any).question, expected.input, expected.label);
+    }
+  }
+});

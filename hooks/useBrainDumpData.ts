@@ -47,7 +47,8 @@ import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
 import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
-import { routeParserInput } from '../services/parserRouter';
+import { routeBatchParserInput } from '../services/batchParserCoordinator';
+import { runFastThenDeepParserModelRouting } from '../services/parserModelRouting';
 import { shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { applyInvestmentFundingToInvestment, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 
@@ -1422,7 +1423,7 @@ export const useBrainDumpData = () => {
         setParsingTasks(prev => {
             const nextTask: ParsingTask = { id: tempId, text, status: 'pending', createdAt: Date.now() };
             return prev.some(t => t.id === tempId)
-                ? prev.map(t => t.id === tempId ? { ...t, text, status: 'pending', stage: undefined, error: undefined, results: undefined, routerDecision: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined, completedAt: undefined } : t)
+                ? prev.map(t => t.id === tempId ? { ...t, text, status: 'pending', stage: undefined, error: undefined, results: undefined, routerDecision: undefined, batch: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined, completedAt: undefined } : t)
                 : [nextTask, ...prev];
         });
         try {
@@ -1431,7 +1432,7 @@ export const useBrainDumpData = () => {
 
             setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'router' } : t));
 
-            const routed = await routeParserInput(
+            const routed = await routeBatchParserInput(
                 text,
                 {
                     existingTags: Array.from(currentTags),
@@ -1440,11 +1441,54 @@ export const useBrainDumpData = () => {
                     availableBudgetRules: budgetConfigRef.current?.rules || [],
                     existingItems: itemsRef.current,
                 },
-                async () => {
+                async (batchText, batchCandidates) => {
+                    if (batchCandidates.length > 1) {
+                        setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'batch' } : t));
+                    }
+
+                    if (appSettingsRef.current.parserModelRouting?.enabled === true) {
+                        return runFastThenDeepParserModelRouting({
+                            text: batchText,
+                            candidateCount: batchCandidates.length || 1,
+                            settings: appSettingsRef.current.parserModelRouting,
+                            fastParser: async (model) => {
+                                setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'fast_extraction' } : t));
+                                const legacy = await classifyText(
+                                    batchText,
+                                    Array.from(currentTags),
+                                    skillsRef.current.map(s => s.name),
+                                    0,
+                                    customPromptRef.current,
+                                    model,
+                                    walletsRef.current,
+                                    budgetConfigRef.current?.rules || []
+                                );
+                                return convertLegacyResultsToNative(legacy, batchText);
+                            },
+                            deepParser: async (model) => {
+                                setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'deep_parse' } : t));
+                                return parsePro(
+                                    batchText,
+                                    Array.from(currentTags),
+                                    skillsRef.current,
+                                    walletsRef.current,
+                                    budgetConfigRef.current?.rules || [],
+                                    itemsRef.current,
+                                    customPromptRef.current,
+                                    model,
+                                    0,
+                                    (stage) => {
+                                        setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage } : t));
+                                    }
+                                );
+                            },
+                        });
+                    }
+
                     if (appSettingsRef.current.useProParser) {
                         setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'stage1' } : t));
                         return parsePro(
-                            text,
+                            batchText,
                             Array.from(currentTags),
                             skillsRef.current,
                             walletsRef.current,
@@ -1461,7 +1505,7 @@ export const useBrainDumpData = () => {
 
                     setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'legacy' } : t));
                     const legacy = await classifyText(
-                        text,
+                        batchText,
                         Array.from(currentTags),
                         skillsRef.current.map(s => s.name),
                         0,
@@ -1470,11 +1514,13 @@ export const useBrainDumpData = () => {
                         walletsRef.current,
                         budgetConfigRef.current?.rules || []
                     );
-                    return convertLegacyResultsToNative(legacy, text);
+                    return convertLegacyResultsToNative(legacy, batchText);
                 }
             );
 
-            if (routed.decision.route !== 'deep_ai') {
+            if (routed.decision.batch) {
+                setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'batch', batch: routed.decision.batch } : t));
+            } else if (routed.decision.route !== 'deep_ai') {
                 setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'local' } : t));
             }
 
@@ -1488,7 +1534,8 @@ export const useBrainDumpData = () => {
 
             let parsedResults: ParserResultV2[] = routed.results;
             const enableDraftReview = appSettingsRef.current.enableDraftReview ?? false;
-            const requiresParserReview = routed.decision.route === 'review' || (enableDraftReview && routed.decision.route === 'deep_ai');
+            const batchNeedsReview = (routed.decision.batch?.reviewItemCount || 0) > 0 || routed.results.some(result => result.needsReview);
+            const requiresParserReview = routed.decision.route === 'review' || batchNeedsReview || (enableDraftReview && routed.decision.route === 'deep_ai');
 
             if (requiresParserReview) {
                 parsedResults = canonicalizeParserResults(parsedResults, {
@@ -1516,6 +1563,7 @@ export const useBrainDumpData = () => {
                 status: 'success',
                 results: parsedResults,
                 routerDecision: routed.decision,
+                batch: routed.decision.batch,
                 duplicateGuardRemovedCount: guardedResults.removedCount || undefined,
                 duplicateGuardReason: guardedResults.reason,
                 completedAt: Date.now()
@@ -1534,7 +1582,7 @@ export const useBrainDumpData = () => {
         const task = parsingTasks.find(t => t.id === taskId);
         if (!task) return;
         
-        setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending', error: undefined, stage: undefined, routerDecision: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined } : t));
+        setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending', error: undefined, stage: undefined, routerDecision: undefined, batch: undefined, duplicateGuardRemovedCount: undefined, duplicateGuardReason: undefined, undoStatus: undefined } : t));
         setPendingCount(prev => prev + 1);
         
         processItemInBackground(task.text, taskId);

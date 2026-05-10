@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, AlertCircle, Edit2, Sparkles, Save } from 'lucide-react';
 import { CanonicalReviewSuggestion, ParserResultV2, ParserEntityType } from '../types';
+import { getParserResultDetails, getParserResultSummary } from '../utils/parserResultSummary';
 
 interface PendingReviewListProps {
   reviews: { id: string; text: string; results: ParserResultV2[] }[];
@@ -191,17 +192,97 @@ const ReviewCard: React.FC<{
   const financeType = payload?.meta?.financeType || '';
   const content = payload?.content || primaryResult.content || review.text;
   const canonicalReview = primaryResult.canonicalReview || [];
-  const parsedDestination = payload?.itemType
-    ? ({ FINANCE: 'Money > Transactions', TODO: 'Plan > Tasks', SHOPPING: 'Plan > Shopping', NOTE: 'Library > Notes', JOURNAL: 'Library > Journal', EVENT: 'Calendar' } as Record<string, string>)[payload.itemType] || payload.itemType
-    : primaryResult.action.replace(/_/g, ' ');
-  const parsedAttributes = Object.entries({
-    content,
-    itemType: payload?.itemType,
-    status: payload?.status,
-    ...(payload?.meta || {}),
-    ...(payload?.changes || {}),
-    ...(payload?.match || {}),
-  }).filter(([key, value]) => key !== 'canonical' && value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0));
+  const resultSummary = getParserResultSummary(primaryResult);
+  const parsedDestination = resultSummary.destination;
+  const parsedAttributes = getParserResultDetails(primaryResult);
+  const isBatchReview = results.length > 1 || results.some(result => result.batchItem);
+
+  if (isBatchReview && !isEditing) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+        className="bg-surface border border-indigo-500/30 rounded-xl shadow-lg overflow-hidden"
+      >
+        <div className="p-3 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
+                  Parser Batch Draft
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-500/10 text-indigo-500">
+                  {results.length} results
+                </span>
+              </div>
+              <p className="text-sm text-primary font-medium truncate" title={review.text}>{review.text}</p>
+              <p className="text-[11px] text-muted">Review each batch item below; approval saves the whole ordered batch.</p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={handleApprove}
+                className="w-8 h-8 rounded-lg bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors shadow-sm"
+                title="Approve batch"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onReject(review.id)}
+                className="w-8 h-8 rounded-lg bg-surface-elevated text-muted flex items-center justify-center hover:text-red-500 transition-colors border border-border"
+                title="Reject batch"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {results.map((result, index) => {
+              const summary = getParserResultSummary(result);
+              const attributes = getParserResultDetails(result);
+              return (
+                <div key={`${review.id}-${index}`} className="rounded-lg bg-background/60 border border-border p-2.5 space-y-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 font-bold uppercase tracking-wide">
+                      Item {result.batchItem ? result.batchItem.index + 1 : index + 1}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border capitalize">
+                      {result.entityType}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border">
+                      {summary.destination}
+                    </span>
+                  </div>
+                  {result.batchItem && (
+                    <div className="rounded-md bg-indigo-500/5 border border-indigo-500/15 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-wide text-indigo-600 font-bold">Source</div>
+                      <div className="text-[11px] text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
+                    </div>
+                  )}
+                  <div className="text-[11px] text-primary font-medium">{summary.title}</div>
+                  {attributes.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {attributes.slice(0, 8).map(([key, value]) => (
+                        <div key={`${key}-${value}`} className="min-w-0 rounded-md bg-surface/80 border border-border px-2 py-1">
+                          <div className="text-[9px] uppercase tracking-wide text-muted font-bold truncate">{key}</div>
+                          <div className="text-[11px] text-primary font-medium truncate" title={value}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {result.needsReview && result.reviewReason && (
+                    <p className="text-[10px] text-amber-500 leading-tight">{result.reviewReason}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -261,6 +342,9 @@ const ReviewCard: React.FC<{
               <div className="flex flex-col gap-1">
                 <p className="text-sm text-primary font-medium truncate">
                   {content}
+                </p>
+                <p className="text-[11px] text-muted truncate" title={resultSummary.title}>
+                  {resultSummary.title}
                 </p>
                 
                 <div className="flex flex-wrap gap-1.5">
@@ -332,19 +416,17 @@ const ReviewCard: React.FC<{
                 {parsedDestination}
               </span>
             </div>
-            {parsedAttributes.length > 0 ? (
+            {parsedAttributes.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {parsedAttributes.slice(0, 12).map(([key, value]) => (
-                  <div key={`${key}-${String(value)}`} className="min-w-0 rounded-md bg-surface/80 border border-border px-2 py-1">
+                  <div key={`${key}-${value}`} className="min-w-0 rounded-md bg-surface/80 border border-border px-2 py-1">
                     <div className="text-[9px] uppercase tracking-wide text-muted font-bold truncate">{key}</div>
-                    <div className="text-[11px] text-primary font-medium truncate" title={Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value)}>
-                      {Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    <div className="text-[11px] text-primary font-medium truncate" title={value}>
+                      {value}
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-[11px] text-muted">No structured attributes returned.</p>
             )}
           </div>
         )}

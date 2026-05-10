@@ -14,12 +14,36 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     ],
   },
   {
+    version: 'v0.3.82',
+    date: 'May 2026',
+    items: [
+      'Parser AI fallback now has an opt-in model-routing policy that tries the allowlisted fast extraction model first and reserves the deep parser for ambiguous or incomplete outputs.',
+      'Review Center parser summaries now show which model tier handled a routed parse, including escalation reasons and ignored unsupported-model warnings.',
+    ],
+  },
+  {
+    version: 'v0.3.81',
+    date: 'May 2026',
+    items: [
+      'Pasted multi-line or multi-item captures now parse as one ordered batch, using local parsing per clear item and a single deep-AI fallback pass only for ambiguous leftovers.',
+      'Review Center now groups parser batch results with per-item source text, ordered action summaries, isolated failure/review states, and clear local-vs-AI batch counts.',
+    ],
+  },
+  {
     version: 'v0.3.80',
     date: 'May 2026',
     items: [
       'Spreadsheet connection now stays in service-account mode by default, including older saved configs that did not yet store an auth mode.',
       'Control Center no longer opens Google OAuth/login popups when a service-account spreadsheet is connected; Google sign-in is clearly optional profile sync only.',
       'Signing out of the optional Google profile no longer disconnects the spreadsheet, and service-account connection checks are guarded against duplicate clicks.',
+    ],
+  },
+  {
+    version: 'v0.3.79',
+    date: 'May 2026',
+    items: [
+      'Review Center success cards now show concise saved-item summaries for parser create, update, complete, delete, wallet, skill, transfer, and saving actions instead of empty no-detail states.',
+      'No-op successful parser tasks are suppressed, duplicate parser collapses show compact merged-output evidence only when duplicates were removed, and normal parser cards hide canonical/internal metadata.',
     ],
   },
   {

@@ -33,22 +33,77 @@ export interface BudgetConfig {
 
 export type ParserRouterRoute = 'local_save' | 'review' | 'deep_ai';
 export type ParserIntent = 'finance' | 'todo' | 'shopping' | 'note' | 'journal' | 'event' | 'query_only' | 'unknown' | 'mixed';
+export type ParserAiModelTier = 'fast_extraction' | 'deep_parse' | 'not_applicable';
+
+export interface ParserModelRoutingSettings {
+  enabled?: boolean;
+  fastModel?: string;
+  deepModel?: string;
+  minFastConfidence?: ParserConfidence;
+  escalateOnNeedsReview?: boolean;
+}
+
+export interface ParserModelRoutingMetadata {
+  enabled: boolean;
+  policy: 'disabled_static_parser_choice' | 'fast_then_deep_on_ambiguity';
+  fastModel?: string;
+  deepModel?: string;
+  selectedTier: ParserAiModelTier;
+  finalModel?: string;
+  fastAttempted: boolean;
+  deepAttempted: boolean;
+  aiCallCount: number;
+  escalationReasonCodes: string[];
+  warnings?: string[];
+}
+
+export type ParserBatchItemStatus = 'local_saved' | 'local_review' | 'ai_pending' | 'ai_saved' | 'ai_review' | 'failed';
+
+export interface ParserBatchResultRef {
+  id: string;
+  index: number;
+  sourceText: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+export interface ParserBatchMetadata {
+  id: string;
+  itemCount: number;
+  localItemCount: number;
+  reviewItemCount: number;
+  aiItemCount: number;
+  failedItemCount: number;
+  aiCallCount: number;
+  modelRouting?: ParserModelRoutingMetadata;
+  items: Array<ParserBatchResultRef & {
+    status: ParserBatchItemStatus;
+    route: ParserRouterRoute;
+    intent: ParserIntent;
+    reasonCodes: string[];
+    resultCount: number;
+    error?: string;
+  }>;
+}
 
 export interface ParserRouterDecisionMetadata {
   route: ParserRouterRoute;
   intent: ParserIntent;
   confidenceScore: number;
   reasonCodes: string[];
+  batch?: ParserBatchMetadata;
+  modelRouting?: ParserModelRoutingMetadata;
 }
 
 export interface ParsingTask {
   id: string;
   text: string;
   status: 'pending' | 'failed' | 'success';
-  stage?: 'router' | 'local' | 'stage1' | 'stage2' | 'legacy';
+  stage?: 'router' | 'local' | 'stage1' | 'stage2' | 'legacy' | 'batch' | 'fast_extraction' | 'deep_parse';
   error?: string;
   results?: ParserResultV2[];
   routerDecision?: ParserRouterDecisionMetadata;
+  batch?: ParserBatchMetadata;
   duplicateGuardRemovedCount?: number;
   duplicateGuardReason?: string;
   undoStatus?: 'undone' | 'deleted';
@@ -71,6 +126,7 @@ export interface AppSettings {
   chatModel?: string;
   insightModel?: string;
   useProParser?: boolean;
+  parserModelRouting?: ParserModelRoutingSettings;
 }
 
 export interface Skill {
@@ -680,6 +736,7 @@ export interface ParserResultV2 {
   entityType: ParserEntityType;
   content?: string;
   targetText?: string;
+  batchItem?: ParserBatchResultRef;
   confidence: ParserConfidence;
   needsReview: boolean;
   reviewReason?: string;

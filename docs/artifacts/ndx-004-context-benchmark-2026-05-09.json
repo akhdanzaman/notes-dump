@@ -1,0 +1,52 @@
+{
+  "task": "NDX-004",
+  "generatedAt": "2026-05-10T05:12:16.113Z",
+  "method": "char_count_div_4_token_estimate; representative parser context with 48 tasks, 30 shopping items, 60 finance transactions, 3 wallets, 4 budgets, 8 skills",
+  "rows": [
+    {
+      "intent": "stage1",
+      "legacyChars": 2669,
+      "slimChars": 76,
+      "legacyTokenEstimate": 668,
+      "slimTokenEstimate": 19,
+      "reductionChars": 2593,
+      "reductionPercent": 97.2
+    },
+    {
+      "intent": "finance",
+      "legacyChars": 2669,
+      "slimChars": 853,
+      "legacyTokenEstimate": 668,
+      "slimTokenEstimate": 214,
+      "reductionChars": 1816,
+      "reductionPercent": 68
+    },
+    {
+      "intent": "task",
+      "legacyChars": 2669,
+      "slimChars": 1465,
+      "legacyTokenEstimate": 668,
+      "slimTokenEstimate": 367,
+      "reductionChars": 1204,
+      "reductionPercent": 45.1
+    },
+    {
+      "intent": "shopping",
+      "legacyChars": 2669,
+      "slimChars": 2352,
+      "legacyTokenEstimate": 668,
+      "slimTokenEstimate": 588,
+      "reductionChars": 317,
+      "reductionPercent": 11.9
+    },
+    {
+      "intent": "general",
+      "legacyChars": 2669,
+      "slimChars": 1097,
+      "legacyTokenEstimate": 668,
+      "slimTokenEstimate": 275,
+      "reductionChars": 1572,
+      "reductionPercent": 58.9
+    }
+  ]
+}

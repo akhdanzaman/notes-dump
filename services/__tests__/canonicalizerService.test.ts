@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { canonicalizeMeta, canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta } from '../canonicalizerService';
+import { BEHAVIOR_CACHE_DEFAULT_MAX_RECENT_TRANSACTIONS, buildBehaviorCache } from '../behaviorCacheService';
 import { BrainDumpItem, CanonicalRule, ItemType, ParserResultV2 } from '../../types';
 
 const rules: CanonicalRule[] = [
@@ -397,6 +398,30 @@ test('sweepHistoricalCanonicalMeta backfills high-confidence canonical metadata 
   assert.equal(sweep.items[0].meta.canonical?.subcommodity?.value, 'meal');
 });
 
+test('sweepHistoricalCanonicalMeta preserves raw merchant/content while adding structured finance metadata', () => {
+  const items: BrainDumpItem[] = [
+    {
+      id: 'raw-preserved',
+      type: ItemType.FINANCE,
+      content: 'makan siang di Warung Bu Sari 18000 gopay',
+      status: 'done',
+      created_at: '2026-05-01T08:00:00.000Z',
+      completed_at: '2026-05-01T08:00:00.000Z',
+      meta: {
+        financeType: 'expense',
+      },
+    },
+  ];
+
+  const sweep = sweepHistoricalCanonicalMeta(items, ctx);
+
+  assert.deepEqual(sweep.changedItemIds, ['raw-preserved']);
+  assert.equal(sweep.items[0].content, items[0].content);
+  assert.equal(sweep.items[0].meta.merchant, undefined);
+  assert.equal(sweep.items[0].meta.commodity, 'food');
+  assert.equal(sweep.items[0].meta.subcommodity, 'lunch');
+});
+
 test('sweepHistoricalCanonicalMeta seeds ambiguous historical rows for review without applying them', () => {
   const items: BrainDumpItem[] = [
     {
@@ -444,12 +469,26 @@ test('sweepHistoricalCanonicalMeta fills commodity fields from current user beha
       },
     },
     {
+      id: 'behavior-source-2',
+      type: ItemType.FINANCE,
+      content: 'kopi langganan 29000',
+      status: 'done',
+      created_at: '2026-05-02T08:00:00.000Z',
+      completed_at: '2026-05-02T08:00:00.000Z',
+      meta: {
+        merchant: 'Kedai Sore',
+        financeType: 'expense',
+        commodity: 'food',
+        subcommodity: 'drink',
+      },
+    },
+    {
       id: 'behavior-target',
       type: ItemType.FINANCE,
       content: 'kedai sore 30000',
       status: 'done',
-      created_at: '2026-05-02T08:00:00.000Z',
-      completed_at: '2026-05-02T08:00:00.000Z',
+      created_at: '2026-05-03T08:00:00.000Z',
+      completed_at: '2026-05-03T08:00:00.000Z',
       meta: {
         merchant: 'Kedai Sore',
         financeType: 'expense',
@@ -665,4 +704,298 @@ test('re-approval after edits rehabilitates degraded learned rules', () => {
   assert.equal(nextRules[0].rejectionCount, 1);
   assert.equal(nextRules[0].autoApplyDisabled, false);
   assert.equal(nextRules[0].disabled, false);
+});
+
+test('canonicalizeParserResults reuses high-confidence behavior for wallet budget and commodity metadata', () => {
+  const behaviorCtx = {
+    existingItems: [
+      {
+        id: 'atelier-1',
+        type: ItemType.FINANCE,
+        content: 'atelier zeta 28000',
+        status: 'done',
+        created_at: '2026-05-07T08:00:00.000Z',
+        completed_at: '2026-05-07T08:00:00.000Z',
+        meta: {
+          merchant: 'Atelier Zeta',
+          financeType: 'expense' as const,
+          paymentMethod: 'gopay-wallet',
+          budgetCategory: 'budget-hobby',
+          commodity: 'hobby',
+          subcommodity: 'airbrush',
+        },
+      },
+      {
+        id: 'atelier-2',
+        type: ItemType.FINANCE,
+        content: 'atelier zeta 30000',
+        status: 'done',
+        created_at: '2026-05-08T08:00:00.000Z',
+        completed_at: '2026-05-08T08:00:00.000Z',
+        meta: {
+          merchant: 'Atelier Zeta',
+          financeType: 'expense' as const,
+          paymentMethod: 'gopay-wallet',
+          budgetCategory: 'budget-hobby',
+          commodity: 'hobby',
+          subcommodity: 'airbrush',
+        },
+      },
+    ] as BrainDumpItem[],
+    wallets: [{ id: 'gopay-wallet', name: 'Gopay', type: 'ewallet' as const, initialBalance: 0, color: 'bg-green-500' }],
+    budgetRules: [{ id: 'budget-hobby', name: 'Hobby', percentage: 10, color: 'bg-purple-500' }],
+    rules: [],
+  };
+
+  const parsed: ParserResultV2[] = [
+    {
+      action: 'create_item',
+      entityType: 'finance',
+      content: 'atelier zeta 32000',
+      targetText: 'atelier zeta 32000',
+      confidence: 'high',
+      needsReview: false,
+      payload: {
+        itemType: 'FINANCE',
+        content: 'atelier zeta',
+        meta: {
+          amount: 32000,
+          merchant: 'Atelier Zeta',
+          financeType: 'expense',
+        },
+      },
+    },
+  ];
+
+  const next = canonicalizeParserResults(parsed, behaviorCtx);
+  const payload = next[0].payload as any;
+  assert.equal(payload.content, 'atelier zeta');
+  assert.equal(payload.meta.merchant, 'Atelier Zeta');
+  assert.equal(payload.meta.paymentMethod, 'gopay-wallet');
+  assert.equal(payload.meta.budgetCategory, 'budget-hobby');
+  assert.equal(payload.meta.commodity, 'hobby');
+  assert.equal(payload.meta.subcommodity, 'airbrush');
+  assert.equal(payload.meta.canonical.commodity.source, 'context_inference');
+  assert.match(payload.meta.canonical.commodity.reason, /recent approved transactions/);
+});
+
+test('behavior cache source window uses recent approved finance rows only', () => {
+  assert.equal(BEHAVIOR_CACHE_DEFAULT_MAX_RECENT_TRANSACTIONS, 120);
+
+  const sourceRows: BrainDumpItem[] = [
+    {
+      id: 'excluded-pending',
+      type: ItemType.FINANCE,
+      content: 'nimbus 9000',
+      status: 'pending',
+      created_at: '2026-05-10T09:00:00.000Z',
+      completed_at: '2026-05-10T09:00:00.000Z',
+      meta: { merchant: 'Nimbus', financeType: 'expense', paymentMethod: 'old-wallet' },
+    },
+    {
+      id: 'excluded-review',
+      type: ItemType.FINANCE,
+      content: 'nimbus 8500',
+      status: 'done',
+      created_at: '2026-05-10T08:00:00.000Z',
+      completed_at: '2026-05-10T08:00:00.000Z',
+      meta: { merchant: 'Nimbus', financeType: 'expense', paymentMethod: 'old-wallet', parserNeedsReview: true } as any,
+    },
+    {
+      id: 'recent-1',
+      type: ItemType.FINANCE,
+      content: 'nimbus 8000',
+      status: 'done',
+      created_at: '2026-05-09T08:00:00.000Z',
+      completed_at: '2026-05-09T08:00:00.000Z',
+      meta: { merchant: 'Nimbus', financeType: 'expense', paymentMethod: 'new-wallet' },
+    },
+    {
+      id: 'recent-2',
+      type: ItemType.FINANCE,
+      content: 'nimbus 7000',
+      status: 'done',
+      created_at: '2026-05-08T08:00:00.000Z',
+      completed_at: '2026-05-08T08:00:00.000Z',
+      meta: { merchant: 'Nimbus', financeType: 'expense', paymentMethod: 'new-wallet' },
+    },
+    {
+      id: 'older-1',
+      type: ItemType.FINANCE,
+      content: 'nimbus 6000',
+      status: 'done',
+      created_at: '2026-05-07T08:00:00.000Z',
+      completed_at: '2026-05-07T08:00:00.000Z',
+      meta: { merchant: 'Nimbus', financeType: 'expense', paymentMethod: 'old-wallet' },
+    },
+    {
+      id: 'older-2',
+      type: ItemType.FINANCE,
+      content: 'nimbus 5000',
+      status: 'done',
+      created_at: '2026-05-06T08:00:00.000Z',
+      completed_at: '2026-05-06T08:00:00.000Z',
+      meta: { merchant: 'Nimbus', financeType: 'expense', paymentMethod: 'old-wallet' },
+    },
+  ];
+
+  const cache = buildBehaviorCache({
+    existingItems: sourceRows,
+    wallets: [
+      { id: 'new-wallet', name: 'New Wallet', type: 'ewallet' as const, initialBalance: 0, color: 'bg-green-500' },
+      { id: 'old-wallet', name: 'Old Wallet', type: 'bank' as const, initialBalance: 0, color: 'bg-blue-500' },
+    ],
+    budgetRules: [],
+    maxRecentTransactions: 2,
+  });
+
+  const payment = cache.infer('nimbus 10000', { merchant: 'Nimbus', financeType: 'expense' })
+    .find(inference => inference.field === 'paymentMethod');
+
+  assert.equal(payment?.value, 'new-wallet');
+  assert.equal(payment?.evidenceCount, 2);
+  assert.equal(payment?.totalCount, 2);
+  assert.equal(payment?.needsReview, false);
+});
+
+test('behavior cache ignores weak others defaults and conflicting low-agreement history', () => {
+  const behaviorCtx = {
+    existingItems: [
+      {
+        id: 'weak-1',
+        type: ItemType.FINANCE,
+        content: 'mystery shop 10000',
+        status: 'done',
+        created_at: '2026-05-07T08:00:00.000Z',
+        completed_at: '2026-05-07T08:00:00.000Z',
+        meta: { merchant: 'Mystery Shop', financeType: 'expense' as const, commodity: 'others', subcommodity: 'others' },
+      },
+      {
+        id: 'weak-2',
+        type: ItemType.FINANCE,
+        content: 'mystery shop 12000',
+        status: 'done',
+        created_at: '2026-05-08T08:00:00.000Z',
+        completed_at: '2026-05-08T08:00:00.000Z',
+        meta: { merchant: 'Mystery Shop', financeType: 'expense' as const, commodity: 'unknown', subcommodity: 'unknown' },
+      },
+      {
+        id: 'split-food',
+        type: ItemType.FINANCE,
+        content: 'pasar minggu 20000',
+        status: 'done',
+        created_at: '2026-05-07T08:00:00.000Z',
+        completed_at: '2026-05-07T08:00:00.000Z',
+        meta: { merchant: 'Pasar Minggu', financeType: 'expense' as const, paymentMethod: 'cash-wallet', budgetCategory: 'budget-food', commodity: 'food', subcommodity: 'groceries' },
+      },
+      {
+        id: 'split-home',
+        type: ItemType.FINANCE,
+        content: 'pasar minggu 25000',
+        status: 'done',
+        created_at: '2026-05-08T08:00:00.000Z',
+        completed_at: '2026-05-08T08:00:00.000Z',
+        meta: { merchant: 'Pasar Minggu', financeType: 'expense' as const, paymentMethod: 'cash-wallet', budgetCategory: 'budget-home', commodity: 'home', subcommodity: 'kitchen_appliance' },
+      },
+    ] as BrainDumpItem[],
+    wallets: [{ id: 'cash-wallet', name: 'Cash', type: 'cash' as const, initialBalance: 0, color: 'bg-gray-500' }],
+    budgetRules: [
+      { id: 'budget-food', name: 'Food', percentage: 50, color: 'bg-orange-500' },
+      { id: 'budget-home', name: 'Home', percentage: 20, color: 'bg-blue-500' },
+    ],
+    rules: [],
+  };
+
+  const weakParsed = canonicalizeParserResults([{
+    action: 'create_item',
+    entityType: 'finance',
+    content: 'mystery shop 15000',
+    targetText: 'mystery shop 15000',
+    confidence: 'high',
+    needsReview: false,
+    payload: { itemType: 'FINANCE', content: 'mystery shop', meta: { amount: 15000, merchant: 'Mystery Shop', financeType: 'expense' } },
+  }], behaviorCtx);
+  assert.equal((weakParsed[0].payload as any).meta.commodity, undefined);
+  assert.equal((weakParsed[0].payload as any).meta.subcommodity, undefined);
+
+  const splitParsed = canonicalizeParserResults([{
+    action: 'create_item',
+    entityType: 'finance',
+    content: 'pasar minggu 30000',
+    targetText: 'pasar minggu 30000',
+    confidence: 'high',
+    needsReview: false,
+    payload: { itemType: 'FINANCE', content: 'pasar minggu', meta: { amount: 30000, merchant: 'Pasar Minggu', financeType: 'expense' } },
+  }], behaviorCtx);
+  const splitMeta = (splitParsed[0].payload as any).meta;
+  assert.equal(splitMeta.budgetCategory, undefined);
+  assert.equal(splitMeta.commodity, undefined);
+  assert.equal(splitMeta.subcommodity, undefined);
+});
+
+test('manual review and explicit parser fields stay stronger than behavior inference', () => {
+  const behaviorCtx = {
+    existingItems: [
+      {
+        id: 'source-1',
+        type: ItemType.FINANCE,
+        content: 'kedai sore 28000',
+        status: 'done',
+        created_at: '2026-05-07T08:00:00.000Z',
+        completed_at: '2026-05-07T08:00:00.000Z',
+        meta: { merchant: 'Kedai Sore', financeType: 'expense' as const, paymentMethod: 'gopay-wallet', budgetCategory: 'budget-food', commodity: 'food', subcommodity: 'drink' },
+      },
+      {
+        id: 'source-2',
+        type: ItemType.FINANCE,
+        content: 'kedai sore 30000',
+        status: 'done',
+        created_at: '2026-05-08T08:00:00.000Z',
+        completed_at: '2026-05-08T08:00:00.000Z',
+        meta: { merchant: 'Kedai Sore', financeType: 'expense' as const, paymentMethod: 'gopay-wallet', budgetCategory: 'budget-food', commodity: 'food', subcommodity: 'drink' },
+      },
+    ] as BrainDumpItem[],
+    wallets: [
+      { id: 'gopay-wallet', name: 'Gopay', type: 'ewallet' as const, initialBalance: 0, color: 'bg-green-500' },
+      { id: 'cash-wallet', name: 'Cash', type: 'cash' as const, initialBalance: 0, color: 'bg-gray-500' },
+    ],
+    budgetRules: [
+      { id: 'budget-food', name: 'Food', percentage: 50, color: 'bg-orange-500' },
+      { id: 'budget-digital', name: 'Digital', percentage: 10, color: 'bg-violet-500' },
+    ],
+    rules: [],
+  };
+
+  const next = canonicalizeParserResults([{
+    action: 'create_item',
+    entityType: 'finance',
+    content: 'kedai sore 99000',
+    targetText: 'kedai sore 99000',
+    confidence: 'high',
+    needsReview: false,
+    payload: {
+      itemType: 'FINANCE',
+      content: 'kedai sore subscription',
+      meta: {
+        amount: 99000,
+        merchant: 'Kedai Sore',
+        financeType: 'expense',
+        paymentMethod: 'cash-wallet',
+        budgetCategory: 'budget-digital',
+        commodity: 'digital',
+        subcommodity: 'subscription',
+        canonical: {
+          commodity: { rawValue: 'digital', value: 'digital', confidence: 1, source: 'manual_review', needsReview: false },
+          subcommodity: { rawValue: 'subscription', value: 'subscription', confidence: 1, source: 'manual_review', needsReview: false },
+        },
+      },
+    },
+  }], behaviorCtx);
+
+  const meta = (next[0].payload as any).meta;
+  assert.equal(meta.paymentMethod, 'cash-wallet');
+  assert.equal(meta.budgetCategory, 'budget-digital');
+  assert.equal(meta.commodity, 'digital');
+  assert.equal(meta.subcommodity, 'subscription');
+  assert.equal(meta.canonical.commodity.source, 'manual_review');
 });

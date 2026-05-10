@@ -4,6 +4,7 @@ import {
   ItemType,
   ParserIntent,
   ParserResultV2,
+  ParserModelRoutingMetadata,
   ParserRouterDecisionMetadata,
   ParserRouterRoute,
   Skill,
@@ -17,7 +18,7 @@ export const PARSER_ROUTER_THRESHOLDS = {
   review: 0.6,
 } as const;
 
-type LocalClassifierContext = {
+export type LocalClassifierContext = {
   existingTags?: string[];
   availableSkills?: Skill[];
   availableWallets?: Wallet[];
@@ -28,6 +29,7 @@ type LocalClassifierContext = {
 
 type LocalClassification = ParserRouterDecisionMetadata & { result?: ParserResultV2 };
 export type ParserRouterOutput = { decision: ParserRouterDecisionMetadata; results: ParserResultV2[] };
+export type DeepParserOutput = ParserResultV2[] | { results: ParserResultV2[]; modelRouting?: ParserModelRoutingMetadata };
 
 type AmountParse = { amount: number; raw: string } | undefined;
 
@@ -52,6 +54,10 @@ const decision = (intent: ParserIntent, confidenceScore: number, reasonCodes: st
   reasonCodes,
   result,
 });
+
+export const normalizeDeepParserOutput = (output: DeepParserOutput): { results: ParserResultV2[]; modelRouting?: ParserModelRoutingMetadata } => (
+  Array.isArray(output) ? { results: output } : output
+);
 
 const intentToEntity = (intent: ParserIntent): ParserResultV2['entityType'] => {
   if (intent === 'finance' || intent === 'todo' || intent === 'shopping' || intent === 'note' || intent === 'journal' || intent === 'event') return intent;
@@ -232,12 +238,12 @@ export const classifyLocalIntent = (rawText: string, ctx: LocalClassifierContext
 export const routeParserInput = async (
   text: string,
   ctx: LocalClassifierContext,
-  deepParser: () => Promise<ParserResultV2[]>,
+  deepParser: () => Promise<DeepParserOutput>,
 ): Promise<ParserRouterOutput> => {
   const local = classifyLocalIntent(text, ctx);
   if (local.route === 'deep_ai') {
-    const results = await deepParser();
-    return { decision: { route: 'deep_ai', intent: local.intent, confidenceScore: local.confidenceScore, reasonCodes: local.reasonCodes }, results };
+    const parsed = normalizeDeepParserOutput(await deepParser());
+    return { decision: { route: 'deep_ai', intent: local.intent, confidenceScore: local.confidenceScore, reasonCodes: local.reasonCodes, modelRouting: parsed.modelRouting }, results: parsed.results };
   }
   return { decision: { route: local.route, intent: local.intent, confidenceScore: local.confidenceScore, reasonCodes: local.reasonCodes }, results: local.result ? [local.result] : [] };
 };
