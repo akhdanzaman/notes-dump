@@ -972,6 +972,16 @@ export const cacheSpreadsheetDbForMigration = (db: DbSchema) => {
 
 const shouldRetrySpreadsheetRequest = (status: number) => status === 401 || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 
+const isServiceAccountProxyInvocationFailure = async (response: Response): Promise<boolean> => {
+  if (response.status < 500) return false;
+  try {
+    const text = await response.clone().text();
+    return text.includes('FUNCTION_INVOCATION_FAILED');
+  } catch {
+    return false;
+  }
+};
+
 export const checkServiceAccountSpreadsheetAccess = async (spreadsheetId: string): Promise<ServiceAccountSpreadsheetStatus> => {
   const response = await fetch(`/api/spreadsheets/service-account/status?spreadsheetId=${encodeURIComponent(spreadsheetId)}`);
   const data = await response.json().catch(() => ({}));
@@ -1000,23 +1010,13 @@ const serviceAccountSheetsFetch = async (
   });
 };
 
-const sheetsFetch = async (
+const oauthSheetsFetch = async (
   spreadsheetId: string,
   path: string,
   init: RequestInit = {},
   attempt = 0,
   tokenOverride?: string
 ): Promise<Response> => {
-  if (getSpreadsheetConfig()?.authMode === 'service_account') {
-    const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
-    if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
-      return response;
-    }
-    const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
-    await wait(delayMs);
-    return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
-  }
-
   const token = tokenOverride || await getValidGoogleAccessToken();
   if (!token) throw new Error('No valid Google access token available');
 
@@ -1034,7 +1034,49 @@ const sheetsFetch = async (
 
   const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
   await wait(delayMs);
-  return sheetsFetch(spreadsheetId, path, init, attempt + 1, response.status === 401 ? undefined : token);
+  return oauthSheetsFetch(spreadsheetId, path, init, attempt + 1, response.status === 401 ? undefined : token);
+};
+
+const tryOauthSheetsFallback = async (
+  spreadsheetId: string,
+  path: string,
+  init: RequestInit = {},
+  tokenOverride?: string
+): Promise<Response | null> => {
+  try {
+    const fallback = await oauthSheetsFetch(spreadsheetId, path, init, 0, tokenOverride);
+    console.warn('Service-account proxy failed; saved through direct OAuth Sheets fallback.');
+    return fallback;
+  } catch (error) {
+    console.warn('Service-account proxy failed and OAuth fallback was unavailable:', error);
+    return null;
+  }
+};
+
+const sheetsFetch = async (
+  spreadsheetId: string,
+  path: string,
+  init: RequestInit = {},
+  attempt = 0,
+  tokenOverride?: string
+): Promise<Response> => {
+  if (getSpreadsheetConfig()?.authMode === 'service_account') {
+    const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
+    if (await isServiceAccountProxyInvocationFailure(response)) {
+      const fallback = await tryOauthSheetsFallback(spreadsheetId, path, init, tokenOverride);
+      if (fallback) return fallback;
+      return response;
+    }
+
+    if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
+      return response;
+    }
+    const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
+    await wait(delayMs);
+    return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
+  }
+
+  return oauthSheetsFetch(spreadsheetId, path, init, attempt, tokenOverride);
 };
 
 const readSpreadsheetCacheFallback = () => {
@@ -1789,4 +1831,5 @@ export const __test__ = {
   buildColumnWriteBatches,
   columnLabel,
   getItemExportSheetNames,
+  isServiceAccountProxyInvocationFailure,
 };

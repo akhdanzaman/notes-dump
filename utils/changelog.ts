@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.90',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet sync now detects Vercel service-account proxy invocation failures and falls back to direct OAuth Google Sheets requests when the user has a valid Google session.',
+      'This keeps cloud saves working even when the service-account proxy returns an opaque FUNCTION_INVOCATION_FAILED response.',
+    ],
+  },
+  {
     version: 'v0.3.89',
     date: 'May 2026',
     items: [

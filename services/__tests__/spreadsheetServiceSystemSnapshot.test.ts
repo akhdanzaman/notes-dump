@@ -54,6 +54,17 @@ test('system snapshot write batches keep proxy payloads bounded', () => {
   assert.deepEqual(batches.map(batch => batch.values.length), [20, 20, 5]);
 });
 
+test('service-account proxy invocation failures are detected for OAuth fallback', async () => {
+  assert.equal(
+    await __test__.isServiceAccountProxyInvocationFailure(new Response('A server error has occurred FUNCTION_INVOCATION_FAILED sin1::abc', { status: 500 })),
+    true,
+  );
+  assert.equal(
+    await __test__.isServiceAccountProxyInvocationFailure(new Response('{"error":"bad request"}', { status: 400 })),
+    false,
+  );
+});
+
 const existingExportSheetTitles = new Set([
   'Sheet1',
   'Data Quality',
