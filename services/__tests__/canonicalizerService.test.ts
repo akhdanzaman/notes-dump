@@ -928,7 +928,9 @@ test('behavior cache ignores weak others defaults and conflicting low-agreement 
     payload: { itemType: 'FINANCE', content: 'pasar minggu', meta: { amount: 30000, merchant: 'Pasar Minggu', financeType: 'expense' } },
   }], behaviorCtx);
   const splitMeta = (splitParsed[0].payload as any).meta;
-  assert.equal(splitMeta.budgetCategory, undefined);
+  // Budget category is now backfilled by canonicalizer fallback (first rule =
+  // 'budget-food') when conflicting history makes the behavior cache uncertain.
+  assert.equal(splitMeta.budgetCategory, 'budget-food');
   assert.equal(splitMeta.commodity, undefined);
   assert.equal(splitMeta.subcommodity, undefined);
 });

@@ -7,6 +7,7 @@ import {
   ItemMeta,
 } from '../types';
 import { CanonicalizerContext, HistoricalCanonicalReview, sweepHistoricalCanonicalMeta } from './canonicalizerService';
+import { inferBudgetCategoryId } from './budgetCategoryService';
 
 export const ASYNC_ENRICHMENT_REVIEW_PREFIX = 'canonical-enrichment-';
 export const ASYNC_ENRICHMENT_VERSION = 1;
@@ -166,6 +167,45 @@ const mergeEnrichedItem = (
   };
 };
 
+/**
+ * Hybrid budget-category backfill: after the full canonicalizer + behavior cache pipeline
+ * has run, if a FINANCE expense item still has no budgetCategory, backfill it using the
+ * first configured rule as a pragmatic default.
+ *
+ * This runs only in async enrichment (post-save), preserving the original local-first
+ * save behavior and letting the behavior cache have first dibs.
+ */
+const backfillMissingBudgetCategory = (
+  current: BrainDumpItem,
+  merged: BrainDumpItem,
+  ctx: CanonicalizerContext,
+): { item: BrainDumpItem; backfilled: boolean } => {
+  const meta = merged.meta || {};
+  if (meta.budgetCategory) return { item: merged, backfilled: false };
+  if (current.type !== 'FINANCE') return { item: merged, backfilled: false };
+  if (meta.financeType !== 'expense' && meta.financeType !== 'saving') return { item: merged, backfilled: false };
+
+  const rules = ctx.budgetRules || [];
+  if (rules.length === 0) return { item: merged, backfilled: false };
+
+  const budgetId = inferBudgetCategoryId({
+    text: current.content,
+    meta: meta as any,
+    budgetRules: rules,
+    existingItems: ctx.existingItems,
+  });
+
+  // Final fallback: if the category inference also fails for an unclassified expense,
+  // use the first configured rule as the pragmatic default.
+  const finalBudgetId = budgetId || rules[0].id;
+
+  const nextMeta = { ...meta, budgetCategory: finalBudgetId };
+  return {
+    item: { ...merged, meta: nextMeta },
+    backfilled: true,
+  };
+};
+
 export function runCanonicalEnrichmentTasks(params: {
   items: BrainDumpItem[];
   tasks: EnrichmentTask[];
@@ -205,8 +245,18 @@ export function runCanonicalEnrichmentTasks(params: {
     const enriched = sweep.items[0];
     const merged = mergeEnrichedItem(current, task.baseMeta || {}, enriched, { ...task, completedAt }, reviewCount);
 
-    if (!same(merged.item.meta, current.meta)) {
-      nextItems = nextItems.map(item => item.id === current.id ? merged.item : item);
+    // --- Hybrid budgetCategory backfill ---
+    // After the full canonicalizer + behavior cache pipeline has had its say,
+    // if budgetCategory is still None for an expense, backfill it.
+    const backfillResult = backfillMissingBudgetCategory(current, merged.item, params.ctx);
+    const finalItem = backfillResult.item;
+    const appliedFields = [...merged.appliedFields];
+    if (backfillResult.backfilled) {
+      appliedFields.push('budgetCategory');
+    }
+
+    if (!same(finalItem.meta, current.meta)) {
+      nextItems = nextItems.map(item => item.id === current.id ? finalItem : item);
       changedItemIds.push(current.id);
     }
 
@@ -216,7 +266,7 @@ export function runCanonicalEnrichmentTasks(params: {
       status,
       attempts: task.attempts + 1,
       completedAt,
-      appliedFields: merged.appliedFields,
+      appliedFields,
       reviewCount,
     };
   });
