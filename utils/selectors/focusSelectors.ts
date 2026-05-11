@@ -75,6 +75,11 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
             const lowerQ = searchQuery.toLowerCase();
             if (!i.content.toLowerCase().includes(lowerQ) && !i.meta.tags?.some(t => t.toLowerCase().includes(lowerQ))) return false;
         }
+        
+        // Routines are always visible regardless of month, tag filter, or search query
+        // so they don't "disappear" after being completed or having their next occurrence
+        // in a different month.
+        if (i.meta.isRoutine) return true;
 
         const dateToCheck = i.meta.date || i.created_at;
         if (!dateToCheck) return false;
