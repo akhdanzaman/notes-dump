@@ -606,7 +606,7 @@ const Card: React.FC<CardProps> = ({
   const showDeepWorkSuggestion = type === ItemType.TODO && meta.deepWorkParent && meta.deepWorkStatus === 'suggested';
   const canShowMoneyMetadata = type === ItemType.FINANCE || type === ItemType.SHOPPING;
   const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
-  const showCommodityFields = type === ItemType.FINANCE && (editFinanceType === 'expense' || editFinanceType === 'saving' || editFinanceType === 'income');
+  const showCommodityFields = (type === ItemType.FINANCE || type === ItemType.SHOPPING) && (editFinanceType === 'expense' || editFinanceType === 'saving' || editFinanceType === 'income');
   const noteDisplay = isNote ? getNoteDisplayParts(item) : null;
   
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
