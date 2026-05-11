@@ -35,7 +35,7 @@ async function main() {
 
   // Find all FINANCE saving items
   const savingItems = items.filter(
-    (item) => item.type === ItemType.FINANCE && (item.meta?.financeType === 'saving' || item.meta?.financeType === 'saved'),
+    (item) => item.type === ItemType.FINANCE && item.meta?.financeType === 'saving',
   );
   console.error(`Total items: ${items.length}, Saving items: ${savingItems.length}`);
 

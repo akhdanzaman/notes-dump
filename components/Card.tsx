@@ -343,8 +343,8 @@ const Card: React.FC<CardProps> = ({
       if (editEnd) finalEnd = new Date(editEnd).toISOString();
 
       const finalBudgetCategory = editBudgetCategory === '' ? undefined : editBudgetCategory;
-      const finalCommodity = showCommodityFields ? editCommodity.trim() : undefined;
-      const finalSubcommodity = showCommodityFields ? editSubcommodity.trim() : undefined;
+      const finalCommodity = showCommodityFields ? editCommodity.trim() : meta.commodity;
+      const finalSubcommodity = showCommodityFields ? editSubcommodity.trim() : meta.subcommodity;
       const finalSkillId = editSkillId === '' ? undefined : editSkillId;
       const selectedSavingGoal = editFinanceType === 'saving'
           ? savingGoals.find(goal => goal.id === editSavingGoalId)
@@ -606,7 +606,7 @@ const Card: React.FC<CardProps> = ({
   const showDeepWorkSuggestion = type === ItemType.TODO && meta.deepWorkParent && meta.deepWorkStatus === 'suggested';
   const canShowMoneyMetadata = type === ItemType.FINANCE || type === ItemType.SHOPPING;
   const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
-  const showCommodityFields = type === ItemType.FINANCE && editFinanceType === 'expense';
+  const showCommodityFields = type === ItemType.FINANCE && (editFinanceType === 'expense' || editFinanceType === 'saving' || editFinanceType === 'income');
   const noteDisplay = isNote ? getNoteDisplayParts(item) : null;
   
   const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;

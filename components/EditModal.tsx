@@ -379,6 +379,32 @@ const EditModal: React.FC<EditModalProps> = ({ item, isOpen, onClose, onSave, ex
               </div>
           )}
           
+          {/* Commodity + Subcommodity (for FINANCE expense/saving) */}
+          {(item.type === ItemType.FINANCE && (financeType === 'expense' || financeType === 'saving' || financeType === 'income')) && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Commodity</label>
+                <input
+                  type="text"
+                  className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 placeholder-muted/50"
+                  value={item.meta.commodity || ''}
+                  placeholder="e.g. food, transport, hobby"
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Sub Commodity</label>
+                <input
+                  type="text"
+                  className="w-full bg-background border border-border rounded-lg p-3 text-primary focus:outline-none focus:border-indigo-500 placeholder-muted/50"
+                  value={item.meta.subcommodity || ''}
+                  placeholder="e.g. lunch, fuel, sports"
+                  readOnly
+                />
+              </div>
+            </div>
+          )}
+
           {/* Tags */}
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Tags (comma separated)</label>
