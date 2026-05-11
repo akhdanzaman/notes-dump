@@ -197,6 +197,24 @@ const SIGNAL_PATTERNS: PatternSpec[] = [
     budgetHints: ['wants'],
   },
   {
+    commodity: 'hobby',
+    subcommodity: 'sports',
+    patterns: [/\b(badminton|futsal|basket|voli|tenis|renang|gym|fitnes|fitnes|olahraga|sport|bulutangkis)\b/i],
+    budgetHints: ['wants'],
+  },
+  {
+    commodity: 'social',
+    subcommodity: 'membership',
+    patterns: [/\b(iuran|dues|membership|langganan\s+klub|subscription\s+fee|anggota)\b/i],
+    budgetHints: ['wants', 'fixed'],
+  },
+  {
+    commodity: 'saving',
+    subcommodity: 'goal_funding',
+    patterns: [/\b(saving|savings|nabung|tabung|simpan|invest|investasi|dana\s+darurat|emergency\s+fund|goal|target|menabung|setor|deposit)\b/i],
+    budgetHints: ['savings'],
+  },
+  {
     commodity: 'housing',
     subcommodity: 'rent',
     patterns: [/\b(bayar\s+kos(?:an)?|kosan)\b/i],
@@ -277,7 +295,7 @@ const SIGNAL_PATTERNS: PatternSpec[] = [
   {
     commodity: 'transport',
     subcommodity: 'ride_hailing',
-    patterns: [/\b(gojek|grab|maxim|ojol|ride\s*hailing)\b/i],
+    patterns: [/\b(gojek|grab|maxim|ojol|ride\s*hailing|taxi|taksi|go.?car|grab.?car)\b/i],
     budgetHints: ['needs'],
   },
   {

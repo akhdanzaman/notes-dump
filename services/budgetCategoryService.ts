@@ -306,6 +306,12 @@ export const inferBudgetCategoryId = (params: {
   const profileMatch = findBestRuleByProfiles(profiles, rules);
   if (profileMatch) return profileMatch;
 
+  // Fallback: if we resolved profiles but no rule matched (e.g. custom-named rules),
+  // pick the first configured rule as a pragmatic default instead of returning None.
+  if (profiles.length > 0 && rules.length > 0) {
+    return rules[0].id;
+  }
+
   if (!rules.length) return profiles[0];
 
   return undefined;

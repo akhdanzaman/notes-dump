@@ -17,6 +17,7 @@ import { findBestCanonicalCandidate } from '../utils/canonicalization/ruleMatche
 import { shouldAutoApply, shouldSuggestReview } from '../utils/canonicalization/scoring';
 import { consolidateCanonicalRules, incrementCanonicalRuleRejection, mergeLearnedRule } from '../utils/canonicalization/learnedRules';
 import { CANONICAL_OTHER_VALUE, ensureFinanceCanonicalDefaults, normalizeCanonicalFallback } from '../utils/canonicalization/defaults';
+import { inferBudgetCategoryId } from './budgetCategoryService';
 import { inferTransactionCommodity } from '../utils/canonicalization/transactionInference';
 import { enrichFinanceMetaFromText } from './parserSignalService';
 import { applyBehaviorInference, buildBehaviorCache } from './behaviorCacheService';
@@ -253,6 +254,25 @@ export function canonicalizeMeta(
       autoApplied.push(field);
     }
   });
+
+  // Budget-category backfill for the canonicalizer path (review + post-save):
+  // if the item is a FINANCE expense or saving with no budgetCategory,
+  // use inferBudgetCategoryId with fallback to first configured rule.
+  if (!metaWithCoverage.budgetCategory) {
+    const rules = ctx.budgetRules || [];
+    if (rules.length > 0 && (metaWithCoverage.financeType === 'expense' || metaWithCoverage.financeType === 'saving')) {
+      const budgetId = inferBudgetCategoryId({
+        text: [metaWithCoverage.merchant, metaWithCoverage.commodity, metaWithCoverage.subcommodity].filter(Boolean).join(' '),
+        meta: metaWithCoverage,
+        budgetRules: rules,
+        existingItems: ctx.existingItems,
+      }) || rules[0].id;
+      if (budgetId) {
+        metaWithCoverage.budgetCategory = budgetId;
+        autoApplied.push('budgetCategory' as CanonicalField);
+      }
+    }
+  }
 
   return {
     meta: metaWithCoverage,
