@@ -1114,126 +1114,228 @@ export const fetchSpreadsheetDb = (skipLocalStorage = false): Promise<{ data: Db
   return queuedTask;
 };
 
+// ── Simplified fetch: reads "All Items (Raw)" + config sheets directly ──
 const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalStorage: boolean) => {
-    const { meta, existingTitles } = await fetchSpreadsheetMetadata(config, false);
+  const { existingTitles } = await fetchSpreadsheetMetadata(config, true);
 
-    const rangesToFetch = [];
-    let systemSheetName = SYSTEM_SHEET_NAME;
-
-    if (existingTitles.has(SYSTEM_SHEET_NAME)) {
-        rangesToFetch.push(`'${SYSTEM_SHEET_NAME}'!A:A`);
-    } else if (existingTitles.has('Sheet1')) {
-        systemSheetName = 'Sheet1';
-        rangesToFetch.push(`'Sheet1'!A:A`);
-    } else if (meta.sheets && meta.sheets.length > 0) {
-        systemSheetName = meta.sheets[0].properties.title;
-        rangesToFetch.push(`'${systemSheetName}'!A:A`);
+  const rangesToFetch: string[] = [];
+  if (existingTitles.has(ALL_ITEMS_SHEET)) {
+    rangesToFetch.push(`'${ALL_ITEMS_SHEET}'!A:AS`);
+  }
+  // Config sheets
+  for (const name of ['Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings']) {
+    if (existingTitles.has(name)) {
+      rangesToFetch.push(`'${name}'!A:E`);
     }
-
-    let isNewSpreadsheet = !existingTitles.has(SYSTEM_SHEET_NAME);
-    needsInitialSpreadsheetWrite = isNewSpreadsheet;
-
-    const sheetsToSync = Object.entries(SPREADSHEET_FETCH_RANGES);
-    for (const [s, range] of sheetsToSync) {
-        if (existingTitles.has(s)) {
-            rangesToFetch.push(`'${s}'!${range}`);
-        }
-    }
-
-    let batchData: any = { valueRanges: [] };
-    
-    if (rangesToFetch.length > 0) {
-        const path = `/values:batchGet?ranges=${rangesToFetch.map(encodeURIComponent).join('&ranges=')}`;
-        const res = await sheetsFetch(config.spreadsheetId, path);
-        
-        if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`Failed to fetch batchGet: ${res.status} ${res.statusText} - ${errText}`);
-        }
-        batchData = await res.json();
-    }
-
-    // Find system sheet data
-    const systemSheet = batchData.valueRanges?.find((r: any) => r.range && r.range.includes(systemSheetName));
-    
-    let dbData;
-    let systemSheetStatus: SystemSheetSyncStatus = 'ready';
-    const hasValidSystemSheet = systemSheet ? isValidSystemSnapshotSheet(systemSheet) : false;
-
-    if (!hasValidSystemSheet && systemSheetName === SYSTEM_SHEET_NAME && systemSheet) {
-        processFetchResponse(systemSheet, skipLocalStorage);
-    }
-
-    if (isNewSpreadsheet && !hasValidSystemSheet) {
-        console.log("New spreadsheet detected, seeding from spreadsheet cache/legacy browser cache if available.");
-        dbData = getCachedSpreadsheetDb() || { data: [] };
-    } else {
-        const fetched = processFetchResponse(systemSheet, skipLocalStorage);
-        dbData = fetched.data;
-        systemSheetStatus = fetched.systemStatus;
-        isNewSpreadsheet = false;
-    }
-    
-    let reconciled = false;
-
-    // Reconcile with user-facing sheets
-    if (batchData.valueRanges && systemSheetStatus !== 'writing') {
-        console.log("Reconciling with valueRanges:", batchData.valueRanges.map((r: any) => r.range));
-        const reconciledDb = reconcileSpreadsheetData(dbData, batchData.valueRanges);
-        console.log("Reconciled DB:", reconciledDb);
-        if (JSON.stringify(reconciledDb.data) !== JSON.stringify(dbData.data) || 
-            JSON.stringify(reconciledDb.budgetConfig) !== JSON.stringify(dbData.budgetConfig)) {
-            dbData = reconciledDb;
-            reconciled = true;
-        }
-    } else if (systemSheetStatus === 'writing') {
-        console.log('Detected in-progress spreadsheet sync; skipping user-sheet reconciliation and trusting system snapshot.');
-    }
-
-    // Update local storage with reconciled data
-    const jsonString = JSON.stringify(dbData);
-    if (!skipLocalStorage) {
-      try {
-        writeSpreadsheetCache(jsonString);
-      } catch (e) {
-        console.warn("Failed to save to local storage (quota exceeded?)", e);
-      }
-      isHydrated = true;
-      lastSnapshot = jsonString;
-    }
-    
-    return { data: dbData, sha: 'spreadsheet-sha', reconciled };
-};
-
-const processFetchResponse = (data: any, skipLocalStorage: boolean) => {
-  const snapshot = extractSystemSheetSnapshot(data);
-  const jsonString = snapshot.jsonString;
-
-  let rawData: any;
-  try {
-    rawData = JSON.parse(jsonString);
-  } catch (e) {
-    console.warn('Failed to parse spreadsheet system snapshot', e);
-    throw new Error('Spreadsheet system snapshot is malformed');
   }
 
-  if (!rawData || typeof rawData !== 'object') {
-    throw new Error('Spreadsheet system snapshot is not a valid object');
+  let items: BrainDumpItem[] = [];
+  let configSheets: ReturnType<typeof parseConfigSheets> | null = null;
+
+  if (rangesToFetch.length > 0) {
+    const path = `/values:batchGet?ranges=${rangesToFetch.map(encodeURIComponent).join('&ranges=')}`;
+    const res = await sheetsFetch(config.spreadsheetId, path);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Failed to fetch spreadsheet data: ${res.status} ${res.statusText} - ${errText}`);
+    }
+    const batchData = await res.json();
+
+    // Parse All Items (Raw)
+    const rawSheet = batchData.valueRanges?.find((r: any) => r.range?.includes(ALL_ITEMS_SHEET));
+    if (rawSheet?.values) {
+      items = rawSheet.values
+        .map((row: any[], i: number) => parseRawItemRow(row, i))
+        .filter(Boolean) as BrainDumpItem[];
+    }
+
+    // Parse config sheets
+    configSheets = parseConfigSheets(batchData.valueRanges || []);
   }
 
-  const dbData = validateSchema(rawData);
-  
+  // Fallback to cache for empty/new spreadsheet
+  if (items.length === 0) {
+    const cached = getCachedSpreadsheetDb();
+    if (cached?.data?.length) {
+      items = cached.data;
+      console.log('Seeded items from spreadsheet cache');
+    }
+  }
+
+  const dbData: DbSchema = {
+    data: items,
+    wallets: configSheets?.wallets || [],
+    skills: configSheets?.skills || [],
+    budgetConfig: configSheets?.budgetConfig,
+    monthlyThemes: configSheets?.monthlyThemes || {},
+    appSettings: configSheets?.appSettings,
+  };
+
   if (!skipLocalStorage) {
     try {
-      writeSpreadsheetCache(jsonString);
+      writeSpreadsheetCache(JSON.stringify(dbData));
     } catch (e) {
-      console.warn("Failed to save to local storage (quota exceeded?)", e);
+      console.warn('Failed to save to local storage', e);
     }
     isHydrated = true;
-    lastSnapshot = jsonString;
   }
-  
-  return { data: dbData, sha: 'spreadsheet-sha', systemStatus: snapshot.status }; 
+
+  return { data: dbData, sha: 'spreadsheet-sha', reconciled: false };
+};
+
+// ── Direct sheet fetch: reads "All Items (Raw)" + config sheets ──
+const ALL_ITEMS_SHEET = 'All Items (Raw)';
+
+const parseRawItemRow = (row: any[], index: number): BrainDumpItem | null => {
+  const id = String(row[0] || '').trim();
+  if (!id) return null; // header or empty row
+  if (id === 'ID') return null; // header
+
+  const meta: any = {};
+  if (row[2]) meta.title = String(row[2]);
+  if (row[7]) meta.date = String(row[7]);
+  const amount = Number(row[8]);
+  if (!isNaN(amount)) meta.amount = amount;
+  if (row[9]) meta.tags = String(row[9]).split(',').map((t: string) => t.trim()).filter(Boolean);
+  if (row[10]) meta.paymentMethod = String(row[10]);
+  if (row[11]) meta.canonical_paymentMethod = String(row[11]);
+  if (row[12]) meta.merchant = String(row[12]);
+  if (row[13]) meta.canonical_merchant = String(row[13]);
+  if (row[14]) meta.commodity = String(row[14]);
+  if (row[15]) meta.canonical_commodity = String(row[15]);
+  if (row[16]) meta.subcommodity = String(row[16]);
+  if (row[17]) meta.canonical_subcommodity = String(row[17]);
+  if (row[18]) meta.toWallet = String(row[18]);
+  if (row[19]) meta.financeType = String(row[19]);
+  if (row[20]) meta.budgetCategory = String(row[20]);
+  if (row[21]) meta.skillName = String(row[21]);
+  if (row[22]) meta.skillId = String(row[22]);
+  const duration = Number(row[23]);
+  if (!isNaN(duration)) meta.durationMinutes = duration;
+  if (row[24]) meta.shoppingCategory = String(row[24]);
+  if (row[25]) meta.investmentAssetType = String(row[25]);
+  if (row[26]) meta.investmentSymbol = String(row[26]);
+  const units = Number(row[27]);
+  if (!isNaN(units)) meta.investmentUnits = units;
+  const avgBuy = Number(row[28]);
+  if (!isNaN(avgBuy)) meta.investmentAveragePrice = avgBuy;
+  const curPrice = Number(row[29]);
+  if (!isNaN(curPrice)) meta.investmentCurrentPrice = curPrice;
+  if (row[30]) meta.investmentPlatform = String(row[30]);
+  const recurrence = Number(row[31]);
+  if (!isNaN(recurrence)) meta.recurrenceDays = recurrence;
+  if (row[32]) meta.priority = String(row[32]);
+  if (row[33]) meta.parentTodoId = String(row[33]);
+  if (row[34]) meta.childTodoIds = String(row[34]).split(',').map((t: string) => t.trim()).filter(Boolean);
+  if (row[35]) meta.deepWorkParent = row[35] === 'parent' ? true : undefined;
+  if (row[36]) meta.deepWorkStatus = String(row[36]);
+  if (row[37]) meta.deepWorkCompletionMode = String(row[37]);
+  if (row[38]) meta.deepWorkNextAction = String(row[38]);
+  if (row[39]) meta.deepWorkFinalOutput = String(row[39]);
+  const sessionEstimate = Number(row[40]);
+  if (!isNaN(sessionEstimate)) meta.deepWorkSessionEstimateMinutes = sessionEstimate;
+  if (row[41]) meta.deepWorkBlockerStatus = String(row[41]);
+  if (row[42]) meta.deepWorkBlockerCheck = String(row[42]);
+  const stepIndex = Number(row[43]);
+  if (!isNaN(stepIndex)) meta.deepWorkStepIndex = stepIndex;
+  const stepCount = Number(row[44]);
+  if (!isNaN(stepCount)) meta.deepWorkStepCount = stepCount;
+  if (row[45]) {
+    try { meta.subtasks = JSON.parse(String(row[45])); } catch { /* ignore */ }
+  }
+
+  return {
+    id,
+    type: String(row[1] || ItemType.NOTE) as ItemType,
+    content: String(row[3] || ''),
+    status: String(row[4] || 'pending') as BrainDumpItem['status'],
+    created_at: String(row[5] || new Date().toISOString()),
+    completed_at: row[6] ? String(row[6]) : undefined,
+    meta,
+  };
+};
+
+const parseConfigSheets = (valueRanges: any[]): {
+  wallets: Wallet[];
+  skills: Skill[];
+  budgetConfig: BudgetConfig | undefined;
+  monthlyThemes: Record<string, string>;
+  appSettings: AppSettings | undefined;
+} => {
+  const wallets: Wallet[] = [];
+  const skills: Skill[] = [];
+  let budgetConfig: BudgetConfig | undefined;
+  const monthlyThemes: Record<string, string> = {};
+  let appSettings: AppSettings | undefined;
+
+  for (const vr of valueRanges) {
+    const name = vr.range?.split('!')[0]?.replace(/'/g, '') || '';
+    const rows = vr.values || [];
+    if (rows.length < 2) continue;
+
+    if (name === 'Wallets Config') {
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r[0]) continue;
+        wallets.push({
+          id: String(r[0]),
+          name: String(r[1] || ''),
+          type: (String(r[2] || 'cash')) as Wallet['type'],
+          initialBalance: Number(r[3]) || 0,
+          color: String(r[4] || 'bg-gray-500'),
+        });
+      }
+    } else if (name === 'Skills Config') {
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r[0]) continue;
+        skills.push({
+          id: String(r[0]),
+          name: String(r[1] || ''),
+          weeklyTargetMinutes: Number(r[2]) || undefined,
+          created_at: String(r[3] || new Date().toISOString()),
+          color: String(r[4] || 'indigo-500'),
+        });
+      }
+    } else if (name === 'Budget Rules') {
+      const rules: any[] = [];
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r[0]) continue;
+        rules.push({
+          id: String(r[0]),
+          name: String(r[1] || ''),
+          percentage: Number(r[2]) || 0,
+          color: String(r[3]) || 'bg-blue-500',
+        });
+      }
+      if (rules.length > 0) {
+        budgetConfig = {
+          monthlyIncome: budgetConfig?.monthlyIncome || 0,
+          rules,
+        };
+      }
+    } else if (name === 'Themes & Settings') {
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const key = String(r[0] || '').trim();
+        if (!key) continue;
+        if (key === 'monthlyIncome') {
+          budgetConfig = { ...(budgetConfig || { rules: [] }), monthlyIncome: Number(r[1]) || 0 };
+        } else if (key === 'defaultCollapsed') {
+          appSettings = { ...(appSettings || { defaultCollapsed: false, hideMoney: false }), defaultCollapsed: String(r[1]) === 'true' };
+        } else if (key === 'hideMoney') {
+          appSettings = { ...(appSettings || { defaultCollapsed: false, hideMoney: false }), hideMoney: String(r[1]) === 'true' };
+        } else if (key === 'googleCalendarSyncEnabled') {
+          appSettings = { ...(appSettings || { defaultCollapsed: false, hideMoney: false }), googleCalendarSyncEnabled: String(r[1]) === 'true' };
+        } else if (key.startsWith('theme_')) {
+          monthlyThemes[key.replace('theme_', '')] = String(r[1] || '');
+        }
+      }
+    }
+  }
+
+  return { wallets, skills, budgetConfig, monthlyThemes, appSettings };
 };
 
 const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb: DbSchema) => {
@@ -1295,6 +1397,7 @@ const writeSystemSheetSnapshotInBatches = async (
   }
 };
 
+// ── Simplified save: clear + write all sheets directly, no system sheet ──
 const performSync = async (
   items: BrainDumpItem[], 
   budgetConfig?: BudgetConfig, 
@@ -1307,393 +1410,103 @@ const performSync = async (
   canonicalRules?: CanonicalRule[],
   forceOverwrite = false
 ): Promise<SyncResult> => {
-  const previousDb = validateSchema(
-    safeJsonParse<DbSchema | undefined>(lastSnapshot, undefined)
-      || safeJsonParse<DbSchema | undefined>(safeLocalStorageGet(SPREADSHEET_CACHE_KEY), undefined)
-      || safeJsonParse<DbSchema | undefined>(safeLocalStorageGet(LEGACY_LOCAL_STORAGE_KEY), undefined)
-      || { data: [] }
-  );
-
   const updatedDb: DbSchema = { 
     data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory,
-    canonicalRules: canonicalRules || previousDb.canonicalRules || []
+    canonicalRules: canonicalRules || []
   };
   
-  const jsonString = JSON.stringify(updatedDb);
-
-  writeSpreadsheetCache(jsonString);
-
-  if (!isHydrated) {
-    try {
-      await performFetchSpreadsheetDb(false);
-    } catch (e: any) {
-      console.warn("Failed to hydrate spreadsheet before sync", e);
-      return { success: false, method: 'skipped_not_hydrated', error: 'Spreadsheet not hydrated and fetch failed: ' + e.message };
-    }
-  }
-
-  if (lastSnapshot === jsonString && !forceOverwrite && !needsInitialSpreadsheetWrite) {
-    return { success: true, method: 'skipped_no_changes' };
-  }
+  const finalJsonString = JSON.stringify(updatedDb);
+  writeSpreadsheetCache(finalJsonString);
 
   const config = getSpreadsheetConfig();
   if (!config) {
-    return { success: false, method: 'error', error: 'Spreadsheet is not connected. Connect Google Sheets before saving.' };
+    return { success: false, method: 'error', error: 'Spreadsheet is not connected.' };
   }
 
-  let finalItems = items;
-  let finalDb = updatedDb;
-  let reconciled = false;
-  let prefetchedMeta: any | null = null;
-  let prefetchedExistingSheetTitles: Set<string> | null = null;
-  let hasReliableSpreadsheetMeta = false;
-
   try {
-    if (!forceOverwrite) {
-        // 1. Fetch only user-editable sheets for manual spreadsheet edits.
-        // The system snapshot is intentionally skipped here because it can be large and local lastSnapshot is our base.
-        const manualFetch = await fetchUserEditableSpreadsheetDb(config, previousDb);
-        const remoteDb = manualFetch.data;
-        prefetchedMeta = manualFetch.meta;
-        prefetchedExistingSheetTitles = manualFetch.existingTitles;
-        hasReliableSpreadsheetMeta = manualFetch.reliableMeta;
-        
-        const baseDb = previousDb;
-        
-        finalDb = mergeDbData(updatedDb, remoteDb, baseDb);
-        finalItems = finalDb.data;
-        reconciled = manualFetch.reconciled;
-    }
-
-    const finalJsonString = JSON.stringify(finalDb);
-
-    // 2. Prepare Data
-    // Generate the user-facing sheets
+    // 1. Generate all sheet data
     const exportSheets = generateExportData(
-      finalItems, 
-      finalDb.skills || [], 
-      finalDb.wallets || [], 
-      finalDb.budgetConfig || { monthlyIncome: 0, rules: [] }, 
-      finalDb.monthlyThemes || {}, 
-      finalDb.appSettings || { defaultCollapsed: false, hideMoney: false }
+      items, 
+      skills || [], 
+      wallets || [], 
+      budgetConfig || { monthlyIncome: 0, rules: [] }, 
+      monthlyThemes || {}, 
+      appSettings || { defaultCollapsed: false, hideMoney: false }
     );
 
-    const systemSheetData: SheetData = {
-        name: SYSTEM_SHEET_NAME,
-        data: buildSystemSheetRows(finalJsonString, 'ready')
-    };
-
-    const systemSheetWritingData: SheetData = {
-      name: SYSTEM_SHEET_NAME,
-      data: buildSystemSheetRows(finalJsonString, 'writing')
-    };
-
-    const allSheets: SheetData[] = [
-      ...exportSheets,
-      systemSheetData
-    ];
-
-    // 2. Get existing sheets to determine what needs to be created
-    const metadataLookup = prefetchedMeta
-      ? { meta: prefetchedMeta, existingTitles: prefetchedExistingSheetTitles || new Set<string>(), reliable: hasReliableSpreadsheetMeta }
-      : await fetchSpreadsheetMetadata(config, true);
-    const meta = metadataLookup.meta;
-    let liveMeta = meta;
-    let existingSheetTitles = metadataLookup.existingTitles;
-    hasReliableSpreadsheetMeta = metadataLookup.reliable;
+    // 2. Get existing sheets
+    const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config, true);
+    const allSheetData = [...exportSheets];
 
     // 3. Create missing sheets
-    console.log("Creating missing sheets...");
-    const requests = [];
-    const createdSheetTitles = new Set<string>();
-    for (const sheet of allSheets) {
-      if (!existingSheetTitles.has(sheet.name)) {
-        createdSheetTitles.add(sheet.name);
-        requests.push({
-          addSheet: {
-            properties: { title: sheet.name }
-          }
-        });
+    const requests: any[] = [];
+    for (const sheet of allSheetData) {
+      if (!existingTitles.has(sheet.name)) {
+        requests.push({ addSheet: { properties: { title: sheet.name } } });
       }
     }
-    
-    // Also create history sheet if missing
-    if (!existingSheetTitles.has(HISTORY_SHEET_NAME)) {
-        createdSheetTitles.add(HISTORY_SHEET_NAME);
-        requests.push({
-          addSheet: {
-            properties: { title: HISTORY_SHEET_NAME }
-          }
-        });
-    }
 
-    if (requests.length > 0 && hasReliableSpreadsheetMeta) {
+    if (requests.length > 0 && reliable) {
       const batchRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requests })
       });
-      if (!batchRes.ok) throw new Error(`Failed to create sheets: ${await batchRes.text()}`);
-
-      const refreshedMetaRes = await sheetsFetch(config.spreadsheetId, '');
-      if (!refreshedMetaRes.ok) throw new Error(`Failed to refresh spreadsheet metadata: ${await refreshedMetaRes.text()}`);
-      liveMeta = await refreshedMetaRes.json();
-      existingSheetTitles = new Set((liveMeta.sheets || []).map((s: any) => s.properties.title));
-    } else if (requests.length > 0) {
-      console.warn('Spreadsheet metadata was unavailable; skipping missing-sheet creation and attempting writes against assumed existing sheets.');
-      createdSheetTitles.clear();
+      if (!batchRes.ok) {
+        console.warn('Sheet creation warning:', await batchRes.text());
+      }
     }
 
-    // 4. Write the system snapshot first so refreshes never see an empty source-of-truth.
-    console.log("Writing system snapshot...");
-    await writeSystemSheetSnapshotInBatches(config, systemSheetWritingData, 'writing');
+    // 4. Clear and write each sheet
+    for (const sheet of allSheetData) {
+      if (!existingTitles.has(sheet.name) && !reliable) continue;
 
-    const incrementalPlan = buildIncrementalUserSheetPlan(
-      previousDb,
-      finalDb,
-      exportSheets,
-      existingSheetTitles,
-      createdSheetTitles,
-      needsInitialSpreadsheetWrite || forceOverwrite,
-    );
-
-    if (incrementalPlan.canIncremental) {
-      console.log("Writing incremental user-facing sheet updates...", {
-        updates: incrementalPlan.updates.length,
-        appends: incrementalPlan.appends.length,
-      });
-
-      for (let i = 0; i < incrementalPlan.updates.length; i += MAX_WRITE_BATCH_SIZE) {
-        const batch = incrementalPlan.updates.slice(i, i + MAX_WRITE_BATCH_SIZE);
-        const updateUserRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            valueInputOption: 'RAW',
-            data: batch
-          })
-        });
-
-        if (!updateUserRes.ok) {
-          const errorText = await updateUserRes.text();
-          console.error(`Google Sheets API error (Incremental User Sheets): ${updateUserRes.status} ${updateUserRes.statusText} - ${errorText}`);
-          throw new Error(`Failed to incrementally write user-facing sheets: ${updateUserRes.status} ${updateUserRes.statusText}`);
-        }
-      }
-
-      for (const append of incrementalPlan.appends) {
-        const width = append.values[0]?.length || 1;
-        const appendRes = await sheetsFetch(
-          config.spreadsheetId,
-          `/values/${escapeSheetName(append.sheetName)}!A:${columnLabel(width - 1)}:append?valueInputOption=${append.inputOption}&insertDataOption=INSERT_ROWS`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ values: append.values })
-          }
-        );
-
-        if (!appendRes.ok) {
-          const errorText = await appendRes.text();
-          console.error(`Google Sheets API error (Append User Sheet): ${appendRes.status} ${appendRes.statusText} - ${errorText}`);
-          throw new Error(`Failed to append user-facing sheet row: ${appendRes.status} ${appendRes.statusText}`);
-        }
-      }
-
-      if (incrementalPlan.updates.length > 0 || incrementalPlan.appends.length > 0) {
-        scheduleBackgroundUserSheetRebuild([
-          finalItems,
-          finalDb.budgetConfig,
-          finalDb.customPrompt,
-          finalDb.skills,
-          finalDb.wallets,
-          finalDb.monthlyThemes,
-          finalDb.appSettings,
-          finalDb.chatHistory,
-          finalDb.canonicalRules,
-          true,
-        ]);
-      }
-    } else {
-      console.log("Falling back to full user-facing sheet rebuild...", incrementalPlan.reason);
-
-      // 5. Clear existing user-facing data only after the system snapshot is safely published.
-      console.log("Clearing user-facing sheets...");
-      const userSheetNamesToClear = Array.from(new Set([
-        ...MANAGED_USER_SHEET_NAMES.filter(name => existingSheetTitles.has(name)),
-        ...exportSheets.map(sheet => sheet.name),
-      ]));
-
-      const clearRes = userSheetNamesToClear.length === 0 ? null : await sheetsFetch(config.spreadsheetId, '/values:batchClear', {
+      // Clear the sheet
+      const clearRes = await sheetsFetch(config.spreadsheetId, `/values/${escapeSheetName(sheet.name)}!A:ZZ:clear`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ranges: userSheetNamesToClear.map(name => escapeSheetName(name)) })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
       });
-      if (clearRes && !clearRes.ok) throw new Error(`Failed to clear sheets: ${await clearRes.text()}`);
-
-      // 6. Write new data - Split into chunks to avoid payload limits
-      console.log("Writing new data...");
-
-      const groupedUserSheets = exportSheets.reduce<Record<string, { range: string; values: SheetData['data'] }[]>>((acc, sheet) => {
-          const inputOption = sheet.inputOption || 'RAW';
-          if (!acc[inputOption]) acc[inputOption] = [];
-          acc[inputOption].push({
-            range: `${escapeSheetName(sheet.name)}!A1`,
-            values: sheet.data
-          });
-          return acc;
-      }, {});
-
-      // Update User Sheets
-      for (const [inputOption, userSheetsData] of Object.entries(groupedUserSheets)) {
-        for (let i = 0; i < userSheetsData.length; i += MAX_WRITE_BATCH_SIZE) {
-              const batch = userSheetsData.slice(i, i + MAX_WRITE_BATCH_SIZE);
-              const updateUserRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                      valueInputOption: inputOption,
-                      data: batch
-                  })
-              });
-
-              if (!updateUserRes.ok) {
-                  const errorText = await updateUserRes.text();
-                  console.error(`Google Sheets API error (User Sheets): ${updateUserRes.status} ${updateUserRes.statusText} - ${errorText}`);
-                  throw new Error(`Failed to write user-facing sheets: ${updateUserRes.status} ${updateUserRes.statusText}`);
-              }
-          }
+      if (!clearRes.ok) {
+        console.warn(`Failed to clear sheet ${sheet.name}:`, await clearRes.text());
+        continue;
       }
 
-      const dashboardSheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DASHBOARD_SHEET_NAME);
-      const dashboardSheetId = dashboardSheetMeta?.properties?.sheetId;
-      if (typeof dashboardSheetId === 'number') {
-        const shouldFormatDashboard = shouldApplyManagedSheetFormatting(
-          DASHBOARD_SHEET_NAME,
-          createdSheetTitles,
-          needsInitialSpreadsheetWrite
-        );
-
-        if (shouldFormatDashboard) {
-          const dashboardRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              requests: buildDashboardFormattingRequests(dashboardSheetId)
-            })
-          });
-
-          if (!dashboardRes.ok) {
-            console.warn('Failed to format dashboard sheet:', await dashboardRes.text());
-          }
-        }
-
-        const existingChartIds = Array.isArray(dashboardSheetMeta?.charts)
-          ? dashboardSheetMeta.charts
-              .map((chart: any) => chart?.chartId ?? chart?.embeddedObjectId)
-              .filter((id: unknown): id is number => typeof id === 'number')
-          : [];
-
-        if (shouldRenderDashboardCharts(shouldFormatDashboard, existingChartIds)) {
-          const dashboardChartsRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              requests: buildDashboardChartRequests(dashboardSheetId, existingChartIds)
-            })
-          });
-
-          if (!dashboardChartsRes.ok) {
-            console.warn('Failed to render dashboard charts:', await dashboardChartsRes.text());
-          }
-        }
-      }
-
-      const dataQualitySheetMeta = liveMeta.sheets?.find((sheet: any) => sheet.properties.title === DATA_QUALITY_SHEET_NAME);
-      const dataQualitySheetId = dataQualitySheetMeta?.properties?.sheetId;
-      if (
-        typeof dataQualitySheetId === 'number'
-        && shouldApplyManagedSheetFormatting(DATA_QUALITY_SHEET_NAME, createdSheetTitles, needsInitialSpreadsheetWrite)
-      ) {
-        const dataQualityFormatRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            requests: buildDataQualityFormattingRequests(dataQualitySheetId)
-          })
+      // Write data in batches
+      const chunks = chunkArray(sheet.data, 50);
+      for (let ci = 0; ci < chunks.length; ci++) {
+        const startRow = ci * 50 + 1;
+        const range = `${escapeSheetName(sheet.name)}!A${startRow}`;
+        const updateRes = await sheetsFetch(config.spreadsheetId, `/values/${range}?valueInputOption=${sheet.inputOption || 'RAW'}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: chunks[ci] })
         });
-
-        if (!dataQualityFormatRes.ok) {
-          console.warn('Failed to format Data Quality sheet:', await dataQualityFormatRes.text());
+        if (!updateRes.ok) {
+          console.warn(`Failed to write sheet ${sheet.name} chunk ${ci}:`, await updateRes.text());
         }
       }
     }
 
-    // 7. Finalize the system snapshot only after user-facing sheets are fully updated.
-    await writeSystemSheetSnapshotInBatches(config, systemSheetData, 'ready');
-
-    // 8. Append to History Sheet on every change
-    const now = Date.now();
-    
-    try {
-        const historyRow = [new Date().toISOString(), ...systemSheetData.data.slice(1).map(row => row[0] || '')];
-        const appendRes = await sheetsFetch(config.spreadsheetId, `/values/'${HISTORY_SHEET_NAME}'!A:${MAX_HISTORY_COLUMNS}:append?valueInputOption=RAW`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                values: [historyRow]
-            })
-        });
-        
-        if (appendRes.ok) {
-            safeLocalStorageSet('braindump_last_backup_time', now.toString());
-            console.log("Appended new version to history sheet.");
-        } else {
-            console.warn("Failed to append to history sheet:", await appendRes.text());
-        }
-    } catch (e) {
-        console.warn("Error appending to history sheet:", e);
-    }
-
+    // 5. Cache & cleanup
     writeSpreadsheetCache(finalJsonString);
-    safeLocalStorageRemove(LEGACY_LOCAL_STORAGE_KEY);
     lastSnapshot = finalJsonString;
-    needsInitialSpreadsheetWrite = false;
-    return { 
-      success: true, 
-      method: 'cloud',
-      mergedData: reconciled ? finalDb : undefined
-    };
+    isHydrated = true;
 
+    return { success: true, method: 'cloud' };
   } catch (error: any) {
-    console.error("Failed to sync to Spreadsheet:", error);
-    if (error.response) {
-      try {
-          console.error("Error response:", await error.response.text());
-      } catch(e) {}
-    }
-    return { success: false, method: 'error', error: error.message || 'Unknown error during spreadsheet sync' }; 
+    console.error('Failed to sync to Spreadsheet:', error);
+    return { success: false, method: 'error', error: error.message || 'Unknown sync error' };
   }
 };
 
+const chunkArray = <T>(arr: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+};
 const enqueueSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<SyncResult> => {
   const task = () => performSync(...args);
   const queuedTask = operationQueue.then(() => task(), () => task());
