@@ -6,23 +6,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
-    version: 'v0.3.95',
-    date: 'May 2026',
-    items: [
-      'Saving entries now show commodity (saving) and subcommodity (goal_funding) fields in the edit card, matching the canonical metadata that the parser already assigns behind the scenes.',
-      'Shopping transactions (completed purchases that appear in the money tab) now carry commodity, subcommodity, and canonical metadata the same way regular expenses do.',
-      'Commodity and subcommodity edit fields are now available for all finance types (expense, income, saving) instead of only expenses.',
-      'Sync race condition fixed: deleting an entry from the spreadsheet no longer causes it to reappear after the next cloud save cycle.',
-      'Parser now recognizes badminton, futsal, gym, and sports activities as hobby/sports commodity; iuran, dues, membership as social/membership.',
-      'Saving keywords (nabung, tabung, invest, goal, deposit) now set commodity=saving and subcommodity=goal_funding at parse time.',
-    ],
-  },
-  {
     version: 'v0.3.94',
     date: 'May 2026',
     items: [
       'Budget category backfill now works for savings entries too (not just expenses), via canonicalizer and async enrichment paths.',
       'Budget category API fallback: when a parsed budgetCategory exists but no configured rule matches by name, the first rule is used as pragmatic default instead of returning None.',
+      'Commodity and subcommodity edit fields are now available for all finance types (expense, income, saving) instead of only expenses.',
+      'Saving entries now show commodity (saving) and subcommodity (goal_funding) fields in the edit card.',
+      'Shopping transactions now carry commodity, subcommodity, and canonical metadata the same way regular expenses do.',
+      'Parser now recognizes badminton, futsal, gym, and sports activities as hobby/sports commodity; iuran, dues, membership as social/membership.',
+      'Saving keywords (nabung, tabung, invest, goal, deposit) now set commodity=saving and subcommodity=goal_funding at parse time.',
     ],
   },
   {
