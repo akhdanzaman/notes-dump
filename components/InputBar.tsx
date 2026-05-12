@@ -29,6 +29,7 @@ interface InputBarProps {
   reviewCenterActive?: boolean;
   reviewCenterCount?: number;
   onOpenReviewCenter?: () => void;
+  error?: string | null;
 }
 
 const SUGGESTIONS = [
@@ -55,7 +56,8 @@ const InputBar: React.FC<InputBarProps> = ({
   showReviewCenterButton,
   reviewCenterActive,
   reviewCenterCount,
-  onOpenReviewCenter
+  onOpenReviewCenter,
+  error
 }) => {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -116,6 +118,15 @@ const InputBar: React.FC<InputBarProps> = ({
     <div data-global-composer="true" className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none lg:px-0 lg:pb-6">
       <div className="max-w-2xl mx-auto pointer-events-none lg:mx-0 lg:max-w-none lg:w-full">
         <div className="relative">
+          {/* Error Banner */}
+          {error && (
+            <div className="absolute bottom-full left-0 w-full mb-3 pointer-events-auto">
+              <div className="mx-4 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 text-xs font-medium animate-in slide-in-from-bottom-2">
+                ⚠️ {error}
+              </div>
+            </div>
+          )}
+
           {/* Top Content (e.g. Pending Reviews) */}
           {topContent && (
             <div className="absolute bottom-full left-0 w-full mb-16 pointer-events-none">
