@@ -518,30 +518,15 @@ export const useBrainDumpData = () => {
         const itemsToSave = newItems || itemsRef.current;
         setSaveStatus('saving');
 
-        const configToSave = newConfig || budgetConfigRef.current;
-        const promptToSave = newPrompt !== undefined ? newPrompt : customPromptRef.current;
-        const skillsToSave = newSkills || skillsRef.current;
-        const walletsToSave = newWallets || walletsRef.current;
-        const themesToSave = newThemes || monthlyThemesRef.current;
-        const settingsToSave = newAppSettings || appSettingsRef.current;
-        const canonicalRulesToSave = newCanonicalRules || canonicalRulesRef.current;
-
-        // 1. Save to localStorage FIRST — guarantees data survives refresh even if cloud sync fails
         try {
-            localStorage.setItem('braindump_chat_history', JSON.stringify({
-                data: itemsToSave,
-                budgetConfig: configToSave,
-                customPrompt: promptToSave,
-                skills: skillsToSave,
-                wallets: walletsToSave,
-                monthlyThemes: themesToSave,
-                appSettings: settingsToSave,
-                canonicalRules: canonicalRulesToSave,
-            }));
-        } catch (_) { /* localStorage full — non-critical */ }
+            const configToSave = newConfig || budgetConfigRef.current;
+            const promptToSave = newPrompt !== undefined ? newPrompt : customPromptRef.current;
+            const skillsToSave = newSkills || skillsRef.current;
+            const walletsToSave = newWallets || walletsRef.current;
+            const themesToSave = newThemes || monthlyThemesRef.current;
+            const settingsToSave = newAppSettings || appSettingsRef.current;
+            const canonicalRulesToSave = newCanonicalRules || canonicalRulesRef.current;
 
-        // 2. Attempt cloud sync to Google Sheets
-        try {
             const result: SyncResult = await syncData(
                 itemsToSave,
                 configToSave,
@@ -555,45 +540,46 @@ export const useBrainDumpData = () => {
                 forceOverwrite
             );
 
-            if (result.success) {
-                if (result.mergedData) {
-                    const remoteSchema = result.mergedData;
-                    setItems(currentItems => {
-                        const merged = mergeDbData(
-                            { data: currentItems, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema,
-                            remoteSchema,
-                            { data: baseItems } as DbSchema
-                        );
-                        return merged.data;
-                    });
-                    setSkills(currentSkills => {
-                        const merged = mergeDbData({ data: itemsRef.current, skills: currentSkills } as DbSchema, remoteSchema);
-                        return merged.skills || [];
-                    });
-                    setWallets(currentWallets => {
-                        const merged = mergeDbData({ data: itemsRef.current, wallets: currentWallets } as DbSchema, remoteSchema);
-                        return merged.wallets || [];
-                    });
-                    if (remoteSchema.monthlyThemes) setMonthlyThemes(prev => ({ ...remoteSchema.monthlyThemes, ...prev }));
-                    if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
-                }
-                if (settingsToSave.googleCalendarSyncEnabled) {
-                    try {
-                        await syncItemsToGoogleCalendar(itemsToSave, settingsToSave);
-                    } catch (calendarError) {
-                        console.warn('Google Calendar sync failed after data save', calendarError);
-                    }
-                }
-                setSaveStatus('synced');
-            } else {
-                // Cloud sync didn't succeed but data is already in localStorage
-                console.warn('Cloud sync issue (data saved locally):', result.error);
-                setSaveStatus('local');
+            if (!result.success) {
+                throw new Error(result.error || "Sync failed, preserving local state.");
             }
-        } catch (syncErr) {
-            // Cloud sync threw — data is safe in localStorage
-            console.error("Cloud sync error (data saved locally):", syncErr);
-            setSaveStatus('local');
+
+            if (result.mergedData) {
+                const remoteSchema = result.mergedData;
+                setItems(currentItems => {
+                    const merged = mergeDbData(
+                        { data: currentItems, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema,
+                        remoteSchema,
+                        { data: baseItems } as DbSchema
+                    );
+                    return merged.data;
+                });
+                setSkills(currentSkills => {
+                    const merged = mergeDbData({ data: itemsRef.current, skills: currentSkills } as DbSchema, remoteSchema);
+                    return merged.skills || [];
+                });
+                setWallets(currentWallets => {
+                    const merged = mergeDbData({ data: itemsRef.current, wallets: currentWallets } as DbSchema, remoteSchema);
+                    return merged.wallets || [];
+                });
+                if (remoteSchema.monthlyThemes) setMonthlyThemes(prev => ({ ...remoteSchema.monthlyThemes, ...prev }));
+                if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
+            }
+
+            if (settingsToSave.googleCalendarSyncEnabled) {
+                try {
+                    await syncItemsToGoogleCalendar(itemsToSave, settingsToSave);
+                } catch (calendarError) {
+                    console.warn('Google Calendar sync failed after data save', calendarError);
+                    setError(`Data tersimpan, tapi sync Google Calendar gagal: ${calendarError instanceof Error ? calendarError.message : 'Unknown error'}`);
+                }
+            }
+
+            setSaveStatus('synced');
+        } catch (e) {
+            console.error("Sync error:", e);
+            setSaveStatus('error');
+            setError(`Gagal menyimpan data ke cloud: ${e instanceof Error ? e.message : 'Unknown error'}`);
         }
     }, []);
 
@@ -765,31 +751,14 @@ export const useBrainDumpData = () => {
             };
 
             // Load local data first for instant display
-            // 1. Primary: braindump_chat_history (always written on every save)
             try {
-                const localRaw = localStorage.getItem('braindump_chat_history');
-                if (localRaw) {
-                    const localData = JSON.parse(localRaw) as DbSchema;
-                    if (localData && Array.isArray(localData.data)) {
-                        applyData(localData);
-                        setLoading(false);
-                    }
+                const cachedData = getCachedSpreadsheetDb();
+                if (cachedData) {
+                    applyData(cachedData);
+                    setLoading(false); // Stop loading spinner if we have local data
                 }
             } catch (e) {
-                console.warn("Failed to load braindump_chat_history", e);
-            }
-
-            // 2. Fallback: spreadsheet cache (for data synced before this fix)
-            if (itemsRef.current.length === 0) {
-                try {
-                    const cachedData = getCachedSpreadsheetDb();
-                    if (cachedData) {
-                        applyData(cachedData);
-                        setLoading(false);
-                    }
-                } catch (e) {
-                    console.warn("Failed to load spreadsheet cache initially", e);
-                }
+                console.warn("Failed to load spreadsheet cache initially", e);
             }
 
             const { data } = await fetchDb();
