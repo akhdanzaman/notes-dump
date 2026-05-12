@@ -7,6 +7,7 @@ import { getValidGoogleAccessToken } from "./googleProfileService";
 
 const SETTINGS_KEY = 'braindump_spreadsheet_config';
 const SPREADSHEET_CACHE_KEY = 'braindump_spreadsheet_cache';
+const PENDING_SPREADSHEET_WRITE_KEY = 'braindump_spreadsheet_pending_write';
 const LEGACY_LOCAL_STORAGE_KEY = 'braindump_db';
 const SYSTEM_SHEET_NAME = 'App_State_Do_Not_Edit';
 const HISTORY_SHEET_NAME = 'App_State_History';
@@ -40,6 +41,12 @@ const ASSUMED_EXISTING_SHEET_TITLES = new Set<string>([
 ]);
 
 type SystemSheetSyncStatus = 'ready' | 'writing';
+
+type PendingSpreadsheetWrite = {
+  id: string;
+  createdAt: string;
+  data: DbSchema;
+};
 
 type SystemSheetSnapshotMeta = {
   marker: string;
@@ -968,6 +975,42 @@ const writeSpreadsheetCache = (jsonString: string) => {
 
 export const cacheSpreadsheetDbForMigration = (db: DbSchema) => {
   writeSpreadsheetCache(JSON.stringify(validateSchema(db)));
+};
+
+export const cachePendingSpreadsheetWrite = (db: DbSchema): string => {
+  const pending: PendingSpreadsheetWrite = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    createdAt: new Date().toISOString(),
+    data: validateSchema(db),
+  };
+  writeSpreadsheetCache(JSON.stringify(pending.data));
+  safeLocalStorageSet(PENDING_SPREADSHEET_WRITE_KEY, JSON.stringify(pending));
+  return pending.id;
+};
+
+export const getPendingSpreadsheetWrite = (): PendingSpreadsheetWrite | null => {
+  const jsonString = safeLocalStorageGet(PENDING_SPREADSHEET_WRITE_KEY);
+  if (!jsonString) return null;
+  try {
+    const parsed = JSON.parse(jsonString) as Partial<PendingSpreadsheetWrite>;
+    if (!parsed.id || !parsed.data) return null;
+    return {
+      id: parsed.id,
+      createdAt: parsed.createdAt || new Date(0).toISOString(),
+      data: validateSchema(parsed.data),
+    };
+  } catch (error) {
+    console.warn('Failed to read pending spreadsheet write cache', error);
+    return null;
+  }
+};
+
+export const clearPendingSpreadsheetWrite = (id?: string) => {
+  if (id) {
+    const pending = getPendingSpreadsheetWrite();
+    if (pending && pending.id !== id) return;
+  }
+  safeLocalStorageRemove(PENDING_SPREADSHEET_WRITE_KEY);
 };
 
 const shouldRetrySpreadsheetRequest = (status: number) => status === 401 || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;

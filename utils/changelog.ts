@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.96',
+    date: 'May 2026',
+    items: [
+      'Local writes are now persisted immediately as a pending spreadsheet write before the debounced cloud save runs, so refreshing the web app cannot lose a just-created entry.',
+      'On startup, if the cloud fetch is missing a pending local write, the app merges the pending local data back in and forces a spreadsheet write to repair the cloud copy.',
+    ],
+  },
+  {
     version: 'v0.3.95',
     date: 'May 2026',
     items: [
