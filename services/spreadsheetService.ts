@@ -1062,7 +1062,9 @@ const sheetsFetch = async (
 ): Promise<Response> => {
   if (getSpreadsheetConfig()?.authMode === 'service_account') {
     const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
-    if (await isServiceAccountProxyInvocationFailure(response)) {
+    // Try OAuth fallback for any non-success service-account response
+    // (not just 500+ proxy failures — 403s from missing Editor share also need fallback)
+    if (!response.ok) {
       const fallback = await tryOauthSheetsFallback(spreadsheetId, path, init, tokenOverride);
       if (fallback) return fallback;
       return response;
