@@ -180,12 +180,20 @@ export const getFinanceItems = (
     let finance = items.filter(i => i.type === ItemType.FINANCE && (i.status === 'done' || i.status === 'pending') && (i.meta.amount || 0) > 0);
 
     // 2. Implicit Expenses
-    const implicitExpenses = items.filter(i =>
+    const isMoneyPlanItem = (i: BrainDumpItem) =>
         (i.type === ItemType.SHOPPING || i.type === ItemType.TODO) &&
-        i.status === 'done' &&
         (i.meta.amount || 0) > 0 &&
         i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment' &&
-        i.meta.shoppingCategory !== 'routine'
+        i.meta.shoppingCategory !== 'routine';
+
+    const implicitExpenses = items.filter(i =>
+        isMoneyPlanItem(i) &&
+        i.status === 'done'
+    );
+
+    const plannedExpenses = items.filter(i =>
+        isMoneyPlanItem(i) &&
+        i.status !== 'done'
     );
 
     // Combine them
@@ -300,10 +308,10 @@ export const getFinanceItems = (
     let projectedUncategorized = 0;
 
     // We need ALL items for the month/year (unfiltered) to calculate totals accurately
-    let baseTransactions = [...finance, ...implicitExpenses].filter(i => {
+    let baseTransactions = [...finance, ...implicitExpenses, ...plannedExpenses].filter(i => {
         const dateStr = (i.type === ItemType.FINANCE)
             ? (i.meta.date || i.created_at)
-            : getShoppingTransactionDate(i);
+            : (i.status === 'done' ? getShoppingTransactionDate(i) : (getShoppingDueDate(i) || getShoppingTransactionDate(i)));
         if (!dateStr) return false;
         const d = new Date(dateStr);
         return isDateInViewPeriod(d);

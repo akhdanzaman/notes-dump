@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.95',
+    date: 'May 2026',
+    items: [
+      'Older spreadsheets now auto-migrate into the current direct-sheet sync format by reading legacy App_State snapshots or user-editable sheets when All Items (Raw) is missing.',
+      'Spreadsheet reload now preserves current export config sheets, including budget rules, monthly themes, settings, wallets, and skills, so migrated sheets stay compatible with the active service.',
+      'Weekly money analytics now includes pending dated shopping/todo amounts in planned budget totals without showing them as completed transactions.',
+    ],
+  },
+  {
     version: 'v0.3.94',
     date: 'May 2026',
     items: [

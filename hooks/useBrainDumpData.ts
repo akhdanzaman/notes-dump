@@ -685,8 +685,9 @@ export const useBrainDumpData = () => {
             setFetchStatus('syncing');
             setError(null);
 
-            const applyData = (data: DbSchema) => {
+            const applyData = (data: DbSchema): DbSchema => {
                 let walletsToApply = data.wallets || walletsRef.current;
+                let appliedData: DbSchema = data;
                 if (Array.isArray(data.data)) {
                     const normalizedData = data.data.map(item => {
                         const meta = normalizeDeepWorkTodoMeta({
@@ -726,6 +727,8 @@ export const useBrainDumpData = () => {
                     replaceHistoricalCanonicalReviews(canonicalSweep.reviews);
                     setItems(canonicalSweep.items);
 
+                    appliedData = { ...data, data: canonicalSweep.items, wallets: walletsForSweep };
+
                     if (investmentWalletMigration.changed || JSON.stringify(canonicalSweep.items) !== JSON.stringify(data.data)) {
                         saveAndSync(canonicalSweep.items, data.budgetConfig, data.customPrompt, data.skills, walletsForSweep, data.monthlyThemes, data.appSettings, data.canonicalRules);
                     }
@@ -748,6 +751,8 @@ export const useBrainDumpData = () => {
                 if (data.appSettings) setAppSettings(data.appSettings);
                 if (data.chatHistory) setChatHistory(data.chatHistory);
                 if (data.canonicalRules) setCanonicalRules(data.canonicalRules);
+
+                return appliedData;
             };
 
             // Load local data first for instant display
@@ -761,9 +766,22 @@ export const useBrainDumpData = () => {
                 console.warn("Failed to load spreadsheet cache initially", e);
             }
 
-            const { data } = await fetchDb();
+            const { data, hasChanges } = await fetchDb();
             if (data) {
-                applyData(data);
+                const appliedData = applyData(data);
+                if (hasChanges && !isUsingLocalStorage()) {
+                    saveAndSync(
+                        appliedData.data || [],
+                        appliedData.budgetConfig,
+                        appliedData.customPrompt,
+                        appliedData.skills,
+                        appliedData.wallets,
+                        appliedData.monthlyThemes,
+                        appliedData.appSettings,
+                        appliedData.canonicalRules,
+                        true
+                    );
+                }
             }
 
             setFetchStatus(isUsingLocalStorage() ? 'local' : 'synced');

@@ -52,7 +52,7 @@ type SystemSheetSnapshotMeta = {
 export const SPREADSHEET_FETCH_RANGES = {
   Transactions: 'A:K',
   Todos: 'A:AA',
-  Shopping: 'A:I',
+  Shopping: 'A:P',
   Events: 'A:H',
   'Notes & Journals': 'A:F',
   'Skill Logs': 'A:F',
@@ -1114,144 +1114,246 @@ export const fetchSpreadsheetDb = (skipLocalStorage = false): Promise<{ data: Db
   return queuedTask;
 };
 
-// ── Simplified fetch: reads "All Items (Raw)" + config sheets directly ──
+// ── Fetch/migration path: current raw sheet first, then legacy system/user sheets ──
+type SpreadsheetReadSource = 'current_raw' | 'legacy_system_snapshot' | 'legacy_user_sheets' | 'cache' | 'empty';
+
+const batchGetSpreadsheetRanges = async (config: SpreadsheetConfig, ranges: string[]) => {
+  if (ranges.length === 0) return [];
+
+  const path = `/values:batchGet?ranges=${ranges.map(encodeURIComponent).join('&ranges=')}`;
+  const res = await sheetsFetch(config.spreadsheetId, path);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch spreadsheet data: ${res.status} ${res.statusText} - ${errText}`);
+  }
+
+  const batchData = await res.json();
+  return batchData.valueRanges || [];
+};
+
+const buildCurrentRawDbFromValueRanges = (valueRanges: any[]): DbSchema => {
+  const rawSheet = valueRanges.find((r: any) => r.range?.includes(ALL_ITEMS_SHEET));
+  const rawRows = rawSheet?.values || [];
+  const rawHeaders = rawRows[0] || [];
+  const items = rawRows
+    .slice(1)
+    .map((row: any[], i: number) => parseRawItemRow(row, i + 1, rawHeaders))
+    .filter(Boolean) as BrainDumpItem[];
+  const configSheets = parseConfigSheets(valueRanges || []);
+
+  return {
+    data: items,
+    wallets: configSheets.wallets,
+    skills: configSheets.skills,
+    budgetConfig: configSheets.budgetConfig,
+    monthlyThemes: configSheets.monthlyThemes,
+    appSettings: configSheets.appSettings,
+  };
+};
+
+const fetchCurrentRawSpreadsheetDb = async (config: SpreadsheetConfig, existingTitles: Set<string>) => {
+  const rangesToFetch: string[] = [];
+  if (existingTitles.has(ALL_ITEMS_SHEET)) {
+    rangesToFetch.push(`${escapeSheetName(ALL_ITEMS_SHEET)}!A:AZ`);
+  }
+
+  for (const name of ['Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings']) {
+    if (existingTitles.has(name)) {
+      rangesToFetch.push(`${escapeSheetName(name)}!A:E`);
+    }
+  }
+
+  const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
+  return buildCurrentRawDbFromValueRanges(valueRanges);
+};
+
+const fetchLegacySystemSnapshotDb = async (config: SpreadsheetConfig, existingTitles: Set<string>): Promise<DbSchema | null> => {
+  if (!existingTitles.has(SYSTEM_SHEET_NAME)) return null;
+
+  const res = await sheetsFetch(config.spreadsheetId, `/values/${escapeSheetName(SYSTEM_SHEET_NAME)}!A:${MAX_HISTORY_COLUMNS}`);
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 404) return null;
+    const errText = await res.text();
+    throw new Error(`Failed to fetch legacy system snapshot: ${res.status} ${res.statusText} - ${errText}`);
+  }
+
+  const sheet = await res.json();
+  if (!isValidSystemSnapshotSheet(sheet)) return null;
+
+  const snapshot = extractSystemSheetSnapshot(sheet);
+  if (snapshot.status === 'writing') {
+    console.warn('Legacy system snapshot is marked as writing; attempting migration from readable chunks anyway.');
+  }
+
+  return validateSchema(safeJsonParse(snapshot.jsonString, { data: [] }));
+};
+
+const fetchLegacyUserSheetDb = async (config: SpreadsheetConfig, existingTitles: Set<string>, baseDb: DbSchema = { data: [] }) => {
+  const rangesToFetch = Object.entries(SPREADSHEET_FETCH_RANGES)
+    .filter(([sheetName]) => existingTitles.has(sheetName))
+    .map(([sheetName, range]) => `${escapeSheetName(sheetName)}!${range}`);
+
+  if (rangesToFetch.length === 0) {
+    return { data: baseDb, reconciled: false };
+  }
+
+  const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
+  const reconciledDb = reconcileSpreadsheetData(validateSchema(baseDb), valueRanges || []);
+  const reconciled = JSON.stringify(reconciledDb) !== JSON.stringify(validateSchema(baseDb));
+  return { data: reconciledDb, reconciled };
+};
+
 const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalStorage: boolean) => {
   const { existingTitles } = await fetchSpreadsheetMetadata(config, true);
 
-  const rangesToFetch: string[] = [];
-  if (existingTitles.has(ALL_ITEMS_SHEET)) {
-    rangesToFetch.push(`'${ALL_ITEMS_SHEET}'!A:AS`);
-  }
-  // Config sheets
-  for (const name of ['Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings']) {
-    if (existingTitles.has(name)) {
-      rangesToFetch.push(`'${name}'!A:E`);
+  let source: SpreadsheetReadSource = 'empty';
+  let dbData: DbSchema = { data: [] };
+  let reconciled = false;
+
+  const currentRawDb = await fetchCurrentRawSpreadsheetDb(config, existingTitles);
+  if (currentRawDb.data.length > 0) {
+    source = 'current_raw';
+    const userSheetMerge = await fetchLegacyUserSheetDb(config, existingTitles, currentRawDb);
+    dbData = userSheetMerge.data;
+    reconciled = userSheetMerge.reconciled;
+  } else {
+    const legacySnapshotDb = await fetchLegacySystemSnapshotDb(config, existingTitles);
+    if (legacySnapshotDb?.data?.length) {
+      source = 'legacy_system_snapshot';
+      const userSheetMerge = await fetchLegacyUserSheetDb(config, existingTitles, legacySnapshotDb);
+      dbData = userSheetMerge.data;
+      reconciled = true;
+    } else {
+      const legacyUserSheets = await fetchLegacyUserSheetDb(config, existingTitles, currentRawDb);
+      if (legacyUserSheets.data.data.length > 0) {
+        source = 'legacy_user_sheets';
+        dbData = legacyUserSheets.data;
+        reconciled = true;
+      }
     }
-  }
-
-  let items: BrainDumpItem[] = [];
-  let configSheets: ReturnType<typeof parseConfigSheets> | null = null;
-
-  if (rangesToFetch.length > 0) {
-    const path = `/values:batchGet?ranges=${rangesToFetch.map(encodeURIComponent).join('&ranges=')}`;
-    const res = await sheetsFetch(config.spreadsheetId, path);
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Failed to fetch spreadsheet data: ${res.status} ${res.statusText} - ${errText}`);
-    }
-    const batchData = await res.json();
-
-    // Parse All Items (Raw)
-    const rawSheet = batchData.valueRanges?.find((r: any) => r.range?.includes(ALL_ITEMS_SHEET));
-    if (rawSheet?.values) {
-      items = rawSheet.values
-        .map((row: any[], i: number) => parseRawItemRow(row, i))
-        .filter(Boolean) as BrainDumpItem[];
-    }
-
-    // Parse config sheets
-    configSheets = parseConfigSheets(batchData.valueRanges || []);
   }
 
   // Fallback to cache for empty/new spreadsheet
-  if (items.length === 0) {
+  if (dbData.data.length === 0) {
     const cached = getCachedSpreadsheetDb();
     if (cached?.data?.length) {
-      items = cached.data;
+      dbData = cached;
+      source = 'cache';
       console.log('Seeded items from spreadsheet cache');
     }
   }
 
-  const dbData: DbSchema = {
-    data: items,
-    wallets: configSheets?.wallets || [],
-    skills: configSheets?.skills || [],
-    budgetConfig: configSheets?.budgetConfig,
-    monthlyThemes: configSheets?.monthlyThemes || {},
-    appSettings: configSheets?.appSettings,
-  };
+  const normalizedDb = validateSchema(dbData);
+  if (source === 'legacy_system_snapshot' || source === 'legacy_user_sheets' || reconciled) {
+    needsInitialSpreadsheetWrite = true;
+  }
 
   if (!skipLocalStorage) {
     try {
-      writeSpreadsheetCache(JSON.stringify(dbData));
+      writeSpreadsheetCache(JSON.stringify(normalizedDb));
     } catch (e) {
       console.warn('Failed to save to local storage', e);
     }
     isHydrated = true;
   }
 
-  return { data: dbData, sha: 'spreadsheet-sha', reconciled: false };
+  return {
+    data: normalizedDb,
+    sha: `spreadsheet-${source}-sha`,
+    reconciled: source === 'legacy_system_snapshot' || source === 'legacy_user_sheets' || reconciled,
+  };
 };
 
 // ── Direct sheet fetch: reads "All Items (Raw)" + config sheets ──
 const ALL_ITEMS_SHEET = 'All Items (Raw)';
 
-const parseRawItemRow = (row: any[], index: number): BrainDumpItem | null => {
-  const id = String(row[0] || '').trim();
+const readHeaderAwareCell = (headers: unknown[], row: any[], name: string, fallbackIndex: number, aliases: string[] = []) => {
+  const normalizedHeaders = headers.map(header => String(header || '').trim());
+  const candidates = [name, ...aliases];
+  const index = candidates
+    .map(candidate => normalizedHeaders.indexOf(candidate))
+    .find(candidateIndex => candidateIndex >= 0);
+  return index !== undefined && index >= 0 ? row[index] : row[fallbackIndex];
+};
+
+const parseRawItemRow = (row: any[], index: number, headers: unknown[] = []): BrainDumpItem | null => {
+  const cell = (name: string, fallbackIndex: number, aliases: string[] = []) => readHeaderAwareCell(headers, row, name, fallbackIndex, aliases);
+  const id = String(cell('ID', 0) || '').trim();
   if (!id) return null; // header or empty row
   if (id === 'ID') return null; // header
 
   const meta: any = {};
-  if (row[2]) meta.title = String(row[2]);
-  if (row[7]) meta.date = String(row[7]);
-  const amount = Number(row[8]);
+  if (cell('Title', 2)) meta.title = String(cell('Title', 2));
+  if (cell('Date', 7)) meta.date = String(cell('Date', 7));
+  const amount = Number(cell('Amount', 8));
   if (!isNaN(amount)) meta.amount = amount;
-  if (row[9]) meta.tags = String(row[9]).split(',').map((t: string) => t.trim()).filter(Boolean);
-  if (row[10]) meta.paymentMethod = String(row[10]);
-  if (row[11]) meta.canonical_paymentMethod = String(row[11]);
-  if (row[12]) meta.merchant = String(row[12]);
-  if (row[13]) meta.canonical_merchant = String(row[13]);
-  if (row[14]) meta.commodity = String(row[14]);
-  if (row[15]) meta.canonical_commodity = String(row[15]);
-  if (row[16]) meta.subcommodity = String(row[16]);
-  if (row[17]) meta.canonical_subcommodity = String(row[17]);
-  if (row[18]) meta.toWallet = String(row[18]);
-  if (row[19]) meta.financeType = String(row[19]);
-  if (row[20]) meta.budgetCategory = String(row[20]);
-  if (row[21]) meta.skillName = String(row[21]);
-  if (row[22]) meta.skillId = String(row[22]);
-  const duration = Number(row[23]);
+  if (cell('Tags', 9)) meta.tags = String(cell('Tags', 9)).split(',').map((t: string) => t.trim()).filter(Boolean);
+  if (cell('Payment_Method', 10)) meta.paymentMethod = String(cell('Payment_Method', 10));
+  if (cell('Canonical_Payment_Method', 11)) meta.canonical_paymentMethod = String(cell('Canonical_Payment_Method', 11));
+  if (cell('Merchant', 12)) meta.merchant = String(cell('Merchant', 12));
+  if (cell('Canonical_Merchant', 13)) meta.canonical_merchant = String(cell('Canonical_Merchant', 13));
+  if (cell('Commodity', 14)) meta.commodity = String(cell('Commodity', 14));
+  if (cell('Canonical_Commodity', 15)) meta.canonical_commodity = String(cell('Canonical_Commodity', 15));
+  if (cell('Subcommodity', 16)) meta.subcommodity = String(cell('Subcommodity', 16));
+  if (cell('Canonical_Subcommodity', 17)) meta.canonical_subcommodity = String(cell('Canonical_Subcommodity', 17));
+  if (cell('To_Wallet', 18)) meta.toWallet = String(cell('To_Wallet', 18));
+  if (cell('Finance_Type', 19)) meta.financeType = String(cell('Finance_Type', 19));
+  if (cell('Budget_Category', 20)) meta.budgetCategory = String(cell('Budget_Category', 20));
+  if (cell('Skill_Name', 21)) meta.skillName = String(cell('Skill_Name', 21));
+  if (cell('Skill_ID', 22)) meta.skillId = String(cell('Skill_ID', 22));
+  const duration = Number(cell('Duration_Minutes', 23));
   if (!isNaN(duration)) meta.durationMinutes = duration;
-  if (row[24]) meta.shoppingCategory = String(row[24]);
-  if (row[25]) meta.investmentAssetType = String(row[25]);
-  if (row[26]) meta.investmentSymbol = String(row[26]);
-  const units = Number(row[27]);
+  if (cell('Shopping_Category', 24)) meta.shoppingCategory = String(cell('Shopping_Category', 24));
+  if (cell('Investment_Type', 25)) meta.investmentAssetType = String(cell('Investment_Type', 25));
+  if (cell('Investment_Code', 26, ['Investment_Symbol'])) meta.investmentSymbol = String(cell('Investment_Code', 26, ['Investment_Symbol']));
+  const units = Number(cell('Investment_Units', 27));
   if (!isNaN(units)) meta.investmentUnits = units;
-  const avgBuy = Number(row[28]);
+  const avgBuy = Number(cell('Investment_Avg_Buy', 28));
   if (!isNaN(avgBuy)) meta.investmentAveragePrice = avgBuy;
-  const curPrice = Number(row[29]);
+  const curPrice = Number(cell('Investment_Current_Price', 29));
   if (!isNaN(curPrice)) meta.investmentCurrentPrice = curPrice;
-  if (row[30]) meta.investmentPlatform = String(row[30]);
-  const recurrence = Number(row[31]);
+  if (cell('Investment_Platform', 30)) meta.investmentPlatform = String(cell('Investment_Platform', 30));
+  const recurrence = Number(cell('Recurrence_Days', 31));
   if (!isNaN(recurrence)) meta.recurrenceDays = recurrence;
-  if (row[32]) meta.priority = String(row[32]);
-  if (row[33]) meta.parentTodoId = String(row[33]);
-  if (row[34]) meta.childTodoIds = String(row[34]).split(',').map((t: string) => t.trim()).filter(Boolean);
-  if (row[35]) meta.deepWorkParent = row[35] === 'parent' ? true : undefined;
-  if (row[36]) meta.deepWorkStatus = String(row[36]);
-  if (row[37]) meta.deepWorkCompletionMode = String(row[37]);
-  if (row[38]) meta.deepWorkNextAction = String(row[38]);
-  if (row[39]) meta.deepWorkFinalOutput = String(row[39]);
-  const sessionEstimate = Number(row[40]);
+  if (cell('Priority', 32)) meta.priority = String(cell('Priority', 32));
+  if (cell('Parent_Todo_ID', 33, ['Parent_ID'])) meta.parentTodoId = String(cell('Parent_Todo_ID', 33, ['Parent_ID']));
+  if (cell('Child_Todo_IDs', 34, ['Child_IDs'])) meta.childTodoIds = String(cell('Child_Todo_IDs', 34, ['Child_IDs'])).split(',').map((t: string) => t.trim()).filter(Boolean);
+  if (cell('Deep_Work_Role', 35)) meta.deepWorkParent = cell('Deep_Work_Role', 35) === 'parent' ? true : undefined;
+  if (cell('Deep_Work_Status', 36)) meta.deepWorkStatus = String(cell('Deep_Work_Status', 36));
+  if (cell('Deep_Work_Completion_Mode', 37, ['Completion_Mode'])) meta.deepWorkCompletionMode = String(cell('Deep_Work_Completion_Mode', 37, ['Completion_Mode']));
+  if (cell('Deep_Work_Next_Action', 38, ['Next_Action'])) meta.deepWorkNextAction = String(cell('Deep_Work_Next_Action', 38, ['Next_Action']));
+  if (cell('Deep_Work_Final_Output', 39, ['Final_Output'])) meta.deepWorkFinalOutput = String(cell('Deep_Work_Final_Output', 39, ['Final_Output']));
+  const sessionEstimate = Number(cell('Deep_Work_Session_Estimate_Min', 40, ['Session_Estimate_Min']));
   if (!isNaN(sessionEstimate)) meta.deepWorkSessionEstimateMinutes = sessionEstimate;
-  if (row[41]) meta.deepWorkBlockerStatus = String(row[41]);
-  if (row[42]) meta.deepWorkBlockerCheck = String(row[42]);
-  const stepIndex = Number(row[43]);
+  if (cell('Deep_Work_Blocker_Status', 41, ['Blocker_Status'])) meta.deepWorkBlockerStatus = String(cell('Deep_Work_Blocker_Status', 41, ['Blocker_Status']));
+  if (cell('Deep_Work_Blocker_Check', 42, ['Blocker_Check'])) meta.deepWorkBlockerCheck = String(cell('Deep_Work_Blocker_Check', 42, ['Blocker_Check']));
+  const stepIndex = Number(cell('Deep_Work_Step_Index', 43, ['Step_Order']));
   if (!isNaN(stepIndex)) meta.deepWorkStepIndex = stepIndex;
-  const stepCount = Number(row[44]);
+  const stepCount = Number(cell('Deep_Work_Step_Count', 44, ['Step_Count']));
   if (!isNaN(stepCount)) meta.deepWorkStepCount = stepCount;
-  if (row[45]) {
-    try { meta.subtasks = JSON.parse(String(row[45])); } catch { /* ignore */ }
+  if (cell('Deep_Work_Subtasks', 45, ['Subtasks'])) {
+    try { meta.subtasks = JSON.parse(String(cell('Deep_Work_Subtasks', 45, ['Subtasks']))); } catch { /* ignore */ }
   }
 
   return {
     id,
-    type: String(row[1] || ItemType.NOTE) as ItemType,
-    content: String(row[3] || ''),
-    status: String(row[4] || 'pending') as BrainDumpItem['status'],
-    created_at: String(row[5] || new Date().toISOString()),
-    completed_at: row[6] ? String(row[6]) : undefined,
+    type: String(cell('Type', 1) || ItemType.NOTE) as ItemType,
+    content: String(cell('Content', 3) || ''),
+    status: String(cell('Status', 4) || 'pending') as BrainDumpItem['status'],
+    created_at: String(cell('Created_At', 5) || new Date().toISOString()),
+    completed_at: cell('Completed_At', 6) ? String(cell('Completed_At', 6)) : undefined,
     meta,
+  };
+};
+
+const truthySheetValue = (value: unknown) => ['true', '1', 'yes', 'y', 'on'].includes(String(value || '').trim().toLowerCase());
+
+const parseBudgetRuleValue = (value: unknown) => {
+  const raw = String(value || '').trim();
+  const match = raw.match(/([\d.]+)%?\s*(?:\(ID:\s*(.+?)\))?$/i);
+  return {
+    percentage: match ? Number(match[1]) || 0 : Number(raw) || 0,
+    id: match?.[2]?.trim(),
   };
 };
 
@@ -1267,69 +1369,117 @@ const parseConfigSheets = (valueRanges: any[]): {
   let budgetConfig: BudgetConfig | undefined;
   const monthlyThemes: Record<string, string> = {};
   let appSettings: AppSettings | undefined;
+  const ensureBudgetConfig = () => {
+    if (!budgetConfig) budgetConfig = { monthlyIncome: 0, rules: [] };
+    return budgetConfig;
+  };
+  const ensureAppSettings = () => {
+    if (!appSettings) appSettings = { defaultCollapsed: false, hideMoney: false };
+    return appSettings;
+  };
 
   for (const vr of valueRanges) {
     const name = vr.range?.split('!')[0]?.replace(/'/g, '') || '';
     const rows = vr.values || [];
     if (rows.length < 2) continue;
+    const headers = rows[0] || [];
+    const cell = (row: any[], header: string, fallbackIndex: number, aliases: string[] = []) => readHeaderAwareCell(headers, row, header, fallbackIndex, aliases);
 
     if (name === 'Wallets Config') {
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
-        if (!r[0]) continue;
+        const id = cell(r, 'ID', 0);
+        if (!id) continue;
         wallets.push({
-          id: String(r[0]),
-          name: String(r[1] || ''),
-          type: (String(r[2] || 'cash')) as Wallet['type'],
-          initialBalance: Number(r[3]) || 0,
-          color: String(r[4] || 'bg-gray-500'),
+          id: String(id),
+          name: String(cell(r, 'Name', 1) || ''),
+          type: (String(cell(r, 'Type', 2) || 'cash')) as Wallet['type'],
+          initialBalance: Number(cell(r, 'Initial_Balance', 3, ['Initial Balance'])) || 0,
+          color: String(cell(r, 'Color', 4) || 'bg-gray-500'),
         });
       }
     } else if (name === 'Skills Config') {
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
-        if (!r[0]) continue;
+        const id = cell(r, 'ID', 0);
+        if (!id) continue;
         skills.push({
-          id: String(r[0]),
-          name: String(r[1] || ''),
-          weeklyTargetMinutes: Number(r[2]) || undefined,
-          created_at: String(r[3] || new Date().toISOString()),
-          color: String(r[4] || 'indigo-500'),
+          id: String(id),
+          name: String(cell(r, 'Name', 1) || ''),
+          weeklyTargetMinutes: Number(cell(r, 'Weekly_Target_Minutes', 2, ['Weekly Target Minutes'])) || undefined,
+          created_at: String(cell(r, 'Created_At', 3, ['Created At']) || new Date().toISOString()),
+          color: String(cell(r, 'Color', 4) || 'indigo-500'),
         });
       }
     } else if (name === 'Budget Rules') {
-      const rules: any[] = [];
+      const rules: BudgetConfig['rules'] = [];
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
-        if (!r[0]) continue;
+        const first = String(r[0] || '').trim();
+        if (!first) continue;
+
+        if (first === 'Monthly Income') {
+          ensureBudgetConfig().monthlyIncome = Number(r[1]) || 0;
+          continue;
+        }
+
+        if (first.startsWith('Rule: ')) {
+          const name = first.replace('Rule: ', '').trim();
+          const parsed = parseBudgetRuleValue(r[1]);
+          rules.push({
+            id: parsed.id || name,
+            name,
+            percentage: parsed.percentage,
+            color: String(r[2] || 'bg-gray-500'),
+          });
+          continue;
+        }
+
+        // Older config shape: ID | Name | Percentage | Color
         rules.push({
-          id: String(r[0]),
-          name: String(r[1] || ''),
-          percentage: Number(r[2]) || 0,
-          color: String(r[3]) || 'bg-blue-500',
+          id: String(cell(r, 'ID', 0)),
+          name: String(cell(r, 'Name', 1) || ''),
+          percentage: Number(cell(r, 'Percentage', 2)) || 0,
+          color: String(cell(r, 'Color', 3) || 'bg-blue-500'),
         });
       }
       if (rules.length > 0) {
-        budgetConfig = {
-          monthlyIncome: budgetConfig?.monthlyIncome || 0,
-          rules,
-        };
+        ensureBudgetConfig().rules = rules;
       }
     } else if (name === 'Themes & Settings') {
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
-        const key = String(r[0] || '').trim();
-        if (!key) continue;
-        if (key === 'monthlyIncome') {
-          budgetConfig = { ...(budgetConfig || { rules: [] }), monthlyIncome: Number(r[1]) || 0 };
-        } else if (key === 'defaultCollapsed') {
-          appSettings = { ...(appSettings || { defaultCollapsed: false, hideMoney: false }), defaultCollapsed: String(r[1]) === 'true' };
-        } else if (key === 'hideMoney') {
-          appSettings = { ...(appSettings || { defaultCollapsed: false, hideMoney: false }), hideMoney: String(r[1]) === 'true' };
-        } else if (key === 'googleCalendarSyncEnabled') {
-          appSettings = { ...(appSettings || { defaultCollapsed: false, hideMoney: false }), googleCalendarSyncEnabled: String(r[1]) === 'true' };
-        } else if (key.startsWith('theme_')) {
-          monthlyThemes[key.replace('theme_', '')] = String(r[1] || '');
+        const first = String(r[0] || '').trim();
+        const second = String(r[1] || '').trim();
+        if (!first) continue;
+
+        if (first === 'Setting') {
+          const settings = ensureAppSettings();
+          if (second === 'Default Collapsed') settings.defaultCollapsed = truthySheetValue(r[2]);
+          if (second === 'Hide Money') settings.hideMoney = truthySheetValue(r[2]);
+          if (second === 'Google Calendar Sync') settings.googleCalendarSyncEnabled = truthySheetValue(r[2]);
+          if (second === 'Google Calendar ID') settings.googleCalendarId = String(r[2] || 'primary');
+          continue;
+        }
+
+        if (first === 'Theme') {
+          if (second && r[2]) monthlyThemes[second] = String(r[2]);
+          continue;
+        }
+
+        // Legacy key/value shape: monthlyIncome | 1000000, defaultCollapsed | true, theme_YYYY-MM | text
+        if (first === 'monthlyIncome') {
+          ensureBudgetConfig().monthlyIncome = Number(r[1]) || 0;
+        } else if (first === 'defaultCollapsed') {
+          ensureAppSettings().defaultCollapsed = truthySheetValue(r[1]);
+        } else if (first === 'hideMoney') {
+          ensureAppSettings().hideMoney = truthySheetValue(r[1]);
+        } else if (first === 'googleCalendarSyncEnabled') {
+          ensureAppSettings().googleCalendarSyncEnabled = truthySheetValue(r[1]);
+        } else if (first === 'googleCalendarId') {
+          ensureAppSettings().googleCalendarId = String(r[1] || 'primary');
+        } else if (first.startsWith('theme_')) {
+          monthlyThemes[first.replace('theme_', '')] = String(r[1] || '');
         }
       }
     }
@@ -1647,4 +1797,7 @@ export const __test__ = {
   columnLabel,
   getItemExportSheetNames,
   isServiceAccountProxyInvocationFailure,
+  buildCurrentRawDbFromValueRanges,
+  parseConfigSheets,
+  fetchLegacyUserSheetDb,
 };

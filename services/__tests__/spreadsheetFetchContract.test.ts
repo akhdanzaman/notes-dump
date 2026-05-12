@@ -7,12 +7,15 @@ import {
   saveSpreadsheetConfig,
   SERVICE_ACCOUNT_EMAIL,
   SPREADSHEET_FETCH_RANGES,
+  __test__,
 } from '../spreadsheetService';
+import { generateExportData } from '../../utils/exportUtils';
+import { DbSchema, ItemType } from '../../types';
 
 test('spreadsheet fetch ranges include the expanded schema columns', () => {
   assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:K');
   assert.equal(SPREADSHEET_FETCH_RANGES.Todos, 'A:AA');
-  assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:I');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:P');
   assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:H');
   assert.equal(Object.prototype.hasOwnProperty.call(SPREADSHEET_FETCH_RANGES, 'Data Quality'), false);
 });
@@ -68,4 +71,53 @@ test('saveSpreadsheetConfig persists service-account identity for Sheets sync', 
   const persisted = JSON.parse(store.get('braindump_spreadsheet_config') || '{}');
   assert.equal(persisted.authMode, 'service_account');
   assert.equal(persisted.serviceAccountEmail, SERVICE_ACCOUNT_EMAIL);
+});
+
+test('current spreadsheet export sheets reload with config intact', () => {
+  const sourceDb: DbSchema = {
+    data: [{
+      id: 'finance-1',
+      type: ItemType.FINANCE,
+      content: 'Lunch',
+      status: 'done',
+      created_at: '2026-05-12T01:00:00.000Z',
+      completed_at: '2026-05-12T01:00:00.000Z',
+      meta: {
+        date: '2026-05-12T01:00:00.000Z',
+        amount: 50000,
+        financeType: 'expense',
+        budgetCategory: 'food',
+        paymentMethod: 'cash',
+      },
+    }],
+    wallets: [{ id: 'cash', name: 'Cash', type: 'cash', initialBalance: 100000, color: 'bg-green-500' }],
+    skills: [{ id: 'skill-1', name: 'Writing', weeklyTargetMinutes: 120, created_at: '2026-05-01T00:00:00.000Z', color: 'indigo-500' }],
+    budgetConfig: { monthlyIncome: 1000000, rules: [{ id: 'food', name: 'Food', percentage: 50, color: 'bg-blue-500' }] },
+    monthlyThemes: { '2026-05': 'Ship the migration' },
+    appSettings: { defaultCollapsed: true, hideMoney: true, googleCalendarSyncEnabled: true, googleCalendarId: 'primary' },
+  };
+
+  const valueRanges = generateExportData(
+    sourceDb.data,
+    sourceDb.skills!,
+    sourceDb.wallets!,
+    sourceDb.budgetConfig!,
+    sourceDb.monthlyThemes!,
+    sourceDb.appSettings!,
+  ).map(sheet => ({ range: `'${sheet.name}'!A1`, values: sheet.data }));
+
+  const reloaded = __test__.buildCurrentRawDbFromValueRanges(valueRanges);
+
+  assert.equal(reloaded.data.length, 1);
+  assert.equal(reloaded.data[0].id, 'finance-1');
+  assert.equal(reloaded.data[0].meta.budgetCategory, 'food');
+  assert.equal(reloaded.wallets?.[0].name, 'Cash');
+  assert.equal(reloaded.skills?.[0].weeklyTargetMinutes, 120);
+  assert.equal(reloaded.budgetConfig?.monthlyIncome, 1000000);
+  assert.deepEqual(reloaded.budgetConfig?.rules, [{ id: 'food', name: 'Food', percentage: 50, color: 'bg-blue-500' }]);
+  assert.equal(reloaded.monthlyThemes?.['2026-05'], 'Ship the migration');
+  assert.equal(reloaded.appSettings?.defaultCollapsed, true);
+  assert.equal(reloaded.appSettings?.hideMoney, true);
+  assert.equal(reloaded.appSettings?.googleCalendarSyncEnabled, true);
+  assert.equal(reloaded.appSettings?.googleCalendarId, 'primary');
 });
