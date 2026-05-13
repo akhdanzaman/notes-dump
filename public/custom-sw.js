@@ -1,3 +1,23 @@
+const broadcastToWindowClients = function(message) {
+  return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+    clientList.forEach(function(client) {
+      client.postMessage(message);
+    });
+  });
+};
+
+self.addEventListener('sync', function(event) {
+  if (event.tag === 'arkaiv-background-flush') {
+    event.waitUntil(broadcastToWindowClients({ type: 'ARKAIV_BACKGROUND_SYNC' }));
+  }
+});
+
+self.addEventListener('periodicsync', function(event) {
+  if (event.tag === 'arkaiv-background-runtime') {
+    event.waitUntil(broadcastToWindowClients({ type: 'ARKAIV_PERIODIC_SYNC' }));
+  }
+});
+
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   const isPersistent = event.notification.tag === 'braindump-persistent';

@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.98',
+    date: 'May 2026',
+    items: [
+      'The PWA now flushes pending spreadsheet saves immediately when the page is hidden, minimized, frozen, or navigated away, so browser timer throttling cannot leave a debounced save stuck in the background.',
+      'Added Background Sync and Periodic Background Sync hooks through the service worker to wake the app for pending background flushes when the browser supports it.',
+      'Quick-input notification replies opened from the service worker are now processed from the launch URL, so captured thoughts are not dropped when no active app window was focused.',
+    ],
+  },
+  {
     version: 'v0.3.97',
     date: 'May 2026',
     items: [

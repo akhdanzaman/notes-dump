@@ -161,6 +161,22 @@ const App: React.FC = () => {
   }, [handleSend]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const replyText = params.get('reply');
+    if (!replyText) return;
+
+    const replyKey = `braindump-open-reply:${replyText}`;
+    if (sessionStorage.getItem(replyKey) === 'handled') return;
+    sessionStorage.setItem(replyKey, 'handled');
+
+    handleSendRef.current(replyText);
+    params.delete('reply');
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, []);
+
+  useEffect(() => {
     const handleSWMessage = (event: MessageEvent) => {
       const { type, text } = event.data || {};
       if (type === 'NOTIFICATION_REPLY' && text) {

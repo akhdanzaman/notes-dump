@@ -4,10 +4,12 @@ import './index.css';
 import App from './App';
 import CallbackPage from './components/CallbackPage';
 import { registerSW } from 'virtual:pwa-register';
+import { registerBackgroundRuntime } from './utils/backgroundRuntime';
 
 // Register PWA service worker
 if ('serviceWorker' in navigator) {
   registerSW({ immediate: true });
+  registerBackgroundRuntime();
 }
 
 const rootElement = document.getElementById('root');

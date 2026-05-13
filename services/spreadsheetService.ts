@@ -1930,6 +1930,26 @@ const scheduleDebouncedSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<Sy
   });
 };
 
+export const flushPendingSpreadsheetSync = async (): Promise<SyncResult | null> => {
+  const pending = pendingDebouncedSync;
+  if (!pending) return null;
+
+  pendingDebouncedSync = null;
+  if (syncDebounceTimer) {
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = null;
+  }
+
+  try {
+    const result = await enqueueSpreadsheetSync(pending.args);
+    pending.resolvers.forEach(({ resolve }) => resolve(result));
+    return result;
+  } catch (error) {
+    pending.resolvers.forEach(({ reject }) => reject(error));
+    throw error;
+  }
+};
+
 export const syncSpreadsheetData = (
   items: BrainDumpItem[], 
   budgetConfig?: BudgetConfig, 
