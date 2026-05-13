@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.97',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet sync now saves and fetches normal data through dedicated domain tabs instead of continuously writing All Items (Raw) or JSON App_State snapshots.',
+      'Added dedicated Skill Logs, Chat History, and Canonical Rules tabs so those records survive without relying on a full-database backup sheet.',
+      'Legacy All Items (Raw) and App_State_Do_Not_Edit sheets remain readable as migration fallbacks, but are no longer part of the normal save path.',
+    ],
+  },
+  {
     version: 'v0.3.96',
     date: 'May 2026',
     items: [

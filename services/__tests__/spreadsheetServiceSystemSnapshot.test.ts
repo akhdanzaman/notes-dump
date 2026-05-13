@@ -73,11 +73,13 @@ const existingExportSheetTitles = new Set([
   'Shopping',
   'Events',
   'Notes & Journals',
-  'All Items (Raw)',
+  'Skill Logs',
   'Wallets Config',
   'Skills Config',
   'Budget Rules',
   'Themes & Settings',
+  'Chat History',
+  'Canonical Rules',
 ]);
 
 const baseDb: DbSchema = {
@@ -114,9 +116,8 @@ test('incremental plan updates only item rows for edited existing items', () => 
 
   assert.equal(plan.canIncremental, true);
   assert.deepEqual(plan.appends, []);
-  assert.equal(plan.updates.length, 2);
+  assert.equal(plan.updates.length, 1);
   assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:F2"));
-  assert.ok(plan.updates.some(update => update.range === "'All Items (Raw)'!A2:AT2"));
 });
 
 test('incremental plan appends rows for new items without forcing full rebuild', () => {
@@ -146,7 +147,7 @@ test('incremental plan appends rows for new items without forcing full rebuild',
 
   assert.equal(plan.canIncremental, true);
   assert.equal(plan.updates.length, 0);
-  assert.deepEqual(plan.appends.map(append => append.sheetName).sort(), ['All Items (Raw)', 'Transactions']);
+  assert.deepEqual(plan.appends.map(append => append.sheetName).sort(), ['Transactions']);
 });
 
 test('incremental plan falls back when rows are deleted or config changes', () => {

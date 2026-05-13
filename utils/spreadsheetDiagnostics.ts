@@ -448,8 +448,8 @@ export const buildSpreadsheetHealthSummary = (
 
   return {
     generatedAt: now.toLocaleString(),
-    guideLine: 'Generated-only: Sheet1, Data Quality, and All Items (Raw) are rewritten on sync. Safe editable tabs: Transactions, Todos, Shopping, Events, Notes & Journals, Wallets Config, Skills Config, Budget Rules, Themes & Settings.',
-    syncHealthLine: `SYNC HEALTH: generated ${now.toLocaleString()} • snapshot schema v2 • app snapshot becomes ready after all generated tabs finish writing.`,
+    guideLine: 'Generated-only: Sheet1 and Data Quality are rewritten on sync. Source-of-truth tabs are dedicated sheets: Transactions, Todos, Shopping, Events, Notes & Journals, Skill Logs, Wallets Config, Skills Config, Budget Rules, Themes & Settings, Chat History, Canonical Rules.',
+    syncHealthLine: `SYNC HEALTH: generated ${now.toLocaleString()} • dedicated sheet schema • each source tab is cleared and rewritten directly.`,
     dataHealthLine: issues.length === 0
       ? `DATA HEALTH: no issues detected${staleConfigWarnings.length ? `; setup note: ${staleConfigWarnings.join(', ')}` : ''}.`
       : `DATA HEALTH: ${issues.length} issue(s): ${criticalCount} critical, ${warningCount} warning. See generated Data Quality tab for fixes.`,

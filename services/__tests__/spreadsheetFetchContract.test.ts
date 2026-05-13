@@ -13,10 +13,12 @@ import { generateExportData } from '../../utils/exportUtils';
 import { DbSchema, ItemType } from '../../types';
 
 test('spreadsheet fetch ranges include the expanded schema columns', () => {
-  assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:K');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:S');
   assert.equal(SPREADSHEET_FETCH_RANGES.Todos, 'A:AA');
   assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:P');
   assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:H');
+  assert.equal(SPREADSHEET_FETCH_RANGES['Skill Logs'], 'A:I');
+  assert.equal(SPREADSHEET_FETCH_RANGES['Canonical Rules'], 'A:U');
   assert.equal(Object.prototype.hasOwnProperty.call(SPREADSHEET_FETCH_RANGES, 'Data Quality'), false);
 });
 
@@ -73,7 +75,7 @@ test('saveSpreadsheetConfig persists service-account identity for Sheets sync', 
   assert.equal(persisted.serviceAccountEmail, SERVICE_ACCOUNT_EMAIL);
 });
 
-test('current spreadsheet export sheets reload with config intact', () => {
+test('dedicated spreadsheet export sheets reload with config intact', () => {
   const sourceDb: DbSchema = {
     data: [{
       id: 'finance-1',
@@ -106,7 +108,7 @@ test('current spreadsheet export sheets reload with config intact', () => {
     sourceDb.appSettings!,
   ).map(sheet => ({ range: `'${sheet.name}'!A1`, values: sheet.data }));
 
-  const reloaded = __test__.buildCurrentRawDbFromValueRanges(valueRanges);
+  const reloaded = __test__.buildDedicatedDbFromValueRanges(valueRanges);
 
   assert.equal(reloaded.data.length, 1);
   assert.equal(reloaded.data[0].id, 'finance-1');
@@ -120,4 +122,36 @@ test('current spreadsheet export sheets reload with config intact', () => {
   assert.equal(reloaded.appSettings?.hideMoney, true);
   assert.equal(reloaded.appSettings?.googleCalendarSyncEnabled, true);
   assert.equal(reloaded.appSettings?.googleCalendarId, 'primary');
+});
+
+test('dedicated reload migrates legacy raw skill logs when Skill Logs sheet is absent', () => {
+  const rawHeaders = [
+    'ID', 'Type', 'Title', 'Content', 'Status', 'Created_At', 'Completed_At', 'Date', 'Amount', 'Tags',
+    'Payment_Method', 'Canonical_Payment_Method', 'Merchant', 'Canonical_Merchant', 'Commodity', 'Canonical_Commodity',
+    'Subcommodity', 'Canonical_Subcommodity', 'To_Wallet', 'Finance_Type', 'Budget_Category', 'Skill_Name', 'Skill_ID', 'Duration_Minutes'
+  ];
+  const valueRanges = [
+    {
+      range: "'Notes & Journals'!A1:F",
+      values: [
+        ['Date', 'Type', 'Title', 'Content', 'Tags', 'ID'],
+        ['2026-05-12T01:00:00.000Z', 'NOTE', 'Note', 'Dedicated note', '', 'note-1'],
+      ],
+    },
+    {
+      range: "'All Items (Raw)'!A:AZ",
+      values: [
+        rawHeaders,
+        ['skill-log-1', 'SKILL_LOG', '', 'Practice guitar', 'done', '2026-05-12T02:00:00.000Z', '2026-05-12T02:30:00.000Z', '2026-05-12T02:00:00.000Z', '', 'music', '', '', '', '', '', '', '', '', '', '', '', 'Guitar', 'skill-guitar', 30],
+      ],
+    },
+  ];
+
+  const reloaded = __test__.buildDedicatedDbFromValueRanges(valueRanges);
+
+  assert.equal(reloaded.data.length, 2);
+  const skillLog = reloaded.data.find(item => item.id === 'skill-log-1');
+  assert.equal(skillLog?.type, ItemType.SKILL_LOG);
+  assert.equal(skillLog?.meta.skillName, 'Guitar');
+  assert.equal(skillLog?.meta.durationMinutes, 30);
 });

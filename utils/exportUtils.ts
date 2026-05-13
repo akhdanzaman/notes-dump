@@ -1,4 +1,4 @@
-import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType } from '../types';
+import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType, ChatMessage, CanonicalRule } from '../types';
 import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
 import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from './canonicalization/transactionInference';
 import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
@@ -40,6 +40,12 @@ const getCategoryName = (id: string | undefined, budgetConfig: BudgetConfig) => 
     if (!id) return '';
     const r = budgetConfig.rules.find(r => r.id === id);
     return r ? r.name : id;
+};
+
+const getSkillName = (id: string | undefined, fallbackName: string | undefined, skills: Skill[]) => {
+    if (!id) return fallbackName || '';
+    const skill = skills.find(s => s.id === id);
+    return skill ? skill.name : (fallbackName || id);
 };
 
 const startOfDay = (date: Date) => {
@@ -395,7 +401,8 @@ export const generateExportData = (
   budgetConfig: BudgetConfig,
   monthlyThemes: Record<string, string>,
   appSettings: AppSettings,
-  now = new Date()
+  now = new Date(),
+  extras: { customPrompt?: string; chatHistory?: ChatMessage[]; canonicalRules?: CanonicalRule[] } = {}
 ): SheetData[] => {
   const dataQualityIssues = buildDataQualityIssues(items, wallets, budgetConfig);
   const sheets: SheetData[] = [
@@ -415,29 +422,35 @@ export const generateExportData = (
       const date = isShopping ? getShoppingTransactionDate(item) : (item.meta.date || item.created_at);
       
       return {
-        Date: fmtDate(date),
+        Date: date || '',
         Type: isShopping ? 'expense' : (item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'Achieved Goals' : (item.meta.financeType || 'expense')),
         Category: getCategoryName(item.meta.budgetCategory, budgetConfig),
         Description: item.content,
         Amount: item.meta.amount || 0,
         Wallet: getWalletName(getCanonicalOrRawItemValue(item, 'paymentMethod') || item.meta.paymentMethod, wallets),
         To_Wallet: getWalletName(item.meta.toWallet, wallets),
-        Tags: item.meta.tags?.join(', ') || '',
+        Payment_Method: item.meta.paymentMethod || '',
+        Canonical_Payment_Method: getCanonicalMetaValue(item.meta, 'paymentMethod'),
+        Merchant: item.meta.merchant || '',
+        Canonical_Merchant: getCanonicalMetaValue(item.meta, 'merchant'),
+        Commodity: item.meta.commodity || '',
         Canonical_Commodity: getCommodityForItemAnalytics(item),
+        Subcommodity: item.meta.subcommodity || '',
         Canonical_Subcommodity: getSubcommodityForItemAnalytics(item),
+        Tags: item.meta.tags?.join(', ') || '',
+        Created_At: item.created_at,
+        Completed_At: item.completed_at || '',
         ID: item.id
       };
     });
 
-  if (transactions.length > 0) {
-    sheets.push({
+  sheets.push({
       name: "Transactions",
       data: [
-        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Tags", "Canonical_Commodity", "Canonical_Subcommodity", "ID"],
-        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Tags, t.Canonical_Commodity, t.Canonical_Subcommodity, t.ID])
+        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID"],
+        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID])
       ]
     });
-  }
 
   // --- Sheet 2: Todos ---
   const todos = items.filter(i => i.type === ItemType.TODO).map(item => {
@@ -451,12 +464,12 @@ export const generateExportData = (
       Status: item.status,
       Priority: item.meta.priority || 'normal',
       Content: item.content,
-      Due_Date: fmtDate(item.meta.date || item.meta.dateTime),
-      Start_Date: fmtDate(item.meta.start),
-      End_Date: fmtDate(item.meta.end),
+      Due_Date: item.meta.date || item.meta.dateTime || '',
+      Start_Date: item.meta.start || '',
+      End_Date: item.meta.end || '',
       Tags: item.meta.tags?.join(', ') || '',
-      Created_At: fmtDate(item.created_at),
-      Completed_At: fmtDate(item.completed_at),
+      Created_At: item.created_at,
+      Completed_At: item.completed_at || '',
       Progress: item.meta.progress ? `${item.meta.progress}%` : '',
       Progress_Notes: item.meta.progressNotes || '',
       ID: item.id,
@@ -476,15 +489,13 @@ export const generateExportData = (
       Subtasks: encodeSubtasksForSheet(item.meta.subtasks),
     };
   });
-  if (todos.length > 0) {
-    sheets.push({
+  sheets.push({
       name: "Todos",
       data: [
         ["Type", "Status", "Priority", "Content", "Due_Date", "Start_Date", "End_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID", "Parent_ID", "Deep_Work_Role", "Step_Order", "Step_Count", "Child_IDs", "Child_Count", "Completion_Mode", "Deep_Work_Status", "Next_Action", "Final_Output", "Session_Estimate_Min", "Blocker_Status", "Blocker_Check", "Subtasks"],
         ...todos.map(t => [t.Type, t.Status, t.Priority, t.Content, t.Due_Date, t.Start_Date, t.End_Date, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID, t.Parent_ID, t.Deep_Work_Role, t.Step_Order, t.Step_Count, t.Child_IDs, t.Child_Count, t.Completion_Mode, t.Deep_Work_Status, t.Next_Action, t.Final_Output, t.Session_Estimate_Min, t.Blocker_Status, t.Blocker_Check, t.Subtasks])
       ]
     });
-  }
 
   // --- Sheet 3: Shopping ---
   const shopping = items.filter(i => i.type === ItemType.SHOPPING).map(item => ({
@@ -493,10 +504,10 @@ export const generateExportData = (
       Amount: item.meta.amount || 0,
       Category: item.meta.shoppingCategory || '',
       Quantity: item.meta.quantity || '',
-      Due_Date: fmtDate(getShoppingDueDate(item)),
-      Created_At: fmtDate(item.created_at),
+      Due_Date: getShoppingDueDate(item) || '',
+      Created_At: item.created_at,
       Tags: item.meta.tags?.join(', ') || '',
-      Completed_At: fmtDate(item.completed_at),
+      Completed_At: item.completed_at || '',
       Investment_Type: item.meta.investmentAssetType || '',
       Investment_Code: item.meta.investmentSymbol || '',
       Investment_Units: item.meta.investmentUnits || '',
@@ -505,113 +516,69 @@ export const generateExportData = (
       Investment_Platform: item.meta.investmentPlatform || '',
       ID: item.id
   }));
-  if (shopping.length > 0) {
-    sheets.push({
+  sheets.push({
       name: "Shopping",
       data: [
         ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"],
         ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.Investment_Type, s.Investment_Code, s.Investment_Units, s.Investment_Avg_Buy, s.Investment_Current_Price, s.Investment_Platform, s.ID])
       ]
     });
-  }
 
   // --- Sheet 4: Events ---
   const events = items.filter(i => i.type === ItemType.EVENT).map(item => ({
       Type: item.type,
-      Date: fmtDate(item.meta.date),
-      Start_Date: fmtDate(item.meta.start),
-      End_Date: fmtDate(item.meta.end),
+      Date: item.meta.date || '',
+      Start_Date: item.meta.start || '',
+      End_Date: item.meta.end || '',
       Priority: item.meta.priority || 'normal',
       Event: item.content,
       Tags: item.meta.tags?.join(', ') || '',
       ID: item.id
   }));
-  if (events.length > 0) {
-    sheets.push({
+  sheets.push({
       name: "Events",
       data: [
         ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "ID"],
         ...events.map(e => [e.Type, e.Date, e.Start_Date, e.End_Date, e.Priority, e.Event, e.Tags, e.ID])
       ]
     });
-  }
 
   // --- Sheet 5: Notes & Journals ---
   const notes = items.filter(i => i.type === ItemType.NOTE || i.type === ItemType.JOURNAL).map(item => ({
-      Date: fmtDate(item.created_at),
+      Date: item.created_at,
       Type: item.type,
       Title: item.meta.title || '',
       Content: item.content,
       Tags: item.meta.tags?.join(', ') || '',
       ID: item.id
   }));
-  if (notes.length > 0) {
-    sheets.push({
+  sheets.push({
       name: "Notes & Journals",
       data: [
         ["Date", "Type", "Title", "Content", "Tags", "ID"],
         ...notes.map(n => [n.Date, n.Type, n.Title, n.Content, n.Tags, n.ID])
       ]
     });
-  }
 
-  // --- Sheet 7: All Items (Backup) ---
-  const itemsData = items.map(item => ({
-    ID: item.id,
-    Type: item.type,
-    Title: item.meta.title || '',
-    Content: item.content,
-    Status: item.status,
-    Created_At: item.created_at,
-    Completed_At: item.completed_at || '',
-    Date: item.meta.date || '',
-    Amount: item.meta.amount || 0,
-    Tags: item.meta.tags?.join(', ') || '',
-    Payment_Method: item.meta.paymentMethod || '',
-    Canonical_Payment_Method: getCanonicalMetaValue(item.meta, 'paymentMethod'),
-    Merchant: item.meta.merchant || '',
-    Canonical_Merchant: getCanonicalMetaValue(item.meta, 'merchant'),
-    Commodity: item.meta.commodity || '',
-    Canonical_Commodity: getCommodityForItemAnalytics(item),
-    Subcommodity: item.meta.subcommodity || '',
-    Canonical_Subcommodity: getSubcommodityForItemAnalytics(item),
-    To_Wallet: item.meta.toWallet || '',
-    Finance_Type: item.meta.financeType || '',
-    Budget_Category: item.meta.budgetCategory || '',
-    Skill_Name: item.meta.skillName || '',
-    Skill_ID: item.meta.skillId || '',
-    Duration_Minutes: item.meta.durationMinutes || 0,
-    Shopping_Category: item.meta.shoppingCategory || '',
-    Investment_Type: item.meta.investmentAssetType || '',
-    Investment_Code: item.meta.investmentSymbol || '',
-    Investment_Units: item.meta.investmentUnits || '',
-    Investment_Avg_Buy: item.meta.investmentAveragePrice || '',
-    Investment_Current_Price: item.meta.investmentCurrentPrice || '',
-    Investment_Platform: item.meta.investmentPlatform || '',
-    Recurrence_Days: item.meta.recurrenceDays || '',
-    Priority: item.meta.priority || 'normal',
-    Parent_Todo_ID: item.meta.parentTodoId || '',
-    Child_Todo_IDs: item.meta.childTodoIds?.join(', ') || '',
-    Deep_Work_Role: item.meta.deepWorkParent ? 'parent' : (item.meta.parentTodoId ? 'step' : ''),
-    Deep_Work_Status: item.meta.deepWorkStatus || '',
-    Deep_Work_Completion_Mode: item.meta.deepWorkCompletionMode || '',
-    Deep_Work_Next_Action: item.meta.deepWorkNextAction || '',
-    Deep_Work_Final_Output: item.meta.deepWorkFinalOutput || '',
-    Deep_Work_Session_Estimate_Min: item.meta.deepWorkSessionEstimateMinutes || '',
-    Deep_Work_Blocker_Status: item.meta.deepWorkBlockerStatus || '',
-    Deep_Work_Blocker_Check: item.meta.deepWorkBlockerCheck || '',
-    Deep_Work_Step_Index: item.meta.deepWorkStepIndex || '',
-    Deep_Work_Step_Count: item.meta.deepWorkStepCount || '',
-    Deep_Work_Subtasks: encodeSubtasksForSheet(item.meta.subtasks),
+  // --- Sheet 6: Skill Logs ---
+  const skillLogs = items.filter(i => i.type === ItemType.SKILL_LOG).map(item => ({
+      Date: item.meta.date || item.completed_at || item.created_at,
+      Skill_Name: getSkillName(item.meta.skillId, item.meta.skillName, skills),
+      Skill_ID: item.meta.skillId || '',
+      Duration_Minutes: item.meta.durationMinutes || 0,
+      Content: item.content,
+      Tags: item.meta.tags?.join(', ') || '',
+      Created_At: item.created_at,
+      Completed_At: item.completed_at || '',
+      ID: item.id
   }));
-  
   sheets.push({
-    name: "All Items (Raw)",
-    data: [
-      ["ID", "Type", "Title", "Content", "Status", "Created_At", "Completed_At", "Date", "Amount", "Tags", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "To_Wallet", "Finance_Type", "Budget_Category", "Skill_Name", "Skill_ID", "Duration_Minutes", "Shopping_Category", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "Recurrence_Days", "Priority", "Parent_Todo_ID", "Child_Todo_IDs", "Deep_Work_Role", "Deep_Work_Status", "Deep_Work_Completion_Mode", "Deep_Work_Next_Action", "Deep_Work_Final_Output", "Deep_Work_Session_Estimate_Min", "Deep_Work_Blocker_Status", "Deep_Work_Blocker_Check", "Deep_Work_Step_Index", "Deep_Work_Step_Count", "Deep_Work_Subtasks"],
-      ...itemsData.map(i => [i.ID, i.Type, i.Title, i.Content, i.Status, i.Created_At, i.Completed_At, i.Date, i.Amount, i.Tags, i.Payment_Method, i.Canonical_Payment_Method, i.Merchant, i.Canonical_Merchant, i.Commodity, i.Canonical_Commodity, i.Subcommodity, i.Canonical_Subcommodity, i.To_Wallet, i.Finance_Type, i.Budget_Category, i.Skill_Name, i.Skill_ID, i.Duration_Minutes, i.Shopping_Category, i.Investment_Type, i.Investment_Code, i.Investment_Units, i.Investment_Avg_Buy, i.Investment_Current_Price, i.Investment_Platform, i.Recurrence_Days, i.Priority, i.Parent_Todo_ID, i.Child_Todo_IDs, i.Deep_Work_Role, i.Deep_Work_Status, i.Deep_Work_Completion_Mode, i.Deep_Work_Next_Action, i.Deep_Work_Final_Output, i.Deep_Work_Session_Estimate_Min, i.Deep_Work_Blocker_Status, i.Deep_Work_Blocker_Check, i.Deep_Work_Step_Index, i.Deep_Work_Step_Count, i.Deep_Work_Subtasks])
-    ]
-  });
+      name: "Skill Logs",
+      data: [
+        ["Date", "Skill_Name", "Skill_ID", "Duration_Minutes", "Content", "Tags", "Created_At", "Completed_At", "ID"],
+        ...skillLogs.map(s => [s.Date, s.Skill_Name, s.Skill_ID, s.Duration_Minutes, s.Content, s.Tags, s.Created_At, s.Completed_At, s.ID])
+      ]
+    });
 
   // --- Sheet 8: Wallets ---
   const walletsData = wallets.map(w => ({
@@ -676,11 +643,53 @@ export const generateExportData = (
     { Type: 'Setting', Key: 'Google Calendar ID', Value: appSettings.googleCalendarId || 'primary' }
   ];
 
+  if (extras.customPrompt) {
+    settingsData.push({ Type: 'Setting', Key: 'Custom Prompt', Value: extras.customPrompt });
+  }
+
   sheets.push({
     name: "Themes & Settings",
     data: [
       ["Type", "Key", "Value"],
       ...[...themesData, ...settingsData].map(d => [d.Type, d.Key, d.Value])
+    ]
+  });
+
+  sheets.push({
+    name: "Chat History",
+    data: [
+      ["Index", "Role", "Text"],
+      ...(extras.chatHistory || []).map((message, index) => [index + 1, message.role, message.text])
+    ]
+  });
+
+  sheets.push({
+    name: "Canonical Rules",
+    data: [
+      ["ID", "Field", "Canonical_Value", "Aliases", "Source", "Confidence_Boost", "Approval_Count", "Rejection_Count", "Condition_Finance_Types", "Condition_Budget_Categories", "Condition_Commodities", "Condition_Payment_Methods", "Condition_Amount_Min", "Condition_Amount_Max", "Created_At", "Updated_At", "Last_Approved_At", "Last_Rejected_At", "Auto_Apply_Disabled", "Disabled", "Disabled_Reason"],
+      ...(extras.canonicalRules || []).map(rule => [
+        rule.id,
+        rule.field,
+        rule.canonicalValue,
+        rule.aliases.join('; '),
+        rule.source,
+        rule.confidenceBoost || '',
+        rule.approvalCount,
+        rule.rejectionCount,
+        rule.conditions?.financeType?.join('; ') || '',
+        rule.conditions?.budgetCategory?.join('; ') || '',
+        rule.conditions?.commodity?.join('; ') || '',
+        rule.conditions?.paymentMethod?.join('; ') || '',
+        rule.conditions?.amountMin ?? '',
+        rule.conditions?.amountMax ?? '',
+        rule.createdAt,
+        rule.updatedAt,
+        rule.lastApprovedAt || '',
+        rule.lastRejectedAt || '',
+        rule.autoApplyDisabled ? 'TRUE' : 'FALSE',
+        rule.disabled ? 'TRUE' : 'FALSE',
+        rule.disabledReason || '',
+      ])
     ]
   });
 

@@ -27,11 +27,13 @@ const MANAGED_USER_SHEET_NAMES = [
   'Shopping',
   'Events',
   'Notes & Journals',
-  'All Items (Raw)',
+  'Skill Logs',
   'Wallets Config',
   'Skills Config',
   'Budget Rules',
   'Themes & Settings',
+  'Chat History',
+  'Canonical Rules',
 ] as const;
 const BACKGROUND_REBUILD_DELAY_MS = 5000;
 const ASSUMED_EXISTING_SHEET_TITLES = new Set<string>([
@@ -57,16 +59,18 @@ type SystemSheetSnapshotMeta = {
 };
 
 export const SPREADSHEET_FETCH_RANGES = {
-  Transactions: 'A:K',
+  Transactions: 'A:S',
   Todos: 'A:AA',
   Shopping: 'A:P',
   Events: 'A:H',
   'Notes & Journals': 'A:F',
-  'Skill Logs': 'A:F',
+  'Skill Logs': 'A:I',
   'Wallets Config': 'A:E',
   'Skills Config': 'A:E',
   'Budget Rules': 'A:C',
   'Themes & Settings': 'A:C',
+  'Chat History': 'A:C',
+  'Canonical Rules': 'A:U',
 } as const;
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -323,7 +327,7 @@ const buildColumnWriteBatches = (
 };
 
 const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
-  const sheets = ['All Items (Raw)'];
+  const sheets: string[] = [];
 
   if (item.type === ItemType.FINANCE) {
     sheets.push('Transactions');
@@ -338,6 +342,8 @@ const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
     sheets.push('Events');
   } else if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) {
     sheets.push('Notes & Journals');
+  } else if (item.type === ItemType.SKILL_LOG) {
+    sheets.push('Skill Logs');
   }
 
   return sheets;
@@ -1157,8 +1163,8 @@ export const fetchSpreadsheetDb = (skipLocalStorage = false): Promise<{ data: Db
   return queuedTask;
 };
 
-// ── Fetch/migration path: current raw sheet first, then legacy system/user sheets ──
-type SpreadsheetReadSource = 'current_raw' | 'legacy_system_snapshot' | 'legacy_user_sheets' | 'cache' | 'empty';
+// ── Fetch/migration path: dedicated sheets first, then legacy raw/system/user sheets ──
+type SpreadsheetReadSource = 'dedicated_sheets' | 'current_raw' | 'legacy_system_snapshot' | 'legacy_user_sheets' | 'cache' | 'empty';
 
 const batchGetSpreadsheetRanges = async (config: SpreadsheetConfig, ranges: string[]) => {
   if (ranges.length === 0) return [];
@@ -1191,7 +1197,80 @@ const buildCurrentRawDbFromValueRanges = (valueRanges: any[]): DbSchema => {
     budgetConfig: configSheets.budgetConfig,
     monthlyThemes: configSheets.monthlyThemes,
     appSettings: configSheets.appSettings,
+    customPrompt: configSheets.customPrompt,
+    chatHistory: configSheets.chatHistory,
+    canonicalRules: configSheets.canonicalRules,
   };
+};
+
+const hasDedicatedSheetData = (db: DbSchema) =>
+  db.data.length > 0
+  || (db.wallets?.length || 0) > 0
+  || (db.skills?.length || 0) > 0
+  || (db.budgetConfig?.rules.length || 0) > 0
+  || !!db.budgetConfig?.monthlyIncome
+  || Object.keys(db.monthlyThemes || {}).length > 0
+  || !!db.appSettings
+  || !!db.customPrompt
+  || (db.chatHistory?.length || 0) > 0
+  || (db.canonicalRules?.length || 0) > 0;
+
+const mergeLegacyRawItemsForMissingDedicatedSheets = (db: DbSchema, valueRanges: any[]): DbSchema => {
+  const hasSkillLogsSheet = valueRanges.some((r: any) => r.range?.includes('Skill Logs'));
+  if (hasSkillLogsSheet) return db;
+
+  const legacyRawDb = buildCurrentRawDbFromValueRanges(valueRanges || []);
+  const legacySkillLogs = legacyRawDb.data.filter(item => item.type === ItemType.SKILL_LOG);
+  if (legacySkillLogs.length === 0) return db;
+
+  const existingIds = new Set(db.data.map(item => item.id));
+  const missingSkillLogs = legacySkillLogs.filter(item => !existingIds.has(item.id));
+  if (missingSkillLogs.length === 0) return db;
+
+  return validateSchema({
+    ...db,
+    data: [...db.data, ...missingSkillLogs],
+  });
+};
+
+const buildDedicatedDbFromValueRanges = (valueRanges: any[]): DbSchema => {
+  const configSheets = parseConfigSheets(valueRanges || []);
+  const baseDb = validateSchema({
+    data: [],
+    wallets: configSheets.wallets,
+    skills: configSheets.skills,
+    budgetConfig: configSheets.budgetConfig,
+    monthlyThemes: configSheets.monthlyThemes,
+    appSettings: configSheets.appSettings,
+  });
+  const reconciled = reconcileSpreadsheetData(baseDb, valueRanges || []);
+
+  const dedicatedDb = validateSchema({
+    ...reconciled,
+    wallets: configSheets.wallets,
+    skills: configSheets.skills,
+    budgetConfig: configSheets.budgetConfig || reconciled.budgetConfig,
+    monthlyThemes: configSheets.monthlyThemes,
+    appSettings: configSheets.appSettings || reconciled.appSettings,
+    customPrompt: configSheets.customPrompt,
+    chatHistory: configSheets.chatHistory,
+    canonicalRules: configSheets.canonicalRules,
+  });
+
+  return mergeLegacyRawItemsForMissingDedicatedSheets(dedicatedDb, valueRanges || []);
+};
+
+const fetchDedicatedSpreadsheetDb = async (config: SpreadsheetConfig, existingTitles: Set<string>) => {
+  const rangesToFetch = Object.entries(SPREADSHEET_FETCH_RANGES)
+    .filter(([sheetName]) => existingTitles.has(sheetName))
+    .map(([sheetName, range]) => `${escapeSheetName(sheetName)}!${range}`);
+
+  if (!existingTitles.has('Skill Logs') && existingTitles.has(ALL_ITEMS_SHEET)) {
+    rangesToFetch.push(`${escapeSheetName(ALL_ITEMS_SHEET)}!A:AZ`);
+  }
+
+  const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
+  return buildDedicatedDbFromValueRanges(valueRanges);
 };
 
 const fetchCurrentRawSpreadsheetDb = async (config: SpreadsheetConfig, existingTitles: Set<string>) => {
@@ -1200,7 +1279,7 @@ const fetchCurrentRawSpreadsheetDb = async (config: SpreadsheetConfig, existingT
     rangesToFetch.push(`${escapeSheetName(ALL_ITEMS_SHEET)}!A:AZ`);
   }
 
-  for (const name of ['Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings']) {
+  for (const name of ['Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings', 'Chat History', 'Canonical Rules']) {
     if (existingTitles.has(name)) {
       rangesToFetch.push(`${escapeSheetName(name)}!A:E`);
     }
@@ -1241,7 +1320,13 @@ const fetchLegacyUserSheetDb = async (config: SpreadsheetConfig, existingTitles:
   }
 
   const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
-  const reconciledDb = reconcileSpreadsheetData(validateSchema(baseDb), valueRanges || []);
+  const sheetConfig = parseConfigSheets(valueRanges || []);
+  const reconciledDb = validateSchema({
+    ...reconcileSpreadsheetData(validateSchema(baseDb), valueRanges || []),
+    customPrompt: sheetConfig.customPrompt ?? baseDb.customPrompt,
+    chatHistory: sheetConfig.chatHistory ?? baseDb.chatHistory,
+    canonicalRules: sheetConfig.canonicalRules ?? baseDb.canonicalRules,
+  });
   const reconciled = JSON.stringify(reconciledDb) !== JSON.stringify(validateSchema(baseDb));
   return { data: reconciledDb, reconciled };
 };
@@ -1253,13 +1338,18 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
   let dbData: DbSchema = { data: [] };
   let reconciled = false;
 
-  const currentRawDb = await fetchCurrentRawSpreadsheetDb(config, existingTitles);
-  if (currentRawDb.data.length > 0) {
+  const dedicatedDb = await fetchDedicatedSpreadsheetDb(config, existingTitles);
+  if (hasDedicatedSheetData(dedicatedDb)) {
+    source = 'dedicated_sheets';
+    dbData = dedicatedDb;
+  } else {
+    const currentRawDb = await fetchCurrentRawSpreadsheetDb(config, existingTitles);
+    if (currentRawDb.data.length > 0) {
     source = 'current_raw';
     const userSheetMerge = await fetchLegacyUserSheetDb(config, existingTitles, currentRawDb);
     dbData = userSheetMerge.data;
     reconciled = userSheetMerge.reconciled;
-  } else {
+    } else {
     const legacySnapshotDb = await fetchLegacySystemSnapshotDb(config, existingTitles);
     if (legacySnapshotDb?.data?.length) {
       source = 'legacy_system_snapshot';
@@ -1274,6 +1364,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
         reconciled = true;
       }
     }
+    }
   }
 
   // Fallback to cache for empty/new spreadsheet
@@ -1287,7 +1378,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
   }
 
   const normalizedDb = validateSchema(dbData);
-  if (source === 'legacy_system_snapshot' || source === 'legacy_user_sheets' || reconciled) {
+  if (source === 'current_raw' || source === 'legacy_system_snapshot' || source === 'legacy_user_sheets' || reconciled) {
     needsInitialSpreadsheetWrite = true;
   }
 
@@ -1303,11 +1394,11 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
   return {
     data: normalizedDb,
     sha: `spreadsheet-${source}-sha`,
-    reconciled: source === 'legacy_system_snapshot' || source === 'legacy_user_sheets' || reconciled,
+    reconciled: source === 'current_raw' || source === 'legacy_system_snapshot' || source === 'legacy_user_sheets' || reconciled,
   };
 };
 
-// ── Direct sheet fetch: reads "All Items (Raw)" + config sheets ──
+// ── Legacy direct sheet fetch: reads old "All Items (Raw)" exports for migration only ──
 const ALL_ITEMS_SHEET = 'All Items (Raw)';
 
 const readHeaderAwareCell = (headers: unknown[], row: any[], name: string, fallbackIndex: number, aliases: string[] = []) => {
@@ -1391,6 +1482,11 @@ const parseRawItemRow = (row: any[], index: number, headers: unknown[] = []): Br
 
 const truthySheetValue = (value: unknown) => ['true', '1', 'yes', 'y', 'on'].includes(String(value || '').trim().toLowerCase());
 
+const splitSheetListValue = (value: unknown): string[] => String(value || '')
+  .split(/[;,\n]/)
+  .map(part => part.trim())
+  .filter(Boolean);
+
 const parseBudgetRuleValue = (value: unknown) => {
   const raw = String(value || '').trim();
   const match = raw.match(/([\d.]+)%?\s*(?:\(ID:\s*(.+?)\))?$/i);
@@ -1406,12 +1502,18 @@ const parseConfigSheets = (valueRanges: any[]): {
   budgetConfig: BudgetConfig | undefined;
   monthlyThemes: Record<string, string>;
   appSettings: AppSettings | undefined;
+  customPrompt: string | undefined;
+  chatHistory: ChatMessage[] | undefined;
+  canonicalRules: CanonicalRule[] | undefined;
 } => {
   const wallets: Wallet[] = [];
   const skills: Skill[] = [];
+  const chatHistory: ChatMessage[] = [];
+  const canonicalRules: CanonicalRule[] = [];
   let budgetConfig: BudgetConfig | undefined;
   const monthlyThemes: Record<string, string> = {};
   let appSettings: AppSettings | undefined;
+  let customPrompt: string | undefined;
   const ensureBudgetConfig = () => {
     if (!budgetConfig) budgetConfig = { monthlyIncome: 0, rules: [] };
     return budgetConfig;
@@ -1502,6 +1604,7 @@ const parseConfigSheets = (valueRanges: any[]): {
           if (second === 'Hide Money') settings.hideMoney = truthySheetValue(r[2]);
           if (second === 'Google Calendar Sync') settings.googleCalendarSyncEnabled = truthySheetValue(r[2]);
           if (second === 'Google Calendar ID') settings.googleCalendarId = String(r[2] || 'primary');
+          if (second === 'Custom Prompt') customPrompt = String(r[2] || '');
           continue;
         }
 
@@ -1521,14 +1624,75 @@ const parseConfigSheets = (valueRanges: any[]): {
           ensureAppSettings().googleCalendarSyncEnabled = truthySheetValue(r[1]);
         } else if (first === 'googleCalendarId') {
           ensureAppSettings().googleCalendarId = String(r[1] || 'primary');
+        } else if (first === 'customPrompt') {
+          customPrompt = String(r[1] || '');
         } else if (first.startsWith('theme_')) {
           monthlyThemes[first.replace('theme_', '')] = String(r[1] || '');
         }
       }
+    } else if (name === 'Chat History') {
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const role = String(cell(r, 'Role', 1) || '').trim();
+        const text = String(cell(r, 'Text', 2) || '');
+        if ((role === 'user' || role === 'model') && text) {
+          chatHistory.push({ role, text });
+        }
+      }
+    } else if (name === 'Canonical Rules') {
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const id = String(cell(r, 'ID', 0) || '').trim();
+        const field = String(cell(r, 'Field', 1) || '').trim() as CanonicalRule['field'];
+        const canonicalValue = String(cell(r, 'Canonical_Value', 2, ['Canonical Value']) || '').trim();
+        if (!id || !field || !canonicalValue) continue;
+
+        const conditions: CanonicalRule['conditions'] = {};
+        const financeType = splitSheetListValue(cell(r, 'Condition_Finance_Types', 8));
+        const budgetCategory = splitSheetListValue(cell(r, 'Condition_Budget_Categories', 9));
+        const commodity = splitSheetListValue(cell(r, 'Condition_Commodities', 10));
+        const paymentMethod = splitSheetListValue(cell(r, 'Condition_Payment_Methods', 11));
+        const amountMin = Number(cell(r, 'Condition_Amount_Min', 12));
+        const amountMax = Number(cell(r, 'Condition_Amount_Max', 13));
+        if (financeType.length) conditions.financeType = financeType as any;
+        if (budgetCategory.length) conditions.budgetCategory = budgetCategory;
+        if (commodity.length) conditions.commodity = commodity;
+        if (paymentMethod.length) conditions.paymentMethod = paymentMethod;
+        if (Number.isFinite(amountMin)) conditions.amountMin = amountMin;
+        if (Number.isFinite(amountMax)) conditions.amountMax = amountMax;
+
+        canonicalRules.push({
+          id,
+          field,
+          canonicalValue,
+          aliases: splitSheetListValue(cell(r, 'Aliases', 3)),
+          source: (String(cell(r, 'Source', 4) || 'manual') as CanonicalRule['source']),
+          confidenceBoost: Number(cell(r, 'Confidence_Boost', 5)) || undefined,
+          approvalCount: Number(cell(r, 'Approval_Count', 6)) || 0,
+          rejectionCount: Number(cell(r, 'Rejection_Count', 7)) || 0,
+          conditions: Object.keys(conditions).length ? conditions : undefined,
+          createdAt: String(cell(r, 'Created_At', 14) || new Date().toISOString()),
+          updatedAt: String(cell(r, 'Updated_At', 15) || new Date().toISOString()),
+          lastApprovedAt: String(cell(r, 'Last_Approved_At', 16) || '') || undefined,
+          lastRejectedAt: String(cell(r, 'Last_Rejected_At', 17) || '') || undefined,
+          autoApplyDisabled: truthySheetValue(cell(r, 'Auto_Apply_Disabled', 18)),
+          disabled: truthySheetValue(cell(r, 'Disabled', 19)),
+          disabledReason: String(cell(r, 'Disabled_Reason', 20) || '') || undefined,
+        });
+      }
     }
   }
 
-  return { wallets, skills, budgetConfig, monthlyThemes, appSettings };
+  return {
+    wallets,
+    skills,
+    budgetConfig,
+    monthlyThemes,
+    appSettings,
+    customPrompt,
+    chatHistory: chatHistory.length ? chatHistory : undefined,
+    canonicalRules: canonicalRules.length ? canonicalRules : undefined,
+  };
 };
 
 const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb: DbSchema) => {
@@ -1624,7 +1788,9 @@ const performSync = async (
       wallets || [], 
       budgetConfig || { monthlyIncome: 0, rules: [] }, 
       monthlyThemes || {}, 
-      appSettings || { defaultCollapsed: false, hideMoney: false }
+      appSettings || { defaultCollapsed: false, hideMoney: false },
+      new Date(),
+      { customPrompt, chatHistory, canonicalRules }
     );
 
     // 2. Get existing sheets
@@ -1841,6 +2007,7 @@ export const __test__ = {
   getItemExportSheetNames,
   isServiceAccountProxyInvocationFailure,
   buildCurrentRawDbFromValueRanges,
+  buildDedicatedDbFromValueRanges,
   parseConfigSheets,
   fetchLegacyUserSheetDb,
 };

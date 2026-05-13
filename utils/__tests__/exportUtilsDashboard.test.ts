@@ -42,7 +42,9 @@ test('export data starts with premium Sheet1 dashboard and helper analytics data
   const dataQualitySheet = sheets.find(sheet => sheet.name === DATA_QUALITY_SHEET_NAME);
   assert.ok(dataQualitySheet);
   assert.equal(dataQualitySheet!.data[0][0], 'DATA QUALITY');
-  assert.ok(sheets.some(sheet => sheet.name === 'All Items (Raw)'));
+  assert.equal(sheets.some(sheet => sheet.name === 'All Items (Raw)'), false);
+  assert.ok(sheets.some(sheet => sheet.name === 'Transactions'));
+  assert.ok(sheets.some(sheet => sheet.name === 'Skill Logs'));
 });
 
 test('dashboard helper chart series respects injected export date', () => {

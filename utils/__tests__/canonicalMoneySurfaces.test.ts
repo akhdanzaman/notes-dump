@@ -179,25 +179,17 @@ test('money search matches canonical clusters and raw aliases without rewriting 
 test('exports expose canonical grouping columns while preserving raw item values', () => {
   const sheets = generateExportData(canonicalItems, [], wallets, budgetConfig, {}, { defaultCollapsed: false, hideMoney: false });
   const transactions = sheets.find(sheet => sheet.name === 'Transactions');
-  const allItems = sheets.find(sheet => sheet.name === 'All Items (Raw)');
 
   assert.ok(transactions);
-  assert.ok(allItems);
 
   const transactionsHeader = transactions!.data[0];
   const firstTransaction = transactions!.data[1];
   assert.equal(firstTransaction[transactionsHeader.indexOf('Wallet')], 'BCA');
-  assert.equal(transactionsHeader.includes('Canonical_Merchant'), false);
+  assert.equal(firstTransaction[transactionsHeader.indexOf('Payment_Method')], 'qris bca');
+  assert.equal(firstTransaction[transactionsHeader.indexOf('Canonical_Payment_Method')], 'bca-wallet');
+  assert.equal(firstTransaction[transactionsHeader.indexOf('Merchant')], 'gacoan jakal');
+  assert.equal(firstTransaction[transactionsHeader.indexOf('Canonical_Merchant')], 'Mie Gacoan');
+  assert.equal(firstTransaction[transactionsHeader.indexOf('Commodity')], 'makanan');
   assert.equal(firstTransaction[transactionsHeader.indexOf('Canonical_Commodity')], 'food');
   assert.equal(firstTransaction[transactionsHeader.indexOf('Canonical_Subcommodity')], 'breakfast');
-
-  const allItemsHeader = allItems!.data[0];
-  const firstRawRow = allItems!.data.find(row => row[allItemsHeader.indexOf('ID')] === 'txn-1');
-  assert.ok(firstRawRow);
-  assert.equal(firstRawRow![allItemsHeader.indexOf('Payment_Method')], 'qris bca');
-  assert.equal(firstRawRow![allItemsHeader.indexOf('Canonical_Payment_Method')], 'bca-wallet');
-  assert.equal(firstRawRow![allItemsHeader.indexOf('Merchant')], 'gacoan jakal');
-  assert.equal(firstRawRow![allItemsHeader.indexOf('Canonical_Merchant')], 'Mie Gacoan');
-  assert.equal(firstRawRow![allItemsHeader.indexOf('Commodity')], 'makanan');
-  assert.equal(firstRawRow![allItemsHeader.indexOf('Canonical_Commodity')], 'food');
 });

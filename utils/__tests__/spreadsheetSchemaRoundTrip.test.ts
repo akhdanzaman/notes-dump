@@ -173,10 +173,10 @@ test('transaction spreadsheet export round-trips ID after canonical columns and 
   const sheets = generateExportData(db.data, [], wallets, budgetConfig, {}, appSettings);
   const transactionsSheet = sheets.find(sheet => sheet.name === 'Transactions');
   assert.ok(transactionsSheet);
-  assert.equal(transactionsSheet!.data[0].indexOf('ID'), 10);
+  assert.equal(transactionsSheet!.data[0].indexOf('ID'), 18);
 
   const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
-    range: "'Transactions'!A1:K",
+    range: "'Transactions'!A1:S",
     values: transactionsSheet!.data,
   }]);
 

@@ -114,6 +114,17 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
     const seenItemIds = new Set<string>();
 
+    const shoppingSheetForTransactionCrossCheck = valueRanges.find(r => r.range && r.range.includes('Shopping'));
+    const shoppingSheetIds = new Set<string>();
+    if (shoppingSheetForTransactionCrossCheck?.values) {
+        const shoppingHeaders = shoppingSheetForTransactionCrossCheck.values[0] || [];
+        const rows = shoppingSheetForTransactionCrossCheck.values.slice(1);
+        rows.forEach((row: unknown[]) => {
+            const id = String(getHeaderAwareCell(shoppingHeaders, row, 'ID', 15) || '').trim();
+            if (id) shoppingSheetIds.add(id);
+        });
+    }
+
     // 1. Transactions
     const txSheet = valueRanges.find(r => r.range && r.range.includes('Transactions'));
     if (txSheet && txSheet.values) {
@@ -128,9 +139,25 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const amountStr = cell(row, 'Amount', 4) as string;
             const wallet = cell(row, 'Wallet', 5) as string;
             const toWallet = cell(row, 'To_Wallet', 6) as string;
+            const rawPaymentMethod = cell(row, 'Payment_Method', 7) as string;
+            const canonicalPaymentMethod = cell(row, 'Canonical_Payment_Method', 8) as string;
+            const merchant = cell(row, 'Merchant', 9) as string;
+            const canonicalMerchant = cell(row, 'Canonical_Merchant', 10) as string;
+            const commodity = cell(row, 'Commodity', 11) as string;
+            const canonicalCommodity = cell(row, 'Canonical_Commodity', 12) as string;
+            const subcommodity = cell(row, 'Subcommodity', 13) as string;
+            const canonicalSubcommodity = cell(row, 'Canonical_Subcommodity', 14) as string;
             const tagsStr = cell(row, 'Tags', 7) as string;
+            const createdAtStr = cell(row, 'Created_At', 16) as string;
+            const completedAtStr = cell(row, 'Completed_At', 17) as string;
             const idStr = cell(row, 'ID', 8) as string;
             if (!date && !description && !amountStr && !idStr) continue;
+
+            if (idStr && shoppingSheetIds.has(String(idStr))) {
+                const existingShoppingItem = newItems.find(i => i.id === idStr && i.type === ItemType.SHOPPING);
+                if (!existingShoppingItem) continue;
+            }
+
             const amount = parseSheetAmount(amountStr);
             const financeType = parseFinanceType(type) || 'expense';
             
@@ -157,11 +184,23 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const newCatId = getCatId(category);
                 if (match.meta.budgetCategory !== newCatId) { match.meta.budgetCategory = newCatId; updated = true; }
                 
-                const newWalId = getWalId(wallet);
+                const newWalId = rawPaymentMethod ? getWalId(rawPaymentMethod) : getWalId(wallet);
                 if (match.meta.paymentMethod !== newWalId) { match.meta.paymentMethod = newWalId; updated = true; }
                 
                 const newToWalId = getWalId(toWallet);
                 if (match.meta.toWallet !== newToWalId) { match.meta.toWallet = newToWalId; updated = true; }
+
+                if (merchant !== undefined && match.meta.merchant !== (merchant || undefined)) { match.meta.merchant = merchant || undefined; updated = true; }
+                if (commodity !== undefined && match.meta.commodity !== (commodity || undefined)) { match.meta.commodity = commodity || undefined; updated = true; }
+                if (subcommodity !== undefined && match.meta.subcommodity !== (subcommodity || undefined)) { match.meta.subcommodity = subcommodity || undefined; updated = true; }
+                if (canonicalPaymentMethod || canonicalMerchant || canonicalCommodity || canonicalSubcommodity) {
+                    const nextCanonical = { ...(match.meta.canonical || {}) };
+                    if (canonicalPaymentMethod) nextCanonical.paymentMethod = { rawValue: rawPaymentMethod || wallet || undefined, value: canonicalPaymentMethod };
+                    if (canonicalMerchant) nextCanonical.merchant = { rawValue: merchant || undefined, value: canonicalMerchant };
+                    if (canonicalCommodity) nextCanonical.commodity = { rawValue: commodity || undefined, value: canonicalCommodity };
+                    if (canonicalSubcommodity) nextCanonical.subcommodity = { rawValue: subcommodity || undefined, value: canonicalSubcommodity };
+                    if (JSON.stringify(match.meta.canonical || {}) !== JSON.stringify(nextCanonical)) { match.meta.canonical = nextCanonical; updated = true; }
+                }
                 
                 const newType = financeType as FinanceType;
                 if (match.meta.financeType !== newType) { match.meta.financeType = newType; updated = true; }
@@ -191,26 +230,45 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         if (match.completed_at !== isoDate) { match.completed_at = isoDate; updated = true; }
                     }
                 }
+
+                const parsedCreatedAt = new Date(createdAtStr);
+                if (!isNaN(parsedCreatedAt.getTime()) && match.created_at !== parsedCreatedAt.toISOString()) { match.created_at = parsedCreatedAt.toISOString(); updated = true; }
+                const parsedCompletedAt = new Date(completedAtStr);
+                if (!isNaN(parsedCompletedAt.getTime()) && match.completed_at !== parsedCompletedAt.toISOString()) { match.completed_at = parsedCompletedAt.toISOString(); updated = true; }
                 
                 if (updated) hasChanges = true;
             } else {
                 const parsedDate = new Date(date);
                 const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
+                const parsedCreatedAt = new Date(createdAtStr);
+                const isoCreatedAt = !isNaN(parsedCreatedAt.getTime()) ? parsedCreatedAt.toISOString() : isoDate;
+                const parsedCompletedAt = new Date(completedAtStr);
+                const isoCompletedAt = !isNaN(parsedCompletedAt.getTime()) ? parsedCompletedAt.toISOString() : isoDate;
                 
-                const newId = uuidv4();
+                const newId = idStr || uuidv4();
                 newItems.push({
                     id: newId,
                     type: ItemType.FINANCE,
                     content: description || 'Manual Transaction',
                     status: 'done',
-                    created_at: isoDate,
+                    created_at: isoCreatedAt,
+                    completed_at: isoCompletedAt,
                     meta: {
                         date: isoDate,
                         financeType,
                         amount: amount,
                         budgetCategory: getCatId(category),
-                        paymentMethod: getWalId(wallet),
+                        paymentMethod: rawPaymentMethod ? getWalId(rawPaymentMethod) : getWalId(wallet),
                         toWallet: getWalId(toWallet),
+                        merchant: merchant || undefined,
+                        commodity: commodity || undefined,
+                        subcommodity: subcommodity || undefined,
+                        canonical: (canonicalPaymentMethod || canonicalMerchant || canonicalCommodity || canonicalSubcommodity) ? {
+                            paymentMethod: canonicalPaymentMethod ? { rawValue: rawPaymentMethod || wallet || undefined, value: canonicalPaymentMethod } : undefined,
+                            merchant: canonicalMerchant ? { rawValue: merchant || undefined, value: canonicalMerchant } : undefined,
+                            commodity: canonicalCommodity ? { rawValue: commodity || undefined, value: canonicalCommodity } : undefined,
+                            subcommodity: canonicalSubcommodity ? { rawValue: subcommodity || undefined, value: canonicalSubcommodity } : undefined,
+                        } : undefined,
                         savingGoalId: financeType === ACHIEVED_GOAL_FINANCE_TYPE
                             ? newItems.find(i => i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving' && getAchievedGoalName(description).toLowerCase() === i.content.trim().toLowerCase())?.id
                             : undefined,
@@ -793,7 +851,75 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         }
     }
 
-    // 6. Skill Logs (Removed)
+    // 6. Skill Logs
+    const skillLogsSheet = valueRanges.find(r => r.range && r.range.includes('Skill Logs'));
+    if (skillLogsSheet && skillLogsSheet.values) {
+        const headers = skillLogsSheet.values[0] || [];
+        const cell = (row: unknown[], name: string, fallbackIndex: number) => getHeaderAwareCell(headers, row, name, fallbackIndex);
+        const rows = skillLogsSheet.values.slice(1);
+        for (const row of rows) {
+            const dateStr = cell(row, 'Date', 0) as string;
+            const skillName = cell(row, 'Skill_Name', 1) as string;
+            const skillId = cell(row, 'Skill_ID', 2) as string;
+            const durationStr = cell(row, 'Duration_Minutes', 3) as string;
+            const content = cell(row, 'Content', 4) as string;
+            const tagsStr = cell(row, 'Tags', 5) as string;
+            const createdAtStr = cell(row, 'Created_At', 6) as string;
+            const completedAtStr = cell(row, 'Completed_At', 7) as string;
+            const idStr = cell(row, 'ID', 8) as string;
+            if (!content && !dateStr && !durationStr && !idStr) continue;
+
+            const parsedDate = new Date(dateStr);
+            const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
+            const parsedCreatedAt = new Date(createdAtStr);
+            const isoCreatedAt = !isNaN(parsedCreatedAt.getTime()) ? parsedCreatedAt.toISOString() : isoDate;
+            const parsedCompletedAt = new Date(completedAtStr);
+            const isoCompletedAt = !isNaN(parsedCompletedAt.getTime()) ? parsedCompletedAt.toISOString() : isoDate;
+            const durationMinutes = parseInt(String(durationStr || '').replace(/[^\d-]/g, ''), 10) || 0;
+            const nextSkillId = skillId || getSkillId(skillName);
+            const nextTags = tagsStr ? String(tagsStr).split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+
+            const match = newItems.find(i =>
+                (idStr && i.id === idStr) ||
+                (!idStr && i.type === ItemType.SKILL_LOG && i.content === content && fmtDate(i.meta.date || i.completed_at || i.created_at) === dateStr)
+            );
+
+            if (match) {
+                seenItemIds.add(match.id);
+                let updated = false;
+                if (match.type !== ItemType.SKILL_LOG) { match.type = ItemType.SKILL_LOG; updated = true; }
+                if (match.content !== content) { match.content = content; updated = true; }
+                if (match.status !== 'done') { match.status = 'done'; updated = true; }
+                if (match.created_at !== isoCreatedAt) { match.created_at = isoCreatedAt; updated = true; }
+                if (match.completed_at !== isoCompletedAt) { match.completed_at = isoCompletedAt; updated = true; }
+                if (match.meta.date !== isoDate) { match.meta.date = isoDate; updated = true; }
+                if (match.meta.skillName !== (skillName || undefined)) { match.meta.skillName = skillName || undefined; updated = true; }
+                if (match.meta.skillId !== (nextSkillId || undefined)) { match.meta.skillId = nextSkillId || undefined; updated = true; }
+                if (match.meta.durationMinutes !== durationMinutes) { match.meta.durationMinutes = durationMinutes; updated = true; }
+                if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(nextTags)) { match.meta.tags = nextTags; updated = true; }
+                if (updated) hasChanges = true;
+            } else {
+                const newId = idStr || uuidv4();
+                newItems.push({
+                    id: newId,
+                    type: ItemType.SKILL_LOG,
+                    content: content || 'Manual Skill Log',
+                    status: 'done',
+                    created_at: isoCreatedAt,
+                    completed_at: isoCompletedAt,
+                    meta: {
+                        date: isoDate,
+                        skillName: skillName || undefined,
+                        skillId: nextSkillId || undefined,
+                        durationMinutes,
+                        tags: nextTags,
+                    },
+                });
+                seenItemIds.add(newId);
+                hasChanges = true;
+            }
+        }
+    }
 
     // 7. Settings Reconciliation
     const walletSheet = valueRanges.find(r => r.range && r.range.includes('Wallets Config'));
@@ -883,6 +1009,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         shop: hasAuthoritativeRows(shopSheet),
         event: hasAuthoritativeRows(eventSheet),
         notes: hasAuthoritativeRows(notesSheet),
+        skillLogs: hasAuthoritativeRows(skillLogsSheet),
         wallet: hasAuthoritativeRows(walletSheet),
         budget: hasAuthoritativeRows(budgetSheet),
         skillConfig: hasAuthoritativeRows(skillConfigSheet),
@@ -903,6 +1030,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;
         else if (item.type === ItemType.EVENT) sheetWasFetched = sheetsFetched.event;
         else if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) sheetWasFetched = sheetsFetched.notes;
+        else if (item.type === ItemType.SKILL_LOG) sheetWasFetched = sheetsFetched.skillLogs;
 
         if (sheetWasFetched) {
             hasChanges = true;
