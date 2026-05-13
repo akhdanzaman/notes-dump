@@ -124,6 +124,23 @@ test('dedicated spreadsheet export sheets reload with config intact', () => {
   assert.equal(reloaded.appSettings?.googleCalendarId, 'primary');
 });
 
+test('dedicated event rows preserve sheet IDs across reloads', () => {
+  const valueRanges = [{
+    range: "'Events'!A1:H",
+    values: [
+      ['Type', 'Date', 'Start_Date', 'End_Date', 'Priority', 'Event', 'Tags', 'ID'],
+      ['EVENT', '2026-05-02T00:00:00.000Z', '', '', 'normal', 'Event di SCBD buat bikin relasi', 'event, business', 'event-sheet-id'],
+    ],
+  }];
+
+  const firstReload = __test__.buildDedicatedDbFromValueRanges(valueRanges);
+  const secondReload = __test__.buildDedicatedDbFromValueRanges(valueRanges);
+
+  assert.equal(firstReload.data.length, 1);
+  assert.equal(firstReload.data[0].id, 'event-sheet-id');
+  assert.equal(secondReload.data[0].id, 'event-sheet-id');
+});
+
 test('dedicated reload migrates legacy raw skill logs when Skill Logs sheet is absent', () => {
   const rawHeaders = [
     'ID', 'Type', 'Title', 'Content', 'Status', 'Created_At', 'Completed_At', 'Date', 'Amount', 'Tags',

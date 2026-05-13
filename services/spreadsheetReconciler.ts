@@ -639,7 +639,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     }
                 }
 
-                const newId = uuidv4();
+                const newId = idStr || uuidv4();
                 newItems.push({
                     id: newId,
                     type: ItemType.SHOPPING,
@@ -760,7 +760,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     }
                 }
 
-                const newId = uuidv4();
+                const newId = idStr || uuidv4();
                 newItems.push({
                     id: newId,
                     type: ItemType.EVENT,

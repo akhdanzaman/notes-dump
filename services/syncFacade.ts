@@ -2,6 +2,7 @@ import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, Chat
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, getSpreadsheetHistory, SpreadsheetHistoryEntry, getCachedSpreadsheetDb, cacheSpreadsheetDbForMigration, cachePendingSpreadsheetWrite, getPendingSpreadsheetWrite, clearPendingSpreadsheetWrite } from "./spreadsheetService";
 import { SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
+import { dedupeBrainDumpItems } from "../utils/itemDedupe";
 
 export const getActiveSyncProviders = (): 'spreadsheet'[] => {
   return getSpreadsheetConfig() ? ['spreadsheet'] : [];
@@ -48,7 +49,9 @@ export const syncData = async (
   canonicalRules?: CanonicalRule[],
   forceOverwrite = false
 ): Promise<SyncResult> => {
-  const outgoingDb = { data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules };
+  const deduped = dedupeBrainDumpItems(items);
+  const outgoingItems = deduped.items;
+  const outgoingDb = { data: outgoingItems, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules };
 
   if (!getSpreadsheetConfig()) {
     cacheSpreadsheetDbForMigration(outgoingDb);
@@ -61,7 +64,7 @@ export const syncData = async (
 
   const pendingWriteId = cachePendingSpreadsheetWrite(outgoingDb);
   const result = await syncSpreadsheetData(
-    items,
+    outgoingItems,
     budgetConfig,
     customPrompt,
     skills,

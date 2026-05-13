@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.99',
+    date: 'May 2026',
+    items: [
+      'Fixed duplicate spreadsheet/app events caused by dedicated sheet reloads generating new IDs for Shopping and Events rows instead of preserving the row ID from the sheet.',
+      'Startup now collapses obvious duplicate event rows by semantic content/date/tags and repairs the spreadsheet on the next sync, while preserving completed state, highest priority, and tags.',
+    ],
+  },
+  {
     version: 'v0.3.98',
     date: 'May 2026',
     items: [

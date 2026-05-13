@@ -52,6 +52,7 @@ import { routeBatchParserInput } from '../services/batchParserCoordinator';
 import { runFastThenDeepParserModelRouting } from '../services/parserModelRouting';
 import { shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { applyInvestmentFundingToInvestment, resolveInvestmentFundingInput } from '../utils/investmentFunding';
+import { dedupeBrainDumpItems } from '../utils/itemDedupe';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -711,7 +712,8 @@ export const useBrainDumpData = () => {
                     const migratedData = migrateAchievedGoalItems(normalizedData);
                     const recoveredJournalData = recoverMisclassifiedJournalNotes(migratedData);
 
-                    const investmentWalletMigration = ensureInvestmentWalletsForItems(recoveredJournalData, data.wallets || walletsRef.current);
+                    const dedupeResult = dedupeBrainDumpItems(recoveredJournalData);
+                    const investmentWalletMigration = ensureInvestmentWalletsForItems(dedupeResult.items, data.wallets || walletsRef.current);
                     const checkedData = checkRoutineResets(investmentWalletMigration.items);
                     const canonicalRulesForSweep = data.canonicalRules || canonicalRulesRef.current;
                     const walletsForSweep = investmentWalletMigration.wallets;
@@ -729,7 +731,7 @@ export const useBrainDumpData = () => {
 
                     appliedData = { ...data, data: canonicalSweep.items, wallets: walletsForSweep };
 
-                    if (investmentWalletMigration.changed || JSON.stringify(canonicalSweep.items) !== JSON.stringify(data.data)) {
+                    if (dedupeResult.removedCount > 0 || investmentWalletMigration.changed || JSON.stringify(canonicalSweep.items) !== JSON.stringify(data.data)) {
                         saveAndSync(canonicalSweep.items, data.budgetConfig, data.customPrompt, data.skills, walletsForSweep, data.monthlyThemes, data.appSettings, data.canonicalRules);
                     }
                 }
