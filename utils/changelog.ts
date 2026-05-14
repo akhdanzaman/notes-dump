@@ -6,6 +6,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.118',
+    date: 'May 2026',
+    items: [
+      'Expanded semantic duplicate cleanup beyond events: exact duplicate shopping, finance, todo, note, and journal entries are now collapsed during fetch/save dedupe, preventing repeated routine shopping cards like Laundry/Internet/Makan from reappearing after refresh.',
+      'Added regression tests for routine shopping duplicates, separate shopping due dates, and exact duplicate finance transactions.',
+    ],
+  },
+  {
+    version: 'v0.3.117',
+    date: 'May 2026',
+    items: [
+      'Added Status columns to Events and Notes & Journals sheets so marking those entries done persists after save and reload.',
+      'Updated fetch ranges and reconcilers to read the new Status columns while preserving backward compatibility with older sheet formats.',
+    ],
+  },
+  {
     version: 'v0.3.116',
     date: 'May 2026',
     items: [
