@@ -6,6 +6,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.102',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet autosave now checks and merges current Google Sheets rows before non-force saves, so manual sheet edits are not silently overwritten by stale app state.',
+      'Parser undo/delete now only removes entries that were actually created by that parse, while restoring pre-existing edited items, wallets, skills, themes, and canonical rules safely.',
+      'CRUD updates now keep in-memory refs synchronized immediately, preserve existing metadata on partial edits, and surface missing parser targets as needs-review notes instead of reporting silent success.',
+      'Parser and batch parsing now preserve more supported fields, execute skill/wallet updates, avoid duplicate generated configs, and keep multiple AI results attached to the correct source line.',
+    ],
+  },
+  {
     version: 'v0.3.101',
     date: 'May 2026',
     items: [

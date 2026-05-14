@@ -91,7 +91,8 @@ function isValidItemType(value: unknown): value is ParsedItemType {
     'NOTE',
     'EVENT',
     'FINANCE',
-    'JOURNAL'
+    'JOURNAL',
+    'SKILL_LOG'
   ].includes(value);
 }
 
@@ -534,6 +535,10 @@ const stage2Schema = {
           amount: { type: Type.NUMBER },
           fromWallet: { type: Type.STRING },
           toWallet: { type: Type.STRING },
+          date: { type: Type.STRING },
+          savingGoalId: { type: Type.STRING },
+          savingGoalName: { type: Type.STRING },
+          budgetCategory: { type: Type.STRING },
           note: { type: Type.STRING },
 
           question: { type: Type.STRING },
@@ -572,6 +577,9 @@ const stage2Schema = {
               commodity: { type: Type.STRING },
               subcommodity: { type: Type.STRING },
               merchant: { type: Type.STRING },
+              durationMinutes: { type: Type.NUMBER },
+              skillName: { type: Type.STRING },
+              skillId: { type: Type.STRING },
               quantity: { type: Type.STRING },
               progress: { type: Type.NUMBER },
               progressNotes: { type: Type.STRING },
@@ -626,6 +634,10 @@ const stage2Schema = {
               commodity: { type: Type.STRING },
               subcommodity: { type: Type.STRING },
               merchant: { type: Type.STRING },
+
+              durationMinutes: { type: Type.NUMBER },
+              skillName: { type: Type.STRING },
+              skillId: { type: Type.STRING },
 
               progress: { type: Type.NUMBER },
               progressNotes: { type: Type.STRING },
@@ -746,7 +758,7 @@ Multiplicity rules:
 - Never duplicate identical finance/transaction results; if the same expense is mentioned once, output it once.
 
 1) create_item
-- itemType must be one of TODO, SHOPPING, NOTE, EVENT, FINANCE, JOURNAL
+- itemType must be one of TODO, SHOPPING, NOTE, EVENT, FINANCE, JOURNAL, SKILL_LOG
 - future unpaid purchase => SHOPPING
 - completed expense/income => FINANCE
 - diary/feeling/recap => JOURNAL

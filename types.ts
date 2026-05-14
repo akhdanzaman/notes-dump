@@ -289,6 +289,7 @@ export type SyncProgressPhase =
   | 'prepare'
   | 'pending_local'
   | 'queue'
+  | 'merge_remote'
   | 'export'
   | 'metadata'
   | 'create_sheets'

@@ -125,8 +125,9 @@ test('local finance parser supports Indonesian currency forms and unknown-wallet
   }
 
   const unknownWallet = await routeParserInput('expense makan 37500 jenius', ctx, async () => []);
-  assert.equal(unknownWallet.decision.route, 'deep_ai');
-  assert.equal(unknownWallet.results.length, 0);
+  assert.equal(unknownWallet.decision.route, 'review');
+  assert.equal(unknownWallet.results.length, 1);
+  assert.equal((unknownWallet.results[0].payload as any).meta.amount, 37_500);
 });
 
 test('router uses local finance parser for income without deep AI', async () => {

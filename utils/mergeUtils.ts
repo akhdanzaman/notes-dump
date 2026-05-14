@@ -65,6 +65,34 @@ const mergeConcurrentItem = (localItem: BrainDumpItem, remoteItem: BrainDumpItem
     };
 };
 
+const mergeConcurrentSkill = (localSkill: Skill, remoteSkill: Skill, baseSkill?: Skill): Skill => {
+    if (!baseSkill) return localSkill;
+    const localChanged = !same(localSkill, baseSkill);
+    const remoteChanged = !same(remoteSkill, baseSkill);
+    if (!localChanged || !remoteChanged) return localChanged ? localSkill : remoteSkill;
+    return {
+        id: localSkill.id,
+        name: pickField(localSkill.name, remoteSkill.name, baseSkill.name),
+        color: pickField(localSkill.color, remoteSkill.color, baseSkill.color),
+        created_at: pickField(localSkill.created_at, remoteSkill.created_at, baseSkill.created_at),
+        weeklyTargetMinutes: pickField(localSkill.weeklyTargetMinutes, remoteSkill.weeklyTargetMinutes, baseSkill.weeklyTargetMinutes),
+    };
+};
+
+const mergeConcurrentWallet = (localWallet: Wallet, remoteWallet: Wallet, baseWallet?: Wallet): Wallet => {
+    if (!baseWallet) return localWallet;
+    const localChanged = !same(localWallet, baseWallet);
+    const remoteChanged = !same(remoteWallet, baseWallet);
+    if (!localChanged || !remoteChanged) return localChanged ? localWallet : remoteWallet;
+    return {
+        id: localWallet.id,
+        name: pickField(localWallet.name, remoteWallet.name, baseWallet.name),
+        type: pickField(localWallet.type, remoteWallet.type, baseWallet.type),
+        initialBalance: pickField(localWallet.initialBalance, remoteWallet.initialBalance, baseWallet.initialBalance),
+        color: pickField(localWallet.color, remoteWallet.color, baseWallet.color),
+    };
+};
+
 // Helper for merging data (3-way merge to handle deletions correctly)
 export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema): DbSchema => {
     const baseItemIds = new Set(base?.data.map(i => i.id) || []);
@@ -127,7 +155,9 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
 
     remote.skills?.forEach(s => {
         if (localSkillIds.has(s.id)) {
-            skillMap.set(s.id, local.skills?.find(ls => ls.id === s.id) || s);
+            const localSkill = local.skills?.find(ls => ls.id === s.id);
+            const baseSkill = base?.skills?.find(bs => bs.id === s.id);
+            skillMap.set(s.id, localSkill ? mergeConcurrentSkill(localSkill, s, baseSkill) : s);
         } else if (!baseSkillIds.has(s.id)) {
             skillMap.set(s.id, s);
         }
@@ -146,7 +176,9 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
 
     remote.wallets?.forEach(w => {
         if (localWalletIds.has(w.id)) {
-            walletMap.set(w.id, local.wallets?.find(lw => lw.id === w.id) || w);
+            const localWallet = local.wallets?.find(lw => lw.id === w.id);
+            const baseWallet = base?.wallets?.find(bw => bw.id === w.id);
+            walletMap.set(w.id, localWallet ? mergeConcurrentWallet(localWallet, w, baseWallet) : w);
         } else if (!baseWalletIds.has(w.id)) {
             walletMap.set(w.id, w);
         }

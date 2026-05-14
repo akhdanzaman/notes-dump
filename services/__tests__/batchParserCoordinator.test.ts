@@ -157,6 +157,24 @@ test('batch coordinator carries model-routing metadata and AI call count from fa
   assert.equal(routed.decision.batch?.aiCallCount, 2);
 });
 
+test('batch coordinator keeps multiple explicit AI results on their source candidate', async () => {
+  const routed = await routeBatchParserInput(
+    'alpha 123 maybe\nbeta 456 maybe',
+    ctx,
+    async (_batchText, candidates) => [
+      { ...ambiguousAiResult('alpha first'), batchItem: { id: candidates[0].id, index: candidates[0].index, sourceText: candidates[0].sourceText } },
+      { ...ambiguousAiResult('alpha second'), batchItem: { id: candidates[0].id, index: candidates[0].index, sourceText: candidates[0].sourceText } },
+      { ...ambiguousAiResult('beta only'), batchItem: { id: candidates[1].id, index: candidates[1].index, sourceText: candidates[1].sourceText } },
+    ],
+  );
+
+  assert.deepEqual(routed.results.map(result => [result.content, result.batchItem?.index]), [
+    ['alpha first', 0],
+    ['alpha second', 0],
+    ['beta only', 1],
+  ]);
+});
+
 test('batch coordinator isolates AI fallback failures per item without dropping local parses', async () => {
   let aiCalls = 0;
   const routed = await routeBatchParserInput(

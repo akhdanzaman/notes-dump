@@ -1282,12 +1282,37 @@ const fetchCurrentRawSpreadsheetDb = async (config: SpreadsheetConfig, existingT
 
   for (const name of ['Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings', 'Chat History', 'Canonical Rules']) {
     if (existingTitles.has(name)) {
-      rangesToFetch.push(`${escapeSheetName(name)}!A:E`);
+      const configuredRange = SPREADSHEET_FETCH_RANGES[name as keyof typeof SPREADSHEET_FETCH_RANGES] || 'A:E';
+      rangesToFetch.push(`${escapeSheetName(name)}!${configuredRange}`);
     }
   }
 
   const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
   return buildCurrentRawDbFromValueRanges(valueRanges);
+};
+
+const getValueRangeSheetNames = (valueRanges: any[]) => new Set(
+  (valueRanges || [])
+    .map(vr => String(vr.range || '').split('!')[0]?.replace(/'/g, ''))
+    .filter(Boolean)
+);
+
+const applyConfigSheetsToBaseDb = (baseDb: DbSchema, valueRanges: any[]): DbSchema => {
+  const sheetConfig = parseConfigSheets(valueRanges || []);
+  const rangeNames = getValueRangeSheetNames(valueRanges || []);
+  const hasThemesAndSettings = rangeNames.has('Themes & Settings');
+
+  return validateSchema({
+    ...baseDb,
+    wallets: rangeNames.has('Wallets Config') ? sheetConfig.wallets : baseDb.wallets,
+    skills: rangeNames.has('Skills Config') ? sheetConfig.skills : baseDb.skills,
+    budgetConfig: rangeNames.has('Budget Rules') ? (sheetConfig.budgetConfig || baseDb.budgetConfig) : baseDb.budgetConfig,
+    monthlyThemes: hasThemesAndSettings ? sheetConfig.monthlyThemes : baseDb.monthlyThemes,
+    appSettings: hasThemesAndSettings ? (sheetConfig.appSettings || baseDb.appSettings) : baseDb.appSettings,
+    customPrompt: sheetConfig.customPrompt ?? baseDb.customPrompt,
+    chatHistory: rangeNames.has('Chat History') ? (sheetConfig.chatHistory || []) : baseDb.chatHistory,
+    canonicalRules: rangeNames.has('Canonical Rules') ? (sheetConfig.canonicalRules || []) : baseDb.canonicalRules,
+  });
 };
 
 const fetchLegacySystemSnapshotDb = async (config: SpreadsheetConfig, existingTitles: Set<string>): Promise<DbSchema | null> => {
@@ -1321,12 +1346,9 @@ const fetchLegacyUserSheetDb = async (config: SpreadsheetConfig, existingTitles:
   }
 
   const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
-  const sheetConfig = parseConfigSheets(valueRanges || []);
+  const configMergedBase = applyConfigSheetsToBaseDb(baseDb, valueRanges || []);
   const reconciledDb = validateSchema({
-    ...reconcileSpreadsheetData(validateSchema(baseDb), valueRanges || []),
-    customPrompt: sheetConfig.customPrompt ?? baseDb.customPrompt,
-    chatHistory: sheetConfig.chatHistory ?? baseDb.chatHistory,
-    canonicalRules: sheetConfig.canonicalRules ?? baseDb.canonicalRules,
+    ...reconcileSpreadsheetData(configMergedBase, valueRanges || []),
   });
   const reconciled = JSON.stringify(reconciledDb) !== JSON.stringify(validateSchema(baseDb));
   return { data: reconciledDb, reconciled };
@@ -1368,8 +1390,10 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
     }
   }
 
-  // Fallback to cache for empty/new spreadsheet
-  if (dbData.data.length === 0) {
+  // Fallback to cache only for truly new spreadsheets. If managed app sheets
+  // already exist, header-only item tabs are authoritative empty state.
+  const hasManagedSheets = MANAGED_USER_SHEET_NAMES.some(sheetName => existingTitles.has(sheetName));
+  if (dbData.data.length === 0 && !hasManagedSheets) {
     const cached = getCachedSpreadsheetDb();
     if (cached?.data?.length) {
       dbData = cached;
@@ -1385,7 +1409,9 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
 
   if (!skipLocalStorage) {
     try {
-      writeSpreadsheetCache(JSON.stringify(normalizedDb));
+      const normalizedSnapshot = JSON.stringify(normalizedDb);
+      writeSpreadsheetCache(normalizedSnapshot);
+      lastSnapshot = normalizedSnapshot;
     } catch (e) {
       console.warn('Failed to save to local storage', e);
     }
@@ -1718,7 +1744,9 @@ const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb:
   }
 
   const batchData = await res.json();
-  const reconciledDb = reconcileSpreadsheetData(baseDb, batchData.valueRanges || []);
+  const valueRanges = batchData.valueRanges || [];
+  const configMergedBase = applyConfigSheetsToBaseDb(baseDb, valueRanges);
+  const reconciledDb = reconcileSpreadsheetData(configMergedBase, valueRanges);
   const reconciled = JSON.stringify(reconciledDb.data) !== JSON.stringify(baseDb.data)
     || JSON.stringify(reconciledDb.budgetConfig) !== JSON.stringify(baseDb.budgetConfig)
     || JSON.stringify(reconciledDb.skills) !== JSON.stringify(baseDb.skills)
@@ -1773,9 +1801,8 @@ const performSync = async (
     data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory,
     canonicalRules: canonicalRules || []
   };
-  
-  const finalJsonString = JSON.stringify(updatedDb);
-  writeSpreadsheetCache(finalJsonString);
+
+  writeSpreadsheetCache(JSON.stringify(updatedDb));
 
   const config = getSpreadsheetConfig();
   if (!config) {
@@ -1783,17 +1810,31 @@ const performSync = async (
   }
 
   try {
+    let dbToWrite = validateSchema(updatedDb);
+    const baseSnapshot = lastSnapshot ? validateSchema(safeJsonParse(lastSnapshot, { data: [] })) : undefined;
+
+    if (!forceOverwrite) {
+      onProgress?.({ phase: 'merge_remote', label: 'Checking sheet edits', detail: 'Merging current spreadsheet rows before save' });
+      const sheetBase = validateSchema(safeJsonParse(JSON.stringify(baseSnapshot || dbToWrite), { data: [] }));
+      const sheetState = await fetchUserEditableSpreadsheetDb(config, sheetBase);
+      dbToWrite = baseSnapshot
+        ? mergeDbData(dbToWrite, sheetState.data, baseSnapshot)
+        : mergeDbData(dbToWrite, sheetState.data);
+    }
+
+    const finalJsonString = JSON.stringify(dbToWrite);
+
     // 1. Generate all sheet data
-    onProgress?.({ phase: 'export', label: 'Building spreadsheet tabs', detail: `${items.length} items → export sheets` });
+    onProgress?.({ phase: 'export', label: 'Building spreadsheet tabs', detail: `${dbToWrite.data.length} items → export sheets` });
     const exportSheets = generateExportData(
-      items, 
-      skills || [], 
-      wallets || [], 
-      budgetConfig || { monthlyIncome: 0, rules: [] }, 
-      monthlyThemes || {}, 
-      appSettings || { defaultCollapsed: false, hideMoney: false },
+      dbToWrite.data,
+      dbToWrite.skills || [],
+      dbToWrite.wallets || [],
+      dbToWrite.budgetConfig || { monthlyIncome: 0, rules: [] },
+      dbToWrite.monthlyThemes || {},
+      dbToWrite.appSettings || { defaultCollapsed: false, hideMoney: false },
       new Date(),
-      { customPrompt, chatHistory, canonicalRules }
+      { customPrompt: dbToWrite.customPrompt, chatHistory: dbToWrite.chatHistory, canonicalRules: dbToWrite.canonicalRules }
     );
 
     // 2. Get existing sheets
@@ -1817,7 +1858,7 @@ const performSync = async (
         body: JSON.stringify({ requests })
       });
       if (!batchRes.ok) {
-        console.warn('Sheet creation warning:', await batchRes.text());
+        throw new Error(`Failed to create missing spreadsheet tabs: ${await batchRes.text()}`);
       }
     }
 
@@ -1840,8 +1881,7 @@ const performSync = async (
         body: JSON.stringify({})
       });
       if (!clearRes.ok) {
-        console.warn(`Failed to clear sheet ${sheet.name}:`, await clearRes.text());
-        continue;
+        throw new Error(`Failed to clear sheet ${sheet.name}: ${await clearRes.text()}`);
       }
 
       // Write data in batches
@@ -1862,7 +1902,7 @@ const performSync = async (
           body: JSON.stringify({ values: chunks[ci] })
         });
         if (!updateRes.ok) {
-          console.warn(`Failed to write sheet ${sheet.name} chunk ${ci}:`, await updateRes.text());
+          throw new Error(`Failed to write sheet ${sheet.name} chunk ${ci + 1}/${chunks.length}: ${await updateRes.text()}`);
         }
       }
     }
@@ -1873,7 +1913,11 @@ const performSync = async (
     lastSnapshot = finalJsonString;
     isHydrated = true;
 
-    return { success: true, method: 'cloud' };
+    return {
+      success: true,
+      method: 'cloud',
+      mergedData: JSON.stringify(dbToWrite) !== JSON.stringify(updatedDb) ? dbToWrite : undefined,
+    };
   } catch (error: any) {
     onProgress?.({ phase: 'error', label: 'Save failed', detail: error.message || 'Unknown sync error' });
     console.error('Failed to sync to Spreadsheet:', error);

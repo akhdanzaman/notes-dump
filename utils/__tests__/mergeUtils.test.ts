@@ -146,3 +146,30 @@ test('mergeDbData round-trips background enrichment without overwriting remote m
   assert.equal(item.meta.canonical?.commodity?.value, 'food');
   assert.equal(item.meta.enrichment?.status, 'applied');
 });
+
+test('mergeDbData preserves manual spreadsheet edits to existing skills and wallets', () => {
+  const base: DbSchema = {
+    data: [],
+    skills: [{ id: 'skill-1', name: 'Coding', color: 'blue', created_at: '2026-05-01T00:00:00.000Z', weeklyTargetMinutes: 120 }],
+    wallets: [{ id: 'wallet-1', name: 'Cash', type: 'cash', initialBalance: 100000, color: 'green' }],
+  };
+
+  const local: DbSchema = {
+    ...base,
+    data: [{ id: 'local-new', type: ItemType.NOTE, content: 'new local note', status: 'pending', created_at: '2026-05-02T00:00:00.000Z', meta: {} }],
+  };
+
+  const remote: DbSchema = {
+    data: [],
+    skills: [{ ...base.skills![0], name: 'Coding Pro', weeklyTargetMinutes: 180 }],
+    wallets: [{ ...base.wallets![0], name: 'Pocket Cash', initialBalance: 125000 }],
+  };
+
+  const merged = mergeDbData(local, remote, base);
+
+  assert.equal(merged.skills?.[0].name, 'Coding Pro');
+  assert.equal(merged.skills?.[0].weeklyTargetMinutes, 180);
+  assert.equal(merged.wallets?.[0].name, 'Pocket Cash');
+  assert.equal(merged.wallets?.[0].initialBalance, 125000);
+  assert.equal(merged.data.some(item => item.id === 'local-new'), true);
+});

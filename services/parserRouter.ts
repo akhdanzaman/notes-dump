@@ -244,6 +244,19 @@ export const routeParserInput = async (
   const local = classifyLocalIntent(text, ctx);
   if (local.route === 'deep_ai') {
     const parsed = normalizeDeepParserOutput(await deepParser());
+    const hasActionableDeepResult = parsed.results.some(result => result.action !== 'unknown');
+    if (!hasActionableDeepResult && local.result) {
+      return {
+        decision: {
+          route: 'review',
+          intent: local.intent,
+          confidenceScore: local.confidenceScore,
+          reasonCodes: [...local.reasonCodes, 'ai_empty_used_local_fallback'],
+          modelRouting: parsed.modelRouting,
+        },
+        results: [local.result],
+      };
+    }
     return { decision: { route: 'deep_ai', intent: local.intent, confidenceScore: local.confidenceScore, reasonCodes: local.reasonCodes, modelRouting: parsed.modelRouting }, results: parsed.results };
   }
   return { decision: { route: local.route, intent: local.intent, confidenceScore: local.confidenceScore, reasonCodes: local.reasonCodes }, results: local.result ? [local.result] : [] };

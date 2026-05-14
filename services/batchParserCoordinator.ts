@@ -157,9 +157,15 @@ const assignDeepResults = (results: ParserResultV2[], candidates: ParserBatchCan
   const remaining = [...candidates];
 
   results.forEach(result => {
-    const matched = matchDeepResultToCandidate(result, remaining) || remaining[0];
+    const hasExplicitBatchRef = result.batchItem?.id !== undefined || result.batchItem?.index !== undefined;
+    const matched = hasExplicitBatchRef
+      ? matchDeepResultToCandidate(result, candidates)
+      : (matchDeepResultToCandidate(result, remaining) || remaining[0]);
     if (!matched) return;
-    remaining.splice(remaining.findIndex(candidate => candidate.index === matched.index), 1);
+    if (!hasExplicitBatchRef) {
+      const remainingIndex = remaining.findIndex(candidate => candidate.index === matched.index);
+      if (remainingIndex >= 0) remaining.splice(remainingIndex, 1);
+    }
     byIndex.set(matched.index, [...(byIndex.get(matched.index) || []), annotateResult(result, matched)]);
   });
 

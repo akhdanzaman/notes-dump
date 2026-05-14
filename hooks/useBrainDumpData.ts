@@ -23,7 +23,9 @@ import {
     CompleteItemPayload,
     DeleteItemPayload,
     CreateSkillPayload,
+    UpdateSkillPayload,
     CreateWalletPayload,
+    UpdateWalletPayload,
     ThemePayload,
     TransferMoneyPayload,
     AddSavingFundsPayload,
@@ -555,23 +557,21 @@ export const useBrainDumpData = () => {
 
             if (result.mergedData) {
                 const remoteSchema = result.mergedData;
-                setItems(currentItems => {
-                    const merged = mergeDbData(
-                        { data: currentItems, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema,
-                        remoteSchema,
-                        { data: baseItems } as DbSchema
-                    );
-                    return merged.data;
-                });
-                setSkills(currentSkills => {
-                    const merged = mergeDbData({ data: itemsRef.current, skills: currentSkills } as DbSchema, remoteSchema);
-                    return merged.skills || [];
-                });
-                setWallets(currentWallets => {
-                    const merged = mergeDbData({ data: itemsRef.current, wallets: currentWallets } as DbSchema, remoteSchema);
-                    return merged.wallets || [];
-                });
-                if (remoteSchema.monthlyThemes) setMonthlyThemes(prev => ({ ...remoteSchema.monthlyThemes, ...prev }));
+                const merged = mergeDbData(
+                    { data: itemsRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema,
+                    remoteSchema,
+                    { data: baseItems, skills: skillsToSave, wallets: walletsToSave, monthlyThemes: themesToSave } as DbSchema
+                );
+                itemsRef.current = merged.data;
+                skillsRef.current = merged.skills || [];
+                walletsRef.current = merged.wallets || [];
+                const mergedThemes = remoteSchema.monthlyThemes ? { ...remoteSchema.monthlyThemes, ...monthlyThemesRef.current } : monthlyThemesRef.current;
+                monthlyThemesRef.current = mergedThemes;
+                if (remoteSchema.canonicalRules) canonicalRulesRef.current = remoteSchema.canonicalRules;
+                setItems(merged.data);
+                setSkills(merged.skills || []);
+                setWallets(merged.wallets || []);
+                setMonthlyThemes(mergedThemes);
                 if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
             }
 
@@ -655,6 +655,7 @@ export const useBrainDumpData = () => {
         replaceHistoricalCanonicalReviews(sweep.reviews);
 
         if (sweep.changedItemIds.length > 0) {
+            itemsRef.current = sweep.items;
             setItems(sweep.items);
             saveAndSync(sweep.items, undefined, undefined, undefined, undefined, undefined, undefined, canonicalRulesRef.current);
         }
@@ -739,6 +740,7 @@ export const useBrainDumpData = () => {
                     });
 
                     replaceHistoricalCanonicalReviews(canonicalSweep.reviews);
+                    itemsRef.current = canonicalSweep.items;
                     setItems(canonicalSweep.items);
 
                     appliedData = { ...data, data: canonicalSweep.items, wallets: walletsForSweep };
@@ -748,23 +750,43 @@ export const useBrainDumpData = () => {
                     }
                 }
 
-                if (data.budgetConfig) setBudgetConfig(data.budgetConfig);
-                if (data.customPrompt) setCustomPrompt(data.customPrompt);
+                if (data.budgetConfig) {
+                    budgetConfigRef.current = data.budgetConfig;
+                    setBudgetConfig(data.budgetConfig);
+                }
+                if (data.customPrompt) {
+                    customPromptRef.current = data.customPrompt;
+                    setCustomPrompt(data.customPrompt);
+                }
                 if (data.skills) {
+                    skillsRef.current = data.skills;
                     setSkills(data.skills);
                 } else {
                     const defaults: Skill[] = [
                         { id: 'skill-1', name: 'General Learning', color: 'indigo-500', created_at: new Date().toISOString() }
                     ];
+                    skillsRef.current = defaults;
                     setSkills(defaults);
                     saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
                 }
 
-                if (walletsToApply) setWallets(walletsToApply);
-                if (data.monthlyThemes) setMonthlyThemes(data.monthlyThemes);
-                if (data.appSettings) setAppSettings(data.appSettings);
+                if (walletsToApply) {
+                    walletsRef.current = walletsToApply;
+                    setWallets(walletsToApply);
+                }
+                if (data.monthlyThemes) {
+                    monthlyThemesRef.current = data.monthlyThemes;
+                    setMonthlyThemes(data.monthlyThemes);
+                }
+                if (data.appSettings) {
+                    appSettingsRef.current = data.appSettings;
+                    setAppSettings(data.appSettings);
+                }
                 if (data.chatHistory) setChatHistory(data.chatHistory);
-                if (data.canonicalRules) setCanonicalRules(data.canonicalRules);
+                if (data.canonicalRules) {
+                    canonicalRulesRef.current = data.canonicalRules;
+                    setCanonicalRules(data.canonicalRules);
+                }
 
                 return appliedData;
             };
@@ -1059,6 +1081,25 @@ export const useBrainDumpData = () => {
             let updated = [...prevWithoutOptimistic];
             const itemsToAdd: BrainDumpItem[] = [];
 
+            const addParserTargetMissingNote = (result: ParserResultV2, reason: string) => {
+                itemsToAdd.push(markParserCreatedItem({
+                    id: uuidv4(),
+                    type: ItemType.NOTE,
+                    content: sourceText,
+                    status: 'pending',
+                    created_at: new Date().toISOString(),
+                    meta: {
+                        tags: ['needs-review'],
+                        parsingError: reason,
+                        parserAction: result.action,
+                        parserEntityType: result.entityType,
+                        parserConfidence: result.confidence,
+                        parserNeedsReview: true,
+                        parserReviewReason: reason
+                    }
+                }));
+            };
+
             let newSkills = [...skillsRef.current];
             let newWallets = [...walletsRef.current];
             let newThemes = { ...monthlyThemesRef.current };
@@ -1088,21 +1129,12 @@ export const useBrainDumpData = () => {
                         const payload = result.payload as UpdateItemPayload | undefined;
                         const targetId = payload?.match?.itemId || result.entityRefs?.itemId;
                         if (!targetId) {
-                            itemsToAdd.push(markParserCreatedItem({
-                                id: uuidv4(),
-                                type: ItemType.NOTE,
-                                content: sourceText,
-                                status: 'pending',
-                                created_at: new Date().toISOString(),
-                                meta: {
-                                    tags: ['needs-review'],
-                                    parsingError: result.reviewReason || 'Could not resolve target item for update',
-                                    parserAction: result.action,
-                                    parserEntityType: result.entityType,
-                                    parserConfidence: result.confidence,
-                                    parserNeedsReview: true
-                                }
-                            }));
+                            addParserTargetMissingNote(result, result.reviewReason || 'Could not resolve target item for update');
+                            break;
+                        }
+
+                        if (!updated.some(i => i.id === targetId)) {
+                            addParserTargetMissingNote(result, 'Target item for update was not found');
                             break;
                         }
 
@@ -1112,6 +1144,9 @@ export const useBrainDumpData = () => {
                             const changes = payload?.changes || {};
                             const cleanMeta = stripUndefined({
                                 date: changes.date,
+                                start: changes.start,
+                                end: changes.end,
+                                hideFromCalendar: changes.hideFromCalendar,
                                 title: changes.title,
                                 tags: changes.tags,
                                 amount: sanitizeNumber(changes.amount),
@@ -1135,11 +1170,20 @@ export const useBrainDumpData = () => {
                                 deepWorkParent: changes.deepWorkParent,
                                 deepWorkPlanId: changes.deepWorkPlanId,
                                 deepWorkStatus: changes.deepWorkStatus,
+                                deepWorkTriggerPattern: changes.deepWorkTriggerPattern,
+                                deepWorkTriggerEvidence: changes.deepWorkTriggerEvidence,
+                                deepWorkConfidence: changes.deepWorkConfidence,
                                 deepWorkNextAction: changes.deepWorkNextAction,
+                                deepWorkNextActionDurationMinutes: sanitizeNumber(changes.deepWorkNextActionDurationMinutes),
+                                deepWorkNextActionAcceptanceCheck: changes.deepWorkNextActionAcceptanceCheck,
+                                deepWorkFinalOutputFormat: changes.deepWorkFinalOutputFormat,
                                 deepWorkFinalOutput: changes.deepWorkFinalOutput,
                                 deepWorkSessionEstimateMinutes: sanitizeNumber(changes.deepWorkSessionEstimateMinutes),
+                                deepWorkSessionEstimateConfidence: changes.deepWorkSessionEstimateConfidence,
+                                deepWorkSessionEstimateReason: changes.deepWorkSessionEstimateReason,
                                 deepWorkBlockerCheck: changes.deepWorkBlockerCheck,
                                 deepWorkBlockerStatus: changes.deepWorkBlockerStatus,
+                                deepWorkMissingInputs: changes.deepWorkMissingInputs,
                                 deepWorkCompletionMode: changes.deepWorkCompletionMode,
                                 deepWorkStepIndex: sanitizeNumber(changes.deepWorkStepIndex),
                                 deepWorkStepCount: sanitizeNumber(changes.deepWorkStepCount),
@@ -1155,6 +1199,12 @@ export const useBrainDumpData = () => {
                                 routineMonthsOfYear: changes.routineMonthsOfYear,
                                 recurrenceDays: sanitizeNumber(changes.recurrenceDays),
                                 targetDay: changes.targetDay,
+                                investmentAssetType: changes.investmentAssetType,
+                                investmentSymbol: changes.investmentSymbol,
+                                investmentUnits: sanitizeNumber(changes.investmentUnits),
+                                investmentAveragePrice: sanitizeNumber(changes.investmentAveragePrice),
+                                investmentCurrentPrice: sanitizeNumber(changes.investmentCurrentPrice),
+                                investmentPlatform: changes.investmentPlatform,
                                 status: undefined
                             });
 
@@ -1206,21 +1256,12 @@ export const useBrainDumpData = () => {
                         const payload = result.payload as CompleteItemPayload | undefined;
                         const targetId = payload?.match?.itemId || result.entityRefs?.itemId;
                         if (!targetId) {
-                            itemsToAdd.push(markParserCreatedItem({
-                                id: uuidv4(),
-                                type: ItemType.NOTE,
-                                content: sourceText,
-                                status: 'pending',
-                                created_at: new Date().toISOString(),
-                                meta: {
-                                    tags: ['needs-review'],
-                                    parsingError: result.reviewReason || 'Could not resolve target item for completion',
-                                    parserAction: result.action,
-                                    parserEntityType: result.entityType,
-                                    parserConfidence: result.confidence,
-                                    parserNeedsReview: true
-                                }
-                            }));
+                            addParserTargetMissingNote(result, result.reviewReason || 'Could not resolve target item for completion');
+                            break;
+                        }
+
+                        if (!updated.some(i => i.id === targetId)) {
+                            addParserTargetMissingNote(result, 'Target item for completion was not found');
                             break;
                         }
 
@@ -1249,21 +1290,12 @@ export const useBrainDumpData = () => {
                         const payload = result.payload as DeleteItemPayload | undefined;
                         const targetId = payload?.match?.itemId || result.entityRefs?.itemId;
                         if (!targetId) {
-                            itemsToAdd.push(markParserCreatedItem({
-                                id: uuidv4(),
-                                type: ItemType.NOTE,
-                                content: sourceText,
-                                status: 'pending',
-                                created_at: new Date().toISOString(),
-                                meta: {
-                                    tags: ['needs-review'],
-                                    parsingError: result.reviewReason || 'Could not resolve target item for deletion',
-                                    parserAction: result.action,
-                                    parserEntityType: result.entityType,
-                                    parserConfidence: result.confidence,
-                                    parserNeedsReview: true
-                                }
-                            }));
+                            addParserTargetMissingNote(result, result.reviewReason || 'Could not resolve target item for deletion');
+                            break;
+                        }
+
+                        if (!updated.some(i => i.id === targetId)) {
+                            addParserTargetMissingNote(result, 'Target item for deletion was not found');
                             break;
                         }
 
@@ -1273,8 +1305,19 @@ export const useBrainDumpData = () => {
 
                     case 'create_skill': {
                         const payload = result.payload as CreateSkillPayload | undefined;
-                        const skillName = payload?.name || result.content;
+                        const skillName = normalizeWhitespace(payload?.name || result.content || '');
                         if (!skillName) break;
+
+                        const existingSkill = newSkills.find(skill => lower(skill.name) === lower(skillName));
+                        if (existingSkill) {
+                            const targetMinutes = sanitizeNumber(payload?.targetMinutes) ??
+                                ((sanitizeNumber(payload?.targetHours) || 0) > 0 ? sanitizeNumber(payload?.targetHours)! * 60 : undefined);
+                            if (targetMinutes !== undefined && existingSkill.weeklyTargetMinutes !== targetMinutes) {
+                                newSkills = newSkills.map(skill => skill.id === existingSkill.id ? { ...skill, weeklyTargetMinutes: targetMinutes } : skill);
+                                hasSkillChange = true;
+                            }
+                            break;
+                        }
 
                         newSkills.push({
                             id: uuidv4(),
@@ -1289,10 +1332,38 @@ export const useBrainDumpData = () => {
                         break;
                     }
 
+                    case 'update_skill': {
+                        const payload = result.payload as UpdateSkillPayload | undefined;
+                        const targetId = payload?.match?.skillId || result.entityRefs?.skillId;
+                        const targetName = normalizeWhitespace(payload?.match?.skillName || result.entityRefs?.skillName || result.content || '');
+                        const target = newSkills.find(skill =>
+                            (targetId && skill.id === targetId) ||
+                            (targetName && lower(skill.name) === lower(targetName))
+                        );
+                        if (!target) {
+                            addParserTargetMissingNote(result, 'Target skill for update was not found');
+                            break;
+                        }
+
+                        const changes = payload?.changes || {};
+                        const targetMinutes = sanitizeNumber(changes.targetMinutes) ??
+                            ((sanitizeNumber(changes.targetHours) || 0) > 0 ? sanitizeNumber(changes.targetHours)! * 60 : undefined);
+                        newSkills = newSkills.map(skill => skill.id !== target.id ? skill : {
+                            ...skill,
+                            name: normalizeWhitespace(changes.name || skill.name),
+                            weeklyTargetMinutes: targetMinutes !== undefined ? targetMinutes : skill.weeklyTargetMinutes,
+                        });
+                        hasSkillChange = true;
+                        break;
+                    }
+
                     case 'create_wallet': {
                         const payload = result.payload as CreateWalletPayload | undefined;
-                        const walletName = payload?.name || result.content;
+                        const walletName = normalizeWhitespace(payload?.name || result.content || '');
                         if (!walletName) break;
+
+                        const existingWallet = newWallets.find(wallet => lower(wallet.name) === lower(walletName));
+                        if (existingWallet) break;
 
                         const walletType = payload?.walletType && ['cash', 'bank', 'ewallet', 'cc', 'investment'].includes(payload.walletType)
                             ? payload.walletType as Wallet['type']
@@ -1304,6 +1375,34 @@ export const useBrainDumpData = () => {
                             type: walletType,
                             initialBalance: sanitizeNumber(payload?.initialBalance) || 0,
                             color: 'bg-emerald-500'
+                        });
+                        hasWalletChange = true;
+                        break;
+                    }
+
+                    case 'update_wallet': {
+                        const payload = result.payload as UpdateWalletPayload | undefined;
+                        const targetId = payload?.match?.walletId || result.entityRefs?.walletId;
+                        const targetName = normalizeWhitespace(payload?.match?.walletName || result.entityRefs?.walletName || result.content || '');
+                        const target = newWallets.find(wallet =>
+                            (targetId && wallet.id === targetId) ||
+                            (targetName && lower(wallet.name) === lower(targetName))
+                        );
+                        if (!target) {
+                            addParserTargetMissingNote(result, 'Target wallet for update was not found');
+                            break;
+                        }
+
+                        const changes = payload?.changes || {};
+                        const walletType = changes.walletType && ['cash', 'bank', 'ewallet', 'cc', 'investment'].includes(changes.walletType)
+                            ? changes.walletType as Wallet['type']
+                            : target.type;
+                        const initialBalance = sanitizeNumber(changes.initialBalance);
+                        newWallets = newWallets.map(wallet => wallet.id !== target.id ? wallet : {
+                            ...wallet,
+                            name: normalizeWhitespace(changes.name || wallet.name),
+                            type: walletType,
+                            initialBalance: initialBalance !== undefined ? initialBalance : wallet.initialBalance,
                         });
                         hasWalletChange = true;
                         break;
@@ -1365,9 +1464,18 @@ export const useBrainDumpData = () => {
 
             updated = [...itemsToAdd, ...updated];
 
-            if (hasSkillChange) setSkills(newSkills);
-            if (hasWalletChange) setWallets(newWallets);
-            if (hasThemeChange) setMonthlyThemes(newThemes);
+            if (hasSkillChange) {
+                skillsRef.current = newSkills;
+                setSkills(newSkills);
+            }
+            if (hasWalletChange) {
+                walletsRef.current = newWallets;
+                setWallets(newWallets);
+            }
+            if (hasThemeChange) {
+                monthlyThemesRef.current = newThemes;
+                setMonthlyThemes(newThemes);
+            }
 
             itemsRef.current = updated;
 
@@ -1658,9 +1766,14 @@ export const useBrainDumpData = () => {
         });
 
         const previousItemsById = new Map(snapshot.items.map(item => [item.id, item]));
+        const previousItemIds = new Set(previousItemsById.keys());
 
         setItems(prev => {
-            let updated = prev.filter(item => item.meta?.parserTaskId !== taskId);
+            let updated = prev
+                .filter(item => item.meta?.parserTaskId !== taskId || previousItemIds.has(item.id))
+                .map(item => item.meta?.parserTaskId === taskId && previousItemsById.has(item.id)
+                    ? previousItemsById.get(item.id)!
+                    : item);
 
             if (targetIdsToRestore.size > 0) {
                 updated = updated.map(item => targetIdsToRestore.has(item.id) && previousItemsById.has(item.id)
@@ -1671,6 +1784,8 @@ export const useBrainDumpData = () => {
                 const missingRestoredItems = snapshot.items.filter(item => targetIdsToRestore.has(item.id) && !existingIds.has(item.id));
                 updated = [...missingRestoredItems, ...updated];
             }
+
+            itemsRef.current = updated;
 
             saveAndSync(
                 updated,
@@ -1686,9 +1801,19 @@ export const useBrainDumpData = () => {
             return updated;
         });
 
-        if (shouldRestoreSkills) setSkills(snapshot.skills);
-        if (shouldRestoreWallets) setWallets(snapshot.wallets);
-        if (shouldRestoreThemes) setMonthlyThemes(snapshot.monthlyThemes);
+        if (shouldRestoreSkills) {
+            skillsRef.current = snapshot.skills;
+            setSkills(snapshot.skills);
+        }
+        if (shouldRestoreWallets) {
+            walletsRef.current = snapshot.wallets;
+            setWallets(snapshot.wallets);
+        }
+        if (shouldRestoreThemes) {
+            monthlyThemesRef.current = snapshot.monthlyThemes;
+            setMonthlyThemes(snapshot.monthlyThemes);
+        }
+        canonicalRulesRef.current = snapshot.canonicalRules;
         setCanonicalRules(snapshot.canonicalRules);
         setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, undoStatus: 'undone' } : t));
     };
@@ -1697,7 +1822,9 @@ export const useBrainDumpData = () => {
         const task = parsingTasks.find(t => t.id === taskId);
         if (!task || task.status !== 'success' || task.undoStatus) return;
 
-        const createdItems = itemsRef.current.filter(item => item.meta?.parserTaskId === taskId);
+        const snapshot = parsingUndoSnapshotsRef.current[taskId];
+        const previousItemIds = new Set(snapshot?.items.map(item => item.id) || []);
+        const createdItems = itemsRef.current.filter(item => item.meta?.parserTaskId === taskId && !previousItemIds.has(item.id));
         if (createdItems.length === 0) return;
 
         if (typeof window !== 'undefined' && !window.confirm(`Delete ${createdItems.length} saved entr${createdItems.length === 1 ? 'y' : 'ies'} from this successful parse?`)) {
@@ -1707,6 +1834,7 @@ export const useBrainDumpData = () => {
         const createdItemIds = new Set(createdItems.map(item => item.id));
         setItems(prev => {
             const updated = prev.filter(item => !createdItemIds.has(item.id));
+            itemsRef.current = updated;
             saveAndSync(updated);
             return updated;
         });
@@ -1723,6 +1851,7 @@ export const useBrainDumpData = () => {
             existingRules: canonicalRulesRef.current
         });
 
+        canonicalRulesRef.current = nextCanonicalRules;
         setCanonicalRules(nextCanonicalRules);
         const guardedResults = guardParserResultMultiplicity(updatedResults, review.text).results;
         executeParserResults(guardedResults, review.text, id, nextCanonicalRules);
@@ -1733,6 +1862,7 @@ export const useBrainDumpData = () => {
         setPendingReviews(prev => prev.filter(r => r.id !== id));
         setItems(prev => {
             const updated = prev.filter(i => i.id !== id);
+            itemsRef.current = updated;
             saveAndSync(updated);
             return updated;
         });
@@ -1889,6 +2019,7 @@ export const useBrainDumpData = () => {
         }
 
         updatedItems = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(updatedItems));
+        itemsRef.current = updatedItems;
         setItems(updatedItems);
         saveAndSync(updatedItems);
     };
@@ -1916,6 +2047,7 @@ export const useBrainDumpData = () => {
 
         const updatedList = prev.map(i => i.id === id ? updatedItem : i);
 
+        itemsRef.current = updatedList;
         setItems(updatedList);
         saveAndSync(updatedList);
     };
@@ -1925,6 +2057,7 @@ export const useBrainDumpData = () => {
         const childIds = new Set(target?.meta.childTodoIds || []);
         let updatedItems = itemsRef.current.filter(i => i.id !== id && i.meta.parentTodoId !== id && !childIds.has(i.id));
         updatedItems = applyDeepWorkChildProgress(updatedItems);
+        itemsRef.current = updatedItems;
         setItems(updatedItems);
         saveAndSync(updatedItems);
     };
@@ -1933,6 +2066,7 @@ export const useBrainDumpData = () => {
 
     const saveDeepWorkItems = (nextItems: BrainDumpItem[]) => {
         const normalized = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(nextItems));
+        itemsRef.current = normalized;
         setItems(normalized);
         saveAndSync(normalized);
     };
@@ -2069,6 +2203,7 @@ export const useBrainDumpData = () => {
         };
 
         const updated = [newItem, ...itemsRef.current];
+        itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated);
     };
@@ -2159,21 +2294,21 @@ export const useBrainDumpData = () => {
                 ...item.meta,
                 tags: newTags,
                 title: newNoteTitle !== undefined ? (newNoteTitle.trim() || undefined) : item.meta.title,
-                amount: newAmount,
+                amount: newAmount !== undefined ? newAmount : item.meta.amount,
                 date: finalDate,
                 start: newStart !== undefined ? newStart : item.meta.start,
                 end: newEnd !== undefined ? newEnd : item.meta.end,
                 hideFromCalendar: newHideFromCalendar !== undefined ? newHideFromCalendar : item.meta.hideFromCalendar,
-                paymentMethod: newPaymentMethod,
-                budgetCategory: newBudgetCategory,
+                paymentMethod: newPaymentMethod !== undefined ? newPaymentMethod : item.meta.paymentMethod,
+                budgetCategory: newBudgetCategory !== undefined ? newBudgetCategory : item.meta.budgetCategory,
                 commodity: newCommodity !== undefined ? (newCommodity || undefined) : item.meta.commodity,
                 subcommodity: newSubcommodity !== undefined ? (newSubcommodity || undefined) : item.meta.subcommodity,
-                durationMinutes: newDuration,
-                skillId: newSkillId,
-                toWallet: newToWallet,
+                durationMinutes: newDuration !== undefined ? newDuration : item.meta.durationMinutes,
+                skillId: newSkillId !== undefined ? newSkillId : item.meta.skillId,
+                toWallet: newToWallet !== undefined ? newToWallet : item.meta.toWallet,
                 financeType: newFinanceType || item.meta.financeType,
-                progress: newProgress,
-                progressNotes: newProgressNotes,
+                progress: newProgress !== undefined ? newProgress : item.meta.progress,
+                progressNotes: newProgressNotes !== undefined ? newProgressNotes : item.meta.progressNotes,
                 shoppingCategory: newShoppingCategory || item.meta.shoppingCategory,
                 recurrenceDays: newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays,
                 quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
@@ -2203,6 +2338,7 @@ export const useBrainDumpData = () => {
         });
 
         const reconciledDeepWorkItems = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(updatedItems));
+        itemsRef.current = reconciledDeepWorkItems;
         setItems(reconciledDeepWorkItems);
         saveAndSync(reconciledDeepWorkItems);
     };
@@ -2232,6 +2368,7 @@ export const useBrainDumpData = () => {
         );
 
         const updated = [...newItems, ...itemsRef.current];
+        itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated);
     };
@@ -2264,6 +2401,7 @@ export const useBrainDumpData = () => {
 
         const withoutParent = currentItems.filter(item => item.id !== id);
         const updated = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress([updatedParent, ...childItems, ...withoutParent]));
+        itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated);
     };
@@ -2282,6 +2420,7 @@ export const useBrainDumpData = () => {
                 })
             };
         });
+        itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated);
     };
@@ -2324,6 +2463,7 @@ export const useBrainDumpData = () => {
                     color: 'bg-emerald-500'
                 };
                 updatedWallets = [newInvestmentWallet, ...walletsRef.current];
+                walletsRef.current = updatedWallets;
                 investmentWalletId = newInvestmentWallet.id;
                 setWallets(updatedWallets);
             }
@@ -2360,6 +2500,7 @@ export const useBrainDumpData = () => {
         };
 
         const updated = [newItem, ...itemsRef.current];
+        itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated, undefined, undefined, undefined, updatedWallets);
     };
@@ -2406,6 +2547,7 @@ export const useBrainDumpData = () => {
             return applyInvestmentFundingToInvestment(item, resolvedFunding);
         });
         const updated = [newFinanceItem, ...updatedItems];
+        itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated);
     };
@@ -2438,6 +2580,7 @@ export const useBrainDumpData = () => {
         };
 
         const updated = [newItem, ...itemsRef.current];
+        itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated);
     };
@@ -2475,6 +2618,7 @@ export const useBrainDumpData = () => {
         const updated = type === ItemType.JOURNAL
             ? upsertDailyJournalEntry(itemsRef.current, newItem)
             : [newItem, ...itemsRef.current];
+        itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated);
     };
