@@ -6,6 +6,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.116',
+    date: 'May 2026',
+    items: [
+      'Fixed merge conflict strategy (pickField): local changes now win when both local and remote differ from base, preventing user edits from being silently overwritten by sheet data during concurrent changes.',
+      'Debounced sync no longer shares results across stale callers: when a new save replaces a pending debounced save, the old caller is rejected so its performSaveAndSync does not apply incorrect mergedData.',
+      'isInitialSpreadsheetWrite now only triggers on truly empty sheets (no managed tabs), not on isHydrated=false alone, preventing unnecessary full-sheet rewrites after localStorage clears.',
+      'Fixed budgetConfig monthlyIncome: uses ?? instead of || so a legitimate zero income is not overwritten by the remote value.',
+      'Removed dead code: scheduleBackgroundUserSheetRebuild, cancelPendingBackgroundRebuild, and BACKGROUND_REBUILD_DELAY_MS constant.',
+    ],
+  },
+  {
     version: 'v0.3.115',
     date: 'May 2026',
     items: [
