@@ -1294,12 +1294,12 @@ const readSpreadsheetCacheFallback = () => {
   return { data, sha: 'spreadsheet-cache-sha', reconciled: false };
 };
 
-const performFetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
+const performFetchSpreadsheetDb = async (skipLocalStorage = false, onProgress?: SyncProgressCallback): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
   const config = getSpreadsheetConfig();
   if (!config) throw new Error("No spreadsheet config");
 
   try {
-    return await fetchSpreadsheetDbWithToken(config, skipLocalStorage);
+    return await fetchSpreadsheetDbWithToken(config, skipLocalStorage, onProgress);
   } catch (error: any) {
     console.warn("Spreadsheet fetch failed:", error);
     if (!skipLocalStorage) {
@@ -1310,8 +1310,8 @@ const performFetchSpreadsheetDb = async (skipLocalStorage = false): Promise<{ da
   }
 };
 
-export const fetchSpreadsheetDb = (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
-  const task = () => performFetchSpreadsheetDb(skipLocalStorage);
+export const fetchSpreadsheetDb = (skipLocalStorage = false, onProgress?: SyncProgressCallback): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
+  const task = () => performFetchSpreadsheetDb(skipLocalStorage, onProgress);
   const queuedTask = operationQueue.then(() => task(), () => task());
   operationQueue = queuedTask;
   return queuedTask;
@@ -1507,13 +1507,15 @@ const fetchLegacyUserSheetDb = async (config: SpreadsheetConfig, existingTitles:
   return { data: reconciledDb, reconciled };
 };
 
-const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalStorage: boolean) => {
+const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalStorage: boolean, onProgress?: SyncProgressCallback) => {
+  onProgress?.({ phase: 'metadata', label: 'Reading spreadsheet metadata', detail: 'Checking tab list', updatedAt: Date.now() });
   const { existingTitles } = await fetchSpreadsheetMetadata(config, true);
 
   let source: SpreadsheetReadSource = 'empty';
   let dbData: DbSchema = { data: [] };
   let reconciled = false;
 
+  onProgress?.({ phase: 'export', label: 'Fetching item sheets', detail: `Reading ${[...existingTitles].filter(t => !['App_State_Do_Not_Edit', 'App_State_History', 'Event Log', 'Sheet1', 'Data Quality'].includes(t)).length} data tab(s)`, updatedAt: Date.now() });
   const dedicatedDb = await fetchDedicatedSpreadsheetDb(config, existingTitles);
   if (hasDedicatedSheetData(dedicatedDb)) {
     source = 'dedicated_sheets';
@@ -1555,6 +1557,7 @@ const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalS
     }
   }
 
+  onProgress?.({ phase: 'export', label: 'Processing fetched items', detail: `${dbData.data.length} item(s) parsed`, updatedAt: Date.now() });
   const normalizedDb = validateSchema(dbData);
   if (source === 'current_raw' || source === 'legacy_system_snapshot' || source === 'legacy_user_sheets' || reconciled) {
     needsInitialSpreadsheetWrite = true;

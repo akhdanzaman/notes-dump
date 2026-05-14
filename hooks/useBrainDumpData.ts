@@ -792,12 +792,9 @@ export const useBrainDumpData = () => {
                 return appliedData;
             };
 
-            // Show fetch progress while loading from sheet
-            setFetchProgress({ phase: 'metadata', label: 'Reading spreadsheet data', detail: 'Connecting to Google Sheets', updatedAt: Date.now() });
-
-            const { data, hasChanges } = await fetchDb();
-
-            if (data) setFetchProgress({ phase: 'export', label: 'Processing items', detail: `${data.data.length} item(s) from sheet`, updatedAt: Date.now() });
+            const { data, hasChanges } = await fetchDb(false, (progress) => {
+              setFetchProgress({ ...progress, updatedAt: Date.now() });
+            });
             if (data) {
                 const appliedData = applyData(data);
                 if (hasChanges && !isUsingLocalStorage()) {

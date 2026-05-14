@@ -14,7 +14,7 @@ export const mergePendingSpreadsheetWrite = (remoteData: DbSchema, pendingData: 
   return { merged, hasPendingChanges };
 };
 
-export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchema; sha: string; hasChanges: boolean }> => {
+export const fetchDb = async (skipLocalStorage = false, onProgress?: SyncProgressCallback): Promise<{ data: DbSchema; sha: string; hasChanges: boolean }> => {
   if (!getSpreadsheetConfig()) {
     return {
       data: getCachedSpreadsheetDb() || { data: [] },
@@ -24,7 +24,8 @@ export const fetchDb = async (skipLocalStorage = false): Promise<{ data: DbSchem
   }
 
   const pendingWrite = skipLocalStorage ? null : getPendingSpreadsheetWrite();
-  const { data, sha, reconciled } = await fetchSpreadsheetDb(skipLocalStorage);
+  onProgress?.({ phase: 'metadata', label: 'Reading spreadsheet data', detail: 'Fetching all sheets', updatedAt: Date.now() });
+  const { data, sha, reconciled } = await fetchSpreadsheetDb(skipLocalStorage, onProgress);
 
   if (pendingWrite) {
     const { merged, hasPendingChanges } = mergePendingSpreadsheetWrite(data, pendingWrite.data);
