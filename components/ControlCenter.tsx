@@ -22,6 +22,7 @@ interface ControlCenterProps {
     onClose: () => void;
     saveStatus: SyncStatus;
     saveProgress?: SyncProgress | null;
+    fetchProgress?: SyncProgress | null;
     fetchStatus: SyncStatus;
     onSyncClick: (forceOverwrite?: boolean) => void;
     onRefreshClick?: () => void;
@@ -88,7 +89,7 @@ const ClockDisplay = () => {
 };
 
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
-    isOpen, onClose, saveStatus, saveProgress, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
+    isOpen, onClose, saveStatus, saveProgress, fetchProgress, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
     appSettings, setAppSettings, error, pendingCount, parsingTasks, enrichmentTasks = [], retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes,
@@ -233,8 +234,24 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                 return (
                     <div className="flex items-center gap-2 text-amber-500">
                         <Save className="w-5 h-5 animate-spin" />
-                        <span className="font-medium">{saveProgress?.label || 'Saving...'}</span>
-                        {saveProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {saveProgress.detail}</span>}
+                        {saveStatus === 'saving' ? (
+                          <>
+                            <span className="font-medium">{saveProgress?.label || 'Saving...'}</span>
+                            {saveProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {saveProgress.detail}</span>}
+                          </>
+                        ) : fetchStatus === 'syncing' ? (
+                          <>
+                            <span className="font-medium">{fetchProgress?.label || 'Fetching...'}</span>
+                            {fetchProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {fetchProgress.detail}</span>}
+                          </>
+                        ) : saveStatus === 'error' ? (
+                          <>
+                            <span className="font-medium">{saveProgress?.label || 'Save failed'}</span>
+                            {saveProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {saveProgress.detail}</span>}
+                          </>
+                        ) : (
+                          <span className="font-medium">Synced</span>
+                        )}
                     </div>
                 );
             case 'error':

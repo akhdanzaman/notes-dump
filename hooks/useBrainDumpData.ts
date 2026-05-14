@@ -411,6 +411,7 @@ export const useBrainDumpData = () => {
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<SyncStatus>('synced');
     const [saveProgress, setSaveProgress] = useState<SyncProgress | null>(null);
+    const [fetchProgress, setFetchProgress] = useState<SyncProgress | null>(null);
     const [fetchStatus, setFetchStatus] = useState<SyncStatus>('synced');
     const [pendingReviews, setPendingReviews] = useState<HistoricalCanonicalReview[]>([]);
 
@@ -791,18 +792,12 @@ export const useBrainDumpData = () => {
                 return appliedData;
             };
 
-            // Load local data first for instant display
-            try {
-                const cachedData = getCachedSpreadsheetDb();
-                if (cachedData) {
-                    applyData(cachedData);
-                    setLoading(false); // Stop loading spinner if we have local data
-                }
-            } catch (e) {
-                console.warn("Failed to load spreadsheet cache initially", e);
-            }
+            // Show fetch progress while loading from sheet
+            setFetchProgress({ phase: 'metadata', label: 'Reading spreadsheet data', detail: 'Connecting to Google Sheets', updatedAt: Date.now() });
 
             const { data, hasChanges } = await fetchDb();
+
+            if (data) setFetchProgress({ phase: 'export', label: 'Processing items', detail: `${data.data.length} item(s) from sheet`, updatedAt: Date.now() });
             if (data) {
                 const appliedData = applyData(data);
                 if (hasChanges && !isUsingLocalStorage()) {
@@ -820,14 +815,20 @@ export const useBrainDumpData = () => {
                 }
             }
 
+            setFetchProgress(null);
             setFetchStatus(isUsingLocalStorage() ? 'local' : 'synced');
         } catch (e) {
             console.error("Load data failed:", e);
             setError(e instanceof Error ? e.message : 'Failed to load data');
+            setFetchProgress({ phase: 'error', label: 'Fetch failed', detail: e instanceof Error ? e.message : 'Unknown error', updatedAt: Date.now() });
             setFetchStatus('error');
         } finally {
             setLoading(false);
             isSyncingRef.current = false;
+            // Clear fetch progress on completion (success or failure).
+            // Error path already set progress above; success path cleared above.
+            // Don't clear on mount-only re-fetches to avoid UI flash.
+            setFetchProgress(prev => prev && prev.phase === 'error' ? prev : null);
         }
     }, [replaceHistoricalCanonicalReviews, saveAndSync]);
 
@@ -2648,6 +2649,7 @@ export const useBrainDumpData = () => {
         canonicalRules,
         saveStatus,
         saveProgress,
+        fetchProgress,
         fetchStatus,
         loadData,
         saveAndSync,
