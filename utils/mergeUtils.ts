@@ -129,17 +129,20 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
                 // Was in base, now gone in remote -> DELETED remotely.
                 // Do not add back.
             } else if (base && base.data.length > 0) {
-                // Base exists (not first sync) but this item is not in base either.
-                // Race condition: base was updated (item removed) but app state hasn't
-                // re-rendered yet. Check if remote has same-type items as proof that
-                // the relevant sheet was fetched and is authoritative for this type.
-                const sameTypeInRemote = remote.data.some(r => r.type === localItem.type);
-                if (!sameTypeInRemote) {
-                    // Sheet hasn't been populated yet for this type — treat as NEW.
+                // Base exists. Check if this item was in the base snapshot.
+                if (baseItemIds.has(localItem.id)) {
+                    // Was in base, now absent from remote → deleted remotely.
+                    // But verify the relevant sheet was actually fetched (same-type guard).
+                    const sameTypeInRemote = remote.data.some(r => r.type === localItem.type);
+                    if (!sameTypeInRemote) {
+                        // Sheet not fetched for this type — keep the local copy.
+                        itemMap.set(localItem.id, localItem);
+                    }
+                    // If sameTypeInRemote: sheet was fetched and item is absent → deleted. Skip.
+                } else {
+                    // NOT in base → this is a genuinely new local item. Always keep.
                     itemMap.set(localItem.id, localItem);
                 }
-                // If sameTypeInRemote: remote sheet is authoritative and item is
-                // absent → it was deleted (from either side). Skip it.
             } else {
                 // No base (first sync) -> NEW in local.
                 itemMap.set(localItem.id, localItem);
