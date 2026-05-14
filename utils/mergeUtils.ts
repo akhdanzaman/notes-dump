@@ -6,8 +6,8 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stri
 const pickField = <T>(localValue: T, remoteValue: T, baseValue: T): T => {
     const localChanged = !same(localValue, baseValue);
     const remoteChanged = !same(remoteValue, baseValue);
-    if (localChanged && !remoteChanged) return localValue;
-    return remoteValue;
+    if (remoteChanged && !localChanged) return remoteValue;
+    return localValue;
 };
 
 const mergeCanonicalMeta = (
@@ -203,6 +203,8 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     const localChat = local.chatHistory || [];
     const remoteChat = remote.chatHistory || [];
     const chatHistory = localChat.length >= remoteChat.length ? localChat : remoteChat;
+    // Note: chatHistory has a 50-entry cap in validateSchema; the longer array
+    // is usually the most recent from the app session, which is correct.
 
     const localCanonicalRules = local.canonicalRules || [];
     const remoteCanonicalRules = remote.canonicalRules || [];
@@ -211,7 +213,7 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     return {
         data: Array.from(itemMap.values()),
         budgetConfig: {
-            monthlyIncome: local.budgetConfig?.monthlyIncome || remote.budgetConfig?.monthlyIncome || 0,
+            monthlyIncome: local.budgetConfig?.monthlyIncome ?? remote.budgetConfig?.monthlyIncome ?? 0,
             rules: Array.from(ruleMap.values())
         },
         appSettings: local.appSettings || remote.appSettings,

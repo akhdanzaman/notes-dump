@@ -38,7 +38,6 @@ const MANAGED_USER_SHEET_NAMES = [
   EVENT_LOG_SHEET_NAME,
 ] as const;
 const GENERATED_DASHBOARD_SHEET_NAMES = new Set<string>([DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME]);
-const BACKGROUND_REBUILD_DELAY_MS = 5000;
 const ASSUMED_EXISTING_SHEET_TITLES = new Set<string>([
   SYSTEM_SHEET_NAME,
   HISTORY_SHEET_NAME,
@@ -169,8 +168,6 @@ type PendingDebouncedSync = {
 };
 let pendingDebouncedSync: PendingDebouncedSync | null = null;
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-let backgroundRebuildTimer: ReturnType<typeof setTimeout> | null = null;
-
 const hexToRgb = (hex: string) => {
   const normalized = hex.replace('#', '');
   const expanded = normalized.length === 3
@@ -2177,7 +2174,10 @@ const performSync = async (
         .filter(([, id]) => id !== undefined)
     );
     const allSheetData = [...exportSheets, buildEventLogSheet()];
-    const isInitialSpreadsheetWrite = !baseSnapshot || !isHydrated || existingTitles.size === 0;
+    // Initial write only when: no cached snapshot AND sheet is truly empty
+    // (not just isHydrated false — the sheet might already have data from a previous session).
+    const hasManagedSheetsInSheet = MANAGED_USER_SHEET_NAMES.some(name => existingTitles.has(name));
+    const isInitialSpreadsheetWrite = !baseSnapshot && (!hasManagedSheetsInSheet || existingTitles.size === 0);
     const shouldWriteGeneratedDashboardSheets = forceOverwrite || isInitialSpreadsheetWrite;
 
     // 3. Create missing sheets
@@ -2272,23 +2272,6 @@ const enqueueSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<SyncResult> 
   return queuedTask;
 };
 
-const scheduleBackgroundUserSheetRebuild = (args: SpreadsheetSyncArgs) => {
-  if (backgroundRebuildTimer) clearTimeout(backgroundRebuildTimer);
-
-  backgroundRebuildTimer = setTimeout(() => {
-    backgroundRebuildTimer = null;
-    enqueueSpreadsheetSync(args).catch(error => {
-      console.warn('Background spreadsheet rebuild failed:', error);
-    });
-  }, BACKGROUND_REBUILD_DELAY_MS);
-};
-
-const cancelPendingBackgroundRebuild = () => {
-  if (!backgroundRebuildTimer) return;
-  clearTimeout(backgroundRebuildTimer);
-  backgroundRebuildTimer = null;
-};
-
 const cancelPendingDebouncedSync = (result: SyncResult) => {
   if (syncDebounceTimer) {
     clearTimeout(syncDebounceTimer);
@@ -2304,8 +2287,13 @@ const cancelPendingDebouncedSync = (result: SyncResult) => {
 const scheduleDebouncedSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<SyncResult> => {
   return new Promise<SyncResult>((resolve, reject) => {
     if (pendingDebouncedSync) {
+      // Replace args and reject the previous caller — only the latest
+      // caller gets the result, preventing stale mergedData in old callers.
       pendingDebouncedSync.args = args;
-      pendingDebouncedSync.resolvers.push({ resolve, reject });
+      pendingDebouncedSync.resolvers.forEach(({ reject: oldReject }) => {
+        oldReject(new Error('Superseded by more recent save'));
+      });
+      pendingDebouncedSync.resolvers = [{ resolve, reject }];
     } else {
       pendingDebouncedSync = {
         args,
@@ -2366,7 +2354,6 @@ export const syncSpreadsheetData = (
 
   if (forceOverwrite) {
     cancelPendingDebouncedSync({ success: true, method: 'skipped_no_changes' });
-    cancelPendingBackgroundRebuild();
     return enqueueSpreadsheetSync(args);
   }
 
