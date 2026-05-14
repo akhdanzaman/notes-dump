@@ -10,7 +10,8 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     date: 'May 2026',
     items: [
       'Restored routine shopping recovery when old spreadsheet rows have drifted IDs or stale headers: the app now matches previous routine parents semantically and keeps their daily/weekly/monthly/yearly recurrence metadata instead of recreating them as schedule-less shopping rows.',
-      'Current changelog now again calls out planned expense visibility: Money > Budget supports weekly/monthly/yearly planned budget calculations, and Spend Timeline keeps planned spend visible beside income, expense, and net movement.',
+      'Money > Budget now supports weekly period navigation beside monthly and yearly, with actual and planned budget calculations scoped to the selected week.',
+      'Spend Timeline now uses income, expense, and net bars with a floating hover breakdown while keeping planned spend visible in the timeline summary.',
     ],
   },
   {
