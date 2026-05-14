@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.106',
+    date: 'May 2026',
+    items: [
+      'Routine sheet rewrites no longer call the Google Sheets clear endpoint; changed sheets are rewritten with padded value updates that also blank stale trailing rows.',
+      'Added retries for transient service-account proxy failures, including FUNCTION_INVOCATION_FAILED errors from the Sheets proxy.',
+    ],
+  },
+  {
     version: 'v0.3.105',
     date: 'May 2026',
     items: [

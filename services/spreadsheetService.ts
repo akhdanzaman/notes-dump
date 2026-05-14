@@ -386,7 +386,12 @@ type IncrementalUserSheetPlan = {
   reason?: string;
   updates: { range: string; values: SheetData['data'] }[];
   appends: { sheetName: string; values: SheetData['data']; inputOption: 'RAW' | 'USER_ENTERED' }[];
-  rewrites: SheetData[];
+  rewrites: RewriteSheetData[];
+};
+
+type RewriteSheetData = SheetData & {
+  previousRowCount?: number;
+  previousColumnCount?: number;
 };
 
 const emptyIncrementalPlan = (canIncremental: boolean, reason?: string): IncrementalUserSheetPlan => ({
@@ -398,6 +403,8 @@ const emptyIncrementalPlan = (canIncremental: boolean, reason?: string): Increme
 });
 
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+const getSheetColumnCount = (rows: SheetData['data']) => rows.reduce((max, row) => Math.max(max, row.length), 0);
 
 const buildIncrementalUserSheetPlan = (
   previousDb: DbSchema,
@@ -522,8 +529,17 @@ const buildIncrementalUserSheetPlan = (
   }
 
   const rewrites = [...rewriteNames]
-    .map(sheetName => nextSheetByName.get(sheetName))
-    .filter((sheet): sheet is SheetData => !!sheet);
+    .map((sheetName): RewriteSheetData | undefined => {
+      const sheet = nextSheetByName.get(sheetName);
+      if (!sheet) return undefined;
+      const previousSheet = previousIndexes.get(sheetName)?.sheet;
+      return {
+        ...sheet,
+        previousRowCount: previousSheet?.data.length,
+        previousColumnCount: previousSheet ? getSheetColumnCount(previousSheet.data) : undefined,
+      };
+    })
+    .filter((sheet): sheet is RewriteSheetData => !!sheet);
   const rewriteSet = new Set(rewrites.map(sheet => sheet.name));
   const filteredUpdates = updates.filter(update => {
     const sheetName = update.range.split('!')[0]?.replace(/'/g, '');
@@ -1104,6 +1120,12 @@ const serviceAccountSheetsFetch = async (
   });
 };
 
+const shouldRetryServiceAccountProxyResponse = async (response: Response) => {
+  if (!shouldRetrySpreadsheetRequest(response.status)) return false;
+  if (response.status >= 500) return true;
+  return isServiceAccountProxyInvocationFailure(response);
+};
+
 const oauthSheetsFetch = async (
   spreadsheetId: string,
   path: string,
@@ -1156,6 +1178,11 @@ const sheetsFetch = async (
 ): Promise<Response> => {
   if (getSpreadsheetConfig()?.authMode === 'service_account') {
     const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
+    if (!response.ok && attempt < MAX_FETCH_RETRIES && await shouldRetryServiceAccountProxyResponse(response.clone())) {
+      const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
+      await wait(delayMs);
+      return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
+    }
     // Try OAuth fallback for any non-success service-account response
     // (not just 500+ proxy failures — 403s from missing Editor share also need fallback)
     if (!response.ok) {
@@ -1856,30 +1883,71 @@ const writeSheetDataInChunks = async (
   }
 };
 
+const buildSheetRewriteBatches = (
+  sheet: RewriteSheetData,
+  chunkSize = 50,
+): { range: string; values: SheetData['data']; startRow: number; endRow: number }[] => {
+  const totalRows = Math.max(sheet.data.length, sheet.previousRowCount || 0, 1);
+  const totalColumns = Math.max(getSheetColumnCount(sheet.data), sheet.previousColumnCount || 0, 1);
+  const batches: { range: string; values: SheetData['data']; startRow: number; endRow: number }[] = [];
+
+  for (let start = 0; start < totalRows; start += chunkSize) {
+    const end = Math.min(start + chunkSize, totalRows);
+    const values = Array.from({ length: end - start }, (_, offset) => {
+      const sourceRow = sheet.data[start + offset] || [];
+      const padded: SheetData['data'][number] = Array.from({ length: totalColumns }, () => '');
+      sourceRow.forEach((cell, index) => {
+        padded[index] = cell ?? '';
+      });
+      return padded;
+    });
+    batches.push({
+      range: `${escapeSheetName(sheet.name)}!A${start + 1}:${columnLabel(totalColumns - 1)}${end}`,
+      values,
+      startRow: start + 1,
+      endRow: end,
+    });
+  }
+
+  return batches;
+};
+
+const rewriteSheetValuesInChunks = async (
+  config: SpreadsheetConfig,
+  sheet: RewriteSheetData,
+  sheetIndex: number,
+  totalSheets: number,
+  onProgress?: SyncProgressCallback
+) => {
+  const batches = buildSheetRewriteBatches(sheet);
+  for (let ci = 0; ci < batches.length; ci++) {
+    const batch = batches[ci];
+    onProgress?.({
+      phase: 'write_sheet',
+      label: 'Rewriting changed sheet rows',
+      detail: `${sheet.name} · rows ${batch.startRow}-${batch.endRow} · batch ${ci + 1}/${batches.length}`,
+      current: sheetIndex + 1,
+      total: totalSheets,
+    });
+    const updateRes = await sheetsFetch(config.spreadsheetId, `/values/${batch.range}?valueInputOption=${sheet.inputOption || 'RAW'}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: batch.values })
+    });
+    if (!updateRes.ok) {
+      throw new Error(`Failed to rewrite sheet ${sheet.name} chunk ${ci + 1}/${batches.length}: ${await updateRes.text()}`);
+    }
+  }
+};
+
 const rewriteChangedSheets = async (
   config: SpreadsheetConfig,
-  sheets: SheetData[],
+  sheets: RewriteSheetData[],
   onProgress?: SyncProgressCallback
 ) => {
   for (let sheetIndex = 0; sheetIndex < sheets.length; sheetIndex += 1) {
     const sheet = sheets[sheetIndex];
-    onProgress?.({
-      phase: 'clear_sheet',
-      label: 'Clearing changed sheet rows',
-      detail: sheet.name,
-      current: sheetIndex + 1,
-      total: sheets.length,
-    });
-    const clearRes = await sheetsFetch(config.spreadsheetId, `/values/${escapeSheetName(sheet.name)}!A:ZZ:clear`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-    if (!clearRes.ok) {
-      throw new Error(`Failed to clear sheet ${sheet.name}: ${await clearRes.text()}`);
-    }
-
-    await writeSheetDataInChunks(config, sheet, sheetIndex, sheets.length, onProgress);
+    await rewriteSheetValuesInChunks(config, sheet, sheetIndex, sheets.length, onProgress);
   }
 };
 
@@ -2241,6 +2309,7 @@ export const __test__ = {
   shouldApplyManagedSheetFormatting,
   shouldRenderDashboardCharts,
   buildIncrementalUserSheetPlan,
+  buildSheetRewriteBatches,
   buildColumnWriteBatches,
   columnLabel,
   getItemExportSheetNames,

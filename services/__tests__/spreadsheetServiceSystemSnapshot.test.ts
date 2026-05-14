@@ -54,6 +54,27 @@ test('system snapshot write batches keep proxy payloads bounded', () => {
   assert.deepEqual(batches.map(batch => batch.values.length), [20, 20, 5]);
 });
 
+test('incremental sheet rewrites blank stale trailing rows without using clear', () => {
+  const batches = __test__.buildSheetRewriteBatches({
+    name: 'Transactions',
+    inputOption: 'RAW',
+    previousRowCount: 4,
+    previousColumnCount: 3,
+    data: [
+      ['ID', 'Amount'],
+      ['tx-1', 5000],
+    ],
+  }, 10);
+
+  assert.deepEqual(batches.map(batch => batch.range), ["'Transactions'!A1:C4"]);
+  assert.deepEqual(batches[0].values, [
+    ['ID', 'Amount', ''],
+    ['tx-1', 5000, ''],
+    ['', '', ''],
+    ['', '', ''],
+  ]);
+});
+
 test('service-account proxy invocation failures are detected for OAuth fallback', async () => {
   assert.equal(
     await __test__.isServiceAccountProxyInvocationFailure(new Response('A server error has occurred FUNCTION_INVOCATION_FAILED sin1::abc', { status: 500 })),
