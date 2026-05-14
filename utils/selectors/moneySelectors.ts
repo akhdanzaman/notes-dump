@@ -191,11 +191,6 @@ export const getFinanceItems = (
         i.status === 'done'
     );
 
-    const plannedExpenses = items.filter(i =>
-        isMoneyPlanItem(i) &&
-        i.status !== 'done'
-    );
-
     // Combine them
     let allTransactions = [...finance, ...implicitExpenses];
 
@@ -307,8 +302,10 @@ export const getFinanceItems = (
     let uncategorized = 0;
     let projectedUncategorized = 0;
 
-    // We need ALL items for the month/year (unfiltered) to calculate totals accurately
-    let baseTransactions = [...finance, ...implicitExpenses, ...plannedExpenses].filter(i => {
+    // We need ALL actual items for the selected period (unfiltered) to calculate totals accurately.
+    // Planned expenses are added separately from pending urgent shopping and routine shopping below
+    // so they are not double-counted in current/future budget periods.
+    let baseTransactions = [...finance, ...implicitExpenses].filter(i => {
         const dateStr = (i.type === ItemType.FINANCE)
             ? (i.meta.date || i.created_at)
             : (i.status === 'done' ? getShoppingTransactionDate(i) : (getShoppingDueDate(i) || getShoppingTransactionDate(i)));
@@ -358,149 +355,105 @@ export const getFinanceItems = (
         }
     });
 
-    // 3. Routine Projections (Future/Planned)
+    // 3. Routine Shopping Projections (Planned)
     const routineItems = items.filter(i =>
-        i.type === 'SHOPPING' &&
-        i.meta.isRoutine === true
+        i.type === ItemType.SHOPPING &&
+        (i.meta.shoppingCategory === 'routine' || i.meta.isRoutine === true) &&
+        (i.meta.amount || 0) > 0
     );
 
-    const calculateRemainingOccurrences = (item: BrainDumpItem, viewDate: Date, mode: BudgetAnalyticsViewMode) => {
-        const { routineInterval, routineDaysOfWeek, routineDaysOfMonth, routineMonthsOfYear, recurrenceDays } = item.meta;
-        const today = new Date();
-        const todayStart = new Date(today);
-        todayStart.setHours(0, 0, 0, 0);
+    const getViewBounds = (viewDate: Date, mode: BudgetAnalyticsViewMode): { start: Date; end: Date } => {
+        if (mode === 'weekly') return getWeekBounds(viewDate);
 
-        if (mode === 'weekly') {
-            const { start, end } = getWeekBounds(viewDate);
-            if (end.getTime() <= todayStart.getTime()) return 0;
-            const startCheck = start.getTime() <= todayStart.getTime() && todayStart.getTime() < end.getTime()
-                ? todayStart
-                : start;
-            let count = 0;
-            for (let currentCheckDate = new Date(startCheck); currentCheckDate.getTime() < end.getTime(); currentCheckDate.setDate(currentCheckDate.getDate() + 1)) {
-                const dayOfWeek = currentCheckDate.getDay();
-                const dayOfMonth = currentCheckDate.getDate();
-                const month = currentCheckDate.getMonth();
-                let isMatch = false;
+        const start = new Date(viewDate);
+        start.setHours(0, 0, 0, 0);
 
-                if (routineInterval === 'daily') {
-                    isMatch = true;
-                } else if (routineInterval === 'weekly' && routineDaysOfWeek) {
-                    isMatch = routineDaysOfWeek.includes(dayOfWeek);
-                } else if (routineInterval === 'monthly' && routineDaysOfMonth) {
-                    isMatch = routineDaysOfMonth.includes(dayOfMonth);
-                } else if (routineInterval === 'yearly' && routineMonthsOfYear) {
-                    isMatch = routineMonthsOfYear.includes(month) && (!routineDaysOfMonth || routineDaysOfMonth.includes(dayOfMonth));
-                } else if (!routineInterval && recurrenceDays) {
-                    return Math.floor(Math.max(0, Math.ceil((end.getTime() - startCheck.getTime()) / 86400000)) / recurrenceDays);
-                }
-
-                if (isMatch) {
-                    const isToday = currentCheckDate.getTime() === todayStart.getTime();
-                    if (isToday) {
-                        const isDoneToday = baseTransactions.some(t =>
-                            t.content === item.content &&
-                            Math.abs((t.meta.amount || 0) - (item.meta.amount || 0)) < 0.01 &&
-                            (
-                                (t.meta.date && new Date(t.meta.date).toDateString() === currentCheckDate.toDateString()) ||
-                                (t.completed_at && new Date(t.completed_at).toDateString() === currentCheckDate.toDateString()) ||
-                                (t.created_at && new Date(t.created_at).toDateString() === currentCheckDate.toDateString())
-                            )
-                        );
-                        if (!isDoneToday) count++;
-                    } else {
-                        count++;
-                    }
-                }
-            }
-            return count;
+        if (mode === 'yearly') {
+            start.setMonth(0, 1);
+            const end = new Date(start);
+            end.setFullYear(start.getFullYear() + 1);
+            return { start, end };
         }
 
-        if (mode === 'monthly') {
-            const year = viewDate.getFullYear();
-            const month = viewDate.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+        start.setDate(1);
+        const end = new Date(start);
+        end.setMonth(start.getMonth() + 1);
+        return { start, end };
+    };
 
-            // Determine start day
-            let startDay = 1;
+    const datesMatchDay = (date: Date, daysOfMonth: number[]) => {
+        const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+        return daysOfMonth.some(day => Math.min(day, daysInMonth) === date.getDate());
+    };
 
-            // Check if viewDate is past, current, or future
-            const viewTime = new Date(year, month, 1).getTime();
-            const currentMonthTime = new Date(today.getFullYear(), today.getMonth(), 1).getTime();
+    const getRoutineAnchorDate = (item: BrainDumpItem) => {
+        const raw = getShoppingDueDate(item) || item.created_at;
+        const anchor = new Date(raw);
+        return Number.isNaN(anchor.getTime()) ? new Date(item.created_at) : anchor;
+    };
 
-            if (viewTime < currentMonthTime) {
-                return 0; // Past month, no remaining planned
-            } else if (viewTime === currentMonthTime) {
-                startDay = today.getDate(); // Start from today
-            } else {
-                startDay = 1; // Future month, start from 1st
-            }
+    const isRoutineOccurrenceDate = (item: BrainDumpItem, date: Date, anchor: Date) => {
+        if (date.getTime() < anchor.getTime()) return false;
 
-            let count = 0;
+        const { routineInterval, routineDaysOfWeek = [], routineDaysOfMonth = [], routineMonthsOfYear = [], recurrenceDays } = item.meta;
 
-            // Iterate days from startDay to end of month
-            for (let d = startDay; d <= daysInMonth; d++) {
-                const currentCheckDate = new Date(year, month, d);
-                let isMatch = false;
-
-                if (routineInterval === 'daily') {
-                    isMatch = true;
-                } else if (routineInterval === 'weekly' && routineDaysOfWeek) {
-                    if (routineDaysOfWeek.includes(currentCheckDate.getDay())) isMatch = true;
-                } else if (routineInterval === 'monthly' && routineDaysOfMonth) {
-                    if (routineDaysOfMonth.includes(d)) isMatch = true;
-                } else if (routineInterval === 'yearly' && routineMonthsOfYear) {
-                     // For yearly, if we are in the correct month, we count it once.
-                     // But we need to know "when" in the month it happens to know if it's "remaining".
-                     // If no day specified, we assume it's available if we are in the month.
-                     // To avoid double counting in current month, we only count it if it's NOT done.
-                     // But this loop is day-based.
-                     // Let's simplify: If yearly and month matches, count 1 if we are at start of month or if it's not done?
-                     // Let's just return 1 if month matches and we are not in past.
-                     // And rely on the "Done" check below if it's today? No, yearly doesn't have a "day".
-                     // Let's skip complex yearly logic here and stick to the "Total - Done" fallback for yearly/recurrence if needed,
-                     // or just return 1 if future.
-                     if (routineMonthsOfYear.includes(month)) {
-                         // If future month: 1.
-                         // If current month: Check if done?
-                         // Let's just return 1 for now if it's the right month.
-                         // This loop approach doesn't fit "Yearly without day".
-                         // We'll handle it outside the loop or just add 1 here and break.
-                         return 1;
-                     }
-                } else if (!routineInterval && recurrenceDays) {
-                    // Legacy recurrence: approximate remaining
-                    // (DaysRemaining / Recurrence)
-                    return Math.floor((daysInMonth - startDay + 1) / recurrenceDays);
-                }
-
-                if (isMatch) {
-                    // If it's today, check if already done to avoid double counting
-                    if (viewTime === currentMonthTime && d === today.getDate()) {
-                        const isDoneToday = baseTransactions.some(t =>
-                            t.content === item.content &&
-                            Math.abs((t.meta.amount || 0) - (item.meta.amount || 0)) < 0.01 &&
-                            (
-                                (t.meta.date && new Date(t.meta.date).getDate() === d) ||
-                                (t.completed_at && new Date(t.completed_at).getDate() === d) ||
-                                (t.created_at && new Date(t.created_at).getDate() === d)
-                            )
-                        );
-
-                        if (!isDoneToday) count++;
-                    } else {
-                        // Future day in this month
-                        count++;
-                    }
-                }
-            }
-            return count;
+        if (!routineInterval && recurrenceDays) {
+            const anchorStart = new Date(anchor);
+            anchorStart.setHours(0, 0, 0, 0);
+            const diffDays = Math.floor((date.getTime() - anchorStart.getTime()) / 86400000);
+            return diffDays >= 0 && diffDays % recurrenceDays === 0;
         }
-        return 0;
+
+        if (routineInterval === 'weekly') {
+            const days = routineDaysOfWeek.length > 0 ? routineDaysOfWeek : [anchor.getDay()];
+            return days.includes(date.getDay());
+        }
+
+        if (routineInterval === 'monthly') {
+            const days = routineDaysOfMonth.length > 0 ? routineDaysOfMonth : [anchor.getDate()];
+            return datesMatchDay(date, days);
+        }
+
+        if (routineInterval === 'yearly') {
+            const months = routineMonthsOfYear.length > 0 ? routineMonthsOfYear : [anchor.getMonth()];
+            const days = routineDaysOfMonth.length > 0 ? routineDaysOfMonth : [anchor.getDate()];
+            return months.includes(date.getMonth()) && datesMatchDay(date, days);
+        }
+
+        return routineInterval === 'daily';
+    };
+
+    const hasActualRoutineExpenseOnDate = (item: BrainDumpItem, date: Date) => baseTransactions.some(t =>
+        t.status === 'done' &&
+        Math.abs((t.meta.amount || 0) - (item.meta.amount || 0)) < 0.01 &&
+        (t.meta.budgetCategory || '') === (item.meta.budgetCategory || '') &&
+        (t.content === item.content || t.meta.parentTodoId === item.id || t.meta.savingGoalId === item.id) &&
+        (
+            (t.meta.date && new Date(t.meta.date).toDateString() === date.toDateString()) ||
+            (t.completed_at && new Date(t.completed_at).toDateString() === date.toDateString()) ||
+            (t.created_at && new Date(t.created_at).toDateString() === date.toDateString())
+        )
+    );
+
+    const calculateRoutineOccurrencesInView = (item: BrainDumpItem, viewDate: Date, mode: BudgetAnalyticsViewMode) => {
+        const { start, end } = getViewBounds(viewDate, mode);
+        const anchor = getRoutineAnchorDate(item);
+        anchor.setHours(0, 0, 0, 0);
+
+        const startCheck = new Date(Math.max(start.getTime(), anchor.getTime()));
+        startCheck.setHours(0, 0, 0, 0);
+
+        let count = 0;
+        for (let currentCheckDate = new Date(startCheck); currentCheckDate.getTime() < end.getTime(); currentCheckDate.setDate(currentCheckDate.getDate() + 1)) {
+            if (!isRoutineOccurrenceDate(item, currentCheckDate, anchor)) continue;
+            if (hasActualRoutineExpenseOnDate(item, currentCheckDate)) continue;
+            count++;
+        }
+        return count;
     };
 
     routineItems.forEach(routine => {
-        const remainingOccurrences = calculateRemainingOccurrences(routine, financeDate, viewMode);
+        const remainingOccurrences = calculateRoutineOccurrencesInView(routine, financeDate, viewMode);
 
         if (remainingOccurrences > 0) {
             const projectedAmount = remainingOccurrences * (routine.meta.amount || 0);
@@ -516,12 +469,10 @@ export const getFinanceItems = (
         }
     });
 
-    // 4. Pending Shopping Projections (Future/Planned)
-    // Includes Urgent and other dated shopping items
+    // 4. Pending Urgent Shopping Projections (Planned)
     const pendingShoppingItems = items.filter(i =>
         i.type === ItemType.SHOPPING &&
-        i.meta.shoppingCategory !== 'routine' &&
-        i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment' &&
+        i.meta.shoppingCategory === 'urgent' &&
         i.status !== 'done' &&
         (i.meta.amount || 0) > 0
     );
@@ -532,30 +483,7 @@ export const getFinanceItems = (
         if (!dateStr) return; // Skip if no due date
 
         const d = new Date(dateStr);
-        let isInPeriod = false;
-
-        // Check if view period is in the past
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth();
-
-        const viewYear = financeDate.getFullYear();
-        const viewMonth = financeDate.getMonth();
-
-        const isPastView = (() => {
-            if (viewMode === 'yearly') return viewYear < currentYear;
-            if (viewMode === 'weekly') {
-                const { end } = getWeekBounds(financeDate);
-                const todayStart = new Date(today);
-                todayStart.setHours(0, 0, 0, 0);
-                return end.getTime() <= todayStart.getTime();
-            }
-            return viewYear < currentYear || (viewYear === currentYear && viewMonth < currentMonth);
-        })();
-
-        if (isPastView) return;
-
-        isInPeriod = isDateInViewPeriod(d);
+        const isInPeriod = isDateInViewPeriod(d);
 
         if (isInPeriod) {
             const amount = item.meta.amount || 0;

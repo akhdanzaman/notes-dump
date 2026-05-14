@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.122',
+    date: 'May 2026',
+    items: [
+      'Money > Budget planned expenses now come only from pending urgent shopping and routine shopping, with routine recurrence calculated against the selected weekly, monthly, or yearly budget slicer.',
+    ],
+  },
+  {
     version: 'v0.3.121',
     date: 'May 2026',
     items: [
