@@ -74,6 +74,34 @@ const routineShopping = (
   },
 });
 
+const withMockedNow = <T>(iso: string, fn: () => T): T => {
+  const RealDate = Date;
+
+  class MockDate extends RealDate {
+    constructor(value?: string | number | Date, ...rest: number[]) {
+      if (arguments.length === 0) {
+        super(iso);
+      } else if (arguments.length === 1) {
+        super(value as string | number | Date);
+      } else {
+        const [month, date = 1, hours = 0, minutes = 0, seconds = 0, ms = 0] = rest;
+        super(value as number, month, date, hours, minutes, seconds, ms);
+      }
+    }
+
+    static now() {
+      return new RealDate(iso).getTime();
+    }
+  }
+
+  globalThis.Date = MockDate as unknown as DateConstructor;
+  try {
+    return fn();
+  } finally {
+    globalThis.Date = RealDate;
+  }
+};
+
 test('weekly finance selector scopes actual and planned budget calculations to selected week', () => {
   const result = getFinanceItems(
     [
@@ -103,7 +131,7 @@ test('weekly finance selector scopes actual and planned budget calculations to s
   assert.equal(result.plannedBudgetMap.get('needs'), 50_000);
 });
 
-test('planned budget only includes pending urgent shopping and routine shopping', () => {
+test('planned budget only includes pending urgent shopping and routine shopping', () => withMockedNow('2026-05-04T00:00:00.000Z', () => {
   const result = getFinanceItems(
     [
       plannedShopping('urgent-plan', 50_000, '2026-05-08T08:00:00.000Z', 'urgent'),
@@ -130,9 +158,9 @@ test('planned budget only includes pending urgent shopping and routine shopping'
 
   assert.equal(result.projectedExpense, 80_000);
   assert.equal(result.plannedBudgetMap.get('needs'), 80_000);
-});
+}));
 
-test('routine shopping recurrence follows weekly, monthly, and yearly budget slicers', () => {
+test('routine shopping recurrence follows weekly, monthly, and yearly budget slicers', () => withMockedNow('2026-05-01T00:00:00.000Z', () => {
   const weekly = getFinanceItems(
     [
       routineShopping('weekly-routine', 10_000, '2026-05-01T00:00:00.000Z', {
@@ -202,4 +230,31 @@ test('routine shopping recurrence follows weekly, monthly, and yearly budget sli
   assert.equal(monthly.projectedExpense, 60_000);
   assert.equal(yearly.totalExpense, 100_000);
   assert.equal(yearly.projectedExpense, 200_000);
-});
+}));
+
+test('routine shopping skips elapsed dates in the selected period while overdue urgent shopping stays planned', () => withMockedNow('2026-05-20T00:00:00.000Z', () => {
+  const result = getFinanceItems(
+    [
+      plannedShopping('overdue-urgent', 50_000, '2026-05-05T08:00:00.000Z', 'urgent'),
+      routineShopping('monthly-routine', 20_000, '2026-05-01T00:00:00.000Z', {
+        routineInterval: 'monthly',
+        routineDaysOfMonth: [5, 21],
+      }),
+    ],
+    new Date('2026-05-20T00:00:00.000Z'),
+    budgetConfig,
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    'newest',
+    'monthly',
+    []
+  );
+
+  assert.equal(result.projectedExpense, 70_000);
+  assert.equal(result.plannedBudgetMap.get('needs'), 70_000);
+}));

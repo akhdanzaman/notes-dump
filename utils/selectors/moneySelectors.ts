@@ -440,7 +440,9 @@ export const getFinanceItems = (
         const anchor = getRoutineAnchorDate(item);
         anchor.setHours(0, 0, 0, 0);
 
-        const startCheck = new Date(Math.max(start.getTime(), anchor.getTime()));
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const startCheck = new Date(Math.max(start.getTime(), anchor.getTime(), todayStart.getTime()));
         startCheck.setHours(0, 0, 0, 0);
 
         let count = 0;
