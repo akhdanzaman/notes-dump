@@ -11,6 +11,7 @@ const PENDING_SPREADSHEET_WRITE_KEY = 'braindump_spreadsheet_pending_write';
 const LEGACY_LOCAL_STORAGE_KEY = 'braindump_db';
 const SYSTEM_SHEET_NAME = 'App_State_Do_Not_Edit';
 const HISTORY_SHEET_NAME = 'App_State_History';
+const EVENT_LOG_SHEET_NAME = 'Event Log';
 const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const MAX_WRITE_BATCH_SIZE = 8;
 const MAX_FETCH_RETRIES = 3;
@@ -34,6 +35,7 @@ const MANAGED_USER_SHEET_NAMES = [
   'Themes & Settings',
   'Chat History',
   'Canonical Rules',
+  EVENT_LOG_SHEET_NAME,
 ] as const;
 const GENERATED_DASHBOARD_SHEET_NAMES = new Set<string>([DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME]);
 const BACKGROUND_REBUILD_DELAY_MS = 5000;
@@ -401,6 +403,31 @@ const emptyIncrementalPlan = (canIncremental: boolean, reason?: string): Increme
   appends: [],
   rewrites: [],
 });
+
+const EVENT_LOG_HEADER = ['Timestamp', 'Level', 'Phase', 'Action', 'Detail', 'Save_ID', 'Version', 'User_Agent'];
+
+const buildEventLogSheet = (): SheetData => ({
+  name: EVENT_LOG_SHEET_NAME,
+  inputOption: 'RAW',
+  data: [EVENT_LOG_HEADER],
+});
+
+const buildEventLogRow = (
+  level: 'info' | 'success' | 'error',
+  phase: string,
+  action: string,
+  detail: string,
+  saveId: string,
+) => [
+  new Date().toISOString(),
+  level,
+  phase,
+  action,
+  detail.slice(0, 1500),
+  saveId,
+  'spreadsheet-sync-v2',
+  typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 250) : 'server',
+];
 
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
@@ -1202,6 +1229,25 @@ const sheetsFetch = async (
   return oauthSheetsFetch(spreadsheetId, path, init, attempt, tokenOverride);
 };
 
+const appendSpreadsheetEvent = async (
+  config: SpreadsheetConfig,
+  row: ReturnType<typeof buildEventLogRow>
+) => {
+  try {
+    const range = `${escapeSheetName(EVENT_LOG_SHEET_NAME)}!A1`;
+    const response = await sheetsFetch(config.spreadsheetId, `/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [row] })
+    });
+    if (!response.ok) {
+      console.warn('Failed to append spreadsheet event log:', await response.text());
+    }
+  } catch (error) {
+    console.warn('Failed to append spreadsheet event log:', error);
+  }
+};
+
 const readSpreadsheetCacheFallback = () => {
   const cached = readDbFromStorageKey(SPREADSHEET_CACHE_KEY)
     || readDbFromStorageKey(LEGACY_LOCAL_STORAGE_KEY);
@@ -1854,38 +1900,9 @@ const writeSystemSheetSnapshotInBatches = async (
   }
 };
 
-const writeSheetDataInChunks = async (
-  config: SpreadsheetConfig,
-  sheet: SheetData,
-  sheetIndex: number,
-  totalSheets: number,
-  onProgress?: SyncProgressCallback
-) => {
-  const chunks = chunkArray(sheet.data, 50);
-  for (let ci = 0; ci < chunks.length; ci++) {
-    onProgress?.({
-      phase: 'write_sheet',
-      label: 'Writing changed sheet rows',
-      detail: `${sheet.name} · batch ${ci + 1}/${chunks.length} · ${sheet.data.length} rows`,
-      current: sheetIndex + 1,
-      total: totalSheets,
-    });
-    const startRow = ci * 50 + 1;
-    const range = `${escapeSheetName(sheet.name)}!A${startRow}`;
-    const updateRes = await sheetsFetch(config.spreadsheetId, `/values/${range}?valueInputOption=${sheet.inputOption || 'RAW'}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ values: chunks[ci] })
-    });
-    if (!updateRes.ok) {
-      throw new Error(`Failed to write sheet ${sheet.name} chunk ${ci + 1}/${chunks.length}: ${await updateRes.text()}`);
-    }
-  }
-};
-
 const buildSheetRewriteBatches = (
   sheet: RewriteSheetData,
-  chunkSize = 50,
+  chunkSize = 20,
 ): { range: string; values: SheetData['data']; startRow: number; endRow: number }[] => {
   const totalRows = Math.max(sheet.data.length, sheet.previousRowCount || 0, 1);
   const totalColumns = Math.max(getSheetColumnCount(sheet.data), sheet.previousColumnCount || 0, 1);
@@ -1929,10 +1946,13 @@ const rewriteSheetValuesInChunks = async (
       current: sheetIndex + 1,
       total: totalSheets,
     });
-    const updateRes = await sheetsFetch(config.spreadsheetId, `/values/${batch.range}?valueInputOption=${sheet.inputOption || 'RAW'}`, {
-      method: 'PUT',
+    const updateRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ values: batch.values })
+      body: JSON.stringify({
+        valueInputOption: sheet.inputOption || 'RAW',
+        data: [{ range: batch.range, values: batch.values }],
+      })
     });
     if (!updateRes.ok) {
       throw new Error(`Failed to rewrite sheet ${sheet.name} chunk ${ci + 1}/${batches.length}: ${await updateRes.text()}`);
@@ -2036,6 +2056,7 @@ const performSync = async (
   if (!config) {
     return { success: false, method: 'error', error: 'Spreadsheet is not connected.' };
   }
+  const saveId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   try {
     const localDbForPlan = validateSchema(updatedDb);
@@ -2071,7 +2092,7 @@ const performSync = async (
     // 2. Get existing sheets
     onProgress?.({ phase: 'metadata', label: 'Checking spreadsheet structure', detail: 'Reading tab list and permissions' });
     const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config, true);
-    const allSheetData = [...exportSheets];
+    const allSheetData = [...exportSheets, buildEventLogSheet()];
     const isInitialSpreadsheetWrite = !baseSnapshot || !isHydrated || existingTitles.size === 0;
     const shouldWriteGeneratedDashboardSheets = forceOverwrite || isInitialSpreadsheetWrite;
 
@@ -2117,8 +2138,10 @@ const performSync = async (
           ? `${incrementalPlan.rewrites.length} sheet rewrite(s), ${incrementalPlan.updates.length} row update(s), ${incrementalPlan.appends.length} append batch(es)`
           : 'Local and spreadsheet data already match',
       });
+      await appendSpreadsheetEvent(config, buildEventLogRow('info', 'plan', 'incremental_save_plan', `${incrementalPlan.rewrites.length} rewrite(s), ${incrementalPlan.updates.length} update(s), ${incrementalPlan.appends.length} append batch(es); reason=${incrementalPlan.reason || 'changed_ranges'}`, saveId));
       await writeIncrementalUserSheetPlan(config, incrementalPlan, onProgress);
     } else {
+      await appendSpreadsheetEvent(config, buildEventLogRow('info', 'plan', 'full_sheet_rewrite_plan', `reason=${incrementalPlan.reason || 'unknown'}; sheets=${allSheetData.map(sheet => sheet.name).join(', ')}`, saveId));
       await rewriteChangedSheets(
         config,
         allSheetData.filter(sheet => (shouldWriteGeneratedDashboardSheets || !isGeneratedDashboardSheet(sheet.name)) && (effectiveExistingTitles.has(sheet.name) || reliable)),
@@ -2131,6 +2154,7 @@ const performSync = async (
     writeSpreadsheetCache(finalJsonString);
     lastSnapshot = finalJsonString;
     isHydrated = true;
+    await appendSpreadsheetEvent(config, buildEventLogRow('success', 'complete', 'save_success', `${dbToWrite.data.length} item(s) saved`, saveId));
 
     return {
       success: true,
@@ -2140,6 +2164,7 @@ const performSync = async (
   } catch (error: any) {
     onProgress?.({ phase: 'error', label: 'Save failed', detail: error.message || 'Unknown sync error' });
     console.error('Failed to sync to Spreadsheet:', error);
+    await appendSpreadsheetEvent(config, buildEventLogRow('error', 'error', 'save_failed', error.message || 'Unknown sync error', saveId));
     return { success: false, method: 'error', error: error.message || 'Unknown sync error' };
   }
 };
@@ -2310,6 +2335,8 @@ export const __test__ = {
   shouldRenderDashboardCharts,
   buildIncrementalUserSheetPlan,
   buildSheetRewriteBatches,
+  buildEventLogSheet,
+  buildEventLogRow,
   buildColumnWriteBatches,
   columnLabel,
   getItemExportSheetNames,

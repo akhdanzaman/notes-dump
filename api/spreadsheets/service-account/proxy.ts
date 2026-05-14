@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { assertServiceAccountRequestAllowed, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from '../../../server/googleServiceAccount';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!['GET', 'HEAD', 'POST'].includes(req.method || 'GET')) {
-    res.setHeader('Allow', 'GET, HEAD, POST');
+  if (!['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || 'GET')) {
+    res.setHeader('Allow', 'GET, HEAD, POST, PUT, PATCH, DELETE');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 

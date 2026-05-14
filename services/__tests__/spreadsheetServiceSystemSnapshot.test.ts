@@ -75,6 +75,18 @@ test('incremental sheet rewrites blank stale trailing rows without using clear',
   ]);
 });
 
+test('event log sheet exposes save activity and error rows for spreadsheet inspection', () => {
+  const sheet = __test__.buildEventLogSheet();
+  const row = __test__.buildEventLogRow('error', 'write_sheet', 'save_failed', 'proxy invocation failed', 'save-1');
+
+  assert.equal(sheet.name, 'Event Log');
+  assert.deepEqual(sheet.data[0], ['Timestamp', 'Level', 'Phase', 'Action', 'Detail', 'Save_ID', 'Version', 'User_Agent']);
+  assert.equal(row[1], 'error');
+  assert.equal(row[2], 'write_sheet');
+  assert.equal(row[3], 'save_failed');
+  assert.equal(row[5], 'save-1');
+});
+
 test('service-account proxy invocation failures are detected for OAuth fallback', async () => {
   assert.equal(
     await __test__.isServiceAccountProxyInvocationFailure(new Response('A server error has occurred FUNCTION_INVOCATION_FAILED sin1::abc', { status: 500 })),

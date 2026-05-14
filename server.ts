@@ -133,8 +133,8 @@ async function startServer() {
   });
 
   app.all("/api/spreadsheets/service-account/proxy", async (req, res) => {
-    if (!['GET', 'HEAD', 'POST'].includes(req.method)) {
-      res.setHeader('Allow', 'GET, HEAD, POST');
+    if (!['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+      res.setHeader('Allow', 'GET, HEAD, POST, PUT, PATCH, DELETE');
       return res.status(405).json({ error: 'Method not allowed' });
     }
 

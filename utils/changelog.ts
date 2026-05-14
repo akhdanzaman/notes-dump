@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.107',
+    date: 'May 2026',
+    items: [
+      'Service-account spreadsheet rewrites now use POST batchUpdate chunks instead of direct PUT range updates, avoiding proxy method failures during routine saves.',
+      'Added an Event Log spreadsheet tab that records save plans, successes, and failures so cloud-sync activity/errors are visible from Google Sheets.',
+    ],
+  },
+  {
     version: 'v0.3.106',
     date: 'May 2026',
     items: [
