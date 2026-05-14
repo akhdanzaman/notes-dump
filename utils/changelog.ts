@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.112',
+    date: 'May 2026',
+    items: [
+      'Fixed critical data loss in mergeDbData: new items added via the app that were not yet synced to the spreadsheet were aggressively dropped by the 3-way merge logic because the merge assumed any local-only item absent from the base snapshot was already deleted when the same item type existed in the sheet.',
+    ],
+  },
+  {
     version: 'v0.3.111',
     date: 'May 2026',
     items: [
