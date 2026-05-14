@@ -41,10 +41,11 @@ type WalletMatch = { wallet: Wallet; alias: string; raw: string; index: number; 
 type DateHint = { date: string; raw: string };
 
 const EXPENSE_KEYWORDS = ['expense', 'pengeluaran', 'keluar', 'bayar', 'jajan', 'spent', 'spend', 'paid'];
+const PURCHASE_EXPENSE_KEYWORDS = ['beli', 'buy', 'belanja', 'purchase'];
 const INCOME_KEYWORDS = ['income', 'pemasukan', 'masuk', 'gaji', 'salary', 'bonus', 'refund', 'cashback', 'reimburse', 'reimbursement'];
 const TRANSFER_KEYWORDS = ['transfer', 'tf', 'trf', 'pindah', 'mutasi'];
 const SAVING_KEYWORDS = ['saving', 'savings', 'tabung', 'nabung', 'simpan', 'invest', 'investasi', 'investment'];
-const ALL_KEYWORDS = [...EXPENSE_KEYWORDS, ...INCOME_KEYWORDS, ...TRANSFER_KEYWORDS, ...SAVING_KEYWORDS];
+const ALL_KEYWORDS = [...EXPENSE_KEYWORDS, ...PURCHASE_EXPENSE_KEYWORDS, ...INCOME_KEYWORDS, ...TRANSFER_KEYWORDS, ...SAVING_KEYWORDS];
 const CONNECTOR_WORDS = ['dari', 'from', 'pakai', 'pake', 'via', 'with', 'ke', 'to', 'into', 'tujuan', 'buat', 'untuk', 'di', 'on'];
 const UNKNOWN_WALLET_HINTS = ['cash', 'tunai', 'qris', 'gopay', 'go-pay', 'ovo', 'dana', 'shopeepay', 'shoppepay', 'spay', 'bca', 'bni', 'bri', 'mandiri', 'jago', 'blu', 'seabank', 'jenius', 'permata', 'cimb', 'bsi', 'bibit', 'ajaib'];
 const AMBIGUOUS_FALLBACK_PATTERN = /\b(split|patungan|utang|hutang|pinjam|reimburse(?:ment)?|dibalikin|kayaknya|kayanya|mungkin|kurang lebih|approx|maybe)\b/i;
@@ -101,11 +102,18 @@ const findAmountMatches = (text: string): AmountMatch[] => {
 const detectTrigger = (text: string): TriggerSpec | null => {
   const firstToken = text.toLowerCase().match(/^\s*([a-z]+)\b/)?.[1] || '';
   if (EXPENSE_KEYWORDS.includes(firstToken)) return { kind: 'expense', keyword: firstToken };
+  if (PURCHASE_EXPENSE_KEYWORDS.includes(firstToken)) return { kind: 'expense', keyword: firstToken };
   if (INCOME_KEYWORDS.includes(firstToken)) return { kind: 'income', keyword: firstToken };
   if (TRANSFER_KEYWORDS.includes(firstToken)) return { kind: 'transfer', keyword: firstToken };
   if (SAVING_KEYWORDS.includes(firstToken)) return { kind: 'saving', keyword: firstToken };
   return null;
 };
+
+const isPurchaseExpenseTrigger = (trigger: TriggerSpec): boolean => PURCHASE_EXPENSE_KEYWORDS.includes(trigger.keyword);
+
+const hasFutureOrShoppingListHint = (text: string): boolean => (
+  /\b(besok|tomorrow|nanti|later|minggu depan|next week|bulan depan|next month|harus|perlu|need to|wishlist|list|daftar|setiap|tiap|routine|rutin|weekly|monthly)\b/i.test(text)
+);
 
 const buildWalletAliases = (wallets: Wallet[]): Array<{ wallet: Wallet; alias: string; normalized: string }> => {
   const ignoredTokens = new Set(['bank', 'wallet', 'ewallet', 'e-wallet', 'rekening', 'account', 'kartu', 'card', 'saldo']);
@@ -254,6 +262,10 @@ export const parseLocalFinanceCommand = (text: string, options: LocalFinancePars
   const label = buildContentLabel(normalizedText, trigger, amount, wallets, dateHint);
   const roles = resolveWalletRoles(trigger.kind, normalizedText, wallets);
   const missingFields: string[] = [];
+
+  if (isPurchaseExpenseTrigger(trigger) && (!amount || !roles.fromWallet || hasFutureOrShoppingListHint(normalizedText))) {
+    return null;
+  }
 
   if (!amount) missingFields.push('amount');
   if (trigger.kind === 'transfer') {

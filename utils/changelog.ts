@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.100',
+    date: 'May 2026',
+    items: [
+      'Parser now treats paid “beli/buy/belanja” inputs with an amount and known wallet as completed finance expenses, so quick purchase captures go straight into Transactions instead of Shopping or notes.',
+      'Future/list-style “beli” inputs such as “beli susu besok” remain shopping tasks, preserving the planned-purchase workflow.',
+    ],
+  },
+  {
     version: 'v0.3.99',
     date: 'May 2026',
     items: [

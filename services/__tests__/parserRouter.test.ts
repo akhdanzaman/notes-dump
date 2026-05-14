@@ -83,6 +83,35 @@ test('router uses local finance parser for simple expenses without deep AI', asy
   assert.equal((routed.results[0].payload as any).meta.toWallet, undefined);
 });
 
+test('router treats paid beli input with a known wallet as an expense without deep AI', async () => {
+  let deepCalls = 0;
+  const routed = await routeParserInput('beli cilok 5000 cash', ctx, async () => {
+    deepCalls += 1;
+    return [];
+  });
+
+  assert.equal(deepCalls, 0);
+  assert.equal(routed.decision.route, 'local_save');
+  assert.equal(routed.results[0].action, 'create_item');
+  assert.equal((routed.results[0].payload as any).itemType, ItemType.FINANCE);
+  assert.equal((routed.results[0].payload as any).content, 'cilok');
+  assert.equal((routed.results[0].payload as any).meta.amount, 5_000);
+  assert.equal((routed.results[0].payload as any).meta.paymentMethod, 'cash');
+});
+
+test('router keeps future beli input as shopping instead of transaction', async () => {
+  let deepCalls = 0;
+  const routed = await routeParserInput('beli susu besok 12rb', ctx, async () => {
+    deepCalls += 1;
+    return [];
+  });
+
+  assert.equal(deepCalls, 0);
+  assert.equal(routed.decision.route, 'local_save');
+  assert.equal(routed.results[0].action, 'create_item');
+  assert.equal((routed.results[0].payload as any).itemType, ItemType.SHOPPING);
+});
+
 test('local finance parser supports Indonesian currency forms and unknown-wallet review', async () => {
   const samples = [
     ['expense kopi 10rb cash', 10_000],
