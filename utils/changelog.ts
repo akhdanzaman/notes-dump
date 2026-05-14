@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.103',
+    date: 'May 2026',
+    items: [
+      'Normal spreadsheet saves are now incremental: edited rows are updated in place, append-safe new rows are appended, and only affected tabs are rewritten when a row deletion, row move, or config change requires it.',
+      'Remote-only manual spreadsheet edits are merged into local cache without being written back again, so autosave writes only local app changes instead of re-saving the whole workbook.',
+    ],
+  },
+  {
     version: 'v0.3.102',
     date: 'May 2026',
     items: [

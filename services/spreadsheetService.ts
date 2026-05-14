@@ -383,7 +383,18 @@ type IncrementalUserSheetPlan = {
   reason?: string;
   updates: { range: string; values: SheetData['data'] }[];
   appends: { sheetName: string; values: SheetData['data']; inputOption: 'RAW' | 'USER_ENTERED' }[];
+  rewrites: SheetData[];
 };
+
+const emptyIncrementalPlan = (canIncremental: boolean, reason?: string): IncrementalUserSheetPlan => ({
+  canIncremental,
+  reason,
+  updates: [],
+  appends: [],
+  rewrites: [],
+});
+
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 const buildIncrementalUserSheetPlan = (
   previousDb: DbSchema,
@@ -392,9 +403,10 @@ const buildIncrementalUserSheetPlan = (
   existingSheetTitles: Set<string>,
   createdSheetTitles: Set<string>,
   isInitialSpreadsheetWrite: boolean,
+  actualSheetDb: DbSchema = previousDb,
 ): IncrementalUserSheetPlan => {
   if (isInitialSpreadsheetWrite) {
-    return { canIncremental: false, reason: 'initial_write', updates: [], appends: [] };
+    return emptyIncrementalPlan(false, 'initial_write');
   }
 
   const previousItems = previousDb.data || [];
@@ -402,49 +414,55 @@ const buildIncrementalUserSheetPlan = (
   const previousById = new Map(previousItems.map(item => [item.id, item]));
   const nextById = new Map(nextItems.map(item => [item.id, item]));
   const deletedIds = previousItems.filter(item => !nextById.has(item.id)).map(item => item.id);
-  if (deletedIds.length > 0) {
-    return { canIncremental: false, reason: 'deleted_items', updates: [], appends: [] };
-  }
-
-  const configChanged = JSON.stringify({
-    budgetConfig: previousDb.budgetConfig,
-    skills: previousDb.skills,
-    wallets: previousDb.wallets,
-    monthlyThemes: previousDb.monthlyThemes,
-    appSettings: previousDb.appSettings,
-  }) !== JSON.stringify({
-    budgetConfig: nextDb.budgetConfig,
-    skills: nextDb.skills,
-    wallets: nextDb.wallets,
-    monthlyThemes: nextDb.monthlyThemes,
-    appSettings: nextDb.appSettings,
-  });
-
-  if (configChanged) {
-    return { canIncremental: false, reason: 'config_changed', updates: [], appends: [] };
-  }
 
   const changedIds = nextItems
     .filter(item => JSON.stringify(previousById.get(item.id)) !== JSON.stringify(item))
     .map(item => item.id);
 
-  if (changedIds.length === 0) {
-    return { canIncremental: true, reason: 'no_item_changes', updates: [], appends: [] };
-  }
-
   const previousSheets = generateExportData(
-    previousItems,
-    previousDb.skills || [],
-    previousDb.wallets || [],
-    previousDb.budgetConfig || { monthlyIncome: 0, rules: [] },
-    previousDb.monthlyThemes || {},
-    previousDb.appSettings || { defaultCollapsed: false, hideMoney: false }
+    actualSheetDb.data || [],
+    actualSheetDb.skills || [],
+    actualSheetDb.wallets || [],
+    actualSheetDb.budgetConfig || { monthlyIncome: 0, rules: [] },
+    actualSheetDb.monthlyThemes || {},
+    actualSheetDb.appSettings || { defaultCollapsed: false, hideMoney: false },
+    new Date(),
+    { customPrompt: actualSheetDb.customPrompt, chatHistory: actualSheetDb.chatHistory, canonicalRules: actualSheetDb.canonicalRules }
   );
 
   const previousIndexes = buildSheetRowIndexes(previousSheets);
   const nextIndexes = buildSheetRowIndexes(exportSheets);
+  const previousSheetByName = new Map(previousSheets.map(sheet => [sheet.name, sheet]));
+  const nextSheetByName = new Map(exportSheets.map(sheet => [sheet.name, sheet]));
+  const rewriteNames = new Set<string>(createdSheetTitles);
   const updates: IncrementalUserSheetPlan['updates'] = [];
   const appends: IncrementalUserSheetPlan['appends'] = [];
+  const appendCountsBySheet = new Map<string, number>();
+
+  const markRewrite = (sheetName: string) => {
+    if (!existingSheetTitles.has(sheetName) && !createdSheetTitles.has(sheetName)) return;
+    rewriteNames.add(sheetName);
+  };
+
+  if (!sameJson(previousDb.budgetConfig, nextDb.budgetConfig)) markRewrite('Budget Rules');
+  if (!sameJson(previousDb.skills, nextDb.skills)) markRewrite('Skills Config');
+  if (!sameJson(previousDb.wallets, nextDb.wallets)) markRewrite('Wallets Config');
+  if (!sameJson(previousDb.monthlyThemes, nextDb.monthlyThemes)
+    || !sameJson(previousDb.appSettings, nextDb.appSettings)
+    || !sameJson(previousDb.customPrompt, nextDb.customPrompt)) markRewrite('Themes & Settings');
+  if (!sameJson(previousDb.chatHistory, nextDb.chatHistory)) markRewrite('Chat History');
+  if (!sameJson(previousDb.canonicalRules, nextDb.canonicalRules)) markRewrite('Canonical Rules');
+
+  for (const sheetName of [DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME]) {
+    const previousSheet = previousSheetByName.get(sheetName);
+    const nextSheet = nextSheetByName.get(sheetName);
+    if (nextSheet && !sameJson(previousSheet?.data, nextSheet.data)) markRewrite(sheetName);
+  }
+
+  deletedIds.forEach(id => {
+    const previousItem = previousById.get(id);
+    getItemExportSheetNames(previousItem!).forEach(markRewrite);
+  });
 
   for (const id of changedIds) {
     const previousItem = previousById.get(id);
@@ -457,22 +475,28 @@ const buildIncrementalUserSheetPlan = (
       && JSON.stringify([...previousSheetNames].sort()) !== JSON.stringify([...nextSheetNames].sort());
 
     if (movedBetweenSheets) {
-      return { canIncremental: false, reason: 'item_sheet_changed', updates: [], appends: [] };
+      [...previousSheetNames, ...nextSheetNames].forEach(markRewrite);
+      continue;
     }
 
     for (const sheetName of nextSheetNames) {
       if (!existingSheetTitles.has(sheetName) || createdSheetTitles.has(sheetName)) {
-        return { canIncremental: false, reason: 'missing_or_new_sheet', updates: [], appends: [] };
+        if (createdSheetTitles.has(sheetName)) {
+          markRewrite(sheetName);
+          continue;
+        }
+        return emptyIncrementalPlan(false, 'missing_or_new_sheet');
       }
 
       const nextIndex = nextIndexes.get(sheetName);
       if (!nextIndex) {
-        return { canIncremental: false, reason: 'missing_next_row', updates: [], appends: [] };
+        return emptyIncrementalPlan(false, 'missing_next_row');
       }
 
-      const row = nextIndex.sheet.data.find(candidate => candidate[nextIndex.idColumnIndex] === id);
-      if (!row) {
-        return { canIncremental: false, reason: 'missing_next_row', updates: [], appends: [] };
+      const nextRowNumber = nextIndex.rowById.get(id);
+      const row = nextRowNumber ? nextIndex.sheet.data[nextRowNumber - 1] : undefined;
+      if (!row || !nextRowNumber) {
+        return emptyIncrementalPlan(false, 'missing_next_row');
       }
 
       const previousRowNumber = previousIndexes.get(sheetName)?.rowById.get(id);
@@ -484,16 +508,39 @@ const buildIncrementalUserSheetPlan = (
           values: [row],
         });
       } else {
-        appends.push({
-          sheetName,
-          values: [row],
-          inputOption,
-        });
+        const previousRowCount = previousIndexes.get(sheetName)?.sheet.data.length || 1;
+        const appendCount = appendCountsBySheet.get(sheetName) || 0;
+        if (nextRowNumber === previousRowCount + appendCount + 1) {
+          appends.push({
+            sheetName,
+            values: [row],
+            inputOption,
+          });
+          appendCountsBySheet.set(sheetName, appendCount + 1);
+        } else {
+          markRewrite(sheetName);
+        }
       }
     }
   }
 
-  return { canIncremental: true, updates, appends };
+  const rewrites = [...rewriteNames]
+    .map(sheetName => nextSheetByName.get(sheetName))
+    .filter((sheet): sheet is SheetData => !!sheet);
+  const rewriteSet = new Set(rewrites.map(sheet => sheet.name));
+  const filteredUpdates = updates.filter(update => {
+    const sheetName = update.range.split('!')[0]?.replace(/'/g, '');
+    return !rewriteSet.has(sheetName);
+  });
+  const filteredAppends = appends.filter(append => !rewriteSet.has(append.sheetName));
+
+  return {
+    canIncremental: true,
+    reason: filteredUpdates.length === 0 && filteredAppends.length === 0 && rewrites.length === 0 ? 'no_changes' : 'changed_ranges',
+    updates: filteredUpdates,
+    appends: filteredAppends,
+    rewrites,
+  };
 };
 
 const buildSourceRange = (
@@ -1783,7 +1830,123 @@ const writeSystemSheetSnapshotInBatches = async (
   }
 };
 
-// ── Simplified save: clear + write all sheets directly, no system sheet ──
+const writeSheetDataInChunks = async (
+  config: SpreadsheetConfig,
+  sheet: SheetData,
+  sheetIndex: number,
+  totalSheets: number,
+  onProgress?: SyncProgressCallback
+) => {
+  const chunks = chunkArray(sheet.data, 50);
+  for (let ci = 0; ci < chunks.length; ci++) {
+    onProgress?.({
+      phase: 'write_sheet',
+      label: 'Writing changed sheet rows',
+      detail: `${sheet.name} · batch ${ci + 1}/${chunks.length} · ${sheet.data.length} rows`,
+      current: sheetIndex + 1,
+      total: totalSheets,
+    });
+    const startRow = ci * 50 + 1;
+    const range = `${escapeSheetName(sheet.name)}!A${startRow}`;
+    const updateRes = await sheetsFetch(config.spreadsheetId, `/values/${range}?valueInputOption=${sheet.inputOption || 'RAW'}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: chunks[ci] })
+    });
+    if (!updateRes.ok) {
+      throw new Error(`Failed to write sheet ${sheet.name} chunk ${ci + 1}/${chunks.length}: ${await updateRes.text()}`);
+    }
+  }
+};
+
+const rewriteChangedSheets = async (
+  config: SpreadsheetConfig,
+  sheets: SheetData[],
+  onProgress?: SyncProgressCallback
+) => {
+  for (let sheetIndex = 0; sheetIndex < sheets.length; sheetIndex += 1) {
+    const sheet = sheets[sheetIndex];
+    onProgress?.({
+      phase: 'clear_sheet',
+      label: 'Clearing changed sheet rows',
+      detail: sheet.name,
+      current: sheetIndex + 1,
+      total: sheets.length,
+    });
+    const clearRes = await sheetsFetch(config.spreadsheetId, `/values/${escapeSheetName(sheet.name)}!A:ZZ:clear`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!clearRes.ok) {
+      throw new Error(`Failed to clear sheet ${sheet.name}: ${await clearRes.text()}`);
+    }
+
+    await writeSheetDataInChunks(config, sheet, sheetIndex, sheets.length, onProgress);
+  }
+};
+
+const writeIncrementalUserSheetPlan = async (
+  config: SpreadsheetConfig,
+  plan: IncrementalUserSheetPlan,
+  onProgress?: SyncProgressCallback
+) => {
+  if (plan.rewrites.length > 0) {
+    await rewriteChangedSheets(config, plan.rewrites, onProgress);
+  }
+
+  if (plan.updates.length > 0) {
+    const chunks = chunkArray(plan.updates, MAX_WRITE_BATCH_SIZE);
+    for (let index = 0; index < chunks.length; index += 1) {
+      onProgress?.({
+        phase: 'write_sheet',
+        label: 'Writing changed row batches',
+        detail: `Updated rows batch ${index + 1}/${chunks.length}`,
+        current: index + 1,
+        total: chunks.length,
+      });
+      const response = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valueInputOption: 'RAW', data: chunks[index] })
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to update changed rows batch ${index + 1}/${chunks.length}: ${await response.text()}`);
+      }
+    }
+  }
+
+  const appendGroups = new Map<string, { sheetName: string; inputOption: 'RAW' | 'USER_ENTERED'; values: SheetData['data'] }>();
+  plan.appends.forEach(append => {
+    const key = `${append.sheetName}\u0000${append.inputOption}`;
+    const group = appendGroups.get(key) || { sheetName: append.sheetName, inputOption: append.inputOption, values: [] };
+    group.values.push(...append.values);
+    appendGroups.set(key, group);
+  });
+
+  const appendList = [...appendGroups.values()];
+  for (let index = 0; index < appendList.length; index += 1) {
+    const append = appendList[index];
+    onProgress?.({
+      phase: 'write_sheet',
+      label: 'Appending changed rows',
+      detail: `${append.sheetName} · ${append.values.length} new row${append.values.length === 1 ? '' : 's'}`,
+      current: index + 1,
+      total: appendList.length,
+    });
+    const range = `${escapeSheetName(append.sheetName)}!A1`;
+    const response = await sheetsFetch(config.spreadsheetId, `/values/${range}:append?valueInputOption=${append.inputOption}&insertDataOption=INSERT_ROWS`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: append.values })
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to append changed rows to ${append.sheetName}: ${await response.text()}`);
+    }
+  }
+};
+
+// Save only changed user sheets/ranges after the first full setup write.
 const performSync = async (
   items: BrainDumpItem[], 
   budgetConfig?: BudgetConfig, 
@@ -1810,13 +1973,16 @@ const performSync = async (
   }
 
   try {
-    let dbToWrite = validateSchema(updatedDb);
+    const localDbForPlan = validateSchema(updatedDb);
+    let dbToWrite = localDbForPlan;
     const baseSnapshot = lastSnapshot ? validateSchema(safeJsonParse(lastSnapshot, { data: [] })) : undefined;
+    let currentSheetDbForPlan: DbSchema | undefined;
 
     if (!forceOverwrite) {
       onProgress?.({ phase: 'merge_remote', label: 'Checking sheet edits', detail: 'Merging current spreadsheet rows before save' });
       const sheetBase = validateSchema(safeJsonParse(JSON.stringify(baseSnapshot || dbToWrite), { data: [] }));
       const sheetState = await fetchUserEditableSpreadsheetDb(config, sheetBase);
+      currentSheetDbForPlan = sheetState.data;
       dbToWrite = baseSnapshot
         ? mergeDbData(dbToWrite, sheetState.data, baseSnapshot)
         : mergeDbData(dbToWrite, sheetState.data);
@@ -1844,6 +2010,7 @@ const performSync = async (
 
     // 3. Create missing sheets
     const requests: any[] = [];
+    const createdSheetTitles = new Set<string>();
     for (const sheet of allSheetData) {
       if (!existingTitles.has(sheet.name)) {
         requests.push({ addSheet: { properties: { title: sheet.name } } });
@@ -1860,51 +2027,36 @@ const performSync = async (
       if (!batchRes.ok) {
         throw new Error(`Failed to create missing spreadsheet tabs: ${await batchRes.text()}`);
       }
+      requests.forEach(request => {
+        const title = request.addSheet?.properties?.title;
+        if (title) createdSheetTitles.add(title);
+      });
     }
 
-    // 4. Clear and write each sheet
-    for (let sheetIndex = 0; sheetIndex < allSheetData.length; sheetIndex += 1) {
-      const sheet = allSheetData[sheetIndex];
-      if (!existingTitles.has(sheet.name) && !reliable) continue;
+    const effectiveExistingTitles = new Set([...existingTitles, ...createdSheetTitles]);
+    const isInitialSpreadsheetWrite = !baseSnapshot || !isHydrated || existingTitles.size === 0;
+    const incrementalPlan = !forceOverwrite && baseSnapshot
+      ? buildIncrementalUserSheetPlan(baseSnapshot, localDbForPlan, allSheetData, effectiveExistingTitles, createdSheetTitles, isInitialSpreadsheetWrite, currentSheetDbForPlan || baseSnapshot)
+      : emptyIncrementalPlan(false, forceOverwrite ? 'force_overwrite' : 'missing_base_snapshot');
 
-      // Clear the sheet
+    // 4. Write only changed ranges/sheets after initial setup. Force overwrite and
+    // first writes still rebuild all sheets to establish headers and formulas.
+    if (incrementalPlan.canIncremental) {
+      const writeCount = incrementalPlan.rewrites.length + incrementalPlan.updates.length + incrementalPlan.appends.length;
       onProgress?.({
-        phase: 'clear_sheet',
-        label: 'Clearing old sheet rows',
-        detail: sheet.name,
-        current: sheetIndex + 1,
-        total: allSheetData.length,
+        phase: 'write_sheet',
+        label: writeCount > 0 ? 'Writing changed sheets only' : 'No sheet changes to write',
+        detail: writeCount > 0
+          ? `${incrementalPlan.rewrites.length} sheet rewrite(s), ${incrementalPlan.updates.length} row update(s), ${incrementalPlan.appends.length} append batch(es)`
+          : 'Local and spreadsheet data already match',
       });
-      const clearRes = await sheetsFetch(config.spreadsheetId, `/values/${escapeSheetName(sheet.name)}!A:ZZ:clear`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      if (!clearRes.ok) {
-        throw new Error(`Failed to clear sheet ${sheet.name}: ${await clearRes.text()}`);
-      }
-
-      // Write data in batches
-      const chunks = chunkArray(sheet.data, 50);
-      for (let ci = 0; ci < chunks.length; ci++) {
-        onProgress?.({
-          phase: 'write_sheet',
-          label: 'Writing sheet rows',
-          detail: `${sheet.name} · batch ${ci + 1}/${chunks.length} · ${sheet.data.length} rows`,
-          current: sheetIndex + 1,
-          total: allSheetData.length,
-        });
-        const startRow = ci * 50 + 1;
-        const range = `${escapeSheetName(sheet.name)}!A${startRow}`;
-        const updateRes = await sheetsFetch(config.spreadsheetId, `/values/${range}?valueInputOption=${sheet.inputOption || 'RAW'}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ values: chunks[ci] })
-        });
-        if (!updateRes.ok) {
-          throw new Error(`Failed to write sheet ${sheet.name} chunk ${ci + 1}/${chunks.length}: ${await updateRes.text()}`);
-        }
-      }
+      await writeIncrementalUserSheetPlan(config, incrementalPlan, onProgress);
+    } else {
+      await rewriteChangedSheets(
+        config,
+        allSheetData.filter(sheet => effectiveExistingTitles.has(sheet.name) || reliable),
+        onProgress
+      );
     }
 
     // 5. Cache & cleanup

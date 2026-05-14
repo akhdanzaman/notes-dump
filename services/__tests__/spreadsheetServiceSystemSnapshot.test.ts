@@ -150,7 +150,36 @@ test('incremental plan appends rows for new items without forcing full rebuild',
   assert.deepEqual(plan.appends.map(append => append.sheetName).sort(), ['Transactions']);
 });
 
-test('incremental plan falls back when rows are deleted or config changes', () => {
+test('incremental plan rewrites only the affected item sheet when a new row is inserted above existing rows', () => {
+  const nextDb: DbSchema = {
+    ...baseDb,
+    data: [
+      {
+        id: 'note-new-top',
+        type: ItemType.NOTE,
+        content: 'New top note',
+        status: 'pending',
+        created_at: '2026-05-10T01:00:00.000Z',
+        meta: { title: 'Top' },
+      },
+      ...baseDb.data,
+    ],
+  };
+  const plan = __test__.buildIncrementalUserSheetPlan(
+    baseDb,
+    nextDb,
+    generateExportData(nextDb.data, [], [], nextDb.budgetConfig!, {}, nextDb.appSettings!),
+    existingExportSheetTitles,
+    new Set(),
+    false,
+  );
+
+  assert.equal(plan.canIncremental, true);
+  assert.equal(plan.appends.some(append => append.sheetName === 'Notes & Journals'), false);
+  assert.ok(plan.rewrites.some(sheet => sheet.name === 'Notes & Journals'));
+});
+
+test('incremental plan rewrites only affected sheets when rows are deleted or config changes', () => {
   const deletedPlan = __test__.buildIncrementalUserSheetPlan(
     baseDb,
     { ...baseDb, data: [] },
@@ -159,8 +188,8 @@ test('incremental plan falls back when rows are deleted or config changes', () =
     new Set(),
     false,
   );
-  assert.equal(deletedPlan.canIncremental, false);
-  assert.equal(deletedPlan.reason, 'deleted_items');
+  assert.equal(deletedPlan.canIncremental, true);
+  assert.deepEqual(deletedPlan.rewrites.map(sheet => sheet.name).filter(name => name === 'Notes & Journals'), ['Notes & Journals']);
 
   const configPlan = __test__.buildIncrementalUserSheetPlan(
     baseDb,
@@ -170,6 +199,27 @@ test('incremental plan falls back when rows are deleted or config changes', () =
     new Set(),
     false,
   );
-  assert.equal(configPlan.canIncremental, false);
-  assert.equal(configPlan.reason, 'config_changed');
+  assert.equal(configPlan.canIncremental, true);
+  assert.ok(configPlan.rewrites.some(sheet => sheet.name === 'Wallets Config'));
+});
+
+test('incremental plan does not write back remote-only spreadsheet edits', () => {
+  const remoteOnlyDb: DbSchema = {
+    ...baseDb,
+    data: [{ ...baseDb.data[0], content: 'Remote manual edit' }],
+  };
+  const plan = __test__.buildIncrementalUserSheetPlan(
+    baseDb,
+    baseDb,
+    generateExportData(remoteOnlyDb.data, [], [], remoteOnlyDb.budgetConfig!, {}, remoteOnlyDb.appSettings!),
+    existingExportSheetTitles,
+    new Set(),
+    false,
+    remoteOnlyDb,
+  );
+
+  assert.equal(plan.canIncremental, true);
+  assert.deepEqual(plan.updates, []);
+  assert.deepEqual(plan.appends, []);
+  assert.deepEqual(plan.rewrites, []);
 });
