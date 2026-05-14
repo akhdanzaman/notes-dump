@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.115',
+    date: 'May 2026',
+    items: [
+      'Fixed race condition in loadData → applyData that overwrote user-initiated item changes (like marking a task done) with stale fetched data, causing the done status to revert after save.',
+      'applyData now merges fetched items with pending in-memory changes (itemsRef.current), preserving unsaved user edits and keeping newly added items that have not yet been persisted to the sheet.',
+    ],
+  },
+  {
     version: 'v0.3.114',
     date: 'May 2026',
     items: [
