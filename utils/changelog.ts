@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.110',
+    date: 'May 2026',
+    items: [
+      'All sheet rewrite batches and row updates are now sent in a single batchUpdate request instead of one request per chunk, reducing API calls for large sheets like Transactions from 13+ requests to 1.',
+      'Event Log spreadsheet now records the actual app version (e.g. v0.3.110) in the Version column instead of a generic identifier.',
+      'Clean up unused MAX_WRITE_BATCH_SIZE constant for the single-batch row update path.',
+    ],
+  },
+  {
     version: 'v0.3.109',
     date: 'May 2026',
     items: [

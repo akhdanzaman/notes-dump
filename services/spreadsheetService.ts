@@ -1,4 +1,5 @@
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule, ItemType } from "../types";
+import { CHANGELOG_ENTRIES } from "../utils/changelog";
 import { SyncProgressCallback, SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
@@ -13,7 +14,6 @@ const SYSTEM_SHEET_NAME = 'App_State_Do_Not_Edit';
 const HISTORY_SHEET_NAME = 'App_State_History';
 const EVENT_LOG_SHEET_NAME = 'Event Log';
 const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
-const MAX_WRITE_BATCH_SIZE = 8;
 const MAX_FETCH_RETRIES = 3;
 const SPREADSHEET_SYNC_DEBOUNCE_MS = 1200;
 const SYSTEM_SNAPSHOT_WRITE_BATCH_ROWS = 20;
@@ -429,7 +429,7 @@ const buildEventLogRow = (
   action,
   detail.slice(0, 1500),
   saveId,
-  'spreadsheet-sync-v2',
+  CHANGELOG_ENTRIES[0]?.version || 'unknown',
   typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 250) : 'server',
 ];
 
@@ -1965,7 +1965,7 @@ const buildSheetRewriteBatches = (
   return batches;
 };
 
-const rewriteSheetValuesInChunks = async (
+const rewriteSheetValuesInBulk = async (
   config: SpreadsheetConfig,
   sheet: RewriteSheetData,
   sheetIndex: number,
@@ -1973,26 +1973,23 @@ const rewriteSheetValuesInChunks = async (
   onProgress?: SyncProgressCallback
 ) => {
   const batches = buildSheetRewriteBatches(sheet);
-  for (let ci = 0; ci < batches.length; ci++) {
-    const batch = batches[ci];
-    onProgress?.({
-      phase: 'write_sheet',
-      label: 'Rewriting changed sheet rows',
-      detail: `${sheet.name} · rows ${batch.startRow}-${batch.endRow} · batch ${ci + 1}/${batches.length}`,
-      current: sheetIndex + 1,
-      total: totalSheets,
-    });
-    const updateRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        valueInputOption: sheet.inputOption || 'RAW',
-        data: [{ range: batch.range, values: batch.values }],
-      })
-    });
-    if (!updateRes.ok) {
-      throw new Error(`Failed to rewrite sheet ${sheet.name} chunk ${ci + 1}/${batches.length}: ${await updateRes.text()}`);
-    }
+  onProgress?.({
+    phase: 'write_sheet',
+    label: 'Rewriting sheet rows',
+    detail: `${sheet.name} · ${batches.length} batch${batches.length === 1 ? '' : 'es'} in 1 request`,
+    current: sheetIndex + 1,
+    total: totalSheets,
+  });
+  const updateRes = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      valueInputOption: sheet.inputOption || 'RAW',
+      data: batches.map(batch => ({ range: batch.range, values: batch.values })),
+    })
+  });
+  if (!updateRes.ok) {
+    throw new Error(`Failed to rewrite sheet ${sheet.name}: ${await updateRes.text()}`);
   }
 };
 
@@ -2003,7 +2000,7 @@ const rewriteChangedSheets = async (
 ) => {
   for (let sheetIndex = 0; sheetIndex < sheets.length; sheetIndex += 1) {
     const sheet = sheets[sheetIndex];
-    await rewriteSheetValuesInChunks(config, sheet, sheetIndex, sheets.length, onProgress);
+    await rewriteSheetValuesInBulk(config, sheet, sheetIndex, sheets.length, onProgress);
   }
 };
 
@@ -2065,23 +2062,18 @@ const writeIncrementalUserSheetPlan = async (
   }
 
   if (plan.updates.length > 0) {
-    const chunks = chunkArray(plan.updates, MAX_WRITE_BATCH_SIZE);
-    for (let index = 0; index < chunks.length; index += 1) {
-      onProgress?.({
-        phase: 'write_sheet',
-        label: 'Writing changed row batches',
-        detail: `Updated rows batch ${index + 1}/${chunks.length}`,
-        current: index + 1,
-        total: chunks.length,
-      });
-      const response = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ valueInputOption: 'RAW', data: chunks[index] })
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to update changed rows batch ${index + 1}/${chunks.length}: ${await response.text()}`);
-      }
+    onProgress?.({
+      phase: 'write_sheet',
+      label: 'Writing changed rows',
+      detail: `${plan.updates.length} row update(s) in 1 request`,
+    });
+    const response = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valueInputOption: 'RAW', data: plan.updates })
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to update changed rows: ${await response.text()}`);
     }
   }
 
