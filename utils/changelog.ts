@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.121',
+    date: 'May 2026',
+    items: [
+      'Restored routine shopping recovery when old spreadsheet rows have drifted IDs or stale headers: the app now matches previous routine parents semantically and keeps their daily/weekly/monthly/yearly recurrence metadata instead of recreating them as schedule-less shopping rows.',
+      'Current changelog now again calls out planned expense visibility: Money > Budget supports weekly/monthly/yearly planned budget calculations, and Spend Timeline keeps planned spend visible beside income, expense, and net movement.',
+    ],
+  },
+  {
     version: 'v0.3.120',
     date: 'May 2026',
     items: [

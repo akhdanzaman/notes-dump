@@ -106,7 +106,7 @@ test('dedupeBrainDumpItems collapses exact duplicate routine shopping entries', 
   assert.equal(laundry?.status, 'pending');
 });
 
-test('dedupeBrainDumpItems does not collapse shopping items with different due dates', () => {
+test('dedupeBrainDumpItems collapses routine shopping parent duplicates across due-date drift and preserves recurrence', () => {
   const items: BrainDumpItem[] = [
     {
       id: 'makan-1',
@@ -114,7 +114,7 @@ test('dedupeBrainDumpItems does not collapse shopping items with different due d
       content: 'Makan',
       status: 'pending',
       created_at: '2026-04-14T23:49:26.000Z',
-      meta: { shoppingCategory: 'routine', date: '2026-04-14T01:00:00.000Z', amount: 30000 },
+      meta: { shoppingCategory: 'routine', isRoutine: true, routineInterval: 'daily', date: '2026-04-14T01:00:00.000Z', amount: 30000 },
     },
     {
       id: 'makan-2',
@@ -123,6 +123,34 @@ test('dedupeBrainDumpItems does not collapse shopping items with different due d
       status: 'pending',
       created_at: '2026-04-15T23:49:26.000Z',
       meta: { shoppingCategory: 'routine', date: '2026-04-15T01:00:00.000Z', amount: 30000 },
+    },
+  ];
+
+  const result = dedupeBrainDumpItems(items);
+
+  assert.equal(result.removedCount, 1);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].meta.routineInterval, 'daily');
+  assert.equal(result.items[0].meta.isRoutine, true);
+});
+
+test('dedupeBrainDumpItems does not collapse normal shopping items with different due dates', () => {
+  const items: BrainDumpItem[] = [
+    {
+      id: 'makan-1',
+      type: ItemType.SHOPPING,
+      content: 'Makan',
+      status: 'pending',
+      created_at: '2026-04-14T23:49:26.000Z',
+      meta: { shoppingCategory: 'not_urgent', date: '2026-04-14T01:00:00.000Z', amount: 30000 },
+    },
+    {
+      id: 'makan-2',
+      type: ItemType.SHOPPING,
+      content: 'Makan',
+      status: 'pending',
+      created_at: '2026-04-15T23:49:26.000Z',
+      meta: { shoppingCategory: 'not_urgent', date: '2026-04-15T01:00:00.000Z', amount: 30000 },
     },
   ];
 

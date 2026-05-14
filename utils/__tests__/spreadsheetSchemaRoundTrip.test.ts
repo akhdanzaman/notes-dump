@@ -275,6 +275,47 @@ test('shopping spreadsheet category edits keep isRoutine in sync', () => {
   assert.equal(item?.meta.recurrenceDays, undefined);
 });
 
+test('stale shopping sheets with drifted IDs keep existing routine recurrence metadata', () => {
+  const existingRoutine: BrainDumpItem = {
+    id: 'old-routine-id',
+    type: ItemType.SHOPPING,
+    content: 'Bensin',
+    status: 'pending',
+    created_at: '2026-03-11T11:40:20.000Z',
+    meta: {
+      amount: 25000,
+      shoppingCategory: 'routine',
+      isRoutine: true,
+      routineInterval: 'monthly',
+      routineDaysOfMonth: [11, 25],
+      date: '2026-05-11T00:58:39.000Z',
+      lastGeneratedHistoryId: 'history-bensin-1',
+    },
+  };
+  const db: DbSchema = {
+    data: [existingRoutine],
+    budgetConfig,
+    skills: [],
+    wallets: [],
+    monthlyThemes: {},
+    appSettings,
+  };
+
+  const staleShoppingValues = [
+    ['Status', 'Item', 'Amount', 'Category', 'Quantity', 'Due_Date', 'Created_At', 'Tags', 'Completed_At', 'Investment_Type', 'Investment_Code', 'Investment_Units', 'Investment_Avg_Buy', 'Investment_Current_Price', 'Investment_Platform', 'ID'],
+    ['pending', 'Bensin', '25000', 'routine', '', '2026-05-11T00:58:39.000Z', '2026-03-11T11:40:20.000Z', '', '', '', '', '', '', '', '', 'new-drifted-row-id'],
+  ];
+
+  const reconciled = reconcileSpreadsheetData(structuredClone(db), [{ range: "'Shopping'!A1:P", values: staleShoppingValues }]);
+
+  const routines = reconciled.data.filter(item => item.type === ItemType.SHOPPING && item.content === 'Bensin');
+  assert.equal(routines.length, 1);
+  assert.equal(routines[0].id, 'old-routine-id');
+  assert.equal(routines[0].meta.routineInterval, 'monthly');
+  assert.deepEqual(routines[0].meta.routineDaysOfMonth, [11, 25]);
+  assert.equal(routines[0].meta.lastGeneratedHistoryId, 'history-bensin-1');
+});
+
 test('event spreadsheet export preserves dateTime-only events', () => {
   const event: BrainDumpItem = {
     id: 'event-datetime-1',

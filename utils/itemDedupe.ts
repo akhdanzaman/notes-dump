@@ -42,9 +42,8 @@ const eventDedupeKey = (item: BrainDumpItem) => [
 const shoppingDedupeKey = (item: BrainDumpItem) => [
   item.type,
   normalizeText(item.content),
-  item.status,
   normalizeText(item.meta.shoppingCategory),
-  normalizeDate(item.meta.date),
+  item.meta.shoppingCategory === 'routine' ? 'routine-parent' : `${item.status}::${normalizeDate(item.meta.date)}`,
   normalizeNumber(item.meta.amount),
   normalizeNumber(item.meta.quantity),
   normalizeTags(item.meta.tags),
@@ -150,6 +149,15 @@ const mergeDuplicateItems = (items: BrainDumpItem[]) => {
   const allTags = Array.from(new Set(items.flatMap(item => item.meta.tags || [])));
   const completedAt = items.map(item => item.completed_at).filter(Boolean).sort().at(-1);
   const createdAt = items.map(item => item.created_at).filter(Boolean).sort()[0] || primary.created_at;
+  const routineSource = items.find(item =>
+    (item.meta.shoppingCategory === 'routine' || item.meta.isRoutine)
+    && (item.meta.routineInterval
+      || item.meta.routineDaysOfWeek?.length
+      || item.meta.routineDaysOfMonth?.length
+      || item.meta.routineMonthsOfYear?.length
+      || item.meta.recurrenceDays
+      || item.meta.lastGeneratedHistoryId)
+  );
 
   return {
     ...primary,
@@ -158,6 +166,15 @@ const mergeDuplicateItems = (items: BrainDumpItem[]) => {
     completed_at: completedAt || primary.completed_at,
     meta: {
       ...primary.meta,
+      ...(routineSource ? {
+        isRoutine: routineSource.meta.isRoutine ?? primary.meta.isRoutine,
+        routineInterval: routineSource.meta.routineInterval ?? primary.meta.routineInterval,
+        routineDaysOfWeek: routineSource.meta.routineDaysOfWeek ?? primary.meta.routineDaysOfWeek,
+        routineDaysOfMonth: routineSource.meta.routineDaysOfMonth ?? primary.meta.routineDaysOfMonth,
+        routineMonthsOfYear: routineSource.meta.routineMonthsOfYear ?? primary.meta.routineMonthsOfYear,
+        recurrenceDays: routineSource.meta.recurrenceDays ?? primary.meta.recurrenceDays,
+        lastGeneratedHistoryId: routineSource.meta.lastGeneratedHistoryId ?? primary.meta.lastGeneratedHistoryId,
+      } : {}),
       priority: maxPriority(items) || primary.meta.priority,
       tags: allTags,
     },

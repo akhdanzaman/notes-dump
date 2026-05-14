@@ -711,12 +711,22 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const routineMonthsOfYear = splitSheetNumberList(routineMonthsOfYearStr);
             const recurrenceDays = recurrenceDaysStr !== undefined && recurrenceDaysStr !== '' ? parsePositiveInt(recurrenceDaysStr) : undefined;
             
-            const match = newItems.find(i => 
-                (idStr && i.id === idStr) ||
-                (!idStr && i.type === ItemType.SHOPPING &&
+            const exactIdMatch = idStr ? newItems.find(i => i.id === idStr) : undefined;
+            const semanticRoutineMatch = parsedCategory === 'routine'
+                ? newItems.find(i =>
+                    i.type === ItemType.SHOPPING &&
+                    i.meta.shoppingCategory === 'routine' &&
+                    cleanCell(i.content).toLowerCase() === cleanCell(item).toLowerCase() &&
+                    (i.meta.amount || 0) === amount
+                )
+                : undefined;
+            const semanticNoIdMatch = !idStr ? newItems.find(i =>
+                i.type === ItemType.SHOPPING &&
                 i.content === item &&
-                (i.meta.amount || 0) === amount)
-            );
+                (i.meta.amount || 0) === amount
+            ) : undefined;
+
+            const match = exactIdMatch || semanticRoutineMatch || semanticNoIdMatch;
 
             if (match) {
                 seenItemIds.add(match.id);
