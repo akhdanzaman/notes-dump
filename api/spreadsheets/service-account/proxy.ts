@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { assertServiceAccountRequestAllowed, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from '../../../server/googleServiceAccount';
+import { assertServiceAccountRequestAllowed, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from '../../_lib/googleServiceAccount.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || 'GET')) {

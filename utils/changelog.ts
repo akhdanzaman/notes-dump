@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.108',
+    date: 'May 2026',
+    items: [
+      'Fixed Vercel service-account API crashes by bundling the Google service account helper inside the API function tree and using NodeNext-compatible imports.',
+      'Service-account status/proxy endpoints should now return JSON instead of crashing with ERR_MODULE_NOT_FOUND / MIDDLEWARE_INVOCATION_FAILED.',
+    ],
+  },
+  {
     version: 'v0.3.107',
     date: 'May 2026',
     items: [
