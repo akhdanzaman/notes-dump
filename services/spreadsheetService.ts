@@ -388,6 +388,7 @@ type IncrementalUserSheetPlan = {
   reason?: string;
   updates: { range: string; values: SheetData['data'] }[];
   appends: { sheetName: string; values: SheetData['data']; inputOption: 'RAW' | 'USER_ENTERED' }[];
+  deletions: { sheetName: string; rowNumber: number }[];
   rewrites: RewriteSheetData[];
 };
 
@@ -396,11 +397,14 @@ type RewriteSheetData = SheetData & {
   previousColumnCount?: number;
 };
 
+const CONFIG_SHEETS_FOR_REWRITE = new Set(['Budget Rules', 'Skills Config', 'Wallets Config', 'Themes & Settings', 'Chat History', 'Canonical Rules']);
+
 const emptyIncrementalPlan = (canIncremental: boolean, reason?: string): IncrementalUserSheetPlan => ({
   canIncremental,
   reason,
   updates: [],
   appends: [],
+  deletions: [],
   rewrites: [],
 });
 
@@ -473,10 +477,12 @@ const buildIncrementalUserSheetPlan = (
   const rewriteNames = new Set<string>(createdSheetTitles);
   const updates: IncrementalUserSheetPlan['updates'] = [];
   const appends: IncrementalUserSheetPlan['appends'] = [];
+  const deletions: IncrementalUserSheetPlan['deletions'] = [];
   const appendCountsBySheet = new Map<string, number>();
 
   const markRewrite = (sheetName: string) => {
     if (isGeneratedDashboardSheet(sheetName)) return;
+    if (!CONFIG_SHEETS_FOR_REWRITE.has(sheetName)) return; // Only config sheets get full rewrites
     if (!existingSheetTitles.has(sheetName) && !createdSheetTitles.has(sheetName)) return;
     rewriteNames.add(sheetName);
   };
@@ -492,7 +498,18 @@ const buildIncrementalUserSheetPlan = (
 
   deletedIds.forEach(id => {
     const previousItem = previousById.get(id);
-    getItemExportSheetNames(previousItem!).forEach(markRewrite);
+    if (!previousItem) return;
+    const sheetNames = getItemExportSheetNames(previousItem);
+    for (const sheetName of sheetNames) {
+      if (CONFIG_SHEETS_FOR_REWRITE.has(sheetName)) {
+        markRewrite(sheetName);
+      } else {
+        const rowNumber = previousIndexes.get(sheetName)?.rowById.get(id);
+        if (rowNumber) {
+          deletions.push({ sheetName, rowNumber });
+        }
+      }
+    }
   });
 
   for (const id of changedIds) {
@@ -506,7 +523,31 @@ const buildIncrementalUserSheetPlan = (
       && JSON.stringify([...previousSheetNames].sort()) !== JSON.stringify([...nextSheetNames].sort());
 
     if (movedBetweenSheets) {
-      [...previousSheetNames, ...nextSheetNames].forEach(markRewrite);
+      // Delete from old sheets (per-row)
+      for (const sheetName of previousSheetNames) {
+        if (CONFIG_SHEETS_FOR_REWRITE.has(sheetName)) {
+          markRewrite(sheetName);
+        } else {
+          const rowNumber = previousIndexes.get(sheetName)?.rowById.get(id);
+          if (rowNumber) deletions.push({ sheetName, rowNumber });
+        }
+      }
+      // Append to new sheets
+      for (const sheetName of nextSheetNames) {
+        if (CONFIG_SHEETS_FOR_REWRITE.has(sheetName)) {
+          markRewrite(sheetName);
+        } else {
+          const sheet = exportSheets.find(s => s.name === sheetName);
+          const nextIdx = nextIndexes.get(sheetName);
+          const rowNum = nextIdx?.rowById.get(id);
+          if (sheet && rowNum) {
+            const row = sheet.data[rowNum - 1];
+            if (row) {
+              appends.push({ sheetName, values: [row], inputOption: sheet.inputOption || 'RAW' });
+            }
+          }
+        }
+      }
       continue;
     }
 
@@ -539,18 +580,12 @@ const buildIncrementalUserSheetPlan = (
           values: [row],
         });
       } else {
-        const previousRowCount = previousIndexes.get(sheetName)?.sheet.data.length || 1;
-        const appendCount = appendCountsBySheet.get(sheetName) || 0;
-        if (nextRowNumber === previousRowCount + appendCount + 1) {
-          appends.push({
-            sheetName,
-            values: [row],
-            inputOption,
-          });
-          appendCountsBySheet.set(sheetName, appendCount + 1);
-        } else {
-          markRewrite(sheetName);
-        }
+        // New item: always append (order managed by app, not sheet position)
+        appends.push({
+          sheetName,
+          values: [row],
+          inputOption,
+        });
       }
     }
   }
@@ -576,9 +611,10 @@ const buildIncrementalUserSheetPlan = (
 
   return {
     canIncremental: true,
-    reason: filteredUpdates.length === 0 && filteredAppends.length === 0 && rewrites.length === 0 ? 'no_changes' : 'changed_ranges',
+    reason: filteredUpdates.length === 0 && filteredAppends.length === 0 && deletions.length === 0 && rewrites.length === 0 ? 'no_changes' : 'changed_ranges',
     updates: filteredUpdates,
     appends: filteredAppends,
+    deletions,
     rewrites,
   };
 };
@@ -1974,8 +2010,56 @@ const rewriteChangedSheets = async (
 const writeIncrementalUserSheetPlan = async (
   config: SpreadsheetConfig,
   plan: IncrementalUserSheetPlan,
+  sheetNameToId: Map<string, number>,
   onProgress?: SyncProgressCallback
 ) => {
+  // Process row deletions first (bottom-up per sheet via deleteDimension)
+  if (plan.deletions.length > 0) {
+    onProgress?.({
+      phase: 'delete_rows',
+      label: 'Deleting removed rows',
+      detail: `${plan.deletions.length} row(s) to delete`,
+    });
+    const sheetMap = new Map<string, number[]>();
+    for (const del of plan.deletions) {
+      const rows = sheetMap.get(del.sheetName) || [];
+      rows.push(del.rowNumber);
+      sheetMap.set(del.sheetName, rows);
+    }
+    const deleteRequests: any[] = [];
+    for (const [sheetName, rowNumbers] of sheetMap) {
+      const sheetId = sheetNameToId.get(sheetName);
+      if (!sheetId) {
+        console.warn('deleteDimension: no sheetId found for', sheetName, '- skipping');
+        continue;
+      }
+      // Process bottom-up so row positions stay valid
+      rowNumbers.sort((a, b) => b - a);
+      for (const rowNumber of rowNumbers) {
+        deleteRequests.push({
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowNumber - 1,
+              endIndex: rowNumber,
+            },
+          },
+        });
+      }
+    }
+    if (deleteRequests.length > 0) {
+      const res = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: deleteRequests }),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to delete ${deleteRequests.length} row(s): ${await res.text()}`);
+      }
+    }
+  }
+
   if (plan.rewrites.length > 0) {
     await rewriteChangedSheets(config, plan.rewrites, onProgress);
   }
@@ -2092,6 +2176,11 @@ const performSync = async (
     // 2. Get existing sheets
     onProgress?.({ phase: 'metadata', label: 'Checking spreadsheet structure', detail: 'Reading tab list and permissions' });
     const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config, true);
+    const sheetNameToId = new Map<string, number>(
+      (meta?.sheets || [])
+        .map((s: any) => [s.properties.title, s.properties.sheetId] as [string, number])
+        .filter(([, id]) => id !== undefined)
+    );
     const allSheetData = [...exportSheets, buildEventLogSheet()];
     const isInitialSpreadsheetWrite = !baseSnapshot || !isHydrated || existingTitles.size === 0;
     const shouldWriteGeneratedDashboardSheets = forceOverwrite || isInitialSpreadsheetWrite;
@@ -2130,16 +2219,16 @@ const performSync = async (
     // 4. Write only changed ranges/sheets after initial setup. Force overwrite and
     // first writes still rebuild all sheets to establish headers and formulas.
     if (incrementalPlan.canIncremental) {
-      const writeCount = incrementalPlan.rewrites.length + incrementalPlan.updates.length + incrementalPlan.appends.length;
+      const writeCount = incrementalPlan.deletions.length + incrementalPlan.rewrites.length + incrementalPlan.updates.length + incrementalPlan.appends.length;
       onProgress?.({
         phase: 'write_sheet',
         label: writeCount > 0 ? 'Writing changed sheets only' : 'No sheet changes to write',
         detail: writeCount > 0
-          ? `${incrementalPlan.rewrites.length} sheet rewrite(s), ${incrementalPlan.updates.length} row update(s), ${incrementalPlan.appends.length} append batch(es)`
+          ? `${incrementalPlan.deletions.length} row deletion(s), ${incrementalPlan.rewrites.length} sheet rewrite(s), ${incrementalPlan.updates.length} row update(s), ${incrementalPlan.appends.length} append batch(es)`
           : 'Local and spreadsheet data already match',
       });
-      await appendSpreadsheetEvent(config, buildEventLogRow('info', 'plan', 'incremental_save_plan', `${incrementalPlan.rewrites.length} rewrite(s), ${incrementalPlan.updates.length} update(s), ${incrementalPlan.appends.length} append batch(es); reason=${incrementalPlan.reason || 'changed_ranges'}`, saveId));
-      await writeIncrementalUserSheetPlan(config, incrementalPlan, onProgress);
+      await appendSpreadsheetEvent(config, buildEventLogRow('info', 'plan', 'incremental_save_plan', `${incrementalPlan.deletions.length} delete(s), ${incrementalPlan.rewrites.length} rewrite(s), ${incrementalPlan.updates.length} update(s), ${incrementalPlan.appends.length} append(s); reason=${incrementalPlan.reason || 'changed_ranges'}`, saveId));
+      await writeIncrementalUserSheetPlan(config, incrementalPlan, sheetNameToId, onProgress);
     } else {
       await appendSpreadsheetEvent(config, buildEventLogRow('info', 'plan', 'full_sheet_rewrite_plan', `reason=${incrementalPlan.reason || 'unknown'}; sheets=${allSheetData.map(sheet => sheet.name).join(', ')}`, saveId));
       await rewriteChangedSheets(

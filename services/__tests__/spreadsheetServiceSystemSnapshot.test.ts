@@ -183,7 +183,7 @@ test('incremental plan appends rows for new items without forcing full rebuild',
   assert.deepEqual(plan.appends.map(append => append.sheetName).sort(), ['Transactions']);
 });
 
-test('incremental plan rewrites only the affected item sheet when a new row is inserted above existing rows', () => {
+test('incremental plan appends rows for new items even when inserted above existing rows', () => {
   const nextDb: DbSchema = {
     ...baseDb,
     data: [
@@ -208,11 +208,11 @@ test('incremental plan rewrites only the affected item sheet when a new row is i
   );
 
   assert.equal(plan.canIncremental, true);
-  assert.equal(plan.appends.some(append => append.sheetName === 'Notes & Journals'), false);
-  assert.ok(plan.rewrites.some(sheet => sheet.name === 'Notes & Journals'));
+  assert.ok(plan.appends.some(append => append.sheetName === 'Notes & Journals'));
+  assert.equal(plan.deletions.length, 0);
 });
 
-test('incremental plan rewrites only affected sheets when rows are deleted or config changes', () => {
+test('incremental plan deletes rows for removed items and rewrites config changes only', () => {
   const deletedPlan = __test__.buildIncrementalUserSheetPlan(
     baseDb,
     { ...baseDb, data: [] },
@@ -222,7 +222,9 @@ test('incremental plan rewrites only affected sheets when rows are deleted or co
     false,
   );
   assert.equal(deletedPlan.canIncremental, true);
-  assert.deepEqual(deletedPlan.rewrites.map(sheet => sheet.name).filter(name => name === 'Notes & Journals'), ['Notes & Journals']);
+  assert.equal(deletedPlan.deletions.length, 1);
+  assert.equal(deletedPlan.deletions[0].sheetName, 'Notes & Journals');
+  assert.equal(deletedPlan.rewrites.filter(s => s.name === 'Notes & Journals').length, 0);
 
   const configPlan = __test__.buildIncrementalUserSheetPlan(
     baseDb,
@@ -234,6 +236,7 @@ test('incremental plan rewrites only affected sheets when rows are deleted or co
   );
   assert.equal(configPlan.canIncremental, true);
   assert.ok(configPlan.rewrites.some(sheet => sheet.name === 'Wallets Config'));
+  assert.equal(configPlan.deletions.length, 0);
 });
 
 test('incremental plan does not write back remote-only spreadsheet edits', () => {
@@ -254,6 +257,7 @@ test('incremental plan does not write back remote-only spreadsheet edits', () =>
   assert.equal(plan.canIncremental, true);
   assert.deepEqual(plan.updates, []);
   assert.deepEqual(plan.appends, []);
+  assert.deepEqual(plan.deletions, []);
   assert.deepEqual(plan.rewrites, []);
 });
 
@@ -278,5 +282,6 @@ test('incremental plan ignores generated dashboard sheet drift during routine sa
 
   assert.equal(plan.canIncremental, true);
   assert.equal(plan.rewrites.some(sheet => sheet.name === 'Sheet1'), false);
+  assert.equal(plan.deletions.length, 0);
   assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:F2"));
 });

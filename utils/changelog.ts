@@ -6,6 +6,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.109',
+    date: 'May 2026',
+    items: [
+      'Replaced full item-sheet rewrites with per-row deletions (deleteDimension) and per-row appends during incremental saves, eliminating quota-heavy Transactions rewrites.',
+      'Item sheets (Transactions, Todos, Shopping, Events, Notes & Journals, Skill Logs) now only write changed rows, append new rows, and delete specific removed rows — no full clear/rewrite.',
+      'Config sheets (Budget Rules, Wallets Config, Skills Config, etc.) remain rewritten entirely as they are small and quota-cheap.',
+      'Rows without IDs in spreadsheet are now detected as manual user edits; the app generates an ID and imports them on next fetch.',
+      'Deleted items in the app are now removed from the sheet via row deletion instead of triggering a full sheet rewrite.',
+    ],
+  },
+  {
     version: 'v0.3.108',
     date: 'May 2026',
     items: [

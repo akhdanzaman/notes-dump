@@ -294,6 +294,7 @@ export type SyncProgressPhase =
   | 'metadata'
   | 'create_sheets'
   | 'clear_sheet'
+  | 'delete_rows'
   | 'write_sheet'
   | 'calendar'
   | 'complete'
