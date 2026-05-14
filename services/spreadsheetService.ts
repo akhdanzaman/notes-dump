@@ -1,5 +1,5 @@
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule, ItemType } from "../types";
-import { SyncResult } from "./syncTypes";
+import { SyncProgressCallback, SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
@@ -155,6 +155,7 @@ type SpreadsheetSyncArgs = [
   ChatMessage[] | undefined,
   CanonicalRule[] | undefined,
   boolean | undefined,
+  SyncProgressCallback | undefined,
 ];
 type PendingDebouncedSync = {
   args: SpreadsheetSyncArgs;
@@ -1765,7 +1766,8 @@ const performSync = async (
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
   canonicalRules?: CanonicalRule[],
-  forceOverwrite = false
+  forceOverwrite = false,
+  onProgress?: SyncProgressCallback
 ): Promise<SyncResult> => {
   const updatedDb: DbSchema = { 
     data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory,
@@ -1782,6 +1784,7 @@ const performSync = async (
 
   try {
     // 1. Generate all sheet data
+    onProgress?.({ phase: 'export', label: 'Building spreadsheet tabs', detail: `${items.length} items → export sheets` });
     const exportSheets = generateExportData(
       items, 
       skills || [], 
@@ -1794,6 +1797,7 @@ const performSync = async (
     );
 
     // 2. Get existing sheets
+    onProgress?.({ phase: 'metadata', label: 'Checking spreadsheet structure', detail: 'Reading tab list and permissions' });
     const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config, true);
     const allSheetData = [...exportSheets];
 
@@ -1806,6 +1810,7 @@ const performSync = async (
     }
 
     if (requests.length > 0 && reliable) {
+      onProgress?.({ phase: 'create_sheets', label: 'Creating missing tabs', detail: `${requests.length} tab${requests.length === 1 ? '' : 's'} needed` });
       const batchRes = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1817,10 +1822,18 @@ const performSync = async (
     }
 
     // 4. Clear and write each sheet
-    for (const sheet of allSheetData) {
+    for (let sheetIndex = 0; sheetIndex < allSheetData.length; sheetIndex += 1) {
+      const sheet = allSheetData[sheetIndex];
       if (!existingTitles.has(sheet.name) && !reliable) continue;
 
       // Clear the sheet
+      onProgress?.({
+        phase: 'clear_sheet',
+        label: 'Clearing old sheet rows',
+        detail: sheet.name,
+        current: sheetIndex + 1,
+        total: allSheetData.length,
+      });
       const clearRes = await sheetsFetch(config.spreadsheetId, `/values/${escapeSheetName(sheet.name)}!A:ZZ:clear`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1834,6 +1847,13 @@ const performSync = async (
       // Write data in batches
       const chunks = chunkArray(sheet.data, 50);
       for (let ci = 0; ci < chunks.length; ci++) {
+        onProgress?.({
+          phase: 'write_sheet',
+          label: 'Writing sheet rows',
+          detail: `${sheet.name} · batch ${ci + 1}/${chunks.length} · ${sheet.data.length} rows`,
+          current: sheetIndex + 1,
+          total: allSheetData.length,
+        });
         const startRow = ci * 50 + 1;
         const range = `${escapeSheetName(sheet.name)}!A${startRow}`;
         const updateRes = await sheetsFetch(config.spreadsheetId, `/values/${range}?valueInputOption=${sheet.inputOption || 'RAW'}`, {
@@ -1848,12 +1868,14 @@ const performSync = async (
     }
 
     // 5. Cache & cleanup
+    onProgress?.({ phase: 'complete', label: 'Finalizing save', detail: 'Updating local cache' });
     writeSpreadsheetCache(finalJsonString);
     lastSnapshot = finalJsonString;
     isHydrated = true;
 
     return { success: true, method: 'cloud' };
   } catch (error: any) {
+    onProgress?.({ phase: 'error', label: 'Save failed', detail: error.message || 'Unknown sync error' });
     console.error('Failed to sync to Spreadsheet:', error);
     return { success: false, method: 'error', error: error.message || 'Unknown sync error' };
   }
@@ -1960,9 +1982,10 @@ export const syncSpreadsheetData = (
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
   canonicalRules?: CanonicalRule[],
-  forceOverwrite = false
+  forceOverwrite = false,
+  onProgress?: SyncProgressCallback
 ): Promise<SyncResult> => {
-  const args: SpreadsheetSyncArgs = [items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite];
+  const args: SpreadsheetSyncArgs = [items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite, onProgress];
 
   if (forceOverwrite) {
     cancelPendingDebouncedSync({ success: true, method: 'skipped_no_changes' });
@@ -1970,6 +1993,7 @@ export const syncSpreadsheetData = (
     return enqueueSpreadsheetSync(args);
   }
 
+  onProgress?.({ phase: 'queue', label: 'Waiting for save debounce', detail: `${SPREADSHEET_SYNC_DEBOUNCE_MS}ms batching window` });
   return scheduleDebouncedSpreadsheetSync(args);
 };
 

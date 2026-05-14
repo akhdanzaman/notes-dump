@@ -12,7 +12,7 @@ import {
   MessageSquareText,
   ClipboardCheck
 } from 'lucide-react';
-import { SyncStatus } from '../types';
+import { SyncProgress, SyncStatus } from '../types';
 
 interface InputBarProps {
   onSend: (text: string) => void;
@@ -21,6 +21,7 @@ interface InputBarProps {
   startAction?: ReactNode;
   topContent?: ReactNode;
   saveStatus?: SyncStatus;
+  saveProgress?: SyncProgress | null;
   fetchStatus?: SyncStatus;
   pendingCount?: number;
   isChatOpen?: boolean;
@@ -49,6 +50,7 @@ const InputBar: React.FC<InputBarProps> = ({
   startAction,
   topContent,
   saveStatus,
+  saveProgress,
   fetchStatus,
   pendingCount,
   isChatOpen,
@@ -194,15 +196,15 @@ const InputBar: React.FC<InputBarProps> = ({
                   </button>
                 </div>
               ) : (saveStatus === 'saving' || fetchStatus === 'syncing') && (
-                <div className="shrink-0 z-20 pointer-events-none">
+                <div className="shrink-0 z-20 pointer-events-none" title={saveStatus === 'saving' && saveProgress ? `${saveProgress.label}${saveProgress.detail ? ` — ${saveProgress.detail}` : ''}` : undefined}>
                   <div
-                    className={`w-10 h-10 rounded-full ${
+                    className={`min-w-10 h-10 rounded-full ${
                       saveStatus === 'saving'
                         ? 'bg-amber-500/20 border-amber-500/40'
                         : fetchStatus === 'syncing'
                         ? 'bg-blue-500/20 border-blue-500/40'
                         : 'bg-purple-500/20 border-purple-500/40'
-                    } backdrop-blur-xl border flex items-center justify-center shadow-xl ${
+                    } backdrop-blur-xl border flex items-center justify-center gap-2 px-3 shadow-xl ${
                       saveStatus === 'saving'
                         ? 'shadow-amber-500/20'
                         : fetchStatus === 'syncing'
@@ -219,6 +221,12 @@ const InputBar: React.FC<InputBarProps> = ({
                           : 'text-purple-400'
                       } animate-spin`}
                     />
+                    {saveStatus === 'saving' && saveProgress && (
+                      <span className="hidden sm:flex flex-col leading-none text-left max-w-[190px]">
+                        <span className="text-[11px] font-semibold text-amber-300 truncate">{saveProgress.label}</span>
+                        {saveProgress.detail && <span className="text-[10px] text-muted truncate">{saveProgress.detail}</span>}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}

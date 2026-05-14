@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.101',
+    date: 'May 2026',
+    items: [
+      'Saving status now shows the exact step currently running, including waiting for parser, caching the pending local write, building spreadsheet tabs, checking sheet structure, clearing old rows, writing each sheet batch, syncing calendar, and finalizing cache.',
+      'Input bar, desktop rail, and Control Center now surface the current save step/detail so slow spreadsheet phases are easier to spot instead of showing only “Saving…”.',
+    ],
+  },
+  {
     version: 'v0.3.100',
     date: 'May 2026',
     items: [

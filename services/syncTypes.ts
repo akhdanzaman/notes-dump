@@ -1,4 +1,6 @@
-import { DbSchema } from "../types";
+import { DbSchema, SyncProgress } from "../types";
+
+export type SyncProgressCallback = (progress: SyncProgress) => void;
 
 export type SyncResult = {
   success: boolean;

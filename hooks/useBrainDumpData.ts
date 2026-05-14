@@ -14,6 +14,7 @@ import {
     Priority,
     ChatMessage,
     ParserResultV2,
+    SyncProgress,
     ParserAction,
     ParserEntityType,
     ParsedItemMetaV2,
@@ -407,6 +408,7 @@ export const useBrainDumpData = () => {
     const [enrichmentTasks, setEnrichmentTasks] = useState<EnrichmentTask[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<SyncStatus>('synced');
+    const [saveProgress, setSaveProgress] = useState<SyncProgress | null>(null);
     const [fetchStatus, setFetchStatus] = useState<SyncStatus>('synced');
     const [pendingReviews, setPendingReviews] = useState<HistoricalCanonicalReview[]>([]);
 
@@ -518,6 +520,11 @@ export const useBrainDumpData = () => {
         const baseItems = itemsRef.current;
         const itemsToSave = newItems || itemsRef.current;
         setSaveStatus('saving');
+        setSaveProgress({ phase: 'prepare', label: 'Preparing save', detail: `${itemsToSave.length} items in memory`, updatedAt: Date.now() });
+
+        const reportSaveProgress = (progress: SyncProgress) => {
+            setSaveProgress({ ...progress, updatedAt: Date.now() });
+        };
 
         try {
             const configToSave = newConfig || budgetConfigRef.current;
@@ -538,7 +545,8 @@ export const useBrainDumpData = () => {
                 settingsToSave,
                 undefined,
                 canonicalRulesToSave,
-                forceOverwrite
+                forceOverwrite,
+                reportSaveProgress
             );
 
             if (!result.success) {
@@ -569,6 +577,7 @@ export const useBrainDumpData = () => {
 
             if (settingsToSave.googleCalendarSyncEnabled) {
                 try {
+                    reportSaveProgress({ phase: 'calendar', label: 'Syncing calendar', detail: 'Pushing dated items to Google Calendar' });
                     await syncItemsToGoogleCalendar(itemsToSave, settingsToSave);
                 } catch (calendarError) {
                     console.warn('Google Calendar sync failed after data save', calendarError);
@@ -576,10 +585,12 @@ export const useBrainDumpData = () => {
                 }
             }
 
+            reportSaveProgress({ phase: 'complete', label: 'Save complete', detail: 'Sheets and local cache are up to date' });
             setSaveStatus('synced');
         } catch (e) {
             console.error("Sync error:", e);
             setSaveStatus('error');
+            setSaveProgress({ phase: 'error', label: 'Save failed', detail: e instanceof Error ? e.message : 'Unknown error', updatedAt: Date.now() });
             setError(`Gagal menyimpan data ke cloud: ${e instanceof Error ? e.message : 'Unknown error'}`);
         }
     }, []);
@@ -609,6 +620,7 @@ export const useBrainDumpData = () => {
                 forceOverwrite: (previous?.forceOverwrite || forceOverwrite)
             };
             setSaveStatus('saving');
+            setSaveProgress({ phase: 'deferred', label: 'Waiting for parser', detail: 'Save will start after current parsing finishes', updatedAt: Date.now() });
             return;
         }
 
@@ -2491,6 +2503,7 @@ export const useBrainDumpData = () => {
         pendingReviews,
         canonicalRules,
         saveStatus,
+        saveProgress,
         fetchStatus,
         loadData,
         saveAndSync,

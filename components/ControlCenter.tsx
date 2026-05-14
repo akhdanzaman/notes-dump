@@ -8,7 +8,7 @@ import {
     Check, Smartphone, CheckCircle2, PieChart, Plus, Sparkles,
     MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History
 } from 'lucide-react';
-import { SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, CanonicalRule, ParserResultV2, EnrichmentTask } from '../types';
+import { SyncProgress, SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, CanonicalRule, ParserResultV2, EnrichmentTask } from '../types';
 import { DEFAULT_PROMPT } from '../services/geminiService';
 import { useControlCenter } from '../hooks/useControlCenter';
 import { getDatabaseHistory } from '../services/syncFacade';
@@ -21,6 +21,7 @@ interface ControlCenterProps {
     isOpen: boolean;
     onClose: () => void;
     saveStatus: SyncStatus;
+    saveProgress?: SyncProgress | null;
     fetchStatus: SyncStatus;
     onSyncClick: (forceOverwrite?: boolean) => void;
     onRefreshClick?: () => void;
@@ -87,7 +88,7 @@ const ClockDisplay = () => {
 };
 
 const ControlCenter: React.FC<ControlCenterProps> = ({ 
-    isOpen, onClose, saveStatus, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
+    isOpen, onClose, saveStatus, saveProgress, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
     appSettings, setAppSettings, error, pendingCount, parsingTasks, enrichmentTasks = [], retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes,
@@ -229,7 +230,13 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             case 'syncing':
                 return <div className="flex items-center gap-2 text-blue-500"><RefreshCw className="w-5 h-5 animate-spin" /><span className="font-medium">Fetching...</span></div>;
             case 'saving':
-                return <div className="flex items-center gap-2 text-amber-500"><Save className="w-5 h-5 animate-spin" /><span className="font-medium">Saving...</span></div>;
+                return (
+                    <div className="flex items-center gap-2 text-amber-500">
+                        <Save className="w-5 h-5 animate-spin" />
+                        <span className="font-medium">{saveProgress?.label || 'Saving...'}</span>
+                        {saveProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {saveProgress.detail}</span>}
+                    </div>
+                );
             case 'error':
                 return <div className="flex items-center gap-2 text-red-500"><CloudOff className="w-5 h-5" /><span className="font-medium">Failed</span></div>;
             case 'local':

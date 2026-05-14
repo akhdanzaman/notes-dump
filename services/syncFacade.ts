@@ -1,6 +1,6 @@
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage, CanonicalRule } from "../types";
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, getSpreadsheetHistory, SpreadsheetHistoryEntry, getCachedSpreadsheetDb, cacheSpreadsheetDbForMigration, cachePendingSpreadsheetWrite, getPendingSpreadsheetWrite, clearPendingSpreadsheetWrite } from "./spreadsheetService";
-import { SyncResult } from "./syncTypes";
+import { SyncProgressCallback, SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { dedupeBrainDumpItems } from "../utils/itemDedupe";
 
@@ -47,13 +47,16 @@ export const syncData = async (
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
   canonicalRules?: CanonicalRule[],
-  forceOverwrite = false
+  forceOverwrite = false,
+  onProgress?: SyncProgressCallback
 ): Promise<SyncResult> => {
   const deduped = dedupeBrainDumpItems(items);
   const outgoingItems = deduped.items;
   const outgoingDb = { data: outgoingItems, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules };
+  onProgress?.({ phase: 'prepare', label: 'Preparing data', detail: `${outgoingItems.length} items ready to save` });
 
   if (!getSpreadsheetConfig()) {
+    onProgress?.({ phase: 'pending_local', label: 'Caching local data', detail: 'Spreadsheet is not connected' });
     cacheSpreadsheetDbForMigration(outgoingDb);
     return {
       success: false,
@@ -63,6 +66,7 @@ export const syncData = async (
   }
 
   const pendingWriteId = cachePendingSpreadsheetWrite(outgoingDb);
+  onProgress?.({ phase: 'pending_local', label: 'Caching pending write', detail: 'Local safety copy stored before cloud sync' });
   const result = await syncSpreadsheetData(
     outgoingItems,
     budgetConfig,
@@ -73,7 +77,8 @@ export const syncData = async (
     appSettings,
     chatHistory,
     canonicalRules,
-    forceOverwrite
+    forceOverwrite,
+    onProgress
   );
 
   if (result.success) {

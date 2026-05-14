@@ -45,7 +45,7 @@ const App: React.FC = () => {
       items, budgetConfig, setBudgetConfig, skills, setSkills, wallets, setWallets,
       customPrompt, setCustomPrompt, monthlyThemes, setMonthlyThemes, appSettings, setAppSettings,
       chatHistory, setChatHistory,
-      loading, error, pendingCount, parsingTasks, enrichmentTasks, pendingReviews, canonicalRules, saveStatus, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
+      loading, error, pendingCount, parsingTasks, enrichmentTasks, pendingReviews, canonicalRules, saveStatus, saveProgress, fetchStatus, saveAndSync, handleSend, handleToggleStatus,
       handleDelete, handleUpdateItem, loadData, runCanonicalBackfill, toggleCanonicalRuleDisabled, handleAddRoutineTask, handleAddTask, handleAddShoppingItem, handleAddSavingTransaction, handleKeepRawTodo, handleRetriggerDeepWorkTodo, handleAcceptDeepWorkTodo, handleResetRoutine, handleAddTransaction, handleAddNote, retryParsing, clearParsingTask, undoSuccessfulParsingTask, deleteSuccessfulParsingTaskEntries, handleApproveReview, handleRejectReview
   } = useBrainDumpData();
 
@@ -707,6 +707,7 @@ const App: React.FC = () => {
         pendingCount={pendingCount}
         reviewQueueCount={reviewCenterBadgeCount}
         saveStatus={saveStatus}
+        saveProgress={saveProgress}
         fetchStatus={fetchStatus}
         onSyncClick={() => saveAndSync(items)}
         onRefreshClick={() => loadData()}
@@ -873,6 +874,7 @@ const App: React.FC = () => {
                 onSend={handleAppSend} 
                 onFocus={() => { setIsSearchExpanded(false); }} 
                 saveStatus={saveStatus}
+                saveProgress={saveProgress}
                 fetchStatus={fetchStatus}
                 pendingCount={pendingCount}
                 isChatOpen={isChatOpen}
@@ -920,6 +922,7 @@ const App: React.FC = () => {
         isOpen={isControlCenterOpen}
         onClose={() => setIsControlCenterOpen(false)}
         saveStatus={saveStatus}
+        saveProgress={saveProgress}
         fetchStatus={fetchStatus}
         onSyncClick={(forceOverwrite) => saveAndSync(items, undefined, undefined, undefined, undefined, undefined, undefined, undefined, forceOverwrite)}
         onRefreshClick={() => loadData()}

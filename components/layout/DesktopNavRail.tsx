@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle, ClipboardCheck, CloudCheck, CloudOff, RefreshCw, Save, Settings } from 'lucide-react';
-import { LibrarySubTab, PlanSubTab, SyncStatus, Tab } from '../../types';
+import { LibrarySubTab, PlanSubTab, SyncProgress, SyncStatus, Tab } from '../../types';
 import { getAppNavigationItems } from '../navigationItems';
 
 interface DesktopNavRailProps {
@@ -13,6 +13,7 @@ interface DesktopNavRailProps {
   pendingCount: number;
   reviewQueueCount: number;
   saveStatus: SyncStatus;
+  saveProgress?: SyncProgress | null;
   fetchStatus: SyncStatus;
   onSyncClick: () => void;
   onRefreshClick: () => void;
@@ -31,6 +32,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
   pendingCount,
   reviewQueueCount,
   saveStatus,
+  saveProgress,
   fetchStatus,
   onSyncClick,
   onRefreshClick,
@@ -63,8 +65,8 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
     },
     saving: {
       icon: Save,
-      label: 'Saving...',
-      helper: 'Writing changes',
+      label: saveProgress?.label || 'Saving...',
+      helper: saveProgress?.detail || 'Writing changes',
       color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
       onClick: undefined,
     },

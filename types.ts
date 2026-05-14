@@ -284,6 +284,28 @@ export type FocusSubTab = 'tasks' | 'skills';
 export type LibrarySubTab = 'general' | 'skills' | 'journal';
 export type NotesSubTab = LibrarySubTab;
 export type SyncStatus = 'synced' | 'syncing' | 'saving' | 'error' | 'local';
+export type SyncProgressPhase =
+  | 'deferred'
+  | 'prepare'
+  | 'pending_local'
+  | 'queue'
+  | 'export'
+  | 'metadata'
+  | 'create_sheets'
+  | 'clear_sheet'
+  | 'write_sheet'
+  | 'calendar'
+  | 'complete'
+  | 'error';
+
+export interface SyncProgress {
+  phase: SyncProgressPhase;
+  label: string;
+  detail?: string;
+  current?: number;
+  total?: number;
+  updatedAt?: number;
+}
 export type MoneyView = 'transactions' | 'budget' | 'wallets';
 export type SortOrder = 'newest' | 'oldest' | 'highest_amount' | 'lowest_amount';
 
