@@ -2317,7 +2317,12 @@ export const useBrainDumpData = () => {
                 finalCompletedAt = newDate;
             }
 
-            if (!newDate && (newIsRoutine || item.meta.isRoutine)) {
+            const nextShoppingCategory = newShoppingCategory !== undefined ? newShoppingCategory : item.meta.shoppingCategory;
+            const resolvedIsRoutine = item.type === ItemType.SHOPPING
+                ? nextShoppingCategory === 'routine'
+                : (newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine);
+
+            if (!newDate && resolvedIsRoutine) {
                 const interval = newRoutineInterval !== undefined ? newRoutineInterval : (item.meta.routineInterval || 'daily');
                 const daysOfWeek = newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek;
                 const daysOfMonth = newRoutineDaysOfMonth !== undefined ? newRoutineDaysOfMonth : item.meta.routineDaysOfMonth;
@@ -2356,14 +2361,14 @@ export const useBrainDumpData = () => {
                 financeType: newFinanceType !== undefined ? newFinanceType : item.meta.financeType,
                 progress: newProgress !== undefined ? newProgress : item.meta.progress,
                 progressNotes: newProgressNotes !== undefined ? newProgressNotes : item.meta.progressNotes,
-                shoppingCategory: newShoppingCategory !== undefined ? newShoppingCategory : item.meta.shoppingCategory,
-                recurrenceDays: newIsRoutine === false ? undefined : (newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays),
+                shoppingCategory: nextShoppingCategory,
+                recurrenceDays: !resolvedIsRoutine ? undefined : (newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays),
                 quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
-                isRoutine: newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine,
-                routineInterval: newIsRoutine === false ? undefined : (newRoutineInterval !== undefined ? newRoutineInterval : item.meta.routineInterval),
-                routineDaysOfWeek: newIsRoutine === false ? undefined : (newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek),
-                routineDaysOfMonth: newIsRoutine === false ? undefined : (newRoutineDaysOfMonth !== undefined ? newRoutineDaysOfMonth : item.meta.routineDaysOfMonth),
-                routineMonthsOfYear: newIsRoutine === false ? undefined : (newRoutineMonthsOfYear !== undefined ? newRoutineMonthsOfYear : item.meta.routineMonthsOfYear),
+                isRoutine: resolvedIsRoutine || undefined,
+                routineInterval: !resolvedIsRoutine ? undefined : (newRoutineInterval !== undefined ? newRoutineInterval : item.meta.routineInterval),
+                routineDaysOfWeek: !resolvedIsRoutine ? undefined : (newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek),
+                routineDaysOfMonth: !resolvedIsRoutine ? undefined : (newRoutineDaysOfMonth !== undefined ? newRoutineDaysOfMonth : item.meta.routineDaysOfMonth),
+                routineMonthsOfYear: !resolvedIsRoutine ? undefined : (newRoutineMonthsOfYear !== undefined ? newRoutineMonthsOfYear : item.meta.routineMonthsOfYear),
                 savingGoalId: newSavingGoalId !== undefined ? (newSavingGoalId || undefined) : item.meta.savingGoalId,
                 dedicatedWalletId: newDedicatedWalletId !== undefined ? (newDedicatedWalletId || undefined) : item.meta.dedicatedWalletId,
                 priority: newPriority !== undefined ? newPriority : item.meta.priority,

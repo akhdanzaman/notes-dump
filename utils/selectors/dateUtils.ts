@@ -46,23 +46,29 @@ export const calculateNextDueDate = (
     }
     else if (interval === 'monthly') {
         if (daysOfMonth.length > 0) {
-            const currentDay = completedDate.getDate(); // 1-31
             const sortedDays = [...daysOfMonth].sort((a, b) => a - b);
-            const nextDay = sortedDays.find(d => d > currentDay);
-            
-            const nextDateObj = new Date(completedDate);
-            if (nextDay !== undefined) {
-                // Same month, later date
-                nextDateObj.setDate(nextDay);
-            } else {
-                // Next month, first available date
-                // We need to be careful about month overflow (e.g. Jan 31 -> Feb 28/29)
-                // If we just add 1 month, it might skip.
-                // Strategy: Set to 1st of next month, then set date.
-                nextDateObj.setMonth(nextDateObj.getMonth() + 1);
-                nextDateObj.setDate(sortedDays[0]);
+            for (let monthOffset = 0; monthOffset <= 24; monthOffset++) {
+                const year = completedDate.getFullYear();
+                const month = completedDate.getMonth() + monthOffset;
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                for (const selectedDay of sortedDays) {
+                    const clampedDay = Math.min(selectedDay, daysInMonth);
+                    const candidate = new Date(
+                        year,
+                        month,
+                        clampedDay,
+                        completedDate.getHours(),
+                        completedDate.getMinutes(),
+                        completedDate.getSeconds(),
+                        completedDate.getMilliseconds()
+                    );
+                    if (candidate.getTime() > completedDate.getTime()) {
+                        nextDueTime = candidate.getTime();
+                        monthOffset = 25;
+                        break;
+                    }
+                }
             }
-            nextDueTime = nextDateObj.getTime();
         } else {
             nextDueTime = completedDate.getTime() + (30 * 24 * 60 * 60 * 1000);
         }
@@ -124,20 +130,29 @@ export const calculateFirstDueDate = (
     }
     else if (interval === 'monthly') {
         if (daysOfMonth.length > 0) {
-            const currentDay = fromDate.getDate(); // 1-31
             const sortedDays = [...daysOfMonth].sort((a, b) => a - b);
-            const nextDay = sortedDays.find(d => d >= currentDay);
-            
-            const nextDateObj = new Date(fromDate);
-            if (nextDay !== undefined) {
-                // Same month, today or later
-                nextDateObj.setDate(nextDay);
-            } else {
-                // Next month, first available date
-                nextDateObj.setMonth(nextDateObj.getMonth() + 1);
-                nextDateObj.setDate(sortedDays[0]);
+            for (let monthOffset = 0; monthOffset <= 24; monthOffset++) {
+                const year = fromDate.getFullYear();
+                const month = fromDate.getMonth() + monthOffset;
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                for (const selectedDay of sortedDays) {
+                    const clampedDay = Math.min(selectedDay, daysInMonth);
+                    const candidate = new Date(
+                        year,
+                        month,
+                        clampedDay,
+                        fromDate.getHours(),
+                        fromDate.getMinutes(),
+                        fromDate.getSeconds(),
+                        fromDate.getMilliseconds()
+                    );
+                    if (candidate.getTime() >= fromDate.getTime()) {
+                        nextDueTime = candidate.getTime();
+                        monthOffset = 25;
+                        break;
+                    }
+                }
             }
-            nextDueTime = nextDateObj.getTime();
         }
     }
     else if (interval === 'yearly') {

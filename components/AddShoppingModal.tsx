@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, ShoppingCart, Calendar, Clock, TrendingUp } from 'lucide-react';
 import { ShoppingCategory, InvestmentAssetType, BudgetRule, Wallet } from '../types';
 import { responsiveModal } from './layout/contentSurface';
+import { calculateFirstDueDate } from '../utils/selectors';
 
 interface AddShoppingModalProps {
     isOpen: boolean;
@@ -60,6 +61,11 @@ const INVESTMENT_ASSET_TYPES: { value: InvestmentAssetType; label: string; hint:
     { value: 'other', label: 'Other', hint: 'units' },
 ];
 
+const formatDateInput = (value: Date) => {
+    const offset = value.getTimezoneOffset() * 60000;
+    return new Date(value.getTime() - offset).toISOString().slice(0, 10);
+};
+
 const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, onSave, initialCategory = 'not_urgent', budgetRules, wallets }) => {
     const [content, setContent] = useState('');
     const [category, setCategory] = useState<ShoppingCategory>(initialCategory);
@@ -82,6 +88,17 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
     const [daysOfMonth, setDaysOfMonth] = useState<number[]>([]);
     const [monthsOfYear, setMonthsOfYear] = useState<number[]>([]);
+
+    const updateDateFromRoutineSchedule = (
+        nextInterval: 'daily' | 'weekly' | 'monthly' | 'yearly',
+        nextDaysOfWeek: number[],
+        nextDaysOfMonth: number[],
+        nextMonthsOfYear: number[]
+    ) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        setDate(formatDateInput(calculateFirstDueDate(today, nextInterval, nextDaysOfWeek, nextDaysOfMonth, nextMonthsOfYear)));
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -168,27 +185,36 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     };
 
     const toggleDayOfWeek = (val: number) => {
+        let nextDays: number[];
         if (daysOfWeek.includes(val)) {
-            setDaysOfWeek(daysOfWeek.filter(d => d !== val));
+            nextDays = daysOfWeek.filter(d => d !== val);
         } else {
-            setDaysOfWeek([...daysOfWeek, val]);
+            nextDays = [...daysOfWeek, val];
         }
+        setDaysOfWeek(nextDays);
+        updateDateFromRoutineSchedule(interval, nextDays, daysOfMonth, monthsOfYear);
     };
 
     const toggleDayOfMonth = (val: number) => {
+        let nextDays: number[];
         if (daysOfMonth.includes(val)) {
-            setDaysOfMonth(daysOfMonth.filter(d => d !== val));
+            nextDays = daysOfMonth.filter(d => d !== val);
         } else {
-            setDaysOfMonth([...daysOfMonth, val]);
+            nextDays = [...daysOfMonth, val];
         }
+        setDaysOfMonth(nextDays);
+        updateDateFromRoutineSchedule(interval, daysOfWeek, nextDays, monthsOfYear);
     };
 
     const toggleMonthOfYear = (val: number) => {
+        let nextMonths: number[];
         if (monthsOfYear.includes(val)) {
-            setMonthsOfYear(monthsOfYear.filter(m => m !== val));
+            nextMonths = monthsOfYear.filter(m => m !== val);
         } else {
-            setMonthsOfYear([...monthsOfYear, val]);
+            nextMonths = [...monthsOfYear, val];
         }
+        setMonthsOfYear(nextMonths);
+        updateDateFromRoutineSchedule(interval, daysOfWeek, daysOfMonth, nextMonths);
     };
 
     if (!isOpen) return null;
@@ -237,7 +263,13 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Category</label>
                                 <select
                                     value={category}
-                                    onChange={e => setCategory(e.target.value as ShoppingCategory)}
+                                    onChange={e => {
+                                        const nextCategory = e.target.value as ShoppingCategory;
+                                        setCategory(nextCategory);
+                                        if (nextCategory === 'routine') {
+                                            updateDateFromRoutineSchedule(interval, daysOfWeek, daysOfMonth, monthsOfYear);
+                                        }
+                                    }}
                                     className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
                                     disabled={initialCategory === 'saving' || initialCategory === 'investment'}
                                 >
@@ -426,7 +458,10 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
                                         <button
                                             key={int}
-                                            onClick={() => setInterval(int)}
+                                            onClick={() => {
+                                                setInterval(int);
+                                                updateDateFromRoutineSchedule(int, daysOfWeek, daysOfMonth, monthsOfYear);
+                                            }}
                                             className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
                                         >
                                             {int}

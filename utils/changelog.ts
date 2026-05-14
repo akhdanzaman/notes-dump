@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.120',
+    date: 'May 2026',
+    items: [
+      'Routine task edits no longer leak default repeat metadata onto normal todos/shopping items; repeat fields are now kept only while the item is actually routine.',
+      'Shopping routine creation now recalculates the due date when the interval or selected weekdays/month days/months change, so new routines start on their first scheduled occurrence instead of accidentally anchoring to today.',
+      'Monthly routines scheduled for end-of-month dates now clamp cleanly in shorter months (for example Jan 31 → Feb 28) instead of overflowing into the wrong month.',
+    ],
+  },
+  {
     version: 'v0.3.119',
     date: 'May 2026',
     items: [
