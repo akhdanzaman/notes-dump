@@ -2204,8 +2204,13 @@ const performSync = async (
     }
 
     const effectiveExistingTitles = new Set([...existingTitles, ...createdSheetTitles]);
+    // Compare what's IN THE SHEET (currentSheetDbForPlan) vs what SHOULD BE (dbToWrite after merge)
+    // NOT the old cached snapshot vs app state — that causes data loss when items were removed from app
+    // but still exist in the sheet or vice versa.
+    const planPreviousDb = currentSheetDbForPlan || baseSnapshot || validateSchema({ data: [] });
+    const planNextDb = dbToWrite;
     const incrementalPlan = !forceOverwrite && baseSnapshot
-      ? buildIncrementalUserSheetPlan(baseSnapshot, localDbForPlan, allSheetData, effectiveExistingTitles, createdSheetTitles, isInitialSpreadsheetWrite, currentSheetDbForPlan || baseSnapshot)
+      ? buildIncrementalUserSheetPlan(planPreviousDb, planNextDb, allSheetData, effectiveExistingTitles, createdSheetTitles, isInitialSpreadsheetWrite, currentSheetDbForPlan || baseSnapshot)
       : emptyIncrementalPlan(false, forceOverwrite ? 'force_overwrite' : 'missing_base_snapshot');
 
     // 4. Write only changed ranges/sheets after initial setup. Force overwrite and
