@@ -67,6 +67,85 @@ type ParsingUndoSnapshot = {
     canonicalRules: CanonicalRule[];
 };
 
+export const mergeFetchedItemsPreservingUnsavedLocal = (
+    fetchedItems: BrainDumpItem[],
+    currentItems: BrainDumpItem[],
+    lastSyncedItems: BrainDumpItem[]
+): BrainDumpItem[] => {
+    const currentById = new Map(currentItems.map(item => [item.id, item]));
+    const fetchedIds = new Set(fetchedItems.map(item => item.id));
+    const lastSyncedById = new Map(lastSyncedItems.map(item => [item.id, item]));
+    const differsFromLastSynced = (item: BrainDumpItem) => {
+        const lastSynced = lastSyncedById.get(item.id);
+        return !lastSynced || JSON.stringify(item) !== JSON.stringify(lastSynced);
+    };
+
+    const merged = fetchedItems.map(fetchedItem => {
+        const current = currentById.get(fetchedItem.id);
+        return current && differsFromLastSynced(current) ? current : fetchedItem;
+    });
+
+    for (const currentItem of currentItems) {
+        if (!fetchedIds.has(currentItem.id) && differsFromLastSynced(currentItem)) {
+            merged.push(currentItem);
+        }
+    }
+
+    return merged;
+};
+
+export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
+    return currentItems.map(item => {
+        const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
+        const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
+
+        if ((isShoppingRoutine || isTodoRoutine) && item.status === 'done' && item.completed_at) {
+            const completedDate = new Date(item.completed_at);
+            let nextDueTime = completedDate.getTime();
+
+            if (isShoppingRoutine) {
+                if (item.meta.routineInterval) {
+                    nextDueTime = calculateNextDueDate(
+                        completedDate,
+                        item.meta.routineInterval,
+                        item.meta.routineDaysOfWeek,
+                        item.meta.routineDaysOfMonth,
+                        item.meta.routineMonthsOfYear
+                    ).getTime();
+                } else {
+                    const recurrenceDays = item.meta.recurrenceDays || 7;
+                    nextDueTime = completedDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000);
+                }
+            } else if (isTodoRoutine) {
+                nextDueTime = calculateNextDueDate(
+                    completedDate,
+                    item.meta.routineInterval || 'daily',
+                    item.meta.routineDaysOfWeek,
+                    item.meta.routineDaysOfMonth,
+                    item.meta.routineMonthsOfYear
+                ).getTime();
+            }
+
+            if (now.getTime() >= nextDueTime) {
+                return {
+                    ...item,
+                    status: 'pending' as const,
+                    completed_at: undefined,
+                    meta: {
+                        ...item.meta,
+                        date: new Date(nextDueTime).toISOString(),
+                        progress: 0,
+                        progressNotes: undefined,
+                        lastGeneratedHistoryId: undefined
+                    }
+                };
+            }
+        }
+
+        return item;
+    });
+};
+
 const sanitizeNumber = (value: unknown): number | undefined => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (typeof value !== 'string') return undefined;
@@ -435,6 +514,7 @@ export const useBrainDumpData = () => {
 
     const itemsRef = useRef(items);
     itemsRef.current = items;
+    const lastSyncedItemsRef = useRef<BrainDumpItem[]>([]);
 
     enrichmentTasksRef.current = enrichmentTasks;
 
@@ -457,54 +537,7 @@ export const useBrainDumpData = () => {
     chatHistoryRef.current = chatHistory;
 
     const checkRoutineResets = (currentItems: BrainDumpItem[]) => {
-        const now = new Date();
-
-        const updatedItems = currentItems.map(item => {
-            const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
-            const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
-
-            if ((isShoppingRoutine || isTodoRoutine) && item.status === 'done' && item.completed_at) {
-                const completedDate = new Date(item.completed_at);
-                let nextDueTime = completedDate.getTime();
-
-                if (isShoppingRoutine) {
-                    if (item.meta.routineInterval) {
-                        nextDueTime = calculateNextDueDate(
-                            completedDate,
-                            item.meta.routineInterval,
-                            item.meta.routineDaysOfWeek,
-                            item.meta.routineDaysOfMonth,
-                            item.meta.routineMonthsOfYear
-                        ).getTime();
-                    } else {
-                        const recurrenceDays = item.meta.recurrenceDays || 7;
-                        nextDueTime = completedDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000);
-                    }
-                } else if (isTodoRoutine) {
-                    nextDueTime = calculateNextDueDate(
-                        completedDate,
-                        item.meta.routineInterval || 'daily',
-                        item.meta.routineDaysOfWeek,
-                        item.meta.routineDaysOfMonth,
-                        item.meta.routineMonthsOfYear
-                    ).getTime();
-                }
-
-                if (now.getTime() >= nextDueTime) {
-                    return {
-                        ...item,
-                        status: 'pending' as const,
-                        completed_at: undefined,
-                        meta: {
-                            ...item.meta,
-                            date: new Date(nextDueTime).toISOString()
-                        }
-                    };
-                }
-            }
-
-            return item;
-        });
+        const updatedItems = resetDueRoutineItems(currentItems);
 
         return updatedItems;
     };
@@ -566,6 +599,7 @@ export const useBrainDumpData = () => {
                 // Relies on the three-way merge to keep local changes (status, content, etc.)
                 // while picking up manual sheet-only entries.
                 itemsRef.current = merged.data;
+                lastSyncedItemsRef.current = merged.data;
                 skillsRef.current = merged.skills || [];
                 walletsRef.current = merged.wallets || [];
                 const mergedThemes = remoteSchema.monthlyThemes ? { ...remoteSchema.monthlyThemes, ...monthlyThemesRef.current } : monthlyThemesRef.current;
@@ -576,6 +610,10 @@ export const useBrainDumpData = () => {
                 setWallets(merged.wallets || []);
                 setMonthlyThemes(mergedThemes);
                 if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
+            }
+
+            if (!result.mergedData) {
+                lastSyncedItemsRef.current = itemsToSave;
             }
 
             if (settingsToSave.googleCalendarSyncEnabled) {
@@ -746,21 +784,12 @@ export const useBrainDumpData = () => {
                     // Merge fetched items with any user-initiated in-memory changes
                     // to avoid overwriting pending status/content that the user changed
                     // while loadData was fetching (race: mark done → loadData overwrite).
-                    const pendingById = new Map(itemsRef.current.map(i => [i.id, i]));
-                    const mergedItems = canonicalSweep.items.map(fetchedItem => {
-                        const pending = pendingById.get(fetchedItem.id);
-                        if (pending && JSON.stringify(pending) !== JSON.stringify(fetchedItem)) {
-                            return pending; // User has unsaved changes → keep user's version
-                        }
-                        return fetchedItem;
-                    });
-                    // Also include any items the user added that aren't in fetch yet
-                    const fetchedIds = new Set(canonicalSweep.items.map(i => i.id));
-                    for (const pendingItem of itemsRef.current) {
-                        if (!fetchedIds.has(pendingItem.id)) {
-                            mergedItems.push(pendingItem);
-                        }
-                    }
+                    const mergedItems = mergeFetchedItemsPreservingUnsavedLocal(
+                        canonicalSweep.items,
+                        itemsRef.current,
+                        lastSyncedItemsRef.current
+                    );
+                    lastSyncedItemsRef.current = canonicalSweep.items;
                     itemsRef.current = mergedItems;
                     setItems(mergedItems);
 
@@ -2281,7 +2310,7 @@ export const useBrainDumpData = () => {
             }
 
             const editsShoppingCompletionDate = item.type === ItemType.SHOPPING && shouldShoppingDateEditCompletion(item) && newDate !== undefined;
-            let finalDate = editsShoppingCompletionDate ? item.meta.date : (newDate || item.meta.date);
+            let finalDate = editsShoppingCompletionDate ? item.meta.date : (newDate !== undefined ? (newDate || undefined) : item.meta.date);
             let finalCompletedAt = completedAt;
 
             if (editsShoppingCompletionDate) {
@@ -2289,10 +2318,10 @@ export const useBrainDumpData = () => {
             }
 
             if (!newDate && (newIsRoutine || item.meta.isRoutine)) {
-                const interval = newRoutineInterval || item.meta.routineInterval || 'daily';
-                const daysOfWeek = newRoutineDaysOfWeek || item.meta.routineDaysOfWeek;
-                const daysOfMonth = newRoutineDaysOfMonth || item.meta.routineDaysOfMonth;
-                const monthsOfYear = newRoutineMonthsOfYear || item.meta.routineMonthsOfYear;
+                const interval = newRoutineInterval !== undefined ? newRoutineInterval : (item.meta.routineInterval || 'daily');
+                const daysOfWeek = newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek;
+                const daysOfMonth = newRoutineDaysOfMonth !== undefined ? newRoutineDaysOfMonth : item.meta.routineDaysOfMonth;
+                const monthsOfYear = newRoutineMonthsOfYear !== undefined ? newRoutineMonthsOfYear : item.meta.routineMonthsOfYear;
 
                 if (item.status === 'pending') {
                     const scheduleChanged =
@@ -2324,26 +2353,26 @@ export const useBrainDumpData = () => {
                 durationMinutes: newDuration !== undefined ? newDuration : item.meta.durationMinutes,
                 skillId: newSkillId !== undefined ? newSkillId : item.meta.skillId,
                 toWallet: newToWallet !== undefined ? newToWallet : item.meta.toWallet,
-                financeType: newFinanceType || item.meta.financeType,
+                financeType: newFinanceType !== undefined ? newFinanceType : item.meta.financeType,
                 progress: newProgress !== undefined ? newProgress : item.meta.progress,
                 progressNotes: newProgressNotes !== undefined ? newProgressNotes : item.meta.progressNotes,
-                shoppingCategory: newShoppingCategory || item.meta.shoppingCategory,
-                recurrenceDays: newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays,
+                shoppingCategory: newShoppingCategory !== undefined ? newShoppingCategory : item.meta.shoppingCategory,
+                recurrenceDays: newIsRoutine === false ? undefined : (newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays),
                 quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
                 isRoutine: newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine,
-                routineInterval: newRoutineInterval || item.meta.routineInterval,
-                routineDaysOfWeek: newRoutineDaysOfWeek || item.meta.routineDaysOfWeek,
-                routineDaysOfMonth: newRoutineDaysOfMonth || item.meta.routineDaysOfMonth,
-                routineMonthsOfYear: newRoutineMonthsOfYear || item.meta.routineMonthsOfYear,
-                savingGoalId: newSavingGoalId || item.meta.savingGoalId,
-                dedicatedWalletId: newDedicatedWalletId || item.meta.dedicatedWalletId,
+                routineInterval: newIsRoutine === false ? undefined : (newRoutineInterval !== undefined ? newRoutineInterval : item.meta.routineInterval),
+                routineDaysOfWeek: newIsRoutine === false ? undefined : (newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek),
+                routineDaysOfMonth: newIsRoutine === false ? undefined : (newRoutineDaysOfMonth !== undefined ? newRoutineDaysOfMonth : item.meta.routineDaysOfMonth),
+                routineMonthsOfYear: newIsRoutine === false ? undefined : (newRoutineMonthsOfYear !== undefined ? newRoutineMonthsOfYear : item.meta.routineMonthsOfYear),
+                savingGoalId: newSavingGoalId !== undefined ? (newSavingGoalId || undefined) : item.meta.savingGoalId,
+                dedicatedWalletId: newDedicatedWalletId !== undefined ? (newDedicatedWalletId || undefined) : item.meta.dedicatedWalletId,
                 priority: newPriority !== undefined ? newPriority : item.meta.priority,
-                investmentAssetType: newInvestmentAssetType || item.meta.investmentAssetType,
-                investmentSymbol: newInvestmentSymbol !== undefined ? newInvestmentSymbol : item.meta.investmentSymbol,
+                investmentAssetType: newInvestmentAssetType !== undefined ? newInvestmentAssetType : item.meta.investmentAssetType,
+                investmentSymbol: newInvestmentSymbol !== undefined ? (newInvestmentSymbol || undefined) : item.meta.investmentSymbol,
                 investmentUnits: newInvestmentUnits !== undefined ? newInvestmentUnits : item.meta.investmentUnits,
                 investmentAveragePrice: newInvestmentAveragePrice !== undefined ? newInvestmentAveragePrice : item.meta.investmentAveragePrice,
                 investmentCurrentPrice: newInvestmentCurrentPrice !== undefined ? newInvestmentCurrentPrice : item.meta.investmentCurrentPrice,
-                investmentPlatform: newInvestmentPlatform !== undefined ? newInvestmentPlatform : item.meta.investmentPlatform
+                investmentPlatform: newInvestmentPlatform !== undefined ? (newInvestmentPlatform || undefined) : item.meta.investmentPlatform
             });
 
             return {

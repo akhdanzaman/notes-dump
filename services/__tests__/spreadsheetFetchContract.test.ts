@@ -13,14 +13,36 @@ import { generateExportData } from '../../utils/exportUtils';
 import { DbSchema, ItemType } from '../../types';
 
 test('spreadsheet fetch ranges include the expanded schema columns', () => {
-  assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:S');
-  assert.equal(SPREADSHEET_FETCH_RANGES.Todos, 'A:AA');
-  assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:P');
-  assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:I');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:V');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Todos, 'A:AV');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:Z');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:J');
   assert.equal(SPREADSHEET_FETCH_RANGES['Notes & Journals'], 'A:G');
   assert.equal(SPREADSHEET_FETCH_RANGES['Skill Logs'], 'A:I');
   assert.equal(SPREADSHEET_FETCH_RANGES['Canonical Rules'], 'A:U');
   assert.equal(Object.prototype.hasOwnProperty.call(SPREADSHEET_FETCH_RANGES, 'Data Quality'), false);
+});
+
+const columnLettersToCount = (letters: string) => {
+  return letters.split('').reduce((total, letter) => total * 26 + letter.charCodeAt(0) - 64, 0);
+};
+
+test('spreadsheet fetch ranges cover every exported user-sheet header', () => {
+  const sheets = generateExportData([], [], [], { monthlyIncome: 0, rules: [] }, {}, {
+    defaultCollapsed: false,
+    hideMoney: false,
+  });
+
+  for (const sheet of sheets) {
+    const range = SPREADSHEET_FETCH_RANGES[sheet.name as keyof typeof SPREADSHEET_FETCH_RANGES];
+    if (!range) continue;
+    const endColumn = range.split(':')[1];
+    assert.equal(
+      columnLettersToCount(endColumn),
+      sheet.data[0].length,
+      `${sheet.name} fetch range ${range} should match ${sheet.data[0].length} exported columns`
+    );
+  }
 });
 
 const installLocalStorage = () => {

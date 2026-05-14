@@ -6,6 +6,19 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.119',
+    date: 'May 2026',
+    items: [
+      'Persisted previously UI-only metadata in Google Sheets: hide-from-calendar flags, todo/shopping routine schedule details, routine undo history IDs, shopping budget/wallet links, saving goal links, and investment funding units/prices now round-trip through dedicated sheets.',
+      'Persisted Deep Work planning metadata in the Todos sheet, including trigger evidence, confidence, next-action checks, final output format, session estimate confidence/reason, missing inputs, generated/accepted/dismissed timestamps, and reasoning text.',
+      'Added spreadsheet schema-drift detection so stale physical sheet headers are rewritten during save, ensuring newly added columns become readable instead of silently remaining invisible to fetch.',
+      'Fixed fetch merge logic that treated every difference from the spreadsheet as a local unsaved edit; remote manual edits and deletions now apply unless the in-memory item actually changed since the last sync.',
+      'Blank trailing cells in widened spreadsheet rows are now treated as intentional clears, so manually removing goal/investment/routine metadata in Sheets no longer gets resurrected by stale app state.',
+      'Fixed routine reset side effects so automatically due routines clear stale progress notes and history pointers when moving to the next cycle.',
+      'Fixed dateTime-only events so they export to the Events sheet and survive refresh instead of disappearing from calendar-style views.',
+    ],
+  },
+  {
     version: 'v0.3.118',
     date: 'May 2026',
     items: [

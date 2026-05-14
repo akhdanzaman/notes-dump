@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory } from '../types';
+import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat } from '../types';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
 
@@ -36,6 +36,28 @@ const splitSheetList = (value: unknown): string[] | undefined => {
     return parts.length > 0 ? Array.from(new Set(parts)) : undefined;
 };
 
+const splitSheetNumberList = (value: unknown): number[] | undefined => {
+    const values = splitSheetList(value)
+        ?.map(v => parseInt(v, 10))
+        .filter(v => Number.isFinite(v));
+    return values?.length ? Array.from(new Set(values)) : undefined;
+};
+
+const parseSheetBoolean = (value: unknown): boolean | undefined => {
+    const normalized = String(value ?? '').trim().toLowerCase();
+    if (!normalized) return undefined;
+    if (['true', 'yes', 'y', '1'].includes(normalized)) return true;
+    if (['false', 'no', 'n', '0'].includes(normalized)) return false;
+    return undefined;
+};
+
+const parseRoutineInterval = (value: unknown): 'daily' | 'weekly' | 'monthly' | 'yearly' | undefined => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return normalized === 'daily' || normalized === 'weekly' || normalized === 'monthly' || normalized === 'yearly'
+        ? normalized
+        : undefined;
+};
+
 const cleanCell = (value: unknown): string | undefined => {
     if (typeof value !== 'string') return undefined;
     const cleaned = value.replace(/\s+/g, ' ').trim();
@@ -61,6 +83,27 @@ const parseDeepWorkStatus = (value: unknown): DeepWorkStatus | undefined => {
         : undefined;
 };
 
+const parseDeepWorkPattern = (value: unknown): DeepWorkPattern | undefined => {
+    const normalized = cleanCell(value);
+    return normalized === 'summary' || normalized === 'regulation' || normalized === 'research' || normalized === 'review' || normalized === 'continuation' || normalized === 'artifact' || normalized === 'decision'
+        ? normalized
+        : undefined;
+};
+
+const parseDeepWorkConfidence = (value: unknown): DeepWorkConfidence | undefined => {
+    const normalized = cleanCell(value);
+    return normalized === 'low' || normalized === 'medium' || normalized === 'high'
+        ? normalized
+        : undefined;
+};
+
+const parseDeepWorkOutputFormat = (value: unknown): DeepWorkOutputFormat | undefined => {
+    const normalized = cleanCell(value);
+    return normalized === 'bullet_summary' || normalized === 'brief' || normalized === 'table' || normalized === 'decision_memo' || normalized === 'slides' || normalized === 'email_draft' || normalized === 'notes' || normalized === 'unknown'
+        ? normalized
+        : undefined;
+};
+
 const parseBlockerStatus = (value: unknown): DeepWorkBlockerStatus | undefined => {
     const normalized = cleanCell(value);
     return normalized === 'clear' || normalized === 'blocked' || normalized === 'needs_input' || normalized === 'unknown'
@@ -70,12 +113,12 @@ const parseBlockerStatus = (value: unknown): DeepWorkBlockerStatus | undefined =
 
 const getHeaderCell = (headers: unknown[], row: unknown[], name: string): unknown => {
     const index = headers.indexOf(name);
-    return index >= 0 ? row[index] : undefined;
+    return index >= 0 ? (index < row.length ? row[index] : '') : undefined;
 };
 
 const getHeaderAwareCell = (headers: unknown[], row: unknown[], name: string, fallbackIndex: number): unknown => {
     const index = headers.indexOf(name);
-    return index >= 0 ? row[index] : row[fallbackIndex];
+    return index >= 0 ? (index < row.length ? row[index] : '') : row[fallbackIndex];
 };
 
 const parseSheetAmount = (value: unknown): number => {
@@ -99,6 +142,9 @@ const parseSheetAmount = (value: unknown): number => {
     const parsed = parseFloat(normalized.replace(/[^\d.-]/g, ''));
     return Number.isFinite(parsed) ? parsed : 0;
 };
+
+const parseOptionalSheetAmount = (value: unknown): number | undefined =>
+    value !== undefined && String(value).trim() !== '' ? parseSheetAmount(value) : undefined;
 
 const hasAuthoritativeRows = (sheet: any): boolean =>
     Array.isArray(sheet?.values) && sheet.values.length > 1;
@@ -151,6 +197,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const createdAtStr = cell(row, 'Created_At', 16) as string;
             const completedAtStr = cell(row, 'Completed_At', 17) as string;
             const idStr = cell(row, 'ID', 8) as string;
+            const savingGoalId = cell(row, 'Saving_Goal_ID', 19) as string;
+            const investmentUnitsStr = cell(row, 'Investment_Units', 20) as string;
+            const investmentAvgBuyStr = cell(row, 'Investment_Avg_Buy', 21) as string;
             if (!date && !description && !amountStr && !idStr) continue;
 
             if (idStr && shoppingSheetIds.has(String(idStr))) {
@@ -189,6 +238,13 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 
                 const newToWalId = getWalId(toWallet);
                 if (match.meta.toWallet !== newToWalId) { match.meta.toWallet = newToWalId; updated = true; }
+
+                const newSavingGoalId = savingGoalId || undefined;
+                if (savingGoalId !== undefined && match.meta.savingGoalId !== newSavingGoalId) { match.meta.savingGoalId = newSavingGoalId; updated = true; }
+                const investmentUnits = parseOptionalSheetAmount(investmentUnitsStr);
+                if (investmentUnitsStr !== undefined && match.meta.investmentUnits !== investmentUnits) { match.meta.investmentUnits = investmentUnits; updated = true; }
+                const investmentAvgBuy = parseOptionalSheetAmount(investmentAvgBuyStr);
+                if (investmentAvgBuyStr !== undefined && match.meta.investmentAveragePrice !== investmentAvgBuy) { match.meta.investmentAveragePrice = investmentAvgBuy; updated = true; }
 
                 if (merchant !== undefined && match.meta.merchant !== (merchant || undefined)) { match.meta.merchant = merchant || undefined; updated = true; }
                 if (commodity !== undefined && match.meta.commodity !== (commodity || undefined)) { match.meta.commodity = commodity || undefined; updated = true; }
@@ -260,6 +316,11 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         budgetCategory: getCatId(category),
                         paymentMethod: rawPaymentMethod ? getWalId(rawPaymentMethod) : getWalId(wallet),
                         toWallet: getWalId(toWallet),
+                        savingGoalId: savingGoalId || (financeType === ACHIEVED_GOAL_FINANCE_TYPE
+                            ? newItems.find(i => i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving' && getAchievedGoalName(description).toLowerCase() === i.content.trim().toLowerCase())?.id
+                            : undefined),
+                        investmentUnits: parseOptionalSheetAmount(investmentUnitsStr),
+                        investmentAveragePrice: parseOptionalSheetAmount(investmentAvgBuyStr),
                         merchant: merchant || undefined,
                         commodity: commodity || undefined,
                         subcommodity: subcommodity || undefined,
@@ -269,9 +330,6 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                             commodity: canonicalCommodity ? { rawValue: commodity || undefined, value: canonicalCommodity } : undefined,
                             subcommodity: canonicalSubcommodity ? { rawValue: subcommodity || undefined, value: canonicalSubcommodity } : undefined,
                         } : undefined,
-                        savingGoalId: financeType === ACHIEVED_GOAL_FINANCE_TYPE
-                            ? newItems.find(i => i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving' && getAchievedGoalName(description).toLowerCase() === i.content.trim().toLowerCase())?.id
-                            : undefined,
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : []
                     }
                 });
@@ -313,12 +371,33 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const hasChildIdsColumn = headers.includes("Child_IDs");
             const hasCompletionModeColumn = headers.includes("Completion_Mode");
             const hasDeepWorkStatusColumn = headers.includes("Deep_Work_Status");
+            const hasDeepWorkTriggerPatternColumn = headers.includes("Deep_Work_Trigger_Pattern");
+            const hasDeepWorkTriggerEvidenceColumn = headers.includes("Deep_Work_Trigger_Evidence");
+            const hasDeepWorkConfidenceColumn = headers.includes("Deep_Work_Confidence");
             const hasNextActionColumn = headers.includes("Next_Action");
+            const hasNextActionDurationColumn = headers.includes("Next_Action_Duration_Min");
+            const hasNextActionAcceptanceCheckColumn = headers.includes("Next_Action_Acceptance_Check");
             const hasFinalOutputColumn = headers.includes("Final_Output");
+            const hasFinalOutputFormatColumn = headers.includes("Final_Output_Format");
             const hasSessionEstimateColumn = headers.includes("Session_Estimate_Min");
+            const hasSessionEstimateConfidenceColumn = headers.includes("Session_Estimate_Confidence");
+            const hasSessionEstimateReasonColumn = headers.includes("Session_Estimate_Reason");
             const hasBlockerStatusColumn = headers.includes("Blocker_Status");
             const hasBlockerCheckColumn = headers.includes("Blocker_Check");
+            const hasMissingInputsColumn = headers.includes("Missing_Inputs");
+            const hasDeepWorkGeneratedAtColumn = headers.includes("Deep_Work_Generated_At");
+            const hasDeepWorkAcceptedAtColumn = headers.includes("Deep_Work_Accepted_At");
+            const hasDeepWorkDismissedAtColumn = headers.includes("Deep_Work_Dismissed_At");
+            const hasDeepWorkReasonColumn = headers.includes("Deep_Work_Reason");
             const hasSubtasksColumn = headers.includes("Subtasks");
+            const hasHideFromCalendarColumn = headers.includes("Hide_From_Calendar");
+            const hasIsRoutineColumn = headers.includes("Is_Routine");
+            const hasRoutineIntervalColumn = headers.includes("Routine_Interval");
+            const hasRoutineDaysOfWeekColumn = headers.includes("Routine_Days_Of_Week");
+            const hasRoutineDaysOfMonthColumn = headers.includes("Routine_Days_Of_Month");
+            const hasRoutineMonthsOfYearColumn = headers.includes("Routine_Months_Of_Year");
+            const hasRecurrenceDaysColumn = headers.includes("Recurrence_Days");
+            const hasLastGeneratedHistoryIdColumn = headers.includes("Last_Generated_History_ID");
             const parentTodoId = hasParentTodoIdColumn ? row[headers.indexOf("Parent_ID")] : undefined;
             const deepWorkRole = hasDeepWorkRoleColumn ? row[headers.indexOf("Deep_Work_Role")] : undefined;
             const stepOrderStr = hasStepOrderColumn ? row[headers.indexOf("Step_Order")] : undefined;
@@ -328,12 +407,33 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const childTodoIds = hasChildIdsColumn ? splitSheetList(getHeaderCell(headers, row, "Child_IDs")) : undefined;
             const completionMode = hasCompletionModeColumn ? parseCompletionMode(getHeaderCell(headers, row, "Completion_Mode")) : undefined;
             const deepWorkStatus = hasDeepWorkStatusColumn ? parseDeepWorkStatus(getHeaderCell(headers, row, "Deep_Work_Status")) : undefined;
+            const deepWorkTriggerPattern = hasDeepWorkTriggerPatternColumn ? parseDeepWorkPattern(getHeaderCell(headers, row, "Deep_Work_Trigger_Pattern")) : undefined;
+            const deepWorkTriggerEvidence = hasDeepWorkTriggerEvidenceColumn ? splitSheetList(getHeaderCell(headers, row, "Deep_Work_Trigger_Evidence")) : undefined;
+            const deepWorkConfidence = hasDeepWorkConfidenceColumn ? parseDeepWorkConfidence(getHeaderCell(headers, row, "Deep_Work_Confidence")) : undefined;
             const nextAction = hasNextActionColumn ? cleanCell(getHeaderCell(headers, row, "Next_Action")) : undefined;
+            const nextActionDuration = hasNextActionDurationColumn ? parsePositiveInt(getHeaderCell(headers, row, "Next_Action_Duration_Min")) : undefined;
+            const nextActionAcceptanceCheck = hasNextActionAcceptanceCheckColumn ? cleanCell(getHeaderCell(headers, row, "Next_Action_Acceptance_Check")) : undefined;
             const finalOutput = hasFinalOutputColumn ? cleanCell(getHeaderCell(headers, row, "Final_Output")) : undefined;
+            const finalOutputFormat = hasFinalOutputFormatColumn ? parseDeepWorkOutputFormat(getHeaderCell(headers, row, "Final_Output_Format")) : undefined;
             const sessionEstimate = hasSessionEstimateColumn ? parsePositiveInt(getHeaderCell(headers, row, "Session_Estimate_Min")) : undefined;
+            const sessionEstimateConfidence = hasSessionEstimateConfidenceColumn ? parseDeepWorkConfidence(getHeaderCell(headers, row, "Session_Estimate_Confidence")) : undefined;
+            const sessionEstimateReason = hasSessionEstimateReasonColumn ? cleanCell(getHeaderCell(headers, row, "Session_Estimate_Reason")) : undefined;
             const blockerStatus = hasBlockerStatusColumn ? parseBlockerStatus(getHeaderCell(headers, row, "Blocker_Status")) : undefined;
             const blockerCheck = hasBlockerCheckColumn ? cleanCell(getHeaderCell(headers, row, "Blocker_Check")) : undefined;
+            const missingInputs = hasMissingInputsColumn ? splitSheetList(getHeaderCell(headers, row, "Missing_Inputs")) : undefined;
+            const deepWorkGeneratedAt = hasDeepWorkGeneratedAtColumn ? cleanCell(getHeaderCell(headers, row, "Deep_Work_Generated_At")) : undefined;
+            const deepWorkAcceptedAt = hasDeepWorkAcceptedAtColumn ? cleanCell(getHeaderCell(headers, row, "Deep_Work_Accepted_At")) : undefined;
+            const deepWorkDismissedAt = hasDeepWorkDismissedAtColumn ? cleanCell(getHeaderCell(headers, row, "Deep_Work_Dismissed_At")) : undefined;
+            const deepWorkReason = hasDeepWorkReasonColumn ? cleanCell(getHeaderCell(headers, row, "Deep_Work_Reason")) : undefined;
             const subtasks = hasSubtasksColumn ? parseSubtasksFromSheet(getHeaderCell(headers, row, "Subtasks")) : undefined;
+            const hideFromCalendar = hasHideFromCalendarColumn ? parseSheetBoolean(getHeaderCell(headers, row, "Hide_From_Calendar")) : undefined;
+            const isRoutine = hasIsRoutineColumn ? parseSheetBoolean(getHeaderCell(headers, row, "Is_Routine")) : undefined;
+            const routineInterval = hasRoutineIntervalColumn ? parseRoutineInterval(getHeaderCell(headers, row, "Routine_Interval")) : undefined;
+            const routineDaysOfWeek = hasRoutineDaysOfWeekColumn ? splitSheetNumberList(getHeaderCell(headers, row, "Routine_Days_Of_Week")) : undefined;
+            const routineDaysOfMonth = hasRoutineDaysOfMonthColumn ? splitSheetNumberList(getHeaderCell(headers, row, "Routine_Days_Of_Month")) : undefined;
+            const routineMonthsOfYear = hasRoutineMonthsOfYearColumn ? splitSheetNumberList(getHeaderCell(headers, row, "Routine_Months_Of_Year")) : undefined;
+            const recurrenceDays = hasRecurrenceDaysColumn ? parsePositiveInt(getHeaderCell(headers, row, "Recurrence_Days")) : undefined;
+            const lastGeneratedHistoryId = hasLastGeneratedHistoryIdColumn ? cleanCell(getHeaderCell(headers, row, "Last_Generated_History_ID")) : undefined;
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
@@ -370,12 +470,33 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (hasChildIdsColumn && JSON.stringify(match.meta.childTodoIds || []) !== JSON.stringify(childTodoIds || [])) { match.meta.childTodoIds = childTodoIds; updated = true; }
                 if (hasCompletionModeColumn && match.meta.deepWorkCompletionMode !== completionMode) { match.meta.deepWorkCompletionMode = completionMode; updated = true; }
                 if (hasDeepWorkStatusColumn && match.meta.deepWorkStatus !== deepWorkStatus) { match.meta.deepWorkStatus = deepWorkStatus; updated = true; }
+                if (hasDeepWorkTriggerPatternColumn && match.meta.deepWorkTriggerPattern !== deepWorkTriggerPattern) { match.meta.deepWorkTriggerPattern = deepWorkTriggerPattern; updated = true; }
+                if (hasDeepWorkTriggerEvidenceColumn && JSON.stringify(match.meta.deepWorkTriggerEvidence || []) !== JSON.stringify(deepWorkTriggerEvidence || [])) { match.meta.deepWorkTriggerEvidence = deepWorkTriggerEvidence; updated = true; }
+                if (hasDeepWorkConfidenceColumn && match.meta.deepWorkConfidence !== deepWorkConfidence) { match.meta.deepWorkConfidence = deepWorkConfidence; updated = true; }
                 if (hasNextActionColumn && match.meta.deepWorkNextAction !== nextAction) { match.meta.deepWorkNextAction = nextAction; updated = true; }
+                if (hasNextActionDurationColumn && match.meta.deepWorkNextActionDurationMinutes !== nextActionDuration) { match.meta.deepWorkNextActionDurationMinutes = nextActionDuration; updated = true; }
+                if (hasNextActionAcceptanceCheckColumn && match.meta.deepWorkNextActionAcceptanceCheck !== nextActionAcceptanceCheck) { match.meta.deepWorkNextActionAcceptanceCheck = nextActionAcceptanceCheck; updated = true; }
                 if (hasFinalOutputColumn && match.meta.deepWorkFinalOutput !== finalOutput) { match.meta.deepWorkFinalOutput = finalOutput; updated = true; }
+                if (hasFinalOutputFormatColumn && match.meta.deepWorkFinalOutputFormat !== finalOutputFormat) { match.meta.deepWorkFinalOutputFormat = finalOutputFormat; updated = true; }
                 if (hasSessionEstimateColumn && match.meta.deepWorkSessionEstimateMinutes !== sessionEstimate) { match.meta.deepWorkSessionEstimateMinutes = sessionEstimate; updated = true; }
+                if (hasSessionEstimateConfidenceColumn && match.meta.deepWorkSessionEstimateConfidence !== sessionEstimateConfidence) { match.meta.deepWorkSessionEstimateConfidence = sessionEstimateConfidence; updated = true; }
+                if (hasSessionEstimateReasonColumn && match.meta.deepWorkSessionEstimateReason !== sessionEstimateReason) { match.meta.deepWorkSessionEstimateReason = sessionEstimateReason; updated = true; }
                 if (hasBlockerStatusColumn && match.meta.deepWorkBlockerStatus !== blockerStatus) { match.meta.deepWorkBlockerStatus = blockerStatus; updated = true; }
                 if (hasBlockerCheckColumn && match.meta.deepWorkBlockerCheck !== blockerCheck) { match.meta.deepWorkBlockerCheck = blockerCheck; updated = true; }
+                if (hasMissingInputsColumn && JSON.stringify(match.meta.deepWorkMissingInputs || []) !== JSON.stringify(missingInputs || [])) { match.meta.deepWorkMissingInputs = missingInputs; updated = true; }
+                if (hasDeepWorkGeneratedAtColumn && match.meta.deepWorkGeneratedAt !== deepWorkGeneratedAt) { match.meta.deepWorkGeneratedAt = deepWorkGeneratedAt; updated = true; }
+                if (hasDeepWorkAcceptedAtColumn && match.meta.deepWorkAcceptedAt !== deepWorkAcceptedAt) { match.meta.deepWorkAcceptedAt = deepWorkAcceptedAt; updated = true; }
+                if (hasDeepWorkDismissedAtColumn && match.meta.deepWorkDismissedAt !== deepWorkDismissedAt) { match.meta.deepWorkDismissedAt = deepWorkDismissedAt; updated = true; }
+                if (hasDeepWorkReasonColumn && match.meta.deepWorkReason !== deepWorkReason) { match.meta.deepWorkReason = deepWorkReason; updated = true; }
                 if (hasSubtasksColumn && JSON.stringify(match.meta.subtasks || []) !== JSON.stringify(subtasks || [])) { match.meta.subtasks = subtasks; updated = true; }
+                if (hasHideFromCalendarColumn && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
+                if (hasIsRoutineColumn && match.meta.isRoutine !== isRoutine) { match.meta.isRoutine = isRoutine; updated = true; }
+                if (hasRoutineIntervalColumn && match.meta.routineInterval !== routineInterval) { match.meta.routineInterval = routineInterval; updated = true; }
+                if (hasRoutineDaysOfWeekColumn && JSON.stringify(match.meta.routineDaysOfWeek || []) !== JSON.stringify(routineDaysOfWeek || [])) { match.meta.routineDaysOfWeek = routineDaysOfWeek; updated = true; }
+                if (hasRoutineDaysOfMonthColumn && JSON.stringify(match.meta.routineDaysOfMonth || []) !== JSON.stringify(routineDaysOfMonth || [])) { match.meta.routineDaysOfMonth = routineDaysOfMonth; updated = true; }
+                if (hasRoutineMonthsOfYearColumn && JSON.stringify(match.meta.routineMonthsOfYear || []) !== JSON.stringify(routineMonthsOfYear || [])) { match.meta.routineMonthsOfYear = routineMonthsOfYear; updated = true; }
+                if (hasRecurrenceDaysColumn && match.meta.recurrenceDays !== recurrenceDays) { match.meta.recurrenceDays = recurrenceDays; updated = true; }
+                if (hasLastGeneratedHistoryIdColumn && match.meta.lastGeneratedHistoryId !== lastGeneratedHistoryId) { match.meta.lastGeneratedHistoryId = lastGeneratedHistoryId; updated = true; }
                 const newStepIndex = !isNaN(stepOrder) ? stepOrder : undefined;
                 if (hasStepOrderColumn && match.meta.deepWorkStepIndex !== newStepIndex) { match.meta.deepWorkStepIndex = newStepIndex; updated = true; }
                 const newStepCount = !isNaN(stepCount) ? stepCount : undefined;
@@ -478,14 +599,35 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         deepWorkPlanId: deepWorkRole === 'parent' ? newId : (parentTodoId || undefined),
                         deepWorkCompletionMode: completionMode,
                         deepWorkStatus,
+                        deepWorkTriggerPattern,
+                        deepWorkTriggerEvidence,
+                        deepWorkConfidence,
                         deepWorkNextAction: nextAction,
+                        deepWorkNextActionDurationMinutes: nextActionDuration,
+                        deepWorkNextActionAcceptanceCheck: nextActionAcceptanceCheck,
                         deepWorkFinalOutput: finalOutput,
+                        deepWorkFinalOutputFormat: finalOutputFormat,
                         deepWorkSessionEstimateMinutes: sessionEstimate,
+                        deepWorkSessionEstimateConfidence: sessionEstimateConfidence,
+                        deepWorkSessionEstimateReason: sessionEstimateReason,
                         deepWorkBlockerStatus: blockerStatus,
                         deepWorkBlockerCheck: blockerCheck,
+                        deepWorkMissingInputs: missingInputs,
+                        deepWorkGeneratedAt,
+                        deepWorkAcceptedAt,
+                        deepWorkDismissedAt,
+                        deepWorkReason,
                         deepWorkStepIndex: !isNaN(stepOrder) ? stepOrder : undefined,
                         deepWorkStepCount: !isNaN(stepCount) ? stepCount : undefined,
-                        subtasks
+                        subtasks,
+                        hideFromCalendar,
+                        isRoutine,
+                        routineInterval,
+                        routineDaysOfWeek,
+                        routineDaysOfMonth,
+                        routineMonthsOfYear,
+                        recurrenceDays,
+                        lastGeneratedHistoryId
                     }
                 });
                 seenItemIds.add(newId);
@@ -508,7 +650,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         const headerIndex = (name: string) => headers.indexOf(name);
         const readByHeader = (row: any[], name: string) => {
             const idx = headerIndex(name);
-            return idx >= 0 ? row[idx] : undefined;
+            return idx >= 0 ? (idx < row.length ? row[idx] : '') : undefined;
         };
         const hasDueDate = headers.includes("Due_Date");
         const hasCreatedAt = headers.includes("Created_At");
@@ -516,6 +658,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         const rows = shopSheet.values.slice(1);
         for (const row of rows) {
             let status, item, amountStr, category, quantity, dueDateStr, createdAtStr, tagsStr, completedAtStr, idStr;
+            let budgetCategory, paymentMethod, dedicatedWalletId, hideFromCalendarStr, routineIntervalStr, routineDaysOfWeekStr, routineDaysOfMonthStr, routineMonthsOfYearStr, recurrenceDaysStr, lastGeneratedHistoryId;
             let investmentType, investmentCode, investmentUnitsStr, investmentAvgBuyStr, investmentCurrentPriceStr, investmentPlatform;
             
             if (hasDueDate && hasCompletedAt && hasCreatedAt) {
@@ -535,6 +678,16 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 investmentCurrentPriceStr = readByHeader(row, "Investment_Current_Price");
                 investmentPlatform = readByHeader(row, "Investment_Platform");
                 idStr = readByHeader(row, "ID");
+                budgetCategory = readByHeader(row, "Budget_Category");
+                paymentMethod = readByHeader(row, "Payment_Method");
+                dedicatedWalletId = readByHeader(row, "Dedicated_Wallet_ID");
+                hideFromCalendarStr = readByHeader(row, "Hide_From_Calendar");
+                routineIntervalStr = readByHeader(row, "Routine_Interval");
+                routineDaysOfWeekStr = readByHeader(row, "Routine_Days_Of_Week");
+                routineDaysOfMonthStr = readByHeader(row, "Routine_Days_Of_Month");
+                routineMonthsOfYearStr = readByHeader(row, "Routine_Months_Of_Year");
+                recurrenceDaysStr = readByHeader(row, "Recurrence_Days");
+                lastGeneratedHistoryId = readByHeader(row, "Last_Generated_History_ID");
             } else if (hasDueDate && hasCompletedAt) {
                 [status, item, amountStr, category, quantity, dueDateStr, tagsStr, completedAtStr, idStr] = row;
             } else if (hasDueDate) {
@@ -548,9 +701,15 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const amount = parseSheetAmount(amountStr);
             const parsedCategory = parseShoppingCategory(category) || 'not_urgent';
             const parsedInvestmentType = parseInvestmentAssetType(investmentType);
-            const investmentUnits = investmentUnitsStr !== undefined && investmentUnitsStr !== '' ? parseSheetAmount(investmentUnitsStr) : undefined;
-            const investmentAvgBuy = investmentAvgBuyStr !== undefined && investmentAvgBuyStr !== '' ? parseSheetAmount(investmentAvgBuyStr) : undefined;
-            const investmentCurrentPrice = investmentCurrentPriceStr !== undefined && investmentCurrentPriceStr !== '' ? parseSheetAmount(investmentCurrentPriceStr) : undefined;
+            const investmentUnits = parseOptionalSheetAmount(investmentUnitsStr);
+            const investmentAvgBuy = parseOptionalSheetAmount(investmentAvgBuyStr);
+            const investmentCurrentPrice = parseOptionalSheetAmount(investmentCurrentPriceStr);
+            const hideFromCalendar = parseSheetBoolean(hideFromCalendarStr);
+            const routineInterval = parseRoutineInterval(routineIntervalStr);
+            const routineDaysOfWeek = splitSheetNumberList(routineDaysOfWeekStr);
+            const routineDaysOfMonth = splitSheetNumberList(routineDaysOfMonthStr);
+            const routineMonthsOfYear = splitSheetNumberList(routineMonthsOfYearStr);
+            const recurrenceDays = recurrenceDaysStr !== undefined && recurrenceDaysStr !== '' ? parsePositiveInt(recurrenceDaysStr) : undefined;
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
@@ -572,16 +731,30 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     match.meta.shoppingCategory = parsedCategory;
                     updated = true;
                 }
+                if (category !== undefined && match.meta.isRoutine !== (parsedCategory === 'routine' || undefined)) {
+                    match.meta.isRoutine = parsedCategory === 'routine' || undefined;
+                    updated = true;
+                }
+                if (budgetCategory !== undefined && match.meta.budgetCategory !== (budgetCategory || undefined)) { match.meta.budgetCategory = budgetCategory || undefined; updated = true; }
+                if (paymentMethod !== undefined && match.meta.paymentMethod !== (paymentMethod || undefined)) { match.meta.paymentMethod = paymentMethod || undefined; updated = true; }
+                if (dedicatedWalletId !== undefined && match.meta.dedicatedWalletId !== (dedicatedWalletId || undefined)) { match.meta.dedicatedWalletId = dedicatedWalletId || undefined; updated = true; }
+                if (hideFromCalendarStr !== undefined && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
+                if (routineIntervalStr !== undefined && match.meta.routineInterval !== routineInterval) { match.meta.routineInterval = routineInterval; updated = true; }
+                if (routineDaysOfWeekStr !== undefined && JSON.stringify(match.meta.routineDaysOfWeek || []) !== JSON.stringify(routineDaysOfWeek || [])) { match.meta.routineDaysOfWeek = routineDaysOfWeek; updated = true; }
+                if (routineDaysOfMonthStr !== undefined && JSON.stringify(match.meta.routineDaysOfMonth || []) !== JSON.stringify(routineDaysOfMonth || [])) { match.meta.routineDaysOfMonth = routineDaysOfMonth; updated = true; }
+                if (routineMonthsOfYearStr !== undefined && JSON.stringify(match.meta.routineMonthsOfYear || []) !== JSON.stringify(routineMonthsOfYear || [])) { match.meta.routineMonthsOfYear = routineMonthsOfYear; updated = true; }
+                if (recurrenceDaysStr !== undefined && match.meta.recurrenceDays !== recurrenceDays) { match.meta.recurrenceDays = recurrenceDays; updated = true; }
+                if (lastGeneratedHistoryId !== undefined && match.meta.lastGeneratedHistoryId !== (lastGeneratedHistoryId || undefined)) { match.meta.lastGeneratedHistoryId = lastGeneratedHistoryId || undefined; updated = true; }
                 if (quantity !== undefined && match.meta.quantity !== quantity) {
                     match.meta.quantity = quantity;
                     updated = true;
                 }
                 if (investmentType !== undefined && match.meta.investmentAssetType !== parsedInvestmentType) { match.meta.investmentAssetType = parsedInvestmentType; updated = true; }
-                if (investmentCode !== undefined && match.meta.investmentSymbol !== investmentCode) { match.meta.investmentSymbol = investmentCode; updated = true; }
-                if (investmentUnits !== undefined && match.meta.investmentUnits !== investmentUnits) { match.meta.investmentUnits = investmentUnits; updated = true; }
-                if (investmentAvgBuy !== undefined && match.meta.investmentAveragePrice !== investmentAvgBuy) { match.meta.investmentAveragePrice = investmentAvgBuy; updated = true; }
-                if (investmentCurrentPrice !== undefined && match.meta.investmentCurrentPrice !== investmentCurrentPrice) { match.meta.investmentCurrentPrice = investmentCurrentPrice; updated = true; }
-                if (investmentPlatform !== undefined && match.meta.investmentPlatform !== investmentPlatform) { match.meta.investmentPlatform = investmentPlatform; updated = true; }
+                if (investmentCode !== undefined && match.meta.investmentSymbol !== (investmentCode || undefined)) { match.meta.investmentSymbol = investmentCode || undefined; updated = true; }
+                if (investmentUnitsStr !== undefined && match.meta.investmentUnits !== investmentUnits) { match.meta.investmentUnits = investmentUnits; updated = true; }
+                if (investmentAvgBuyStr !== undefined && match.meta.investmentAveragePrice !== investmentAvgBuy) { match.meta.investmentAveragePrice = investmentAvgBuy; updated = true; }
+                if (investmentCurrentPriceStr !== undefined && match.meta.investmentCurrentPrice !== investmentCurrentPrice) { match.meta.investmentCurrentPrice = investmentCurrentPrice; updated = true; }
+                if (investmentPlatform !== undefined && match.meta.investmentPlatform !== (investmentPlatform || undefined)) { match.meta.investmentPlatform = investmentPlatform || undefined; updated = true; }
                 const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
@@ -651,6 +824,17 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         amount: amount,
                         shoppingCategory: parsedCategory,
                         quantity: quantity || '',
+                        budgetCategory: budgetCategory || undefined,
+                        paymentMethod: paymentMethod || undefined,
+                        dedicatedWalletId: dedicatedWalletId || undefined,
+                        hideFromCalendar,
+                        isRoutine: parsedCategory === 'routine' || undefined,
+                        routineInterval,
+                        routineDaysOfWeek,
+                        routineDaysOfMonth,
+                        routineMonthsOfYear,
+                        recurrenceDays,
+                        lastGeneratedHistoryId: lastGeneratedHistoryId || undefined,
                         investmentAssetType: parsedInvestmentType,
                         investmentSymbol: investmentCode || undefined,
                         investmentUnits,
@@ -677,11 +861,13 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         for (const row of rows) {
             let typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, status, idStr;
             const hasStatus = headers.includes('Status');
+            const hasHideFromCalendar = headers.includes('Hide_From_Calendar');
             
             if (hasType && hasStartDate) {
                 if (hasStatus) {
                     // Format with Status: ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "Status", "ID"]
                     [typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, status, idStr] = row;
+                    if (hasHideFromCalendar) idStr = getHeaderCell(headers, row, 'ID') as string;
                 } else {
                     // Old format: ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "ID"]
                     [typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, idStr] = row;
@@ -692,6 +878,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             }
             
             if (!event && !date && !idStr) continue;
+            const hideFromCalendar = hasHideFromCalendar ? parseSheetBoolean(getHeaderCell(headers, row, 'Hide_From_Calendar')) : undefined;
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
@@ -712,6 +899,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 }
                 const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
+                if (hasHideFromCalendar && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
                 
                 const parsedDate = new Date(date);
                 if (!isNaN(parsedDate.getTime())) {
@@ -781,6 +969,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         start: isoStart,
                         end: isoEnd,
                         priority: priority || 'normal',
+                        hideFromCalendar,
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : []
                     }
                 });

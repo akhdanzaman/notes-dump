@@ -285,3 +285,22 @@ test('incremental plan ignores generated dashboard sheet drift during routine sa
   assert.equal(plan.deletions.length, 0);
   assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:G2"));
 });
+
+test('incremental plan rewrites user sheets when physical headers are stale', () => {
+  const exportSheets = generateExportData(baseDb.data, [], [], baseDb.budgetConfig!, {}, baseDb.appSettings!);
+  const plan = __test__.buildIncrementalUserSheetPlan(
+    baseDb,
+    baseDb,
+    exportSheets,
+    existingExportSheetTitles,
+    new Set(),
+    false,
+    baseDb,
+    new Set(['Shopping']),
+  );
+
+  assert.equal(plan.canIncremental, true);
+  assert.ok(plan.rewrites.some(sheet => sheet.name === 'Shopping'));
+  assert.deepEqual(plan.updates, []);
+  assert.deepEqual(plan.appends, []);
+});

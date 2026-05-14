@@ -28,6 +28,11 @@ const fmtDate = (dateStr?: string) => {
     return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString();
 };
 
+const encodeNumberListForSheet = (values?: number[]) => {
+    if (!values?.length) return '';
+    return values.join(', ');
+};
+
 // Helper to resolve wallet name
 const getWalletName = (id: string | undefined, wallets: Wallet[]) => {
     if (!id) return '';
@@ -440,15 +445,18 @@ export const generateExportData = (
         Tags: item.meta.tags?.join(', ') || '',
         Created_At: item.created_at,
         Completed_At: item.completed_at || '',
-        ID: item.id
+        ID: item.id,
+        Saving_Goal_ID: item.meta.savingGoalId || '',
+        Investment_Units: item.meta.investmentUnits || '',
+        Investment_Avg_Buy: item.meta.investmentAveragePrice || '',
       };
     });
 
   sheets.push({
       name: "Transactions",
       data: [
-        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID"],
-        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID])
+        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID", "Saving_Goal_ID", "Investment_Units", "Investment_Avg_Buy"],
+        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID, t.Saving_Goal_ID, t.Investment_Units, t.Investment_Avg_Buy])
       ]
     });
 
@@ -481,19 +489,40 @@ export const generateExportData = (
       Child_Count: children.length || childIds.length || '',
       Completion_Mode: item.meta.deepWorkCompletionMode || '',
       Deep_Work_Status: item.meta.deepWorkStatus || (item.meta.deepWorkParent ? 'suggested' : ''),
+      Deep_Work_Trigger_Pattern: item.meta.deepWorkTriggerPattern || '',
+      Deep_Work_Trigger_Evidence: item.meta.deepWorkTriggerEvidence?.join('; ') || '',
+      Deep_Work_Confidence: item.meta.deepWorkConfidence || '',
       Next_Action: item.meta.deepWorkNextAction || '',
+      Next_Action_Duration_Min: item.meta.deepWorkNextActionDurationMinutes || '',
+      Next_Action_Acceptance_Check: item.meta.deepWorkNextActionAcceptanceCheck || '',
       Final_Output: item.meta.deepWorkFinalOutput || '',
+      Final_Output_Format: item.meta.deepWorkFinalOutputFormat || '',
       Session_Estimate_Min: item.meta.deepWorkSessionEstimateMinutes || '',
+      Session_Estimate_Confidence: item.meta.deepWorkSessionEstimateConfidence || '',
+      Session_Estimate_Reason: item.meta.deepWorkSessionEstimateReason || '',
       Blocker_Status: item.meta.deepWorkBlockerStatus || '',
       Blocker_Check: item.meta.deepWorkBlockerCheck || '',
+      Missing_Inputs: item.meta.deepWorkMissingInputs?.join('; ') || '',
+      Deep_Work_Generated_At: item.meta.deepWorkGeneratedAt || '',
+      Deep_Work_Accepted_At: item.meta.deepWorkAcceptedAt || '',
+      Deep_Work_Dismissed_At: item.meta.deepWorkDismissedAt || '',
+      Deep_Work_Reason: item.meta.deepWorkReason || '',
       Subtasks: encodeSubtasksForSheet(item.meta.subtasks),
+      Hide_From_Calendar: item.meta.hideFromCalendar ? 'TRUE' : '',
+      Is_Routine: item.meta.isRoutine ? 'TRUE' : '',
+      Routine_Interval: item.meta.routineInterval || '',
+      Routine_Days_Of_Week: encodeNumberListForSheet(item.meta.routineDaysOfWeek),
+      Routine_Days_Of_Month: encodeNumberListForSheet(item.meta.routineDaysOfMonth),
+      Routine_Months_Of_Year: encodeNumberListForSheet(item.meta.routineMonthsOfYear),
+      Recurrence_Days: item.meta.recurrenceDays || '',
+      Last_Generated_History_ID: item.meta.lastGeneratedHistoryId || '',
     };
   });
   sheets.push({
       name: "Todos",
       data: [
-        ["Type", "Status", "Priority", "Content", "Due_Date", "Start_Date", "End_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID", "Parent_ID", "Deep_Work_Role", "Step_Order", "Step_Count", "Child_IDs", "Child_Count", "Completion_Mode", "Deep_Work_Status", "Next_Action", "Final_Output", "Session_Estimate_Min", "Blocker_Status", "Blocker_Check", "Subtasks"],
-        ...todos.map(t => [t.Type, t.Status, t.Priority, t.Content, t.Due_Date, t.Start_Date, t.End_Date, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID, t.Parent_ID, t.Deep_Work_Role, t.Step_Order, t.Step_Count, t.Child_IDs, t.Child_Count, t.Completion_Mode, t.Deep_Work_Status, t.Next_Action, t.Final_Output, t.Session_Estimate_Min, t.Blocker_Status, t.Blocker_Check, t.Subtasks])
+        ["Type", "Status", "Priority", "Content", "Due_Date", "Start_Date", "End_Date", "Tags", "Created_At", "Completed_At", "Progress", "Progress_Notes", "ID", "Parent_ID", "Deep_Work_Role", "Step_Order", "Step_Count", "Child_IDs", "Child_Count", "Completion_Mode", "Deep_Work_Status", "Deep_Work_Trigger_Pattern", "Deep_Work_Trigger_Evidence", "Deep_Work_Confidence", "Next_Action", "Next_Action_Duration_Min", "Next_Action_Acceptance_Check", "Final_Output", "Final_Output_Format", "Session_Estimate_Min", "Session_Estimate_Confidence", "Session_Estimate_Reason", "Blocker_Status", "Blocker_Check", "Missing_Inputs", "Deep_Work_Generated_At", "Deep_Work_Accepted_At", "Deep_Work_Dismissed_At", "Deep_Work_Reason", "Subtasks", "Hide_From_Calendar", "Is_Routine", "Routine_Interval", "Routine_Days_Of_Week", "Routine_Days_Of_Month", "Routine_Months_Of_Year", "Recurrence_Days", "Last_Generated_History_ID"],
+        ...todos.map(t => [t.Type, t.Status, t.Priority, t.Content, t.Due_Date, t.Start_Date, t.End_Date, t.Tags, t.Created_At, t.Completed_At, t.Progress, t.Progress_Notes, t.ID, t.Parent_ID, t.Deep_Work_Role, t.Step_Order, t.Step_Count, t.Child_IDs, t.Child_Count, t.Completion_Mode, t.Deep_Work_Status, t.Deep_Work_Trigger_Pattern, t.Deep_Work_Trigger_Evidence, t.Deep_Work_Confidence, t.Next_Action, t.Next_Action_Duration_Min, t.Next_Action_Acceptance_Check, t.Final_Output, t.Final_Output_Format, t.Session_Estimate_Min, t.Session_Estimate_Confidence, t.Session_Estimate_Reason, t.Blocker_Status, t.Blocker_Check, t.Missing_Inputs, t.Deep_Work_Generated_At, t.Deep_Work_Accepted_At, t.Deep_Work_Dismissed_At, t.Deep_Work_Reason, t.Subtasks, t.Hide_From_Calendar, t.Is_Routine, t.Routine_Interval, t.Routine_Days_Of_Week, t.Routine_Days_Of_Month, t.Routine_Months_Of_Year, t.Recurrence_Days, t.Last_Generated_History_ID])
       ]
     });
 
@@ -508,6 +537,16 @@ export const generateExportData = (
       Created_At: item.created_at,
       Tags: item.meta.tags?.join(', ') || '',
       Completed_At: item.completed_at || '',
+      Budget_Category: item.meta.budgetCategory || '',
+      Payment_Method: item.meta.paymentMethod || '',
+      Dedicated_Wallet_ID: item.meta.dedicatedWalletId || '',
+      Hide_From_Calendar: item.meta.hideFromCalendar ? 'TRUE' : '',
+      Routine_Interval: item.meta.routineInterval || '',
+      Routine_Days_Of_Week: encodeNumberListForSheet(item.meta.routineDaysOfWeek),
+      Routine_Days_Of_Month: encodeNumberListForSheet(item.meta.routineDaysOfMonth),
+      Routine_Months_Of_Year: encodeNumberListForSheet(item.meta.routineMonthsOfYear),
+      Recurrence_Days: item.meta.recurrenceDays || '',
+      Last_Generated_History_ID: item.meta.lastGeneratedHistoryId || '',
       Investment_Type: item.meta.investmentAssetType || '',
       Investment_Code: item.meta.investmentSymbol || '',
       Investment_Units: item.meta.investmentUnits || '',
@@ -519,8 +558,8 @@ export const generateExportData = (
   sheets.push({
       name: "Shopping",
       data: [
-        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"],
-        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.Investment_Type, s.Investment_Code, s.Investment_Units, s.Investment_Avg_Buy, s.Investment_Current_Price, s.Investment_Platform, s.ID])
+        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID", "Budget_Category", "Payment_Method", "Dedicated_Wallet_ID", "Hide_From_Calendar", "Routine_Interval", "Routine_Days_Of_Week", "Routine_Days_Of_Month", "Routine_Months_Of_Year", "Recurrence_Days", "Last_Generated_History_ID"],
+        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.Investment_Type, s.Investment_Code, s.Investment_Units, s.Investment_Avg_Buy, s.Investment_Current_Price, s.Investment_Platform, s.ID, s.Budget_Category, s.Payment_Method, s.Dedicated_Wallet_ID, s.Hide_From_Calendar, s.Routine_Interval, s.Routine_Days_Of_Week, s.Routine_Days_Of_Month, s.Routine_Months_Of_Year, s.Recurrence_Days, s.Last_Generated_History_ID])
       ]
     });
 
@@ -528,19 +567,20 @@ export const generateExportData = (
   const events = items.filter(i => i.type === ItemType.EVENT).map(item => ({
       Type: item.type,
       Status: item.status,
-      Date: item.meta.date || '',
+      Date: item.meta.date || item.meta.dateTime || '',
       Start_Date: item.meta.start || '',
       End_Date: item.meta.end || '',
       Priority: item.meta.priority || 'normal',
       Event: item.content,
       Tags: item.meta.tags?.join(', ') || '',
-      ID: item.id
+      ID: item.id,
+      Hide_From_Calendar: item.meta.hideFromCalendar ? 'TRUE' : '',
   }));
   sheets.push({
       name: "Events",
       data: [
-        ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "Status", "ID"],
-        ...events.map(e => [e.Type, e.Date, e.Start_Date, e.End_Date, e.Priority, e.Event, e.Tags, e.Status, e.ID])
+        ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "Status", "ID", "Hide_From_Calendar"],
+        ...events.map(e => [e.Type, e.Date, e.Start_Date, e.End_Date, e.Priority, e.Event, e.Tags, e.Status, e.ID, e.Hide_From_Calendar])
       ]
     });
 

@@ -61,10 +61,10 @@ type SystemSheetSnapshotMeta = {
 };
 
 export const SPREADSHEET_FETCH_RANGES = {
-  Transactions: 'A:S',
-  Todos: 'A:AA',
-  Shopping: 'A:P',
-  Events: 'A:I',
+  Transactions: 'A:V',
+  Todos: 'A:AV',
+  Shopping: 'A:Z',
+  Events: 'A:J',
   'Notes & Journals': 'A:G',
   'Skill Logs': 'A:I',
   'Wallets Config': 'A:E',
@@ -434,6 +434,9 @@ const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.
 
 const getSheetColumnCount = (rows: SheetData['data']) => rows.reduce((max, row) => Math.max(max, row.length), 0);
 
+const sameSheetHeader = (a: unknown[] = [], b: unknown[] = []) =>
+  a.length === b.length && a.every((value, index) => String(value || '') === String(b[index] || ''));
+
 const buildIncrementalUserSheetPlan = (
   previousDb: DbSchema,
   nextDb: DbSchema,
@@ -442,6 +445,7 @@ const buildIncrementalUserSheetPlan = (
   createdSheetTitles: Set<string>,
   isInitialSpreadsheetWrite: boolean,
   actualSheetDb: DbSchema = previousDb,
+  schemaRewriteSheetNames: Set<string> = new Set(),
 ): IncrementalUserSheetPlan => {
   if (isInitialSpreadsheetWrite) {
     return emptyIncrementalPlan(false, 'initial_write');
@@ -471,7 +475,7 @@ const buildIncrementalUserSheetPlan = (
   const previousIndexes = buildSheetRowIndexes(previousSheets);
   const nextIndexes = buildSheetRowIndexes(exportSheets);
   const nextSheetByName = new Map(exportSheets.map(sheet => [sheet.name, sheet]));
-  const rewriteNames = new Set<string>(createdSheetTitles);
+  const rewriteNames = new Set<string>([...createdSheetTitles, ...schemaRewriteSheetNames]);
   const updates: IncrementalUserSheetPlan['updates'] = [];
   const appends: IncrementalUserSheetPlan['appends'] = [];
   const deletions: IncrementalUserSheetPlan['deletions'] = [];
@@ -1260,6 +1264,44 @@ const sheetsFetch = async (
   }
 
   return oauthSheetsFetch(spreadsheetId, path, init, attempt, tokenOverride);
+};
+
+const getTitleFromRange = (range: string) => range.split('!')[0]?.replace(/^'/, '').replace(/'$/, '').replace(/''/g, "'") || '';
+
+const detectHeaderRewriteSheets = async (
+  config: SpreadsheetConfig,
+  exportSheets: SheetData[],
+  existingTitles: Set<string>
+): Promise<Set<string>> => {
+  const sheetsToCheck = exportSheets
+    .filter(sheet => !isGeneratedDashboardSheet(sheet.name) && existingTitles.has(sheet.name))
+    .filter(sheet => sheet.data.length > 0);
+  if (sheetsToCheck.length === 0) return new Set();
+
+  const ranges = sheetsToCheck
+    .map(sheet => `${escapeSheetName(sheet.name)}!1:1`)
+    .map(range => `ranges=${encodeURIComponent(range)}`)
+    .join('&');
+  const response = await sheetsFetch(config.spreadsheetId, `/values:batchGet?${ranges}`);
+  if (!response.ok) {
+    console.warn(`Failed to inspect spreadsheet headers for schema drift: ${response.status} ${response.statusText}`);
+    return new Set();
+  }
+
+  const payload = await response.json();
+  const valueRanges = Array.isArray(payload.valueRanges) ? payload.valueRanges : [];
+  const expectedByName = new Map(sheetsToCheck.map(sheet => [sheet.name, sheet.data[0] || []]));
+  const rewriteNames = new Set<string>();
+
+  for (const valueRange of valueRanges) {
+    const title = getTitleFromRange(String(valueRange.range || ''));
+    const expected = expectedByName.get(title);
+    if (!expected) continue;
+    const actual = valueRange.values?.[0] || [];
+    if (!sameSheetHeader(actual, expected)) rewriteNames.add(title);
+  }
+
+  return rewriteNames;
 };
 
 const appendSpreadsheetEvent = async (
@@ -2207,13 +2249,14 @@ const performSync = async (
     }
 
     const effectiveExistingTitles = new Set([...existingTitles, ...createdSheetTitles]);
+    const schemaRewriteSheetNames = await detectHeaderRewriteSheets(config, allSheetData, effectiveExistingTitles);
     // Compare what's IN THE SHEET (currentSheetDbForPlan) vs what SHOULD BE (dbToWrite after merge)
     // NOT the old cached snapshot vs app state — that causes data loss when items were removed from app
     // but still exist in the sheet or vice versa.
     const planPreviousDb = currentSheetDbForPlan || baseSnapshot || validateSchema({ data: [] });
     const planNextDb = dbToWrite;
     const incrementalPlan = !forceOverwrite && baseSnapshot
-      ? buildIncrementalUserSheetPlan(planPreviousDb, planNextDb, allSheetData, effectiveExistingTitles, createdSheetTitles, isInitialSpreadsheetWrite, currentSheetDbForPlan || baseSnapshot)
+      ? buildIncrementalUserSheetPlan(planPreviousDb, planNextDb, allSheetData, effectiveExistingTitles, createdSheetTitles, isInitialSpreadsheetWrite, currentSheetDbForPlan || baseSnapshot, schemaRewriteSheetNames)
       : emptyIncrementalPlan(false, forceOverwrite ? 'force_overwrite' : 'missing_base_snapshot');
 
     // 4. Write only changed ranges/sheets after initial setup. Force overwrite and
