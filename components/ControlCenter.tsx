@@ -229,33 +229,30 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             case 'synced':
                 return <div className="flex items-center gap-2 text-emerald-500"><CloudCheck className="w-5 h-5" /><span className="font-medium">Synced</span></div>;
             case 'syncing':
-                return <div className="flex items-center gap-2 text-blue-500"><RefreshCw className="w-5 h-5 animate-spin" /><span className="font-medium">Fetching...</span></div>;
+                return (
+                  <div className="flex items-center gap-2 text-blue-500">
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    <span className="font-medium">{fetchProgress?.label || 'Fetching...'}</span>
+                    {fetchProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {fetchProgress.detail}</span>}
+                  </div>
+                );
             case 'saving':
                 return (
                     <div className="flex items-center gap-2 text-amber-500">
                         <Save className="w-5 h-5 animate-spin" />
-                        {saveStatus === 'saving' ? (
-                          <>
-                            <span className="font-medium">{saveProgress?.label || 'Saving...'}</span>
-                            {saveProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {saveProgress.detail}</span>}
-                          </>
-                        ) : fetchStatus === 'syncing' ? (
-                          <>
-                            <span className="font-medium">{fetchProgress?.label || 'Fetching...'}</span>
-                            {fetchProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {fetchProgress.detail}</span>}
-                          </>
-                        ) : saveStatus === 'error' ? (
-                          <>
-                            <span className="font-medium">{saveProgress?.label || 'Save failed'}</span>
-                            {saveProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {saveProgress.detail}</span>}
-                          </>
-                        ) : (
-                          <span className="font-medium">Synced</span>
-                        )}
+                        <span className="font-medium">{saveProgress?.label || 'Saving...'}</span>
+                        {saveProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {saveProgress.detail}</span>}
                     </div>
                 );
             case 'error':
-                return <div className="flex items-center gap-2 text-red-500"><CloudOff className="w-5 h-5" /><span className="font-medium">Failed</span></div>;
+                const errorDetail = saveStatus === 'error' ? saveProgress : fetchStatus === 'error' ? fetchProgress : null;
+                return (
+                  <div className="flex items-center gap-2 text-red-500">
+                    <CloudOff className="w-5 h-5" />
+                    <span className="font-medium">{errorDetail?.label || 'Failed'}</span>
+                    {errorDetail?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {errorDetail.detail}</span>}
+                  </div>
+                );
             case 'local':
                 return <div className="flex items-center gap-2 text-amber-500"><Save className="w-5 h-5" /><span className="font-medium">Local</span></div>;
         }

@@ -558,11 +558,13 @@ export const useBrainDumpData = () => {
 
             if (result.mergedData) {
                 const remoteSchema = result.mergedData;
-                const merged = mergeDbData(
-                    { data: itemsRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema,
-                    remoteSchema,
-                    { data: baseItems, skills: skillsToSave, wallets: walletsToSave, monthlyThemes: themesToSave } as DbSchema
-                );
+                const baseForMerge = { data: baseItems, skills: skillsToSave, wallets: walletsToSave, monthlyThemes: themesToSave } as DbSchema;
+                const currentForMerge = { data: itemsRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema;
+                const merged = mergeDbData(currentForMerge, remoteSchema, baseForMerge);
+                // Items: only merge remote additions (items in sheet but missing locally).
+                // Never overwrite items the user just changed — itemsRef.current already has those.
+                // Relies on the three-way merge to keep local changes (status, content, etc.)
+                // while picking up manual sheet-only entries.
                 itemsRef.current = merged.data;
                 skillsRef.current = merged.skills || [];
                 walletsRef.current = merged.wallets || [];
@@ -741,13 +743,31 @@ export const useBrainDumpData = () => {
                     });
 
                     replaceHistoricalCanonicalReviews(canonicalSweep.reviews);
-                    itemsRef.current = canonicalSweep.items;
-                    setItems(canonicalSweep.items);
+                    // Merge fetched items with any user-initiated in-memory changes
+                    // to avoid overwriting pending status/content that the user changed
+                    // while loadData was fetching (race: mark done → loadData overwrite).
+                    const pendingById = new Map(itemsRef.current.map(i => [i.id, i]));
+                    const mergedItems = canonicalSweep.items.map(fetchedItem => {
+                        const pending = pendingById.get(fetchedItem.id);
+                        if (pending && JSON.stringify(pending) !== JSON.stringify(fetchedItem)) {
+                            return pending; // User has unsaved changes → keep user's version
+                        }
+                        return fetchedItem;
+                    });
+                    // Also include any items the user added that aren't in fetch yet
+                    const fetchedIds = new Set(canonicalSweep.items.map(i => i.id));
+                    for (const pendingItem of itemsRef.current) {
+                        if (!fetchedIds.has(pendingItem.id)) {
+                            mergedItems.push(pendingItem);
+                        }
+                    }
+                    itemsRef.current = mergedItems;
+                    setItems(mergedItems);
 
-                    appliedData = { ...data, data: canonicalSweep.items, wallets: walletsForSweep };
+                    appliedData = { ...data, data: mergedItems, wallets: walletsForSweep };
 
-                    if (dedupeResult.removedCount > 0 || investmentWalletMigration.changed || JSON.stringify(canonicalSweep.items) !== JSON.stringify(data.data)) {
-                        saveAndSync(canonicalSweep.items, data.budgetConfig, data.customPrompt, data.skills, walletsForSweep, data.monthlyThemes, data.appSettings, data.canonicalRules);
+                    if (dedupeResult.removedCount > 0 || investmentWalletMigration.changed || JSON.stringify(mergedItems) !== JSON.stringify(data.data)) {
+                        saveAndSync(mergedItems, data.budgetConfig, data.customPrompt, data.skills, walletsForSweep, data.monthlyThemes, data.appSettings, data.canonicalRules);
                     }
                 }
 
