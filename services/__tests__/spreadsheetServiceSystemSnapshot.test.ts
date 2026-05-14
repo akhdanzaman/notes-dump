@@ -223,3 +223,27 @@ test('incremental plan does not write back remote-only spreadsheet edits', () =>
   assert.deepEqual(plan.appends, []);
   assert.deepEqual(plan.rewrites, []);
 });
+
+test('incremental plan ignores generated dashboard sheet drift during routine saves', () => {
+  const nextDb: DbSchema = {
+    ...baseDb,
+    data: [{ ...baseDb.data[0], content: 'Updated note' }],
+  };
+  const exportSheets = generateExportData(nextDb.data, [], [], nextDb.budgetConfig!, {}, nextDb.appSettings!);
+  const dashboard = exportSheets.find(sheet => sheet.name === 'Sheet1');
+  assert.ok(dashboard);
+  dashboard!.data = [['changed dashboard generated content']];
+
+  const plan = __test__.buildIncrementalUserSheetPlan(
+    baseDb,
+    nextDb,
+    exportSheets,
+    existingExportSheetTitles,
+    new Set(),
+    false,
+  );
+
+  assert.equal(plan.canIncremental, true);
+  assert.equal(plan.rewrites.some(sheet => sheet.name === 'Sheet1'), false);
+  assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:F2"));
+});

@@ -35,6 +35,7 @@ const MANAGED_USER_SHEET_NAMES = [
   'Chat History',
   'Canonical Rules',
 ] as const;
+const GENERATED_DASHBOARD_SHEET_NAMES = new Set<string>([DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME]);
 const BACKGROUND_REBUILD_DELAY_MS = 5000;
 const ASSUMED_EXISTING_SHEET_TITLES = new Set<string>([
   SYSTEM_SHEET_NAME,
@@ -350,6 +351,8 @@ const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
   return sheets;
 };
 
+const isGeneratedDashboardSheet = (sheetName: string) => GENERATED_DASHBOARD_SHEET_NAMES.has(sheetName);
+
 type SheetRowIndex = {
   sheet: SheetData;
   idColumnIndex: number;
@@ -432,7 +435,6 @@ const buildIncrementalUserSheetPlan = (
 
   const previousIndexes = buildSheetRowIndexes(previousSheets);
   const nextIndexes = buildSheetRowIndexes(exportSheets);
-  const previousSheetByName = new Map(previousSheets.map(sheet => [sheet.name, sheet]));
   const nextSheetByName = new Map(exportSheets.map(sheet => [sheet.name, sheet]));
   const rewriteNames = new Set<string>(createdSheetTitles);
   const updates: IncrementalUserSheetPlan['updates'] = [];
@@ -440,6 +442,7 @@ const buildIncrementalUserSheetPlan = (
   const appendCountsBySheet = new Map<string, number>();
 
   const markRewrite = (sheetName: string) => {
+    if (isGeneratedDashboardSheet(sheetName)) return;
     if (!existingSheetTitles.has(sheetName) && !createdSheetTitles.has(sheetName)) return;
     rewriteNames.add(sheetName);
   };
@@ -452,12 +455,6 @@ const buildIncrementalUserSheetPlan = (
     || !sameJson(previousDb.customPrompt, nextDb.customPrompt)) markRewrite('Themes & Settings');
   if (!sameJson(previousDb.chatHistory, nextDb.chatHistory)) markRewrite('Chat History');
   if (!sameJson(previousDb.canonicalRules, nextDb.canonicalRules)) markRewrite('Canonical Rules');
-
-  for (const sheetName of [DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME]) {
-    const previousSheet = previousSheetByName.get(sheetName);
-    const nextSheet = nextSheetByName.get(sheetName);
-    if (nextSheet && !sameJson(previousSheet?.data, nextSheet.data)) markRewrite(sheetName);
-  }
 
   deletedIds.forEach(id => {
     const previousItem = previousById.get(id);
@@ -2007,11 +2004,14 @@ const performSync = async (
     onProgress?.({ phase: 'metadata', label: 'Checking spreadsheet structure', detail: 'Reading tab list and permissions' });
     const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config, true);
     const allSheetData = [...exportSheets];
+    const isInitialSpreadsheetWrite = !baseSnapshot || !isHydrated || existingTitles.size === 0;
+    const shouldWriteGeneratedDashboardSheets = forceOverwrite || isInitialSpreadsheetWrite;
 
     // 3. Create missing sheets
     const requests: any[] = [];
     const createdSheetTitles = new Set<string>();
     for (const sheet of allSheetData) {
+      if (isGeneratedDashboardSheet(sheet.name) && !shouldWriteGeneratedDashboardSheets) continue;
       if (!existingTitles.has(sheet.name)) {
         requests.push({ addSheet: { properties: { title: sheet.name } } });
       }
@@ -2034,7 +2034,6 @@ const performSync = async (
     }
 
     const effectiveExistingTitles = new Set([...existingTitles, ...createdSheetTitles]);
-    const isInitialSpreadsheetWrite = !baseSnapshot || !isHydrated || existingTitles.size === 0;
     const incrementalPlan = !forceOverwrite && baseSnapshot
       ? buildIncrementalUserSheetPlan(baseSnapshot, localDbForPlan, allSheetData, effectiveExistingTitles, createdSheetTitles, isInitialSpreadsheetWrite, currentSheetDbForPlan || baseSnapshot)
       : emptyIncrementalPlan(false, forceOverwrite ? 'force_overwrite' : 'missing_base_snapshot');
@@ -2054,7 +2053,7 @@ const performSync = async (
     } else {
       await rewriteChangedSheets(
         config,
-        allSheetData.filter(sheet => effectiveExistingTitles.has(sheet.name) || reliable),
+        allSheetData.filter(sheet => (shouldWriteGeneratedDashboardSheets || !isGeneratedDashboardSheet(sheet.name)) && (effectiveExistingTitles.has(sheet.name) || reliable)),
         onProgress
       );
     }

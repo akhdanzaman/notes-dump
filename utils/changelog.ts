@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.104',
+    date: 'May 2026',
+    items: [
+      'Routine spreadsheet autosave no longer clears or rewrites generated dashboard tabs like Sheet1/Data Quality; it only writes source data/config sheets that changed locally.',
+      'Fixed a cloud save failure where generated dashboard drift caused autosave to clear Sheet1 and hit a Google Sheets proxy FUNCTION_INVOCATION_FAILED error.',
+    ],
+  },
+  {
     version: 'v0.3.103',
     date: 'May 2026',
     items: [
