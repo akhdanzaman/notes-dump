@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.114',
+    date: 'May 2026',
+    items: [
+      'Threaded a progress callback through the full fetch chain (fetchDb → fetchSpreadsheetDb → fetchSpreadsheetDbWithToken) so the Control Center shows live phases during data refresh: "Checking tab list", "Fetching item sheets", and "Processing fetched items".',
+    ],
+  },
+  {
     version: 'v0.3.113',
     date: 'May 2026',
     items: [
