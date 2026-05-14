@@ -16,7 +16,8 @@ test('spreadsheet fetch ranges include the expanded schema columns', () => {
   assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:S');
   assert.equal(SPREADSHEET_FETCH_RANGES.Todos, 'A:AA');
   assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:P');
-  assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:H');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:I');
+  assert.equal(SPREADSHEET_FETCH_RANGES['Notes & Journals'], 'A:G');
   assert.equal(SPREADSHEET_FETCH_RANGES['Skill Logs'], 'A:I');
   assert.equal(SPREADSHEET_FETCH_RANGES['Canonical Rules'], 'A:U');
   assert.equal(Object.prototype.hasOwnProperty.call(SPREADSHEET_FETCH_RANGES, 'Data Quality'), false);

@@ -527,6 +527,7 @@ export const generateExportData = (
   // --- Sheet 4: Events ---
   const events = items.filter(i => i.type === ItemType.EVENT).map(item => ({
       Type: item.type,
+      Status: item.status,
       Date: item.meta.date || '',
       Start_Date: item.meta.start || '',
       End_Date: item.meta.end || '',
@@ -538,14 +539,15 @@ export const generateExportData = (
   sheets.push({
       name: "Events",
       data: [
-        ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "ID"],
-        ...events.map(e => [e.Type, e.Date, e.Start_Date, e.End_Date, e.Priority, e.Event, e.Tags, e.ID])
+        ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "Status", "ID"],
+        ...events.map(e => [e.Type, e.Date, e.Start_Date, e.End_Date, e.Priority, e.Event, e.Tags, e.Status, e.ID])
       ]
     });
 
   // --- Sheet 5: Notes & Journals ---
   const notes = items.filter(i => i.type === ItemType.NOTE || i.type === ItemType.JOURNAL).map(item => ({
       Date: item.created_at,
+      Status: item.status,
       Type: item.type,
       Title: item.meta.title || '',
       Content: item.content,
@@ -555,8 +557,8 @@ export const generateExportData = (
   sheets.push({
       name: "Notes & Journals",
       data: [
-        ["Date", "Type", "Title", "Content", "Tags", "ID"],
-        ...notes.map(n => [n.Date, n.Type, n.Title, n.Content, n.Tags, n.ID])
+        ["Date", "Type", "Title", "Content", "Tags", "Status", "ID"],
+        ...notes.map(n => [n.Date, n.Type, n.Title, n.Content, n.Tags, n.Status, n.ID])
       ]
     });
 

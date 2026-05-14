@@ -675,11 +675,17 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         const hasStartDate = headers.includes("Start_Date");
         const rows = eventSheet.values.slice(1);
         for (const row of rows) {
-            let typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, idStr;
+            let typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, status, idStr;
+            const hasStatus = headers.includes('Status');
             
             if (hasType && hasStartDate) {
-                // New format: ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "ID"]
-                [typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, idStr] = row;
+                if (hasStatus) {
+                    // Format with Status: ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "Status", "ID"]
+                    [typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, status, idStr] = row;
+                } else {
+                    // Old format: ["Type", "Date", "Start_Date", "End_Date", "Priority", "Event", "Tags", "ID"]
+                    [typeStr, date, startDateStr, endDateStr, priority, event, tagsStr, idStr] = row;
+                }
             } else {
                 // Old format: ["Date", "Priority", "Event", "Tags", "ID"]
                 [date, priority, event, tagsStr, idStr] = row;
@@ -697,6 +703,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             if (match) {
                 seenItemIds.add(match.id);
                 let updated = false;
+                const sheetStatus = status ? (String(status).trim() as 'pending' | 'done') : undefined;
+                if (sheetStatus && match.status !== sheetStatus) { match.status = sheetStatus; updated = true; }
                 if (match.content !== event) { match.content = event; updated = true; }
                 if (priority !== undefined && match.meta.priority !== priority) {
                     match.meta.priority = priority;
@@ -761,11 +769,12 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 }
 
                 const newId = idStr || uuidv4();
+                const eventStatus = status ? (String(status).trim() as 'pending' | 'done') : 'pending';
                 newItems.push({
                     id: newId,
                     type: ItemType.EVENT,
                     content: event || 'Manual Event',
-                    status: 'pending',
+                    status: eventStatus,
                     created_at: new Date().toISOString(),
                     meta: {
                         date: isoDate,
@@ -786,13 +795,15 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     if (notesSheet && notesSheet.values) {
         const header = (notesSheet.values[0] || []).map((cell: unknown) => String(cell || '').trim().toLowerCase());
         const hasTitleColumn = header.includes('title');
+        const hasStatusColumn = header.includes('status');
         const rows = notesSheet.values.slice(1);
         for (const row of rows) {
-            const [date, type, titleOrContent, contentOrTags, tagsOrId, maybeId] = row;
+            const [date, type, titleOrContent, contentOrTags, tagsOrId, statusOrId, maybeId] = row;
             const title = hasTitleColumn ? titleOrContent : undefined;
             const content = hasTitleColumn ? contentOrTags : titleOrContent;
             const tagsStr = hasTitleColumn ? tagsOrId : contentOrTags;
-            const idStr = hasTitleColumn ? maybeId : tagsOrId;
+            const idStr = hasTitleColumn ? (hasStatusColumn ? maybeId : statusOrId) : tagsOrId;
+            const rowStatus = hasStatusColumn ? statusOrId : undefined;
             if (!content && !date && !idStr) continue;
             
             const match = newItems.find(i => 
@@ -836,7 +847,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     id: newId,
                     type: itemType,
                     content: content || 'Manual Note',
-                    status: itemType === ItemType.JOURNAL ? 'done' : 'pending',
+                    status: rowStatus ? (String(rowStatus).trim() as 'pending' | 'done') : (itemType === ItemType.JOURNAL ? 'done' : 'pending'),
                     created_at: isoDate,
                     completed_at: itemType === ItemType.JOURNAL ? isoDate : undefined,
                     meta: {

@@ -150,7 +150,7 @@ test('incremental plan updates only item rows for edited existing items', () => 
   assert.equal(plan.canIncremental, true);
   assert.deepEqual(plan.appends, []);
   assert.equal(plan.updates.length, 1);
-  assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:F2"));
+  assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:G2"));
 });
 
 test('incremental plan appends rows for new items without forcing full rebuild', () => {
@@ -283,5 +283,5 @@ test('incremental plan ignores generated dashboard sheet drift during routine sa
   assert.equal(plan.canIncremental, true);
   assert.equal(plan.rewrites.some(sheet => sheet.name === 'Sheet1'), false);
   assert.equal(plan.deletions.length, 0);
-  assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:F2"));
+  assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:G2"));
 });
