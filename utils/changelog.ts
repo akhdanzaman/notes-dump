@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.105',
+    date: 'May 2026',
+    items: [
+      'Added stale PWA asset recovery so blank screens caused by cached old bundles automatically refresh service-worker assets and reload once.',
+      'Added a root render fallback screen with a refresh action instead of leaving the web app blank when an unexpected startup crash happens.',
+    ],
+  },
+  {
     version: 'v0.3.104',
     date: 'May 2026',
     items: [
