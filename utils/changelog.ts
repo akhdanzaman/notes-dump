@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.111',
+    date: 'May 2026',
+    items: [
+      'Fixed critical data loss bug: incremental save plan now compares actual sheet state (fetched merged data) vs merged target state instead of comparing old cached snapshot vs local-only app state.',
+      'Previously, items removed from the app that still existed in the spreadsheet would be incorrectly detected as deleted and removed from the sheet on save.',
+      'The planner also now uses the fully merged dbToWrite (app + sheet merge) as the target, so sheet-only entries are properly preserved during incremental saves.',
+    ],
+  },
+  {
     version: 'v0.3.110',
     date: 'May 2026',
     items: [
