@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.113',
+    date: 'May 2026',
+    items: [
+      'Added detailed fetch progress display in Control Center ("Reading spreadsheet data…", "Processing items…") mirroring the existing save progress UX.',
+      'Fixed deleted entries briefly flickering back during fetch: loadData no longer applies stale cached spreadsheet data mid-fetch, preventing ghost entries from appearing before the fetch completes.',
+    ],
+  },
+  {
     version: 'v0.3.112',
     date: 'May 2026',
     items: [
