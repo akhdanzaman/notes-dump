@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.126',
+    date: 'May 2026',
+    items: [
+      'Add item modal animations no longer slide vertically while the mobile keyboard opens, preventing the keyboard and modal from creating a double-bounce effect.',
+    ],
+  },
+  {
     version: 'v0.3.125',
     date: 'May 2026',
     items: [

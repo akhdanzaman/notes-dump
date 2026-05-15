@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Wallet, DollarSign } from 'lucide-react';
 import { BudgetConfig, Wallet as WalletType, BrainDumpItem } from '../types';
-import { addItemModal, responsiveModal } from './layout/contentSurface';
+import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 
 interface AddExpenseModalProps {
@@ -113,9 +113,10 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
         <AnimatePresence>
             <div className={responsiveModal.sheetOverlay}>
                 <motion.div 
-                    initial={{ opacity: 0, y: 100 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 100 }}
+                    initial={addItemModalMotion.initial}
+                    animate={addItemModalMotion.animate}
+                    exit={addItemModalMotion.exit}
+                    transition={addItemModalMotion.transition}
                     className={addItemModal.panel}
                 >
                     <div className={addItemModal.header}>

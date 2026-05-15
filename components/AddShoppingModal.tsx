@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, ShoppingCart, Clock, TrendingUp } from 'lucide-react';
 import { ShoppingCategory, InvestmentAssetType, BudgetRule, Wallet } from '../types';
-import { addItemModal, responsiveModal } from './layout/contentSurface';
+import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 import { calculateFirstDueDate } from '../utils/selectors';
 
 interface AddShoppingModalProps {
@@ -223,9 +223,10 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         <AnimatePresence>
             <div className={responsiveModal.sheetOverlay}>
                 <motion.div
-                    initial={{ opacity: 0, y: 100 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 100 }}
+                    initial={addItemModalMotion.initial}
+                    animate={addItemModalMotion.animate}
+                    exit={addItemModalMotion.exit}
+                    transition={addItemModalMotion.transition}
                     className={addItemModal.panel}
                 >
                     <div className={addItemModal.header}>

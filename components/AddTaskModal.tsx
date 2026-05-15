@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Calendar } from 'lucide-react';
 import { Priority } from '../types';
-import { addItemModal, responsiveModal } from './layout/contentSurface';
+import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 
 interface AddTaskModalProps {
     isOpen: boolean;
@@ -41,9 +41,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
         <AnimatePresence>
             <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="add-task">
                 <motion.div
-                    initial={{ opacity: 0, y: 100 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 100 }}
+                    initial={addItemModalMotion.initial}
+                    animate={addItemModalMotion.animate}
+                    exit={addItemModalMotion.exit}
+                    transition={addItemModalMotion.transition}
                     className={addItemModal.panel}
                     data-tablet-modal-panel="add-task"
                     data-ndz-tablet-baseline="modal"

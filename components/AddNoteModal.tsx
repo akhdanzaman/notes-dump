@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, StickyNote } from 'lucide-react';
-import { addItemModal, responsiveModal } from './layout/contentSurface';
+import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 
 interface AddNoteModalProps {
     isOpen: boolean;
@@ -33,9 +33,10 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
         <AnimatePresence>
             <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="add-note">
                 <motion.div 
-                    initial={{ opacity: 0, y: 100 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 100 }}
+                    initial={addItemModalMotion.initial}
+                    animate={addItemModalMotion.animate}
+                    exit={addItemModalMotion.exit}
+                    transition={addItemModalMotion.transition}
                     className={addItemModal.panel}
                     data-tablet-modal-panel="add-note"
                     data-ndz-tablet-baseline="modal"

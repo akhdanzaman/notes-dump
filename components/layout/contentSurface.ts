@@ -103,6 +103,15 @@ export const addItemModal = {
   primaryButton: 'w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2',
 } as const;
 
+export const addItemModalMotion = {
+  // Avoid vertical translate on add-item sheets: mobile keyboards resize/push the visual viewport
+  // at the same time autofocus opens, so a sheet y-animation creates a visible double bounce.
+  initial: { opacity: 0, scale: 0.98 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.98 },
+  transition: { duration: 0.16, ease: 'easeOut' },
+} as const;
+
 export const controlCenterSurface = {
   panel: [
     'fixed bottom-0 left-0 right-0 bg-surface border-t border-border rounded-t-3xl z-[70] shadow-2xl max-w-2xl mx-auto flex flex-col h-[85vh]',

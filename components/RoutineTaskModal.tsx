@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, Check } from 'lucide-react';
 import { Priority } from '../types';
-import { addItemModal, responsiveModal } from './layout/contentSurface';
+import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 
 interface RoutineTaskModalProps {
     isOpen: boolean;
@@ -211,9 +211,10 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
         <AnimatePresence>
             <div className={responsiveModal.sheetOverlay}>
                 <motion.div
-                    initial={{ opacity: 0, y: 100 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 100 }}
+                    initial={addItemModalMotion.initial}
+                    animate={addItemModalMotion.animate}
+                    exit={addItemModalMotion.exit}
+                    transition={addItemModalMotion.transition}
                     className={addItemModal.panel}
                 >
                     <div className={addItemModal.header}>
