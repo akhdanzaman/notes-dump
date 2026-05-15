@@ -166,15 +166,20 @@ export const buildSummaryFocusDisplay = (
   }
 
   const recentDone = items
-    .filter(item => item.type === ItemType.TODO && item.status === 'done' && item.completed_at)
+    .filter(item =>
+      (item.type === ItemType.TODO || item.type === ItemType.EVENT) &&
+      item.status === 'done' &&
+      item.completed_at &&
+      isRootFocusItem(item)
+    )
     .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
-    .slice(0, 3);
+    .slice(0, limit);
 
   if (recentDone.length > 0) {
     return {
       displayItems: recentDone,
-      displayTitle: 'Recently Completed',
-      displaySubtitle: "Great job! You're all caught up.",
+      displayTitle: "Today's Focus",
+      displaySubtitle: "No active tasks left — showing completed focus items.",
       isDoneState: true,
     };
   }

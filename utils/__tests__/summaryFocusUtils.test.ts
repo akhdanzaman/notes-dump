@@ -63,6 +63,25 @@ test('summary display preserves Tomorrow fallback when there is no today focus o
   assert.deepEqual(display.displayItems.map(item => item.id), ['focus-1']);
 });
 
+test('summary display keeps done tasks and events in Today’s Focus when nothing is active', () => {
+  const doneTask = {
+    ...makeItem('cek-artland-mkg', ItemType.EVENT, '2026-05-06T09:00:00.000Z'),
+    status: 'done' as const,
+    completed_at: '2026-05-06T12:00:00.000Z',
+  };
+  const olderDoneTask = {
+    ...makeItem('older-done-task', ItemType.TODO, '2026-05-05T09:00:00.000Z'),
+    status: 'done' as const,
+    completed_at: '2026-05-05T12:00:00.000Z',
+  };
+
+  const display = buildSummaryFocusDisplay([olderDoneTask, doneTask], emptyGroups, [], 5);
+
+  assert.equal(display.displayTitle, "Today's Focus");
+  assert.equal(display.isDoneState, true);
+  assert.deepEqual(display.displayItems.map(item => item.id), ['cek-artland-mkg', 'older-done-task']);
+});
+
 test('summary focus excludes child subtasks from top-level Today’s Focus lists', () => {
   const parent = makeItem('parent-focus', ItemType.TODO, '2026-05-07T09:00:00.000Z');
   const child = {

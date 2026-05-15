@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.124',
+    date: 'May 2026',
+    items: [
+      'Summary Today’s Focus now falls back to completed focus tasks/events when there are no active tasks, so done items like appointment/check tasks still stay visible instead of switching to an empty state.',
+    ],
+  },
+  {
     version: 'v0.3.123',
     date: 'May 2026',
     items: [
