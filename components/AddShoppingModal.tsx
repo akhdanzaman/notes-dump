@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, ShoppingCart, Calendar, Clock, TrendingUp } from 'lucide-react';
+import { X, Check, ShoppingCart, Clock, TrendingUp } from 'lucide-react';
 import { ShoppingCategory, InvestmentAssetType, BudgetRule, Wallet } from '../types';
-import { responsiveModal } from './layout/contentSurface';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 import { calculateFirstDueDate } from '../utils/selectors';
 
 interface AddShoppingModalProps {
@@ -226,21 +226,21 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                     initial={{ opacity: 0, y: 100 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 100 }}
-                    className={`${responsiveModal.denseFormPanel} max-h-[90vh]`}
+                    className={addItemModal.panel}
                 >
-                    <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
-                        <h3 className="text-xl font-bold text-primary flex items-center gap-2">
-                            <ShoppingCart className="w-5 h-5 text-indigo-500" />
+                    <div className={addItemModal.header}>
+                        <h3 className={addItemModal.title}>
+                            <ShoppingCart className={addItemModal.icon} />
                             {category === 'saving' ? 'Add Saving Goal' : (category === 'investment' ? 'Add Investment' : 'Add Shopping Item')}
                         </h3>
-                        <button onClick={onClose} className="p-2 bg-muted/10 hover:bg-muted/20 rounded-full text-muted transition-colors">
+                        <button onClick={onClose} className={addItemModal.closeButton}>
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
-                    <div className="p-6 space-y-4 overflow-y-auto">
+                    <div className={addItemModal.body}>
                         <div>
-                            <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">
+                            <label className={addItemModal.label}>
                                 {category === 'saving' ? 'Goal Name' : (category === 'investment' ? 'Asset / Product Name' : 'Item Description')}
                             </label>
                             <input
@@ -249,7 +249,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
                                 placeholder={category === 'saving' ? 'e.g. New Car' : (category === 'investment' ? 'e.g. Antam Gold, BBCA, SBN ORI' : 'What do you need?')}
-                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                className={addItemModal.input}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         handleSave();
@@ -260,7 +260,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Category</label>
+                                <label className={addItemModal.label}>Category</label>
                                 <select
                                     value={category}
                                     onChange={e => {
@@ -270,7 +270,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                             updateDateFromRoutineSchedule(interval, daysOfWeek, daysOfMonth, monthsOfYear);
                                         }
                                     }}
-                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                    className={addItemModal.select}
                                     disabled={initialCategory === 'saving' || initialCategory === 'investment'}
                                 >
                                     <option value="urgent">Urgent</option>
@@ -281,12 +281,12 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">{category === 'investment' ? 'Buy date' : 'Due date'}</label>
+                                <label className={addItemModal.label}>{category === 'investment' ? 'Buy date' : 'Due date'}</label>
                                 <input
                                     type="date"
                                     value={date}
                                     onChange={e => setDate(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                    className={addItemModal.input}
                                 />
                             </div>
                         </div>
@@ -294,19 +294,19 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                         <div className="grid grid-cols-2 gap-4">
                             {category !== 'saving' && category !== 'investment' && (
                                 <div>
-                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Quantity</label>
+                                    <label className={addItemModal.label}>Quantity</label>
                                     <input
                                         type="text"
                                         value={quantity}
                                         onChange={e => setQuantity(e.target.value)}
                                         placeholder="e.g. 2 pcs, 1 kg"
-                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                        className={addItemModal.input}
                                     />
                                 </div>
                             )}
                             {category !== 'investment' && (
                             <div className={category === 'saving' ? 'col-span-2' : ''}>
-                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">
+                                <label className={addItemModal.label}>
                                     {category === 'saving' ? 'Target Amount' : 'Est. Cost'}
                                 </label>
                                 <input
@@ -314,7 +314,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     value={amount}
                                     onChange={e => setAmount(e.target.value)}
                                     placeholder="0"
-                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                    className={addItemModal.input}
                                 />
                             </div>
                             )}
@@ -322,34 +322,34 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
 
                         {category === 'saving' && (
                             <div>
-                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Dedicated Wallet</label>
+                                <label className={addItemModal.label}>Dedicated Wallet</label>
                                 <select
                                     value={dedicatedWalletId}
                                     onChange={e => setDedicatedWalletId(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                    className={addItemModal.select}
                                 >
                                     <option value="">Select Wallet</option>
                                     {wallets.map(w => (
                                         <option key={w.id} value={w.id}>{w.name}</option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-muted mt-2">This wallet will be exclusively used for this saving goal.</p>
+                                <p className={addItemModal.helpText}>This wallet will be exclusively used for this saving goal.</p>
                             </div>
                         )}
 
                         {category === 'investment' && (
-                            <div className="mt-4 p-4 border border-emerald-500/20 rounded-2xl bg-emerald-500/5 space-y-4">
-                                <label className="block text-sm font-bold text-emerald-500 mb-3 uppercase tracking-wider flex items-center gap-2">
+                            <div className={addItemModal.accentSectionPanel}>
+                                <label className={addItemModal.accentSectionTitle}>
                                     <TrendingUp className="w-4 h-4" /> Investment Details
                                 </label>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-wider">Asset Type</label>
+                                        <label className={addItemModal.label}>Asset Type</label>
                                         <select
                                             value={investmentAssetType}
                                             onChange={e => setInvestmentAssetType(e.target.value as InvestmentAssetType)}
-                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-emerald-500 font-medium appearance-none"
+                                            className={`${addItemModal.select} focus:border-emerald-500`}
                                         >
                                             {INVESTMENT_ASSET_TYPES.map(type => (
                                                 <option key={type.value} value={type.value}>{type.label}</option>
@@ -357,61 +357,61 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-wider">Ticker / Code</label>
+                                        <label className={addItemModal.label}>Ticker / Code</label>
                                         <input
                                             type="text"
                                             value={investmentSymbol}
                                             onChange={e => setInvestmentSymbol(e.target.value.toUpperCase())}
                                             placeholder="BBCA, ANTM, BTC"
-                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-emerald-500 font-medium"
+                                            className={`${addItemModal.input} focus:border-emerald-500`}
                                         />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-3">
                                     <div>
-                                        <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-wider">Units</label>
+                                        <label className={addItemModal.label}>Units</label>
                                         <input
                                             type="number"
                                             step="any"
                                             value={investmentUnits}
                                             onChange={e => setInvestmentUnits(e.target.value)}
                                             placeholder="0"
-                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-emerald-500 font-medium"
+                                            className={`${addItemModal.input} focus:border-emerald-500`}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-wider">Avg Buy</label>
+                                        <label className={addItemModal.label}>Avg Buy</label>
                                         <input
                                             type="number"
                                             value={investmentAveragePrice}
                                             onChange={e => setInvestmentAveragePrice(e.target.value)}
                                             placeholder="0"
-                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-emerald-500 font-medium"
+                                            className={`${addItemModal.input} focus:border-emerald-500`}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-wider">Now</label>
+                                        <label className={addItemModal.label}>Now</label>
                                         <input
                                             type="number"
                                             value={investmentCurrentPrice}
                                             onChange={e => setInvestmentCurrentPrice(e.target.value)}
                                             placeholder="0"
-                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-emerald-500 font-medium"
+                                            className={`${addItemModal.input} focus:border-emerald-500`}
                                         />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-wider">Investment Wallet / Platform</label>
+                                    <label className={addItemModal.label}>Investment Wallet / Platform</label>
                                     <input
                                         type="text"
                                         value={investmentPlatform}
                                         onChange={e => setInvestmentPlatform(e.target.value)}
                                         placeholder="e.g. Bibit, Ajaib, Pegadaian, Bank"
-                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-emerald-500 font-medium"
+                                        className={`${addItemModal.input} focus:border-emerald-500`}
                                     />
-                                    <p className="text-xs text-muted mt-2">This platform becomes an investment wallet. Invested capital is added later via Money &gt; Saving transaction, so wallet movement stays accurate.</p>
+                                    <p className={addItemModal.helpText}>This platform becomes an investment wallet. Invested capital is added later via Money &gt; Saving transaction, so wallet movement stays accurate.</p>
                                 </div>
                             </div>
                         )}
@@ -419,11 +419,11 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                         {category !== 'saving' && category !== 'investment' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Budget Category</label>
+                                    <label className={addItemModal.label}>Budget Category</label>
                                     <select
                                         value={budgetCategory}
                                         onChange={e => setBudgetCategory(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                        className={addItemModal.select}
                                     >
                                         <option value="">No Category</option>
                                         {budgetRules.map(rule => (
@@ -432,11 +432,11 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Payment Method</label>
+                                    <label className={addItemModal.label}>Payment Method</label>
                                     <select
                                         value={paymentMethod}
                                         onChange={e => setPaymentMethod(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                        className={addItemModal.select}
                                     >
                                         <option value="">Select Wallet</option>
                                         {wallets.map(w => (
@@ -448,8 +448,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                         )}
 
                         {category === 'routine' && (
-                            <div className="mt-4 p-4 border border-border rounded-2xl bg-muted/5">
-                                <label className="block text-sm font-bold text-muted mb-3 uppercase tracking-wider flex items-center gap-2">
+                            <div className={addItemModal.sectionPanel}>
+                                <label className={addItemModal.sectionTitle}>
                                     <Clock className="w-4 h-4" /> Routine Schedule
                                 </label>
 
@@ -477,7 +477,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                                 <button
                                                     key={day.value}
                                                     onClick={() => toggleDayOfWeek(day.value)}
-                                                    className={`flex-1 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all border ${daysOfWeek.includes(day.value) ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                    className={`flex-1 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all border ${addItemModal.choiceButton(daysOfWeek.includes(day.value))}`}
                                                 >
                                                     {day.label[0]}
                                                 </button>
@@ -489,13 +489,13 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 {/* Monthly Selector */}
                                 {interval === 'monthly' && (
                                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-2">
-                                        <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Dates</label>
+                                        <label className={addItemModal.label}>Select Dates</label>
                                         <div className="grid grid-cols-7 gap-1">
                                             {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                                                 <button
                                                     key={day}
                                                     onClick={() => toggleDayOfMonth(day)}
-                                                    className={`w-full aspect-square rounded-md flex items-center justify-center text-[10px] font-bold transition-all border ${daysOfMonth.includes(day) ? 'bg-indigo-600 border-indigo-500 text-white shadow-sm' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                    className={`w-full aspect-square rounded-md flex items-center justify-center text-[10px] font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-indigo-600 border-indigo-500 text-white shadow-sm')}`}
                                                 >
                                                     {day}
                                                 </button>
@@ -507,13 +507,13 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 {/* Yearly Selector */}
                                 {interval === 'yearly' && (
                                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-2">
-                                        <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Months</label>
+                                        <label className={addItemModal.label}>Select Months</label>
                                         <div className="grid grid-cols-4 gap-1.5">
                                             {MONTHS_OF_YEAR.map(month => (
                                                 <button
                                                     key={month.value}
                                                     onClick={() => toggleMonthOfYear(month.value)}
-                                                    className={`py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${monthsOfYear.includes(month.value) ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                    className={`py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${addItemModal.choiceButton(monthsOfYear.includes(month.value))}`}
                                                 >
                                                     {month.label}
                                                 </button>
@@ -530,7 +530,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 id="hideFromCalendarShopping"
                                 checked={hideFromCalendar}
                                 onChange={(e) => setHideFromCalendar(e.target.checked)}
-                                className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                                className={addItemModal.checkbox}
                             />
                             <label htmlFor="hideFromCalendarShopping" className="text-sm font-medium text-primary">
                                 Hide from Calendar
@@ -538,11 +538,11 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                         </div>
                     </div>
 
-                    <div className="p-6 border-t border-border shrink-0">
+                    <div className={addItemModal.footer}>
                         <button
                             onClick={handleSave}
                             disabled={!content.trim()}
-                            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className={addItemModal.primaryButton}
                         >
                             <Check className="w-5 h-5" />
                             {category === 'saving' ? 'Create Goal' : (category === 'investment' ? 'Add Investment' : 'Add Item')}

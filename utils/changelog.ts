@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.125',
+    date: 'May 2026',
+    items: [
+      'Add new item modals now share one consistent layout system for headers, fields, section panels, close buttons, and submit footers across tasks, notes, money, shopping, and routines.',
+    ],
+  },
+  {
     version: 'v0.3.124',
     date: 'May 2026',
     items: [

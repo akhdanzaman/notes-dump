@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Wallet, Tag, Calendar, DollarSign } from 'lucide-react';
+import { X, Check, Wallet, DollarSign } from 'lucide-react';
 import { BudgetConfig, Wallet as WalletType, BrainDumpItem } from '../types';
-import { responsiveModal } from './layout/contentSurface';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 
 interface AddExpenseModalProps {
@@ -116,25 +116,25 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                     initial={{ opacity: 0, y: 100 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 100 }}
-                    className={`${responsiveModal.denseFormPanel} max-h-[90vh]`}
+                    className={addItemModal.panel}
                 >
-                    <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
-                        <h3 className="text-xl font-bold text-primary flex items-center gap-2">
+                    <div className={addItemModal.header}>
+                        <h3 className={addItemModal.title}>
                             <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-indigo-500'}`} />
                             {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
                         </h3>
-                        <button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full text-muted transition-colors">
+                        <button onClick={onClose} className={addItemModal.closeButton}>
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
-                    <div className="p-6 space-y-4 overflow-y-auto">
-                        <div className="flex gap-2 p-1 bg-black/5 dark:bg-white/5 rounded-xl">
+                    <div className={addItemModal.body}>
+                        <div className={addItemModal.tabGroup}>
                             {(['expense', 'income', 'transfer', 'saving'] as const).map(type => (
                                 <button
                                     key={type}
                                     onClick={() => setTransactionType(type)}
-                                    className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-colors ${transactionType === type ? 'bg-surface text-primary shadow-sm' : 'text-muted hover:text-primary'}`}
+                                    className={addItemModal.tabButton(transactionType === type)}
                                 >
                                     {type}
                                 </button>
@@ -142,7 +142,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">{isInvestmentTarget ? 'Invested Capital' : 'Amount'}</label>
+                            <label className={addItemModal.label}>{isInvestmentTarget ? 'Invested Capital' : 'Amount'}</label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-bold">Rp</span>
                                 <input 
@@ -151,20 +151,20 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                     value={amount}
                                     onChange={e => handleAmountChange(e.target.value)}
                                     placeholder="0"
-                                    className="w-full bg-background border border-border rounded-2xl p-4 pl-12 text-primary focus:outline-none focus:border-indigo-500 font-bold text-lg"
+                                    className={`${addItemModal.titleInput} pl-12`}
                                 />
                             </div>
                         </div>
 
                         {transactionType !== 'saving' && (
                             <div>
-                                <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Description</label>
+                                <label className={addItemModal.label}>Description</label>
                                 <input 
                                     type="text"
                                     value={description}
                                     onChange={e => setDescription(e.target.value)}
                                     placeholder={transactionType === 'expense' ? "What did you buy?" : transactionType === 'income' ? "Source of income?" : "Description"}
-                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                    className={addItemModal.input}
                                 />
                             </div>
                         )}
@@ -173,7 +173,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                             {transactionType === 'saving' ? (
                                 <>
                                     <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Saving Goal</label>
+                                        <label className={addItemModal.label}>Saving Goal</label>
                                         <select 
                                             value={savingGoalId}
                                             onChange={e => {
@@ -195,7 +195,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                                     setToWalletId('');
                                                 }
                                             }}
-                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                            className={addItemModal.select}
                                         >
                                             <option value="">Select Goal / Investment</option>
                                             {savingGoals.map(g => (
@@ -204,7 +204,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                         </select>
                                     </div>
                                     <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">{savingGoals.find(g => g.id === savingGoalId)?.meta.shoppingCategory === 'investment' ? 'From Wallet' : 'Wallet'}</label>
+                                        <label className={addItemModal.label}>{savingGoals.find(g => g.id === savingGoalId)?.meta.shoppingCategory === 'investment' ? 'From Wallet' : 'Wallet'}</label>
                                         {(() => {
                                             const goal = savingGoals.find(g => g.id === savingGoalId);
                                             if (goal?.meta.shoppingCategory === 'investment') {
@@ -212,7 +212,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                                     <select
                                                         value={walletId}
                                                         onChange={e => setWalletId(e.target.value)}
-                                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                        className={addItemModal.select}
                                                     >
                                                         <option value="">Select Source Wallet</option>
                                                         {wallets.filter(w => w.id !== goal.meta.dedicatedWalletId).map(w => (
@@ -224,7 +224,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                             if (goal?.meta.dedicatedWalletId) {
                                                 const wallet = wallets.find(w => w.id === goal.meta.dedicatedWalletId);
                                                 return (
-                                                    <div className="w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium flex items-center gap-2">
+                                                    <div className={addItemModal.readonlyField}>
                                                         <Wallet className="w-4 h-4" />
                                                         {wallet ? wallet.name : 'Linked to Goal'}
                                                     </div>
@@ -234,7 +234,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                                     <select 
                                                         value={walletId}
                                                         onChange={e => setWalletId(e.target.value)}
-                                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                        className={addItemModal.select}
                                                     >
                                                         <option value="">Select Wallet</option>
                                                         {wallets.map(w => (
@@ -248,39 +248,39 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                     {isInvestmentTarget && (
                                         <>
                                             <div className="col-span-2">
-                                                <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">To Investment Wallet</label>
-                                                <div className="w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium flex items-center gap-2">
+                                                <label className={addItemModal.label}>To Investment Wallet</label>
+                                                <div className={addItemModal.readonlyField}>
                                                     <Wallet className="w-4 h-4" />
                                                     {wallets.find(w => w.id === toWalletId)?.name || 'No linked investment wallet'}
                                                 </div>
-                                                <p className="text-[10px] text-muted mt-1">Investment savings are treated as a wallet transfer into the platform, so the source wallet balance decreases and the investment wallet increases.</p>
+                                                <p className={addItemModal.helpText}>Investment savings are treated as a wallet transfer into the platform, so the source wallet balance decreases and the investment wallet increases.</p>
                                             </div>
-                                            <div className="col-span-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3">
+                                            <div className={`col-span-2 ${addItemModal.accentPanel}`}>
                                                 <div>
                                                     <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Auto-fill units or capital</div>
-                                                    <p className="text-[10px] text-muted mt-1">Isi invested capital atau units. Kalau ada buy price, field satunya otomatis keisi dan units akan ditambahkan ke investment.</p>
+                                                    <p className={addItemModal.helpText}>Isi invested capital atau units. Kalau ada buy price, field satunya otomatis keisi dan units akan ditambahkan ke investment.</p>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div>
-                                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Units bought</label>
+                                                        <label className={addItemModal.label}>Units bought</label>
                                                         <input
                                                             type="number"
                                                             step="any"
                                                             value={investmentUnits}
                                                             onChange={e => handleInvestmentUnitsChange(e.target.value)}
                                                             placeholder="Optional"
-                                                            className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500"
+                                                            className={`${addItemModal.smallInput} focus:border-emerald-500`}
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Buy price / unit</label>
+                                                        <label className={addItemModal.label}>Buy price / unit</label>
                                                         <input
                                                             type="number"
                                                             step="any"
                                                             value={investmentUnitPrice}
                                                             onChange={e => handleInvestmentUnitPriceChange(e.target.value)}
                                                             placeholder="Optional"
-                                                            className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500"
+                                                            className={`${addItemModal.smallInput} focus:border-emerald-500`}
                                                         />
                                                     </div>
                                                 </div>
@@ -288,11 +288,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                         </>
                                     )}
                                     <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Category</label>
+                                        <label className={addItemModal.label}>Category</label>
                                         <select 
                                             value={category}
                                             onChange={e => setCategory(e.target.value)}
-                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                            className={addItemModal.select}
                                         >
                                             <option value="">Uncategorized</option>
                                             {budgetConfig.rules?.map(r => (
@@ -304,11 +304,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                             ) : (
                                 <>
                                     <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
+                                        <label className={addItemModal.label}>{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
                                         <select 
                                             value={walletId}
                                             onChange={e => setWalletId(e.target.value)}
-                                            className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                            className={addItemModal.select}
                                         >
                                             <option value="">Select Wallet</option>
                                             {wallets.map(w => (
@@ -318,11 +318,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                     </div>
                                     {transactionType === 'transfer' ? (
                                         <div>
-                                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">To</label>
+                                            <label className={addItemModal.label}>To</label>
                                             <select 
                                                 value={toWalletId}
                                                 onChange={e => setToWalletId(e.target.value)}
-                                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                className={addItemModal.select}
                                             >
                                                 <option value="">Select Wallet</option>
                                                 {wallets.filter(w => w.id !== walletId).map(w => (
@@ -332,11 +332,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                                         </div>
                                     ) : (
                                         <div>
-                                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Category</label>
+                                            <label className={addItemModal.label}>Category</label>
                                             <select 
                                                 value={category}
                                                 onChange={e => setCategory(e.target.value)}
-                                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none"
+                                                className={addItemModal.select}
                                             >
                                                 <option value="">Uncategorized</option>
                                                 {budgetConfig.rules?.map(r => (
@@ -350,21 +350,21 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSa
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Date</label>
+                            <label className={addItemModal.label}>Date</label>
                             <input 
                                 type="date"
                                 value={date}
                                 onChange={e => setDate(e.target.value)}
-                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                className={addItemModal.input}
                             />
                         </div>
                     </div>
 
-                    <div className="p-6 border-t border-border shrink-0 bg-surface">
+                    <div className={addItemModal.footer}>
                         <button 
                             onClick={handleSave}
                             disabled={!(transactionType === 'saving' && isInvestmentTarget ? resolvedInvestmentFunding.investedCapital : amount) || (transactionType !== 'saving' && !description) || (transactionType !== 'saving' && !walletId) || (transactionType === 'transfer' && !toWalletId) || (transactionType === 'saving' && !savingGoalId) || (transactionType === 'saving' && isInvestmentTarget && (!walletId || !toWalletId))}
-                            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className={addItemModal.primaryButton}
                         >
                             <Check className="w-5 h-5" />
                             Save {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}

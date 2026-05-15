@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Calendar, AlertCircle } from 'lucide-react';
+import { X, Check, Calendar } from 'lucide-react';
 import { Priority } from '../types';
-import { responsiveModal } from './layout/contentSurface';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 
 interface AddTaskModalProps {
     isOpen: boolean;
@@ -21,7 +21,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
 
     const handleSave = () => {
         if (!content.trim()) return;
-        
+
         let startIso, endIso;
         if (start) startIso = new Date(start).toISOString();
         if (end) endIso = new Date(end).toISOString();
@@ -40,78 +40,78 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
     return (
         <AnimatePresence>
             <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="add-task">
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0, y: 100 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 100 }}
-                    className={responsiveModal.formPanel}
+                    className={addItemModal.panel}
                     data-tablet-modal-panel="add-task"
                     data-ndz-tablet-baseline="modal"
                 >
-                    <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
-                        <h3 className="text-xl font-bold text-primary flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-indigo-500" />
+                    <div className={addItemModal.header}>
+                        <h3 className={addItemModal.title}>
+                            <Calendar className={addItemModal.icon} />
                             Add New Task
                         </h3>
-                        <button onClick={onClose} className="p-2 bg-muted/10 hover:bg-muted/20 rounded-full text-muted transition-colors">
+                        <button onClick={onClose} className={addItemModal.closeButton}>
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
-                    <div className="p-6 space-y-6">
+                    <div className={addItemModal.body}>
                         <div>
-                            <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Task Description</label>
-                            <input 
+                            <label className={addItemModal.label}>Task Description</label>
+                            <input
                                 type="text"
                                 autoFocus
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
                                 placeholder="What needs to be done?"
-                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                className={addItemModal.input}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Due Date</label>
-                            <input 
+                            <label className={addItemModal.label}>Due Date</label>
+                            <input
                                 type="date"
                                 value={date}
                                 onChange={e => setDate(e.target.value)}
-                                className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                className={addItemModal.input}
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Start Time</label>
-                                <input 
+                                <label className={addItemModal.label}>Start Time</label>
+                                <input
                                     type="datetime-local"
                                     value={start}
                                     onChange={e => setStart(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                    className={addItemModal.input}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">End Time</label>
-                                <input 
+                                <label className={addItemModal.label}>End Time</label>
+                                <input
                                     type="datetime-local"
                                     value={end}
                                     onChange={e => setEnd(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                    className={addItemModal.input}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">Priority</label>
+                            <label className={addItemModal.label}>Priority</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {(['low', 'normal', 'high'] as Priority[]).map(p => (
                                     <button
                                         key={p}
                                         onClick={() => setPriority(p)}
                                         className={`py-3 rounded-xl font-bold text-sm capitalize transition-all ${
-                                            priority === p 
-                                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
+                                            priority === p
+                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
                                                 : 'bg-background border border-border text-muted hover:border-indigo-500/50'
                                         }`}
                                     >
@@ -122,12 +122,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <input 
-                                type="checkbox" 
-                                id="hideFromCalendarTask" 
+                            <input
+                                type="checkbox"
+                                id="hideFromCalendarTask"
                                 checked={hideFromCalendar}
                                 onChange={(e) => setHideFromCalendar(e.target.checked)}
-                                className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                                className={addItemModal.checkbox}
                             />
                             <label htmlFor="hideFromCalendarTask" className="text-sm font-medium text-primary">
                                 Hide from Calendar
@@ -135,11 +135,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                         </div>
                     </div>
 
-                    <div className="p-6 border-t border-border shrink-0">
-                        <button 
+                    <div className={addItemModal.footer}>
+                        <button
                             onClick={handleSave}
                             disabled={!content.trim()}
-                            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className={addItemModal.primaryButton}
                         >
                             <Check className="w-5 h-5" />
                             Add Task

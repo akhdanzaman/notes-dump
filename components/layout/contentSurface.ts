@@ -75,6 +75,34 @@ export const responsiveModal = {
   footer: 'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
 } as const;
 
+export const addItemModal = {
+  panel: `${responsiveModal.denseFormPanel} max-h-[90vh]`,
+  header: 'p-6 border-b border-border flex justify-between items-center shrink-0 bg-surface',
+  title: 'text-xl font-bold text-primary flex items-center gap-2',
+  icon: 'w-5 h-5 text-indigo-500',
+  closeButton: 'p-2 bg-muted/10 hover:bg-muted/20 rounded-full text-muted transition-colors',
+  body: 'p-6 space-y-4 overflow-y-auto',
+  footer: 'p-6 border-t border-border shrink-0 bg-surface',
+  label: 'block text-xs font-bold text-muted mb-1 uppercase tracking-wider',
+  input: 'w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium',
+  titleInput: 'w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-bold text-lg',
+  textarea: 'w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium min-h-[150px] resize-none',
+  select: 'w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none',
+  smallInput: 'w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500',
+  readonlyField: 'w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium flex items-center gap-2',
+  tabGroup: 'flex gap-2 p-1 bg-black/5 dark:bg-white/5 rounded-xl',
+  tabButton: (active: boolean) => `flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-colors ${active ? 'bg-surface text-primary shadow-sm' : 'text-muted hover:text-primary'}`,
+  choiceButton: (active: boolean, activeClass = 'bg-indigo-600 border-indigo-500 text-white shadow-md', inactiveClass = 'bg-background border-border text-muted hover:border-indigo-500') => `${active ? activeClass : inactiveClass}`,
+  sectionPanel: 'mt-4 p-4 border border-border rounded-2xl bg-muted/5 space-y-4',
+  accentSectionPanel: 'mt-4 p-4 border border-emerald-500/20 rounded-2xl bg-emerald-500/5 space-y-4',
+  accentPanel: 'p-4 border border-emerald-500/20 rounded-2xl bg-emerald-500/5 space-y-4',
+  sectionTitle: 'flex items-center gap-2 text-sm font-bold text-muted mb-3 uppercase tracking-wider',
+  accentSectionTitle: 'flex items-center gap-2 text-sm font-bold text-emerald-500 mb-3 uppercase tracking-wider',
+  helpText: 'text-xs text-muted mt-2',
+  checkbox: 'w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500',
+  primaryButton: 'w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2',
+} as const;
+
 export const controlCenterSurface = {
   panel: [
     'fixed bottom-0 left-0 right-0 bg-surface border-t border-border rounded-t-3xl z-[70] shadow-2xl max-w-2xl mx-auto flex flex-col h-[85vh]',
