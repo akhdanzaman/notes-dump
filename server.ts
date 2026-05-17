@@ -1,10 +1,43 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import crypto from "node:crypto";
 import { createServer as createViteServer } from "vite";
-import { assertServiceAccountRequestAllowed, checkServiceAccountSpreadsheetAccess, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from "./server/googleServiceAccount";
+import { assertServiceAccountRequestAllowed, assertServiceAccountSessionAllowed, assertServiceAccountSpreadsheetAllowed, checkServiceAccountSpreadsheetAccess, createServiceAccountSession, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from "./server/googleServiceAccount";
 
 dotenv.config();
+
+const splitForwardedHeader = (value: string | string[] | undefined, fallback = '') => (
+  Array.isArray(value) ? value[0] || fallback : value || fallback
+).split(',')[0].trim();
+
+const allowedOAuthOrigins = () => (process.env.OAUTH_ALLOWED_ORIGINS || process.env.SERVICE_ACCOUNT_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+const requestOrigin = (req: express.Request) => `${splitForwardedHeader(req.headers['x-forwarded-proto'], req.protocol)}://${req.get('host')}`;
+
+const resolveOAuthOrigin = (req: express.Request, candidate?: unknown) => {
+  const fallbackOrigin = requestOrigin(req);
+  const allowed = new Set([fallbackOrigin, ...allowedOAuthOrigins()].map(origin => new URL(origin).origin));
+  const origin = new URL(String(candidate || fallbackOrigin)).origin;
+  if (!allowed.has(origin)) throw new Error('OAuth origin is not allowed');
+  return origin;
+};
+
+const encodeOAuthState = (origin: string) => Buffer.from(JSON.stringify({ origin, nonce: crypto.randomUUID() })).toString('base64url');
+
+const decodeOAuthStateOrigin = (req: express.Request, state: unknown) => {
+  const raw = String(state || '');
+  if (!raw) return resolveOAuthOrigin(req);
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    return resolveOAuthOrigin(req, parsed.origin);
+  } catch {
+    return resolveOAuthOrigin(req, raw);
+  }
+};
 
 async function startServer() {
   const app = express();
@@ -28,9 +61,7 @@ async function startServer() {
       return res.status(500).json({ error: "Server configuration error: GOOGLE_CLIENT_ID is missing" });
     }
 
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const host = req.get('host');
-    const origin = req.query.origin as string || `${protocol}://${host}`;
+    const origin = resolveOAuthOrigin(req, req.query.origin);
     const redirectUri = `${origin}/auth/callback`;
     
     // Construct the OAuth provider's authorization URL
@@ -38,10 +69,10 @@ async function startServer() {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
       access_type: 'offline',
       prompt: 'consent',
-      state: origin // Pass origin in state
+      state: encodeOAuthState(origin)
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
@@ -50,8 +81,7 @@ async function startServer() {
 
   app.post("/api/auth/google/exchange", async (req, res) => {
     const { code, state } = req.body;
-    // Use state as origin if available, otherwise fallback to request host
-    const origin = (state as string) || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
+    const origin = decodeOAuthStateOrigin(req, state);
     const redirectUri = `${origin}/auth/callback`;
 
     try {
@@ -125,8 +155,21 @@ async function startServer() {
     try {
       assertServiceAccountRequestAllowed(req.headers);
       const spreadsheetId = validateSpreadsheetId(req.query.spreadsheetId);
+      assertServiceAccountSessionAllowed(req.headers);
+      assertServiceAccountSpreadsheetAllowed(spreadsheetId);
       const status = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
       res.status(status.accessible ? 200 : 403).json(status);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/spreadsheets/service-account/session", (req, res) => {
+    try {
+      assertServiceAccountRequestAllowed(req.headers);
+      const session = createServiceAccountSession(req.headers);
+      res.setHeader('Set-Cookie', session.cookie);
+      res.json({ csrfToken: session.csrfToken });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -141,6 +184,8 @@ async function startServer() {
     try {
       assertServiceAccountRequestAllowed(req.headers);
       const spreadsheetId = validateSpreadsheetId(req.query.spreadsheetId);
+      assertServiceAccountSessionAllowed(req.headers);
+      assertServiceAccountSpreadsheetAllowed(spreadsheetId);
       const path = validateSheetsPath(req.query.path);
       const body = req.method === 'GET' || req.method === 'HEAD'
         ? undefined

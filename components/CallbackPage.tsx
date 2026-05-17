@@ -31,7 +31,7 @@ const CallbackPage: React.FC = () => {
         const tokens = await response.json();
 
         if (window.opener) {
-          window.opener.postMessage({ type: 'GOOGLE_OAUTH_SUCCESS', tokens }, '*');
+          window.opener.postMessage({ type: 'GOOGLE_OAUTH_SUCCESS', tokens }, window.location.origin);
           setStatus('success');
           // Optional: close the window automatically after a short delay
           setTimeout(() => window.close(), 1500);
@@ -49,7 +49,7 @@ const CallbackPage: React.FC = () => {
         setErrorMessage(error.message || 'An unknown error occurred');
         
         if (window.opener) {
-          window.opener.postMessage({ type: 'GOOGLE_OAUTH_ERROR', error: error.message }, '*');
+          window.opener.postMessage({ type: 'GOOGLE_OAUTH_ERROR', error: error.message }, window.location.origin);
         }
       }
     };

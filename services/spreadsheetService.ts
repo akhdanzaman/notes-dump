@@ -1146,6 +1146,26 @@ export const clearPendingSpreadsheetWrite = (id?: string) => {
 
 const shouldRetrySpreadsheetRequest = (status: number) => status === 401 || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 
+let serviceAccountSessionPromise: Promise<string> | null = null;
+
+const ensureServiceAccountSession = async (): Promise<string> => {
+  if (!serviceAccountSessionPromise) {
+    serviceAccountSessionPromise = fetch('/api/spreadsheets/service-account/session', { method: 'POST' })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.csrfToken) {
+          throw new Error(data.error || `Failed to start service-account spreadsheet session (${response.status})`);
+        }
+        return String(data.csrfToken);
+      })
+      .catch(error => {
+        serviceAccountSessionPromise = null;
+        throw error;
+      });
+  }
+  return serviceAccountSessionPromise;
+};
+
 const isServiceAccountProxyInvocationFailure = async (response: Response): Promise<boolean> => {
   if (response.status < 500) return false;
   try {
@@ -1157,7 +1177,10 @@ const isServiceAccountProxyInvocationFailure = async (response: Response): Promi
 };
 
 export const checkServiceAccountSpreadsheetAccess = async (spreadsheetId: string): Promise<ServiceAccountSpreadsheetStatus> => {
-  const response = await fetch(`/api/spreadsheets/service-account/status?spreadsheetId=${encodeURIComponent(spreadsheetId)}`);
+  const csrfToken = await ensureServiceAccountSession();
+  const response = await fetch(`/api/spreadsheets/service-account/status?spreadsheetId=${encodeURIComponent(spreadsheetId)}`, {
+    headers: { 'X-Arkaiv-Csrf': csrfToken },
+  });
   const data = await response.json().catch(() => ({}));
   return {
     configured: !!data.configured,
@@ -1177,9 +1200,13 @@ const serviceAccountSheetsFetch = async (
 ): Promise<Response> => {
   const headers = new Headers(init.headers || {});
   const contentType = headers.get('content-type') || headers.get('Content-Type');
+  const csrfToken = await ensureServiceAccountSession();
   return fetch(`/api/spreadsheets/service-account/proxy?spreadsheetId=${encodeURIComponent(spreadsheetId)}&path=${encodeURIComponent(path)}`, {
     method: init.method || 'GET',
-    headers: contentType ? { 'Content-Type': contentType } : undefined,
+    headers: {
+      ...(contentType ? { 'Content-Type': contentType } : {}),
+      'X-Arkaiv-Csrf': csrfToken,
+    },
     body: init.body,
   });
 };

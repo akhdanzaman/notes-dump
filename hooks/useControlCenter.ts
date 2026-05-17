@@ -142,6 +142,7 @@ export const useControlCenter = ({
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
             if (event.data?.type === 'GOOGLE_OAUTH_SUCCESS' && event.data.tokens) {
                 handleGoogleLoginSuccess(event.data.tokens);
             }

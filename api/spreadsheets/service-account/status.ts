@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { assertServiceAccountRequestAllowed, checkServiceAccountSpreadsheetAccess, validateSpreadsheetId } from '../../_lib/googleServiceAccount.js';
+import { assertServiceAccountRequestAllowed, assertServiceAccountSessionAllowed, assertServiceAccountSpreadsheetAllowed, checkServiceAccountSpreadsheetAccess, validateSpreadsheetId } from '../../_lib/googleServiceAccount.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -10,6 +10,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     assertServiceAccountRequestAllowed(req.headers);
     const spreadsheetId = validateSpreadsheetId(req.query.spreadsheetId);
+    assertServiceAccountSessionAllowed(req.headers);
+    assertServiceAccountSpreadsheetAllowed(spreadsheetId);
     const status = await checkServiceAccountSpreadsheetAccess(spreadsheetId);
     return res.status(status.accessible ? 200 : 403).json(status);
   } catch (error: any) {

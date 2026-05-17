@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.127',
+    date: 'May 2026',
+    items: [
+      'Hardened backend sync security: service-account spreadsheet calls now require a same-origin session token and production spreadsheet allowlist, OAuth callback messaging is origin-checked, tracked environment secrets were removed, and production dependency audit issues were cleared.',
+    ],
+  },
+  {
     version: 'v0.3.126',
     date: 'May 2026',
     items: [

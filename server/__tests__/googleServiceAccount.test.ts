@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
   assertServiceAccountRequestAllowed,
+  assertServiceAccountSessionAllowed,
+  assertServiceAccountSpreadsheetAllowed,
+  createServiceAccountSession,
   DEFAULT_SERVICE_ACCOUNT_EMAIL,
   checkServiceAccountSpreadsheetAccess,
   getConfiguredServiceAccountEmail,
@@ -81,5 +84,49 @@ test('service account request guard requires browser origin signal in production
   } finally {
     if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = originalNodeEnv;
+  }
+});
+
+test('service account sessions require signed cookie and csrf header', () => {
+  const originalSecret = process.env.SERVICE_ACCOUNT_SESSION_SECRET;
+  process.env.SERVICE_ACCOUNT_SESSION_SECRET = 'unit-test-session-secret';
+  try {
+    const headers = {
+      host: 'notes.example.com',
+      'x-forwarded-proto': 'https',
+      origin: 'https://notes.example.com',
+      'sec-fetch-site': 'same-origin',
+    };
+    const session = createServiceAccountSession(headers);
+    assert.match(session.cookie, /arkaiv_sa_session=/);
+    assert.doesNotThrow(() => assertServiceAccountSessionAllowed({
+      ...headers,
+      cookie: session.cookie.split(';')[0],
+      'x-arkaiv-csrf': session.csrfToken,
+    }));
+    assert.throws(() => assertServiceAccountSessionAllowed({
+      ...headers,
+      cookie: session.cookie.split(';')[0],
+      'x-arkaiv-csrf': 'wrong-token',
+    }), /Invalid service-account spreadsheet session token/);
+  } finally {
+    if (originalSecret === undefined) delete process.env.SERVICE_ACCOUNT_SESSION_SECRET;
+    else process.env.SERVICE_ACCOUNT_SESSION_SECRET = originalSecret;
+  }
+});
+
+test('service account spreadsheet allowlist is enforced in production', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalAllowlist = process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS;
+  process.env.NODE_ENV = 'production';
+  process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS = 'sheet-allowed';
+  try {
+    assert.doesNotThrow(() => assertServiceAccountSpreadsheetAllowed('sheet-allowed'));
+    assert.throws(() => assertServiceAccountSpreadsheetAllowed('sheet-blocked'), /not allowlisted/);
+  } finally {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    if (originalAllowlist === undefined) delete process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS;
+    else process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS = originalAllowlist;
   }
 });

@@ -9,6 +9,15 @@ const SERVICE_ACCOUNT_ALLOWED_ORIGINS = (process.env.SERVICE_ACCOUNT_ALLOWED_ORI
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+const getServiceAccountAllowedSpreadsheetIds = () => (process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS || process.env.SERVICE_ACCOUNT_SPREADSHEET_IDS || '')
+  .split(',')
+  .map(id => id.trim())
+  .filter(Boolean);
+
+export const SERVICE_ACCOUNT_SESSION_COOKIE = 'arkaiv_sa_session';
+export const SERVICE_ACCOUNT_CSRF_HEADER = 'x-arkaiv-csrf';
+
+const SERVICE_ACCOUNT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 let cachedToken: { accessToken: string; expiresAtMs: number } | null = null;
 
@@ -27,6 +36,22 @@ const base64Url = (input: string | Buffer) => Buffer.from(input)
   .replace(/=/g, '')
   .replace(/\+/g, '-')
   .replace(/\//g, '_');
+
+const decodeBase64Url = (input: string) => {
+  const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+  return Buffer.from(padded, 'base64').toString('utf8');
+};
+
+const sha256 = (input: string) => crypto.createHash('sha256').update(input).digest('hex');
+
+const hmac = (input: string, secret: string) => crypto.createHmac('sha256', secret).update(input).digest('hex');
+
+const safeEqual = (a: string, b: string) => {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+};
 
 const parseJsonMaybeBase64 = (value: string) => {
   const trimmed = value.trim();
@@ -138,6 +163,15 @@ const getHeaderValue = (headers: Record<string, unknown>, name: string): string 
   return String(value || '');
 };
 
+const getCookieValue = (headers: Record<string, unknown>, name: string): string => {
+  const cookie = getHeaderValue(headers, 'cookie');
+  return cookie
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1) || '';
+};
+
 const splitForwardedHeader = (value: string) => value.split(',')[0]?.trim() || '';
 
 const getRequestOrigin = (headers: Record<string, unknown>) => {
@@ -146,6 +180,73 @@ const getRequestOrigin = (headers: Record<string, unknown>) => {
   if (!host) return '';
   const proto = splitForwardedHeader(getHeaderValue(headers, 'x-forwarded-proto')) || 'https';
   return `${proto}://${host}`;
+};
+
+const getSessionSigningSecret = () => (
+  process.env.SERVICE_ACCOUNT_SESSION_SECRET
+  || process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+  || process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+  || process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+  || (process.env.NODE_ENV === 'production' ? '' : 'arkaiv-development-service-account-session')
+);
+
+export const createServiceAccountSession = (headers: Record<string, unknown>) => {
+  const secret = getSessionSigningSecret();
+  if (!secret) {
+    throw new Error('SERVICE_ACCOUNT_SESSION_SECRET is required for service-account spreadsheet sessions.');
+  }
+
+  const csrfToken = base64Url(crypto.randomBytes(32));
+  const payload = base64Url(JSON.stringify({
+    nonce: base64Url(crypto.randomBytes(16)),
+    csrfHash: sha256(csrfToken),
+    exp: Date.now() + SERVICE_ACCOUNT_SESSION_TTL_MS,
+  }));
+  const signature = hmac(payload, secret);
+  const secure = getRequestOrigin(headers).startsWith('https://') || process.env.NODE_ENV === 'production';
+  const cookieParts = [
+    `${SERVICE_ACCOUNT_SESSION_COOKIE}=${payload}.${signature}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Strict',
+    `Max-Age=${Math.floor(SERVICE_ACCOUNT_SESSION_TTL_MS / 1000)}`,
+  ];
+  if (secure) cookieParts.push('Secure');
+  return { csrfToken, cookie: cookieParts.join('; ') };
+};
+
+export const assertServiceAccountSessionAllowed = (headers: Record<string, unknown>) => {
+  const secret = getSessionSigningSecret();
+  if (!secret) {
+    throw new Error('SERVICE_ACCOUNT_SESSION_SECRET is required for service-account spreadsheet sessions.');
+  }
+
+  const session = getCookieValue(headers, SERVICE_ACCOUNT_SESSION_COOKIE);
+  const csrfToken = getHeaderValue(headers, SERVICE_ACCOUNT_CSRF_HEADER);
+  const [payload, signature] = session.split('.');
+  if (!payload || !signature || !csrfToken) {
+    throw new Error('Service-account spreadsheet API requires an active same-origin app session.');
+  }
+  if (!safeEqual(hmac(payload, secret), signature)) {
+    throw new Error('Invalid service-account spreadsheet session.');
+  }
+
+  const parsed = JSON.parse(decodeBase64Url(payload));
+  if (!parsed?.exp || Date.now() > Number(parsed.exp)) {
+    throw new Error('Service-account spreadsheet session expired.');
+  }
+  if (!parsed?.csrfHash || !safeEqual(String(parsed.csrfHash), sha256(csrfToken))) {
+    throw new Error('Invalid service-account spreadsheet session token.');
+  }
+};
+
+export const assertServiceAccountSpreadsheetAllowed = (spreadsheetId: string) => {
+  const allowedSpreadsheetIds = getServiceAccountAllowedSpreadsheetIds();
+  if (allowedSpreadsheetIds.includes('*')) return;
+  if (allowedSpreadsheetIds.includes(spreadsheetId)) return;
+  if (allowedSpreadsheetIds.length === 0 && process.env.NODE_ENV !== 'production') return;
+
+  throw new Error('Spreadsheet is not allowlisted for service-account access. Set SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS on the server.');
 };
 
 const isAllowedOrigin = (candidate: string, headers: Record<string, unknown>) => {
