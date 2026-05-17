@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.128',
+    date: 'May 2026',
+    items: [
+      'Tightened backend auth hardening further: Google OAuth state is now signed and expires quickly, popup token handoff checks the actual popup window, and service-account sync no longer silently falls back to user OAuth for permission, allowlist, or session errors.',
+    ],
+  },
+  {
     version: 'v0.3.127',
     date: 'May 2026',
     items: [

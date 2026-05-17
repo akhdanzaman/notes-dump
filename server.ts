@@ -26,16 +26,44 @@ const resolveOAuthOrigin = (req: express.Request, candidate?: unknown) => {
   return origin;
 };
 
-const encodeOAuthState = (origin: string) => Buffer.from(JSON.stringify({ origin, nonce: crypto.randomUUID() })).toString('base64url');
+const getOAuthStateSecret = () => (
+  process.env.OAUTH_STATE_SECRET
+  || process.env.SERVICE_ACCOUNT_SESSION_SECRET
+  || process.env.GOOGLE_CLIENT_SECRET
+  || (process.env.NODE_ENV === 'production' ? '' : 'arkaiv-development-oauth-state')
+);
+
+const hmac = (input: string, secret: string) => crypto.createHmac('sha256', secret).update(input).digest('base64url');
+
+const safeEqual = (a: string, b: string) => {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+};
+
+const createOAuthState = (origin: string) => {
+  const secret = getOAuthStateSecret();
+  if (!secret) throw new Error('OAUTH_STATE_SECRET or GOOGLE_CLIENT_SECRET is required for OAuth state signing.');
+  const payload = Buffer.from(JSON.stringify({ origin, nonce: crypto.randomUUID(), exp: Date.now() + 10 * 60 * 1000 })).toString('base64url');
+  return `${payload}.${hmac(payload, secret)}`;
+};
 
 const decodeOAuthStateOrigin = (req: express.Request, state: unknown) => {
   const raw = String(state || '');
   if (!raw) return resolveOAuthOrigin(req);
+  const [payload, signature] = raw.split('.');
+  const secret = getOAuthStateSecret();
+  if (!secret) throw new Error('OAUTH_STATE_SECRET or GOOGLE_CLIENT_SECRET is required for OAuth state verification.');
+  if (!payload || !signature || !safeEqual(hmac(payload, secret), signature)) {
+    throw new Error('Invalid OAuth state');
+  }
   try {
-    const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!parsed.exp || Date.now() > Number(parsed.exp)) throw new Error('OAuth state expired');
     return resolveOAuthOrigin(req, parsed.origin);
-  } catch {
-    return resolveOAuthOrigin(req, raw);
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error('Invalid OAuth state');
   }
 };
 
@@ -72,7 +100,7 @@ async function startServer() {
       scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
       access_type: 'offline',
       prompt: 'consent',
-      state: encodeOAuthState(origin)
+      state: createOAuthState(origin)
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;

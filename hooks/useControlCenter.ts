@@ -74,6 +74,7 @@ export const useControlCenter = ({
     // Google Calendar
     const [gCalKey, setGCalKey] = useState('');
     const [gCalId, setGCalId] = useState('');
+    const oauthPopupRef = useRef<Window | null>(null);
 
     // Budget
     const [monthlyIncome, setMonthlyIncome] = useState<number>(0);
@@ -143,8 +144,12 @@ export const useControlCenter = ({
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.origin !== window.location.origin) return;
+            if (oauthPopupRef.current && event.source !== oauthPopupRef.current) return;
             if (event.data?.type === 'GOOGLE_OAUTH_SUCCESS' && event.data.tokens) {
                 handleGoogleLoginSuccess(event.data.tokens);
+                oauthPopupRef.current = null;
+            } else if (event.data?.type === 'GOOGLE_OAUTH_ERROR') {
+                oauthPopupRef.current = null;
             }
         };
 
@@ -303,8 +308,10 @@ export const useControlCenter = ({
                 'oauth_popup',
                 'width=600,height=700'
             );
+            oauthPopupRef.current = authWindow;
 
             if (!authWindow) {
+                oauthPopupRef.current = null;
                 // Popup was blocked
                 alert('Please allow popups for this site to connect your account.');
             }

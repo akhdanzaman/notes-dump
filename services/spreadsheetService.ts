@@ -1217,6 +1217,10 @@ const shouldRetryServiceAccountProxyResponse = async (response: Response) => {
   return isServiceAccountProxyInvocationFailure(response);
 };
 
+const shouldUseOauthFallbackForServiceAccountResponse = async (response: Response) => {
+  return isServiceAccountProxyInvocationFailure(response);
+};
+
 const oauthSheetsFetch = async (
   spreadsheetId: string,
   path: string,
@@ -1274,13 +1278,14 @@ const sheetsFetch = async (
       await wait(delayMs);
       return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
     }
-    // Try OAuth fallback for any non-success service-account response
-    // (not just 500+ proxy failures — 403s from missing Editor share also need fallback)
-    if (!response.ok) {
+    // Only fall back to browser OAuth when the platform proxy itself failed.
+    // Permission, allowlist, session, or sharing errors must remain visible instead of
+    // silently writing as a different Google principal.
+    if (!response.ok && await shouldUseOauthFallbackForServiceAccountResponse(response.clone())) {
       const fallback = await tryOauthSheetsFallback(spreadsheetId, path, init, tokenOverride);
       if (fallback) return fallback;
-      return response;
     }
+    if (!response.ok) return response;
 
     if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
       return response;
@@ -2487,6 +2492,7 @@ export const __test__ = {
   columnLabel,
   getItemExportSheetNames,
   isServiceAccountProxyInvocationFailure,
+  shouldUseOauthFallbackForServiceAccountResponse,
   buildCurrentRawDbFromValueRanges,
   buildDedicatedDbFromValueRanges,
   parseConfigSheets,

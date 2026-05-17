@@ -96,6 +96,18 @@ test('service-account proxy invocation failures are detected for OAuth fallback'
     await __test__.isServiceAccountProxyInvocationFailure(new Response('{"error":"bad request"}', { status: 400 })),
     false,
   );
+  assert.equal(
+    await __test__.shouldUseOauthFallbackForServiceAccountResponse(new Response('A server error has occurred FUNCTION_INVOCATION_FAILED sin1::abc', { status: 500 })),
+    true,
+  );
+  assert.equal(
+    await __test__.shouldUseOauthFallbackForServiceAccountResponse(new Response('{"error":"Spreadsheet is not allowlisted"}', { status: 400 })),
+    false,
+  );
+  assert.equal(
+    await __test__.shouldUseOauthFallbackForServiceAccountResponse(new Response('{"error":"The caller does not have permission"}', { status: 403 })),
+    false,
+  );
 });
 
 const existingExportSheetTitles = new Set([

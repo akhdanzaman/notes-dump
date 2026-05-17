@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import crypto from 'node:crypto';
 
 const firstHeaderValue = (value: string | string[] | undefined, fallback = '') => (
   Array.isArray(value) ? value[0] || fallback : value || fallback
@@ -23,14 +24,37 @@ const resolveAllowedOrigin = (req: VercelRequest, candidate: string) => {
   return origin;
 };
 
+const getOAuthStateSecret = () => (
+  process.env.OAUTH_STATE_SECRET
+  || process.env.SERVICE_ACCOUNT_SESSION_SECRET
+  || process.env.GOOGLE_CLIENT_SECRET
+  || (process.env.NODE_ENV === 'production' ? '' : 'arkaiv-development-oauth-state')
+);
+
+const hmac = (input: string, secret: string) => crypto.createHmac('sha256', secret).update(input).digest('base64url');
+
+const safeEqual = (a: string, b: string) => {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+};
+
 const decodeOAuthStateOrigin = (req: VercelRequest, state: unknown) => {
   const raw = String(state || '');
   if (!raw) return resolveAllowedOrigin(req, requestOrigin(req));
+  const [payload, signature] = raw.split('.');
+  const secret = getOAuthStateSecret();
+  if (!secret) throw new Error('OAUTH_STATE_SECRET or GOOGLE_CLIENT_SECRET is required for OAuth state verification.');
+  if (!payload || !signature || !safeEqual(hmac(payload, secret), signature)) {
+    throw new Error('Invalid OAuth state');
+  }
   try {
-    const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!parsed.exp || Date.now() > Number(parsed.exp)) throw new Error('OAuth state expired');
     return resolveAllowedOrigin(req, String(parsed.origin || ''));
-  } catch {
-    return resolveAllowedOrigin(req, raw);
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error('Invalid OAuth state');
   }
 };
 

@@ -25,8 +25,21 @@ const resolveOAuthOrigin = (req: VercelRequest) => {
   return origin;
 };
 
-const encodeOAuthState = (origin: string) => Buffer.from(JSON.stringify({ origin, nonce: crypto.randomUUID() }))
-  .toString('base64url');
+const getOAuthStateSecret = () => (
+  process.env.OAUTH_STATE_SECRET
+  || process.env.SERVICE_ACCOUNT_SESSION_SECRET
+  || process.env.GOOGLE_CLIENT_SECRET
+  || (process.env.NODE_ENV === 'production' ? '' : 'arkaiv-development-oauth-state')
+);
+
+const hmac = (input: string, secret: string) => crypto.createHmac('sha256', secret).update(input).digest('base64url');
+
+const encodeOAuthState = (origin: string) => {
+  const secret = getOAuthStateSecret();
+  if (!secret) throw new Error('OAUTH_STATE_SECRET or GOOGLE_CLIENT_SECRET is required for OAuth state signing.');
+  const payload = Buffer.from(JSON.stringify({ origin, nonce: crypto.randomUUID(), exp: Date.now() + 10 * 60 * 1000 })).toString('base64url');
+  return `${payload}.${hmac(payload, secret)}`;
+};
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
