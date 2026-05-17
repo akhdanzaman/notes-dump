@@ -151,6 +151,31 @@ test('child completion updates progress but parent only auto-completes when expl
   assert.equal(completedParent?.completed_at, '2026-05-01T03:00:00.000Z');
 });
 
+test('all-subtasks deep work parent reopens when a child step is undone', () => {
+  const allDoneItems = makeDeepWorkItems().map(item => {
+    if (item.id === 'parent-1') {
+      return { ...item, meta: { ...item.meta, deepWorkCompletionMode: 'all_subtasks' as const } };
+    }
+    if (item.id === 'child-2') {
+      return { ...item, status: 'done' as const, completed_at: '2026-05-01T02:00:00.000Z' };
+    }
+    return item;
+  });
+
+  const completed = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(allDoneItems), '2026-05-01T03:00:00.000Z');
+  assert.equal(completed.find(item => item.id === 'parent-1')?.status, 'done');
+
+  const childUndone = completed.map(item => item.id === 'child-2'
+    ? { ...item, status: 'pending' as const, completed_at: undefined }
+    : item);
+  const reopened = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(childUndone), '2026-05-01T04:00:00.000Z');
+  const reopenedParent = reopened.find(item => item.id === 'parent-1');
+
+  assert.equal(reopenedParent?.status, 'pending');
+  assert.equal(reopenedParent?.completed_at, undefined);
+  assert.equal(reopenedParent?.meta.progress, 50);
+});
+
 test('manual focus subtasks create child todos and roll up parent progress', () => {
   const parent: BrainDumpItem = {
     id: 'focus-1',

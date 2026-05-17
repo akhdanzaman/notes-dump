@@ -102,6 +102,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const rootTomorrow = tomorrow.filter(item => !item.meta.parentTodoId);
     const rootLater = later.filter(item => !item.meta.parentTodoId);
     const rootRoutines = (routines || []).filter(item => !item.meta.parentTodoId);
+    const rootDone = doneList.filter(item => !item.meta.parentTodoId);
 
     const { urgent, routine, normal, savings, investments } = getShoppingItems(items);
     const isShoppingEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
@@ -113,6 +114,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const visibleRoutines = useLazyItems(rootRoutines, { resetKey: `${taskResetKey}-routines-${rootRoutines.length}` });
     const visibleTomorrow = useLazyItems(rootTomorrow, { resetKey: `${taskResetKey}-tomorrow-${rootTomorrow.length}` });
     const visibleLater = useLazyItems(rootLater, { resetKey: `${taskResetKey}-later-${rootLater.length}` });
+    const visibleDone = useLazyItems(rootDone, { resetKey: `${taskResetKey}-done-${rootDone.length}` });
     const visibleUrgent = useLazyItems(urgent, { resetKey: `${shoppingResetKey}-urgent-${urgent.length}` });
     const visibleRoutineShopping = useLazyItems(routine, { resetKey: `${shoppingResetKey}-routine-${routine.length}` });
     const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal-${normal.length}` });
@@ -1139,7 +1141,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     <div className="space-y-8">
-                        {summary.todo > 0 ? (
+                        {summary.todo > 0 || rootDone.length > 0 ? (
                             <div className={contentSurface.taskWorkspaceGrid} data-plan-workspace="tasks">
                                 <div className="space-y-4 lg:space-y-4">
                                     <section className={contentSurface.workflowPanel}>
@@ -1183,6 +1185,20 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
                                         )}
                                     </section>
+
+                                    {rootDone.length > 0 && (
+                                        <section className={contentSurface.workflowPanel}>
+                                            <div className="flex items-center justify-between mb-3 pl-1">
+                                                <h3 className="text-sm font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-2">
+                                                    <span className="bg-emerald-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Done
+                                                </h3>
+                                            </div>
+                                            <div className={`${contentSurface.denseList} opacity-70`}>
+                                                {visibleDone.visibleItems.map(renderTaskCard)}
+                                                <LoadMoreButton remainingCount={visibleDone.remainingCount} onClick={visibleDone.loadMore} />
+                                            </div>
+                                        </section>
+                                    )}
                                 </div>
 
                                 <section className={contentSurface.workflowPanel}>

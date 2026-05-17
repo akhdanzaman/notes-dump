@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.129',
+    date: 'May 2026',
+    items: [
+      'Hardened Task & Focus behavior: all-subtasks Deep Work parents now reopen if a completed child step is undone, focus summary counts no longer double-count child subtasks, and the Plan task workspace now keeps completed top-level tasks visible for review/editing.',
+    ],
+  },
+  {
     version: 'v0.3.128',
     date: 'May 2026',
     items: [

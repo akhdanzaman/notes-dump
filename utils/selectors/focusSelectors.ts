@@ -6,6 +6,8 @@ export const getPriorityWeight = (p?: string) => {
     return 2; // normal or undefined
 };
 
+const isRootFocusItem = (item: BrainDumpItem) => !item.meta.parentTodoId;
+
 export const getFocusItems = (items: BrainDumpItem[]) => {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -103,8 +105,8 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
     });
 
     // 2. Split Pending / Done (Excluding routines from doneList)
-    const pendingList = relevantItems.filter(i => i.status === 'pending');
-    const doneList = relevantItems.filter(i => i.status === 'done' && !i.meta.isRoutine);
+    const pendingList = relevantItems.filter(i => i.status === 'pending' && isRootFocusItem(i));
+    const doneList = relevantItems.filter(i => i.status === 'done' && !i.meta.isRoutine && isRootFocusItem(i));
 
     // 3. Group Pending & Routines
     const now = new Date();
@@ -190,6 +192,7 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
     // Calculate Counts
     // Future pending routines count as "Done" contextually (temporarily done)
     const futurePendingRoutines = routines.filter(r => 
+        isRootFocusItem(r) &&
         r.status === 'pending' && 
         r.meta.date && 
         new Date(r.meta.date) > now
@@ -200,7 +203,7 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
     const activePendingCount = pendingList.length - futurePendingRoutines.length;
 
     // Done count: Done non-routines + Done routines + Future pending routines
-    const doneRoutinesCount = routines.filter(r => r.status === 'done').length;
+    const doneRoutinesCount = routines.filter(r => r.status === 'done' && isRootFocusItem(r)).length;
     const totalDoneCount = doneList.length + doneRoutinesCount + futurePendingRoutines.length;
 
     return {

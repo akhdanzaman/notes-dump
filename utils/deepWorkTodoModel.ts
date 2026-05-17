@@ -161,17 +161,39 @@ export const applyDeepWorkCompletionSemantics = (items: BrainDumpItem[], now = n
   const next = items.map(item => {
     if (item.type !== ItemType.TODO) return item;
     const children = getDeepWorkChildren(items, item.id);
-    if (!shouldAutoCompleteDeepWorkParent(item, children)) return item;
-    changed = true;
-    return {
-      ...item,
-      status: 'done' as const,
-      completed_at: now,
-      meta: {
-        ...item.meta,
-        progress: 100,
-      },
-    };
+    if (children.length === 0 || item.meta.deepWorkCompletionMode !== 'all_subtasks') return item;
+
+    const doneCount = children.filter(child => child.status === 'done').length;
+    const progress = Math.round((doneCount / children.length) * 100);
+    const allChildrenDone = doneCount === children.length;
+
+    if (allChildrenDone && item.status !== 'done') {
+      changed = true;
+      return {
+        ...item,
+        status: 'done' as const,
+        completed_at: now,
+        meta: {
+          ...item.meta,
+          progress: 100,
+        },
+      };
+    }
+
+    if (!allChildrenDone && item.status === 'done') {
+      changed = true;
+      return {
+        ...item,
+        status: 'pending' as const,
+        completed_at: undefined,
+        meta: {
+          ...item.meta,
+          progress,
+        },
+      };
+    }
+
+    return item;
   });
   return changed ? next : items;
 };
