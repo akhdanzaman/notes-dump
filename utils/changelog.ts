@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.131',
+    date: 'May 2026',
+    items: [
+      'Vercel installs now use the official npm registry: the project lockfile no longer points selected tarballs at mirrors.tencentyun.com, and a project .npmrc pins registry.npmjs.org for reproducible cloud builds.',
+    ],
+  },
+  {
     version: 'v0.3.130',
     date: 'May 2026',
     items: [
