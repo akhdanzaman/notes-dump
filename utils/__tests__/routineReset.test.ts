@@ -63,3 +63,49 @@ test('shopping routine reset preserves history item but clears parent history po
   assert.equal(resetRoutine?.meta.lastGeneratedHistoryId, undefined);
   assert.ok(resetItems.find(item => item.id === 'finance-history-1'));
 });
+
+test('routine reset uses scheduled due date instead of completion time', () => {
+  const routine: BrainDumpItem = {
+    id: 'late-completed-routine',
+    type: ItemType.TODO,
+    content: 'Daily review',
+    status: 'done',
+    created_at: '2026-05-01T00:00:00.000Z',
+    completed_at: '2026-05-01T23:30:00.000Z',
+    meta: {
+      isRoutine: true,
+      routineInterval: 'daily',
+      date: '2026-05-01T00:00:00.000Z',
+      progress: 100,
+    },
+  };
+
+  const [reset] = resetDueRoutineItems([routine], new Date('2026-05-02T00:00:01.000Z'));
+
+  assert.equal(reset.status, 'pending');
+  assert.equal(reset.completed_at, undefined);
+  assert.equal(reset.meta.date, '2026-05-02T00:00:00.000Z');
+});
+
+test('weekly routine reset follows selected schedule even when completed late in the day', () => {
+  const routine: BrainDumpItem = {
+    id: 'weekly-routine',
+    type: ItemType.TODO,
+    content: 'Weekly cleanup',
+    status: 'done',
+    created_at: '2026-05-11T00:00:00.000Z',
+    completed_at: '2026-05-11T22:00:00.000Z',
+    meta: {
+      isRoutine: true,
+      routineInterval: 'weekly',
+      routineDaysOfWeek: [1, 4],
+      date: '2026-05-11T00:00:00.000Z',
+      progress: 100,
+    },
+  };
+
+  const [reset] = resetDueRoutineItems([routine], new Date('2026-05-14T00:00:01.000Z'));
+
+  assert.equal(reset.status, 'pending');
+  assert.equal(reset.meta.date, '2026-05-14T00:00:00.000Z');
+});

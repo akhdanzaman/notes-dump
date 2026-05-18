@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.130',
+    date: 'May 2026',
+    items: [
+      'Routine resets now keep running while the app stays open: the app checks due routines every minute and again when the tab becomes visible or focused.',
+      'Routine next-cycle dates now anchor to the scheduled due date instead of the completion timestamp, so routines completed late in the day reset on the actual next scheduled day.',
+    ],
+  },
+  {
     version: 'v0.3.129',
     date: 'May 2026',
     items: [

@@ -101,12 +101,14 @@ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Da
 
         if ((isShoppingRoutine || isTodoRoutine) && item.status === 'done' && item.completed_at) {
             const completedDate = new Date(item.completed_at);
-            let nextDueTime = completedDate.getTime();
+            const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
+            const anchorDate = !Number.isNaN(scheduledDate.getTime()) ? scheduledDate : completedDate;
+            let nextDueTime = anchorDate.getTime();
 
             if (isShoppingRoutine) {
                 if (item.meta.routineInterval) {
                     nextDueTime = calculateNextDueDate(
-                        completedDate,
+                        anchorDate,
                         item.meta.routineInterval,
                         item.meta.routineDaysOfWeek,
                         item.meta.routineDaysOfMonth,
@@ -114,11 +116,11 @@ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Da
                     ).getTime();
                 } else {
                     const recurrenceDays = item.meta.recurrenceDays || 7;
-                    nextDueTime = completedDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000);
+                    nextDueTime = anchorDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000);
                 }
             } else if (isTodoRoutine) {
                 nextDueTime = calculateNextDueDate(
-                    completedDate,
+                    anchorDate,
                     item.meta.routineInterval || 'daily',
                     item.meta.routineDaysOfWeek,
                     item.meta.routineDaysOfMonth,
@@ -678,6 +680,18 @@ export const useBrainDumpData = () => {
         );
     }, [performSaveAndSync]);
 
+    const runRoutineResetIfDue = useCallback(() => {
+        const currentItems = itemsRef.current;
+        if (currentItems.length === 0) return;
+
+        const updatedItems = checkRoutineResets(currentItems);
+        if (JSON.stringify(updatedItems) === JSON.stringify(currentItems)) return;
+
+        itemsRef.current = updatedItems;
+        setItems(updatedItems);
+        saveAndSync(updatedItems);
+    }, [saveAndSync]);
+
     const replaceHistoricalCanonicalReviews = useCallback((reviews: HistoricalCanonicalReview[]) => {
         setPendingReviews(prev => [
             ...reviews,
@@ -881,6 +895,24 @@ export const useBrainDumpData = () => {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    useEffect(() => {
+        const handleVisibleOrFocused = () => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+            runRoutineResetIfDue();
+        };
+
+        // Keep routines moving while the app stays open across midnight/day changes.
+        const intervalId = window.setInterval(runRoutineResetIfDue, 60 * 1000);
+        window.addEventListener('focus', handleVisibleOrFocused);
+        document.addEventListener('visibilitychange', handleVisibleOrFocused);
+
+        return () => {
+            window.clearInterval(intervalId);
+            window.removeEventListener('focus', handleVisibleOrFocused);
+            document.removeEventListener('visibilitychange', handleVisibleOrFocused);
+        };
+    }, [runRoutineResetIfDue]);
 
     const flushDeferredSyncAfterParsing = useCallback(async () => {
         if (hasActiveParsing()) return;

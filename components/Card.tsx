@@ -470,7 +470,8 @@ const Card: React.FC<CardProps> = ({
   let nextDueText = null;
   let isWaitingForNextCycle = false;
   if (meta.isRoutine && status === 'done' && completed_at) {
-     const doneDate = new Date(completed_at);
+     const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
+     const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
      
      const nextDate = calculateNextDueDate(
          doneDate,

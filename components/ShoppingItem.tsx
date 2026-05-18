@@ -135,7 +135,8 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   let nextDueText = null;
   let isWaitingForNextCycle = false;
   if (isRoutine && isDone && completed_at) {
-     const doneDate = new Date(completed_at);
+     const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
+     const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
      
      const nextDate = calculateNextDueDate(
          doneDate,
