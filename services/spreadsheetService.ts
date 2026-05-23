@@ -350,6 +350,60 @@ const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
   return sheets;
 };
 
+const getExpectedItemIdsBySheet = (items: BrainDumpItem[]) => {
+  const idsBySheet = new Map<string, Set<string>>();
+
+  for (const item of items) {
+    if (!item.id) continue;
+    for (const sheetName of getItemExportSheetNames(item)) {
+      const ids = idsBySheet.get(sheetName) || new Set<string>();
+      ids.add(item.id);
+      idsBySheet.set(sheetName, ids);
+    }
+  }
+
+  return idsBySheet;
+};
+
+const findMissingExpectedItemRows = (
+  expectedIdsBySheet: Map<string, Set<string>>,
+  actualIdsBySheet: Map<string, Set<string>>,
+): MissingSpreadsheetItemRow[] => {
+  const missing: MissingSpreadsheetItemRow[] = [];
+
+  for (const [sheetName, expectedIds] of expectedIdsBySheet) {
+    const actualIds = actualIdsBySheet.get(sheetName) || new Set<string>();
+    for (const itemId of expectedIds) {
+      if (!actualIds.has(itemId)) missing.push({ sheetName, itemId });
+    }
+  }
+
+  return missing;
+};
+
+const getItemIdsBySheetFromValueRanges = (valueRanges: any[]) => {
+  const idsBySheet = new Map<string, Set<string>>();
+
+  for (const valueRange of valueRanges || []) {
+    const sheetName = getTitleFromRange(String(valueRange.range || ''));
+    const rows = Array.isArray(valueRange.values) ? valueRange.values : [];
+    const headers = rows[0] || [];
+    const idColumnIndex = headers.indexOf('ID');
+    const ids = new Set<string>();
+
+    if (idColumnIndex >= 0) {
+      rows.slice(1).forEach((row: unknown[]) => {
+        const id = String(row?.[idColumnIndex] || '').trim();
+        if (id) ids.add(id);
+      });
+    }
+
+    if (sheetName) idsBySheet.set(sheetName, ids);
+  }
+
+  return idsBySheet;
+};
+
 const isGeneratedDashboardSheet = (sheetName: string) => GENERATED_DASHBOARD_SHEET_NAMES.has(sheetName);
 
 type SheetRowIndex = {
@@ -392,6 +446,11 @@ type IncrementalUserSheetPlan = {
 type RewriteSheetData = SheetData & {
   previousRowCount?: number;
   previousColumnCount?: number;
+};
+
+type MissingSpreadsheetItemRow = {
+  sheetName: string;
+  itemId: string;
 };
 
 const CONFIG_SHEETS_FOR_REWRITE = new Set(['Budget Rules', 'Skills Config', 'Wallets Config', 'Themes & Settings', 'Chat History', 'Canonical Rules']);
@@ -1086,6 +1145,24 @@ const validateSchema = (data: any): DbSchema => {
       chatHistory: chatHistory,
       canonicalRules: Array.isArray(data.canonicalRules) ? data.canonicalRules : []
   };
+};
+
+const preserveLocalItemsStillPresentInApp = (localDb: DbSchema, mergedDb: DbSchema): DbSchema => {
+  const mergedIds = new Set((mergedDb.data || []).map(item => item.id));
+  const locallyPresentMissingItems = (localDb.data || []).filter(item => item.id && !mergedIds.has(item.id));
+
+  if (locallyPresentMissingItems.length === 0) return mergedDb;
+
+  // A save operation should commit the app's current local state. If a previous
+  // cloud append was acknowledged but the row is absent from the spreadsheet,
+  // a normal three-way merge interprets that as a remote delete and drops the
+  // still-visible local item before it can be written again. Keep those items in
+  // the save payload; explicit local deletions are still respected because the
+  // item will no longer be present in localDb.
+  return validateSchema({
+    ...mergedDb,
+    data: [...(mergedDb.data || []), ...locallyPresentMissingItems],
+  });
 };
 
 const readDbFromStorageKey = (key: string): { data: DbSchema; jsonString: string } | null => {
@@ -1984,6 +2061,43 @@ const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb:
   return { data: reconciledDb, reconciled, meta, existingTitles, reliableMeta: reliable };
 };
 
+const verifySpreadsheetWriteCommitted = async (
+  config: SpreadsheetConfig,
+  dbToWrite: DbSchema,
+  onProgress?: SyncProgressCallback,
+) => {
+  const expectedIdsBySheet = getExpectedItemIdsBySheet(dbToWrite.data || []);
+  if (expectedIdsBySheet.size === 0) return;
+
+  const rangesToFetch = [...expectedIdsBySheet.keys()]
+    .map(sheetName => `${escapeSheetName(sheetName)}!${SPREADSHEET_FETCH_RANGES[sheetName as keyof typeof SPREADSHEET_FETCH_RANGES] || 'A:AZ'}`);
+
+  let lastMissing: MissingSpreadsheetItemRow[] = [];
+  const maxAttempts = 3;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    onProgress?.({
+      phase: 'write_sheet',
+      label: 'Verifying spreadsheet save',
+      detail: attempt === 0 ? 'Checking that written item rows are readable from Sheets' : `Rechecking written rows (${attempt + 1}/${maxAttempts})`,
+    });
+
+    const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
+    const actualIdsBySheet = getItemIdsBySheetFromValueRanges(valueRanges);
+    lastMissing = findMissingExpectedItemRows(expectedIdsBySheet, actualIdsBySheet);
+
+    if (lastMissing.length === 0) return;
+    if (attempt < maxAttempts - 1) await wait(500 * (attempt + 1));
+  }
+
+  const examples = lastMissing
+    .slice(0, 8)
+    .map(missing => `${missing.sheetName}:${missing.itemId}`)
+    .join(', ');
+  const extra = lastMissing.length > 8 ? `, +${lastMissing.length - 8} more` : '';
+  throw new Error(`Spreadsheet save verification failed: ${lastMissing.length} expected item row(s) were not readable after write (${examples}${extra}). Local pending copy was kept for retry.`);
+};
+
 const writeSystemSheetSnapshotInBatches = async (
   config: SpreadsheetConfig,
   sheet: SheetData,
@@ -2219,9 +2333,10 @@ const performSync = async (
       const sheetBase = validateSchema(safeJsonParse(JSON.stringify(baseSnapshot || dbToWrite), { data: [] }));
       const sheetState = await fetchUserEditableSpreadsheetDb(config, sheetBase);
       currentSheetDbForPlan = sheetState.data;
-      dbToWrite = baseSnapshot
+      const mergedDb = baseSnapshot
         ? mergeDbData(dbToWrite, sheetState.data, baseSnapshot)
         : mergeDbData(dbToWrite, sheetState.data);
+      dbToWrite = preserveLocalItemsStillPresentInApp(localDbForPlan, mergedDb);
     }
 
     const finalJsonString = JSON.stringify(dbToWrite);
@@ -2314,6 +2429,7 @@ const performSync = async (
     }
 
     // 5. Cache & cleanup
+    await verifySpreadsheetWriteCommitted(config, dbToWrite, onProgress);
     onProgress?.({ phase: 'complete', label: 'Finalizing save', detail: 'Updating local cache' });
     writeSpreadsheetCache(finalJsonString);
     lastSnapshot = finalJsonString;
@@ -2491,6 +2607,10 @@ export const __test__ = {
   buildColumnWriteBatches,
   columnLabel,
   getItemExportSheetNames,
+  getExpectedItemIdsBySheet,
+  getItemIdsBySheetFromValueRanges,
+  findMissingExpectedItemRows,
+  preserveLocalItemsStillPresentInApp,
   isServiceAccountProxyInvocationFailure,
   shouldUseOauthFallbackForServiceAccountResponse,
   buildCurrentRawDbFromValueRanges,

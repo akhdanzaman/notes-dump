@@ -316,3 +316,61 @@ test('incremental plan rewrites user sheets when physical headers are stale', ()
   assert.deepEqual(plan.updates, []);
   assert.deepEqual(plan.appends, []);
 });
+
+test('save merge keeps local items that are still present in the app when sheet read misses them', () => {
+  const mergedAfterRemoteDelete: DbSchema = {
+    ...baseDb,
+    data: [],
+  };
+
+  const preserved = __test__.preserveLocalItemsStillPresentInApp(baseDb, mergedAfterRemoteDelete);
+
+  assert.equal(preserved.data.length, 1);
+  assert.equal(preserved.data[0].id, 'note-1');
+});
+
+test('write verification detects item ids missing from required destination sheets', () => {
+  const db: DbSchema = {
+    ...baseDb,
+    data: [
+      ...baseDb.data,
+      {
+        id: 'shopping-done-1',
+        type: ItemType.SHOPPING,
+        content: 'Bought rice',
+        status: 'done',
+        created_at: '2026-05-10T02:00:00.000Z',
+        completed_at: '2026-05-10T02:05:00.000Z',
+        meta: { shoppingCategory: 'urgent', amount: 25000 },
+      },
+    ],
+  };
+
+  const expected = __test__.getExpectedItemIdsBySheet(db.data);
+  const actual = __test__.getItemIdsBySheetFromValueRanges([
+    {
+      range: "'Notes & Journals'!A:G",
+      values: [
+        ['Date', 'Type', 'Title', 'Content', 'Tags', 'ID'],
+        ['2026-05-10', 'NOTE', 'Daily', 'Old note', '', 'note-1'],
+      ],
+    },
+    {
+      range: "'Shopping'!A:Z",
+      values: [
+        ['Item', 'Category', 'Amount', 'Status', 'Created_At', 'Completed_At', 'Tags', 'ID'],
+        ['Bought rice', 'urgent', 25000, 'done', '2026-05-10', '2026-05-10', '', 'shopping-done-1'],
+      ],
+    },
+    {
+      range: "'Transactions'!A:V",
+      values: [
+        ['Date', 'Type', 'Category', 'Description', 'Amount', 'Wallet', 'To_Wallet', 'Payment_Method', 'ID'],
+      ],
+    },
+  ]);
+
+  const missing = __test__.findMissingExpectedItemRows(expected, actual);
+
+  assert.deepEqual(missing, [{ sheetName: 'Transactions', itemId: 'shopping-done-1' }]);
+});

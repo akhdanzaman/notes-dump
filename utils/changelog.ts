@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.132',
+    date: 'May 2026',
+    items: [
+      'Spreadsheet saves now verify that every expected item ID is readable from the destination Google Sheets tabs before marking sync complete, keeping a pending local retry copy if Google Sheets does not actually contain the rows.',
+      'Save merging now preserves items that are still visible in the app even when a pre-save spreadsheet read temporarily misses them, preventing a stale/missing sheet read from turning a real local item into a false remote deletion.',
+    ],
+  },
+  {
     version: 'v0.3.131',
     date: 'May 2026',
     items: [
