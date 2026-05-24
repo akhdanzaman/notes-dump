@@ -60,7 +60,7 @@ import ReviewCenterPanel from '../ReviewCenterPanel';
 import { contentSurface } from '../layout/contentSurface';
 import { buildSummaryFocusDisplay } from '../../utils/summaryFocusUtils';
 import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
-import { getNarrativeHeadline } from '../../utils/biEngine';
+import { getNarrativeHeadline, getSpendingSparkline } from '../../utils/biEngine';
 import { NarrativeHeadlineCard } from '../NarrativeHeadline';
 
 interface SummaryViewProps {
@@ -260,6 +260,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const narrativeHeadline = useMemo(
         () => getNarrativeHeadline(items, budgetConfig, wallets, skills),
         [items, budgetConfig, wallets, skills]
+    );
+
+    const spendingSparkline = useMemo(
+        () => getSpendingSparkline(items, 7),
+        [items]
     );
 
     const [aiInsights, setAiInsights] = useState<Insight[]>(() => {
@@ -990,12 +995,39 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             )}
                         </div>
 
-                        <button
-                            onClick={() => setActiveTab('plan')}
-                            className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider"
-                        >
-                            View All
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {/* mini week task stat */}
+                            {(() => {
+                                const now = new Date();
+                                const weekStart = new Date(now); weekStart.setDate(now.getDate() - 7);
+                                const weekTasks = items.filter(i => i.type === ItemType.TODO && !i.meta.isRoutine && i.meta.date && new Date(i.meta.date) >= weekStart && new Date(i.meta.date) <= now);
+                                const doneCount = weekTasks.filter(i => i.status === 'done').length;
+                                const total = weekTasks.length;
+                                if (total === 0) return null;
+                                const pct = Math.round((doneCount / total) * 100);
+                                const radius = 12; const circ = 2 * Math.PI * radius; const offset = circ * (1 - pct / 100);
+                                return (
+                                    <div className="flex items-center gap-1.5">
+                                        <svg width="28" height="28" viewBox="0 0 28 28" className="shrink-0">
+                                            <circle cx="14" cy="14" r={radius} fill="none" stroke="currentColor" strokeWidth="2.5" className="text-black/10 dark:text-white/10" />
+                                            <circle cx="14" cy="14" r={radius} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                                                strokeDasharray={circ} strokeDashoffset={offset}
+                                                transform="rotate(-90 14 14)"
+                                                className={pct >= 75 ? 'text-emerald-500' : pct >= 40 ? 'text-amber-500' : 'text-red-500'}
+                                            />
+                                        </svg>
+                                        <span className="text-xs font-bold tabular-nums">{pct}%</span>
+                                        <span className="text-[10px] text-muted">this week</span>
+                                    </div>
+                                );
+                            })()}
+                            <button
+                                onClick={() => setActiveTab('plan')}
+                                className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider"
+                            >
+                                View All
+                            </button>
+                        </div>
                     </div>
 
                     {displayItems.length > 0 ? (
@@ -1109,6 +1141,63 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                     <span>{fmt(totalLimits)}</span>
                                 </div>
                             </div>
+
+                            {spendingSparkline.values.some(v => v > 0) && (
+                                <div className="mt-4 pt-3 border-t border-border/50">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted">7-Day Spending</span>
+                                        <span className="text-[10px] font-bold text-muted">{fmtCompact(spendingSparkline.total)}</span>
+                                    </div>
+                                    <svg
+                                        viewBox={`0 0 ${spendingSparkline.values.length * 2 - 1} 20`}
+                                        className="w-full h-8"
+                                        preserveAspectRatio="none"
+                                    >
+                                        <defs>
+                                            <linearGradient id="sparkline-fill" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="currentColor" stopOpacity="0.15" className="text-indigo-500" />
+                                                <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                                            </linearGradient>
+                                        </defs>
+                                        {/* fill area */}
+                                        <path
+                                            d={(() => {
+                                                const max = spendingSparkline.max || 1;
+                                                const vals = spendingSparkline.values;
+                                                const w = vals.length * 2 - 1;
+                                                const points = vals.map((v, i) => `${i * 2},${20 - (v / max) * 18}`);
+                                                return `M0,20 ${points.map(p => `L${p}`).join(' ')} L${w - 1},20 Z`;
+                                            })()}
+                                            fill="url(#sparkline-fill)"
+                                            className="text-indigo-500"
+                                        />
+                                        {/* line */}
+                                        <polyline
+                                            points={spendingSparkline.values
+                                                .map((v, i) => `${i * 2},${20 - (v / (spendingSparkline.max || 1)) * 18}`)
+                                                .join(' ')}
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            className="text-indigo-500"
+                                        />
+                                        {/* today dot */}
+                                        <circle
+                                            cx={(spendingSparkline.values.length - 1) * 2}
+                                            cy={20 - ((spendingSparkline.values[spendingSparkline.values.length - 1] || 0) / (spendingSparkline.max || 1)) * 18}
+                                            r="2"
+                                            fill="currentColor"
+                                            className="text-indigo-500"
+                                        />
+                                    </svg>
+                                    <div className="flex justify-between text-[9px] mt-1 opacity-30">
+                                        <span>{new Date(Date.now() - 6 * 86400000).toLocaleDateString('en', { weekday: 'short' })}</span>
+                                        <span>Today</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </section>
