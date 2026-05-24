@@ -60,8 +60,9 @@ import ReviewCenterPanel from '../ReviewCenterPanel';
 import { contentSurface } from '../layout/contentSurface';
 import { buildSummaryFocusDisplay } from '../../utils/summaryFocusUtils';
 import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
-import { getNarrativeHeadline, getSpendingSparkline } from '../../utils/biEngine';
+import { getNarrativeHeadline, getSpendingSparkline, getWeeklyComparison, getCategoryBreakdown } from '../../utils/biEngine';
 import { NarrativeHeadlineCard } from '../NarrativeHeadline';
+import { WoWComparisonCards, CategoryBreakdownBars } from '../WoWMetrics';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -265,6 +266,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const spendingSparkline = useMemo(
         () => getSpendingSparkline(items, 7),
         [items]
+    );
+
+    const weeklyComparison = useMemo(
+        () => getWeeklyComparison(items, budgetConfig),
+        [items, budgetConfig]
+    );
+
+    const categoryBreakdown = useMemo(
+        () => getCategoryBreakdown(items, budgetConfig, 3),
+        [items, budgetConfig]
     );
 
     const [aiInsights, setAiInsights] = useState<Insight[]>(() => {
@@ -926,6 +937,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
             <NarrativeHeadlineCard data={narrativeHeadline} />
 
+            <WoWComparisonCards data={weeklyComparison} />
+
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1198,6 +1211,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                     </div>
                                 </div>
                             )}
+
+                            <CategoryBreakdownBars
+                                data={categoryBreakdown}
+                                onClick={() => setActiveTab('money')}
+                            />
                         </div>
                     </div>
                 </section>
