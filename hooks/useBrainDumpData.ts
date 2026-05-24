@@ -50,6 +50,9 @@ import { ASYNC_ENRICHMENT_REVIEW_PREFIX, queueCanonicalEnrichmentTasks, runCanon
 import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
+import { stripDeepWorkFieldsFromMeta } from '../utils/stripDeepWorkFields';
+import { useDeepWork } from './useDeepWork';
+import { useRoutineReset } from './useRoutineReset';
 import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
 import { routeBatchParserInput } from '../services/batchParserCoordinator';
 import { runFastThenDeepParserModelRouting } from '../services/parserModelRouting';
@@ -173,39 +176,7 @@ const safeArrayNumbers = (value: unknown): number[] | undefined => {
     return result.length > 0 ? result : undefined;
 };
 
-const stripDeepWorkFieldsFromMeta = (meta: ItemMeta = {}): ItemMeta => {
-    const {
-        parentTodoId,
-        childTodoIds,
-        deepWorkParent,
-        deepWorkPlanId,
-        deepWorkStatus,
-        deepWorkTriggerPattern,
-        deepWorkTriggerEvidence,
-        deepWorkConfidence,
-        deepWorkNextAction,
-        deepWorkNextActionDurationMinutes,
-        deepWorkNextActionAcceptanceCheck,
-        deepWorkFinalOutputFormat,
-        deepWorkFinalOutput,
-        deepWorkSessionEstimateMinutes,
-        deepWorkSessionEstimateConfidence,
-        deepWorkSessionEstimateReason,
-        deepWorkBlockerCheck,
-        deepWorkBlockerStatus,
-        deepWorkMissingInputs,
-        deepWorkCompletionMode,
-        deepWorkStepIndex,
-        deepWorkStepCount,
-        deepWorkGeneratedAt,
-        deepWorkAcceptedAt,
-        deepWorkDismissedAt,
-        deepWorkReason,
-        subtasks,
-        ...rest
-    } = meta;
-    return rest;
-};
+
 
 const refreshDeepWorkSuggestionForTodo = (
     itemType: ItemType,
@@ -680,17 +651,7 @@ export const useBrainDumpData = () => {
         );
     }, [performSaveAndSync]);
 
-    const runRoutineResetIfDue = useCallback(() => {
-        const currentItems = itemsRef.current;
-        if (currentItems.length === 0) return;
-
-        const updatedItems = checkRoutineResets(currentItems);
-        if (JSON.stringify(updatedItems) === JSON.stringify(currentItems)) return;
-
-        itemsRef.current = updatedItems;
-        setItems(updatedItems);
-        saveAndSync(updatedItems);
-    }, [saveAndSync]);
+    useRoutineReset({ itemsRef, setItems, saveAndSync, checkRoutineResets });
 
     const replaceHistoricalCanonicalReviews = useCallback((reviews: HistoricalCanonicalReview[]) => {
         setPendingReviews(prev => [
@@ -895,24 +856,6 @@ export const useBrainDumpData = () => {
     useEffect(() => {
         loadData();
     }, [loadData]);
-
-    useEffect(() => {
-        const handleVisibleOrFocused = () => {
-            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-            runRoutineResetIfDue();
-        };
-
-        // Keep routines moving while the app stays open across midnight/day changes.
-        const intervalId = window.setInterval(runRoutineResetIfDue, 60 * 1000);
-        window.addEventListener('focus', handleVisibleOrFocused);
-        document.addEventListener('visibilitychange', handleVisibleOrFocused);
-
-        return () => {
-            window.clearInterval(intervalId);
-            window.removeEventListener('focus', handleVisibleOrFocused);
-            document.removeEventListener('visibilitychange', handleVisibleOrFocused);
-        };
-    }, [runRoutineResetIfDue]);
 
     const flushDeferredSyncAfterParsing = useCallback(async () => {
         if (hasActiveParsing()) return;
@@ -2158,108 +2101,25 @@ export const useBrainDumpData = () => {
         saveAndSync(updatedItems);
     };
 
-    const stripDeepWorkFields = stripDeepWorkFieldsFromMeta;
-
-    const saveDeepWorkItems = (nextItems: BrainDumpItem[]) => {
-        const normalized = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(nextItems));
-        itemsRef.current = normalized;
-        setItems(normalized);
-        saveAndSync(normalized);
-    };
-
-    const handleKeepRawTodo = async (id: string) => {
-        const target = itemsRef.current.find(item => item.id === id);
-        const childIds = new Set(target?.meta.childTodoIds || []);
-        const updatedItems = itemsRef.current
-            .filter(item => item.id === id || (item.meta.parentTodoId !== id && !childIds.has(item.id)))
-            .map(item => {
-                if (item.id !== id) return item;
-                return {
-                    ...item,
-                    meta: {
-                        ...stripDeepWorkFields(item.meta),
-                        progress: item.meta.progress,
-                        progressNotes: item.meta.progressNotes,
-                    }
-                };
-            });
-        saveDeepWorkItems(updatedItems);
-    };
-
-    const handleUpdateDeepWorkTodo = async (id: string, changes: Partial<ItemMeta>) => {
-        const updatedItems = itemsRef.current.map(item => {
-            if (item.id !== id) return item;
-            return {
-                ...item,
-                meta: normalizeDeepWorkTodoMeta({
-                    ...item.meta,
-                    ...changes,
-                    deepWorkPlanId: item.meta.deepWorkPlanId || item.id,
-                })
-            };
-        });
-        saveDeepWorkItems(updatedItems);
-    };
-
-    const handleRetriggerDeepWorkTodo = async (id: string) => {
-        const now = new Date().toISOString();
-        const target = itemsRef.current.find(item => item.id === id);
-        const childIds = new Set(target?.meta.childTodoIds || []);
-        const updatedItems = itemsRef.current
-            .filter(item => item.id === id || (item.meta.parentTodoId !== id && !childIds.has(item.id)))
-            .map(item => {
-                if (item.id !== id || item.type !== ItemType.TODO) return item;
-                const baseMeta = stripDeepWorkFields(item.meta);
-                const regeneratedMeta = buildDeepWorkSuggestionMeta(item.content, {
-                    ...baseMeta,
-                    deepWorkGeneratedAt: now,
-                });
-                return {
-                    ...item,
-                    meta: normalizeDeepWorkTodoMeta({
-                        ...regeneratedMeta,
-                        deepWorkPlanId: item.id,
-                        progress: regeneratedMeta.progress ?? item.meta.progress ?? 0,
-                    })
-                };
-            });
-        saveDeepWorkItems(updatedItems);
-    };
-
-    const handleAcceptDeepWorkTodo = async (id: string, subtasks?: string[]) => {
-        const now = new Date().toISOString();
-        let childItems: BrainDumpItem[] = [];
-        const updatedParents = itemsRef.current.map(item => {
-            if (item.id !== id || item.type !== ItemType.TODO) return item;
-            const parentForChildren: BrainDumpItem = {
-                ...item,
-                meta: normalizeDeepWorkTodoMeta({
-                    ...item.meta,
-                    childTodoIds: undefined,
-                    deepWorkPlanId: item.meta.deepWorkPlanId || item.id,
-                    subtasks: subtasks?.length ? subtasks : item.meta.subtasks,
-                })
-            };
-            childItems = createDeepWorkSubtaskItems(parentForChildren, uuidv4, now);
-            const childIds = childItems.map(child => child.id);
-            return {
-                ...parentForChildren,
-                meta: normalizeDeepWorkTodoMeta({
-                    ...parentForChildren.meta,
-                    childTodoIds: childIds.length ? childIds : parentForChildren.meta.childTodoIds,
-                    deepWorkParent: true,
-                    deepWorkPlanId: parentForChildren.meta.deepWorkPlanId || parentForChildren.id,
-                    deepWorkStatus: childIds.length ? 'active' : 'accepted',
-                    deepWorkCompletionMode: parentForChildren.meta.deepWorkCompletionMode || 'final_output_check',
-                    progress: parentForChildren.meta.progress ?? 0,
-                    subtasks: subtasks?.length ? subtasks : parentForChildren.meta.subtasks,
-                })
-            };
-        });
-
-        const withoutExistingChildren = updatedParents.filter(item => item.id === id || (item.meta.parentTodoId !== id && !(itemsRef.current.find(parent => parent.id === id)?.meta.childTodoIds || []).includes(item.id)));
-        saveDeepWorkItems([...childItems, ...withoutExistingChildren]);
-    };
+    const {
+        handleKeepRawTodo,
+        handleUpdateDeepWorkTodo,
+        handleRetriggerDeepWorkTodo,
+        handleAcceptDeepWorkTodo,
+        handleAcceptDeepWorkPlan,
+        handleDismissDeepWorkPlan,
+    } = useDeepWork({
+        itemsRef, setItems, saveAndSync,
+        skillsRef, setSkills, walletsRef, setWallets,
+        monthlyThemesRef, setMonthlyThemes, budgetConfigRef,
+        customPromptRef, appSettingsRef, canonicalRulesRef, setCanonicalRules,
+        chatHistoryRef, setParsingTasks, setEnrichmentTasks, setPendingReviews,
+        setPendingCount, setError, setLoading, setSaveStatus, setSaveProgress,
+        setFetchProgress, setFetchStatus, parsingInFlightRef,
+        pendingSaveAfterParsingRef, pendingFetchAfterParsingRef,
+        parsingUndoSnapshotsRef, enrichmentTasksRef,
+        hasActiveParsing, loadData, flushDeferredSyncAfterParsing,
+    } as any /* ctx shape matches brainDumpContext */);
 
     const handleAddRoutineTask = async (
         content: string,
@@ -2469,58 +2329,6 @@ export const useBrainDumpData = () => {
         );
 
         const updated = [...newItems, ...itemsRef.current];
-        itemsRef.current = updated;
-        setItems(updated);
-        saveAndSync(updated);
-    };
-
-    const handleAcceptDeepWorkPlan = (id: string) => {
-        const currentItems = itemsRef.current;
-        const parent = currentItems.find(item => item.id === id && item.type === ItemType.TODO);
-        if (!parent) return;
-
-        const parentWithSuggestion: BrainDumpItem = {
-            ...parent,
-            meta: normalizeDeepWorkTodoMeta(buildDeepWorkSuggestionMeta(parent.content, parent.meta))
-        };
-        const now = new Date().toISOString();
-        const childItems = createDeepWorkSubtaskItems(parentWithSuggestion, uuidv4, now);
-        if (childItems.length === 0) return;
-
-        const childIds = childItems.map(child => child.id);
-        const updatedParent: BrainDumpItem = {
-            ...parentWithSuggestion,
-            meta: normalizeDeepWorkTodoMeta({
-                ...parentWithSuggestion.meta,
-                deepWorkStatus: 'active',
-                childTodoIds: childIds,
-                deepWorkPlanId: parentWithSuggestion.meta.deepWorkPlanId || parentWithSuggestion.id,
-                deepWorkAcceptedAt: now,
-                progress: 0,
-            })
-        };
-
-        const withoutParent = currentItems.filter(item => item.id !== id);
-        const updated = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress([updatedParent, ...childItems, ...withoutParent]));
-        itemsRef.current = updated;
-        setItems(updated);
-        saveAndSync(updated);
-    };
-
-    const handleDismissDeepWorkPlan = (id: string) => {
-        const updated = itemsRef.current.map(item => {
-            if (item.id !== id || item.type !== ItemType.TODO) return item;
-            return {
-                ...item,
-                meta: normalizeDeepWorkTodoMeta({
-                    ...item.meta,
-                    deepWorkParent: false,
-                    deepWorkStatus: 'dismissed',
-                    deepWorkDismissedAt: new Date().toISOString(),
-                    subtasks: undefined,
-                })
-            };
-        });
         itemsRef.current = updated;
         setItems(updated);
         saveAndSync(updated);
