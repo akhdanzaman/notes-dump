@@ -73,27 +73,27 @@ export const WoWComparisonCards: React.FC<WoWProps> = ({ data }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.1 }}
     >
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted">This Week vs Last</span>
-        <ArrowRight className="w-3 h-3 text-muted opacity-30" />
+      <div className="flex items-center gap-2 mb-3 px-1">
+        <span className="text-xs font-bold uppercase tracking-[0.22em] text-muted">This Week vs Last</span>
+        <ArrowRight className="w-3 h-3 text-muted opacity-40" />
       </div>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {cards.map((card, i) => (
           <div
             key={i}
-            className="rounded-xl bg-surface border border-border/50 p-2.5 flex flex-col gap-0.5"
+            className="rounded-2xl bg-surface border border-border/60 p-3 flex flex-col gap-1"
           >
             <span className="text-[10px] font-medium uppercase tracking-wider text-muted">
               {card.label}
             </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[15px] font-bold text-primary leading-tight truncate">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base font-bold text-primary leading-tight truncate">
                 {card.current}
               </span>
               {card.sub}
             </div>
             {card.detail && (
-              <span className="text-[10px] text-muted opacity-50 leading-tight">{card.detail}</span>
+              <span className="text-[10px] text-muted opacity-60 leading-tight">{card.detail}</span>
             )}
           </div>
         ))}
@@ -110,16 +110,16 @@ export const CategoryBreakdownBars: React.FC<CatProps> = ({ data, onClick }) => 
   if (data.length === 0) return null;
 
   return (
-    <div className="mt-3 pt-2.5 border-t border-border/40">
-      <div className="flex items-center justify-between mb-1.5">
+    <div className="mt-4 pt-3 border-t border-border/50">
+      <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-medium uppercase tracking-wider text-muted">Top Categories</span>
         {onClick && (
-          <button onClick={onClick} className="text-[10px] font-bold opacity-40 hover:opacity-100 uppercase tracking-wider">
+          <button onClick={onClick} className="text-[10px] font-bold opacity-50 hover:opacity-100 uppercase tracking-wider">
             Details
           </button>
         )}
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {data.map((cat, i) => (
           <div key={i}>
             <div className="flex justify-between text-[11px] mb-1">

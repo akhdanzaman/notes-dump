@@ -18,7 +18,7 @@ export const contentSurface = {
   // NDZ-007 #1: keep mobile gutters, but let desktop content align to the shared shell edge.
   contentPad: 'px-4 lg:px-0',
   // NDZ-017: Summary owns the wider desktop dashboard rhythm; keep side context useful without starving the primary scan column.
-  summaryDashboardGrid: 'px-4 space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem] 2xl:grid-cols-[minmax(0,1fr)_25rem] lg:items-start lg:gap-6 xl:gap-8 lg:space-y-0 lg:px-0',
+  summaryDashboardGrid: 'px-4 space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem] 2xl:grid-cols-[minmax(0,1fr)_25rem] lg:items-start lg:gap-6 xl:gap-8 lg:space-y-0 lg:px-0',
   primaryColumn: 'lg:col-start-1',
   sideColumn: 'lg:col-start-2',
   sideStack: 'space-y-5 lg:space-y-6',
