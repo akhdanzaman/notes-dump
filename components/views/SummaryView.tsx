@@ -946,9 +946,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 </motion.div>
             </motion.div>
 
-            <NarrativeHeadlineCard data={narrativeHeadline} />
-
-            <WoWComparisonCards data={weeklyComparison} />
+            <div className="px-4 space-y-3 lg:px-0 lg:space-y-3">
+                <NarrativeHeadlineCard data={narrativeHeadline} />
+                <WoWComparisonCards data={weeklyComparison} />
+            </div>
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -1147,7 +1148,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                 </div>
                             </div>
 
-                            <div className="mt-6">
+                            <div className="mt-5">
                                 <div className="flex justify-between text-xs font-medium mb-2 opacity-80">
                                     <span>Monthly Spending</span>
                                     <span>{budgetPercent.toFixed(0)}% of Budget</span>
