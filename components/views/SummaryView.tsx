@@ -60,9 +60,10 @@ import ReviewCenterPanel from '../ReviewCenterPanel';
 import { contentSurface } from '../layout/contentSurface';
 import { buildSummaryFocusDisplay } from '../../utils/summaryFocusUtils';
 import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
-import { getNarrativeHeadline, getSpendingSparkline, getWeeklyComparison, getCategoryBreakdown } from '../../utils/biEngine';
+import { getNarrativeHeadline, getSpendingSparkline, getWeeklyComparison, getCategoryBreakdown, getActiveGoals, getSkillProgress } from '../../utils/biEngine';
 import { NarrativeHeadlineCard } from '../NarrativeHeadline';
 import { WoWComparisonCards, CategoryBreakdownBars } from '../WoWMetrics';
+import { GoalsProgressWidget, SkillProgressWidget } from '../GoalsSkillsWidget';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -276,6 +277,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const categoryBreakdown = useMemo(
         () => getCategoryBreakdown(items, budgetConfig, 3),
         [items, budgetConfig]
+    );
+
+    const activeGoals = useMemo(
+        () => getActiveGoals(items),
+        [items]
+    );
+
+    const skillProgress = useMemo(
+        () => getSkillProgress(items, skills),
+        [items, skills]
     );
 
     const [aiInsights, setAiInsights] = useState<Insight[]>(() => {
@@ -1219,6 +1230,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         </div>
                     </div>
                 </section>
+
+                <GoalsProgressWidget
+                    goals={activeGoals}
+                    onClick={() => { setActiveTab('plan'); setPlanSubTab('savings'); }}
+                />
+
+                <SkillProgressWidget skills={skillProgress} />
 
                 {typeof window !== 'undefined' &&
                     createPortal(

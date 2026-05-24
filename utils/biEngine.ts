@@ -357,3 +357,92 @@ export const getSpendingSparkline = (
   const total = values.reduce((a, b) => a + b, 0);
   return { values, max, total };
 };
+
+// ── active goals ──────────────────────────────────────────
+
+export interface ActiveGoal {
+  id: string;
+  name: string;
+  target: number;
+  saved: number;
+  percent: number;
+  category: 'saving' | 'investment';
+}
+
+export const getActiveGoals = (items: BrainDumpItem[]): ActiveGoal[] => {
+  const goals = items.filter(i =>
+    i.type === ItemType.SHOPPING &&
+    (i.meta.shoppingCategory === 'saving' || i.meta.shoppingCategory === 'investment') &&
+    i.meta.amount && i.meta.amount > 0
+  );
+
+  return goals
+    .map(goal => {
+      const savedAmount = items
+        .filter(i =>
+          i.type === ItemType.FINANCE &&
+          i.status === 'done' &&
+          i.meta.financeType === 'saving' &&
+          i.meta.savingGoalId === goal.id
+        )
+        .reduce((sum, i) => sum + (i.meta.amount || 0), 0);
+
+      return {
+        id: goal.id,
+        name: goal.content,
+        target: goal.meta.amount!,
+        saved: savedAmount,
+        percent: goal.meta.amount! > 0 ? Math.min(100, (savedAmount / goal.meta.amount!) * 100) : 0,
+        category: (goal.meta.shoppingCategory as 'saving' | 'investment') || 'saving',
+      };
+    })
+    .filter(g => g.percent < 100) // only show incomplete
+    .sort((a, b) => b.percent - a.percent)
+    .slice(0, 4);
+};
+
+// ── skill progress ────────────────────────────────────────
+
+export interface SkillProgress {
+  id: string;
+  name: string;
+  weeklyMinutes: number;
+  weeklyTarget: number;
+  percent: number;
+  sessionsThisWeek: number;
+}
+
+export const getSkillProgress = (
+  items: BrainDumpItem[],
+  skills: { id: string; name: string; weeklyTargetMinutes?: number }[]
+): SkillProgress[] => {
+  const now = new Date();
+  const weekStart = daysAgo(7);
+
+  return skills
+    .filter(s => s.weeklyTargetMinutes && s.weeklyTargetMinutes > 0)
+    .map(skill => {
+      const weekLogs = items.filter(i =>
+        i.type === ItemType.SKILL_LOG &&
+        i.status === 'done' &&
+        i.meta.skillId === skill.id
+      ).filter(i => {
+        const d = getItemDate(i);
+        return d && d >= weekStart && d <= now;
+      });
+
+      const weeklyMinutes = weekLogs.reduce((sum, i) => sum + (i.meta.durationMinutes || 0), 0);
+      const target = skill.weeklyTargetMinutes || 60;
+
+      return {
+        id: skill.id,
+        name: skill.name,
+        weeklyMinutes,
+        weeklyTarget: target,
+        percent: Math.min(100, (weeklyMinutes / target) * 100),
+        sessionsThisWeek: weekLogs.length,
+      };
+    })
+    .sort((a, b) => a.percent - b.percent) // lowest first = needs attention
+    .slice(0, 3);
+};
