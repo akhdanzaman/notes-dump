@@ -53,6 +53,7 @@ import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../serv
 import { stripDeepWorkFieldsFromMeta } from '../utils/stripDeepWorkFields';
 import { useDeepWork } from './useDeepWork';
 import { useRoutineReset } from './useRoutineReset';
+import { useEnrichment } from './useEnrichment';
 import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
 import { routeBatchParserInput } from '../services/batchParserCoordinator';
 import { runFastThenDeepParserModelRouting } from '../services/parserModelRouting';
@@ -659,44 +660,6 @@ export const useBrainDumpData = () => {
             ...prev.filter(review => !review.id.startsWith(CANONICAL_BACKFILL_REVIEW_PREFIX))
         ]);
     }, []);
-
-    const runCanonicalBackfill = useCallback(() => {
-        const sweep = sweepHistoricalCanonicalMeta(itemsRef.current, {
-            existingItems: itemsRef.current,
-            wallets: walletsRef.current,
-            budgetRules: budgetConfigRef.current?.rules || [],
-            rules: [...getSystemCanonicalRules(walletsRef.current), ...canonicalRulesRef.current],
-        });
-
-        replaceHistoricalCanonicalReviews(sweep.reviews);
-
-        if (sweep.changedItemIds.length > 0) {
-            itemsRef.current = sweep.items;
-            setItems(sweep.items);
-            saveAndSync(sweep.items, undefined, undefined, undefined, undefined, undefined, undefined, canonicalRulesRef.current);
-        }
-
-        return sweep;
-    }, [replaceHistoricalCanonicalReviews, saveAndSync]);
-
-    const toggleCanonicalRuleDisabled = useCallback((ruleId: string) => {
-        const timestamp = new Date().toISOString();
-        const nextRules = canonicalRulesRef.current.map(rule => {
-            if (rule.id !== ruleId || rule.source !== 'learned') return rule;
-            const nextDisabled = !rule.disabled;
-            return {
-                ...rule,
-                disabled: nextDisabled,
-                autoApplyDisabled: nextDisabled ? true : rule.rejectionCount >= 2,
-                disabledReason: nextDisabled ? 'manually disabled in Control Center' : undefined,
-                updatedAt: timestamp,
-            };
-        });
-
-        canonicalRulesRef.current = nextRules;
-        setCanonicalRules(nextRules);
-        saveAndSync(undefined, undefined, undefined, undefined, undefined, undefined, undefined, nextRules);
-    }, [saveAndSync]);
 
     const isSyncingRef = useRef(false);
 
@@ -1516,76 +1479,6 @@ export const useBrainDumpData = () => {
         });
     };
 
-    const replaceAsyncEnrichmentReviews = useCallback((reviews: HistoricalCanonicalReview[]) => {
-        if (reviews.length === 0) return;
-        const reviewIds = new Set(reviews.map(review => review.id));
-        setPendingReviews(prev => [
-            ...reviews,
-            ...prev.filter(review => !reviewIds.has(review.id) && !review.id.startsWith(ASYNC_ENRICHMENT_REVIEW_PREFIX))
-        ]);
-    }, []);
-
-    const processEnrichmentTasks = useCallback(async (tasks: EnrichmentTask[]) => {
-        if (tasks.length === 0) return;
-
-        setEnrichmentTasks(prev => prev.map(task =>
-            tasks.some(nextTask => nextTask.id === task.id)
-                ? { ...task, status: 'running', attempts: task.attempts + 1 }
-                : task
-        ));
-
-        try {
-            const result = runCanonicalEnrichmentTasks({
-                items: itemsRef.current,
-                tasks,
-                ctx: {
-                    existingItems: itemsRef.current,
-                    wallets: walletsRef.current,
-                    budgetRules: budgetConfigRef.current?.rules || [],
-                    rules: [...getSystemCanonicalRules(walletsRef.current), ...canonicalRulesRef.current],
-                },
-            });
-
-            if (result.reviews.length > 0) replaceAsyncEnrichmentReviews(result.reviews);
-
-            if (result.changedItemIds.length > 0) {
-                itemsRef.current = result.items;
-                setItems(result.items);
-                saveAndSync(result.items, undefined, undefined, undefined, undefined, undefined, undefined, canonicalRulesRef.current);
-            }
-
-            setEnrichmentTasks(prev => {
-                const resultsById = new Map(result.taskResults.map(task => [task.id, task]));
-                return prev.map(task => resultsById.get(task.id) || task);
-            });
-        } catch (err: any) {
-            setEnrichmentTasks(prev => prev.map(task =>
-                tasks.some(nextTask => nextTask.id === task.id)
-                    ? { ...task, status: 'failed', error: err?.message || 'Async enrichment failed', completedAt: Date.now() }
-                    : task
-            ));
-        }
-    }, [replaceAsyncEnrichmentReviews, saveAndSync]);
-
-    const enqueueEnrichmentForParserTask = useCallback((parserTaskId: string, sourceText: string) => {
-        const targetItemIds = itemsRef.current
-            .filter(item => item.meta?.parserTaskId === parserTaskId)
-            .map(item => item.id);
-
-        const queuedTasks = queueCanonicalEnrichmentTasks({
-            items: itemsRef.current,
-            itemIds: targetItemIds,
-            parserTaskId,
-            sourceText,
-        }).filter(task => !enrichmentTasksRef.current.some(existing => existing.id === task.id));
-
-        if (queuedTasks.length === 0) return;
-
-        setEnrichmentTasks(prev => [...queuedTasks, ...prev]);
-        enrichmentTasksRef.current = [...queuedTasks, ...enrichmentTasksRef.current];
-        Promise.resolve().then(() => processEnrichmentTasks(queuedTasks));
-    }, [processEnrichmentTasks]);
-
     const processItemInBackground = async (text: string, tempId: string) => {
         parsingInFlightRef.current.add(tempId);
         setParsingTasks(prev => {
@@ -1863,32 +1756,6 @@ export const useBrainDumpData = () => {
         setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, undoStatus: 'deleted' } : t));
     };
 
-    const handleApproveReview = (id: string, updatedResults: ParserResultV2[]) => {
-        const review = pendingReviews.find(r => r.id === id);
-        if (!review) return;
-
-        const nextCanonicalRules = learnCanonicalRulesFromReview({
-            originalResults: review.originalResults,
-            approvedResults: updatedResults,
-            existingRules: canonicalRulesRef.current
-        });
-
-        canonicalRulesRef.current = nextCanonicalRules;
-        setCanonicalRules(nextCanonicalRules);
-        const guardedResults = guardParserResultMultiplicity(updatedResults, review.text).results;
-        executeParserResults(guardedResults, review.text, id, nextCanonicalRules);
-        setPendingReviews(prev => prev.filter(r => r.id !== id));
-    };
-
-    const handleRejectReview = (id: string) => {
-        setPendingReviews(prev => prev.filter(r => r.id !== id));
-        setItems(prev => {
-            const updated = prev.filter(i => i.id !== id);
-            itemsRef.current = updated;
-            saveAndSync(updated);
-            return updated;
-        });
-    };
 
     const handleSend = async (text: string) => {
         setPendingCount(prev => prev + 1);
@@ -2531,6 +2398,23 @@ export const useBrainDumpData = () => {
         setItems(updated);
         saveAndSync(updated);
     };
+
+    const {
+        processEnrichmentTasks,
+        enqueueEnrichmentForParserTask,
+        runCanonicalBackfill,
+        toggleCanonicalRuleDisabled,
+        handleApproveReview,
+        handleRejectReview,
+    } = useEnrichment({
+        itemsRef, setItems, saveAndSync,
+        canonicalRulesRef, setCanonicalRules,
+        walletsRef, budgetConfigRef,
+        enrichmentTasksRef, setEnrichmentTasks,
+        setPendingReviews, pendingReviews,
+        executeParserResults,
+        replaceHistoricalCanonicalReviews,
+    });
 
     return {
         items,
