@@ -130,3 +130,32 @@ test('service account spreadsheet allowlist is enforced in production', () => {
     else process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS = originalAllowlist;
   }
 });
+
+test('service account spreadsheet allowlist defaults to allow-all when not configured (production)', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalAllowlist = process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS;
+  process.env.NODE_ENV = 'production';
+  delete process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS;
+  try {
+    // When allowlist is not set, any spreadsheet ID should be allowed (default permissive).
+    assert.doesNotThrow(() => assertServiceAccountSpreadsheetAllowed('any-sheet-id'));
+    assert.doesNotThrow(() => assertServiceAccountSpreadsheetAllowed('another-random-sheet'));
+  } finally {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    if (originalAllowlist === undefined) delete process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS;
+    else process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS = originalAllowlist;
+  }
+});
+
+test('service account wildcard allowlist bypasses specific checks', () => {
+  const originalAllowlist = process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS;
+  process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS = 'sheet-allowed,*';
+  try {
+    assert.doesNotThrow(() => assertServiceAccountSpreadsheetAllowed('anything-goes'));
+    assert.doesNotThrow(() => assertServiceAccountSpreadsheetAllowed('sheet-allowed'));
+  } finally {
+    if (originalAllowlist === undefined) delete process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS;
+    else process.env.SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS = originalAllowlist;
+  }
+});

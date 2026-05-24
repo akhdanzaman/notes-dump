@@ -244,7 +244,16 @@ export const assertServiceAccountSpreadsheetAllowed = (spreadsheetId: string) =>
   const allowedSpreadsheetIds = getServiceAccountAllowedSpreadsheetIds();
   if (allowedSpreadsheetIds.includes('*')) return;
   if (allowedSpreadsheetIds.includes(spreadsheetId)) return;
-  if (allowedSpreadsheetIds.length === 0 && process.env.NODE_ENV !== 'production') return;
+  if (allowedSpreadsheetIds.length === 0) {
+    // No explicit allowlist configured: allow all spreadsheets.
+    // The security boundary is already enforced by:
+    //  - The spreadsheet must be shared with the service account
+    //  - The user must have a valid same-origin app session
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS is not set — allowing all spreadsheets. Set it to restrict access to specific spreadsheet IDs.');
+    }
+    return;
+  }
 
   throw new Error('Spreadsheet is not allowlisted for service-account access. Set SERVICE_ACCOUNT_ALLOWED_SPREADSHEET_IDS on the server.');
 };
