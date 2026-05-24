@@ -2112,12 +2112,29 @@ export const useBrainDumpData = () => {
 
         if (!item || (!isTodoRoutine && !isShoppingRoutine) || item.status !== 'done') return;
 
+        const completedDate = item.completed_at ? new Date(item.completed_at) : new Date();
+        const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
+        const anchorDate = !Number.isNaN(scheduledDate.getTime()) ? scheduledDate : completedDate;
+        let nextDueDate: Date;
+
+        if (isShoppingRoutine) {
+            if (item.meta.routineInterval) {
+                nextDueDate = calculateNextDueDate(anchorDate, item.meta.routineInterval, item.meta.routineDaysOfWeek, item.meta.routineDaysOfMonth, item.meta.routineMonthsOfYear);
+            } else {
+                const recurrenceDays = item.meta.recurrenceDays || 7;
+                nextDueDate = new Date(anchorDate.getTime() + recurrenceDays * 24 * 60 * 60 * 1000);
+            }
+        } else {
+            nextDueDate = calculateNextDueDate(anchorDate, item.meta.routineInterval || 'daily', item.meta.routineDaysOfWeek, item.meta.routineDaysOfMonth, item.meta.routineMonthsOfYear);
+        }
+
         const updatedItem: BrainDumpItem = {
             ...item,
             status: 'pending',
             completed_at: undefined,
             meta: {
                 ...item.meta,
+                date: nextDueDate.toISOString(),
                 progress: 0,
                 progressNotes: undefined,
                 lastGeneratedHistoryId: undefined

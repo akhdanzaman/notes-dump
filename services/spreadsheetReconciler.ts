@@ -450,6 +450,19 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     match.status = status;
                     updated = true;
                 }
+                if (completedAt && status === 'done') {
+                    const parsedCompletedAt = new Date(completedAt);
+                    if (!isNaN(parsedCompletedAt.getTime())) {
+                        const isoCompletedAt = parsedCompletedAt.toISOString();
+                        if (match.completed_at !== isoCompletedAt) {
+                            match.completed_at = isoCompletedAt;
+                            updated = true;
+                        }
+                    }
+                } else if (status === 'pending' && match.completed_at) {
+                    match.completed_at = undefined;
+                    updated = true;
+                }
                 const progress = parseInt((progressStr || '').replace('%', ''));
                 if (!isNaN(progress) && match.meta.progress !== progress) {
                     match.meta.progress = progress;
@@ -554,6 +567,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const parsedDate = new Date(createdAt);
                 const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
                 
+                let isoCompletedAt: string | undefined = undefined;
+                if (completedAt && status === 'done') {
+                    const parsedCompletedAt = new Date(completedAt);
+                    if (!isNaN(parsedCompletedAt.getTime())) {
+                        isoCompletedAt = parsedCompletedAt.toISOString();
+                    }
+                }
+
                 let isoDueDate = undefined;
                 if (dueDateStr) {
                     const parsedDueDate = new Date(dueDateStr);
@@ -585,6 +606,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     content: content || 'Manual Todo',
                     status: (status === 'done' ? 'done' : 'pending'),
                     created_at: isoDate,
+                    completed_at: isoCompletedAt,
                     meta: {
                         priority: priority || 'normal',
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [],
