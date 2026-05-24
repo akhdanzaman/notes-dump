@@ -30,6 +30,8 @@ import {
     ShieldAlert,
     ListChecks,
     RotateCcw,
+    TrendingUp,
+    TrendingDown,
 } from 'lucide-react';
 import {
     BrainDumpItem,
@@ -58,6 +60,8 @@ import ReviewCenterPanel from '../ReviewCenterPanel';
 import { contentSurface } from '../layout/contentSurface';
 import { buildSummaryFocusDisplay } from '../../utils/summaryFocusUtils';
 import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
+import { getNarrativeHeadline } from '../../utils/biEngine';
+import { NarrativeHeadlineCard } from '../NarrativeHeadline';
 
 interface SummaryViewProps {
     items: BrainDumpItem[];
@@ -207,6 +211,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     );
     const { totalNetWorth } = getWalletStats(items, wallets);
 
+    // Compute net worth delta: income minus expenses for current month
+    const netWorthDelta = useMemo(() => {
+        const now = new Date();
+        const monthFinance = getFinanceItems(items, now, budgetConfig, '', '', '', '', '', '', '', 'newest');
+        const monthIncome = monthFinance.list
+            .filter(i => i.meta.financeType === 'income')
+            .reduce((sum, i) => sum + (i.meta.amount || 0), 0);
+        const monthExpense = monthFinance.totalExpense;
+        return monthIncome - monthExpense;
+    }, [items, budgetConfig]);
+
     const totalLimits = budgetConfig.rules.reduce(
         (acc, rule) => acc + (rule.percentage / 100) * budgetConfig.monthlyIncome,
         0
@@ -218,6 +233,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             currency: 'IDR',
             maximumFractionDigits: 0
         }).format(n);
+
+    const fmtCompact = (n: number) => {
+        const abs = Math.abs(n);
+        if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+        if (abs >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+        return String(n);
+    };
 
     const budgetPercent = totalLimits > 0 ? Math.min(100, (totalExpense / totalLimits) * 100) : 0;
 
@@ -232,6 +254,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     const localInsights = useMemo(
         () => generateInsights(items, budgetConfig, wallets, skills),
+        [items, budgetConfig, wallets, skills]
+    );
+
+    const narrativeHeadline = useMemo(
+        () => getNarrativeHeadline(items, budgetConfig, wallets, skills),
         [items, budgetConfig, wallets, skills]
     );
 
@@ -892,6 +919,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 </motion.div>
             </motion.div>
 
+            <NarrativeHeadlineCard data={narrativeHeadline} />
+
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1053,6 +1082,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                             )}
                                         </button>
                                     </div>
+                                    {showBalance && netWorthDelta !== 0 && (
+                                        <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${netWorthDelta > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                            {netWorthDelta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                            {netWorthDelta > 0 ? '+' : ''}{fmtCompact(netWorthDelta)} this month
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
