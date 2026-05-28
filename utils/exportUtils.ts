@@ -432,7 +432,12 @@ export const generateExportData = (
         Category: getCategoryName(item.meta.budgetCategory, budgetConfig),
         Description: item.content,
         Amount: item.meta.amount || 0,
-        Wallet: getWalletName(getCanonicalOrRawItemValue(item, 'paymentMethod') || item.meta.paymentMethod, wallets),
+        Wallet: getWalletName(
+          getCanonicalOrRawItemValue(item, 'paymentMethod') ||
+          item.meta.paymentMethod ||
+          (isShopping ? item.meta.dedicatedWalletId : ''),
+          wallets
+        ),
         To_Wallet: getWalletName(item.meta.toWallet, wallets),
         Payment_Method: item.meta.paymentMethod || '',
         Canonical_Payment_Method: getCanonicalMetaValue(item.meta, 'paymentMethod'),

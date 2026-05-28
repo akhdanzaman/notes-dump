@@ -6,6 +6,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.133',
+    date: 'May 28, 2026',
+    items: [
+      'Shopping expenses now always count toward net worth and wallet balance calculations, even without Payment_Method or Category set — unassigned shopping expenses are tracked separately and deducted from total net worth.',
+      'Parser (local + AI) now always assigns a default wallet to new expense/income/shopping entries when no wallet is detected in the input text, preventing silently-ignored transactions.',
+      'Fixed spreadsheet reconciler clearing Payment_Method, Budget_Category, and Dedicated_Wallet_ID on every sync when the corresponding Shopping sheet cell was empty (empty string was incorrectly coerced to undefined).',
+      'Wallet column in exported Transactions now falls back through canonical payment method → raw payment method → dedicated wallet ID, improving resilience for shopping-to-transaction flows.',
+      'Balance computation resolves wallet keys through dedicated wallet ID as an additional fallback for shopping and implicit expense items.',
+    ],
+  },
+  {
     version: 'v0.3.132',
     date: 'May 2026',
     items: [

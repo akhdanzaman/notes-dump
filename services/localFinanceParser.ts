@@ -281,6 +281,13 @@ export const parseLocalFinanceCommand = (text: string, options: LocalFinancePars
 
   if ((trigger.kind === 'expense' || trigger.kind === 'income') && !amount && !roles.fromWallet) return null;
 
+  // Ensure paymentMethod is never empty for expense/income by defaulting to first available wallet
+  if ((trigger.kind === 'expense' || trigger.kind === 'income') && !roles.fromWallet && (options.availableWallets || []).length > 0) {
+    const defaultWallet = options.availableWallets![0];
+    roles.fromWallet = { wallet: defaultWallet, alias: defaultWallet.name, raw: defaultWallet.name, index: 0, end: 0 };
+    missingFields.splice(missingFields.indexOf('paymentMethod'), 1);
+  }
+
   let result: ParserResultV2;
   if (trigger.kind === 'transfer') {
     const confidence = confidenceFromMissing(missingFields);

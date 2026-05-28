@@ -18,7 +18,16 @@ const resolveItemWalletBalanceKey = (wallets: Wallet[], item: BrainDumpItem) => 
     if (canonicalKey && wallets.some(w => w.name.toLowerCase() === canonicalKey)) return canonicalKey;
 
     const rawPaymentMethod = getRawMetaValue(item.meta, 'paymentMethod');
-    return resolveWalletBalanceKey(wallets, rawPaymentMethod);
+    const rawKey = resolveWalletBalanceKey(wallets, rawPaymentMethod);
+    if (rawKey && wallets.some(w => w.name.toLowerCase() === rawKey)) return rawKey;
+
+    // Fall back to dedicated wallet for shopping/implicit expenses
+    if (item.meta.dedicatedWalletId) {
+        const dedicatedKey = resolveWalletBalanceKey(wallets, item.meta.dedicatedWalletId);
+        if (dedicatedKey && wallets.some(w => w.name.toLowerCase() === dedicatedKey)) return dedicatedKey;
+    }
+
+    return '';
 };
 
 export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
@@ -26,6 +35,11 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
     const balanceMap = new Map<string, number>();
 
     wallets.forEach(w => balanceMap.set(w.name.toLowerCase(), w.initialBalance));
+
+    // Track implicit expenses (shopping/todo) without wallet assignment.
+    // These still reduce total net worth even though they can't be attributed
+    // to a specific wallet.
+    let unassignedExpenses = 0;
 
     // Go through ALL finished items that involve money
     items.forEach(item => {
@@ -93,6 +107,10 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
                 if (isCC) balanceMap.set(walletName, current + amount); // Spending on CC -> Increases Debt
                 else balanceMap.set(walletName, current - amount); // Spending from Asset -> Decreases Asset
             }
+        } else if (isImplicitExpense) {
+            // Done shopping/todo items without explicit wallet still count as expenses.
+            // They reduce total net worth without being attributed to a specific wallet.
+            unassignedExpenses += amount;
         }
     });
 
@@ -140,9 +158,9 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         .filter(i => i.type === ItemType.FINANCE && (i.status === 'done' || i.status === 'pending') && i.meta.financeType === 'saving' && i.meta.savingGoalId && activeGoals.has(i.meta.savingGoalId))
         .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
 
-    const totalNetWorth = totalAssets - totalDebt - totalSavings;
+    const totalNetWorth = totalAssets - totalDebt - totalSavings - unassignedExpenses;
 
-    return { walletStats, totalNetWorth, totalAssets, totalDebt, totalSavings };
+    return { walletStats, totalNetWorth, totalAssets, totalDebt, totalSavings, unassignedExpenses };
 };
 
 export const getFinanceItems = (

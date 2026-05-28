@@ -920,6 +920,13 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
       if (meta.paymentMethod) {
         const walletId = findClosestMatch(meta.paymentMethod, ctx.availableWallets);
         if (walletId) meta.paymentMethod = walletId;
+      } else if (
+        ctx.availableWallets.length > 0 &&
+        (itemType === 'FINANCE' || itemType === 'SHOPPING') &&
+        (meta.amount || 0) > 0
+      ) {
+        // Always assign a wallet for money items; default to first available
+        meta.paymentMethod = ctx.availableWallets[0].id;
       }
       if (meta.toWallet) {
         const walletId = findClosestMatch(meta.toWallet, ctx.availableWallets);

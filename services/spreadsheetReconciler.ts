@@ -767,9 +767,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     match.meta.isRoutine = parsedCategory === 'routine' || undefined;
                     updated = true;
                 }
-                if (budgetCategory !== undefined && match.meta.budgetCategory !== (budgetCategory || undefined)) { match.meta.budgetCategory = budgetCategory || undefined; updated = true; }
-                if (paymentMethod !== undefined && match.meta.paymentMethod !== (paymentMethod || undefined)) { match.meta.paymentMethod = paymentMethod || undefined; updated = true; }
-                if (dedicatedWalletId !== undefined && match.meta.dedicatedWalletId !== (dedicatedWalletId || undefined)) { match.meta.dedicatedWalletId = dedicatedWalletId || undefined; updated = true; }
+                if (budgetCategory && budgetCategory !== '' && match.meta.budgetCategory !== budgetCategory) { match.meta.budgetCategory = budgetCategory; updated = true; }
+                if (paymentMethod && paymentMethod !== '' && match.meta.paymentMethod !== paymentMethod) { match.meta.paymentMethod = paymentMethod; updated = true; }
+                if (dedicatedWalletId && dedicatedWalletId !== '' && match.meta.dedicatedWalletId !== dedicatedWalletId) { match.meta.dedicatedWalletId = dedicatedWalletId; updated = true; }
                 if (hideFromCalendarStr !== undefined && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
                 if (routineIntervalStr !== undefined && match.meta.routineInterval !== routineInterval) { match.meta.routineInterval = routineInterval; updated = true; }
                 if (routineDaysOfWeekStr !== undefined && JSON.stringify(match.meta.routineDaysOfWeek || []) !== JSON.stringify(routineDaysOfWeek || [])) { match.meta.routineDaysOfWeek = routineDaysOfWeek; updated = true; }
@@ -856,9 +856,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         amount: amount,
                         shoppingCategory: parsedCategory,
                         quantity: quantity || '',
-                        budgetCategory: budgetCategory || undefined,
-                        paymentMethod: paymentMethod || undefined,
-                        dedicatedWalletId: dedicatedWalletId || undefined,
+                        budgetCategory: (budgetCategory && budgetCategory !== '') ? budgetCategory : undefined,
+                        paymentMethod: (paymentMethod && paymentMethod !== '') ? paymentMethod : undefined,
+                        dedicatedWalletId: (dedicatedWalletId && dedicatedWalletId !== '') ? dedicatedWalletId : undefined,
                         hideFromCalendar,
                         isRoutine: parsedCategory === 'routine' || undefined,
                         routineInterval,
