@@ -28,9 +28,6 @@ import {
 import { DEFAULT_PROMPT } from './geminiService';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_PRO_MODEL } from './aiService';
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
-import { parseLocalFinanceResults } from './localFinanceParser';
-import { buildContextTextForIntent, buildLegacyParserContextText, resolveParserContextIntent, type ParserContextIntent } from './parserContextBuilder';
-import { sanitizeParserResultsBeforeResolve } from './parserFieldValidator';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -192,8 +189,36 @@ function buildContext(
   };
 }
 
-export function buildContextText(ctx: ParserContext, intent: ParserContextIntent = 'general'): string {
-  return buildContextTextForIntent(ctx, intent);
+export function buildContextText(ctx: ParserContext): string {
+  const savingGoals = ctx.existingItems
+    .filter(i => i.type === 'SHOPPING' && (i.meta as any)?.shoppingCategory === 'saving')
+    .map(i => i.content);
+
+  const pendingItems = ctx.existingItems
+    .filter(i => i.status === 'pending')
+    .slice(0, 120)
+    .map(i => `${i.type}: ${i.content}`);
+
+  return [
+    `Current date: ${ctx.currentDateISO} (${ctx.currentDayName})`,
+    `Current month key: ${ctx.currentMonthKey}`,
+    ctx.existingTags.length ? `Existing tags: ${ctx.existingTags.join(', ')}` : `Existing tags: none`,
+    ctx.availableSkills.length
+      ? `Known skills: ${ctx.availableSkills.map(s => `${s.name} [${s.id}]`).join(', ')}`
+      : `Known skills: none`,
+    ctx.availableWallets.length
+      ? `Known wallets: ${ctx.availableWallets.map(w => `${w.name} [${w.id}] type=${w.type}`).join(', ')}`
+      : `Known wallets: none`,
+    ctx.availableBudgetRules.length
+      ? `Known budget categories: ${ctx.availableBudgetRules.map(b => `${b.name} [${b.id}]`).join(', ')}`
+      : `Known budget categories: none`,
+    savingGoals.length
+      ? `Known saving goals: ${savingGoals.join(', ')}`
+      : `Known saving goals: none`,
+    pendingItems.length
+      ? `Pending items: ${pendingItems.join(' | ')}`
+      : `Pending items: none`,
+  ].join('\n');
 }
 
 function findClosestMatch<T extends { id: string; name: string }>(query: string, items: T[]): string | undefined {
@@ -700,7 +725,7 @@ async function parseStage1(
     model,
     contents: [
       INTENT_PROMPT_V2,
-      `Context:\n${buildContextTextForIntent(ctx, 'stage1')}`,
+      `Context:\n${buildContextText(ctx)}`,
       `User input:\n${text}`,
       `Examples:
 - "beli susu besok 12rb" => create_item + shopping
@@ -746,7 +771,7 @@ function buildFeaturePrompt(
     FEATURE_PROMPT_BASE,
     DEFAULT_PROMPT ? `Legacy parser guidance:\n${DEFAULT_PROMPT}` : '',
     customPrompt ? `Custom parser guidance:\n${customPrompt}` : '',
-    `Context:\n${buildContextTextForIntent(ctx, resolveParserContextIntent(stage1Results))}`,
+    `Context:\n${buildContextText(ctx)}`,
     `Stage 1 results:\n${JSON.stringify(stage1Results, null, 2)}`,
     `Original user text:\n${text}`,
     `
@@ -1311,15 +1336,6 @@ export const parsePro = async (
   retryCount = 0,
   onProgress?: (stage: 'stage1' | 'stage2') => void
 ): Promise<ParserResultV2[]> => {
-  const localFinanceResults = parseLocalFinanceResults(text, {
-    availableWallets,
-    availableBudgetRules,
-    existingItems,
-  });
-  if (localFinanceResults) {
-    return localFinanceResults;
-  }
-
   const apiKey = getGeminiKey();
 
   if (!apiKey) {
@@ -1352,8 +1368,7 @@ export const parsePro = async (
     const stage1 = await parseStage1(ai, activeModel, text, ctx);
     onProgress?.('stage2');
     const stage2 = await parseStage2(ai, activeModel, text, stage1, ctx, customPrompt);
-    const sanitizedStage2 = sanitizeParserResultsBeforeResolve(stage2, ctx);
-    const resolved = resolveAndValidateResults(sanitizedStage2, ctx, text);
+    const resolved = resolveAndValidateResults(stage2, ctx, text);
     return resolved;
   } catch (error: any) {
     const status = error?.status || error?.response?.status;
@@ -1389,7 +1404,5 @@ export const parsePro = async (
     }];
   }
 };
-
-export { buildLegacyParserContextText, resolveParserContextIntent };
 
 export default parsePro;

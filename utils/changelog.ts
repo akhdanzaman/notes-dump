@@ -6,6 +6,18 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.135',
+    date: 'May 30, 2026',
+    items: [
+      'Rolled back parser routing system (v0.3.74–v0.3.84): removed batch coordinator, model routing, local finance parser short-circuit, and context intent slicing from the parse path.',
+      'Parser now directly calls classifyText (geminiService) or parsePro (geminiProService) without intermediate routing decisions — all input goes straight to AI.',
+      'Removed parseLocalFinanceResults pre-check and sanitizeParserResultsBeforeResolve post-check from parsePro; resolveAndValidateResults now handles stage2 output directly.',
+      'Restored inline buildContextText in geminiProService instead of delegating to intent-sliced parserContextBuilder.',
+      'Kept canonicalizeParserResults, guardParserResultMultiplicity, and async enrichment as post-processing only (no longer tied to router decision logic).',
+      'Review Center still works for enableDraftReview mode; parser results always go through canonicalization and duplicate guarding before display.',
+    ],
+  },
+  {
     version: 'v0.3.133',
     date: 'May 28, 2026',
     items: [
