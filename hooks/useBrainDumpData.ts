@@ -96,48 +96,50 @@ export const mergeFetchedItemsPreservingUnsavedLocal = (
     return merged;
 };
 
+const getRoutineNextDueDate = (item: BrainDumpItem): Date | null => {
+    const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
+    const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
+    if (!isShoppingRoutine && !isTodoRoutine) return null;
+
+    const completedDate = item.completed_at ? new Date(item.completed_at) : new Date();
+    const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
+    const anchorDate = !Number.isNaN(scheduledDate.getTime()) ? scheduledDate : completedDate;
+
+    if (isShoppingRoutine && !item.meta.routineInterval) {
+        const recurrenceDays = item.meta.recurrenceDays || 7;
+        return new Date(anchorDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000));
+    }
+
+    return calculateNextDueDate(
+        anchorDate,
+        item.meta.routineInterval || 'daily',
+        item.meta.routineDaysOfWeek,
+        item.meta.routineDaysOfMonth,
+        item.meta.routineMonthsOfYear
+    );
+};
+
+const isRoutineLockedUntilNextDue = (item: BrainDumpItem, now = new Date()): boolean => {
+    if (item.status !== 'done') return false;
+    const nextDueDate = getRoutineNextDueDate(item);
+    return !!nextDueDate && now.getTime() < nextDueDate.getTime();
+};
+
 export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
     return currentItems.map(item => {
         const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
         const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
 
         if ((isShoppingRoutine || isTodoRoutine) && item.status === 'done' && item.completed_at) {
-            const completedDate = new Date(item.completed_at);
-            const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
-            const anchorDate = !Number.isNaN(scheduledDate.getTime()) ? scheduledDate : completedDate;
-            let nextDueTime = anchorDate.getTime();
-
-            if (isShoppingRoutine) {
-                if (item.meta.routineInterval) {
-                    nextDueTime = calculateNextDueDate(
-                        anchorDate,
-                        item.meta.routineInterval,
-                        item.meta.routineDaysOfWeek,
-                        item.meta.routineDaysOfMonth,
-                        item.meta.routineMonthsOfYear
-                    ).getTime();
-                } else {
-                    const recurrenceDays = item.meta.recurrenceDays || 7;
-                    nextDueTime = anchorDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000);
-                }
-            } else if (isTodoRoutine) {
-                nextDueTime = calculateNextDueDate(
-                    anchorDate,
-                    item.meta.routineInterval || 'daily',
-                    item.meta.routineDaysOfWeek,
-                    item.meta.routineDaysOfMonth,
-                    item.meta.routineMonthsOfYear
-                ).getTime();
-            }
-
-            if (now.getTime() >= nextDueTime) {
+            const nextDueDate = getRoutineNextDueDate(item);
+            if (nextDueDate && now.getTime() >= nextDueDate.getTime()) {
                 return {
                     ...item,
                     status: 'pending' as const,
                     completed_at: undefined,
                     meta: {
                         ...item.meta,
-                        date: new Date(nextDueTime).toISOString(),
+                        date: nextDueDate.toISOString(),
                         progress: 0,
                         progressNotes: undefined,
                         lastGeneratedHistoryId: undefined
@@ -1693,14 +1695,16 @@ export const useBrainDumpData = () => {
         if (!targetItem) return;
         if (targetItem.type === ItemType.FINANCE) return;
         const isSavingGoal = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'saving';
+        const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
+        const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
+        const routineNextDueDate = (isShoppingRoutine || isTodoRoutine) ? getRoutineNextDueDate(targetItem) : null;
+
+        if ((isShoppingRoutine || isTodoRoutine) && isRoutineLockedUntilNextDue(targetItem)) return;
 
         const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
         const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
         const newProgress = newStatus === 'done' ? 100 : 0;
         const newProgressNotes = targetItem.meta.progressNotes;
-
-        const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
-        const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
 
         let historyItemIdToCreate: string | undefined;
         let historyItemIdToDelete: string | undefined;
@@ -1720,6 +1724,9 @@ export const useBrainDumpData = () => {
                     ...item.meta,
                     progress: newProgress,
                     progressNotes: newProgressNotes,
+                    date: (newStatus === 'pending' && (isShoppingRoutine || isTodoRoutine) && routineNextDueDate)
+                        ? routineNextDueDate.toISOString()
+                        : item.meta.date,
                     lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
                 }
             } : item
@@ -1843,21 +1850,10 @@ export const useBrainDumpData = () => {
 
         if (!item || (!isTodoRoutine && !isShoppingRoutine) || item.status !== 'done') return;
 
-        const completedDate = item.completed_at ? new Date(item.completed_at) : new Date();
-        const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
-        const anchorDate = !Number.isNaN(scheduledDate.getTime()) ? scheduledDate : completedDate;
-        let nextDueDate: Date;
+        if (isShoppingRoutine && isRoutineLockedUntilNextDue(item)) return;
 
-        if (isShoppingRoutine) {
-            if (item.meta.routineInterval) {
-                nextDueDate = calculateNextDueDate(anchorDate, item.meta.routineInterval, item.meta.routineDaysOfWeek, item.meta.routineDaysOfMonth, item.meta.routineMonthsOfYear);
-            } else {
-                const recurrenceDays = item.meta.recurrenceDays || 7;
-                nextDueDate = new Date(anchorDate.getTime() + recurrenceDays * 24 * 60 * 60 * 1000);
-            }
-        } else {
-            nextDueDate = calculateNextDueDate(anchorDate, item.meta.routineInterval || 'daily', item.meta.routineDaysOfWeek, item.meta.routineDaysOfMonth, item.meta.routineMonthsOfYear);
-        }
+        const nextDueDate = getRoutineNextDueDate(item);
+        if (!nextDueDate) return;
 
         const updatedItem: BrainDumpItem = {
             ...item,

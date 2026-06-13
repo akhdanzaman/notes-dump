@@ -29,7 +29,13 @@ interface ShoppingItemProps {
     newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
     newRoutineDaysOfWeek?: number[],
     newRoutineDaysOfMonth?: number[],
-    newRoutineMonthsOfYear?: number[]
+    newRoutineMonthsOfYear?: number[],
+    newSavingGoalId?: string,
+    newDedicatedWalletId?: string,
+    newPriority?: any,
+    newStart?: string,
+    newEnd?: string,
+    newHideFromCalendar?: boolean
   ) => void;
   readonly?: boolean;
   handleUpdateItem?: any; // To match prop drilling, though we use onUpdate
@@ -55,6 +61,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const [editDate, setEditDate] = useState<string>('');
   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
   const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
+  const [editHideFromCalendar, setEditHideFromCalendar] = useState<boolean>(!!meta.hideFromCalendar);
 
   // Sync state
   useEffect(() => {
@@ -69,6 +76,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
       setEditBudgetCategory(meta.budgetCategory || '');
       setEditPaymentMethod(meta.paymentMethod || '');
+      setEditHideFromCalendar(!!meta.hideFromCalendar);
       
       // Date Init
       const editableDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
@@ -118,7 +126,13 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           editRoutineInterval,
           editRoutineDaysOfWeek,
           editRoutineDaysOfMonth,
-          editRoutineMonthsOfYear
+          editRoutineMonthsOfYear,
+          undefined,
+          meta.dedicatedWalletId,
+          meta.priority,
+          meta.start,
+          meta.end,
+          editHideFromCalendar
       );
   };
 
@@ -134,20 +148,28 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   // Routine next cycle logic
   let nextDueText = null;
   let isWaitingForNextCycle = false;
+  let isRoutineLockedUntilNextDue = false;
+  let routineNextDueDate: Date | null = null;
   if (isRoutine && isDone && completed_at) {
      const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
      const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
      
-     const nextDate = calculateNextDueDate(
-         doneDate,
-         meta.routineInterval || 'daily',
-         meta.routineDaysOfWeek,
-         meta.routineDaysOfMonth,
-         meta.routineMonthsOfYear
-     );
+     if (meta.routineInterval) {
+         routineNextDueDate = calculateNextDueDate(
+             doneDate,
+             meta.routineInterval,
+             meta.routineDaysOfWeek,
+             meta.routineDaysOfMonth,
+             meta.routineMonthsOfYear
+         );
+     } else {
+         const recurrenceDays = Math.max(Number(meta.recurrenceDays || 7), 1);
+         routineNextDueDate = new Date(doneDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000));
+     }
      
      isWaitingForNextCycle = true;
-     nextDueText = `Next: ${nextDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
+     isRoutineLockedUntilNextDue = routineNextDueDate.getTime() > Date.now();
+     nextDueText = `Next: ${routineNextDueDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
   }
 
   const displayDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
@@ -189,7 +211,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
         ${isDone 
             ? 'bg-surface/50 opacity-75' 
             : `bg-surface hover:bg-surface/80`
-        }`}
+        } ${isRoutineLockedUntilNextDue ? 'cursor-default' : ''}`}
       onClick={toggleExpand}
     >
       <div className="flex flex-col gap-1">
@@ -200,10 +222,11 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                 <button 
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (!readonly) onToggleStatus(item.id);
+                        if (!readonly && !isRoutineLockedUntilNextDue) onToggleStatus(item.id);
                     }}
-                    disabled={readonly}
-                    className={`transition-colors shrink-0 ${readonly ? 'cursor-not-allowed' : 'hover:opacity-80'}`}
+                    disabled={readonly || isRoutineLockedUntilNextDue}
+                    title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Available again on ${routineNextDueDate.toLocaleDateString()}` : undefined}
+                    className={`transition-colors shrink-0 ${readonly || isRoutineLockedUntilNextDue ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
                 >
                 {isDone ? (
                     <CheckCircle2 className="w-4 h-4 text-muted" />
@@ -232,9 +255,15 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            onResetRoutine(item.id);
+                            if (!isRoutineLockedUntilNextDue) onResetRoutine(item.id);
                         }}
-                        className="ml-1 px-2 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
+                        disabled={isRoutineLockedUntilNextDue}
+                        title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Available again on ${routineNextDueDate.toLocaleDateString()}` : undefined}
+                        className={`ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 ${
+                            isRoutineLockedUntilNextDue
+                                ? 'bg-muted/10 text-muted cursor-not-allowed'
+                                : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500'
+                        }`}
                     >
                         <RotateCcw className="w-2.5 h-2.5" /> Reset
                     </button>
@@ -351,6 +380,18 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                                 value={editDate}
                                 onChange={(e) => setEditDate(e.target.value)}
                             />
+                      </div>
+                      <div className="col-span-2 flex items-center gap-2 mt-1">
+                           <input
+                                type="checkbox"
+                                id={`hideFromCalendarShopping-${item.id}`}
+                                checked={editHideFromCalendar}
+                                onChange={(e) => setEditHideFromCalendar(e.target.checked)}
+                                className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                           />
+                           <label htmlFor={`hideFromCalendarShopping-${item.id}`} className="text-xs font-medium text-primary">
+                                Hide from Calendar
+                           </label>
                       </div>
                   </div>
 

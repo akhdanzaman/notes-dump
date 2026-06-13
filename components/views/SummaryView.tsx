@@ -73,6 +73,7 @@ import ReviewCenterPanel from "../ReviewCenterPanel";
 import { contentSurface } from "../layout/contentSurface";
 import { buildSummaryFocusDisplay } from "../../utils/summaryFocusUtils";
 import { getDeepWorkChildren } from "../../utils/deepWorkTodoModel";
+import { getShoppingDueDate } from "../../utils/shoppingDateUtils";
 
 interface SummaryViewProps {
   items: BrainDumpItem[];
@@ -126,6 +127,9 @@ interface SummaryViewProps {
     savingGoalId?: string,
     dedicatedWalletId?: string,
     priority?: Priority,
+    start?: string,
+    end?: string,
+    hideFromCalendar?: boolean,
   ) => void;
   handleDelete: (id: string) => void;
   handleKeepRawTodo: (id: string) => void;
@@ -215,6 +219,26 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   }, []);
 
   const todayDate = systemNow;
+  const calendarDayKey = (date: Date) =>
+    `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  const todayCalendarKey = calendarDayKey(todayDate);
+  const isSameCalendarDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  const getRoutineDueDate = (item: BrainDumpItem) => {
+    const rawDate =
+      item.type === ItemType.SHOPPING
+        ? getShoppingDueDate(item)
+        : item.meta.date || item.meta.dateTime || item.meta.start;
+    if (!rawDate) return null;
+    const date = new Date(rawDate);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+  const isRoutineDueOnDate = (item: BrainDumpItem, date: Date) => {
+    const dueDate = getRoutineDueDate(item);
+    return !!dueDate && isSameCalendarDay(dueDate, date);
+  };
   const { pendingGroups } = getFocusMonthData(items, todayDate, "", "");
 
   const shoppingGroups = useMemo(() => getShoppingItems(items), [items]);
@@ -235,6 +259,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       routines: Array.from(routineMap.values()),
     };
   }, [pendingGroups, routineShopping]);
+
+  const routineDueToday = useMemo(
+    () =>
+      summaryPendingGroups.routines.filter((item) =>
+        isRoutineDueOnDate(item, todayDate),
+      ),
+    [summaryPendingGroups.routines, todayCalendarKey],
+  );
+
   const { displayItems, displayTitle, displaySubtitle, isDoneState } =
     useMemo(() => {
       return buildSummaryFocusDisplay(
@@ -245,7 +278,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       );
     }, [items, summaryPendingGroups, urgent]);
 
-  const pendingRoutines = summaryPendingGroups.routines.filter(
+  const pendingRoutines = routineDueToday.filter(
     (r) => r.status === "pending",
   );
   const showRitualsSection =
@@ -349,6 +382,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>(
     {},
   );
+  const [goalDashboardVisibility, setGoalDashboardVisibility] = useState({
+    savings: true,
+    skills: false,
+  });
 
   useEffect(() => {
     if (isNotificationOpen) {
@@ -1209,15 +1246,28 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     });
   }, [items, skills, todayDate.getTime()]);
 
+  const visibleGoalDashboardItems = useMemo(
+    () =>
+      goalDashboardItems.filter((goal) => {
+        const isSavingsGoal =
+          goal.kind === "saving" || goal.kind === "investment";
+        return (
+          (goalDashboardVisibility.savings && isSavingsGoal) ||
+          (goalDashboardVisibility.skills && goal.kind === "skill")
+        );
+      }),
+    [goalDashboardItems, goalDashboardVisibility],
+  );
+
   const routineDashboardItems = useMemo(
     () =>
-      summaryPendingGroups.routines.map((item) => ({
+      routineDueToday.map((item) => ({
         id: item.id,
         label: item.content,
         done: item.status === "done",
         sourceId: item.id,
       })),
-    [summaryPendingGroups.routines],
+    [routineDueToday],
   );
 
   const routineDoneCount = routineDashboardItems.filter(
@@ -1606,7 +1656,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     <button
       type="button"
       onClick={openThemeEditor}
-      className={`${dashboardCardClass} group relative block min-h-[16rem] w-full overflow-hidden text-left transition-transform active:scale-[0.995] ${
+      className={`${dashboardCardClass} group relative block h-full min-h-[16rem] w-full overflow-hidden text-left transition-transform active:scale-[0.995] ${
         compact ? "rounded-[1.75rem]" : "xl:min-h-[18.75rem]"
       }`}
     >
@@ -1615,7 +1665,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       {renderThemeImageCta()}
 
       <div
-        className={`relative z-10 flex min-h-[16rem] flex-col justify-center ${compact ? "p-6" : "p-7 xl:min-h-[18.75rem] xl:p-10"}`}
+        className={`relative z-10 flex h-full min-h-[16rem] flex-col justify-center ${compact ? "p-6" : "p-7 xl:min-h-[18.75rem] xl:p-10"}`}
       >
         <h1
           className={`${compact ? "text-4xl" : "text-5xl xl:text-6xl"} max-w-3xl font-black leading-[1.03] tracking-tight text-[#10233f] dark:text-white`}
@@ -1643,7 +1693,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const renderDateCard = () => (
     <div
       data-swipe-date="summary-theme-month"
-      className={`${dashboardCardClass} flex min-h-[16rem] flex-col items-center justify-center p-5 text-center touch-pan-y xl:min-h-[18.75rem]`}
+      className={`${dashboardCardClass} flex h-full min-h-[16rem] flex-col items-center justify-center p-5 text-center touch-pan-y xl:min-h-[18.75rem]`}
       onTouchStart={dateSwipeHandlers.onTouchStart}
       onTouchMove={dateSwipeHandlers.onTouchMove}
       onTouchEnd={dateSwipeHandlers.onTouchEnd}
@@ -1658,19 +1708,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       <div className="mt-1 text-6xl font-black leading-none text-blue-700 dark:text-blue-300">
         {String(todayDate.getDate()).padStart(2, "0")}
       </div>
-      <div className="mt-2 text-2xl font-black leading-none tracking-tight text-slate-900 dark:text-zinc-50">
-        {systemTimeLabel}
-      </div>
-      <div
-        className={`mt-1 text-[11px] font-bold uppercase tracking-[0.18em] ${dashboardMuted}`}
-      >
-        System time
-      </div>
       <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
         {themeNavDate.toLocaleDateString(undefined, {
           month: "long",
           year: "numeric",
         })}
+      </div>
+      <div className="mt-2 text-2xl font-black leading-none tracking-tight text-slate-900 dark:text-zinc-50">
+        {systemTimeLabel}
       </div>
 
       <div className="mt-6 flex items-center justify-center gap-2">
@@ -1761,22 +1806,59 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     </section>
   );
 
-  const renderGoalsCard = () => (
-    <section
-      className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
-    >
-      <div className="mb-5 flex shrink-0 items-center justify-between">
-        <h2 className={dashboardSectionTitle}>Goals Progress</h2>
-        <div className={dashboardIconClass}>
-          <BarChart3 className="h-5 w-5" />
-        </div>
-      </div>
+  const renderGoalsCard = () => {
+    const goalToggleClass = (active: boolean) =>
+      `rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${
+        active
+          ? "bg-blue-700 text-white shadow-sm dark:bg-blue-300 dark:text-zinc-950"
+          : "bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
+      }`;
 
-      {goalDashboardItems.length > 0 ? (
-        <div
-          className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
-        >
-          {goalDashboardItems.map((goal, index) => (
+    return (
+      <section
+        className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
+      >
+        <div className="mb-3 flex shrink-0 items-center justify-between">
+          <h2 className={dashboardSectionTitle}>Goals Progress</h2>
+          <div className={dashboardIconClass}>
+            <BarChart3 className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="mb-4 flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              setGoalDashboardVisibility((prev) => ({
+                ...prev,
+                savings: !prev.savings,
+              }))
+            }
+            className={goalToggleClass(goalDashboardVisibility.savings)}
+            aria-pressed={goalDashboardVisibility.savings}
+          >
+            Savings
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setGoalDashboardVisibility((prev) => ({
+                ...prev,
+                skills: !prev.skills,
+              }))
+            }
+            className={goalToggleClass(goalDashboardVisibility.skills)}
+            aria-pressed={goalDashboardVisibility.skills}
+          >
+            Skills
+          </button>
+        </div>
+
+        {visibleGoalDashboardItems.length > 0 ? (
+          <div
+            className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
+          >
+            {visibleGoalDashboardItems.map((goal, index) => (
             <div
               key={goal.id}
               className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
@@ -1822,25 +1904,31 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 {goal.valueLabel}
               </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 items-center">
-          {renderDashboardEmptyState(
-            "No goal tracked",
-            "Saving, investment, and skill targets will appear here once you add them.",
-            {
-              label: "Open plan",
-              onClick: () => {
-                setPlanSubTab("savings");
-                setActiveTab("plan");
-              },
-            },
-          )}
-        </div>
-      )}
-    </section>
-  );
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 items-center">
+            {goalDashboardItems.length > 0
+              ? renderDashboardEmptyState(
+                  "Goals hidden",
+                  "Turn on Savings or Skills to show that goal group here.",
+                )
+              : renderDashboardEmptyState(
+                  "No goal tracked",
+                  "Saving, investment, and skill targets will appear here once you add them.",
+                  {
+                    label: "Open plan",
+                    onClick: () => {
+                      setPlanSubTab("savings");
+                      setActiveTab("plan");
+                    },
+                  },
+                )}
+          </div>
+        )}
+      </section>
+    );
+  };
 
   const renderRoutineCard = () => (
     <section
@@ -2006,9 +2094,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       style={{ x: swipeHandlers.dragOffset }}
     >
       <div className={dashboardShellClass}>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-          <div className="xl:col-span-4">{renderHeroCard()}</div>
-          <div className="xl:col-span-1">{renderDateCard()}</div>
+        <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-5">
+          <div className="h-full xl:col-span-4">{renderHeroCard()}</div>
+          <div className="h-full xl:col-span-1">{renderDateCard()}</div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
