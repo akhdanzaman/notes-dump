@@ -1305,9 +1305,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     : "Open Add Theme to set the mission and image URL for this month.";
 
   const dashboardShellClass = [
-    "overflow-hidden rounded-[2rem] border border-white/70 bg-[#eaf3f8] p-3 text-slate-950 shadow-[0_22px_70px_rgba(37,64,90,0.16)]",
-    "dark:border-white/10 dark:bg-[#090d12] dark:text-zinc-50 dark:shadow-black/40",
-    "sm:p-4 xl:rounded-[2.25rem] xl:p-5",
+    "overflow-visible rounded-none border-0 bg-transparent p-0 text-slate-950 shadow-none",
+    "dark:border-0 dark:bg-transparent dark:text-zinc-50 dark:shadow-none",
   ].join(" ");
   const dashboardCardClass = [
     "rounded-[1.5rem] border border-white/70 bg-white/90 shadow-[0_16px_40px_rgba(37,64,90,0.08)] backdrop-blur",
