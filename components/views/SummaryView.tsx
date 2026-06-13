@@ -1966,7 +1966,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const renderDesktopDashboard = () => (
     <motion.div
       data-swipe-tabs="summary"
-      className="hidden lg:block"
+      className="hidden lg:block lg:mt-6"
       onTouchStart={swipeHandlers.onTouchStart}
       onTouchMove={swipeHandlers.onTouchMove}
       onTouchEnd={swipeHandlers.onTouchEnd}
