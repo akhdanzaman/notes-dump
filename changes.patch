@@ -1,6 +1,164 @@
---- notes_original/components/views/SummaryView.tsx	2026-06-13 12:20:52.356844987 +0000
-+++ fix2/components/views/SummaryView.tsx	2026-06-13 12:51:38.110380026 +0000
-@@ -73,6 +73,7 @@
+diff --git a/components/ShoppingItem.tsx b/components/ShoppingItem.tsx
+index 9ddf0ea..cb3c350 100644
+--- a/components/ShoppingItem.tsx
++++ b/components/ShoppingItem.tsx
+@@ -29,7 +29,13 @@ interface ShoppingItemProps {
+     newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+     newRoutineDaysOfWeek?: number[],
+     newRoutineDaysOfMonth?: number[],
+-    newRoutineMonthsOfYear?: number[]
++    newRoutineMonthsOfYear?: number[],
++    newSavingGoalId?: string,
++    newDedicatedWalletId?: string,
++    newPriority?: any,
++    newStart?: string,
++    newEnd?: string,
++    newHideFromCalendar?: boolean
+   ) => void;
+   readonly?: boolean;
+   handleUpdateItem?: any; // To match prop drilling, though we use onUpdate
+@@ -55,6 +61,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
+   const [editDate, setEditDate] = useState<string>('');
+   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
+   const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
++  const [editHideFromCalendar, setEditHideFromCalendar] = useState<boolean>(!!meta.hideFromCalendar);
+ 
+   // Sync state
+   useEffect(() => {
+@@ -69,6 +76,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
+       setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
+       setEditBudgetCategory(meta.budgetCategory || '');
+       setEditPaymentMethod(meta.paymentMethod || '');
++      setEditHideFromCalendar(!!meta.hideFromCalendar);
+       
+       // Date Init
+       const editableDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
+@@ -118,7 +126,13 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
+           editRoutineInterval,
+           editRoutineDaysOfWeek,
+           editRoutineDaysOfMonth,
+-          editRoutineMonthsOfYear
++          editRoutineMonthsOfYear,
++          undefined,
++          meta.dedicatedWalletId,
++          meta.priority,
++          meta.start,
++          meta.end,
++          editHideFromCalendar
+       );
+   };
+ 
+@@ -134,20 +148,33 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
+   // Routine next cycle logic
+   let nextDueText = null;
+   let isWaitingForNextCycle = false;
++  let isRoutineLockedUntilNextDue = false;
++  let routineNextDueDate: Date | null = null;
+   if (isRoutine && isDone && completed_at) {
+-     const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
+-     const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
+-     
+-     const nextDate = calculateNextDueDate(
+-         doneDate,
+-         meta.routineInterval || 'daily',
+-         meta.routineDaysOfWeek,
+-         meta.routineDaysOfMonth,
+-         meta.routineMonthsOfYear
+-     );
++     const completedDate = new Date(completed_at);
++     const scheduledDate = meta.date ? new Date(meta.date) : completedDate;
++     const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
++     const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
++     const doneDate = hasValidScheduledDate ? scheduledDate : completedDate;
++
++     if (hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
++         routineNextDueDate = scheduledDate;
++     } else if (meta.routineInterval) {
++         routineNextDueDate = calculateNextDueDate(
++             doneDate,
++             meta.routineInterval,
++             meta.routineDaysOfWeek,
++             meta.routineDaysOfMonth,
++             meta.routineMonthsOfYear
++         );
++     } else {
++         const recurrenceDays = Math.max(Number(meta.recurrenceDays || 7), 1);
++         routineNextDueDate = new Date(doneDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000));
++     }
+      
+      isWaitingForNextCycle = true;
+-     nextDueText = `Next: ${nextDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
++     isRoutineLockedUntilNextDue = routineNextDueDate.getTime() > Date.now();
++     nextDueText = `Next: ${routineNextDueDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
+   }
+ 
+   const displayDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
+@@ -189,7 +216,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
+         ${isDone 
+             ? 'bg-surface/50 opacity-75' 
+             : `bg-surface hover:bg-surface/80`
+-        }`}
++        } ${isRoutineLockedUntilNextDue ? 'cursor-default' : ''}`}
+       onClick={toggleExpand}
+     >
+       <div className="flex flex-col gap-1">
+@@ -200,10 +227,11 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
+                 <button 
+                     onClick={(e) => {
+                         e.stopPropagation();
+-                        if (!readonly) onToggleStatus(item.id);
++                        if (!readonly && !isRoutineLockedUntilNextDue) onToggleStatus(item.id);
+                     }}
+-                    disabled={readonly}
+-                    className={`transition-colors shrink-0 ${readonly ? 'cursor-not-allowed' : 'hover:opacity-80'}`}
++                    disabled={readonly || isRoutineLockedUntilNextDue}
++                    title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Available again on ${routineNextDueDate.toLocaleDateString()}` : undefined}
++                    className={`transition-colors shrink-0 ${readonly || isRoutineLockedUntilNextDue ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
+                 >
+                 {isDone ? (
+                     <CheckCircle2 className="w-4 h-4 text-muted" />
+@@ -232,9 +260,15 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
+                     <button
+                         onClick={(e) => {
+                             e.stopPropagation();
+-                            onResetRoutine(item.id);
++                            if (!isRoutineLockedUntilNextDue) onResetRoutine(item.id);
+                         }}
+-                        className="ml-1 px-2 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
++                        disabled={isRoutineLockedUntilNextDue}
++                        title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Available again on ${routineNextDueDate.toLocaleDateString()}` : undefined}
++                        className={`ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 ${
++                            isRoutineLockedUntilNextDue
++                                ? 'bg-muted/10 text-muted cursor-not-allowed'
++                                : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500'
++                        }`}
+                     >
+                         <RotateCcw className="w-2.5 h-2.5" /> Reset
+                     </button>
+@@ -352,6 +386,18 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
+                                 onChange={(e) => setEditDate(e.target.value)}
+                             />
+                       </div>
++                      <div className="col-span-2 flex items-center gap-2 mt-1">
++                           <input
++                                type="checkbox"
++                                id={`hideFromCalendarShopping-${item.id}`}
++                                checked={editHideFromCalendar}
++                                onChange={(e) => setEditHideFromCalendar(e.target.checked)}
++                                className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
++                           />
++                           <label htmlFor={`hideFromCalendarShopping-${item.id}`} className="text-xs font-medium text-primary">
++                                Hide from Calendar
++                           </label>
++                      </div>
+                   </div>
+ 
+                   {/* Routine Extras */}
+diff --git a/components/views/SummaryView.tsx b/components/views/SummaryView.tsx
+index 6256470..79d938e 100644
+--- a/components/views/SummaryView.tsx
++++ b/components/views/SummaryView.tsx
+@@ -73,6 +73,7 @@ import ReviewCenterPanel from "../ReviewCenterPanel";
  import { contentSurface } from "../layout/contentSurface";
  import { buildSummaryFocusDisplay } from "../../utils/summaryFocusUtils";
  import { getDeepWorkChildren } from "../../utils/deepWorkTodoModel";
@@ -8,7 +166,7 @@
  
  interface SummaryViewProps {
    items: BrainDumpItem[];
-@@ -126,6 +127,9 @@
+@@ -126,6 +127,9 @@ interface SummaryViewProps {
      savingGoalId?: string,
      dedicatedWalletId?: string,
      priority?: Priority,
@@ -18,7 +176,19 @@
    ) => void;
    handleDelete: (id: string) => void;
    handleKeepRawTodo: (id: string) => void;
-@@ -215,6 +219,27 @@
+@@ -156,6 +160,11 @@ const AI_INSIGHTS_CACHE_DATE_KEY = "braindump_ai_insights_date";
+ const AI_INSIGHTS_CACHE_VERSION_KEY = "braindump_ai_insights_version";
+ const AI_INSIGHTS_CACHE_VERSION = "2026-05-behavior-drift-v1";
+ 
++const isSummaryTaskItem = (item: BrainDumpItem) =>
++  item.type === ItemType.TODO && !item.meta.isRoutine;
++const isSummaryShoppingItem = (item: BrainDumpItem) =>
++  item.type === ItemType.SHOPPING && item.meta?.shoppingCategory !== "routine";
++
+ const SummaryView: React.FC<SummaryViewProps> = ({
+   items,
+   skills,
+@@ -215,6 +224,26 @@ const SummaryView: React.FC<SummaryViewProps> = ({
    }, []);
  
    const todayDate = systemNow;
@@ -42,11 +212,10 @@
 +    const dueDate = getRoutineDueDate(item);
 +    return !!dueDate && isSameCalendarDay(dueDate, date);
 +  };
-+
    const { pendingGroups } = getFocusMonthData(items, todayDate, "", "");
  
    const shoppingGroups = useMemo(() => getShoppingItems(items), [items]);
-@@ -235,6 +260,15 @@
+@@ -235,21 +264,44 @@ const SummaryView: React.FC<SummaryViewProps> = ({
        routines: Array.from(routineMap.values()),
      };
    }, [pendingGroups, routineShopping]);
@@ -59,19 +228,50 @@
 +    [summaryPendingGroups.routines, todayCalendarKey],
 +  );
 +
++  const summaryFocusGroups = useMemo(
++    () => ({
++      today: summaryPendingGroups.today.filter(isSummaryTaskItem),
++      tomorrow: summaryPendingGroups.tomorrow.filter(isSummaryTaskItem),
++      later: summaryPendingGroups.later.filter(isSummaryTaskItem),
++      routines: [],
++    }),
++    [summaryPendingGroups],
++  );
++
++  const summaryFocusItems = useMemo(
++    () => items.filter(isSummaryTaskItem),
++    [items],
++  );
++
++  const summaryUrgentShopping = useMemo(
++    () => urgent.filter(isSummaryShoppingItem),
++    [urgent],
++  );
++
    const { displayItems, displayTitle, displaySubtitle, isDoneState } =
      useMemo(() => {
        return buildSummaryFocusDisplay(
-@@ -245,7 +279,7 @@
+-        items,
+-        summaryPendingGroups,
+-        urgent,
+-        Math.max(items.length, 1),
++        summaryFocusItems,
++        summaryFocusGroups,
++        summaryUrgentShopping,
++        Math.max(summaryFocusItems.length + summaryUrgentShopping.length, 1),
        );
-     }, [items, summaryPendingGroups, urgent]);
- 
+-    }, [items, summaryPendingGroups, urgent]);
+-
 -  const pendingRoutines = summaryPendingGroups.routines.filter(
-+  const pendingRoutines = routineDueToday.filter(
-     (r) => r.status === "pending",
-   );
-   const showRitualsSection =
-@@ -349,6 +383,10 @@
+-    (r) => r.status === "pending",
+-  );
+-  const showRitualsSection =
+-    pendingRoutines.length > 0 && displayTitle !== "Daily Rituals";
++    }, [summaryFocusItems, summaryFocusGroups, summaryUrgentShopping]);
+ 
+   const { totalExpense } = getFinanceItems(
+     items,
+@@ -349,6 +401,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
    const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>(
      {},
    );
@@ -82,7 +282,7 @@
  
    useEffect(() => {
      if (isNotificationOpen) {
-@@ -1158,8 +1196,13 @@
+@@ -1158,8 +1214,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
              : `${Math.round(numbers.progress)}%`,
            showProgress: !isInvestment,
            kind: item.meta.shoppingCategory,
@@ -97,7 +297,7 @@
  
      const startOfWeek = new Date(todayDate);
      startOfWeek.setHours(0, 0, 0, 0);
-@@ -1209,15 +1252,28 @@
+@@ -1209,15 +1270,28 @@ const SummaryView: React.FC<SummaryViewProps> = ({
      });
    }, [items, skills, todayDate.getTime()]);
  
@@ -128,7 +328,7 @@
    );
  
    const routineDoneCount = routineDashboardItems.filter(
-@@ -1344,6 +1400,14 @@
+@@ -1344,6 +1418,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
      minute: "2-digit",
      hour12: false,
    });
@@ -143,7 +343,7 @@
  
    const dashboardShellClass = [
      "overflow-x-hidden overflow-y-visible rounded-none border-0 bg-transparent p-0 text-slate-950 shadow-none",
-@@ -1606,7 +1670,7 @@
+@@ -1606,7 +1688,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
      <button
        type="button"
        onClick={openThemeEditor}
@@ -152,7 +352,7 @@
          compact ? "rounded-[1.75rem]" : "xl:min-h-[18.75rem]"
        }`}
      >
-@@ -1615,7 +1679,7 @@
+@@ -1615,7 +1697,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
        {renderThemeImageCta()}
  
        <div
@@ -161,7 +361,7 @@
        >
          <h1
            className={`${compact ? "text-4xl" : "text-5xl xl:text-6xl"} max-w-3xl font-black leading-[1.03] tracking-tight text-[#10233f] dark:text-white`}
-@@ -1643,7 +1707,7 @@
+@@ -1643,7 +1725,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
    const renderDateCard = () => (
      <div
        data-swipe-date="summary-theme-month"
@@ -170,7 +370,7 @@
        onTouchStart={dateSwipeHandlers.onTouchStart}
        onTouchMove={dateSwipeHandlers.onTouchMove}
        onTouchEnd={dateSwipeHandlers.onTouchEnd}
-@@ -1658,20 +1722,12 @@
+@@ -1658,20 +1740,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
        <div className="mt-1 text-6xl font-black leading-none text-blue-700 dark:text-blue-300">
          {String(todayDate.getDate()).padStart(2, "0")}
        </div>
@@ -194,7 +394,7 @@
  
        <div className="mt-6 flex items-center justify-center gap-2">
          <button
-@@ -1685,9 +1741,15 @@
+@@ -1685,9 +1759,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
          <button
            type="button"
            onClick={openThemeEditor}
@@ -212,7 +412,7 @@
          </button>
          <button
            type="button"
-@@ -1761,86 +1823,130 @@
+@@ -1761,86 +1841,130 @@ const SummaryView: React.FC<SummaryViewProps> = ({
      </section>
    );
  
@@ -415,7 +615,7 @@
  
    const renderRoutineCard = () => (
      <section
-@@ -2006,9 +2112,9 @@
+@@ -2006,9 +2130,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
        style={{ x: swipeHandlers.dragOffset }}
      >
        <div className={dashboardShellClass}>
@@ -428,163 +628,130 @@
          </div>
  
          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
---- notes_original/components/ShoppingItem.tsx	2026-06-13 12:20:52.175688291 +0000
-+++ fix2/components/ShoppingItem.tsx	2026-06-13 12:54:00.306882777 +0000
-@@ -29,7 +29,13 @@
-     newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
-     newRoutineDaysOfWeek?: number[],
-     newRoutineDaysOfMonth?: number[],
--    newRoutineMonthsOfYear?: number[]
-+    newRoutineMonthsOfYear?: number[],
-+    newSavingGoalId?: string,
-+    newDedicatedWalletId?: string,
-+    newPriority?: any,
-+    newStart?: string,
-+    newEnd?: string,
-+    newHideFromCalendar?: boolean
-   ) => void;
-   readonly?: boolean;
-   handleUpdateItem?: any; // To match prop drilling, though we use onUpdate
-@@ -55,6 +61,7 @@
-   const [editDate, setEditDate] = useState<string>('');
-   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
-   const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
-+  const [editHideFromCalendar, setEditHideFromCalendar] = useState<boolean>(!!meta.hideFromCalendar);
+@@ -2092,118 +2216,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
+         {renderRoutineCard()}
+         {renderMoneyCard()}
  
-   // Sync state
-   useEffect(() => {
-@@ -69,6 +76,7 @@
-       setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
-       setEditBudgetCategory(meta.budgetCategory || '');
-       setEditPaymentMethod(meta.paymentMethod || '');
-+      setEditHideFromCalendar(!!meta.hideFromCalendar);
-       
-       // Date Init
-       const editableDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
-@@ -118,7 +126,13 @@
-           editRoutineInterval,
-           editRoutineDaysOfWeek,
-           editRoutineDaysOfMonth,
--          editRoutineMonthsOfYear
-+          editRoutineMonthsOfYear,
-+          undefined,
-+          meta.dedicatedWalletId,
-+          meta.priority,
-+          meta.start,
-+          meta.end,
-+          editHideFromCalendar
-       );
-   };
- 
-@@ -134,20 +148,33 @@
-   // Routine next cycle logic
-   let nextDueText = null;
-   let isWaitingForNextCycle = false;
-+  let isRoutineLockedUntilNextDue = false;
-+  let routineNextDueDate: Date | null = null;
-   if (isRoutine && isDone && completed_at) {
--     const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
--     const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
--     
--     const nextDate = calculateNextDueDate(
--         doneDate,
--         meta.routineInterval || 'daily',
--         meta.routineDaysOfWeek,
--         meta.routineDaysOfMonth,
--         meta.routineMonthsOfYear
--     );
-+     const completedDate = new Date(completed_at);
-+     const scheduledDate = meta.date ? new Date(meta.date) : completedDate;
-+     const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
-+     const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
-+     const doneDate = hasValidScheduledDate ? scheduledDate : completedDate;
-+
-+     if (hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
-+         routineNextDueDate = scheduledDate;
-+     } else if (meta.routineInterval) {
-+         routineNextDueDate = calculateNextDueDate(
-+             doneDate,
-+             meta.routineInterval,
-+             meta.routineDaysOfWeek,
-+             meta.routineDaysOfMonth,
-+             meta.routineMonthsOfYear
-+         );
-+     } else {
-+         const recurrenceDays = Math.max(Number(meta.recurrenceDays || 7), 1);
-+         routineNextDueDate = new Date(doneDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000));
-+     }
-      
-      isWaitingForNextCycle = true;
--     nextDueText = `Next: ${nextDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
-+     isRoutineLockedUntilNextDue = routineNextDueDate.getTime() > Date.now();
-+     nextDueText = `Next: ${routineNextDueDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
-   }
- 
-   const displayDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
-@@ -189,7 +216,7 @@
-         ${isDone 
-             ? 'bg-surface/50 opacity-75' 
-             : `bg-surface hover:bg-surface/80`
--        }`}
-+        } ${isRoutineLockedUntilNextDue ? 'cursor-default' : ''}`}
-       onClick={toggleExpand}
-     >
-       <div className="flex flex-col gap-1">
-@@ -200,10 +227,11 @@
-                 <button 
-                     onClick={(e) => {
-                         e.stopPropagation();
--                        if (!readonly) onToggleStatus(item.id);
-+                        if (!readonly && !isRoutineLockedUntilNextDue) onToggleStatus(item.id);
-                     }}
--                    disabled={readonly}
--                    className={`transition-colors shrink-0 ${readonly ? 'cursor-not-allowed' : 'hover:opacity-80'}`}
-+                    disabled={readonly || isRoutineLockedUntilNextDue}
-+                    title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Available again on ${routineNextDueDate.toLocaleDateString()}` : undefined}
-+                    className={`transition-colors shrink-0 ${readonly || isRoutineLockedUntilNextDue ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
-                 >
-                 {isDone ? (
-                     <CheckCircle2 className="w-4 h-4 text-muted" />
-@@ -232,9 +260,15 @@
-                     <button
-                         onClick={(e) => {
-                             e.stopPropagation();
--                            onResetRoutine(item.id);
-+                            if (!isRoutineLockedUntilNextDue) onResetRoutine(item.id);
-                         }}
--                        className="ml-1 px-2 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
-+                        disabled={isRoutineLockedUntilNextDue}
-+                        title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Available again on ${routineNextDueDate.toLocaleDateString()}` : undefined}
-+                        className={`ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 ${
-+                            isRoutineLockedUntilNextDue
-+                                ? 'bg-muted/10 text-muted cursor-not-allowed'
-+                                : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500'
-+                        }`}
-                     >
-                         <RotateCcw className="w-2.5 h-2.5" /> Reset
-                     </button>
-@@ -352,6 +386,18 @@
-                                 onChange={(e) => setEditDate(e.target.value)}
-                             />
-                       </div>
-+                      <div className="col-span-2 flex items-center gap-2 mt-1">
-+                           <input
-+                                type="checkbox"
-+                                id={`hideFromCalendarShopping-${item.id}`}
-+                                checked={editHideFromCalendar}
-+                                onChange={(e) => setEditHideFromCalendar(e.target.checked)}
-+                                className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
-+                           />
-+                           <label htmlFor={`hideFromCalendarShopping-${item.id}`} className="text-xs font-medium text-primary">
-+                                Hide from Calendar
-+                           </label>
-+                      </div>
-                   </div>
- 
-                   {/* Routine Extras */}
---- notes_original/hooks/useBrainDumpData.ts	2026-06-13 12:20:52.659359140 +0000
-+++ fix2/hooks/useBrainDumpData.ts	2026-06-13 12:54:25.108306790 +0000
-@@ -96,48 +96,81 @@
+-        <section className={contentSurface.primaryColumn}>
+-          <div className="mb-4 flex items-center justify-between">
+-            <div className="flex flex-col">
+-              <h2 className="flex items-center gap-2 text-lg font-bold">
+-                {displayTitle}
+-              </h2>
+-              {displaySubtitle && (
+-                <p className="mt-0.5 text-xs font-medium opacity-50">
+-                  {displaySubtitle}
+-                </p>
+-              )}
+-            </div>
+-
+-            <button
+-              onClick={() => setActiveTab("plan")}
+-              className="text-xs font-bold uppercase tracking-wider opacity-50 hover:opacity-100"
+-            >
+-              View All
+-            </button>
+-          </div>
+-
+-          {displayItems.length > 0 ? (
+-            <div
+-              className={`${contentSurface.denseList} ${
+-                isDoneState ? "opacity-60 grayscale" : ""
+-              }`}
+-            >
+-              {displayItems.map((item) => renderSummaryFocusCard(item))}
+-            </div>
+-          ) : (
+-            <div className={contentSurface.emptyStateCard}>
+-              <p className="font-medium text-muted">All clear!</p>
+-              <p className="mt-1 text-xs opacity-50">
+-                Take a break or plan ahead.
+-              </p>
+-            </div>
+-          )}
+-        </section>
+-
+-        <div className="grid grid-cols-4 gap-3 rounded-[28px] border border-border bg-surface/70 p-4">
+-          <button
+-            onClick={() =>
+-              handleOpenAddTask(new Date().toISOString().split("T")[0])
+-            }
+-            className="flex flex-col items-center gap-2"
+-          >
+-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white dark:bg-white dark:text-black">
+-              <Plus className="h-6 w-6" />
+-            </div>
+-            <span className="text-xs font-medium opacity-70">Task</span>
+-          </button>
+-
+-          <button
+-            onClick={() => handleOpenAddShopping()}
+-            className="flex flex-col items-center gap-2"
+-          >
+-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
+-              <ShoppingCart className="h-6 w-6" />
+-            </div>
+-            <span className="text-xs font-medium opacity-70">Buy</span>
+-          </button>
+-
+-          <button
+-            onClick={handleOpenAddNote}
+-            className="flex flex-col items-center gap-2"
+-          >
+-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
+-              <StickyNote className="h-6 w-6" />
+-            </div>
+-            <span className="text-xs font-medium opacity-70">Note</span>
+-          </button>
+-
+-          <button
+-            onClick={handleOpenAddExpense}
+-            className="flex flex-col items-center gap-2"
+-          >
+-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
+-              <WalletIcon className="h-6 w-6" />
+-            </div>
+-            <span className="text-xs font-medium opacity-70">Expense</span>
+-          </button>
+-        </div>
+-
+-        {showRitualsSection && (
+-          <section>
+-            <div className="mb-4 flex items-center justify-between">
+-              <h2 className="flex items-center gap-2 text-lg font-bold">
+-                Routine
+-              </h2>
+-            </div>
+-
+-            <div
+-              className={`-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 ${dashboardScrollbarClass}`}
+-            >
+-              {pendingRoutines.map((routine) => (
+-                <button
+-                  key={routine.id}
+-                  onClick={() => handleToggleStatus(routine.id)}
+-                  className="flex min-w-[72px] flex-shrink-0 flex-col items-center gap-2"
+-                >
+-                  <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-indigo-500/20 bg-surface transition-all hover:border-indigo-500 hover:bg-indigo-500/10">
+-                    <CheckCircle2 className="h-6 w-6 text-indigo-500 opacity-50" />
+-                  </div>
+-                  <span className="line-clamp-2 w-full text-center text-[10px] font-medium leading-tight opacity-70">
+-                    {routine.content}
+-                  </span>
+-                </button>
+-              ))}
+-            </div>
+-          </section>
+-        )}
+-
+         {renderWeeklyWinCard()}
+       </motion.div>
+     </div>
+diff --git a/hooks/useBrainDumpData.ts b/hooks/useBrainDumpData.ts
+index 890fb34..7f25a37 100644
+--- a/hooks/useBrainDumpData.ts
++++ b/hooks/useBrainDumpData.ts
+@@ -96,48 +96,81 @@ export const mergeFetchedItemsPreservingUnsavedLocal = (
      return merged;
  };
  
@@ -696,7 +863,7 @@
                          progress: 0,
                          progressNotes: undefined,
                          lastGeneratedHistoryId: undefined
-@@ -1693,15 +1726,17 @@
+@@ -1693,15 +1726,17 @@ export const useBrainDumpData = () => {
          if (!targetItem) return;
          if (targetItem.type === ItemType.FINANCE) return;
          const isSavingGoal = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'saving';
@@ -717,7 +884,7 @@
          let historyItemIdToCreate: string | undefined;
          let historyItemIdToDelete: string | undefined;
  
-@@ -1720,6 +1755,9 @@
+@@ -1720,6 +1755,9 @@ export const useBrainDumpData = () => {
                      ...item.meta,
                      progress: newProgress,
                      progressNotes: newProgressNotes,
@@ -727,7 +894,7 @@
                      lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
                  }
              } : item
-@@ -1843,21 +1881,10 @@
+@@ -1843,21 +1881,10 @@ export const useBrainDumpData = () => {
  
          if (!item || (!isTodoRoutine && !isShoppingRoutine) || item.status !== 'done') return;
  
@@ -735,7 +902,8 @@
 -        const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
 -        const anchorDate = !Number.isNaN(scheduledDate.getTime()) ? scheduledDate : completedDate;
 -        let nextDueDate: Date;
--
++        if (isShoppingRoutine && isRoutineLockedUntilNextDue(item)) return;
+ 
 -        if (isShoppingRoutine) {
 -            if (item.meta.routineInterval) {
 -                nextDueDate = calculateNextDueDate(anchorDate, item.meta.routineInterval, item.meta.routineDaysOfWeek, item.meta.routineDaysOfMonth, item.meta.routineMonthsOfYear);
@@ -746,14 +914,12 @@
 -        } else {
 -            nextDueDate = calculateNextDueDate(anchorDate, item.meta.routineInterval || 'daily', item.meta.routineDaysOfWeek, item.meta.routineDaysOfMonth, item.meta.routineMonthsOfYear);
 -        }
-+        if (isShoppingRoutine && isRoutineLockedUntilNextDue(item)) return;
-+
 +        const nextDueDate = getRoutineNextDueDate(item);
 +        if (!nextDueDate) return;
  
          const updatedItem: BrainDumpItem = {
              ...item,
-@@ -2019,23 +2046,33 @@
+@@ -2019,23 +2046,33 @@ export const useBrainDumpData = () => {
                  ? nextShoppingCategory === 'routine'
                  : (newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine);
  

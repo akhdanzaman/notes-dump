@@ -160,6 +160,11 @@ const AI_INSIGHTS_CACHE_DATE_KEY = "braindump_ai_insights_date";
 const AI_INSIGHTS_CACHE_VERSION_KEY = "braindump_ai_insights_version";
 const AI_INSIGHTS_CACHE_VERSION = "2026-05-behavior-drift-v1";
 
+const isSummaryTaskItem = (item: BrainDumpItem) =>
+  item.type === ItemType.TODO && !item.meta.isRoutine;
+const isSummaryShoppingItem = (item: BrainDumpItem) =>
+  item.type === ItemType.SHOPPING && item.meta?.shoppingCategory !== "routine";
+
 const SummaryView: React.FC<SummaryViewProps> = ({
   items,
   skills,
@@ -239,7 +244,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const dueDate = getRoutineDueDate(item);
     return !!dueDate && isSameCalendarDay(dueDate, date);
   };
-
   const { pendingGroups } = getFocusMonthData(items, todayDate, "", "");
 
   const shoppingGroups = useMemo(() => getShoppingItems(items), [items]);
@@ -269,19 +273,35 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     [summaryPendingGroups.routines, todayCalendarKey],
   );
 
+  const summaryFocusGroups = useMemo(
+    () => ({
+      today: summaryPendingGroups.today.filter(isSummaryTaskItem),
+      tomorrow: summaryPendingGroups.tomorrow.filter(isSummaryTaskItem),
+      later: summaryPendingGroups.later.filter(isSummaryTaskItem),
+      routines: [],
+    }),
+    [summaryPendingGroups],
+  );
+
+  const summaryFocusItems = useMemo(
+    () => items.filter(isSummaryTaskItem),
+    [items],
+  );
+
+  const summaryUrgentShopping = useMemo(
+    () => urgent.filter(isSummaryShoppingItem),
+    [urgent],
+  );
+
   const { displayItems, displayTitle, displaySubtitle, isDoneState } =
     useMemo(() => {
       return buildSummaryFocusDisplay(
-        items,
-        summaryPendingGroups,
-        urgent,
-        Math.max(items.length, 1),
+        summaryFocusItems,
+        summaryFocusGroups,
+        summaryUrgentShopping,
+        Math.max(summaryFocusItems.length + summaryUrgentShopping.length, 1),
       );
-    }, [items, summaryPendingGroups, urgent]);
-
-  const pendingRoutines = routineDueToday.filter((r) => r.status === "pending");
-  const showRitualsSection =
-    pendingRoutines.length > 0 && displayTitle !== "Daily Rituals";
+    }, [summaryFocusItems, summaryFocusGroups, summaryUrgentShopping]);
 
   const { totalExpense } = getFinanceItems(
     items,
@@ -2191,118 +2211,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         {renderGoalsCard()}
         {renderRoutineCard()}
         {renderMoneyCard()}
-
-        <section className={contentSurface.primaryColumn}>
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex flex-col">
-              <h2 className="flex items-center gap-2 text-lg font-bold">
-                {displayTitle}
-              </h2>
-              {displaySubtitle && (
-                <p className="mt-0.5 text-xs font-medium opacity-50">
-                  {displaySubtitle}
-                </p>
-              )}
-            </div>
-
-            <button
-              onClick={() => setActiveTab("plan")}
-              className="text-xs font-bold uppercase tracking-wider opacity-50 hover:opacity-100"
-            >
-              View All
-            </button>
-          </div>
-
-          {displayItems.length > 0 ? (
-            <div
-              className={`${contentSurface.denseList} ${
-                isDoneState ? "opacity-60 grayscale" : ""
-              }`}
-            >
-              {displayItems.map((item) => renderSummaryFocusCard(item))}
-            </div>
-          ) : (
-            <div className={contentSurface.emptyStateCard}>
-              <p className="font-medium text-muted">All clear!</p>
-              <p className="mt-1 text-xs opacity-50">
-                Take a break or plan ahead.
-              </p>
-            </div>
-          )}
-        </section>
-
-        <div className="grid grid-cols-4 gap-3 rounded-[28px] border border-border bg-surface/70 p-4">
-          <button
-            onClick={() =>
-              handleOpenAddTask(new Date().toISOString().split("T")[0])
-            }
-            className="flex flex-col items-center gap-2"
-          >
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white dark:bg-white dark:text-black">
-              <Plus className="h-6 w-6" />
-            </div>
-            <span className="text-xs font-medium opacity-70">Task</span>
-          </button>
-
-          <button
-            onClick={() => handleOpenAddShopping()}
-            className="flex flex-col items-center gap-2"
-          >
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
-              <ShoppingCart className="h-6 w-6" />
-            </div>
-            <span className="text-xs font-medium opacity-70">Buy</span>
-          </button>
-
-          <button
-            onClick={handleOpenAddNote}
-            className="flex flex-col items-center gap-2"
-          >
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
-              <StickyNote className="h-6 w-6" />
-            </div>
-            <span className="text-xs font-medium opacity-70">Note</span>
-          </button>
-
-          <button
-            onClick={handleOpenAddExpense}
-            className="flex flex-col items-center gap-2"
-          >
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
-              <WalletIcon className="h-6 w-6" />
-            </div>
-            <span className="text-xs font-medium opacity-70">Expense</span>
-          </button>
-        </div>
-
-        {showRitualsSection && (
-          <section>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-bold">
-                Routine
-              </h2>
-            </div>
-
-            <div
-              className={`-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 ${dashboardScrollbarClass}`}
-            >
-              {pendingRoutines.map((routine) => (
-                <button
-                  key={routine.id}
-                  onClick={() => handleToggleStatus(routine.id)}
-                  className="flex min-w-[72px] flex-shrink-0 flex-col items-center gap-2"
-                >
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-indigo-500/20 bg-surface transition-all hover:border-indigo-500 hover:bg-indigo-500/10">
-                    <CheckCircle2 className="h-6 w-6 text-indigo-500 opacity-50" />
-                  </div>
-                  <span className="line-clamp-2 w-full text-center text-[10px] font-medium leading-tight opacity-70">
-                    {routine.content}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
 
         {renderWeeklyWinCard()}
       </motion.div>

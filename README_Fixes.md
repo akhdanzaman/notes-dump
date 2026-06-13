@@ -1,29 +1,37 @@
-# Notes Dump Fixes v2
+# Notes Dump Fixes v3
 
-Files included:
+Paket ini berisi patch lanjutan dari v2.
+
+## File yang diubah
 
 - `components/views/SummaryView.tsx`
 - `components/ShoppingItem.tsx`
 - `hooks/useBrainDumpData.ts`
-- `changes.patch`
 
-## SummaryView changes
+## Perubahan baru di v3
 
-- The date card now uses the month/year above the clock for today's real calendar date.
-- The `Theme` slider control now shows the active theme slider month/year inside the Theme button.
-- The hero and date card are stretched to the same height on desktop.
-- Goals Progress toggles (`Savings`, `Skills`) are moved into the header, directly to the left of the chart icon.
-- Completed saving goals are hidden from Goals Progress. Investment goals remain visible.
-- Summary Routine still only shows routines whose due date matches today's calendar date.
+- `Today's Focus` tidak lagi mengambil item dari daily routine/routine task.
+- `Today's Focus` hanya mengambil task non-routine dan shopping non-routine.
+- Mobile Summary view dibersihkan dari container lama yang masih tampil di bawah dashboard:
+  - section focus/list lama dihapus,
+  - quick add buttons lama dihapus,
+  - routine carousel lama dihapus.
+- Mobile sekarang memakai card dashboard yang sama: hero, goals, routine, money, dan weekly win.
 
-## Routine / shopping changes
+## Perubahan dari v2 yang tetap dipertahankan
 
-- Done shopping routines remain locked/disabled until their next due date.
-- The reset button for a locked done shopping routine is disabled until the next due date.
-- Shopping item edit panel now includes `Hide from Calendar`.
-- Saving an edited routine schedule recalculates the routine due date from the newly selected schedule for both routine tasks and routine shopping.
-- If a done routine is rescheduled to a future due date, it remains marked done and unlocks when that next due date arrives.
+- Month/year di atas jam memakai kalender hari ini.
+- Tombol `Theme` menampilkan informasi month/year slider theme.
+- Toggle `Savings / Skills` berada di header Goals Progress.
+- Saving goals yang sudah selesai disembunyikan dari Goals Progress.
+- Edit routine task dan routine shopping menghitung ulang due date sesuai schedule baru saat save.
+- Shopping routine yang sudah done tetap disabled/marked done sampai next due.
+- Shopping/routine item punya opsi `Hide from Calendar`.
 
-## Validation note
+## Cara pakai
 
-I ran TypeScript parsing/checking with the available global `tsc`. It reaches dependency/type-definition errors because this extracted workspace does not include `node_modules` and is missing local modules/type definitions such as `@types/node`, `vite-plugin-pwa/client`, React, and other app files. No syntax errors were reported in the edited files before those dependency errors.
+Salin file di paket ini ke project kamu sesuai path masing-masing, atau apply `changes.patch` dari root project.
+
+## Validasi
+
+Syntax TSX `SummaryView.tsx` sudah dicek dengan TypeScript `transpileModule` dan tidak ada syntax error. Full TypeScript build belum divalidasi karena workspace sandbox tidak punya `node_modules` project.
