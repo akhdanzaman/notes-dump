@@ -2,7 +2,7 @@ import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Chat
 import { CHANGELOG_ENTRIES } from "../utils/changelog";
 import { SyncProgressCallback, SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
-import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
+import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, SAVING_GOALS_INVESTMENTS_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
 import { getValidGoogleAccessToken } from "./googleProfileService";
 
@@ -26,6 +26,7 @@ const MANAGED_USER_SHEET_NAMES = [
   'Transactions',
   'Todos',
   'Shopping',
+  SAVING_GOALS_INVESTMENTS_SHEET_NAME,
   'Events',
   'Notes & Journals',
   'Skill Logs',
@@ -64,13 +65,14 @@ export const SPREADSHEET_FETCH_RANGES = {
   Transactions: 'A:V',
   Todos: 'A:AV',
   Shopping: 'A:Z',
+  [SAVING_GOALS_INVESTMENTS_SHEET_NAME]: 'A:R',
   Events: 'A:J',
   'Notes & Journals': 'A:G',
   'Skill Logs': 'A:I',
   'Wallets Config': 'A:E',
   'Skills Config': 'A:E',
   'Budget Rules': 'A:C',
-  'Themes & Settings': 'A:C',
+  'Themes & Settings': 'A:D',
   'Chat History': 'A:C',
   'Canonical Rules': 'A:U',
 } as const;
@@ -152,6 +154,7 @@ type SpreadsheetSyncArgs = [
   string | undefined,
   Skill[] | undefined,
   Wallet[] | undefined,
+  Record<string, string> | undefined,
   Record<string, string> | undefined,
   AppSettings | undefined,
   ChatMessage[] | undefined,
@@ -335,9 +338,13 @@ const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
   } else if (item.type === ItemType.TODO) {
     sheets.push('Todos');
   } else if (item.type === ItemType.SHOPPING) {
-    sheets.push('Shopping');
-    if (item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment') {
-      sheets.push('Transactions');
+    if (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment') {
+      sheets.push(SAVING_GOALS_INVESTMENTS_SHEET_NAME);
+    } else {
+      sheets.push('Shopping');
+      if (item.status === 'done') {
+        sheets.push('Transactions');
+      }
     }
   } else if (item.type === ItemType.EVENT) {
     sheets.push('Events');
@@ -528,7 +535,7 @@ const buildIncrementalUserSheetPlan = (
     actualSheetDb.monthlyThemes || {},
     actualSheetDb.appSettings || { defaultCollapsed: false, hideMoney: false },
     new Date(),
-    { customPrompt: actualSheetDb.customPrompt, chatHistory: actualSheetDb.chatHistory, canonicalRules: actualSheetDb.canonicalRules }
+    { customPrompt: actualSheetDb.customPrompt, chatHistory: actualSheetDb.chatHistory, canonicalRules: actualSheetDb.canonicalRules, monthlyThemeImages: actualSheetDb.monthlyThemeImages }
   );
 
   const previousIndexes = buildSheetRowIndexes(previousSheets);
@@ -551,6 +558,7 @@ const buildIncrementalUserSheetPlan = (
   if (!sameJson(previousDb.skills, nextDb.skills)) markRewrite('Skills Config');
   if (!sameJson(previousDb.wallets, nextDb.wallets)) markRewrite('Wallets Config');
   if (!sameJson(previousDb.monthlyThemes, nextDb.monthlyThemes)
+    || !sameJson(previousDb.monthlyThemeImages, nextDb.monthlyThemeImages)
     || !sameJson(previousDb.appSettings, nextDb.appSettings)
     || !sameJson(previousDb.customPrompt, nextDb.customPrompt)) markRewrite('Themes & Settings');
   if (!sameJson(previousDb.chatHistory, nextDb.chatHistory)) markRewrite('Chat History');
@@ -1142,6 +1150,7 @@ const validateSchema = (data: any): DbSchema => {
       skills: Array.isArray(data.skills) ? data.skills : [],
       wallets: Array.isArray(data.wallets) ? data.wallets : [],
       monthlyThemes: data.monthlyThemes || {},
+      monthlyThemeImages: data.monthlyThemeImages || {},
       chatHistory: chatHistory,
       canonicalRules: Array.isArray(data.canonicalRules) ? data.canonicalRules : []
   };
@@ -1498,6 +1507,7 @@ const buildCurrentRawDbFromValueRanges = (valueRanges: any[]): DbSchema => {
     skills: configSheets.skills,
     budgetConfig: configSheets.budgetConfig,
     monthlyThemes: configSheets.monthlyThemes,
+    monthlyThemeImages: configSheets.monthlyThemeImages,
     appSettings: configSheets.appSettings,
     customPrompt: configSheets.customPrompt,
     chatHistory: configSheets.chatHistory,
@@ -1512,6 +1522,7 @@ const hasDedicatedSheetData = (db: DbSchema) =>
   || (db.budgetConfig?.rules.length || 0) > 0
   || !!db.budgetConfig?.monthlyIncome
   || Object.keys(db.monthlyThemes || {}).length > 0
+  || Object.keys(db.monthlyThemeImages || {}).length > 0
   || !!db.appSettings
   || !!db.customPrompt
   || (db.chatHistory?.length || 0) > 0
@@ -1543,6 +1554,7 @@ const buildDedicatedDbFromValueRanges = (valueRanges: any[]): DbSchema => {
     skills: configSheets.skills,
     budgetConfig: configSheets.budgetConfig,
     monthlyThemes: configSheets.monthlyThemes,
+    monthlyThemeImages: configSheets.monthlyThemeImages,
     appSettings: configSheets.appSettings,
   });
   const reconciled = reconcileSpreadsheetData(baseDb, valueRanges || []);
@@ -1553,6 +1565,7 @@ const buildDedicatedDbFromValueRanges = (valueRanges: any[]): DbSchema => {
     skills: configSheets.skills,
     budgetConfig: configSheets.budgetConfig || reconciled.budgetConfig,
     monthlyThemes: configSheets.monthlyThemes,
+    monthlyThemeImages: configSheets.monthlyThemeImages,
     appSettings: configSheets.appSettings || reconciled.appSettings,
     customPrompt: configSheets.customPrompt,
     chatHistory: configSheets.chatHistory,
@@ -1609,6 +1622,7 @@ const applyConfigSheetsToBaseDb = (baseDb: DbSchema, valueRanges: any[]): DbSche
     skills: rangeNames.has('Skills Config') ? sheetConfig.skills : baseDb.skills,
     budgetConfig: rangeNames.has('Budget Rules') ? (sheetConfig.budgetConfig || baseDb.budgetConfig) : baseDb.budgetConfig,
     monthlyThemes: hasThemesAndSettings ? sheetConfig.monthlyThemes : baseDb.monthlyThemes,
+    monthlyThemeImages: hasThemesAndSettings ? sheetConfig.monthlyThemeImages : baseDb.monthlyThemeImages,
     appSettings: hasThemesAndSettings ? (sheetConfig.appSettings || baseDb.appSettings) : baseDb.appSettings,
     customPrompt: sheetConfig.customPrompt ?? baseDb.customPrompt,
     chatHistory: rangeNames.has('Chat History') ? (sheetConfig.chatHistory || []) : baseDb.chatHistory,
@@ -1832,6 +1846,7 @@ const parseConfigSheets = (valueRanges: any[]): {
   skills: Skill[];
   budgetConfig: BudgetConfig | undefined;
   monthlyThemes: Record<string, string>;
+  monthlyThemeImages: Record<string, string>;
   appSettings: AppSettings | undefined;
   customPrompt: string | undefined;
   chatHistory: ChatMessage[] | undefined;
@@ -1843,6 +1858,7 @@ const parseConfigSheets = (valueRanges: any[]): {
   const canonicalRules: CanonicalRule[] = [];
   let budgetConfig: BudgetConfig | undefined;
   const monthlyThemes: Record<string, string> = {};
+  const monthlyThemeImages: Record<string, string> = {};
   let appSettings: AppSettings | undefined;
   let customPrompt: string | undefined;
   const ensureBudgetConfig = () => {
@@ -1944,7 +1960,11 @@ const parseConfigSheets = (valueRanges: any[]): {
         }
 
         if (first === 'Theme') {
-          if (second && r[2]) monthlyThemes[second] = String(r[2]);
+          if (second) {
+            monthlyThemes[second] = String(r[2] || '');
+            const heroImageUrl = cell(r, 'Hero_Image_URL', 3, ['Hero Image URL', 'Hero_Image_Url']);
+            if (heroImageUrl) monthlyThemeImages[second] = String(heroImageUrl);
+          }
           continue;
         }
 
@@ -1966,6 +1986,8 @@ const parseConfigSheets = (valueRanges: any[]): {
           customPrompt = String(r[1] || '');
         } else if (first.startsWith('theme_')) {
           monthlyThemes[first.replace('theme_', '')] = String(r[1] || '');
+        } else if (first.startsWith('themeImage_')) {
+          monthlyThemeImages[first.replace('themeImage_', '')] = String(r[1] || '');
         }
       }
     } else if (name === 'Chat History') {
@@ -2026,6 +2048,7 @@ const parseConfigSheets = (valueRanges: any[]): {
     skills,
     budgetConfig,
     monthlyThemes,
+    monthlyThemeImages,
     appSettings,
     customPrompt,
     chatHistory: chatHistory.length ? chatHistory : undefined,
@@ -2310,6 +2333,7 @@ const performSync = async (
   skills?: Skill[], 
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
+  monthlyThemeImages?: Record<string, string>,
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
   canonicalRules?: CanonicalRule[],
@@ -2317,7 +2341,7 @@ const performSync = async (
   onProgress?: SyncProgressCallback
 ): Promise<SyncResult> => {
   const updatedDb: DbSchema = { 
-    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory,
+    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory,
     canonicalRules: canonicalRules || []
   };
 
@@ -2358,7 +2382,7 @@ const performSync = async (
       dbToWrite.monthlyThemes || {},
       dbToWrite.appSettings || { defaultCollapsed: false, hideMoney: false },
       new Date(),
-      { customPrompt: dbToWrite.customPrompt, chatHistory: dbToWrite.chatHistory, canonicalRules: dbToWrite.canonicalRules }
+      { customPrompt: dbToWrite.customPrompt, chatHistory: dbToWrite.chatHistory, canonicalRules: dbToWrite.canonicalRules, monthlyThemeImages: dbToWrite.monthlyThemeImages }
     );
 
     // 2. Get existing sheets
@@ -2542,13 +2566,14 @@ export const syncSpreadsheetData = (
   skills?: Skill[], 
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
+  monthlyThemeImages?: Record<string, string>,
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
   canonicalRules?: CanonicalRule[],
   forceOverwrite = false,
   onProgress?: SyncProgressCallback
 ): Promise<SyncResult> => {
-  const args: SpreadsheetSyncArgs = [items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite, onProgress];
+  const args: SpreadsheetSyncArgs = [items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory, canonicalRules, forceOverwrite, onProgress];
 
   if (forceOverwrite) {
     cancelPendingDebouncedSync({ success: true, method: 'skipped_no_changes' });

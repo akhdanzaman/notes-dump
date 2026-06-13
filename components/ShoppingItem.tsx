@@ -260,15 +260,10 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            if (!isRoutineLockedUntilNextDue) onResetRoutine(item.id);
+                            onResetRoutine(item.id);
                         }}
-                        disabled={isRoutineLockedUntilNextDue}
-                        title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Available again on ${routineNextDueDate.toLocaleDateString()}` : undefined}
-                        className={`ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 ${
-                            isRoutineLockedUntilNextDue
-                                ? 'bg-muted/10 text-muted cursor-not-allowed'
-                                : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500'
-                        }`}
+                        title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Reset routine now. Next scheduled due: ${routineNextDueDate.toLocaleDateString()}` : 'Reset routine'}
+                        className="ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500"
                     >
                         <RotateCcw className="w-2.5 h-2.5" /> Reset
                     </button>

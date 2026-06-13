@@ -19,6 +19,7 @@ export interface SheetData {
 
 export const DASHBOARD_SHEET_NAME = 'Sheet1';
 export const DATA_QUALITY_SHEET_NAME = 'Data Quality';
+export const SAVING_GOALS_INVESTMENTS_SHEET_NAME = 'Saving Goals & Investments';
 export const DASHBOARD_HELPER_START_COLUMN_INDEX = 7; // Column H
 export const DASHBOARD_HELPER_END_COLUMN_INDEX = 31; // Up to AE (exclusive)
 
@@ -75,6 +76,10 @@ const getCurrentMonthTheme = (monthlyThemes: Record<string, string>, now: Date) 
   const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   return monthlyThemes[key] || '';
 };
+
+const isSavingOrInvestmentItem = (item: BrainDumpItem) =>
+  item.type === ItemType.SHOPPING
+  && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment');
 
 const fmtCurrency = (value: number) => new Intl.NumberFormat('id-ID', {
   style: 'currency',
@@ -407,7 +412,7 @@ export const generateExportData = (
   monthlyThemes: Record<string, string>,
   appSettings: AppSettings,
   now = new Date(),
-  extras: { customPrompt?: string; chatHistory?: ChatMessage[]; canonicalRules?: CanonicalRule[] } = {}
+  extras: { customPrompt?: string; chatHistory?: ChatMessage[]; canonicalRules?: CanonicalRule[]; monthlyThemeImages?: Record<string, string> } = {}
 ): SheetData[] => {
   const dataQualityIssues = buildDataQualityIssues(items, wallets, budgetConfig);
   const sheets: SheetData[] = [
@@ -532,7 +537,7 @@ export const generateExportData = (
     });
 
   // --- Sheet 3: Shopping ---
-  const shopping = items.filter(i => i.type === ItemType.SHOPPING).map(item => ({
+  const shopping = items.filter(i => i.type === ItemType.SHOPPING && !isSavingOrInvestmentItem(i)).map(item => ({
       Status: item.status,
       Item: item.content,
       Amount: item.meta.amount || 0,
@@ -567,6 +572,38 @@ export const generateExportData = (
         ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.Investment_Type, s.Investment_Code, s.Investment_Units, s.Investment_Avg_Buy, s.Investment_Current_Price, s.Investment_Platform, s.ID, s.Budget_Category, s.Payment_Method, s.Dedicated_Wallet_ID, s.Hide_From_Calendar, s.Routine_Interval, s.Routine_Days_Of_Week, s.Routine_Days_Of_Month, s.Routine_Months_Of_Year, s.Recurrence_Days, s.Last_Generated_History_ID])
       ]
     });
+
+  // --- Dedicated Sheet: Saving Goals & Investments ---
+  const savingGoalInvestmentRows = items
+    .filter(isSavingOrInvestmentItem)
+    .map(item => ({
+      Kind: item.meta.shoppingCategory || '',
+      Status: item.status,
+      Name: item.content,
+      Target_Amount: item.meta.amount || 0,
+      Saved_Amount: item.meta.savedAmount || '',
+      Dedicated_Wallet_ID: item.meta.dedicatedWalletId || '',
+      Due_Date: getShoppingDueDate(item) || '',
+      Created_At: item.created_at,
+      Completed_At: item.completed_at || '',
+      Tags: item.meta.tags?.join(', ') || '',
+      Hide_From_Calendar: item.meta.hideFromCalendar ? 'TRUE' : '',
+      Investment_Type: item.meta.investmentAssetType || '',
+      Investment_Code: item.meta.investmentSymbol || '',
+      Investment_Units: item.meta.investmentUnits || '',
+      Investment_Avg_Buy: item.meta.investmentAveragePrice || '',
+      Investment_Current_Price: item.meta.investmentCurrentPrice || '',
+      Investment_Platform: item.meta.investmentPlatform || '',
+      ID: item.id,
+    }));
+
+  sheets.push({
+    name: SAVING_GOALS_INVESTMENTS_SHEET_NAME,
+    data: [
+      ["Kind", "Status", "Name", "Target_Amount", "Saved_Amount", "Dedicated_Wallet_ID", "Due_Date", "Created_At", "Completed_At", "Tags", "Hide_From_Calendar", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"],
+      ...savingGoalInvestmentRows.map(row => [row.Kind, row.Status, row.Name, row.Target_Amount, row.Saved_Amount, row.Dedicated_Wallet_ID, row.Due_Date, row.Created_At, row.Completed_At, row.Tags, row.Hide_From_Calendar, row.Investment_Type, row.Investment_Code, row.Investment_Units, row.Investment_Avg_Buy, row.Investment_Current_Price, row.Investment_Platform, row.ID])
+    ]
+  });
 
   // --- Sheet 4: Events ---
   const events = items.filter(i => i.type === ItemType.EVENT).map(item => ({
@@ -677,10 +714,16 @@ export const generateExportData = (
   });
 
   // --- Sheet 11: Themes & Settings ---
-  const themesData = Object.entries(monthlyThemes).map(([key, value]) => ({
+  const themeKeys = Array.from(new Set([
+    ...Object.keys(monthlyThemes || {}),
+    ...Object.keys(extras.monthlyThemeImages || {}),
+  ])).sort();
+
+  const themesData = themeKeys.map((key) => ({
     Type: 'Theme',
     Key: key,
-    Value: value
+    Value: monthlyThemes[key] || '',
+    Hero_Image_URL: extras.monthlyThemeImages?.[key] || ''
   }));
   
   const settingsData = [
@@ -698,8 +741,9 @@ export const generateExportData = (
   sheets.push({
     name: "Themes & Settings",
     data: [
-      ["Type", "Key", "Value"],
-      ...[...themesData, ...settingsData].map(d => [d.Type, d.Key, d.Value])
+      ["Type", "Key", "Value", "Hero_Image_URL"],
+      ...themesData.map(d => [d.Type, d.Key, d.Value, d.Hero_Image_URL]),
+      ...settingsData.map(d => [d.Type, d.Key, d.Value, ''])
     ]
   });
 

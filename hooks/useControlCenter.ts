@@ -18,6 +18,7 @@ export interface UseControlCenterProps {
     allSkills: Skill[];
     allWallets: Wallet[];
     monthlyThemes: Record<string, string>;
+    monthlyThemeImages: Record<string, string>;
     currentBudgetConfig?: BudgetConfig;
     currentPrompt?: string;
 }
@@ -33,6 +34,7 @@ export const useControlCenter = ({
     allSkills,
     allWallets,
     monthlyThemes,
+    monthlyThemeImages,
     currentBudgetConfig,
     currentPrompt
 }: UseControlCenterProps) => {
@@ -479,7 +481,8 @@ export const useControlCenter = ({
             allWallets, 
             { monthlyIncome, rules: budgetRules }, 
             monthlyThemes, 
-            localAppSettings
+            localAppSettings,
+            monthlyThemeImages
         );
     };
 
@@ -490,6 +493,7 @@ export const useControlCenter = ({
             wallets: allWallets,
             budgetConfig: { monthlyIncome, rules: budgetRules },
             monthlyThemes,
+            monthlyThemeImages,
             appSettings: localAppSettings,
             customPrompt: prompt
         };

@@ -25,9 +25,10 @@ export const exportToExcel = (
   wallets: Wallet[],
   budgetConfig: BudgetConfig,
   monthlyThemes: Record<string, string>,
-  appSettings: AppSettings
+  appSettings: AppSettings,
+  monthlyThemeImages: Record<string, string> = {}
 ) => {
-  const sheets = generateExportData(items, skills, wallets, budgetConfig, monthlyThemes, appSettings);
+  const sheets = generateExportData(items, skills, wallets, budgetConfig, monthlyThemes, appSettings, new Date(), { monthlyThemeImages });
 
   const html = `<!doctype html>
 <html>

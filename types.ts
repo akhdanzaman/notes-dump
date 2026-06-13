@@ -268,6 +268,7 @@ export interface DbSchema {
   skills?: Skill[];
   wallets?: Wallet[];
   monthlyThemes?: Record<string, string>;
+  monthlyThemeImages?: Record<string, string>;
   chatHistory?: ChatMessage[];
   canonicalRules?: CanonicalRule[];
 }

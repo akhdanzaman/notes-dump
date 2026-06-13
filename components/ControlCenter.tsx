@@ -50,6 +50,7 @@ interface ControlCenterProps {
     allSkills: Skill[];
     allWallets: Wallet[];
     monthlyThemes: Record<string, string>;
+    monthlyThemeImages: Record<string, string>;
 
     // External handlers
     onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -92,7 +93,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     isOpen, onClose, saveStatus, saveProgress, fetchProgress, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
     appSettings, setAppSettings, error, pendingCount, parsingTasks, enrichmentTasks = [], retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
-    allItems, allSkills, allWallets, monthlyThemes,
+    allItems, allSkills, allWallets, monthlyThemes, monthlyThemeImages,
     onImportData, onClearData
 }) => {
     
@@ -207,6 +208,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         allSkills,
         allWallets,
         monthlyThemes,
+        monthlyThemeImages,
         currentBudgetConfig,
         currentPrompt
     });

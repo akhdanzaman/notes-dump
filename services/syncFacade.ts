@@ -45,6 +45,7 @@ export const syncData = async (
   skills?: Skill[],
   wallets?: Wallet[],
   monthlyThemes?: Record<string, string>,
+  monthlyThemeImages?: Record<string, string>,
   appSettings?: AppSettings,
   chatHistory?: ChatMessage[],
   canonicalRules?: CanonicalRule[],
@@ -53,7 +54,7 @@ export const syncData = async (
 ): Promise<SyncResult> => {
   const deduped = dedupeBrainDumpItems(items);
   const outgoingItems = deduped.items;
-  const outgoingDb = { data: outgoingItems, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules };
+  const outgoingDb = { data: outgoingItems, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory, canonicalRules };
   onProgress?.({ phase: 'prepare', label: 'Preparing data', detail: `${outgoingItems.length} items ready to save` });
 
   if (!getSpreadsheetConfig()) {
@@ -75,6 +76,7 @@ export const syncData = async (
     skills,
     wallets,
     monthlyThemes,
+    monthlyThemeImages,
     appSettings,
     chatHistory,
     canonicalRules,

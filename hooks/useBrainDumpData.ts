@@ -61,11 +61,23 @@ import { dedupeBrainDumpItems } from '../utils/itemDedupe';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
+const MONTHLY_THEME_IMAGES_STORAGE_KEY = 'braindump_monthly_theme_images';
+
+const readMonthlyThemeImages = (): Record<string, string> => {
+    try {
+        if (typeof localStorage === 'undefined') return {};
+        return JSON.parse(localStorage.getItem(MONTHLY_THEME_IMAGES_STORAGE_KEY) || '{}');
+    } catch {
+        return {};
+    }
+};
+
 type ParsingUndoSnapshot = {
     items: BrainDumpItem[];
     skills: Skill[];
     wallets: Wallet[];
     monthlyThemes: Record<string, string>;
+    monthlyThemeImages: Record<string, string>;
     canonicalRules: CanonicalRule[];
 };
 
@@ -477,6 +489,7 @@ export const useBrainDumpData = () => {
     const [wallets, setWallets] = useState<Wallet[]>([]);
     const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
     const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
+    const [monthlyThemeImages, setMonthlyThemeImages] = useState<Record<string, string>>(() => readMonthlyThemeImages());
     const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: true, hideMoney: false, enableDraftReview: false, theme: 'dark' });
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
         const local = localStorage.getItem('braindump_chat_history');
@@ -487,6 +500,10 @@ export const useBrainDumpData = () => {
     useEffect(() => {
         localStorage.setItem('braindump_chat_history', JSON.stringify(chatHistory));
     }, [chatHistory]);
+
+    useEffect(() => {
+        localStorage.setItem(MONTHLY_THEME_IMAGES_STORAGE_KEY, JSON.stringify(monthlyThemeImages));
+    }, [monthlyThemeImages]);
 
     const [loading, setLoading] = useState(true);
     const [pendingCount, setPendingCount] = useState(0);
@@ -507,6 +524,7 @@ export const useBrainDumpData = () => {
         newSkills?: Skill[];
         newWallets?: Wallet[];
         newThemes?: Record<string, string>;
+        newThemeImages?: Record<string, string>;
         newAppSettings?: AppSettings;
         newCanonicalRules?: CanonicalRule[];
         forceOverwrite: boolean;
@@ -536,6 +554,8 @@ export const useBrainDumpData = () => {
     walletsRef.current = wallets;
     const monthlyThemesRef = useRef(monthlyThemes);
     monthlyThemesRef.current = monthlyThemes;
+    const monthlyThemeImagesRef = useRef(monthlyThemeImages);
+    monthlyThemeImagesRef.current = monthlyThemeImages;
     const appSettingsRef = useRef(appSettings);
     appSettingsRef.current = appSettings;
     const chatHistoryRef = useRef(chatHistory);
@@ -556,7 +576,8 @@ export const useBrainDumpData = () => {
         newThemes?: Record<string, string>,
         newAppSettings?: AppSettings,
         newCanonicalRules?: CanonicalRule[],
-        forceOverwrite = false
+        forceOverwrite = false,
+        newThemeImages?: Record<string, string>
     ) => {
         const baseItems = itemsRef.current;
         const itemsToSave = newItems || itemsRef.current;
@@ -573,6 +594,7 @@ export const useBrainDumpData = () => {
             const skillsToSave = newSkills || skillsRef.current;
             const walletsToSave = newWallets || walletsRef.current;
             const themesToSave = newThemes || monthlyThemesRef.current;
+            const themeImagesToSave = newThemeImages || monthlyThemeImagesRef.current;
             const settingsToSave = newAppSettings || appSettingsRef.current;
             const canonicalRulesToSave = newCanonicalRules || canonicalRulesRef.current;
 
@@ -583,6 +605,7 @@ export const useBrainDumpData = () => {
                 skillsToSave,
                 walletsToSave,
                 themesToSave,
+                themeImagesToSave,
                 settingsToSave,
                 undefined,
                 canonicalRulesToSave,
@@ -596,8 +619,8 @@ export const useBrainDumpData = () => {
 
             if (result.mergedData) {
                 const remoteSchema = result.mergedData;
-                const baseForMerge = { data: baseItems, skills: skillsToSave, wallets: walletsToSave, monthlyThemes: themesToSave } as DbSchema;
-                const currentForMerge = { data: itemsRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema;
+                const baseForMerge = { data: baseItems, skills: skillsToSave, wallets: walletsToSave, monthlyThemes: themesToSave, monthlyThemeImages: themeImagesToSave } as DbSchema;
+                const currentForMerge = { data: itemsRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, monthlyThemeImages: monthlyThemeImagesRef.current } as DbSchema;
                 const merged = mergeDbData(currentForMerge, remoteSchema, baseForMerge);
                 // Items: only merge remote additions (items in sheet but missing locally).
                 // Never overwrite items the user just changed — itemsRef.current already has those.
@@ -608,12 +631,15 @@ export const useBrainDumpData = () => {
                 skillsRef.current = merged.skills || [];
                 walletsRef.current = merged.wallets || [];
                 const mergedThemes = remoteSchema.monthlyThemes ? { ...remoteSchema.monthlyThemes, ...themesToSave } : themesToSave;
+                const mergedThemeImages = remoteSchema.monthlyThemeImages ? { ...remoteSchema.monthlyThemeImages, ...themeImagesToSave } : themeImagesToSave;
                 monthlyThemesRef.current = mergedThemes;
+                monthlyThemeImagesRef.current = mergedThemeImages;
                 if (remoteSchema.canonicalRules) canonicalRulesRef.current = remoteSchema.canonicalRules;
                 setItems(merged.data);
                 setSkills(merged.skills || []);
                 setWallets(merged.wallets || []);
                 setMonthlyThemes(mergedThemes);
+                setMonthlyThemeImages(mergedThemeImages);
                 if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
             }
 
@@ -650,7 +676,8 @@ export const useBrainDumpData = () => {
         newThemes?: Record<string, string>,
         newAppSettings?: AppSettings,
         newCanonicalRules?: CanonicalRule[],
-        forceOverwrite = false
+        forceOverwrite = false,
+        newThemeImages?: Record<string, string>
     ) => {
         if (hasActiveParsing()) {
             const previous = pendingSaveAfterParsingRef.current;
@@ -661,6 +688,7 @@ export const useBrainDumpData = () => {
                 newSkills: newSkills || previous?.newSkills,
                 newWallets: newWallets || previous?.newWallets,
                 newThemes: newThemes || previous?.newThemes,
+                newThemeImages: newThemeImages || previous?.newThemeImages,
                 newAppSettings: newAppSettings || previous?.newAppSettings,
                 newCanonicalRules: newCanonicalRules || previous?.newCanonicalRules,
                 forceOverwrite: (previous?.forceOverwrite || forceOverwrite)
@@ -679,7 +707,8 @@ export const useBrainDumpData = () => {
             newThemes,
             newAppSettings,
             newCanonicalRules,
-            forceOverwrite
+            forceOverwrite,
+            newThemeImages
         );
     }, [performSaveAndSync]);
 
@@ -765,7 +794,18 @@ export const useBrainDumpData = () => {
                     appliedData = { ...data, data: mergedItems, wallets: walletsForSweep };
 
                     if (dedupeResult.removedCount > 0 || investmentWalletMigration.changed || JSON.stringify(mergedItems) !== JSON.stringify(data.data)) {
-                        saveAndSync(mergedItems, data.budgetConfig, data.customPrompt, data.skills, walletsForSweep, data.monthlyThemes, data.appSettings, data.canonicalRules);
+                        saveAndSync(
+                            mergedItems,
+                            data.budgetConfig,
+                            data.customPrompt,
+                            data.skills,
+                            walletsForSweep,
+                            data.monthlyThemes,
+                            data.appSettings,
+                            data.canonicalRules,
+                            false,
+                            data.monthlyThemeImages
+                        );
                     }
                 }
 
@@ -786,7 +826,18 @@ export const useBrainDumpData = () => {
                     ];
                     skillsRef.current = defaults;
                     setSkills(defaults);
-                    saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
+                    saveAndSync(
+                        data.data || [],
+                        data.budgetConfig,
+                        data.customPrompt,
+                        defaults,
+                        data.wallets,
+                        data.monthlyThemes,
+                        data.appSettings,
+                        data.canonicalRules,
+                        false,
+                        data.monthlyThemeImages
+                    );
                 }
 
                 if (walletsToApply) {
@@ -796,6 +847,10 @@ export const useBrainDumpData = () => {
                 if (data.monthlyThemes) {
                     monthlyThemesRef.current = data.monthlyThemes;
                     setMonthlyThemes(data.monthlyThemes);
+                }
+                if (data.monthlyThemeImages) {
+                    monthlyThemeImagesRef.current = data.monthlyThemeImages;
+                    setMonthlyThemeImages(data.monthlyThemeImages);
                 }
                 if (data.appSettings) {
                     appSettingsRef.current = data.appSettings;
@@ -825,7 +880,8 @@ export const useBrainDumpData = () => {
                         appliedData.monthlyThemes,
                         appliedData.appSettings,
                         appliedData.canonicalRules,
-                        true
+                        true,
+                        appliedData.monthlyThemeImages
                     );
                 }
             }
@@ -870,7 +926,8 @@ export const useBrainDumpData = () => {
                 deferredSave.newThemes || monthlyThemesRef.current,
                 deferredSave.newAppSettings || appSettingsRef.current,
                 deferredSave.newCanonicalRules || canonicalRulesRef.current,
-                deferredSave.forceOverwrite
+                deferredSave.forceOverwrite,
+                deferredSave.newThemeImages || monthlyThemeImagesRef.current
             );
         }
 
@@ -1091,6 +1148,7 @@ export const useBrainDumpData = () => {
                 skills: skillsRef.current,
                 wallets: walletsRef.current,
                 monthlyThemes: monthlyThemesRef.current,
+                monthlyThemeImages: monthlyThemeImagesRef.current,
                 canonicalRules: canonicalRulesRef.current,
             };
 
@@ -2386,6 +2444,8 @@ export const useBrainDumpData = () => {
         setCustomPrompt,
         monthlyThemes,
         setMonthlyThemes,
+        monthlyThemeImages,
+        setMonthlyThemeImages,
         appSettings,
         setAppSettings,
         chatHistory,

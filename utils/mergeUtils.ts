@@ -221,6 +221,7 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
         skills: Array.from(skillMap.values()),
         wallets: Array.from(walletMap.values()),
         monthlyThemes: { ...remote.monthlyThemes, ...local.monthlyThemes },
+        monthlyThemeImages: { ...remote.monthlyThemeImages, ...local.monthlyThemeImages },
         chatHistory: chatHistory.slice(-50),
         canonicalRules
     };

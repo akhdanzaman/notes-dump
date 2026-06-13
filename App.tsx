@@ -74,22 +74,10 @@ import {
 } from "./utils/featureTutorials";
 import { classifyText } from "./services/geminiService";
 
-const MONTHLY_THEME_IMAGES_STORAGE_KEY = "braindump_monthly_theme_images";
-
 const getThemeMonthKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
-};
-
-const readMonthlyThemeImages = (): Record<string, string> => {
-  try {
-    return JSON.parse(
-      localStorage.getItem(MONTHLY_THEME_IMAGES_STORAGE_KEY) || "{}",
-    );
-  } catch {
-    return {};
-  }
 };
 
 const App: React.FC = () => {
@@ -106,6 +94,8 @@ const App: React.FC = () => {
     setCustomPrompt,
     monthlyThemes,
     setMonthlyThemes,
+    monthlyThemeImages,
+    setMonthlyThemeImages,
     appSettings,
     setAppSettings,
     chatHistory,
@@ -212,10 +202,6 @@ const App: React.FC = () => {
   const [themeEditKey, setThemeEditKey] = useState<string | null>(null);
   const [tempThemeContent, setTempThemeContent] = useState("");
   const [tempThemeImageUrl, setTempThemeImageUrl] = useState("");
-  const [monthlyThemeImages, setMonthlyThemeImages] = useState<
-    Record<string, string>
-  >(() => readMonthlyThemeImages());
-
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteType, setDeleteType] = useState<"skill" | "wallet" | null>(null);
 
@@ -836,11 +822,18 @@ const App: React.FC = () => {
 
     setMonthlyThemes(nextThemes);
     setMonthlyThemeImages(nextThemeImages);
-    localStorage.setItem(
-      MONTHLY_THEME_IMAGES_STORAGE_KEY,
-      JSON.stringify(nextThemeImages),
+    saveAndSync(
+      items,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      nextThemes,
+      undefined,
+      undefined,
+      false,
+      nextThemeImages,
     );
-    saveAndSync(items, undefined, undefined, undefined, undefined, nextThemes);
     closeThemeEditor();
   };
 
@@ -1483,6 +1476,7 @@ const App: React.FC = () => {
         allSkills={skills}
         allWallets={wallets}
         monthlyThemes={monthlyThemes}
+        monthlyThemeImages={monthlyThemeImages}
         onImportData={handleImportData}
         onClearData={handleClearData}
       />

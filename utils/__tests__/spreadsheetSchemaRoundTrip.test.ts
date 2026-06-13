@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { generateExportData } from '../exportUtils';
+import { SAVING_GOALS_INVESTMENTS_SHEET_NAME, generateExportData } from '../exportUtils';
 import { reconcileSpreadsheetData } from '../../services/spreadsheetReconciler';
 import { AppSettings, BrainDumpItem, BudgetConfig, DbSchema, ItemType, Wallet } from '../../types';
 import { getWalletStats } from '../selectors/moneySelectors';
@@ -156,6 +156,12 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
   const shoppingSheet = sheets.find(sheet => sheet.name === 'Shopping');
   assert.ok(shoppingSheet);
   assert.deepEqual(shoppingSheet!.data[0], ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID", "Budget_Category", "Payment_Method", "Dedicated_Wallet_ID", "Hide_From_Calendar", "Routine_Interval", "Routine_Days_Of_Week", "Routine_Days_Of_Month", "Routine_Months_Of_Year", "Recurrence_Days", "Last_Generated_History_ID"]);
+  const savingGoalsInvestmentsSheet = sheets.find(sheet => sheet.name === SAVING_GOALS_INVESTMENTS_SHEET_NAME);
+  assert.ok(savingGoalsInvestmentsSheet);
+  assert.deepEqual(savingGoalsInvestmentsSheet!.data[0], ["Kind", "Status", "Name", "Target_Amount", "Saved_Amount", "Dedicated_Wallet_ID", "Due_Date", "Created_At", "Completed_At", "Tags", "Hide_From_Calendar", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"]);
+  const investmentRow = savingGoalsInvestmentsSheet!.data.find(row => row.includes('investment-1'));
+  assert.ok(investmentRow);
+  assert.equal(investmentRow![savingGoalsInvestmentsSheet!.data[0].indexOf('Hide_From_Calendar')], 'TRUE');
 
   const valueRanges = sheets.map((sheet) => ({
     range: `'${sheet.name}'!A1`,
@@ -449,24 +455,24 @@ test('spreadsheet reconciliation treats blank trailing schema cells as user clea
   };
   const sheets = generateExportData(db.data, [], wallets, budgetConfig, {}, appSettings);
   const txSheet = sheets.find(sheet => sheet.name === 'Transactions');
-  const shoppingSheet = sheets.find(sheet => sheet.name === 'Shopping');
+  const savingGoalsInvestmentsSheet = sheets.find(sheet => sheet.name === SAVING_GOALS_INVESTMENTS_SHEET_NAME);
   assert.ok(txSheet);
-  assert.ok(shoppingSheet);
+  assert.ok(savingGoalsInvestmentsSheet);
 
   const txValues = structuredClone(txSheet!.data);
   txValues[1] = txValues[1].slice(0, txValues[0].indexOf('ID') + 1);
 
-  const shoppingValues = structuredClone(shoppingSheet!.data);
-  const shopHeader = shoppingValues[0];
-  const shopRow = shoppingValues[1];
-  ['Investment_Units', 'Investment_Avg_Buy', 'Investment_Current_Price', 'Investment_Platform'].forEach((name) => {
-    shopRow[shopHeader.indexOf(name)] = '';
+  const goalValues = structuredClone(savingGoalsInvestmentsSheet!.data);
+  const goalHeader = goalValues[0];
+  const goalRow = goalValues[1];
+  ['Dedicated_Wallet_ID', 'Hide_From_Calendar', 'Investment_Units', 'Investment_Avg_Buy', 'Investment_Current_Price', 'Investment_Platform'].forEach((name) => {
+    goalRow[goalHeader.indexOf(name)] = '';
   });
-  shoppingValues[1] = shopRow.slice(0, shopHeader.indexOf('ID') + 1);
+  goalValues[1] = goalRow.slice(0, goalHeader.indexOf('ID') + 1);
 
   const reconciled = reconcileSpreadsheetData(structuredClone(db), [
     { range: "'Transactions'!A1:V", values: txValues },
-    { range: "'Shopping'!A1:Z", values: shoppingValues },
+    { range: `'${SAVING_GOALS_INVESTMENTS_SHEET_NAME}'!A1:R`, values: goalValues },
   ]);
   const reconciledTransaction = reconciled.data.find(item => item.id === 'txn-clear-1');
   assert.ok(reconciledTransaction);
@@ -485,6 +491,66 @@ test('spreadsheet reconciliation treats blank trailing schema cells as user clea
   assert.equal(reconciledInvestment?.meta.investmentAveragePrice, undefined);
   assert.equal(reconciledInvestment?.meta.investmentCurrentPrice, undefined);
   assert.equal(reconciledInvestment?.meta.investmentPlatform, undefined);
+});
+
+test('monthly theme hero image URLs round-trip beside theme rows', () => {
+  const sheets = generateExportData([], [], [], budgetConfig, { '2026-06': 'Reset month' }, appSettings, new Date('2026-06-01T00:00:00.000Z'), {
+    monthlyThemeImages: { '2026-06': 'https://example.com/hero.jpg' },
+  });
+
+  const themesSheet = sheets.find(sheet => sheet.name === 'Themes & Settings');
+  assert.ok(themesSheet);
+  assert.deepEqual(themesSheet!.data[0], ['Type', 'Key', 'Value', 'Hero_Image_URL']);
+  const themeRow = themesSheet!.data.find(row => row[0] === 'Theme' && row[1] === '2026-06');
+  assert.deepEqual(themeRow, ['Theme', '2026-06', 'Reset month', 'https://example.com/hero.jpg']);
+
+  const reconciled = reconcileSpreadsheetData({ data: [], monthlyThemes: {}, monthlyThemeImages: {}, appSettings }, [{
+    range: "'Themes & Settings'!A1:D",
+    values: themesSheet!.data,
+  }]);
+
+  assert.equal(reconciled.monthlyThemes?.['2026-06'], 'Reset month');
+  assert.equal(reconciled.monthlyThemeImages?.['2026-06'], 'https://example.com/hero.jpg');
+});
+
+test('saving goals and investments can be added, edited, and deleted from dedicated spreadsheet sheet', () => {
+  const existing: BrainDumpItem = {
+    id: 'goal-keep',
+    type: ItemType.SHOPPING,
+    content: 'Emergency Fund',
+    status: 'pending',
+    created_at: '2026-06-01T00:00:00.000Z',
+    meta: { amount: 1_000_000, savedAmount: 100_000, shoppingCategory: 'saving' },
+  };
+  const deleted: BrainDumpItem = {
+    id: 'goal-delete',
+    type: ItemType.SHOPPING,
+    content: 'Old Goal',
+    status: 'pending',
+    created_at: '2026-06-01T00:00:00.000Z',
+    meta: { amount: 500_000, shoppingCategory: 'saving' },
+  };
+
+  const reconciled = reconcileSpreadsheetData({ data: [existing, deleted], budgetConfig, skills: [], wallets, monthlyThemes: {}, appSettings }, [{
+    range: `'${SAVING_GOALS_INVESTMENTS_SHEET_NAME}'!A1:R`,
+    values: [
+      ['Kind', 'Status', 'Name', 'Target_Amount', 'Saved_Amount', 'Dedicated_Wallet_ID', 'Due_Date', 'Created_At', 'Completed_At', 'Tags', 'Hide_From_Calendar', 'Investment_Type', 'Investment_Code', 'Investment_Units', 'Investment_Avg_Buy', 'Investment_Current_Price', 'Investment_Platform', 'ID'],
+      ['saving', 'pending', 'Emergency Fund Updated', '1500000', '250000', 'bca-wallet', '', '2026-06-01T00:00:00.000Z', '', 'cash', 'TRUE', '', '', '', '', '', '', 'goal-keep'],
+      ['investment', 'pending', 'BBCA Position', '2000000', '', 'bca-wallet', '', '2026-06-02T00:00:00.000Z', '', 'portfolio', '', 'stock', 'BBCA', '100', '10000', '10500', 'Ajaib', 'goal-new'],
+    ],
+  }]);
+
+  assert.equal(reconciled.data.some(item => item.id === 'goal-delete'), false);
+  const edited = reconciled.data.find(item => item.id === 'goal-keep');
+  assert.equal(edited?.content, 'Emergency Fund Updated');
+  assert.equal(edited?.meta.amount, 1_500_000);
+  assert.equal(edited?.meta.savedAmount, 250_000);
+  assert.equal(edited?.meta.hideFromCalendar, true);
+
+  const added = reconciled.data.find(item => item.id === 'goal-new');
+  assert.equal(added?.meta.shoppingCategory, 'investment');
+  assert.equal(added?.meta.investmentSymbol, 'BBCA');
+  assert.equal(added?.meta.investmentUnits, 100);
 });
 
 test('header-only spreadsheet ranges do not delete local shopping, transactions, or config', () => {

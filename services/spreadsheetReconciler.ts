@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat } from '../types';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
+import { SAVING_GOALS_INVESTMENTS_SHEET_NAME } from '../utils/exportUtils';
 
 const fmtDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -160,6 +161,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
     const seenItemIds = new Set<string>();
 
+    const savingGoalsInvestmentsSheet = valueRanges.find(r => r.range && r.range.includes(SAVING_GOALS_INVESTMENTS_SHEET_NAME));
+    const hasSavingGoalsInvestmentsSheet = hasAuthoritativeRows(savingGoalsInvestmentsSheet);
+
     const shoppingSheetForTransactionCrossCheck = valueRanges.find(r => r.range && r.range.includes('Shopping'));
     const shoppingSheetIds = new Set<string>();
     if (shoppingSheetForTransactionCrossCheck?.values) {
@@ -167,6 +171,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         const rows = shoppingSheetForTransactionCrossCheck.values.slice(1);
         rows.forEach((row: unknown[]) => {
             const id = String(getHeaderAwareCell(shoppingHeaders, row, 'ID', 15) || '').trim();
+            if (id) shoppingSheetIds.add(id);
+        });
+    }
+    if (savingGoalsInvestmentsSheet?.values) {
+        const goalHeaders = savingGoalsInvestmentsSheet.values[0] || [];
+        const rows = savingGoalsInvestmentsSheet.values.slice(1);
+        rows.forEach((row: unknown[]) => {
+            const id = String(getHeaderAwareCell(goalHeaders, row, 'ID', 17) || '').trim();
             if (id) shoppingSheetIds.add(id);
         });
     }
@@ -722,6 +734,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             if (!item && !amountStr && !idStr) continue;
             const amount = parseSheetAmount(amountStr);
             const parsedCategory = parseShoppingCategory(category) || 'not_urgent';
+            if (hasSavingGoalsInvestmentsSheet && (parsedCategory === 'saving' || parsedCategory === 'investment')) {
+                continue;
+            }
             const parsedInvestmentType = parseInvestmentAssetType(investmentType);
             const investmentUnits = parseOptionalSheetAmount(investmentUnitsStr);
             const investmentAvgBuy = parseOptionalSheetAmount(investmentAvgBuyStr);
@@ -875,6 +890,129 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         investmentPlatform: investmentPlatform || undefined,
                         tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [],
                         date: isoDueDate
+                    }
+                });
+                seenItemIds.add(newId);
+                hasChanges = true;
+            }
+        }
+    }
+
+    // 3b. Saving Goals & Investments
+    if (hasSavingGoalsInvestmentsSheet && savingGoalsInvestmentsSheet?.values) {
+        const headers = savingGoalsInvestmentsSheet.values[0] || [];
+        const cell = (row: unknown[], name: string, fallbackIndex: number) => getHeaderAwareCell(headers, row, name, fallbackIndex);
+        const rows = savingGoalsInvestmentsSheet.values.slice(1);
+
+        for (const row of rows) {
+            const kind = cell(row, 'Kind', 0);
+            const parsedKind = parseShoppingCategory(kind);
+            const parsedCategory: ShoppingCategory = parsedKind === 'investment' ? 'investment' : 'saving';
+            const statusCell = String(cell(row, 'Status', 1) || '').trim().toLowerCase();
+            const status: 'pending' | 'done' = statusCell === 'done' ? 'done' : 'pending';
+            const name = String(cell(row, 'Name', 2) || '').trim();
+            const targetAmountStr = cell(row, 'Target_Amount', 3);
+            const savedAmountStr = cell(row, 'Saved_Amount', 4);
+            const dedicatedWalletId = String(cell(row, 'Dedicated_Wallet_ID', 5) || '').trim();
+            const dueDateStr = cell(row, 'Due_Date', 6);
+            const createdAtStr = cell(row, 'Created_At', 7);
+            const completedAtStr = cell(row, 'Completed_At', 8);
+            const tagsStr = cell(row, 'Tags', 9);
+            const hideFromCalendarCell = cell(row, 'Hide_From_Calendar', 10);
+            const investmentType = cell(row, 'Investment_Type', 11);
+            const investmentCode = String(cell(row, 'Investment_Code', 12) || '').trim();
+            const investmentUnitsStr = cell(row, 'Investment_Units', 13);
+            const investmentAvgBuyStr = cell(row, 'Investment_Avg_Buy', 14);
+            const investmentCurrentPriceStr = cell(row, 'Investment_Current_Price', 15);
+            const investmentPlatform = String(cell(row, 'Investment_Platform', 16) || '').trim();
+            const idStr = String(cell(row, 'ID', 17) || '').trim();
+
+            if (!name && !targetAmountStr && !idStr) continue;
+
+            const amount = parseSheetAmount(targetAmountStr);
+            const savedAmount = parseOptionalSheetAmount(savedAmountStr);
+            const hideFromCalendar = parseSheetBoolean(hideFromCalendarCell);
+            const parsedInvestmentType = parseInvestmentAssetType(investmentType);
+            const investmentUnits = parseOptionalSheetAmount(investmentUnitsStr);
+            const investmentAvgBuy = parseOptionalSheetAmount(investmentAvgBuyStr);
+            const investmentCurrentPrice = parseOptionalSheetAmount(investmentCurrentPriceStr);
+            const tags = splitSheetList(tagsStr) || [];
+
+            const exactIdMatch = idStr ? newItems.find(i => i.id === idStr && i.type === ItemType.SHOPPING) : undefined;
+            const semanticMatch = !idStr ? newItems.find(i =>
+                i.type === ItemType.SHOPPING &&
+                i.meta.shoppingCategory === parsedCategory &&
+                cleanCell(i.content)?.toLowerCase() === cleanCell(name)?.toLowerCase()
+            ) : undefined;
+            const match = exactIdMatch || semanticMatch;
+
+            let isoDueDate: string | undefined = undefined;
+            if (dueDateStr) {
+                const parsedDueDate = new Date(String(dueDateStr));
+                if (!isNaN(parsedDueDate.getTime())) isoDueDate = parsedDueDate.toISOString();
+            }
+            let isoCreatedAt = new Date().toISOString();
+            if (createdAtStr) {
+                const parsedCreatedAt = new Date(String(createdAtStr));
+                if (!isNaN(parsedCreatedAt.getTime())) isoCreatedAt = parsedCreatedAt.toISOString();
+            }
+            let isoCompletedAt: string | undefined = undefined;
+            if (completedAtStr) {
+                const parsedCompletedAt = new Date(String(completedAtStr));
+                if (!isNaN(parsedCompletedAt.getTime())) isoCompletedAt = parsedCompletedAt.toISOString();
+            }
+
+            if (match) {
+                seenItemIds.add(match.id);
+                let updated = false;
+                if (match.content !== name) { match.content = name; updated = true; }
+                if (match.status !== status) { match.status = status; updated = true; }
+                if (createdAtStr && match.created_at !== isoCreatedAt) { match.created_at = isoCreatedAt; updated = true; }
+                if (completedAtStr !== undefined && match.completed_at !== isoCompletedAt) { match.completed_at = isoCompletedAt; updated = true; }
+                if (match.meta.shoppingCategory !== parsedCategory) { match.meta.shoppingCategory = parsedCategory; updated = true; }
+                if (match.meta.isRoutine !== undefined) { match.meta.isRoutine = undefined; updated = true; }
+                if (match.meta.routineInterval !== undefined) { match.meta.routineInterval = undefined; updated = true; }
+                if (match.meta.routineDaysOfWeek !== undefined) { match.meta.routineDaysOfWeek = undefined; updated = true; }
+                if (match.meta.routineDaysOfMonth !== undefined) { match.meta.routineDaysOfMonth = undefined; updated = true; }
+                if (match.meta.routineMonthsOfYear !== undefined) { match.meta.routineMonthsOfYear = undefined; updated = true; }
+                if (match.meta.recurrenceDays !== undefined) { match.meta.recurrenceDays = undefined; updated = true; }
+                if (match.meta.lastGeneratedHistoryId !== undefined) { match.meta.lastGeneratedHistoryId = undefined; updated = true; }
+                if (match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
+                if (savedAmountStr !== undefined && match.meta.savedAmount !== savedAmount) { match.meta.savedAmount = savedAmount; updated = true; }
+                if (dedicatedWalletId !== undefined && match.meta.dedicatedWalletId !== (dedicatedWalletId || undefined)) { match.meta.dedicatedWalletId = dedicatedWalletId || undefined; updated = true; }
+                if (hideFromCalendarCell !== undefined && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
+                if (dueDateStr !== undefined && match.meta.date !== isoDueDate) { match.meta.date = isoDueDate; updated = true; }
+                if (investmentType !== undefined && match.meta.investmentAssetType !== parsedInvestmentType) { match.meta.investmentAssetType = parsedInvestmentType; updated = true; }
+                if (investmentCode !== undefined && match.meta.investmentSymbol !== (investmentCode || undefined)) { match.meta.investmentSymbol = investmentCode || undefined; updated = true; }
+                if (investmentUnitsStr !== undefined && match.meta.investmentUnits !== investmentUnits) { match.meta.investmentUnits = investmentUnits; updated = true; }
+                if (investmentAvgBuyStr !== undefined && match.meta.investmentAveragePrice !== investmentAvgBuy) { match.meta.investmentAveragePrice = investmentAvgBuy; updated = true; }
+                if (investmentCurrentPriceStr !== undefined && match.meta.investmentCurrentPrice !== investmentCurrentPrice) { match.meta.investmentCurrentPrice = investmentCurrentPrice; updated = true; }
+                if (investmentPlatform !== undefined && match.meta.investmentPlatform !== (investmentPlatform || undefined)) { match.meta.investmentPlatform = investmentPlatform || undefined; updated = true; }
+                if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(tags)) { match.meta.tags = tags; updated = true; }
+                if (updated) hasChanges = true;
+            } else {
+                const newId = idStr || uuidv4();
+                newItems.push({
+                    id: newId,
+                    type: ItemType.SHOPPING,
+                    content: name || 'Manual Goal',
+                    status,
+                    created_at: isoCreatedAt,
+                    completed_at: isoCompletedAt,
+                    meta: {
+                        amount,
+                        savedAmount,
+                        shoppingCategory: parsedCategory,
+                        dedicatedWalletId: dedicatedWalletId || undefined,
+                        hideFromCalendar,
+                        date: isoDueDate,
+                        tags,
+                        investmentAssetType: parsedInvestmentType,
+                        investmentSymbol: investmentCode || undefined,
+                        investmentUnits,
+                        investmentAveragePrice: investmentAvgBuy,
+                        investmentCurrentPrice,
+                        investmentPlatform: investmentPlatform || undefined,
                     }
                 });
                 seenItemIds.add(newId);
@@ -1214,11 +1352,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
     const settingsSheet = valueRanges.find(r => r.range && r.range.includes('Themes & Settings'));
     if (hasAuthoritativeRows(settingsSheet)) {
+        const headers = settingsSheet.values[0] || [];
         const rows = settingsSheet.values.slice(1);
         if (!db.appSettings) db.appSettings = { defaultCollapsed: false, hideMoney: false };
         if (!db.monthlyThemes) db.monthlyThemes = {};
+        if (!db.monthlyThemeImages) db.monthlyThemeImages = {};
         
         const newThemes: Record<string, string> = {};
+        const newThemeImages: Record<string, string> = {};
         for (const row of rows) {
             if (row[0] === 'Setting') {
                 if (row[1] === 'Default Collapsed') db.appSettings.defaultCollapsed = row[2] === 'TRUE';
@@ -1230,12 +1371,18 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (row[1] === 'Google Calendar Sync') db.appSettings.googleCalendarSyncEnabled = row[2] === 'TRUE';
                 if (row[1] === 'Google Calendar ID') db.appSettings.googleCalendarId = row[2] || 'primary';
             } else if (row[0] === 'Theme') {
-                if (row[1] && row[2]) {
-                    newThemes[row[1]] = row[2];
+                if (row[1]) {
+                    newThemes[row[1]] = String(row[2] || '');
+                    const heroImageUrl = getHeaderAwareCell(headers, row, 'Hero_Image_URL', 3) || getHeaderCell(headers, row, 'Hero Image URL');
+                    if (heroImageUrl) newThemeImages[row[1]] = String(heroImageUrl);
                 }
+            } else if (typeof row[0] === 'string' && row[0].startsWith('themeImage_')) {
+                const key = row[0].replace('themeImage_', '');
+                if (key && row[1]) newThemeImages[key] = String(row[1]);
             }
         }
         db.monthlyThemes = newThemes;
+        db.monthlyThemeImages = newThemeImages;
         hasChanges = true;
     }
 
@@ -1249,18 +1396,19 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         wallet: hasAuthoritativeRows(walletSheet),
         budget: hasAuthoritativeRows(budgetSheet),
         skillConfig: hasAuthoritativeRows(skillConfigSheet),
-        settings: hasAuthoritativeRows(settingsSheet)
+        settings: hasAuthoritativeRows(settingsSheet),
+        goalInvestments: hasSavingGoalsInvestmentsSheet
     };
 
     const finalItems = newItems.filter(item => {
         if (seenItemIds.has(item.id)) return true;
         
         let sheetWasFetched = false;
-        // Completed saving goals remain in Shopping; only their achieved-goal transaction lives in Transactions.
         if (item.type === ItemType.FINANCE) sheetWasFetched = sheetsFetched.tx;
         else if (item.type === ItemType.SHOPPING) {
-            if (item.status === 'done' && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment')) sheetWasFetched = sheetsFetched.shop;
-            else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
+            if (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment') {
+                sheetWasFetched = sheetsFetched.goalInvestments || (!sheetsFetched.goalInvestments && sheetsFetched.shop);
+            } else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
             else sheetWasFetched = sheetsFetched.shop;
         }
         else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;

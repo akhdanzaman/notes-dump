@@ -1,0 +1,1185 @@
+diff --git a/App.tsx b/App.tsx
+index 23902b0..1b845e7 100644
+--- a/App.tsx
++++ b/App.tsx
+@@ -74,24 +74,12 @@ import {
+ } from "./utils/featureTutorials";
+ import { classifyText } from "./services/geminiService";
+ 
+-const MONTHLY_THEME_IMAGES_STORAGE_KEY = "braindump_monthly_theme_images";
+-
+ const getThemeMonthKey = (date: Date) => {
+   const year = date.getFullYear();
+   const month = String(date.getMonth() + 1).padStart(2, "0");
+   return `${year}-${month}`;
+ };
+ 
+-const readMonthlyThemeImages = (): Record<string, string> => {
+-  try {
+-    return JSON.parse(
+-      localStorage.getItem(MONTHLY_THEME_IMAGES_STORAGE_KEY) || "{}",
+-    );
+-  } catch {
+-    return {};
+-  }
+-};
+-
+ const App: React.FC = () => {
+   // Data Logic Hook
+   const {
+@@ -106,6 +94,8 @@ const App: React.FC = () => {
+     setCustomPrompt,
+     monthlyThemes,
+     setMonthlyThemes,
++    monthlyThemeImages,
++    setMonthlyThemeImages,
+     appSettings,
+     setAppSettings,
+     chatHistory,
+@@ -212,10 +202,6 @@ const App: React.FC = () => {
+   const [themeEditKey, setThemeEditKey] = useState<string | null>(null);
+   const [tempThemeContent, setTempThemeContent] = useState("");
+   const [tempThemeImageUrl, setTempThemeImageUrl] = useState("");
+-  const [monthlyThemeImages, setMonthlyThemeImages] = useState<
+-    Record<string, string>
+-  >(() => readMonthlyThemeImages());
+-
+   const [deleteId, setDeleteId] = useState<string | null>(null);
+   const [deleteType, setDeleteType] = useState<"skill" | "wallet" | null>(null);
+ 
+@@ -836,11 +822,18 @@ const App: React.FC = () => {
+ 
+     setMonthlyThemes(nextThemes);
+     setMonthlyThemeImages(nextThemeImages);
+-    localStorage.setItem(
+-      MONTHLY_THEME_IMAGES_STORAGE_KEY,
+-      JSON.stringify(nextThemeImages),
++    saveAndSync(
++      items,
++      undefined,
++      undefined,
++      undefined,
++      undefined,
++      nextThemes,
++      undefined,
++      undefined,
++      false,
++      nextThemeImages,
+     );
+-    saveAndSync(items, undefined, undefined, undefined, undefined, nextThemes);
+     closeThemeEditor();
+   };
+ 
+@@ -1483,6 +1476,7 @@ const App: React.FC = () => {
+         allSkills={skills}
+         allWallets={wallets}
+         monthlyThemes={monthlyThemes}
++        monthlyThemeImages={monthlyThemeImages}
+         onImportData={handleImportData}
+         onClearData={handleClearData}
+       />
+diff --git a/components/ControlCenter.tsx b/components/ControlCenter.tsx
+index 0387f53..37f529d 100644
+--- a/components/ControlCenter.tsx
++++ b/components/ControlCenter.tsx
+@@ -50,6 +50,7 @@ interface ControlCenterProps {
+     allSkills: Skill[];
+     allWallets: Wallet[];
+     monthlyThemes: Record<string, string>;
++    monthlyThemeImages: Record<string, string>;
+ 
+     // External handlers
+     onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
+@@ -92,7 +93,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
+     isOpen, onClose, saveStatus, saveProgress, fetchProgress, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
+     appSettings, setAppSettings, error, pendingCount, parsingTasks, enrichmentTasks = [], retryParsing,
+     onSave, currentBudgetConfig, currentPrompt,
+-    allItems, allSkills, allWallets, monthlyThemes,
++    allItems, allSkills, allWallets, monthlyThemes, monthlyThemeImages,
+     onImportData, onClearData
+ }) => {
+     
+@@ -207,6 +208,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
+         allSkills,
+         allWallets,
+         monthlyThemes,
++        monthlyThemeImages,
+         currentBudgetConfig,
+         currentPrompt
+     });
+diff --git a/hooks/brainDumpContext.ts b/hooks/brainDumpContext.ts
+index 8ba491a..fe2bcd4 100644
+--- a/hooks/brainDumpContext.ts
++++ b/hooks/brainDumpContext.ts
+@@ -27,6 +27,7 @@ export type BrainDumpContext = {
+     newAppSettings?: AppSettings,
+     newCanonicalRules?: CanonicalRule[],
+     forceOverwrite?: boolean,
++    newThemeImages?: Record<string, string>,
+   ) => Promise<void>;
+   skillsRef: MutableRefObject<Skill[]>;
+   setSkills: (skills: Skill[]) => void;
+@@ -34,6 +35,8 @@ export type BrainDumpContext = {
+   setWallets: (wallets: Wallet[]) => void;
+   monthlyThemesRef: MutableRefObject<Record<string, string>>;
+   setMonthlyThemes: (themes: Record<string, string>) => void;
++  monthlyThemeImagesRef: MutableRefObject<Record<string, string>>;
++  setMonthlyThemeImages: (images: Record<string, string>) => void;
+   budgetConfigRef: MutableRefObject<BudgetConfig>;
+   customPromptRef: MutableRefObject<string>;
+   appSettingsRef: MutableRefObject<AppSettings>;
+@@ -52,14 +55,15 @@ export type BrainDumpContext = {
+   setFetchStatus: (status: SyncStatus) => void;
+   parsingInFlightRef: MutableRefObject<Set<string>>;
+   pendingSaveAfterParsingRef: MutableRefObject<{
+-    items?: BrainDumpItem[];
+-    config?: BudgetConfig;
+-    prompt?: string;
+-    skills?: Skill[];
+-    wallets?: Wallet[];
+-    themes?: Record<string, string>;
+-    settings?: AppSettings;
+-    canonicalRules?: CanonicalRule[];
++    newItems?: BrainDumpItem[];
++    newConfig?: BudgetConfig;
++    newPrompt?: string;
++    newSkills?: Skill[];
++    newWallets?: Wallet[];
++    newThemes?: Record<string, string>;
++    newThemeImages?: Record<string, string>;
++    newAppSettings?: AppSettings;
++    newCanonicalRules?: CanonicalRule[];
+     forceOverwrite?: boolean;
+   } | null>;
+   pendingFetchAfterParsingRef: MutableRefObject<boolean>;
+diff --git a/hooks/useBrainDumpData.ts b/hooks/useBrainDumpData.ts
+index 7f25a37..decd053 100644
+--- a/hooks/useBrainDumpData.ts
++++ b/hooks/useBrainDumpData.ts
+@@ -61,11 +61,23 @@ import { dedupeBrainDumpItems } from '../utils/itemDedupe';
+ 
+ const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
+ 
++const MONTHLY_THEME_IMAGES_STORAGE_KEY = 'braindump_monthly_theme_images';
++
++const readMonthlyThemeImages = (): Record<string, string> => {
++    try {
++        if (typeof localStorage === 'undefined') return {};
++        return JSON.parse(localStorage.getItem(MONTHLY_THEME_IMAGES_STORAGE_KEY) || '{}');
++    } catch {
++        return {};
++    }
++};
++
+ type ParsingUndoSnapshot = {
+     items: BrainDumpItem[];
+     skills: Skill[];
+     wallets: Wallet[];
+     monthlyThemes: Record<string, string>;
++    monthlyThemeImages: Record<string, string>;
+     canonicalRules: CanonicalRule[];
+ };
+ 
+@@ -477,6 +489,7 @@ export const useBrainDumpData = () => {
+     const [wallets, setWallets] = useState<Wallet[]>([]);
+     const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
+     const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
++    const [monthlyThemeImages, setMonthlyThemeImages] = useState<Record<string, string>>(() => readMonthlyThemeImages());
+     const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: true, hideMoney: false, enableDraftReview: false, theme: 'dark' });
+     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
+         const local = localStorage.getItem('braindump_chat_history');
+@@ -488,6 +501,10 @@ export const useBrainDumpData = () => {
+         localStorage.setItem('braindump_chat_history', JSON.stringify(chatHistory));
+     }, [chatHistory]);
+ 
++    useEffect(() => {
++        localStorage.setItem(MONTHLY_THEME_IMAGES_STORAGE_KEY, JSON.stringify(monthlyThemeImages));
++    }, [monthlyThemeImages]);
++
+     const [loading, setLoading] = useState(true);
+     const [pendingCount, setPendingCount] = useState(0);
+     const [parsingTasks, setParsingTasks] = useState<ParsingTask[]>([]);
+@@ -507,6 +524,7 @@ export const useBrainDumpData = () => {
+         newSkills?: Skill[];
+         newWallets?: Wallet[];
+         newThemes?: Record<string, string>;
++        newThemeImages?: Record<string, string>;
+         newAppSettings?: AppSettings;
+         newCanonicalRules?: CanonicalRule[];
+         forceOverwrite: boolean;
+@@ -536,6 +554,8 @@ export const useBrainDumpData = () => {
+     walletsRef.current = wallets;
+     const monthlyThemesRef = useRef(monthlyThemes);
+     monthlyThemesRef.current = monthlyThemes;
++    const monthlyThemeImagesRef = useRef(monthlyThemeImages);
++    monthlyThemeImagesRef.current = monthlyThemeImages;
+     const appSettingsRef = useRef(appSettings);
+     appSettingsRef.current = appSettings;
+     const chatHistoryRef = useRef(chatHistory);
+@@ -556,7 +576,8 @@ export const useBrainDumpData = () => {
+         newThemes?: Record<string, string>,
+         newAppSettings?: AppSettings,
+         newCanonicalRules?: CanonicalRule[],
+-        forceOverwrite = false
++        forceOverwrite = false,
++        newThemeImages?: Record<string, string>
+     ) => {
+         const baseItems = itemsRef.current;
+         const itemsToSave = newItems || itemsRef.current;
+@@ -573,6 +594,7 @@ export const useBrainDumpData = () => {
+             const skillsToSave = newSkills || skillsRef.current;
+             const walletsToSave = newWallets || walletsRef.current;
+             const themesToSave = newThemes || monthlyThemesRef.current;
++            const themeImagesToSave = newThemeImages || monthlyThemeImagesRef.current;
+             const settingsToSave = newAppSettings || appSettingsRef.current;
+             const canonicalRulesToSave = newCanonicalRules || canonicalRulesRef.current;
+ 
+@@ -583,6 +605,7 @@ export const useBrainDumpData = () => {
+                 skillsToSave,
+                 walletsToSave,
+                 themesToSave,
++                themeImagesToSave,
+                 settingsToSave,
+                 undefined,
+                 canonicalRulesToSave,
+@@ -596,8 +619,8 @@ export const useBrainDumpData = () => {
+ 
+             if (result.mergedData) {
+                 const remoteSchema = result.mergedData;
+-                const baseForMerge = { data: baseItems, skills: skillsToSave, wallets: walletsToSave, monthlyThemes: themesToSave } as DbSchema;
+-                const currentForMerge = { data: itemsRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current } as DbSchema;
++                const baseForMerge = { data: baseItems, skills: skillsToSave, wallets: walletsToSave, monthlyThemes: themesToSave, monthlyThemeImages: themeImagesToSave } as DbSchema;
++                const currentForMerge = { data: itemsRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, monthlyThemeImages: monthlyThemeImagesRef.current } as DbSchema;
+                 const merged = mergeDbData(currentForMerge, remoteSchema, baseForMerge);
+                 // Items: only merge remote additions (items in sheet but missing locally).
+                 // Never overwrite items the user just changed — itemsRef.current already has those.
+@@ -608,12 +631,15 @@ export const useBrainDumpData = () => {
+                 skillsRef.current = merged.skills || [];
+                 walletsRef.current = merged.wallets || [];
+                 const mergedThemes = remoteSchema.monthlyThemes ? { ...remoteSchema.monthlyThemes, ...themesToSave } : themesToSave;
++                const mergedThemeImages = remoteSchema.monthlyThemeImages ? { ...remoteSchema.monthlyThemeImages, ...themeImagesToSave } : themeImagesToSave;
+                 monthlyThemesRef.current = mergedThemes;
++                monthlyThemeImagesRef.current = mergedThemeImages;
+                 if (remoteSchema.canonicalRules) canonicalRulesRef.current = remoteSchema.canonicalRules;
+                 setItems(merged.data);
+                 setSkills(merged.skills || []);
+                 setWallets(merged.wallets || []);
+                 setMonthlyThemes(mergedThemes);
++                setMonthlyThemeImages(mergedThemeImages);
+                 if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
+             }
+ 
+@@ -650,7 +676,8 @@ export const useBrainDumpData = () => {
+         newThemes?: Record<string, string>,
+         newAppSettings?: AppSettings,
+         newCanonicalRules?: CanonicalRule[],
+-        forceOverwrite = false
++        forceOverwrite = false,
++        newThemeImages?: Record<string, string>
+     ) => {
+         if (hasActiveParsing()) {
+             const previous = pendingSaveAfterParsingRef.current;
+@@ -661,6 +688,7 @@ export const useBrainDumpData = () => {
+                 newSkills: newSkills || previous?.newSkills,
+                 newWallets: newWallets || previous?.newWallets,
+                 newThemes: newThemes || previous?.newThemes,
++                newThemeImages: newThemeImages || previous?.newThemeImages,
+                 newAppSettings: newAppSettings || previous?.newAppSettings,
+                 newCanonicalRules: newCanonicalRules || previous?.newCanonicalRules,
+                 forceOverwrite: (previous?.forceOverwrite || forceOverwrite)
+@@ -679,7 +707,8 @@ export const useBrainDumpData = () => {
+             newThemes,
+             newAppSettings,
+             newCanonicalRules,
+-            forceOverwrite
++            forceOverwrite,
++            newThemeImages
+         );
+     }, [performSaveAndSync]);
+ 
+@@ -765,7 +794,18 @@ export const useBrainDumpData = () => {
+                     appliedData = { ...data, data: mergedItems, wallets: walletsForSweep };
+ 
+                     if (dedupeResult.removedCount > 0 || investmentWalletMigration.changed || JSON.stringify(mergedItems) !== JSON.stringify(data.data)) {
+-                        saveAndSync(mergedItems, data.budgetConfig, data.customPrompt, data.skills, walletsForSweep, data.monthlyThemes, data.appSettings, data.canonicalRules);
++                        saveAndSync(
++                            mergedItems,
++                            data.budgetConfig,
++                            data.customPrompt,
++                            data.skills,
++                            walletsForSweep,
++                            data.monthlyThemes,
++                            data.appSettings,
++                            data.canonicalRules,
++                            false,
++                            data.monthlyThemeImages
++                        );
+                     }
+                 }
+ 
+@@ -786,7 +826,18 @@ export const useBrainDumpData = () => {
+                     ];
+                     skillsRef.current = defaults;
+                     setSkills(defaults);
+-                    saveAndSync(data.data || [], data.budgetConfig, data.customPrompt, defaults, data.wallets, data.monthlyThemes, data.appSettings, data.canonicalRules);
++                    saveAndSync(
++                        data.data || [],
++                        data.budgetConfig,
++                        data.customPrompt,
++                        defaults,
++                        data.wallets,
++                        data.monthlyThemes,
++                        data.appSettings,
++                        data.canonicalRules,
++                        false,
++                        data.monthlyThemeImages
++                    );
+                 }
+ 
+                 if (walletsToApply) {
+@@ -797,6 +848,10 @@ export const useBrainDumpData = () => {
+                     monthlyThemesRef.current = data.monthlyThemes;
+                     setMonthlyThemes(data.monthlyThemes);
+                 }
++                if (data.monthlyThemeImages) {
++                    monthlyThemeImagesRef.current = data.monthlyThemeImages;
++                    setMonthlyThemeImages(data.monthlyThemeImages);
++                }
+                 if (data.appSettings) {
+                     appSettingsRef.current = data.appSettings;
+                     setAppSettings(data.appSettings);
+@@ -825,7 +880,8 @@ export const useBrainDumpData = () => {
+                         appliedData.monthlyThemes,
+                         appliedData.appSettings,
+                         appliedData.canonicalRules,
+-                        true
++                        true,
++                        appliedData.monthlyThemeImages
+                     );
+                 }
+             }
+@@ -870,7 +926,8 @@ export const useBrainDumpData = () => {
+                 deferredSave.newThemes || monthlyThemesRef.current,
+                 deferredSave.newAppSettings || appSettingsRef.current,
+                 deferredSave.newCanonicalRules || canonicalRulesRef.current,
+-                deferredSave.forceOverwrite
++                deferredSave.forceOverwrite,
++                deferredSave.newThemeImages || monthlyThemeImagesRef.current
+             );
+         }
+ 
+@@ -1091,6 +1148,7 @@ export const useBrainDumpData = () => {
+                 skills: skillsRef.current,
+                 wallets: walletsRef.current,
+                 monthlyThemes: monthlyThemesRef.current,
++                monthlyThemeImages: monthlyThemeImagesRef.current,
+                 canonicalRules: canonicalRulesRef.current,
+             };
+ 
+@@ -2386,6 +2444,8 @@ export const useBrainDumpData = () => {
+         setCustomPrompt,
+         monthlyThemes,
+         setMonthlyThemes,
++        monthlyThemeImages,
++        setMonthlyThemeImages,
+         appSettings,
+         setAppSettings,
+         chatHistory,
+diff --git a/hooks/useControlCenter.ts b/hooks/useControlCenter.ts
+index 5f962f4..91abfaa 100644
+--- a/hooks/useControlCenter.ts
++++ b/hooks/useControlCenter.ts
+@@ -18,6 +18,7 @@ export interface UseControlCenterProps {
+     allSkills: Skill[];
+     allWallets: Wallet[];
+     monthlyThemes: Record<string, string>;
++    monthlyThemeImages: Record<string, string>;
+     currentBudgetConfig?: BudgetConfig;
+     currentPrompt?: string;
+ }
+@@ -33,6 +34,7 @@ export const useControlCenter = ({
+     allSkills,
+     allWallets,
+     monthlyThemes,
++    monthlyThemeImages,
+     currentBudgetConfig,
+     currentPrompt
+ }: UseControlCenterProps) => {
+@@ -479,7 +481,8 @@ export const useControlCenter = ({
+             allWallets, 
+             { monthlyIncome, rules: budgetRules }, 
+             monthlyThemes, 
+-            localAppSettings
++            localAppSettings,
++            monthlyThemeImages
+         );
+     };
+ 
+@@ -490,6 +493,7 @@ export const useControlCenter = ({
+             wallets: allWallets,
+             budgetConfig: { monthlyIncome, rules: budgetRules },
+             monthlyThemes,
++            monthlyThemeImages,
+             appSettings: localAppSettings,
+             customPrompt: prompt
+         };
+diff --git a/services/exportService.ts b/services/exportService.ts
+index de77ea4..c17976b 100644
+--- a/services/exportService.ts
++++ b/services/exportService.ts
+@@ -25,9 +25,10 @@ export const exportToExcel = (
+   wallets: Wallet[],
+   budgetConfig: BudgetConfig,
+   monthlyThemes: Record<string, string>,
+-  appSettings: AppSettings
++  appSettings: AppSettings,
++  monthlyThemeImages: Record<string, string> = {}
+ ) => {
+-  const sheets = generateExportData(items, skills, wallets, budgetConfig, monthlyThemes, appSettings);
++  const sheets = generateExportData(items, skills, wallets, budgetConfig, monthlyThemes, appSettings, new Date(), { monthlyThemeImages });
+ 
+   const html = `<!doctype html>
+ <html>
+diff --git a/services/spreadsheetReconciler.ts b/services/spreadsheetReconciler.ts
+index 2313674..6e8daeb 100644
+--- a/services/spreadsheetReconciler.ts
++++ b/services/spreadsheetReconciler.ts
+@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
+ import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat } from '../types';
+ import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
+ import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
++import { SAVING_GOALS_INVESTMENTS_SHEET_NAME } from '../utils/exportUtils';
+ 
+ const fmtDate = (dateStr?: string) => {
+     if (!dateStr) return '';
+@@ -160,6 +161,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
+ 
+     const seenItemIds = new Set<string>();
+ 
++    const savingGoalsInvestmentsSheet = valueRanges.find(r => r.range && r.range.includes(SAVING_GOALS_INVESTMENTS_SHEET_NAME));
++    const hasSavingGoalsInvestmentsSheet = hasAuthoritativeRows(savingGoalsInvestmentsSheet);
++
+     const shoppingSheetForTransactionCrossCheck = valueRanges.find(r => r.range && r.range.includes('Shopping'));
+     const shoppingSheetIds = new Set<string>();
+     if (shoppingSheetForTransactionCrossCheck?.values) {
+@@ -170,6 +174,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
+             if (id) shoppingSheetIds.add(id);
+         });
+     }
++    if (savingGoalsInvestmentsSheet?.values) {
++        const goalHeaders = savingGoalsInvestmentsSheet.values[0] || [];
++        const rows = savingGoalsInvestmentsSheet.values.slice(1);
++        rows.forEach((row: unknown[]) => {
++            const id = String(getHeaderAwareCell(goalHeaders, row, 'ID', 17) || '').trim();
++            if (id) shoppingSheetIds.add(id);
++        });
++    }
+ 
+     // 1. Transactions
+     const txSheet = valueRanges.find(r => r.range && r.range.includes('Transactions'));
+@@ -722,6 +734,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
+             if (!item && !amountStr && !idStr) continue;
+             const amount = parseSheetAmount(amountStr);
+             const parsedCategory = parseShoppingCategory(category) || 'not_urgent';
++            if (hasSavingGoalsInvestmentsSheet && (parsedCategory === 'saving' || parsedCategory === 'investment')) {
++                continue;
++            }
+             const parsedInvestmentType = parseInvestmentAssetType(investmentType);
+             const investmentUnits = parseOptionalSheetAmount(investmentUnitsStr);
+             const investmentAvgBuy = parseOptionalSheetAmount(investmentAvgBuyStr);
+@@ -883,6 +898,129 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
+         }
+     }
+ 
++    // 3b. Saving Goals & Investments
++    if (hasSavingGoalsInvestmentsSheet && savingGoalsInvestmentsSheet?.values) {
++        const headers = savingGoalsInvestmentsSheet.values[0] || [];
++        const cell = (row: unknown[], name: string, fallbackIndex: number) => getHeaderAwareCell(headers, row, name, fallbackIndex);
++        const rows = savingGoalsInvestmentsSheet.values.slice(1);
++
++        for (const row of rows) {
++            const kind = cell(row, 'Kind', 0);
++            const parsedKind = parseShoppingCategory(kind);
++            const parsedCategory: ShoppingCategory = parsedKind === 'investment' ? 'investment' : 'saving';
++            const statusCell = String(cell(row, 'Status', 1) || '').trim().toLowerCase();
++            const status: 'pending' | 'done' = statusCell === 'done' ? 'done' : 'pending';
++            const name = String(cell(row, 'Name', 2) || '').trim();
++            const targetAmountStr = cell(row, 'Target_Amount', 3);
++            const savedAmountStr = cell(row, 'Saved_Amount', 4);
++            const dedicatedWalletId = String(cell(row, 'Dedicated_Wallet_ID', 5) || '').trim();
++            const dueDateStr = cell(row, 'Due_Date', 6);
++            const createdAtStr = cell(row, 'Created_At', 7);
++            const completedAtStr = cell(row, 'Completed_At', 8);
++            const tagsStr = cell(row, 'Tags', 9);
++            const hideFromCalendarCell = cell(row, 'Hide_From_Calendar', 10);
++            const investmentType = cell(row, 'Investment_Type', 11);
++            const investmentCode = String(cell(row, 'Investment_Code', 12) || '').trim();
++            const investmentUnitsStr = cell(row, 'Investment_Units', 13);
++            const investmentAvgBuyStr = cell(row, 'Investment_Avg_Buy', 14);
++            const investmentCurrentPriceStr = cell(row, 'Investment_Current_Price', 15);
++            const investmentPlatform = String(cell(row, 'Investment_Platform', 16) || '').trim();
++            const idStr = String(cell(row, 'ID', 17) || '').trim();
++
++            if (!name && !targetAmountStr && !idStr) continue;
++
++            const amount = parseSheetAmount(targetAmountStr);
++            const savedAmount = parseOptionalSheetAmount(savedAmountStr);
++            const hideFromCalendar = parseSheetBoolean(hideFromCalendarCell);
++            const parsedInvestmentType = parseInvestmentAssetType(investmentType);
++            const investmentUnits = parseOptionalSheetAmount(investmentUnitsStr);
++            const investmentAvgBuy = parseOptionalSheetAmount(investmentAvgBuyStr);
++            const investmentCurrentPrice = parseOptionalSheetAmount(investmentCurrentPriceStr);
++            const tags = splitSheetList(tagsStr) || [];
++
++            const exactIdMatch = idStr ? newItems.find(i => i.id === idStr && i.type === ItemType.SHOPPING) : undefined;
++            const semanticMatch = !idStr ? newItems.find(i =>
++                i.type === ItemType.SHOPPING &&
++                i.meta.shoppingCategory === parsedCategory &&
++                cleanCell(i.content)?.toLowerCase() === cleanCell(name)?.toLowerCase()
++            ) : undefined;
++            const match = exactIdMatch || semanticMatch;
++
++            let isoDueDate: string | undefined = undefined;
++            if (dueDateStr) {
++                const parsedDueDate = new Date(String(dueDateStr));
++                if (!isNaN(parsedDueDate.getTime())) isoDueDate = parsedDueDate.toISOString();
++            }
++            let isoCreatedAt = new Date().toISOString();
++            if (createdAtStr) {
++                const parsedCreatedAt = new Date(String(createdAtStr));
++                if (!isNaN(parsedCreatedAt.getTime())) isoCreatedAt = parsedCreatedAt.toISOString();
++            }
++            let isoCompletedAt: string | undefined = undefined;
++            if (completedAtStr) {
++                const parsedCompletedAt = new Date(String(completedAtStr));
++                if (!isNaN(parsedCompletedAt.getTime())) isoCompletedAt = parsedCompletedAt.toISOString();
++            }
++
++            if (match) {
++                seenItemIds.add(match.id);
++                let updated = false;
++                if (match.content !== name) { match.content = name; updated = true; }
++                if (match.status !== status) { match.status = status; updated = true; }
++                if (createdAtStr && match.created_at !== isoCreatedAt) { match.created_at = isoCreatedAt; updated = true; }
++                if (completedAtStr !== undefined && match.completed_at !== isoCompletedAt) { match.completed_at = isoCompletedAt; updated = true; }
++                if (match.meta.shoppingCategory !== parsedCategory) { match.meta.shoppingCategory = parsedCategory; updated = true; }
++                if (match.meta.isRoutine !== undefined) { match.meta.isRoutine = undefined; updated = true; }
++                if (match.meta.routineInterval !== undefined) { match.meta.routineInterval = undefined; updated = true; }
++                if (match.meta.routineDaysOfWeek !== undefined) { match.meta.routineDaysOfWeek = undefined; updated = true; }
++                if (match.meta.routineDaysOfMonth !== undefined) { match.meta.routineDaysOfMonth = undefined; updated = true; }
++                if (match.meta.routineMonthsOfYear !== undefined) { match.meta.routineMonthsOfYear = undefined; updated = true; }
++                if (match.meta.recurrenceDays !== undefined) { match.meta.recurrenceDays = undefined; updated = true; }
++                if (match.meta.lastGeneratedHistoryId !== undefined) { match.meta.lastGeneratedHistoryId = undefined; updated = true; }
++                if (match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
++                if (savedAmountStr !== undefined && match.meta.savedAmount !== savedAmount) { match.meta.savedAmount = savedAmount; updated = true; }
++                if (dedicatedWalletId !== undefined && match.meta.dedicatedWalletId !== (dedicatedWalletId || undefined)) { match.meta.dedicatedWalletId = dedicatedWalletId || undefined; updated = true; }
++                if (hideFromCalendarCell !== undefined && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
++                if (dueDateStr !== undefined && match.meta.date !== isoDueDate) { match.meta.date = isoDueDate; updated = true; }
++                if (investmentType !== undefined && match.meta.investmentAssetType !== parsedInvestmentType) { match.meta.investmentAssetType = parsedInvestmentType; updated = true; }
++                if (investmentCode !== undefined && match.meta.investmentSymbol !== (investmentCode || undefined)) { match.meta.investmentSymbol = investmentCode || undefined; updated = true; }
++                if (investmentUnitsStr !== undefined && match.meta.investmentUnits !== investmentUnits) { match.meta.investmentUnits = investmentUnits; updated = true; }
++                if (investmentAvgBuyStr !== undefined && match.meta.investmentAveragePrice !== investmentAvgBuy) { match.meta.investmentAveragePrice = investmentAvgBuy; updated = true; }
++                if (investmentCurrentPriceStr !== undefined && match.meta.investmentCurrentPrice !== investmentCurrentPrice) { match.meta.investmentCurrentPrice = investmentCurrentPrice; updated = true; }
++                if (investmentPlatform !== undefined && match.meta.investmentPlatform !== (investmentPlatform || undefined)) { match.meta.investmentPlatform = investmentPlatform || undefined; updated = true; }
++                if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(tags)) { match.meta.tags = tags; updated = true; }
++                if (updated) hasChanges = true;
++            } else {
++                const newId = idStr || uuidv4();
++                newItems.push({
++                    id: newId,
++                    type: ItemType.SHOPPING,
++                    content: name || 'Manual Goal',
++                    status,
++                    created_at: isoCreatedAt,
++                    completed_at: isoCompletedAt,
++                    meta: {
++                        amount,
++                        savedAmount,
++                        shoppingCategory: parsedCategory,
++                        dedicatedWalletId: dedicatedWalletId || undefined,
++                        hideFromCalendar,
++                        date: isoDueDate,
++                        tags,
++                        investmentAssetType: parsedInvestmentType,
++                        investmentSymbol: investmentCode || undefined,
++                        investmentUnits,
++                        investmentAveragePrice: investmentAvgBuy,
++                        investmentCurrentPrice,
++                        investmentPlatform: investmentPlatform || undefined,
++                    }
++                });
++                seenItemIds.add(newId);
++                hasChanges = true;
++            }
++        }
++    }
++
+     // 4. Events
+     const eventSheet = valueRanges.find(r => r.range && r.range.includes('Events'));
+     if (eventSheet && eventSheet.values) {
+@@ -1214,11 +1352,14 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
+ 
+     const settingsSheet = valueRanges.find(r => r.range && r.range.includes('Themes & Settings'));
+     if (hasAuthoritativeRows(settingsSheet)) {
++        const headers = settingsSheet.values[0] || [];
+         const rows = settingsSheet.values.slice(1);
+         if (!db.appSettings) db.appSettings = { defaultCollapsed: false, hideMoney: false };
+         if (!db.monthlyThemes) db.monthlyThemes = {};
++        if (!db.monthlyThemeImages) db.monthlyThemeImages = {};
+         
+         const newThemes: Record<string, string> = {};
++        const newThemeImages: Record<string, string> = {};
+         for (const row of rows) {
+             if (row[0] === 'Setting') {
+                 if (row[1] === 'Default Collapsed') db.appSettings.defaultCollapsed = row[2] === 'TRUE';
+@@ -1230,12 +1371,18 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
+                 if (row[1] === 'Google Calendar Sync') db.appSettings.googleCalendarSyncEnabled = row[2] === 'TRUE';
+                 if (row[1] === 'Google Calendar ID') db.appSettings.googleCalendarId = row[2] || 'primary';
+             } else if (row[0] === 'Theme') {
+-                if (row[1] && row[2]) {
+-                    newThemes[row[1]] = row[2];
++                if (row[1]) {
++                    newThemes[row[1]] = String(row[2] || '');
++                    const heroImageUrl = getHeaderAwareCell(headers, row, 'Hero_Image_URL', 3) || getHeaderCell(headers, row, 'Hero Image URL');
++                    if (heroImageUrl) newThemeImages[row[1]] = String(heroImageUrl);
+                 }
++            } else if (typeof row[0] === 'string' && row[0].startsWith('themeImage_')) {
++                const key = row[0].replace('themeImage_', '');
++                if (key && row[1]) newThemeImages[key] = String(row[1]);
+             }
+         }
+         db.monthlyThemes = newThemes;
++        db.monthlyThemeImages = newThemeImages;
+         hasChanges = true;
+     }
+ 
+@@ -1249,18 +1396,19 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
+         wallet: hasAuthoritativeRows(walletSheet),
+         budget: hasAuthoritativeRows(budgetSheet),
+         skillConfig: hasAuthoritativeRows(skillConfigSheet),
+-        settings: hasAuthoritativeRows(settingsSheet)
++        settings: hasAuthoritativeRows(settingsSheet),
++        goalInvestments: hasSavingGoalsInvestmentsSheet
+     };
+ 
+     const finalItems = newItems.filter(item => {
+         if (seenItemIds.has(item.id)) return true;
+         
+         let sheetWasFetched = false;
+-        // Completed saving goals remain in Shopping; only their achieved-goal transaction lives in Transactions.
+         if (item.type === ItemType.FINANCE) sheetWasFetched = sheetsFetched.tx;
+         else if (item.type === ItemType.SHOPPING) {
+-            if (item.status === 'done' && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment')) sheetWasFetched = sheetsFetched.shop;
+-            else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
++            if (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment') {
++                sheetWasFetched = sheetsFetched.goalInvestments || (!sheetsFetched.goalInvestments && sheetsFetched.shop);
++            } else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
+             else sheetWasFetched = sheetsFetched.shop;
+         }
+         else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;
+diff --git a/services/spreadsheetService.ts b/services/spreadsheetService.ts
+index ec8118c..1bf5e91 100644
+--- a/services/spreadsheetService.ts
++++ b/services/spreadsheetService.ts
+@@ -2,7 +2,7 @@ import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, Chat
+ import { CHANGELOG_ENTRIES } from "../utils/changelog";
+ import { SyncProgressCallback, SyncResult } from "./syncTypes";
+ import { mergeDbData } from "../utils/mergeUtils";
+-import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
++import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, SAVING_GOALS_INVESTMENTS_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
+ import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
+ import { getValidGoogleAccessToken } from "./googleProfileService";
+ 
+@@ -26,6 +26,7 @@ const MANAGED_USER_SHEET_NAMES = [
+   'Transactions',
+   'Todos',
+   'Shopping',
++  SAVING_GOALS_INVESTMENTS_SHEET_NAME,
+   'Events',
+   'Notes & Journals',
+   'Skill Logs',
+@@ -64,13 +65,14 @@ export const SPREADSHEET_FETCH_RANGES = {
+   Transactions: 'A:V',
+   Todos: 'A:AV',
+   Shopping: 'A:Z',
++  [SAVING_GOALS_INVESTMENTS_SHEET_NAME]: 'A:R',
+   Events: 'A:J',
+   'Notes & Journals': 'A:G',
+   'Skill Logs': 'A:I',
+   'Wallets Config': 'A:E',
+   'Skills Config': 'A:E',
+   'Budget Rules': 'A:C',
+-  'Themes & Settings': 'A:C',
++  'Themes & Settings': 'A:D',
+   'Chat History': 'A:C',
+   'Canonical Rules': 'A:U',
+ } as const;
+@@ -153,6 +155,7 @@ type SpreadsheetSyncArgs = [
+   Skill[] | undefined,
+   Wallet[] | undefined,
+   Record<string, string> | undefined,
++  Record<string, string> | undefined,
+   AppSettings | undefined,
+   ChatMessage[] | undefined,
+   CanonicalRule[] | undefined,
+@@ -335,9 +338,13 @@ const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
+   } else if (item.type === ItemType.TODO) {
+     sheets.push('Todos');
+   } else if (item.type === ItemType.SHOPPING) {
+-    sheets.push('Shopping');
+-    if (item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment') {
+-      sheets.push('Transactions');
++    if (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment') {
++      sheets.push(SAVING_GOALS_INVESTMENTS_SHEET_NAME);
++    } else {
++      sheets.push('Shopping');
++      if (item.status === 'done') {
++        sheets.push('Transactions');
++      }
+     }
+   } else if (item.type === ItemType.EVENT) {
+     sheets.push('Events');
+@@ -528,7 +535,7 @@ const buildIncrementalUserSheetPlan = (
+     actualSheetDb.monthlyThemes || {},
+     actualSheetDb.appSettings || { defaultCollapsed: false, hideMoney: false },
+     new Date(),
+-    { customPrompt: actualSheetDb.customPrompt, chatHistory: actualSheetDb.chatHistory, canonicalRules: actualSheetDb.canonicalRules }
++    { customPrompt: actualSheetDb.customPrompt, chatHistory: actualSheetDb.chatHistory, canonicalRules: actualSheetDb.canonicalRules, monthlyThemeImages: actualSheetDb.monthlyThemeImages }
+   );
+ 
+   const previousIndexes = buildSheetRowIndexes(previousSheets);
+@@ -551,6 +558,7 @@ const buildIncrementalUserSheetPlan = (
+   if (!sameJson(previousDb.skills, nextDb.skills)) markRewrite('Skills Config');
+   if (!sameJson(previousDb.wallets, nextDb.wallets)) markRewrite('Wallets Config');
+   if (!sameJson(previousDb.monthlyThemes, nextDb.monthlyThemes)
++    || !sameJson(previousDb.monthlyThemeImages, nextDb.monthlyThemeImages)
+     || !sameJson(previousDb.appSettings, nextDb.appSettings)
+     || !sameJson(previousDb.customPrompt, nextDb.customPrompt)) markRewrite('Themes & Settings');
+   if (!sameJson(previousDb.chatHistory, nextDb.chatHistory)) markRewrite('Chat History');
+@@ -1142,6 +1150,7 @@ const validateSchema = (data: any): DbSchema => {
+       skills: Array.isArray(data.skills) ? data.skills : [],
+       wallets: Array.isArray(data.wallets) ? data.wallets : [],
+       monthlyThemes: data.monthlyThemes || {},
++      monthlyThemeImages: data.monthlyThemeImages || {},
+       chatHistory: chatHistory,
+       canonicalRules: Array.isArray(data.canonicalRules) ? data.canonicalRules : []
+   };
+@@ -1498,6 +1507,7 @@ const buildCurrentRawDbFromValueRanges = (valueRanges: any[]): DbSchema => {
+     skills: configSheets.skills,
+     budgetConfig: configSheets.budgetConfig,
+     monthlyThemes: configSheets.monthlyThemes,
++    monthlyThemeImages: configSheets.monthlyThemeImages,
+     appSettings: configSheets.appSettings,
+     customPrompt: configSheets.customPrompt,
+     chatHistory: configSheets.chatHistory,
+@@ -1512,6 +1522,7 @@ const hasDedicatedSheetData = (db: DbSchema) =>
+   || (db.budgetConfig?.rules.length || 0) > 0
+   || !!db.budgetConfig?.monthlyIncome
+   || Object.keys(db.monthlyThemes || {}).length > 0
++  || Object.keys(db.monthlyThemeImages || {}).length > 0
+   || !!db.appSettings
+   || !!db.customPrompt
+   || (db.chatHistory?.length || 0) > 0
+@@ -1543,6 +1554,7 @@ const buildDedicatedDbFromValueRanges = (valueRanges: any[]): DbSchema => {
+     skills: configSheets.skills,
+     budgetConfig: configSheets.budgetConfig,
+     monthlyThemes: configSheets.monthlyThemes,
++    monthlyThemeImages: configSheets.monthlyThemeImages,
+     appSettings: configSheets.appSettings,
+   });
+   const reconciled = reconcileSpreadsheetData(baseDb, valueRanges || []);
+@@ -1553,6 +1565,7 @@ const buildDedicatedDbFromValueRanges = (valueRanges: any[]): DbSchema => {
+     skills: configSheets.skills,
+     budgetConfig: configSheets.budgetConfig || reconciled.budgetConfig,
+     monthlyThemes: configSheets.monthlyThemes,
++    monthlyThemeImages: configSheets.monthlyThemeImages,
+     appSettings: configSheets.appSettings || reconciled.appSettings,
+     customPrompt: configSheets.customPrompt,
+     chatHistory: configSheets.chatHistory,
+@@ -1609,6 +1622,7 @@ const applyConfigSheetsToBaseDb = (baseDb: DbSchema, valueRanges: any[]): DbSche
+     skills: rangeNames.has('Skills Config') ? sheetConfig.skills : baseDb.skills,
+     budgetConfig: rangeNames.has('Budget Rules') ? (sheetConfig.budgetConfig || baseDb.budgetConfig) : baseDb.budgetConfig,
+     monthlyThemes: hasThemesAndSettings ? sheetConfig.monthlyThemes : baseDb.monthlyThemes,
++    monthlyThemeImages: hasThemesAndSettings ? sheetConfig.monthlyThemeImages : baseDb.monthlyThemeImages,
+     appSettings: hasThemesAndSettings ? (sheetConfig.appSettings || baseDb.appSettings) : baseDb.appSettings,
+     customPrompt: sheetConfig.customPrompt ?? baseDb.customPrompt,
+     chatHistory: rangeNames.has('Chat History') ? (sheetConfig.chatHistory || []) : baseDb.chatHistory,
+@@ -1832,6 +1846,7 @@ const parseConfigSheets = (valueRanges: any[]): {
+   skills: Skill[];
+   budgetConfig: BudgetConfig | undefined;
+   monthlyThemes: Record<string, string>;
++  monthlyThemeImages: Record<string, string>;
+   appSettings: AppSettings | undefined;
+   customPrompt: string | undefined;
+   chatHistory: ChatMessage[] | undefined;
+@@ -1843,6 +1858,7 @@ const parseConfigSheets = (valueRanges: any[]): {
+   const canonicalRules: CanonicalRule[] = [];
+   let budgetConfig: BudgetConfig | undefined;
+   const monthlyThemes: Record<string, string> = {};
++  const monthlyThemeImages: Record<string, string> = {};
+   let appSettings: AppSettings | undefined;
+   let customPrompt: string | undefined;
+   const ensureBudgetConfig = () => {
+@@ -1944,7 +1960,11 @@ const parseConfigSheets = (valueRanges: any[]): {
+         }
+ 
+         if (first === 'Theme') {
+-          if (second && r[2]) monthlyThemes[second] = String(r[2]);
++          if (second) {
++            monthlyThemes[second] = String(r[2] || '');
++            const heroImageUrl = cell(r, 'Hero_Image_URL', 3, ['Hero Image URL', 'Hero_Image_Url']);
++            if (heroImageUrl) monthlyThemeImages[second] = String(heroImageUrl);
++          }
+           continue;
+         }
+ 
+@@ -1966,6 +1986,8 @@ const parseConfigSheets = (valueRanges: any[]): {
+           customPrompt = String(r[1] || '');
+         } else if (first.startsWith('theme_')) {
+           monthlyThemes[first.replace('theme_', '')] = String(r[1] || '');
++        } else if (first.startsWith('themeImage_')) {
++          monthlyThemeImages[first.replace('themeImage_', '')] = String(r[1] || '');
+         }
+       }
+     } else if (name === 'Chat History') {
+@@ -2026,6 +2048,7 @@ const parseConfigSheets = (valueRanges: any[]): {
+     skills,
+     budgetConfig,
+     monthlyThemes,
++    monthlyThemeImages,
+     appSettings,
+     customPrompt,
+     chatHistory: chatHistory.length ? chatHistory : undefined,
+@@ -2310,6 +2333,7 @@ const performSync = async (
+   skills?: Skill[], 
+   wallets?: Wallet[],
+   monthlyThemes?: Record<string, string>,
++  monthlyThemeImages?: Record<string, string>,
+   appSettings?: AppSettings,
+   chatHistory?: ChatMessage[],
+   canonicalRules?: CanonicalRule[],
+@@ -2317,7 +2341,7 @@ const performSync = async (
+   onProgress?: SyncProgressCallback
+ ): Promise<SyncResult> => {
+   const updatedDb: DbSchema = { 
+-    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory,
++    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory,
+     canonicalRules: canonicalRules || []
+   };
+ 
+@@ -2358,7 +2382,7 @@ const performSync = async (
+       dbToWrite.monthlyThemes || {},
+       dbToWrite.appSettings || { defaultCollapsed: false, hideMoney: false },
+       new Date(),
+-      { customPrompt: dbToWrite.customPrompt, chatHistory: dbToWrite.chatHistory, canonicalRules: dbToWrite.canonicalRules }
++      { customPrompt: dbToWrite.customPrompt, chatHistory: dbToWrite.chatHistory, canonicalRules: dbToWrite.canonicalRules, monthlyThemeImages: dbToWrite.monthlyThemeImages }
+     );
+ 
+     // 2. Get existing sheets
+@@ -2542,13 +2566,14 @@ export const syncSpreadsheetData = (
+   skills?: Skill[], 
+   wallets?: Wallet[],
+   monthlyThemes?: Record<string, string>,
++  monthlyThemeImages?: Record<string, string>,
+   appSettings?: AppSettings,
+   chatHistory?: ChatMessage[],
+   canonicalRules?: CanonicalRule[],
+   forceOverwrite = false,
+   onProgress?: SyncProgressCallback
+ ): Promise<SyncResult> => {
+-  const args: SpreadsheetSyncArgs = [items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules, forceOverwrite, onProgress];
++  const args: SpreadsheetSyncArgs = [items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory, canonicalRules, forceOverwrite, onProgress];
+ 
+   if (forceOverwrite) {
+     cancelPendingDebouncedSync({ success: true, method: 'skipped_no_changes' });
+diff --git a/services/syncFacade.ts b/services/syncFacade.ts
+index 730569d..985cdb9 100644
+--- a/services/syncFacade.ts
++++ b/services/syncFacade.ts
+@@ -45,6 +45,7 @@ export const syncData = async (
+   skills?: Skill[],
+   wallets?: Wallet[],
+   monthlyThemes?: Record<string, string>,
++  monthlyThemeImages?: Record<string, string>,
+   appSettings?: AppSettings,
+   chatHistory?: ChatMessage[],
+   canonicalRules?: CanonicalRule[],
+@@ -53,7 +54,7 @@ export const syncData = async (
+ ): Promise<SyncResult> => {
+   const deduped = dedupeBrainDumpItems(items);
+   const outgoingItems = deduped.items;
+-  const outgoingDb = { data: outgoingItems, budgetConfig, customPrompt, skills, wallets, monthlyThemes, appSettings, chatHistory, canonicalRules };
++  const outgoingDb = { data: outgoingItems, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory, canonicalRules };
+   onProgress?.({ phase: 'prepare', label: 'Preparing data', detail: `${outgoingItems.length} items ready to save` });
+ 
+   if (!getSpreadsheetConfig()) {
+@@ -75,6 +76,7 @@ export const syncData = async (
+     skills,
+     wallets,
+     monthlyThemes,
++    monthlyThemeImages,
+     appSettings,
+     chatHistory,
+     canonicalRules,
+diff --git a/types.ts b/types.ts
+index 6a095ba..ca894fd 100644
+--- a/types.ts
++++ b/types.ts
+@@ -268,6 +268,7 @@ export interface DbSchema {
+   skills?: Skill[];
+   wallets?: Wallet[];
+   monthlyThemes?: Record<string, string>;
++  monthlyThemeImages?: Record<string, string>;
+   chatHistory?: ChatMessage[];
+   canonicalRules?: CanonicalRule[];
+ }
+diff --git a/utils/__tests__/spreadsheetSchemaRoundTrip.test.ts b/utils/__tests__/spreadsheetSchemaRoundTrip.test.ts
+index 901cb96..7e5d6d6 100644
+--- a/utils/__tests__/spreadsheetSchemaRoundTrip.test.ts
++++ b/utils/__tests__/spreadsheetSchemaRoundTrip.test.ts
+@@ -1,7 +1,7 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+ 
+-import { generateExportData } from '../exportUtils';
++import { SAVING_GOALS_INVESTMENTS_SHEET_NAME, generateExportData } from '../exportUtils';
+ import { reconcileSpreadsheetData } from '../../services/spreadsheetReconciler';
+ import { AppSettings, BrainDumpItem, BudgetConfig, DbSchema, ItemType, Wallet } from '../../types';
+ import { getWalletStats } from '../selectors/moneySelectors';
+@@ -156,6 +156,12 @@ test('shopping/todo/event spreadsheet export round-trips without recreating item
+   const shoppingSheet = sheets.find(sheet => sheet.name === 'Shopping');
+   assert.ok(shoppingSheet);
+   assert.deepEqual(shoppingSheet!.data[0], ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID", "Budget_Category", "Payment_Method", "Dedicated_Wallet_ID", "Hide_From_Calendar", "Routine_Interval", "Routine_Days_Of_Week", "Routine_Days_Of_Month", "Routine_Months_Of_Year", "Recurrence_Days", "Last_Generated_History_ID"]);
++  const savingGoalsInvestmentsSheet = sheets.find(sheet => sheet.name === SAVING_GOALS_INVESTMENTS_SHEET_NAME);
++  assert.ok(savingGoalsInvestmentsSheet);
++  assert.deepEqual(savingGoalsInvestmentsSheet!.data[0], ["Kind", "Status", "Name", "Target_Amount", "Saved_Amount", "Dedicated_Wallet_ID", "Due_Date", "Created_At", "Completed_At", "Tags", "Hide_From_Calendar", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"]);
++  const investmentRow = savingGoalsInvestmentsSheet!.data.find(row => row.includes('investment-1'));
++  assert.ok(investmentRow);
++  assert.equal(investmentRow![savingGoalsInvestmentsSheet!.data[0].indexOf('Hide_From_Calendar')], 'TRUE');
+ 
+   const valueRanges = sheets.map((sheet) => ({
+     range: `'${sheet.name}'!A1`,
+@@ -449,24 +455,24 @@ test('spreadsheet reconciliation treats blank trailing schema cells as user clea
+   };
+   const sheets = generateExportData(db.data, [], wallets, budgetConfig, {}, appSettings);
+   const txSheet = sheets.find(sheet => sheet.name === 'Transactions');
+-  const shoppingSheet = sheets.find(sheet => sheet.name === 'Shopping');
++  const savingGoalsInvestmentsSheet = sheets.find(sheet => sheet.name === SAVING_GOALS_INVESTMENTS_SHEET_NAME);
+   assert.ok(txSheet);
+-  assert.ok(shoppingSheet);
++  assert.ok(savingGoalsInvestmentsSheet);
+ 
+   const txValues = structuredClone(txSheet!.data);
+   txValues[1] = txValues[1].slice(0, txValues[0].indexOf('ID') + 1);
+ 
+-  const shoppingValues = structuredClone(shoppingSheet!.data);
+-  const shopHeader = shoppingValues[0];
+-  const shopRow = shoppingValues[1];
+-  ['Investment_Units', 'Investment_Avg_Buy', 'Investment_Current_Price', 'Investment_Platform'].forEach((name) => {
+-    shopRow[shopHeader.indexOf(name)] = '';
++  const goalValues = structuredClone(savingGoalsInvestmentsSheet!.data);
++  const goalHeader = goalValues[0];
++  const goalRow = goalValues[1];
++  ['Dedicated_Wallet_ID', 'Hide_From_Calendar', 'Investment_Units', 'Investment_Avg_Buy', 'Investment_Current_Price', 'Investment_Platform'].forEach((name) => {
++    goalRow[goalHeader.indexOf(name)] = '';
+   });
+-  shoppingValues[1] = shopRow.slice(0, shopHeader.indexOf('ID') + 1);
++  goalValues[1] = goalRow.slice(0, goalHeader.indexOf('ID') + 1);
+ 
+   const reconciled = reconcileSpreadsheetData(structuredClone(db), [
+     { range: "'Transactions'!A1:V", values: txValues },
+-    { range: "'Shopping'!A1:Z", values: shoppingValues },
++    { range: `'${SAVING_GOALS_INVESTMENTS_SHEET_NAME}'!A1:R`, values: goalValues },
+   ]);
+   const reconciledTransaction = reconciled.data.find(item => item.id === 'txn-clear-1');
+   assert.ok(reconciledTransaction);
+@@ -487,6 +493,66 @@ test('spreadsheet reconciliation treats blank trailing schema cells as user clea
+   assert.equal(reconciledInvestment?.meta.investmentPlatform, undefined);
+ });
+ 
++test('monthly theme hero image URLs round-trip beside theme rows', () => {
++  const sheets = generateExportData([], [], [], budgetConfig, { '2026-06': 'Reset month' }, appSettings, new Date('2026-06-01T00:00:00.000Z'), {
++    monthlyThemeImages: { '2026-06': 'https://example.com/hero.jpg' },
++  });
++
++  const themesSheet = sheets.find(sheet => sheet.name === 'Themes & Settings');
++  assert.ok(themesSheet);
++  assert.deepEqual(themesSheet!.data[0], ['Type', 'Key', 'Value', 'Hero_Image_URL']);
++  const themeRow = themesSheet!.data.find(row => row[0] === 'Theme' && row[1] === '2026-06');
++  assert.deepEqual(themeRow, ['Theme', '2026-06', 'Reset month', 'https://example.com/hero.jpg']);
++
++  const reconciled = reconcileSpreadsheetData({ data: [], monthlyThemes: {}, monthlyThemeImages: {}, appSettings }, [{
++    range: "'Themes & Settings'!A1:D",
++    values: themesSheet!.data,
++  }]);
++
++  assert.equal(reconciled.monthlyThemes?.['2026-06'], 'Reset month');
++  assert.equal(reconciled.monthlyThemeImages?.['2026-06'], 'https://example.com/hero.jpg');
++});
++
++test('saving goals and investments can be added, edited, and deleted from dedicated spreadsheet sheet', () => {
++  const existing: BrainDumpItem = {
++    id: 'goal-keep',
++    type: ItemType.SHOPPING,
++    content: 'Emergency Fund',
++    status: 'pending',
++    created_at: '2026-06-01T00:00:00.000Z',
++    meta: { amount: 1_000_000, savedAmount: 100_000, shoppingCategory: 'saving' },
++  };
++  const deleted: BrainDumpItem = {
++    id: 'goal-delete',
++    type: ItemType.SHOPPING,
++    content: 'Old Goal',
++    status: 'pending',
++    created_at: '2026-06-01T00:00:00.000Z',
++    meta: { amount: 500_000, shoppingCategory: 'saving' },
++  };
++
++  const reconciled = reconcileSpreadsheetData({ data: [existing, deleted], budgetConfig, skills: [], wallets, monthlyThemes: {}, appSettings }, [{
++    range: `'${SAVING_GOALS_INVESTMENTS_SHEET_NAME}'!A1:R`,
++    values: [
++      ['Kind', 'Status', 'Name', 'Target_Amount', 'Saved_Amount', 'Dedicated_Wallet_ID', 'Due_Date', 'Created_At', 'Completed_At', 'Tags', 'Hide_From_Calendar', 'Investment_Type', 'Investment_Code', 'Investment_Units', 'Investment_Avg_Buy', 'Investment_Current_Price', 'Investment_Platform', 'ID'],
++      ['saving', 'pending', 'Emergency Fund Updated', '1500000', '250000', 'bca-wallet', '', '2026-06-01T00:00:00.000Z', '', 'cash', 'TRUE', '', '', '', '', '', '', 'goal-keep'],
++      ['investment', 'pending', 'BBCA Position', '2000000', '', 'bca-wallet', '', '2026-06-02T00:00:00.000Z', '', 'portfolio', '', 'stock', 'BBCA', '100', '10000', '10500', 'Ajaib', 'goal-new'],
++    ],
++  }]);
++
++  assert.equal(reconciled.data.some(item => item.id === 'goal-delete'), false);
++  const edited = reconciled.data.find(item => item.id === 'goal-keep');
++  assert.equal(edited?.content, 'Emergency Fund Updated');
++  assert.equal(edited?.meta.amount, 1_500_000);
++  assert.equal(edited?.meta.savedAmount, 250_000);
++  assert.equal(edited?.meta.hideFromCalendar, true);
++
++  const added = reconciled.data.find(item => item.id === 'goal-new');
++  assert.equal(added?.meta.shoppingCategory, 'investment');
++  assert.equal(added?.meta.investmentSymbol, 'BBCA');
++  assert.equal(added?.meta.investmentUnits, 100);
++});
++
+ test('header-only spreadsheet ranges do not delete local shopping, transactions, or config', () => {
+   const doneShopping: BrainDumpItem = {
+     id: 'shop-done-1',
+diff --git a/utils/exportUtils.ts b/utils/exportUtils.ts
+index 388d24f..b2619b4 100644
+--- a/utils/exportUtils.ts
++++ b/utils/exportUtils.ts
+@@ -19,6 +19,7 @@ export interface SheetData {
+ 
+ export const DASHBOARD_SHEET_NAME = 'Sheet1';
+ export const DATA_QUALITY_SHEET_NAME = 'Data Quality';
++export const SAVING_GOALS_INVESTMENTS_SHEET_NAME = 'Saving Goals & Investments';
+ export const DASHBOARD_HELPER_START_COLUMN_INDEX = 7; // Column H
+ export const DASHBOARD_HELPER_END_COLUMN_INDEX = 31; // Up to AE (exclusive)
+ 
+@@ -76,6 +77,10 @@ const getCurrentMonthTheme = (monthlyThemes: Record<string, string>, now: Date)
+   return monthlyThemes[key] || '';
+ };
+ 
++const isSavingOrInvestmentItem = (item: BrainDumpItem) =>
++  item.type === ItemType.SHOPPING
++  && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment');
++
+ const fmtCurrency = (value: number) => new Intl.NumberFormat('id-ID', {
+   style: 'currency',
+   currency: 'IDR',
+@@ -407,7 +412,7 @@ export const generateExportData = (
+   monthlyThemes: Record<string, string>,
+   appSettings: AppSettings,
+   now = new Date(),
+-  extras: { customPrompt?: string; chatHistory?: ChatMessage[]; canonicalRules?: CanonicalRule[] } = {}
++  extras: { customPrompt?: string; chatHistory?: ChatMessage[]; canonicalRules?: CanonicalRule[]; monthlyThemeImages?: Record<string, string> } = {}
+ ): SheetData[] => {
+   const dataQualityIssues = buildDataQualityIssues(items, wallets, budgetConfig);
+   const sheets: SheetData[] = [
+@@ -532,7 +537,7 @@ export const generateExportData = (
+     });
+ 
+   // --- Sheet 3: Shopping ---
+-  const shopping = items.filter(i => i.type === ItemType.SHOPPING).map(item => ({
++  const shopping = items.filter(i => i.type === ItemType.SHOPPING && !isSavingOrInvestmentItem(i)).map(item => ({
+       Status: item.status,
+       Item: item.content,
+       Amount: item.meta.amount || 0,
+@@ -568,6 +573,38 @@ export const generateExportData = (
+       ]
+     });
+ 
++  // --- Dedicated Sheet: Saving Goals & Investments ---
++  const savingGoalInvestmentRows = items
++    .filter(isSavingOrInvestmentItem)
++    .map(item => ({
++      Kind: item.meta.shoppingCategory || '',
++      Status: item.status,
++      Name: item.content,
++      Target_Amount: item.meta.amount || 0,
++      Saved_Amount: item.meta.savedAmount || '',
++      Dedicated_Wallet_ID: item.meta.dedicatedWalletId || '',
++      Due_Date: getShoppingDueDate(item) || '',
++      Created_At: item.created_at,
++      Completed_At: item.completed_at || '',
++      Tags: item.meta.tags?.join(', ') || '',
++      Hide_From_Calendar: item.meta.hideFromCalendar ? 'TRUE' : '',
++      Investment_Type: item.meta.investmentAssetType || '',
++      Investment_Code: item.meta.investmentSymbol || '',
++      Investment_Units: item.meta.investmentUnits || '',
++      Investment_Avg_Buy: item.meta.investmentAveragePrice || '',
++      Investment_Current_Price: item.meta.investmentCurrentPrice || '',
++      Investment_Platform: item.meta.investmentPlatform || '',
++      ID: item.id,
++    }));
++
++  sheets.push({
++    name: SAVING_GOALS_INVESTMENTS_SHEET_NAME,
++    data: [
++      ["Kind", "Status", "Name", "Target_Amount", "Saved_Amount", "Dedicated_Wallet_ID", "Due_Date", "Created_At", "Completed_At", "Tags", "Hide_From_Calendar", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"],
++      ...savingGoalInvestmentRows.map(row => [row.Kind, row.Status, row.Name, row.Target_Amount, row.Saved_Amount, row.Dedicated_Wallet_ID, row.Due_Date, row.Created_At, row.Completed_At, row.Tags, row.Hide_From_Calendar, row.Investment_Type, row.Investment_Code, row.Investment_Units, row.Investment_Avg_Buy, row.Investment_Current_Price, row.Investment_Platform, row.ID])
++    ]
++  });
++
+   // --- Sheet 4: Events ---
+   const events = items.filter(i => i.type === ItemType.EVENT).map(item => ({
+       Type: item.type,
+@@ -677,10 +714,16 @@ export const generateExportData = (
+   });
+ 
+   // --- Sheet 11: Themes & Settings ---
+-  const themesData = Object.entries(monthlyThemes).map(([key, value]) => ({
++  const themeKeys = Array.from(new Set([
++    ...Object.keys(monthlyThemes || {}),
++    ...Object.keys(extras.monthlyThemeImages || {}),
++  ])).sort();
++
++  const themesData = themeKeys.map((key) => ({
+     Type: 'Theme',
+     Key: key,
+-    Value: value
++    Value: monthlyThemes[key] || '',
++    Hero_Image_URL: extras.monthlyThemeImages?.[key] || ''
+   }));
+   
+   const settingsData = [
+@@ -698,8 +741,9 @@ export const generateExportData = (
+   sheets.push({
+     name: "Themes & Settings",
+     data: [
+-      ["Type", "Key", "Value"],
+-      ...[...themesData, ...settingsData].map(d => [d.Type, d.Key, d.Value])
++      ["Type", "Key", "Value", "Hero_Image_URL"],
++      ...themesData.map(d => [d.Type, d.Key, d.Value, d.Hero_Image_URL]),
++      ...settingsData.map(d => [d.Type, d.Key, d.Value, ''])
+     ]
+   });
+ 
+diff --git a/utils/mergeUtils.ts b/utils/mergeUtils.ts
+index 03395c8..fd55eca 100644
+--- a/utils/mergeUtils.ts
++++ b/utils/mergeUtils.ts
+@@ -221,6 +221,7 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
+         skills: Array.from(skillMap.values()),
+         wallets: Array.from(walletMap.values()),
+         monthlyThemes: { ...remote.monthlyThemes, ...local.monthlyThemes },
++        monthlyThemeImages: { ...remote.monthlyThemeImages, ...local.monthlyThemeImages },
+         chatHistory: chatHistory.slice(-50),
+         canonicalRules
+     };

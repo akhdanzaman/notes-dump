@@ -27,6 +27,7 @@ export type BrainDumpContext = {
     newAppSettings?: AppSettings,
     newCanonicalRules?: CanonicalRule[],
     forceOverwrite?: boolean,
+    newThemeImages?: Record<string, string>,
   ) => Promise<void>;
   skillsRef: MutableRefObject<Skill[]>;
   setSkills: (skills: Skill[]) => void;
@@ -34,6 +35,8 @@ export type BrainDumpContext = {
   setWallets: (wallets: Wallet[]) => void;
   monthlyThemesRef: MutableRefObject<Record<string, string>>;
   setMonthlyThemes: (themes: Record<string, string>) => void;
+  monthlyThemeImagesRef: MutableRefObject<Record<string, string>>;
+  setMonthlyThemeImages: (images: Record<string, string>) => void;
   budgetConfigRef: MutableRefObject<BudgetConfig>;
   customPromptRef: MutableRefObject<string>;
   appSettingsRef: MutableRefObject<AppSettings>;
@@ -52,14 +55,15 @@ export type BrainDumpContext = {
   setFetchStatus: (status: SyncStatus) => void;
   parsingInFlightRef: MutableRefObject<Set<string>>;
   pendingSaveAfterParsingRef: MutableRefObject<{
-    items?: BrainDumpItem[];
-    config?: BudgetConfig;
-    prompt?: string;
-    skills?: Skill[];
-    wallets?: Wallet[];
-    themes?: Record<string, string>;
-    settings?: AppSettings;
-    canonicalRules?: CanonicalRule[];
+    newItems?: BrainDumpItem[];
+    newConfig?: BudgetConfig;
+    newPrompt?: string;
+    newSkills?: Skill[];
+    newWallets?: Wallet[];
+    newThemes?: Record<string, string>;
+    newThemeImages?: Record<string, string>;
+    newAppSettings?: AppSettings;
+    newCanonicalRules?: CanonicalRule[];
     forceOverwrite?: boolean;
   } | null>;
   pendingFetchAfterParsingRef: MutableRefObject<boolean>;
