@@ -1,5 +1,6 @@
 export enum ItemType {
   TODO = 'TODO',
+  SKILLS = 'skills',
   SHOPPING = 'SHOPPING',
   NOTE = 'NOTE',
   EVENT = 'EVENT',
@@ -131,12 +132,27 @@ export interface AppSettings {
   googleCalendarId?: string;
 }
 
+export type RoutineInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export interface SkillSchedule {
+  enabled: boolean;
+  interval: RoutineInterval;
+  daysOfWeek?: number[];
+  daysOfMonth?: number[];
+  monthsOfYear?: number[];
+  startTime: string;
+  endTime: string;
+}
+
 export interface Skill {
   id: string;
   name: string;
+  description?: string;
+  imageUrl?: string;
   color: string;
   created_at: string;
   weeklyTargetMinutes?: number;
+  schedule?: SkillSchedule;
 }
 
 export interface Wallet {
@@ -180,6 +196,7 @@ export interface ItemMeta {
   durationMinutes?: number;
   skillId?: string;
   skillName?: string;
+  skillRoutineId?: string;
 
   progress?: number;
   progressNotes?: string;

@@ -446,10 +446,12 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const routineMonthsOfYear = hasRoutineMonthsOfYearColumn ? splitSheetNumberList(getHeaderCell(headers, row, "Routine_Months_Of_Year")) : undefined;
             const recurrenceDays = hasRecurrenceDaysColumn ? parsePositiveInt(getHeaderCell(headers, row, "Recurrence_Days")) : undefined;
             const lastGeneratedHistoryId = hasLastGeneratedHistoryIdColumn ? cleanCell(getHeaderCell(headers, row, "Last_Generated_History_ID")) : undefined;
+            const normalizedType = String(typeStr || '').trim().toLowerCase();
+            const todoLikeType = normalizedType === 'skills' ? ItemType.SKILLS : ItemType.TODO;
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
-                (!idStr && i.type === ItemType.TODO &&
+                (!idStr && (i.type === ItemType.TODO || i.type === ItemType.SKILLS) &&
                 i.content === content &&
                 fmtDate(i.created_at) === createdAt)
             );
@@ -457,6 +459,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             if (match) {
                 seenItemIds.add(match.id);
                 let updated = false;
+                if ((match.type === ItemType.TODO || match.type === ItemType.SKILLS) && match.type !== todoLikeType) { match.type = todoLikeType; updated = true; }
                 if (match.content !== content) { match.content = content; updated = true; }
                 if (match.status !== status && (status === 'pending' || status === 'done')) {
                     match.status = status;
@@ -614,8 +617,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const newId = idStr || uuidv4();
                 newItems.push({
                     id: newId,
-                    type: ItemType.TODO,
-                    content: content || 'Manual Todo',
+                    type: todoLikeType,
+                    content: content || (todoLikeType === ItemType.SKILLS ? 'Manual Skill Routine' : 'Manual Todo'),
                     status: (status === 'done' ? 'done' : 'pending'),
                     created_at: isoDate,
                     completed_at: isoCompletedAt,
@@ -1411,7 +1414,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             } else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
             else sheetWasFetched = sheetsFetched.shop;
         }
-        else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;
+        else if (item.type === ItemType.TODO || item.type === ItemType.SKILLS) sheetWasFetched = sheetsFetched.todo;
         else if (item.type === ItemType.EVENT) sheetWasFetched = sheetsFetched.event;
         else if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) sheetWasFetched = sheetsFetched.notes;
         else if (item.type === ItemType.SKILL_LOG) sheetWasFetched = sheetsFetched.skillLogs;

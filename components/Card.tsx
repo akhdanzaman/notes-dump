@@ -429,7 +429,8 @@ const Card: React.FC<CardProps> = ({
   const getStyles = () => {
     switch (type) {
       case ItemType.TODO:
-        return { textColor: 'text-acc-todo', bg: 'bg-surface' };
+      case ItemType.SKILLS:
+        return { textColor: type === ItemType.SKILLS ? 'text-indigo-500' : 'text-acc-todo', bg: 'bg-surface' };
       case ItemType.SHOPPING:
         return { textColor: 'text-purple-500', bg: 'bg-surface' };
       case ItemType.EVENT:
@@ -521,14 +522,14 @@ const Card: React.FC<CardProps> = ({
   }
 
   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
-  const displayAmount = type !== ItemType.TODO ? formatMoney(meta?.amount) : null;
+  const displayAmount = (type !== ItemType.TODO && type !== ItemType.SKILLS) ? formatMoney(meta?.amount) : null;
   const canToggleStatus = !readonly && !!onToggleStatus && type !== ItemType.FINANCE;
   const displayTypeLabel = type === ItemType.FINANCE ? formatFinanceTypeLabel(meta?.financeType) : type.toLowerCase();
 
   // Field visibilities
   const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL;
   const showAmountField = type === ItemType.FINANCE || type === ItemType.SHOPPING;
-  const showDateField = type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING || type === ItemType.FINANCE || type === ItemType.JOURNAL;
+  const showDateField = type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT || type === ItemType.SHOPPING || type === ItemType.FINANCE || type === ItemType.JOURNAL;
   const showFinanceExtras = type === ItemType.FINANCE || (type === ItemType.SHOPPING && showAmountField);
   const showSkillExtras = false;
   const showProgress = type === ItemType.TODO && status === 'pending';
@@ -898,7 +899,7 @@ const Card: React.FC<CardProps> = ({
                    )}
 
                    {/* Start and End */}
-                   {(type === ItemType.TODO || type === ItemType.EVENT) && !meta.isRoutine && (
+                   {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT) && !meta.isRoutine && (
                        <>
                            <div>
                                <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Start Time</label>
@@ -928,7 +929,7 @@ const Card: React.FC<CardProps> = ({
                    )}
 
                    {/* Priority */}
-                   {(type === ItemType.TODO || type === ItemType.EVENT) && (
+                   {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT) && (
                        <div className="col-span-2">
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Priority</label>
                            <div className="grid grid-cols-3 gap-2">
@@ -950,7 +951,7 @@ const Card: React.FC<CardProps> = ({
                    )}
 
                    {/* Hide from Calendar */}
-                   {(type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING) && (
+                   {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT || type === ItemType.SHOPPING) && (
                        <div className="col-span-2 flex items-center gap-2 mt-1">
                            <input 
                                type="checkbox" 

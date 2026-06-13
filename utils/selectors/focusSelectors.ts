@@ -15,7 +15,7 @@ export const getFocusItems = (items: BrainDumpItem[]) => {
   const afterTomorrowStart = tomorrowStart + 86400000;
 
   const relevantItems = items.filter(i => 
-      (i.type === ItemType.TODO || i.type === ItemType.EVENT) && 
+      (i.type === ItemType.TODO || i.type === ItemType.EVENT || i.type === ItemType.SKILLS) && 
       i.status === 'pending'
   );
   
@@ -67,7 +67,7 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
     // 1. Filter items belonging to this month (Created OR Due)
     // AND are types TODO/EVENT
     const relevantItems = items.filter(i => {
-        if (i.type !== ItemType.TODO && i.type !== ItemType.EVENT) return false;
+        if (i.type !== ItemType.TODO && i.type !== ItemType.EVENT && i.type !== ItemType.SKILLS) return false;
         
         // Tag Filter
         if (selectedTag && !i.meta.tags?.includes(selectedTag)) return false;

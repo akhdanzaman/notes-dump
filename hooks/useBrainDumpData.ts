@@ -111,7 +111,8 @@ export const mergeFetchedItemsPreservingUnsavedLocal = (
 const getRoutineNextDueDate = (item: BrainDumpItem): Date | null => {
     const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
     const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
-    if (!isShoppingRoutine && !isTodoRoutine) return null;
+    const isSkillRoutine = item.type === ItemType.SKILLS && item.meta.isRoutine;
+    if (!isShoppingRoutine && !isTodoRoutine && !isSkillRoutine) return null;
 
     const completedDate = item.completed_at ? new Date(item.completed_at) : new Date();
     const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
@@ -168,12 +169,33 @@ const calculateFirstRoutineDueDate = (
     return calculateFirstDueDate(baseDate, interval, daysOfWeek, daysOfMonth, monthsOfYear);
 };
 
+const getRoutineDurationMinutes = (item: BrainDumpItem): number => {
+    if (Number(item.meta.durationMinutes) > 0) return Number(item.meta.durationMinutes);
+
+    const startRaw = item.meta.start || item.meta.date;
+    const endRaw = item.meta.end;
+    if (!startRaw || !endRaw) return 0;
+
+    const start = new Date(startRaw);
+    const end = new Date(endRaw);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+
+    return Math.max(Math.round((end.getTime() - start.getTime()) / 60000), 0);
+};
+
+const getRoutineEndForNextStart = (item: BrainDumpItem, nextStart: Date): string | undefined => {
+    const durationMinutes = getRoutineDurationMinutes(item);
+    if (!durationMinutes) return item.meta.end;
+    return new Date(nextStart.getTime() + durationMinutes * 60000).toISOString();
+};
+
 export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
     return currentItems.map(item => {
         const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
         const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
+        const isSkillRoutine = item.type === ItemType.SKILLS && item.meta.isRoutine;
 
-        if ((isShoppingRoutine || isTodoRoutine) && item.status === 'done' && item.completed_at) {
+        if ((isShoppingRoutine || isTodoRoutine || isSkillRoutine) && item.status === 'done' && item.completed_at) {
             const nextDueDate = getRoutineNextDueDate(item);
             if (nextDueDate && now.getTime() >= nextDueDate.getTime()) {
                 return {
@@ -183,6 +205,8 @@ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Da
                     meta: {
                         ...item.meta,
                         date: nextDueDate.toISOString(),
+                        start: item.meta.start ? nextDueDate.toISOString() : item.meta.start,
+                        end: getRoutineEndForNextStart(item, nextDueDate),
                         progress: 0,
                         progressNotes: undefined,
                         lastGeneratedHistoryId: undefined
@@ -1783,12 +1807,15 @@ export const useBrainDumpData = () => {
         const targetItem = prevItems.find(i => i.id === id);
         if (!targetItem) return;
         if (targetItem.type === ItemType.FINANCE) return;
+
         const isSavingGoal = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'saving';
         const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
         const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
-        const routineNextDueDate = (isShoppingRoutine || isTodoRoutine) ? getRoutineNextDueDate(targetItem) : null;
+        const isSkillRoutine = targetItem.type === ItemType.SKILLS && targetItem.meta.isRoutine;
+        const isRoutineItem = isShoppingRoutine || isTodoRoutine || isSkillRoutine;
+        const routineNextDueDate = isRoutineItem ? getRoutineNextDueDate(targetItem) : null;
 
-        if ((isShoppingRoutine || isTodoRoutine) && isRoutineLockedUntilNextDue(targetItem)) return;
+        if (isRoutineItem && isRoutineLockedUntilNextDue(targetItem)) return;
 
         const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
         const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
@@ -1798,9 +1825,9 @@ export const useBrainDumpData = () => {
         let historyItemIdToCreate: string | undefined;
         let historyItemIdToDelete: string | undefined;
 
-        if (newStatus === 'done' && (isShoppingRoutine || isTodoRoutine)) {
+        if (newStatus === 'done' && isRoutineItem) {
             historyItemIdToCreate = uuidv4();
-        } else if (newStatus === 'pending' && (isShoppingRoutine || isTodoRoutine)) {
+        } else if (newStatus === 'pending' && isRoutineItem) {
             historyItemIdToDelete = targetItem.meta.lastGeneratedHistoryId;
         }
 
@@ -1813,9 +1840,15 @@ export const useBrainDumpData = () => {
                     ...item.meta,
                     progress: newProgress,
                     progressNotes: newProgressNotes,
-                    date: (newStatus === 'pending' && (isShoppingRoutine || isTodoRoutine) && routineNextDueDate)
+                    date: (newStatus === 'pending' && isRoutineItem && routineNextDueDate)
                         ? routineNextDueDate.toISOString()
                         : item.meta.date,
+                    start: (newStatus === 'pending' && isRoutineItem && routineNextDueDate && item.meta.start)
+                        ? routineNextDueDate.toISOString()
+                        : item.meta.start,
+                    end: (newStatus === 'pending' && isRoutineItem && routineNextDueDate)
+                        ? getRoutineEndForNextStart(item, routineNextDueDate)
+                        : item.meta.end,
                     lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
                 }
             } : item
@@ -1827,7 +1860,7 @@ export const useBrainDumpData = () => {
 
         if (historyItemIdToCreate) {
             let newType: ItemType = targetItem.type;
-            let newMeta = { ...targetItem.meta, isRoutine: false };
+            let newMeta: ItemMeta = { ...targetItem.meta, isRoutine: false };
 
             if (isShoppingRoutine) {
                 newType = ItemType.FINANCE;
@@ -1845,6 +1878,15 @@ export const useBrainDumpData = () => {
                     ...newMeta,
                     progress: undefined,
                     progressNotes: undefined
+                };
+            } else if (isSkillRoutine) {
+                newType = ItemType.SKILL_LOG;
+                newMeta = {
+                    tags: Array.from(new Set([...(targetItem.meta.tags || []), 'skills', 'routine'])),
+                    skillId: targetItem.meta.skillId,
+                    skillName: targetItem.meta.skillName || targetItem.content,
+                    durationMinutes: getRoutineDurationMinutes(targetItem),
+                    skillRoutineId: targetItem.id,
                 };
             }
 
@@ -2434,6 +2476,7 @@ export const useBrainDumpData = () => {
 
     return {
         items,
+        setItems,
         budgetConfig,
         setBudgetConfig,
         skills,

@@ -471,7 +471,7 @@ export const generateExportData = (
     });
 
   // --- Sheet 2: Todos ---
-  const todos = items.filter(i => i.type === ItemType.TODO).map(item => {
+  const todos = items.filter(i => i.type === ItemType.TODO || i.type === ItemType.SKILLS).map(item => {
     const children = getDeepWorkChildren(items, item.id);
     const childIds = item.meta.childTodoIds?.length
       ? item.meta.childTodoIds
@@ -681,18 +681,28 @@ export const generateExportData = (
   });
 
   // --- Sheet 9: Skills ---
+  const encodeSkillNumberList = (values?: number[]) => (values && values.length ? values.join(', ') : '');
   const skillsData = skills.map(s => ({
     ID: s.id,
     Name: s.name,
+    Description: s.description || '',
+    Image_URL: s.imageUrl || '',
     Weekly_Target_Minutes: s.weeklyTargetMinutes || 0,
+    Schedule_Enabled: s.schedule?.enabled ? 'TRUE' : '',
+    Schedule_Interval: s.schedule?.interval || '',
+    Schedule_Days_Of_Week: encodeSkillNumberList(s.schedule?.daysOfWeek),
+    Schedule_Days_Of_Month: encodeSkillNumberList(s.schedule?.daysOfMonth),
+    Schedule_Months_Of_Year: encodeSkillNumberList(s.schedule?.monthsOfYear),
+    Schedule_Start_Time: s.schedule?.startTime || '',
+    Schedule_End_Time: s.schedule?.endTime || '',
     Created_At: s.created_at,
     Color: s.color
   }));
   sheets.push({
     name: "Skills Config",
     data: [
-      ["ID", "Name", "Weekly_Target_Minutes", "Created_At", "Color"],
-      ...skillsData.map(s => [s.ID, s.Name, s.Weekly_Target_Minutes, s.Created_At, s.Color])
+      ["ID", "Name", "Description", "Image_URL", "Weekly_Target_Minutes", "Schedule_Enabled", "Schedule_Interval", "Schedule_Days_Of_Week", "Schedule_Days_Of_Month", "Schedule_Months_Of_Year", "Schedule_Start_Time", "Schedule_End_Time", "Created_At", "Color"],
+      ...skillsData.map(s => [s.ID, s.Name, s.Description, s.Image_URL, s.Weekly_Target_Minutes, s.Schedule_Enabled, s.Schedule_Interval, s.Schedule_Days_Of_Week, s.Schedule_Days_Of_Month, s.Schedule_Months_Of_Year, s.Schedule_Start_Time, s.Schedule_End_Time, s.Created_At, s.Color])
     ]
   });
 

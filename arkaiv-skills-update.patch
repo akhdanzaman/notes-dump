@@ -1,0 +1,1452 @@
+--- a/App.tsx
++++ b/App.tsx
+@@ -80,10 +80,123 @@
+   return `${year}-${month}`;
+ };
+ 
++type SkillModalPayload = {
++  name: string;
++  description?: string;
++  imageUrl?: string;
++  weeklyTargetMinutes?: number;
++  schedule?: Skill['schedule'];
++};
++
++const parseSkillTime = (value?: string) => {
++  const [hourRaw, minuteRaw] = String(value || '').split(':');
++  const hour = Number(hourRaw);
++  const minute = Number(minuteRaw);
++  return {
++    hour: Number.isFinite(hour) ? Math.min(Math.max(hour, 0), 23) : 9,
++    minute: Number.isFinite(minute) ? Math.min(Math.max(minute, 0), 59) : 0,
++  };
++};
++
++const setDateTimeFromSkillTime = (date: Date, time?: string) => {
++  const next = new Date(date);
++  const { hour, minute } = parseSkillTime(time);
++  next.setHours(hour, minute, 0, 0);
++  return next;
++};
++
++const getSkillScheduleDurationMinutes = (schedule?: Skill['schedule']) => {
++  if (!schedule?.enabled) return 0;
++  const start = parseSkillTime(schedule.startTime);
++  const end = parseSkillTime(schedule.endTime);
++  let startMinutes = start.hour * 60 + start.minute;
++  let endMinutes = end.hour * 60 + end.minute;
++  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
++  return Math.max(endMinutes - startMinutes, 1);
++};
++
++const skillScheduleMatchesDate = (schedule: NonNullable<Skill['schedule']>, date: Date) => {
++  if (!schedule.enabled) return false;
++  if (schedule.interval === 'daily') return true;
++  if (schedule.interval === 'weekly') return (schedule.daysOfWeek?.length ? schedule.daysOfWeek : [date.getDay()]).includes(date.getDay());
++  if (schedule.interval === 'monthly') return (schedule.daysOfMonth?.length ? schedule.daysOfMonth : [date.getDate()]).includes(date.getDate());
++  if (schedule.interval === 'yearly') return (schedule.monthsOfYear?.length ? schedule.monthsOfYear : [date.getMonth()]).includes(date.getMonth()) && date.getDate() === 1;
++  return false;
++};
++
++const getNextSkillScheduleStart = (schedule: NonNullable<Skill['schedule']>, fromDate = new Date()) => {
++  for (let offset = 0; offset <= 370; offset += 1) {
++    const day = new Date(fromDate);
++    day.setDate(fromDate.getDate() + offset);
++    const start = setDateTimeFromSkillTime(day, schedule.startTime);
++    if (skillScheduleMatchesDate(schedule, start) && start.getTime() >= fromDate.getTime()) return start;
++  }
++  return setDateTimeFromSkillTime(fromDate, schedule.startTime);
++};
++
++const isSkillRoutineItem = (item: BrainDumpItem) => item.type === ItemType.SKILLS && item.meta.isRoutine && !!item.meta.skillId;
++
++const buildSkillRoutineItem = (skill: Skill, existing?: BrainDumpItem): BrainDumpItem | null => {
++  if (!skill.schedule?.enabled) return null;
++
++  const start = getNextSkillScheduleStart(skill.schedule);
++  const durationMinutes = getSkillScheduleDurationMinutes(skill.schedule);
++  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
++
++  return {
++    id: existing?.id || `skill-routine-${skill.id}`,
++    type: ItemType.SKILLS,
++    content: skill.name,
++    status: existing?.status || 'pending',
++    created_at: existing?.created_at || new Date().toISOString(),
++    completed_at: existing?.completed_at,
++    meta: {
++      ...(existing?.meta || {}),
++      tags: Array.from(new Set([...(existing?.meta.tags || []), 'skills', 'routine'])),
++      skillId: skill.id,
++      skillName: skill.name,
++      durationMinutes,
++      isRoutine: true,
++      routineInterval: skill.schedule.interval,
++      routineDaysOfWeek: skill.schedule.daysOfWeek,
++      routineDaysOfMonth: skill.schedule.daysOfMonth,
++      routineMonthsOfYear: skill.schedule.monthsOfYear,
++      recurrenceDays: 1,
++      date: existing?.status === 'done' && existing.meta.date ? existing.meta.date : start.toISOString(),
++      start: existing?.status === 'done' && existing.meta.start ? existing.meta.start : start.toISOString(),
++      end: existing?.status === 'done' && existing.meta.end ? existing.meta.end : end.toISOString(),
++      priority: existing?.meta.priority || 'normal',
++    },
++  };
++};
++
++const syncSkillRoutineItems = (items: BrainDumpItem[], skills: Skill[]) => {
++  const skillsById = new Map(skills.map(skill => [skill.id, skill]));
++  const existingRoutineBySkillId = new Map(
++    items
++      .filter(isSkillRoutineItem)
++      .map(item => [item.meta.skillId as string, item])
++  );
++
++  const cleanedItems = items.filter(item => {
++    if (!isSkillRoutineItem(item)) return true;
++    const skill = skillsById.get(item.meta.skillId as string);
++    return !!skill?.schedule?.enabled;
++  });
++
++  const withoutOldSkillRoutines = cleanedItems.filter(item => !isSkillRoutineItem(item));
++  const routineItems = skills
++    .map(skill => buildSkillRoutineItem(skill, existingRoutineBySkillId.get(skill.id)))
++    .filter((item): item is BrainDumpItem => !!item);
++
++  return [...routineItems, ...withoutOldSkillRoutines];
++};
++
+ const App: React.FC = () => {
+   // Data Logic Hook
+   const {
+     items,
++    setItems,
+     budgetConfig,
+     setBudgetConfig,
+     skills,
+@@ -175,8 +288,7 @@
+     isOpen: boolean;
+     mode: "add" | "edit";
+     skillId?: string;
+-    initialName?: string;
+-    initialTarget?: number;
++    initialSkill?: Skill;
+   }>({ isOpen: false, mode: "add" });
+   const [walletModal, setWalletModal] = useState<{
+     isOpen: boolean;
+@@ -840,8 +952,10 @@
+   const handleConfirmDelete = () => {
+     if (deleteType === "skill" && deleteId) {
+       const updated = skills.filter((s) => s.id !== deleteId);
++      const updatedItems = syncSkillRoutineItems(items, updated);
+       setSkills(updated);
+-      saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
++      setItems(updatedItems);
++      saveAndSync(updatedItems, undefined, undefined, updated, wallets, monthlyThemes);
+     } else if (deleteType === "wallet" && deleteId) {
+       const updated = wallets.filter((w) => w.id !== deleteId);
+       setWallets(updated);
+@@ -911,14 +1025,21 @@
+ 
+   // --- Skill & Wallet Modal Handlers ---
+   const handleOpenAddSkill = () => setSkillModal({ isOpen: true, mode: "add" });
+-  const handleOpenEditSkill = (id: string, name: string, target?: number) =>
++  const handleOpenEditSkill = (id: string, name: string, target?: number) => {
++    const existingSkill = skills.find((s) => s.id === id);
+     setSkillModal({
+       isOpen: true,
+       mode: "edit",
+       skillId: id,
+-      initialName: name,
+-      initialTarget: target,
++      initialSkill: existingSkill || {
++        id,
++        name,
++        weeklyTargetMinutes: target,
++        color: "indigo-500",
++        created_at: new Date().toISOString(),
++      },
+     });
++  };
+ 
+   const handleOpenAddWallet = () =>
+     setWalletModal({ isOpen: true, mode: "add" });
+@@ -930,26 +1051,41 @@
+       initialData: wallet,
+     });
+ 
+-  const handleSaveSkill = (name: string, weeklyTargetMinutes?: number) => {
+-    if (!name.trim()) return;
++  const handleSaveSkill = (payload: SkillModalPayload) => {
++    const name = payload.name.trim();
++    if (!name) return;
++
++    let updatedSkills = skills;
++
+     if (skillModal.mode === "add") {
+       const newSkill: Skill = {
+         id: uuidv4(),
+         name,
++        description: payload.description?.trim() || undefined,
++        imageUrl: payload.imageUrl?.trim() || undefined,
+         color: "indigo-500",
+         created_at: new Date().toISOString(),
+-        weeklyTargetMinutes,
++        weeklyTargetMinutes: payload.weeklyTargetMinutes,
++        schedule: payload.schedule,
+       };
+-      const updated = [...skills, newSkill];
+-      setSkills(updated);
+-      saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
++      updatedSkills = [...skills, newSkill];
+     } else if (skillModal.mode === "edit" && skillModal.skillId) {
+-      const updated = skills.map((s) =>
+-        s.id === skillModal.skillId ? { ...s, name, weeklyTargetMinutes } : s,
++      updatedSkills = skills.map((s) =>
++        s.id === skillModal.skillId ? {
++          ...s,
++          name,
++          description: payload.description?.trim() || undefined,
++          imageUrl: payload.imageUrl?.trim() || undefined,
++          weeklyTargetMinutes: payload.weeklyTargetMinutes,
++          schedule: payload.schedule,
++        } : s,
+       );
+-      setSkills(updated);
+-      saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
+     }
++
++    const updatedItems = syncSkillRoutineItems(items, updatedSkills);
++    setSkills(updatedSkills);
++    setItems(updatedItems);
++    saveAndSync(updatedItems, undefined, undefined, updatedSkills, wallets, monthlyThemes);
+     setSkillModal({ ...skillModal, isOpen: false });
+   };
+ 
+@@ -1723,8 +1859,7 @@
+         isOpen={skillModal.isOpen}
+         onClose={() => setSkillModal({ ...skillModal, isOpen: false })}
+         onSave={handleSaveSkill}
+-        initialName={skillModal.initialName}
+-        initialTarget={skillModal.initialTarget}
++        initialSkill={skillModal.initialSkill}
+         mode={skillModal.mode}
+       />
+ 
+--- a/types.ts
++++ b/types.ts
+@@ -1,5 +1,6 @@
+ export enum ItemType {
+   TODO = 'TODO',
++  SKILLS = 'skills',
+   SHOPPING = 'SHOPPING',
+   NOTE = 'NOTE',
+   EVENT = 'EVENT',
+@@ -131,12 +132,27 @@
+   googleCalendarId?: string;
+ }
+ 
++export type RoutineInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
++
++export interface SkillSchedule {
++  enabled: boolean;
++  interval: RoutineInterval;
++  daysOfWeek?: number[];
++  daysOfMonth?: number[];
++  monthsOfYear?: number[];
++  startTime: string;
++  endTime: string;
++}
++
+ export interface Skill {
+   id: string;
+   name: string;
++  description?: string;
++  imageUrl?: string;
+   color: string;
+   created_at: string;
+   weeklyTargetMinutes?: number;
++  schedule?: SkillSchedule;
+ }
+ 
+ export interface Wallet {
+@@ -180,6 +196,7 @@
+   durationMinutes?: number;
+   skillId?: string;
+   skillName?: string;
++  skillRoutineId?: string;
+ 
+   progress?: number;
+   progressNotes?: string;
+--- a/components/Card.tsx
++++ b/components/Card.tsx
+@@ -429,7 +429,8 @@
+   const getStyles = () => {
+     switch (type) {
+       case ItemType.TODO:
+-        return { textColor: 'text-acc-todo', bg: 'bg-surface' };
++      case ItemType.SKILLS:
++        return { textColor: type === ItemType.SKILLS ? 'text-indigo-500' : 'text-acc-todo', bg: 'bg-surface' };
+       case ItemType.SHOPPING:
+         return { textColor: 'text-purple-500', bg: 'bg-surface' };
+       case ItemType.EVENT:
+@@ -521,14 +522,14 @@
+   }
+ 
+   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
+-  const displayAmount = type !== ItemType.TODO ? formatMoney(meta?.amount) : null;
++  const displayAmount = (type !== ItemType.TODO && type !== ItemType.SKILLS) ? formatMoney(meta?.amount) : null;
+   const canToggleStatus = !readonly && !!onToggleStatus && type !== ItemType.FINANCE;
+   const displayTypeLabel = type === ItemType.FINANCE ? formatFinanceTypeLabel(meta?.financeType) : type.toLowerCase();
+ 
+   // Field visibilities
+   const isNote = type === ItemType.NOTE || type === ItemType.JOURNAL;
+   const showAmountField = type === ItemType.FINANCE || type === ItemType.SHOPPING;
+-  const showDateField = type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING || type === ItemType.FINANCE || type === ItemType.JOURNAL;
++  const showDateField = type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT || type === ItemType.SHOPPING || type === ItemType.FINANCE || type === ItemType.JOURNAL;
+   const showFinanceExtras = type === ItemType.FINANCE || (type === ItemType.SHOPPING && showAmountField);
+   const showSkillExtras = false;
+   const showProgress = type === ItemType.TODO && status === 'pending';
+@@ -898,7 +899,7 @@
+                    )}
+ 
+                    {/* Start and End */}
+-                   {(type === ItemType.TODO || type === ItemType.EVENT) && !meta.isRoutine && (
++                   {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT) && !meta.isRoutine && (
+                        <>
+                            <div>
+                                <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Start Time</label>
+@@ -928,7 +929,7 @@
+                    )}
+ 
+                    {/* Priority */}
+-                   {(type === ItemType.TODO || type === ItemType.EVENT) && (
++                   {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT) && (
+                        <div className="col-span-2">
+                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Priority</label>
+                            <div className="grid grid-cols-3 gap-2">
+@@ -950,7 +951,7 @@
+                    )}
+ 
+                    {/* Hide from Calendar */}
+-                   {(type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING) && (
++                   {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT || type === ItemType.SHOPPING) && (
+                        <div className="col-span-2 flex items-center gap-2 mt-1">
+                            <input 
+                                type="checkbox" 
+--- a/components/views/LibraryView.tsx
++++ b/components/views/LibraryView.tsx
+@@ -1,6 +1,6 @@
+ import React, { useState } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+-import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight } from 'lucide-react';
++import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+ import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
+ import { getJournalDayGroups, getNoteItems, getSkillItems, JournalDayGroup } from '../../utils/selectors';
+ import Card from '../Card';
+@@ -387,6 +387,19 @@
+     };
+ 
+     const renderSkills = () => {
++        const scheduleRows = skillStats
++            .flatMap(skill => (skill.scheduleSessions || []).map(session => ({ skill, session })))
++            .sort((a, b) => a.session.start.getTime() - b.session.start.getTime());
++
++        const weekStart = new Date();
++        weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
++        weekStart.setHours(0, 0, 0, 0);
++        const weekDays = Array.from({ length: 7 }, (_, i) => {
++            const day = new Date(weekStart);
++            day.setDate(weekStart.getDate() + i);
++            return day;
++        });
++
+         if (skillStats.length === 0) {
+             return (
+                 <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+@@ -401,62 +414,164 @@
+             );
+         }
+ 
++        const formatTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
++
+         return (
+-            <div className={contentSurface.cardGrid}>
+-                {visibleSkillItems.visibleItems.map(skill => {
+-                    const progress = skill.weeklyProgress;
+-                    return (
+-                        <motion.div
+-                            key={skill.id}
+-                            layout={!isDragging}
+-                            transition={{ type: "tween", duration: 0.3 }}
+-                            className="bg-surface border border-border rounded-[24px] p-5"
+-                        >
+-                            <div className="flex justify-between items-start mb-4">
+-                                <div>
+-                                    <h4 className="font-bold text-lg text-primary">{skill.name}</h4>
+-                                    <div className="flex items-baseline gap-2 mt-1">
+-                                        <span className="text-xl font-bold text-indigo-500">{skill.totalHours.toFixed(1)}h</span>
+-                                        <span className="text-sm text-muted font-medium">total</span>
++            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
++                <div className="space-y-4">
++                    {visibleSkillItems.visibleItems.map(skill => {
++                        const progress = skill.weeklyProgress || 0;
++                        const target = skill.schedule?.enabled
++                            ? (skill.effectiveWeeklyTargetMinutes || 0)
++                            : (skill.effectiveWeeklyTargetMinutes || skill.weeklyTargetMinutes || 0);
++                        const nextSession = (skill.scheduleSessions || []).find(session => session.start.getTime() >= Date.now()) || (skill.scheduleSessions || [])[0];
++
++                        return (
++                            <motion.div
++                                key={skill.id}
++                                layout={!isDragging}
++                                transition={{ type: "tween", duration: 0.3 }}
++                                className="group bg-surface border border-border rounded-[28px] p-4 sm:p-5 shadow-sm hover:border-indigo-500/40 transition-colors"
++                            >
++                                <div className="grid grid-cols-[92px_minmax(0,1fr)] sm:grid-cols-[150px_minmax(0,1fr)_auto] gap-4 items-center">
++                                    <div className="h-24 sm:h-32 rounded-[24px] bg-background border border-border overflow-hidden flex items-center justify-center">
++                                        {skill.imageUrl ? (
++                                            <img src={skill.imageUrl} alt={skill.name} className="h-full w-full object-cover" />
++                                        ) : (
++                                            <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-muted bg-indigo-500/5">
++                                                <Target className="w-7 h-7 text-indigo-500" />
++                                                <span className="text-[10px] font-bold uppercase tracking-wider">No image</span>
++                                            </div>
++                                        )}
++                                    </div>
++
++                                    <div className="min-w-0">
++                                        <div className="flex items-start justify-between gap-3">
++                                            <div className="min-w-0">
++                                                <h4 className="font-bold text-lg text-primary truncate">{skill.name}</h4>
++                                                <p className="text-xs text-muted mt-1 line-clamp-2">
++                                                    {skill.description || 'No description yet. Add one from edit skill.'}
++                                                </p>
++                                            </div>
++                                            <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-amber-500">
++                                                ★ {(progress / 20).toFixed(1)}
++                                            </div>
++                                        </div>
++
++                                        <div className="flex flex-wrap gap-2 mt-3">
++                                            <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-bold text-muted">Skills</span>
++                                            {skill.schedule?.enabled && (
++                                                <span className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-500 capitalize">
++                                                    {skill.schedule.interval}
++                                                </span>
++                                            )}
++                                        </div>
++
++                                        <div className="flex flex-wrap items-center gap-3 mt-4 text-xs text-muted">
++                                            <span>{skill.weeklyMinutes || 0}m this week</span>
++                                            {nextSession && (
++                                                <span className="flex items-center gap-1">
++                                                    <Clock className="w-3.5 h-3.5" />
++                                                    {formatTime(nextSession.start)} - {formatTime(nextSession.end)}
++                                                </span>
++                                            )}
++                                        </div>
++
++                                        <div className="mt-4">
++                                            <div className="w-full h-2.5 bg-background border border-border rounded-full overflow-hidden">
++                                                <div
++                                                    className="h-full bg-indigo-500 transition-all duration-1000 ease-out"
++                                                    style={{ width: `${Math.min(100, progress)}%` }}
++                                                />
++                                            </div>
++                                            <div className="flex justify-between items-center mt-2">
++                                                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Weekly Progress</span>
++                                                <span className="text-[10px] font-medium text-muted flex items-center gap-1">
++                                                    <Target className="w-3 h-3" />
++                                                    Target: {target || 0}m/wk
++                                                </span>
++                                            </div>
++                                        </div>
++                                    </div>
++
++                                    <div className="flex sm:flex-col gap-2 justify-end sm:justify-start col-span-2 sm:col-span-1">
++                                        <button
++                                            onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
++                                            className="p-2 bg-background hover:bg-muted/10 rounded-xl transition-colors"
++                                            title="Edit Skill"
++                                        >
++                                            <Pencil className="w-4 h-4 text-muted" />
++                                        </button>
++                                        <button
++                                            onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
++                                            className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors"
++                                            title="Delete Skill"
++                                        >
++                                            <Trash2 className="w-4 h-4 text-red-500" />
++                                        </button>
+                                     </div>
+                                 </div>
+-                                <div className="flex gap-2">
+-                                    <button
+-                                        onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
+-                                        className="p-2 bg-black/5 hover:bg-black/10 rounded-xl transition-colors"
+-                                    >
+-                                        <Pencil className="w-4 h-4 text-muted" />
+-                                    </button>
+-                                    <button
+-                                        onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
+-                                        className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors"
+-                                    >
+-                                        <Trash2 className="w-4 h-4 text-red-500" />
+-                                    </button>
++                            </motion.div>
++                        );
++                    })}
++                    <LoadMoreButton remainingCount={visibleSkillItems.remainingCount} onClick={visibleSkillItems.loadMore} />
++                </div>
++
++                <aside className="xl:sticky xl:top-4 bg-surface border border-border rounded-[28px] p-5 shadow-sm">
++                    <div className="flex items-center justify-between mb-5">
++                        <div>
++                            <h3 className="text-lg font-bold text-primary">Schedule</h3>
++                            <p className="text-xs text-muted">Skill routines this week</p>
++                        </div>
++                        <button onClick={handleOpenAddSkill} className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
++                            <Plus className="w-4 h-4" />
++                        </button>
++                    </div>
++
++                    <div className="grid grid-cols-7 gap-2 mb-5">
++                        {weekDays.map(day => {
++                            const hasSchedule = scheduleRows.some(row => row.session.start.toDateString() === day.toDateString());
++                            const isToday = day.toDateString() === new Date().toDateString();
++                            return (
++                                <div key={day.toISOString()} className={`rounded-2xl p-2 text-center border ${isToday ? 'border-indigo-500 bg-indigo-500/10' : 'border-border bg-background'}`}>
++                                    <div className="text-[10px] text-muted font-bold">{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
++                                    <div className="text-sm font-bold text-primary">{day.getDate()}</div>
++                                    {hasSchedule && <div className="mx-auto mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                                 </div>
+-                            </div>
+-
+-                            {skill.weeklyTargetMinutes && (
+-                                <>
+-                                    <div className="w-full h-3 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+-                                        <div
+-                                            className="h-full bg-indigo-500 transition-all duration-1000 ease-out"
+-                                            style={{ width: `${progress}%` }}
+-                                        />
++                            );
++                        })}
++                    </div>
++
++                    {scheduleRows.length === 0 ? (
++                        <div className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">
++                            No skill schedule yet. Edit a skill and enable Schedule Skill Routine.
++                        </div>
++                    ) : (
++                        <div className="space-y-3">
++                            {scheduleRows.map(({ skill, session }) => {
++                                const target = skill.effectiveWeeklyTargetMinutes || 0;
++                                const achieved = target ? Math.min(100, ((skill.weeklyMinutes || 0) / target) * 100) : 0;
++                                return (
++                                    <div key={`${skill.id}-${session.start.toISOString()}`} className="grid grid-cols-[44px_minmax(0,1fr)_auto] gap-3 items-center rounded-2xl bg-background border border-border p-3">
++                                        <div className="text-center border-r border-border pr-3">
++                                            <div className="text-sm font-bold text-primary">{session.start.getDate().toString().padStart(2, '0')}</div>
++                                        </div>
++                                        <div className="min-w-0">
++                                            <h4 className="text-sm font-bold text-primary truncate">{skill.name}</h4>
++                                            <p className="text-xs text-muted">{session.durationMinutes}m session</p>
++                                            <div className="mt-2 h-1.5 bg-surface rounded-full overflow-hidden border border-border">
++                                                <div className="h-full bg-indigo-500" style={{ width: `${achieved}%` }} />
++                                            </div>
++                                        </div>
++                                        <div className="text-right text-xs font-medium text-muted">
++                                            {formatTime(session.start)} - {formatTime(session.end)}
++                                        </div>
+                                     </div>
+-                                    <div className="flex justify-between items-center mt-3">
+-                                        <span className="text-xs font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Weekly Progress</span>
+-                                        <span className="text-xs font-medium text-muted flex items-center gap-1">
+-                                            <Target className="w-3 h-3" />
+-                                            Target: {skill.weeklyTargetMinutes}m/wk
+-                                        </span>
+-                                    </div>
+-                                </>
+-                            )}
+-                        </motion.div>
+-                    );
+-                })}
+-                <LoadMoreButton remainingCount={visibleSkillItems.remainingCount} onClick={visibleSkillItems.loadMore} />
++                                );
++                            })}
++                        </div>
++                    )}
++                </aside>
+             </div>
+         );
+     };
+--- a/hooks/useBrainDumpData.ts
++++ b/hooks/useBrainDumpData.ts
+@@ -111,7 +111,8 @@
+ const getRoutineNextDueDate = (item: BrainDumpItem): Date | null => {
+     const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
+     const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
+-    if (!isShoppingRoutine && !isTodoRoutine) return null;
++    const isSkillRoutine = item.type === ItemType.SKILLS && item.meta.isRoutine;
++    if (!isShoppingRoutine && !isTodoRoutine && !isSkillRoutine) return null;
+ 
+     const completedDate = item.completed_at ? new Date(item.completed_at) : new Date();
+     const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
+@@ -168,12 +169,33 @@
+     return calculateFirstDueDate(baseDate, interval, daysOfWeek, daysOfMonth, monthsOfYear);
+ };
+ 
++const getRoutineDurationMinutes = (item: BrainDumpItem): number => {
++    if (Number(item.meta.durationMinutes) > 0) return Number(item.meta.durationMinutes);
++
++    const startRaw = item.meta.start || item.meta.date;
++    const endRaw = item.meta.end;
++    if (!startRaw || !endRaw) return 0;
++
++    const start = new Date(startRaw);
++    const end = new Date(endRaw);
++    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
++
++    return Math.max(Math.round((end.getTime() - start.getTime()) / 60000), 0);
++};
++
++const getRoutineEndForNextStart = (item: BrainDumpItem, nextStart: Date): string | undefined => {
++    const durationMinutes = getRoutineDurationMinutes(item);
++    if (!durationMinutes) return item.meta.end;
++    return new Date(nextStart.getTime() + durationMinutes * 60000).toISOString();
++};
++
+ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
+     return currentItems.map(item => {
+         const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
+         const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
+-
+-        if ((isShoppingRoutine || isTodoRoutine) && item.status === 'done' && item.completed_at) {
++        const isSkillRoutine = item.type === ItemType.SKILLS && item.meta.isRoutine;
++
++        if ((isShoppingRoutine || isTodoRoutine || isSkillRoutine) && item.status === 'done' && item.completed_at) {
+             const nextDueDate = getRoutineNextDueDate(item);
+             if (nextDueDate && now.getTime() >= nextDueDate.getTime()) {
+                 return {
+@@ -183,6 +205,8 @@
+                     meta: {
+                         ...item.meta,
+                         date: nextDueDate.toISOString(),
++                        start: item.meta.start ? nextDueDate.toISOString() : item.meta.start,
++                        end: getRoutineEndForNextStart(item, nextDueDate),
+                         progress: 0,
+                         progressNotes: undefined,
+                         lastGeneratedHistoryId: undefined
+@@ -1783,12 +1807,15 @@
+         const targetItem = prevItems.find(i => i.id === id);
+         if (!targetItem) return;
+         if (targetItem.type === ItemType.FINANCE) return;
++
+         const isSavingGoal = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'saving';
+         const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
+         const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
+-        const routineNextDueDate = (isShoppingRoutine || isTodoRoutine) ? getRoutineNextDueDate(targetItem) : null;
+-
+-        if ((isShoppingRoutine || isTodoRoutine) && isRoutineLockedUntilNextDue(targetItem)) return;
++        const isSkillRoutine = targetItem.type === ItemType.SKILLS && targetItem.meta.isRoutine;
++        const isRoutineItem = isShoppingRoutine || isTodoRoutine || isSkillRoutine;
++        const routineNextDueDate = isRoutineItem ? getRoutineNextDueDate(targetItem) : null;
++
++        if (isRoutineItem && isRoutineLockedUntilNextDue(targetItem)) return;
+ 
+         const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
+         const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
+@@ -1798,9 +1825,9 @@
+         let historyItemIdToCreate: string | undefined;
+         let historyItemIdToDelete: string | undefined;
+ 
+-        if (newStatus === 'done' && (isShoppingRoutine || isTodoRoutine)) {
++        if (newStatus === 'done' && isRoutineItem) {
+             historyItemIdToCreate = uuidv4();
+-        } else if (newStatus === 'pending' && (isShoppingRoutine || isTodoRoutine)) {
++        } else if (newStatus === 'pending' && isRoutineItem) {
+             historyItemIdToDelete = targetItem.meta.lastGeneratedHistoryId;
+         }
+ 
+@@ -1813,9 +1840,15 @@
+                     ...item.meta,
+                     progress: newProgress,
+                     progressNotes: newProgressNotes,
+-                    date: (newStatus === 'pending' && (isShoppingRoutine || isTodoRoutine) && routineNextDueDate)
++                    date: (newStatus === 'pending' && isRoutineItem && routineNextDueDate)
+                         ? routineNextDueDate.toISOString()
+                         : item.meta.date,
++                    start: (newStatus === 'pending' && isRoutineItem && routineNextDueDate && item.meta.start)
++                        ? routineNextDueDate.toISOString()
++                        : item.meta.start,
++                    end: (newStatus === 'pending' && isRoutineItem && routineNextDueDate)
++                        ? getRoutineEndForNextStart(item, routineNextDueDate)
++                        : item.meta.end,
+                     lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
+                 }
+             } : item
+@@ -1827,7 +1860,7 @@
+ 
+         if (historyItemIdToCreate) {
+             let newType: ItemType = targetItem.type;
+-            let newMeta = { ...targetItem.meta, isRoutine: false };
++            let newMeta: ItemMeta = { ...targetItem.meta, isRoutine: false };
+ 
+             if (isShoppingRoutine) {
+                 newType = ItemType.FINANCE;
+@@ -1845,6 +1878,15 @@
+                     ...newMeta,
+                     progress: undefined,
+                     progressNotes: undefined
++                };
++            } else if (isSkillRoutine) {
++                newType = ItemType.SKILL_LOG;
++                newMeta = {
++                    tags: Array.from(new Set([...(targetItem.meta.tags || []), 'skills', 'routine'])),
++                    skillId: targetItem.meta.skillId,
++                    skillName: targetItem.meta.skillName || targetItem.content,
++                    durationMinutes: getRoutineDurationMinutes(targetItem),
++                    skillRoutineId: targetItem.id,
+                 };
+             }
+ 
+@@ -2434,6 +2476,7 @@
+ 
+     return {
+         items,
++        setItems,
+         budgetConfig,
+         setBudgetConfig,
+         skills,
+--- a/services/spreadsheetService.ts
++++ b/services/spreadsheetService.ts
+@@ -70,7 +70,7 @@
+   'Notes & Journals': 'A:G',
+   'Skill Logs': 'A:I',
+   'Wallets Config': 'A:E',
+-  'Skills Config': 'A:E',
++  'Skills Config': 'A:N',
+   'Budget Rules': 'A:C',
+   'Themes & Settings': 'A:D',
+   'Chat History': 'A:C',
+@@ -335,7 +335,7 @@
+ 
+   if (item.type === ItemType.FINANCE) {
+     sheets.push('Transactions');
+-  } else if (item.type === ItemType.TODO) {
++  } else if (item.type === ItemType.TODO || item.type === ItemType.SKILLS) {
+     sheets.push('Todos');
+   } else if (item.type === ItemType.SHOPPING) {
+     if (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment') {
+@@ -1895,12 +1895,31 @@
+         const r = rows[i];
+         const id = cell(r, 'ID', 0);
+         if (!id) continue;
++        const scheduleEnabled = truthySheetValue(cell(r, 'Schedule_Enabled', 5, ['Schedule Enabled']));
++        const scheduleIntervalRaw = String(cell(r, 'Schedule_Interval', 6, ['Schedule Interval']) || 'weekly').trim().toLowerCase();
++        const scheduleInterval = ['daily', 'weekly', 'monthly', 'yearly'].includes(scheduleIntervalRaw)
++          ? scheduleIntervalRaw as NonNullable<Skill['schedule']>['interval']
++          : 'weekly';
++        const scheduleStartTime = String(cell(r, 'Schedule_Start_Time', 10, ['Schedule Start Time']) || '09:00').trim();
++        const scheduleEndTime = String(cell(r, 'Schedule_End_Time', 11, ['Schedule End Time']) || '10:00').trim();
++
+         skills.push({
+           id: String(id),
+           name: String(cell(r, 'Name', 1) || ''),
+-          weeklyTargetMinutes: Number(cell(r, 'Weekly_Target_Minutes', 2, ['Weekly Target Minutes'])) || undefined,
+-          created_at: String(cell(r, 'Created_At', 3, ['Created At']) || new Date().toISOString()),
+-          color: String(cell(r, 'Color', 4) || 'indigo-500'),
++          description: String(cell(r, 'Description', 2) || '') || undefined,
++          imageUrl: String(cell(r, 'Image_URL', 3, ['Image URL', 'Image_Url']) || '') || undefined,
++          weeklyTargetMinutes: Number(cell(r, 'Weekly_Target_Minutes', 4, ['Weekly Target Minutes'])) || Number(cell(r, 'Weekly_Target_Minutes', 2, ['Weekly Target Minutes'])) || undefined,
++          created_at: String(cell(r, 'Created_At', 12, ['Created At']) || cell(r, 'Created_At', 3, ['Created At']) || new Date().toISOString()),
++          color: String(cell(r, 'Color', 13) || cell(r, 'Color', 4) || 'indigo-500'),
++          schedule: scheduleEnabled ? {
++            enabled: true,
++            interval: scheduleInterval,
++            daysOfWeek: splitSheetListValue(cell(r, 'Schedule_Days_Of_Week', 7, ['Schedule Days Of Week'])).map(Number).filter(Number.isFinite),
++            daysOfMonth: splitSheetListValue(cell(r, 'Schedule_Days_Of_Month', 8, ['Schedule Days Of Month'])).map(Number).filter(Number.isFinite),
++            monthsOfYear: splitSheetListValue(cell(r, 'Schedule_Months_Of_Year', 9, ['Schedule Months Of Year'])).map(Number).filter(Number.isFinite),
++            startTime: /^\d{2}:\d{2}$/.test(scheduleStartTime) ? scheduleStartTime : '09:00',
++            endTime: /^\d{2}:\d{2}$/.test(scheduleEndTime) ? scheduleEndTime : '10:00',
++          } : undefined,
+         });
+       }
+     } else if (name === 'Budget Rules') {
+--- a/services/spreadsheetReconciler.ts
++++ b/services/spreadsheetReconciler.ts
+@@ -446,10 +446,12 @@
+             const routineMonthsOfYear = hasRoutineMonthsOfYearColumn ? splitSheetNumberList(getHeaderCell(headers, row, "Routine_Months_Of_Year")) : undefined;
+             const recurrenceDays = hasRecurrenceDaysColumn ? parsePositiveInt(getHeaderCell(headers, row, "Recurrence_Days")) : undefined;
+             const lastGeneratedHistoryId = hasLastGeneratedHistoryIdColumn ? cleanCell(getHeaderCell(headers, row, "Last_Generated_History_ID")) : undefined;
++            const normalizedType = String(typeStr || '').trim().toLowerCase();
++            const todoLikeType = normalizedType === 'skills' ? ItemType.SKILLS : ItemType.TODO;
+             
+             const match = newItems.find(i => 
+                 (idStr && i.id === idStr) ||
+-                (!idStr && i.type === ItemType.TODO &&
++                (!idStr && (i.type === ItemType.TODO || i.type === ItemType.SKILLS) &&
+                 i.content === content &&
+                 fmtDate(i.created_at) === createdAt)
+             );
+@@ -457,6 +459,7 @@
+             if (match) {
+                 seenItemIds.add(match.id);
+                 let updated = false;
++                if ((match.type === ItemType.TODO || match.type === ItemType.SKILLS) && match.type !== todoLikeType) { match.type = todoLikeType; updated = true; }
+                 if (match.content !== content) { match.content = content; updated = true; }
+                 if (match.status !== status && (status === 'pending' || status === 'done')) {
+                     match.status = status;
+@@ -614,8 +617,8 @@
+                 const newId = idStr || uuidv4();
+                 newItems.push({
+                     id: newId,
+-                    type: ItemType.TODO,
+-                    content: content || 'Manual Todo',
++                    type: todoLikeType,
++                    content: content || (todoLikeType === ItemType.SKILLS ? 'Manual Skill Routine' : 'Manual Todo'),
+                     status: (status === 'done' ? 'done' : 'pending'),
+                     created_at: isoDate,
+                     completed_at: isoCompletedAt,
+@@ -1411,7 +1414,7 @@
+             } else if (item.status === 'done') sheetWasFetched = sheetsFetched.tx;
+             else sheetWasFetched = sheetsFetched.shop;
+         }
+-        else if (item.type === ItemType.TODO) sheetWasFetched = sheetsFetched.todo;
++        else if (item.type === ItemType.TODO || item.type === ItemType.SKILLS) sheetWasFetched = sheetsFetched.todo;
+         else if (item.type === ItemType.EVENT) sheetWasFetched = sheetsFetched.event;
+         else if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) sheetWasFetched = sheetsFetched.notes;
+         else if (item.type === ItemType.SKILL_LOG) sheetWasFetched = sheetsFetched.skillLogs;
+--- a/utils/exportUtils.ts
++++ b/utils/exportUtils.ts
+@@ -471,7 +471,7 @@
+     });
+ 
+   // --- Sheet 2: Todos ---
+-  const todos = items.filter(i => i.type === ItemType.TODO).map(item => {
++  const todos = items.filter(i => i.type === ItemType.TODO || i.type === ItemType.SKILLS).map(item => {
+     const children = getDeepWorkChildren(items, item.id);
+     const childIds = item.meta.childTodoIds?.length
+       ? item.meta.childTodoIds
+@@ -681,18 +681,28 @@
+   });
+ 
+   // --- Sheet 9: Skills ---
++  const encodeSkillNumberList = (values?: number[]) => (values && values.length ? values.join(', ') : '');
+   const skillsData = skills.map(s => ({
+     ID: s.id,
+     Name: s.name,
++    Description: s.description || '',
++    Image_URL: s.imageUrl || '',
+     Weekly_Target_Minutes: s.weeklyTargetMinutes || 0,
++    Schedule_Enabled: s.schedule?.enabled ? 'TRUE' : '',
++    Schedule_Interval: s.schedule?.interval || '',
++    Schedule_Days_Of_Week: encodeSkillNumberList(s.schedule?.daysOfWeek),
++    Schedule_Days_Of_Month: encodeSkillNumberList(s.schedule?.daysOfMonth),
++    Schedule_Months_Of_Year: encodeSkillNumberList(s.schedule?.monthsOfYear),
++    Schedule_Start_Time: s.schedule?.startTime || '',
++    Schedule_End_Time: s.schedule?.endTime || '',
+     Created_At: s.created_at,
+     Color: s.color
+   }));
+   sheets.push({
+     name: "Skills Config",
+     data: [
+-      ["ID", "Name", "Weekly_Target_Minutes", "Created_At", "Color"],
+-      ...skillsData.map(s => [s.ID, s.Name, s.Weekly_Target_Minutes, s.Created_At, s.Color])
++      ["ID", "Name", "Description", "Image_URL", "Weekly_Target_Minutes", "Schedule_Enabled", "Schedule_Interval", "Schedule_Days_Of_Week", "Schedule_Days_Of_Month", "Schedule_Months_Of_Year", "Schedule_Start_Time", "Schedule_End_Time", "Created_At", "Color"],
++      ...skillsData.map(s => [s.ID, s.Name, s.Description, s.Image_URL, s.Weekly_Target_Minutes, s.Schedule_Enabled, s.Schedule_Interval, s.Schedule_Days_Of_Week, s.Schedule_Days_Of_Month, s.Schedule_Months_Of_Year, s.Schedule_Start_Time, s.Schedule_End_Time, s.Created_At, s.Color])
+     ]
+   });
+ 
+--- a/utils/selectors/focusSelectors.ts
++++ b/utils/selectors/focusSelectors.ts
+@@ -15,7 +15,7 @@
+   const afterTomorrowStart = tomorrowStart + 86400000;
+ 
+   const relevantItems = items.filter(i => 
+-      (i.type === ItemType.TODO || i.type === ItemType.EVENT) && 
++      (i.type === ItemType.TODO || i.type === ItemType.EVENT || i.type === ItemType.SKILLS) && 
+       i.status === 'pending'
+   );
+   
+@@ -67,7 +67,7 @@
+     // 1. Filter items belonging to this month (Created OR Due)
+     // AND are types TODO/EVENT
+     const relevantItems = items.filter(i => {
+-        if (i.type !== ItemType.TODO && i.type !== ItemType.EVENT) return false;
++        if (i.type !== ItemType.TODO && i.type !== ItemType.EVENT && i.type !== ItemType.SKILLS) return false;
+         
+         // Tag Filter
+         if (selectedTag && !i.meta.tags?.includes(selectedTag)) return false;
+--- a/utils/selectors/skillSelectors.ts
++++ b/utils/selectors/skillSelectors.ts
+@@ -1,22 +1,166 @@
+-import { BrainDumpItem, ItemType, Skill } from '../../types';
++import { BrainDumpItem, ItemType, Skill, SkillSchedule } from '../../types';
++
++export type SkillScheduleSession = {
++  skillId: string;
++  skillName: string;
++  date: Date;
++  start: Date;
++  end: Date;
++  durationMinutes: number;
++};
+ 
+ const getStartOfWeek = (date: Date) => {
+-    const d = new Date(date);
+-    const day = d.getDay();
+-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+-    d.setHours(0, 0, 0, 0);
+-    return new Date(d.setDate(diff));
++  const d = new Date(date);
++  const day = d.getDay();
++  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
++  d.setHours(0, 0, 0, 0);
++  return new Date(d.setDate(diff));
++};
++
++const getEndOfWeek = (date: Date) => {
++  const start = getStartOfWeek(date);
++  const end = new Date(start);
++  end.setDate(start.getDate() + 7);
++  return end;
++};
++
++const parseTime = (value?: string) => {
++  const [hourRaw, minuteRaw] = String(value || '').split(':');
++  const hour = Number(hourRaw);
++  const minute = Number(minuteRaw);
++  return {
++    hour: Number.isFinite(hour) ? Math.min(Math.max(hour, 0), 23) : 9,
++    minute: Number.isFinite(minute) ? Math.min(Math.max(minute, 0), 59) : 0,
++  };
++};
++
++const setTime = (date: Date, time?: string) => {
++  const next = new Date(date);
++  const { hour, minute } = parseTime(time);
++  next.setHours(hour, minute, 0, 0);
++  return next;
++};
++
++export const getSkillScheduleDurationMinutes = (schedule?: SkillSchedule) => {
++  if (!schedule?.enabled) return 0;
++  const start = parseTime(schedule.startTime);
++  const end = parseTime(schedule.endTime);
++  let startMinutes = start.hour * 60 + start.minute;
++  let endMinutes = end.hour * 60 + end.minute;
++  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
++  return Math.max(endMinutes - startMinutes, 1);
++};
++
++const scheduleMatchesDate = (schedule: SkillSchedule, date: Date) => {
++  if (!schedule.enabled) return false;
++
++  if (schedule.interval === 'daily') return true;
++
++  if (schedule.interval === 'weekly') {
++    const days = schedule.daysOfWeek?.length ? schedule.daysOfWeek : [date.getDay()];
++    return days.includes(date.getDay());
++  }
++
++  if (schedule.interval === 'monthly') {
++    const days = schedule.daysOfMonth?.length ? schedule.daysOfMonth : [date.getDate()];
++    return days.includes(date.getDate());
++  }
++
++  if (schedule.interval === 'yearly') {
++    const months = schedule.monthsOfYear?.length ? schedule.monthsOfYear : [date.getMonth()];
++    return months.includes(date.getMonth()) && date.getDate() === 1;
++  }
++
++  return false;
++};
++
++export const getSkillScheduleSessionsForWeek = (
++  skill: Pick<Skill, 'id' | 'name' | 'schedule'>,
++  baseDate: Date = new Date(),
++): SkillScheduleSession[] => {
++  const schedule = skill.schedule;
++  if (!schedule?.enabled) return [];
++
++  const startOfWeek = getStartOfWeek(baseDate);
++  const durationMinutes = getSkillScheduleDurationMinutes(schedule);
++  const sessions: SkillScheduleSession[] = [];
++
++  for (let offset = 0; offset < 7; offset += 1) {
++    const day = new Date(startOfWeek);
++    day.setDate(startOfWeek.getDate() + offset);
++    if (!scheduleMatchesDate(schedule, day)) continue;
++
++    const start = setTime(day, schedule.startTime);
++    const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
++    sessions.push({
++      skillId: skill.id,
++      skillName: skill.name,
++      date: day,
++      start,
++      end,
++      durationMinutes,
++    });
++  }
++
++  return sessions;
++};
++
++export const getNextSkillScheduleStart = (schedule: SkillSchedule, fromDate: Date = new Date()) => {
++  const candidate = new Date(fromDate);
++  candidate.setSeconds(0, 0);
++
++  for (let offset = 0; offset <= 370; offset += 1) {
++    const day = new Date(candidate);
++    day.setDate(candidate.getDate() + offset);
++    const start = setTime(day, schedule.startTime);
++    if (scheduleMatchesDate(schedule, start) && start.getTime() >= fromDate.getTime()) {
++      return start;
++    }
++  }
++
++  return setTime(candidate, schedule.startTime);
+ };
+ 
+ export const getSkillItems = (items: BrainDumpItem[], skills: Skill[]) => {
+-    const logs: BrainDumpItem[] = [];
++  const logs = items
++    .filter(i => i.type === ItemType.SKILL_LOG)
++    .sort((a, b) => new Date(b.meta.date || b.completed_at || b.created_at).getTime() - new Date(a.meta.date || a.completed_at || a.created_at).getTime());
+ 
+-    const stats = skills.map(skill => ({
+-        ...skill,
+-        totalHours: 0,
+-        weeklyHours: 0,
+-        weeklyProgress: 0
+-    })).sort((a,b) => b.name.localeCompare(a.name));
++  const weekStart = getStartOfWeek(new Date());
++  const weekEnd = getEndOfWeek(new Date());
+ 
+-    return { stats, logs };
++  const stats = skills.map(skill => {
++    const skillLogs = logs.filter(log =>
++      (log.meta.skillId && log.meta.skillId === skill.id) ||
++      (!log.meta.skillId && log.meta.skillName?.toLowerCase() === skill.name.toLowerCase())
++    );
++
++    const totalMinutes = skillLogs.reduce((sum, log) => sum + (Number(log.meta.durationMinutes) || 0), 0);
++    const weeklyMinutes = skillLogs
++      .filter(log => {
++        const logDate = new Date(log.meta.date || log.completed_at || log.created_at);
++        return logDate >= weekStart && logDate < weekEnd;
++      })
++      .reduce((sum, log) => sum + (Number(log.meta.durationMinutes) || 0), 0);
++
++    const scheduleSessions = getSkillScheduleSessionsForWeek(skill);
++    const scheduleWeeklyTargetMinutes = scheduleSessions.reduce((sum, session) => sum + session.durationMinutes, 0);
++    const effectiveWeeklyTargetMinutes = skill.schedule?.enabled
++      ? scheduleWeeklyTargetMinutes
++      : (skill.weeklyTargetMinutes || 0);
++
++    return {
++      ...skill,
++      totalMinutes,
++      totalHours: totalMinutes / 60,
++      weeklyMinutes,
++      weeklyHours: weeklyMinutes / 60,
++      weeklyProgress: effectiveWeeklyTargetMinutes ? Math.min(100, (weeklyMinutes / effectiveWeeklyTargetMinutes) * 100) : 0,
++      effectiveWeeklyTargetMinutes,
++      scheduleWeeklyTargetMinutes,
++      scheduleSessions,
++    };
++  }).sort((a, b) => b.name.localeCompare(a.name));
++
++  return { logs, stats };
+ };
+--- /dev/null
++++ b/components/SkillModal.tsx
+@@ -0,0 +1,325 @@
++import React, { useEffect, useMemo, useState } from 'react';
++import { motion, AnimatePresence } from 'framer-motion';
++import { X, Check, Target, Image as ImageIcon, CalendarClock, Clock } from 'lucide-react';
++import { Skill, SkillSchedule } from '../types';
++import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
++
++export type SkillModalPayload = {
++  name: string;
++  description?: string;
++  imageUrl?: string;
++  weeklyTargetMinutes?: number;
++  schedule?: SkillSchedule;
++};
++
++interface SkillModalProps {
++  isOpen: boolean;
++  onClose: () => void;
++  onSave: (payload: SkillModalPayload) => void;
++  initialSkill?: Skill;
++  mode: 'add' | 'edit';
++}
++
++const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
++const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
++const intervals: SkillSchedule['interval'][] = ['daily', 'weekly', 'monthly', 'yearly'];
++
++const today = new Date();
++
++const defaultSchedule = (): SkillSchedule => ({
++  enabled: false,
++  interval: 'weekly',
++  daysOfWeek: [today.getDay()],
++  daysOfMonth: [today.getDate()],
++  monthsOfYear: [today.getMonth()],
++  startTime: '09:00',
++  endTime: '10:00',
++});
++
++const toggleNumber = (list: number[] = [], value: number) =>
++  list.includes(value) ? list.filter(item => item !== value) : [...list, value].sort((a, b) => a - b);
++
++const parseTimeToMinutes = (time: string) => {
++  const [hourRaw, minuteRaw] = time.split(':');
++  const hour = Number(hourRaw);
++  const minute = Number(minuteRaw);
++  return (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0);
++};
++
++const getDurationMinutes = (schedule: SkillSchedule) => {
++  let start = parseTimeToMinutes(schedule.startTime);
++  let end = parseTimeToMinutes(schedule.endTime);
++  if (end <= start) end += 24 * 60;
++  return Math.max(end - start, 1);
++};
++
++const getWeeklySessionCount = (schedule: SkillSchedule) => {
++  if (!schedule.enabled) return 0;
++  if (schedule.interval === 'daily') return 7;
++  if (schedule.interval === 'weekly') return schedule.daysOfWeek?.length || 1;
++  if (schedule.interval === 'monthly') return 1;
++  if (schedule.interval === 'yearly') return 0;
++  return 0;
++};
++
++const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initialSkill, mode }) => {
++  const [name, setName] = useState('');
++  const [description, setDescription] = useState('');
++  const [imageUrl, setImageUrl] = useState('');
++  const [weeklyTargetMinutes, setWeeklyTargetMinutes] = useState('');
++  const [schedule, setSchedule] = useState<SkillSchedule>(defaultSchedule);
++
++  useEffect(() => {
++    if (!isOpen) return;
++
++    setName(initialSkill?.name || '');
++    setDescription(initialSkill?.description || '');
++    setImageUrl(initialSkill?.imageUrl || '');
++    setWeeklyTargetMinutes(initialSkill?.weeklyTargetMinutes ? String(initialSkill.weeklyTargetMinutes) : '');
++    setSchedule(initialSkill?.schedule ? { ...defaultSchedule(), ...initialSkill.schedule } : defaultSchedule());
++  }, [isOpen, initialSkill]);
++
++  const derivedWeeklyTarget = useMemo(() => {
++    if (!schedule.enabled) return 0;
++    return getDurationMinutes(schedule) * getWeeklySessionCount(schedule);
++  }, [schedule]);
++
++  const handleSave = () => {
++    if (!name.trim()) return;
++
++    const parsedWeeklyTarget = Number(weeklyTargetMinutes);
++    const nextSchedule = schedule.enabled ? {
++      ...schedule,
++      daysOfWeek: schedule.interval === 'weekly' ? (schedule.daysOfWeek?.length ? schedule.daysOfWeek : [new Date().getDay()]) : undefined,
++      daysOfMonth: schedule.interval === 'monthly' ? (schedule.daysOfMonth?.length ? schedule.daysOfMonth : [new Date().getDate()]) : undefined,
++      monthsOfYear: schedule.interval === 'yearly' ? (schedule.monthsOfYear?.length ? schedule.monthsOfYear : [new Date().getMonth()]) : undefined,
++    } : undefined;
++
++    onSave({
++      name: name.trim(),
++      description: description.trim() || undefined,
++      imageUrl: imageUrl.trim() || undefined,
++      weeklyTargetMinutes: Number.isFinite(parsedWeeklyTarget) && parsedWeeklyTarget > 0 ? parsedWeeklyTarget : undefined,
++      schedule: nextSchedule,
++    });
++
++    onClose();
++  };
++
++  if (!isOpen) return null;
++
++  return (
++    <AnimatePresence>
++      <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="skill">
++        <motion.div
++          initial={addItemModalMotion.initial}
++          animate={addItemModalMotion.animate}
++          exit={addItemModalMotion.exit}
++          transition={addItemModalMotion.transition}
++          className={`${addItemModal.panel} max-w-3xl`}
++          data-tablet-modal-panel="skill"
++          data-ndz-tablet-baseline="modal"
++        >
++          <div className={addItemModal.header}>
++            <h3 className={addItemModal.title}>
++              <Target className={addItemModal.icon} />
++              {mode === 'add' ? 'Track New Skill' : 'Edit Skill'}
++            </h3>
++            <button onClick={onClose} className={addItemModal.closeButton}>
++              <X className="w-5 h-5" />
++            </button>
++          </div>
++
++          <div className={addItemModal.body}>
++            <div className="grid grid-cols-1 lg:grid-cols-[180px_minmax(0,1fr)] gap-5">
++              <div className="space-y-3">
++                <label className={addItemModal.label}>Skill Image</label>
++                <div className="aspect-square w-full rounded-[28px] overflow-hidden border border-border bg-background flex items-center justify-center">
++                  {imageUrl.trim() ? (
++                    <img src={imageUrl.trim()} alt={name || 'Skill image'} className="h-full w-full object-cover" />
++                  ) : (
++                    <div className="flex flex-col items-center gap-2 text-muted text-center px-4">
++                      <ImageIcon className="w-8 h-8" />
++                      <span className="text-xs font-bold uppercase tracking-wider">Image Preview</span>
++                    </div>
++                  )}
++                </div>
++                <input
++                  type="url"
++                  value={imageUrl}
++                  onChange={e => setImageUrl(e.target.value)}
++                  placeholder="https://example.com/image.png"
++                  className={addItemModal.smallInput}
++                />
++              </div>
++
++              <div className="space-y-4">
++                <div>
++                  <label className={addItemModal.label}>Skill Name</label>
++                  <input
++                    type="text"
++                    autoFocus
++                    value={name}
++                    onChange={e => setName(e.target.value)}
++                    placeholder="e.g. English Lecture"
++                    className={addItemModal.titleInput}
++                  />
++                </div>
++
++                <div>
++                  <label className={addItemModal.label}>Description</label>
++                  <textarea
++                    value={description}
++                    onChange={e => setDescription(e.target.value)}
++                    placeholder="Short description for this skill, course, or habit."
++                    className={`${addItemModal.textarea} min-h-[100px]`}
++                  />
++                </div>
++
++                <div>
++                  <label className={addItemModal.label}>Manual Weekly Target (minutes)</label>
++                  <input
++                    type="number"
++                    min="0"
++                    value={weeklyTargetMinutes}
++                    onChange={e => setWeeklyTargetMinutes(e.target.value)}
++                    placeholder={schedule.enabled && derivedWeeklyTarget ? `${derivedWeeklyTarget} from schedule` : '300'}
++                    className={addItemModal.input}
++                  />
++                  <p className={addItemModal.helpText}>When schedule is active, Arkaiv also derives the weekly target from session duration × sessions this week.</p>
++                </div>
++              </div>
++            </div>
++
++            <div className={addItemModal.sectionPanel}>
++              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
++                <div className="flex items-center gap-3">
++                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
++                    <CalendarClock className="w-5 h-5 text-indigo-500" />
++                  </div>
++                  <div>
++                    <h4 className="text-sm font-bold text-primary">Schedule Skill Routine</h4>
++                    <p className="text-xs text-muted">This creates a Focus routine saved with spreadsheet type “skills”.</p>
++                  </div>
++                </div>
++                <button
++                  type="button"
++                  onClick={() => setSchedule(prev => ({ ...prev, enabled: !prev.enabled }))}
++                  className={`px-4 py-2 rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors ${schedule.enabled ? 'bg-indigo-600 text-white' : 'bg-background text-muted border border-border'}`}
++                >
++                  {schedule.enabled ? 'Enabled' : 'Disabled'}
++                </button>
++              </div>
++
++              {schedule.enabled && (
++                <div className="space-y-4 pt-2">
++                  <div className={addItemModal.tabGroup}>
++                    {intervals.map(interval => (
++                      <button
++                        key={interval}
++                        onClick={() => setSchedule(prev => ({ ...prev, interval }))}
++                        className={addItemModal.tabButton(schedule.interval === interval)}
++                      >
++                        {interval}
++                      </button>
++                    ))}
++                  </div>
++
++                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
++                    <div>
++                      <label className={addItemModal.label}>Start Time</label>
++                      <div className="relative">
++                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
++                        <input
++                          type="time"
++                          value={schedule.startTime}
++                          onChange={e => setSchedule(prev => ({ ...prev, startTime: e.target.value }))}
++                          className={`${addItemModal.input} pl-10`}
++                        />
++                      </div>
++                    </div>
++                    <div>
++                      <label className={addItemModal.label}>End Time</label>
++                      <input
++                        type="time"
++                        value={schedule.endTime}
++                        onChange={e => setSchedule(prev => ({ ...prev, endTime: e.target.value }))}
++                        className={addItemModal.input}
++                      />
++                    </div>
++                  </div>
++
++                  {schedule.interval === 'weekly' && (
++                    <div>
++                      <label className={addItemModal.label}>Days of Week</label>
++                      <div className="grid grid-cols-7 gap-1.5">
++                        {dayLabels.map((label, idx) => (
++                          <button
++                            key={`${label}-${idx}`}
++                            type="button"
++                            onClick={() => setSchedule(prev => ({ ...prev, daysOfWeek: toggleNumber(prev.daysOfWeek, idx) }))}
++                            className={`h-9 rounded-xl text-xs font-bold border transition-colors ${schedule.daysOfWeek?.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
++                          >
++                            {label}
++                          </button>
++                        ))}
++                      </div>
++                    </div>
++                  )}
++
++                  {schedule.interval === 'monthly' && (
++                    <div>
++                      <label className={addItemModal.label}>Dates of Month</label>
++                      <div className="grid grid-cols-7 gap-1">
++                        {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
++                          <button
++                            key={day}
++                            type="button"
++                            onClick={() => setSchedule(prev => ({ ...prev, daysOfMonth: toggleNumber(prev.daysOfMonth, day) }))}
++                            className={`aspect-square rounded-lg text-[10px] font-bold border transition-colors ${schedule.daysOfMonth?.includes(day) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
++                          >
++                            {day}
++                          </button>
++                        ))}
++                      </div>
++                    </div>
++                  )}
++
++                  {schedule.interval === 'yearly' && (
++                    <div>
++                      <label className={addItemModal.label}>Months</label>
++                      <div className="grid grid-cols-4 gap-1.5">
++                        {monthLabels.map((label, idx) => (
++                          <button
++                            key={label}
++                            type="button"
++                            onClick={() => setSchedule(prev => ({ ...prev, monthsOfYear: toggleNumber(prev.monthsOfYear, idx) }))}
++                            className={`py-2 rounded-xl text-[10px] font-bold border uppercase transition-colors ${schedule.monthsOfYear?.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
++                          >
++                            {label}
++                          </button>
++                        ))}
++                      </div>
++                    </div>
++                  )}
++
++                  <div className="rounded-2xl bg-background border border-border p-4 text-sm text-muted">
++                    Weekly target from this schedule: <span className="font-bold text-primary">{derivedWeeklyTarget} min</span>
++                  </div>
++                </div>
++              )}
++            </div>
++          </div>
++
++          <div className={addItemModal.footer}>
++            <button onClick={handleSave} disabled={!name.trim()} className={addItemModal.primaryButton}>
++              <Check className="w-5 h-5" /> Save Skill
++            </button>
++          </div>
++        </motion.div>
++      </div>
++    </AnimatePresence>
++  );
++};
++
++export default SkillModal;
+--- /dev/null
++++ b/utils/selectors.ts
+@@ -0,0 +1 @@
++export * from './selectors/index';
+--- /dev/null
++++ b/utils/selectors/index.ts
+@@ -0,0 +1,7 @@
++export * from './dateUtils';
++export * from './focusSelectors';
++export * from './insightSelectors';
++export * from './moneySelectors';
++export * from './noteSelectors';
++export * from './shoppingSelectors';
++export * from './skillSelectors';
+--- /dev/null
++++ b/README_SKILLS_UPDATE.md
+@@ -0,0 +1,43 @@
++# Arkaiv Skills Subtab Update
++
++Paket ini berisi file pengganti untuk memperbarui subtab **Skills** agar lebih dekat dengan mockup kursus + schedule yang diberikan.
++
++## Ringkasan perubahan
++
++- `Skills` sekarang punya metadata `description`, `imageUrl`, `weeklyTargetMinutes`, dan `schedule`.
++- Gambar skill diambil dari input URL saat edit/add skill, bukan dari container/placeholder hardcoded.
++- UI subtab `Library > Skills` dibuat menjadi layout dua kolom seperti mockup:
++  - kiri: kartu skill/course dengan gambar, description, progress, target, dan aksi edit/delete.
++  - kanan: panel schedule mingguan; otomatis turun ke bawah pada mobile.
++- Tampilan memakai token existing seperti `bg-surface`, `bg-background`, `text-primary`, `text-muted`, dan `border-border` sehingga tetap mengikuti light/dark theme aplikasi.
++- Modal skill memiliki pengaturan schedule `daily`, `weekly`, `monthly`, `yearly` dengan `startTime` dan `endTime`.
++- Skill schedule otomatis dibuat sebagai routine di Focus Tasks dengan `type: "skills"`.
++- Spreadsheet:
++  - routine skill masuk tab `Todos` dengan kolom `Type` bernilai `skills`, bukan `TODO`.
++  - konfigurasi skill masuk `Skills Config` dengan kolom baru untuk description, image URL, schedule, dan time range.
++- Progress skill dihitung dari log `SKILL_LOG`, target mingguan dihitung dari total durasi session schedule dalam minggu berjalan.
++
++## Cara pakai
++
++Salin isi folder ini ke root project Arkaiv dan overwrite file dengan path yang sama. Setelah itu jalankan build/test project seperti biasa.
++
++## File yang diubah/ditambahkan
++
++- `App.tsx`
++- `types.ts`
++- `components/SkillModal.tsx`
++- `components/Card.tsx`
++- `components/views/LibraryView.tsx`
++- `components/views/FocusView.tsx`
++- `hooks/useBrainDumpData.ts`
++- `services/spreadsheetService.ts`
++- `services/spreadsheetReconciler.ts`
++- `utils/exportUtils.ts`
++- `utils/selectors.ts`
++- `utils/selectors/index.ts`
++- `utils/selectors/focusSelectors.ts`
++- `utils/selectors/skillSelectors.ts`
++
++## Catatan verifikasi
++
++Saya melakukan pemeriksaan parse TypeScript pada file yang tersedia di paket ini. Karena archive yang diunggah tidak bisa diekstrak penuh dari container (RAR5 compressed source membutuhkan backend `unrar/unar` yang tidak tersedia), pengecekan full project build tidak bisa dijalankan di sini. Pemeriksaan yang dijalankan tidak menemukan error sintaks pada file hasil perubahan; error yang tersisa hanya terkait module/file project lain yang tidak ikut tersedia di paket partial ini.

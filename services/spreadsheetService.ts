@@ -70,7 +70,7 @@ export const SPREADSHEET_FETCH_RANGES = {
   'Notes & Journals': 'A:G',
   'Skill Logs': 'A:I',
   'Wallets Config': 'A:E',
-  'Skills Config': 'A:E',
+  'Skills Config': 'A:N',
   'Budget Rules': 'A:C',
   'Themes & Settings': 'A:D',
   'Chat History': 'A:C',
@@ -335,7 +335,7 @@ const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
 
   if (item.type === ItemType.FINANCE) {
     sheets.push('Transactions');
-  } else if (item.type === ItemType.TODO) {
+  } else if (item.type === ItemType.TODO || item.type === ItemType.SKILLS) {
     sheets.push('Todos');
   } else if (item.type === ItemType.SHOPPING) {
     if (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment') {
@@ -1895,12 +1895,31 @@ const parseConfigSheets = (valueRanges: any[]): {
         const r = rows[i];
         const id = cell(r, 'ID', 0);
         if (!id) continue;
+        const scheduleEnabled = truthySheetValue(cell(r, 'Schedule_Enabled', 5, ['Schedule Enabled']));
+        const scheduleIntervalRaw = String(cell(r, 'Schedule_Interval', 6, ['Schedule Interval']) || 'weekly').trim().toLowerCase();
+        const scheduleInterval = ['daily', 'weekly', 'monthly', 'yearly'].includes(scheduleIntervalRaw)
+          ? scheduleIntervalRaw as NonNullable<Skill['schedule']>['interval']
+          : 'weekly';
+        const scheduleStartTime = String(cell(r, 'Schedule_Start_Time', 10, ['Schedule Start Time']) || '09:00').trim();
+        const scheduleEndTime = String(cell(r, 'Schedule_End_Time', 11, ['Schedule End Time']) || '10:00').trim();
+
         skills.push({
           id: String(id),
           name: String(cell(r, 'Name', 1) || ''),
-          weeklyTargetMinutes: Number(cell(r, 'Weekly_Target_Minutes', 2, ['Weekly Target Minutes'])) || undefined,
-          created_at: String(cell(r, 'Created_At', 3, ['Created At']) || new Date().toISOString()),
-          color: String(cell(r, 'Color', 4) || 'indigo-500'),
+          description: String(cell(r, 'Description', 2) || '') || undefined,
+          imageUrl: String(cell(r, 'Image_URL', 3, ['Image URL', 'Image_Url']) || '') || undefined,
+          weeklyTargetMinutes: Number(cell(r, 'Weekly_Target_Minutes', 4, ['Weekly Target Minutes'])) || Number(cell(r, 'Weekly_Target_Minutes', 2, ['Weekly Target Minutes'])) || undefined,
+          created_at: String(cell(r, 'Created_At', 12, ['Created At']) || cell(r, 'Created_At', 3, ['Created At']) || new Date().toISOString()),
+          color: String(cell(r, 'Color', 13) || cell(r, 'Color', 4) || 'indigo-500'),
+          schedule: scheduleEnabled ? {
+            enabled: true,
+            interval: scheduleInterval,
+            daysOfWeek: splitSheetListValue(cell(r, 'Schedule_Days_Of_Week', 7, ['Schedule Days Of Week'])).map(Number).filter(Number.isFinite),
+            daysOfMonth: splitSheetListValue(cell(r, 'Schedule_Days_Of_Month', 8, ['Schedule Days Of Month'])).map(Number).filter(Number.isFinite),
+            monthsOfYear: splitSheetListValue(cell(r, 'Schedule_Months_Of_Year', 9, ['Schedule Months Of Year'])).map(Number).filter(Number.isFinite),
+            startTime: /^\d{2}:\d{2}$/.test(scheduleStartTime) ? scheduleStartTime : '09:00',
+            endTime: /^\d{2}:\d{2}$/.test(scheduleEndTime) ? scheduleEndTime : '10:00',
+          } : undefined,
         });
       }
     } else if (name === 'Budget Rules') {

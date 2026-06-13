@@ -80,10 +80,123 @@ const getThemeMonthKey = (date: Date) => {
   return `${year}-${month}`;
 };
 
+type SkillModalPayload = {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  weeklyTargetMinutes?: number;
+  schedule?: Skill['schedule'];
+};
+
+const parseSkillTime = (value?: string) => {
+  const [hourRaw, minuteRaw] = String(value || '').split(':');
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  return {
+    hour: Number.isFinite(hour) ? Math.min(Math.max(hour, 0), 23) : 9,
+    minute: Number.isFinite(minute) ? Math.min(Math.max(minute, 0), 59) : 0,
+  };
+};
+
+const setDateTimeFromSkillTime = (date: Date, time?: string) => {
+  const next = new Date(date);
+  const { hour, minute } = parseSkillTime(time);
+  next.setHours(hour, minute, 0, 0);
+  return next;
+};
+
+const getSkillScheduleDurationMinutes = (schedule?: Skill['schedule']) => {
+  if (!schedule?.enabled) return 0;
+  const start = parseSkillTime(schedule.startTime);
+  const end = parseSkillTime(schedule.endTime);
+  let startMinutes = start.hour * 60 + start.minute;
+  let endMinutes = end.hour * 60 + end.minute;
+  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
+  return Math.max(endMinutes - startMinutes, 1);
+};
+
+const skillScheduleMatchesDate = (schedule: NonNullable<Skill['schedule']>, date: Date) => {
+  if (!schedule.enabled) return false;
+  if (schedule.interval === 'daily') return true;
+  if (schedule.interval === 'weekly') return (schedule.daysOfWeek?.length ? schedule.daysOfWeek : [date.getDay()]).includes(date.getDay());
+  if (schedule.interval === 'monthly') return (schedule.daysOfMonth?.length ? schedule.daysOfMonth : [date.getDate()]).includes(date.getDate());
+  if (schedule.interval === 'yearly') return (schedule.monthsOfYear?.length ? schedule.monthsOfYear : [date.getMonth()]).includes(date.getMonth()) && date.getDate() === 1;
+  return false;
+};
+
+const getNextSkillScheduleStart = (schedule: NonNullable<Skill['schedule']>, fromDate = new Date()) => {
+  for (let offset = 0; offset <= 370; offset += 1) {
+    const day = new Date(fromDate);
+    day.setDate(fromDate.getDate() + offset);
+    const start = setDateTimeFromSkillTime(day, schedule.startTime);
+    if (skillScheduleMatchesDate(schedule, start) && start.getTime() >= fromDate.getTime()) return start;
+  }
+  return setDateTimeFromSkillTime(fromDate, schedule.startTime);
+};
+
+const isSkillRoutineItem = (item: BrainDumpItem) => item.type === ItemType.SKILLS && item.meta.isRoutine && !!item.meta.skillId;
+
+const buildSkillRoutineItem = (skill: Skill, existing?: BrainDumpItem): BrainDumpItem | null => {
+  if (!skill.schedule?.enabled) return null;
+
+  const start = getNextSkillScheduleStart(skill.schedule);
+  const durationMinutes = getSkillScheduleDurationMinutes(skill.schedule);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+  return {
+    id: existing?.id || `skill-routine-${skill.id}`,
+    type: ItemType.SKILLS,
+    content: skill.name,
+    status: existing?.status || 'pending',
+    created_at: existing?.created_at || new Date().toISOString(),
+    completed_at: existing?.completed_at,
+    meta: {
+      ...(existing?.meta || {}),
+      tags: Array.from(new Set([...(existing?.meta.tags || []), 'skills', 'routine'])),
+      skillId: skill.id,
+      skillName: skill.name,
+      durationMinutes,
+      isRoutine: true,
+      routineInterval: skill.schedule.interval,
+      routineDaysOfWeek: skill.schedule.daysOfWeek,
+      routineDaysOfMonth: skill.schedule.daysOfMonth,
+      routineMonthsOfYear: skill.schedule.monthsOfYear,
+      recurrenceDays: 1,
+      date: existing?.status === 'done' && existing.meta.date ? existing.meta.date : start.toISOString(),
+      start: existing?.status === 'done' && existing.meta.start ? existing.meta.start : start.toISOString(),
+      end: existing?.status === 'done' && existing.meta.end ? existing.meta.end : end.toISOString(),
+      priority: existing?.meta.priority || 'normal',
+    },
+  };
+};
+
+const syncSkillRoutineItems = (items: BrainDumpItem[], skills: Skill[]) => {
+  const skillsById = new Map(skills.map(skill => [skill.id, skill]));
+  const existingRoutineBySkillId = new Map(
+    items
+      .filter(isSkillRoutineItem)
+      .map(item => [item.meta.skillId as string, item])
+  );
+
+  const cleanedItems = items.filter(item => {
+    if (!isSkillRoutineItem(item)) return true;
+    const skill = skillsById.get(item.meta.skillId as string);
+    return !!skill?.schedule?.enabled;
+  });
+
+  const withoutOldSkillRoutines = cleanedItems.filter(item => !isSkillRoutineItem(item));
+  const routineItems = skills
+    .map(skill => buildSkillRoutineItem(skill, existingRoutineBySkillId.get(skill.id)))
+    .filter((item): item is BrainDumpItem => !!item);
+
+  return [...routineItems, ...withoutOldSkillRoutines];
+};
+
 const App: React.FC = () => {
   // Data Logic Hook
   const {
     items,
+    setItems,
     budgetConfig,
     setBudgetConfig,
     skills,
@@ -175,8 +288,7 @@ const App: React.FC = () => {
     isOpen: boolean;
     mode: "add" | "edit";
     skillId?: string;
-    initialName?: string;
-    initialTarget?: number;
+    initialSkill?: Skill;
   }>({ isOpen: false, mode: "add" });
   const [walletModal, setWalletModal] = useState<{
     isOpen: boolean;
@@ -840,8 +952,10 @@ const App: React.FC = () => {
   const handleConfirmDelete = () => {
     if (deleteType === "skill" && deleteId) {
       const updated = skills.filter((s) => s.id !== deleteId);
+      const updatedItems = syncSkillRoutineItems(items, updated);
       setSkills(updated);
-      saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
+      setItems(updatedItems);
+      saveAndSync(updatedItems, undefined, undefined, updated, wallets, monthlyThemes);
     } else if (deleteType === "wallet" && deleteId) {
       const updated = wallets.filter((w) => w.id !== deleteId);
       setWallets(updated);
@@ -911,14 +1025,21 @@ const App: React.FC = () => {
 
   // --- Skill & Wallet Modal Handlers ---
   const handleOpenAddSkill = () => setSkillModal({ isOpen: true, mode: "add" });
-  const handleOpenEditSkill = (id: string, name: string, target?: number) =>
+  const handleOpenEditSkill = (id: string, name: string, target?: number) => {
+    const existingSkill = skills.find((s) => s.id === id);
     setSkillModal({
       isOpen: true,
       mode: "edit",
       skillId: id,
-      initialName: name,
-      initialTarget: target,
+      initialSkill: existingSkill || {
+        id,
+        name,
+        weeklyTargetMinutes: target,
+        color: "indigo-500",
+        created_at: new Date().toISOString(),
+      },
     });
+  };
 
   const handleOpenAddWallet = () =>
     setWalletModal({ isOpen: true, mode: "add" });
@@ -930,26 +1051,41 @@ const App: React.FC = () => {
       initialData: wallet,
     });
 
-  const handleSaveSkill = (name: string, weeklyTargetMinutes?: number) => {
-    if (!name.trim()) return;
+  const handleSaveSkill = (payload: SkillModalPayload) => {
+    const name = payload.name.trim();
+    if (!name) return;
+
+    let updatedSkills = skills;
+
     if (skillModal.mode === "add") {
       const newSkill: Skill = {
         id: uuidv4(),
         name,
+        description: payload.description?.trim() || undefined,
+        imageUrl: payload.imageUrl?.trim() || undefined,
         color: "indigo-500",
         created_at: new Date().toISOString(),
-        weeklyTargetMinutes,
+        weeklyTargetMinutes: payload.weeklyTargetMinutes,
+        schedule: payload.schedule,
       };
-      const updated = [...skills, newSkill];
-      setSkills(updated);
-      saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
+      updatedSkills = [...skills, newSkill];
     } else if (skillModal.mode === "edit" && skillModal.skillId) {
-      const updated = skills.map((s) =>
-        s.id === skillModal.skillId ? { ...s, name, weeklyTargetMinutes } : s,
+      updatedSkills = skills.map((s) =>
+        s.id === skillModal.skillId ? {
+          ...s,
+          name,
+          description: payload.description?.trim() || undefined,
+          imageUrl: payload.imageUrl?.trim() || undefined,
+          weeklyTargetMinutes: payload.weeklyTargetMinutes,
+          schedule: payload.schedule,
+        } : s,
       );
-      setSkills(updated);
-      saveAndSync(items, undefined, undefined, updated, wallets, monthlyThemes);
     }
+
+    const updatedItems = syncSkillRoutineItems(items, updatedSkills);
+    setSkills(updatedSkills);
+    setItems(updatedItems);
+    saveAndSync(updatedItems, undefined, undefined, updatedSkills, wallets, monthlyThemes);
     setSkillModal({ ...skillModal, isOpen: false });
   };
 
@@ -1723,8 +1859,7 @@ const App: React.FC = () => {
         isOpen={skillModal.isOpen}
         onClose={() => setSkillModal({ ...skillModal, isOpen: false })}
         onSave={handleSaveSkill}
-        initialName={skillModal.initialName}
-        initialTarget={skillModal.initialTarget}
+        initialSkill={skillModal.initialSkill}
         mode={skillModal.mode}
       />
 

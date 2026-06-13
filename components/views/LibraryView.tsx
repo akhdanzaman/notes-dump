@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
 import { getJournalDayGroups, getNoteItems, getSkillItems, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
@@ -387,6 +387,19 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     };
 
     const renderSkills = () => {
+        const scheduleRows = skillStats
+            .flatMap(skill => (skill.scheduleSessions || []).map(session => ({ skill, session })))
+            .sort((a, b) => a.session.start.getTime() - b.session.start.getTime());
+
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+        weekStart.setHours(0, 0, 0, 0);
+        const weekDays = Array.from({ length: 7 }, (_, i) => {
+            const day = new Date(weekStart);
+            day.setDate(weekStart.getDate() + i);
+            return day;
+        });
+
         if (skillStats.length === 0) {
             return (
                 <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
@@ -401,62 +414,164 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             );
         }
 
-        return (
-            <div className={contentSurface.cardGrid}>
-                {visibleSkillItems.visibleItems.map(skill => {
-                    const progress = skill.weeklyProgress;
-                    return (
-                        <motion.div
-                            key={skill.id}
-                            layout={!isDragging}
-                            transition={{ type: "tween", duration: 0.3 }}
-                            className="bg-surface border border-border rounded-[24px] p-5"
-                        >
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h4 className="font-bold text-lg text-primary">{skill.name}</h4>
-                                    <div className="flex items-baseline gap-2 mt-1">
-                                        <span className="text-xl font-bold text-indigo-500">{skill.totalHours.toFixed(1)}h</span>
-                                        <span className="text-sm text-muted font-medium">total</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
-                                        className="p-2 bg-black/5 hover:bg-black/10 rounded-xl transition-colors"
-                                    >
-                                        <Pencil className="w-4 h-4 text-muted" />
-                                    </button>
-                                    <button
-                                        onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
-                                        className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4 text-red-500" />
-                                    </button>
-                                </div>
-                            </div>
+        const formatTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
-                            {skill.weeklyTargetMinutes && (
-                                <>
-                                    <div className="w-full h-3 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-indigo-500 transition-all duration-1000 ease-out"
-                                            style={{ width: `${progress}%` }}
-                                        />
+        return (
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
+                <div className="space-y-4">
+                    {visibleSkillItems.visibleItems.map(skill => {
+                        const progress = skill.weeklyProgress || 0;
+                        const target = skill.schedule?.enabled
+                            ? (skill.effectiveWeeklyTargetMinutes || 0)
+                            : (skill.effectiveWeeklyTargetMinutes || skill.weeklyTargetMinutes || 0);
+                        const nextSession = (skill.scheduleSessions || []).find(session => session.start.getTime() >= Date.now()) || (skill.scheduleSessions || [])[0];
+
+                        return (
+                            <motion.div
+                                key={skill.id}
+                                layout={!isDragging}
+                                transition={{ type: "tween", duration: 0.3 }}
+                                className="group bg-surface border border-border rounded-[28px] p-4 sm:p-5 shadow-sm hover:border-indigo-500/40 transition-colors"
+                            >
+                                <div className="grid grid-cols-[92px_minmax(0,1fr)] sm:grid-cols-[150px_minmax(0,1fr)_auto] gap-4 items-center">
+                                    <div className="h-24 sm:h-32 rounded-[24px] bg-background border border-border overflow-hidden flex items-center justify-center">
+                                        {skill.imageUrl ? (
+                                            <img src={skill.imageUrl} alt={skill.name} className="h-full w-full object-cover" />
+                                        ) : (
+                                            <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-muted bg-indigo-500/5">
+                                                <Target className="w-7 h-7 text-indigo-500" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">No image</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex justify-between items-center mt-3">
-                                        <span className="text-xs font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Weekly Progress</span>
-                                        <span className="text-xs font-medium text-muted flex items-center gap-1">
-                                            <Target className="w-3 h-3" />
-                                            Target: {skill.weeklyTargetMinutes}m/wk
-                                        </span>
+
+                                    <div className="min-w-0">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-lg text-primary truncate">{skill.name}</h4>
+                                                <p className="text-xs text-muted mt-1 line-clamp-2">
+                                                    {skill.description || 'No description yet. Add one from edit skill.'}
+                                                </p>
+                                            </div>
+                                            <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-amber-500">
+                                                ★ {(progress / 20).toFixed(1)}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-bold text-muted">Skills</span>
+                                            {skill.schedule?.enabled && (
+                                                <span className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-500 capitalize">
+                                                    {skill.schedule.interval}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-3 mt-4 text-xs text-muted">
+                                            <span>{skill.weeklyMinutes || 0}m this week</span>
+                                            {nextSession && (
+                                                <span className="flex items-center gap-1">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    {formatTime(nextSession.start)} - {formatTime(nextSession.end)}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-4">
+                                            <div className="w-full h-2.5 bg-background border border-border rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-indigo-500 transition-all duration-1000 ease-out"
+                                                    style={{ width: `${Math.min(100, progress)}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between items-center mt-2">
+                                                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Weekly Progress</span>
+                                                <span className="text-[10px] font-medium text-muted flex items-center gap-1">
+                                                    <Target className="w-3 h-3" />
+                                                    Target: {target || 0}m/wk
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </>
-                            )}
-                        </motion.div>
-                    );
-                })}
-                <LoadMoreButton remainingCount={visibleSkillItems.remainingCount} onClick={visibleSkillItems.loadMore} />
+
+                                    <div className="flex sm:flex-col gap-2 justify-end sm:justify-start col-span-2 sm:col-span-1">
+                                        <button
+                                            onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
+                                            className="p-2 bg-background hover:bg-muted/10 rounded-xl transition-colors"
+                                            title="Edit Skill"
+                                        >
+                                            <Pencil className="w-4 h-4 text-muted" />
+                                        </button>
+                                        <button
+                                            onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
+                                            className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors"
+                                            title="Delete Skill"
+                                        >
+                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                    <LoadMoreButton remainingCount={visibleSkillItems.remainingCount} onClick={visibleSkillItems.loadMore} />
+                </div>
+
+                <aside className="xl:sticky xl:top-4 bg-surface border border-border rounded-[28px] p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-5">
+                        <div>
+                            <h3 className="text-lg font-bold text-primary">Schedule</h3>
+                            <p className="text-xs text-muted">Skill routines this week</p>
+                        </div>
+                        <button onClick={handleOpenAddSkill} className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-2 mb-5">
+                        {weekDays.map(day => {
+                            const hasSchedule = scheduleRows.some(row => row.session.start.toDateString() === day.toDateString());
+                            const isToday = day.toDateString() === new Date().toDateString();
+                            return (
+                                <div key={day.toISOString()} className={`rounded-2xl p-2 text-center border ${isToday ? 'border-indigo-500 bg-indigo-500/10' : 'border-border bg-background'}`}>
+                                    <div className="text-[10px] text-muted font-bold">{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
+                                    <div className="text-sm font-bold text-primary">{day.getDate()}</div>
+                                    {hasSchedule && <div className="mx-auto mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {scheduleRows.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">
+                            No skill schedule yet. Edit a skill and enable Schedule Skill Routine.
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {scheduleRows.map(({ skill, session }) => {
+                                const target = skill.effectiveWeeklyTargetMinutes || 0;
+                                const achieved = target ? Math.min(100, ((skill.weeklyMinutes || 0) / target) * 100) : 0;
+                                return (
+                                    <div key={`${skill.id}-${session.start.toISOString()}`} className="grid grid-cols-[44px_minmax(0,1fr)_auto] gap-3 items-center rounded-2xl bg-background border border-border p-3">
+                                        <div className="text-center border-r border-border pr-3">
+                                            <div className="text-sm font-bold text-primary">{session.start.getDate().toString().padStart(2, '0')}</div>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h4 className="text-sm font-bold text-primary truncate">{skill.name}</h4>
+                                            <p className="text-xs text-muted">{session.durationMinutes}m session</p>
+                                            <div className="mt-2 h-1.5 bg-surface rounded-full overflow-hidden border border-border">
+                                                <div className="h-full bg-indigo-500" style={{ width: `${achieved}%` }} />
+                                            </div>
+                                        </div>
+                                        <div className="text-right text-xs font-medium text-muted">
+                                            {formatTime(session.start)} - {formatTime(session.end)}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </aside>
             </div>
         );
     };
