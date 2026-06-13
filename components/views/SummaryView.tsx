@@ -1067,151 +1067,219 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     );
   };
 
-  const topThreeToday = useMemo(() => {
-    const fallback = [
-      "Finish product sample",
-      "Laundry sepatu",
-      "Research new product ideas",
-    ];
-
-    const fromItems = displayItems.slice(0, 3).map((item) => ({
-      id: item.id,
-      label: item.content,
-      done: item.status === "done",
-    }));
-
-    return [
-      ...fromItems,
-      ...fallback.slice(fromItems.length).map((label, index) => ({
-        id: `fallback-top-${index}`,
-        label,
-        done: false,
+  const topThreeToday = useMemo(
+    () =>
+      displayItems.slice(0, 3).map((item) => ({
+        id: item.id,
+        label: item.content,
+        done: item.status === "done",
       })),
-    ].slice(0, 3);
-  }, [displayItems]);
+    [displayItems],
+  );
+
+  const getGoalNumbers = (item: BrainDumpItem) => {
+    const meta = item.meta as any;
+    const linkedSavings = items
+      .filter(
+        (candidate) =>
+          candidate.type === ItemType.FINANCE &&
+          candidate.meta.financeType === "saving" &&
+          candidate.meta.savingGoalId === item.id &&
+          (candidate.status === "done" || candidate.status === "pending"),
+      )
+      .reduce((sum, candidate) => sum + (candidate.meta.amount || 0), 0);
+
+    const targetAmount = Number(
+      meta.targetAmount || meta.goalAmount || meta.amount || meta.target || 0,
+    );
+    const savedAmount = Number(meta.savedAmount || linkedSavings || 0);
+    const derivedProgress =
+      targetAmount > 0 ? (savedAmount / targetAmount) * 100 : 0;
+
+    return {
+      savedAmount,
+      targetAmount,
+      progress: Math.max(
+        0,
+        Math.min(100, Number(meta.progress ?? derivedProgress)),
+      ),
+    };
+  };
 
   const goalDashboardItems = useMemo(() => {
-    const targets = items
+    const savingAndInvestmentGoals = items
       .filter(
         (item) =>
           item.type === ItemType.SHOPPING &&
           (item.meta.shoppingCategory === "saving" ||
             item.meta.shoppingCategory === "investment"),
       )
-      .slice(0, 4)
       .map((item) => {
-        const linkedSavings = items
-          .filter(
-            (candidate) =>
-              candidate.type === ItemType.FINANCE &&
-              candidate.meta.financeType === "saving" &&
-              candidate.meta.savingGoalId === item.id &&
-              (candidate.status === "done" || candidate.status === "pending"),
-          )
-          .reduce((sum, candidate) => sum + (candidate.meta.amount || 0), 0);
-
-        const targetAmount = Number(
-          item.meta.targetAmount ||
-            item.meta.goalAmount ||
-            item.meta.amount ||
-            item.meta.target ||
-            0,
-        );
-        const savedAmount = Number(item.meta.savedAmount || linkedSavings || 0);
-        const derivedProgress =
-          targetAmount > 0 ? (savedAmount / targetAmount) * 100 : 0;
-
+        const numbers = getGoalNumbers(item);
         return {
           id: item.id,
           label: item.content,
-          progress: Math.max(
-            0,
-            Math.min(100, Number(item.meta.progress ?? derivedProgress)),
-          ),
+          progress: numbers.progress,
+          caption:
+            numbers.targetAmount > 0
+              ? `${fmt(numbers.savedAmount)} / ${fmt(numbers.targetAmount)}`
+              : item.meta.shoppingCategory === "investment"
+                ? "Investment target"
+                : "Saving target",
+          kind: item.meta.shoppingCategory,
         };
       });
 
-    if (targets.length > 0) return targets;
+    const startOfWeek = new Date(todayDate);
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 
-    return [
-      { id: "fallback-goal-1", label: "Financial Freedom", progress: 56 },
-      { id: "fallback-goal-2", label: "Build Online Income", progress: 41 },
-      { id: "fallback-goal-3", label: "Health & Fitness", progress: 63 },
-      { id: "fallback-goal-4", label: "Learn & Grow", progress: 37 },
-    ];
-  }, [items]);
+    const skillGoals = skills
+      .filter((skill) => Number(skill.weeklyTargetMinutes || 0) > 0)
+      .map((skill) => {
+        const loggedMinutes = items
+          .filter((item) => {
+            if (
+              item.type !== ItemType.SKILL_LOG ||
+              item.meta.skillId !== skill.id
+            )
+              return false;
+            const itemDate = new Date(item.created_at);
+            return !Number.isNaN(itemDate.getTime()) && itemDate >= startOfWeek;
+          })
+          .reduce(
+            (sum, item) =>
+              sum +
+              Number(
+                (item.meta as any).duration || item.meta.durationMinutes || 0,
+              ),
+            0,
+          );
+        const targetMinutes = Number(skill.weeklyTargetMinutes || 0);
+        return {
+          id: skill.id,
+          label: skill.name,
+          progress: Math.max(
+            0,
+            Math.min(100, (loggedMinutes / targetMinutes) * 100),
+          ),
+          caption: `${loggedMinutes}/${targetMinutes} min this week`,
+          kind: "skill" as const,
+        };
+      });
 
-  const ritualDashboardItems = useMemo(() => {
-    const fallback = [
-      "Check balance",
-      "Move body",
-      "Journal",
-      "No impulsive spending",
-      "Review plan",
-    ];
+    return [...savingAndInvestmentGoals, ...skillGoals]
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, 4);
+  }, [items, skills, todayDate.getTime()]);
 
-    const fromItems = summaryPendingGroups.routines.slice(0, 5).map((item) => ({
-      id: item.id,
-      label: item.content,
-      done: item.status === "done",
-      sourceId: item.id,
-    }));
-
-    return [
-      ...fromItems,
-      ...fallback.slice(fromItems.length).map((label, index) => ({
-        id: `fallback-ritual-${index}`,
-        label,
-        done: index < 3,
-        sourceId: undefined,
+  const routineDashboardItems = useMemo(
+    () =>
+      summaryPendingGroups.routines.slice(0, 5).map((item) => ({
+        id: item.id,
+        label: item.content,
+        done: item.status === "done",
+        sourceId: item.id,
       })),
-    ].slice(0, 5);
-  }, [summaryPendingGroups.routines]);
+    [summaryPendingGroups.routines],
+  );
 
-  const ritualDoneCount = ritualDashboardItems.filter(
+  const routineDoneCount = routineDashboardItems.filter(
     (item) => item.done,
   ).length;
 
-  const nextUpItems = useMemo(() => {
-    const fallback = [
-      { id: "fallback-next-1", time: "10:00", label: "Focus Work Block" },
-      { id: "fallback-next-2", time: "13:00", label: "Product Research" },
-      { id: "fallback-next-3", time: "19:00", label: "Review & Plan" },
-    ];
+  const getItemScheduleDate = (item: BrainDumpItem) => {
+    const meta = item.meta as any;
+    const rawDate =
+      meta.dateTime ||
+      meta.start ||
+      meta.date ||
+      meta.dueDate ||
+      meta.scheduledAt;
+    if (!rawDate) return null;
+    const date = new Date(rawDate);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
 
-    const datedItems = items
-      .filter((item) => {
-        if (item.status === "done") return false;
-        return item.meta.date || item.meta.dueDate || item.meta.scheduledAt;
-      })
-      .map((item) => {
-        const rawDate =
-          item.meta.date || item.meta.dueDate || item.meta.scheduledAt;
-        const date = rawDate ? new Date(rawDate) : null;
-        return {
-          item,
-          date,
-          time:
-            date && !Number.isNaN(date.getTime())
-              ? date.toLocaleTimeString(undefined, {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })
-              : "Today",
-        };
-      })
-      .filter(({ date }) => date && !Number.isNaN(date.getTime()))
+  const nextUpItems = useMemo(() => {
+    const todayStart = new Date(todayDate);
+    todayStart.setHours(0, 0, 0, 0);
+
+    return items
+      .filter((item) => item.status !== "done")
+      .map((item) => ({ item, date: getItemScheduleDate(item) }))
+      .filter(({ date }) => date && date >= todayStart)
       .sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0))
       .slice(0, 3)
-      .map(({ item, time }) => ({
-        id: item.id,
-        time,
-        label: item.content,
-      }));
+      .map(({ item, date }) => {
+        const isAllDay = date?.getHours() === 0 && date?.getMinutes() === 0;
+        const time = date
+          ? isAllDay
+            ? date.toLocaleDateString(undefined, {
+                day: "2-digit",
+                month: "short",
+              })
+            : date.toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              })
+          : "Today";
+        return { id: item.id, time, label: item.content };
+      });
+  }, [items, todayDate.getTime()]);
 
-    return [...datedItems, ...fallback.slice(datedItems.length)].slice(0, 3);
-  }, [items]);
+  const completedThisWeek = useMemo(() => {
+    const weekAgo = new Date(todayDate);
+    weekAgo.setHours(0, 0, 0, 0);
+    weekAgo.setDate(weekAgo.getDate() - 6);
+
+    return items.filter((item) => {
+      if (item.status !== "done") return false;
+      const completedAt = new Date(item.completed_at || item.created_at);
+      return !Number.isNaN(completedAt.getTime()) && completedAt >= weekAgo;
+    });
+  }, [items, todayDate.getTime()]);
+
+  const weeklyWin = useMemo(() => {
+    const routineCompletions = completedThisWeek.filter(
+      (item) => item.meta.isRoutine,
+    );
+    const skillMinutes = completedThisWeek
+      .filter((item) => item.type === ItemType.SKILL_LOG)
+      .reduce(
+        (sum, item) =>
+          sum +
+          Number((item.meta as any).duration || item.meta.durationMinutes || 0),
+        0,
+      );
+
+    if (routineCompletions.length > 0) {
+      return {
+        title: `${routineCompletions.length} routine done`,
+        subtitle: "Routine progress this week.",
+      };
+    }
+
+    if (skillMinutes > 0) {
+      return {
+        title: `${skillMinutes} skill minutes`,
+        subtitle: "Learning momentum this week.",
+      };
+    }
+
+    if (completedThisWeek.length > 0) {
+      return {
+        title: `${completedThisWeek.length} item completed`,
+        subtitle: "A real weekly win from your data.",
+      };
+    }
+
+    return {
+      title: "No weekly win yet",
+      subtitle: "Complete one item to make this card yours.",
+    };
+  }, [completedThisWeek]);
 
   const savingsRate =
     budgetConfig.monthlyIncome > 0
@@ -1227,11 +1295,24 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
   const monthlySpendingLabel = showBalance ? fmt(totalExpense) : "••••••";
   const netWorthLabel = showBalance ? fmt(totalNetWorth) : "••••••••";
+  const hasThemeContent = themeContent.trim().length > 0;
+  const hasThemeImage = themeHeroImage.trim().length > 0;
+  const missionTitle = hasThemeContent
+    ? themeContent
+    : "Add this month mission";
+  const missionSubtitle = hasThemeContent
+    ? "Focus on what matters. Protect your time. Move with intention."
+    : "Open Add Theme to set the mission and image URL for this month.";
 
-  const dashboardShellClass =
-    "rounded-[34px] bg-[#eaf3f8] p-4 text-slate-950 shadow-[0_22px_70px_rgba(37,64,90,0.16)] dark:bg-[#090d12] dark:text-zinc-50 dark:shadow-black/40 xl:p-5";
-  const dashboardCardClass =
-    "rounded-[24px] border border-white/70 bg-white/92 shadow-[0_16px_40px_rgba(37,64,90,0.08)] backdrop-blur dark:border-white/10 dark:bg-zinc-900/82 dark:shadow-black/25";
+  const dashboardShellClass = [
+    "overflow-hidden rounded-[2rem] border border-white/70 bg-[#eaf3f8] p-3 text-slate-950 shadow-[0_22px_70px_rgba(37,64,90,0.16)]",
+    "dark:border-white/10 dark:bg-[#090d12] dark:text-zinc-50 dark:shadow-black/40",
+    "sm:p-4 xl:rounded-[2.25rem] xl:p-5",
+  ].join(" ");
+  const dashboardCardClass = [
+    "rounded-[1.5rem] border border-white/70 bg-white/90 shadow-[0_16px_40px_rgba(37,64,90,0.08)] backdrop-blur",
+    "dark:border-white/10 dark:bg-zinc-900/82 dark:shadow-black/25",
+  ].join(" ");
   const dashboardIconClass =
     "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300";
   const dashboardSectionTitle =
@@ -1239,6 +1320,28 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const dashboardKicker =
     "text-[11px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300";
   const dashboardMuted = "text-slate-500 dark:text-zinc-400";
+
+  const renderDashboardEmptyState = (
+    title: string,
+    description: string,
+    action?: { label: string; onClick: () => void },
+  ) => (
+    <div className="rounded-2xl border border-dashed border-blue-200/80 bg-blue-50/50 p-4 text-sm dark:border-blue-300/20 dark:bg-blue-400/5">
+      <p className="font-bold text-slate-800 dark:text-zinc-100">{title}</p>
+      <p className={`mt-1 text-xs leading-relaxed ${dashboardMuted}`}>
+        {description}
+      </p>
+      {action && (
+        <button
+          type="button"
+          onClick={action.onClick}
+          className="mt-3 rounded-full bg-blue-700 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-blue-600 dark:bg-blue-400 dark:text-zinc-950 dark:hover:bg-blue-300"
+        >
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
 
   const renderDashboardOverlays = () =>
     typeof window !== "undefined"
@@ -1418,6 +1521,124 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         )
       : null;
 
+  const renderThemeImageSurface = () => (
+    <div className="absolute inset-0">
+      {hasThemeImage ? (
+        <img
+          src={themeHeroImage}
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="h-full w-full bg-[radial-gradient(circle_at_78%_35%,rgba(191,219,254,0.9),transparent_34%),linear-gradient(135deg,#dbeafe_0%,#f8fafc_52%,#e0f2fe_100%)] dark:bg-[radial-gradient(circle_at_78%_35%,rgba(37,99,235,0.28),transparent_34%),linear-gradient(135deg,#0f172a_0%,#111827_52%,#020617_100%)]" />
+      )}
+    </div>
+  );
+
+  const renderThemeImageCta = () =>
+    !hasThemeImage ? (
+      <div className="pointer-events-none absolute bottom-6 right-6 hidden max-w-xs rounded-[2rem] border border-blue-200/70 bg-white/40 p-5 text-blue-700/80 backdrop-blur-md dark:border-blue-300/20 dark:bg-white/5 dark:text-blue-200/80 xl:block">
+        <ImageIcon className="mb-3 h-9 w-9" />
+        <div className="text-xs font-black uppercase tracking-[0.22em]">
+          Add theme image
+        </div>
+        <div className="mt-1 text-xs font-semibold opacity-75">
+          The image URL lives in Add Theme.
+        </div>
+      </div>
+    ) : null;
+
+  const renderHeroCard = (compact = false) => (
+    <button
+      type="button"
+      onClick={openThemeEditor}
+      className={`${dashboardCardClass} group relative block min-h-[16rem] w-full overflow-hidden text-left transition-transform active:scale-[0.995] ${
+        compact ? "rounded-[1.75rem]" : "xl:min-h-[18.75rem]"
+      }`}
+    >
+      {renderThemeImageSurface()}
+      <div className="absolute inset-0 bg-gradient-to-r from-white/94 via-white/74 to-white/14 dark:from-zinc-950/92 dark:via-zinc-950/62 dark:to-zinc-950/18" />
+      {renderThemeImageCta()}
+
+      <div
+        className={`relative z-10 flex min-h-[16rem] flex-col justify-center ${compact ? "p-6" : "p-7 xl:min-h-[18.75rem] xl:p-10"}`}
+      >
+        <h1
+          className={`${compact ? "text-4xl" : "text-5xl xl:text-6xl"} max-w-3xl font-black leading-[1.03] tracking-tight text-[#10233f] dark:text-white`}
+        >
+          {missionTitle}
+        </h1>
+
+        <div className="mt-6 text-lg font-black text-blue-700 dark:text-blue-300">
+          Mission of the Day
+        </div>
+        <p
+          className={`mt-2 max-w-2xl text-sm font-medium leading-relaxed sm:text-base ${dashboardMuted}`}
+        >
+          {missionSubtitle}
+        </p>
+
+        <div className="mt-7 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-blue-700/80 opacity-100 transition-opacity dark:text-blue-300/80 xl:opacity-0 xl:group-hover:opacity-100">
+          <Pencil className="h-3.5 w-3.5" />
+          Add Theme
+        </div>
+      </div>
+    </button>
+  );
+
+  const renderDateCard = () => (
+    <div
+      data-swipe-date="summary-theme-month"
+      className={`${dashboardCardClass} flex min-h-[16rem] flex-col items-center justify-center p-5 text-center touch-pan-y xl:min-h-[18.75rem]`}
+      onTouchStart={dateSwipeHandlers.onTouchStart}
+      onTouchMove={dateSwipeHandlers.onTouchMove}
+      onTouchEnd={dateSwipeHandlers.onTouchEnd}
+    >
+      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+        <CalendarDays className="h-7 w-7" />
+      </div>
+
+      <div className="text-base font-semibold text-slate-700 dark:text-zinc-300">
+        {todayDate.toLocaleDateString(undefined, { weekday: "long" })}
+      </div>
+      <div className="mt-1 text-6xl font-black leading-none text-blue-700 dark:text-blue-300">
+        {String(todayDate.getDate()).padStart(2, "0")}
+      </div>
+      <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
+        {themeNavDate.toLocaleDateString(undefined, {
+          month: "long",
+          year: "numeric",
+        })}
+      </div>
+
+      <div className="mt-6 flex items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => changeThemeMonth(-1)}
+          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/15"
+          aria-label="Previous theme month"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={openThemeEditor}
+          className="rounded-full bg-blue-50 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
+        >
+          Theme
+        </button>
+        <button
+          type="button"
+          onClick={() => changeThemeMonth(1)}
+          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/15"
+          aria-label="Next theme month"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+
   const renderTopThreeCard = () => (
     <section className={`${dashboardCardClass} p-5 xl:p-6`}>
       <div className="mb-5 flex items-center justify-between">
@@ -1427,31 +1648,41 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         </div>
       </div>
 
-      <div className="space-y-4">
-        {topThreeToday.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => {
-              if (!item.id.startsWith("fallback")) handleToggleStatus(item.id);
-            }}
-            className="group flex w-full items-center gap-4 rounded-2xl py-1 text-left"
-          >
-            <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                item.done
-                  ? "border-emerald-500 bg-emerald-500 text-white"
-                  : "border-blue-200 text-blue-600 group-hover:border-blue-500 dark:border-blue-400/30 dark:text-blue-300"
-              }`}
+      {topThreeToday.length > 0 ? (
+        <div className="space-y-4">
+          {topThreeToday.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleToggleStatus(item.id)}
+              className="group flex w-full items-center gap-4 rounded-2xl py-1 text-left"
             >
-              {item.done && <Check className="h-5 w-5" />}
-            </div>
-            <div className="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900 dark:text-zinc-100">
-              {item.label}
-            </div>
-          </button>
-        ))}
-      </div>
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                  item.done
+                    ? "border-emerald-500 bg-emerald-500 text-white"
+                    : "border-blue-200 text-blue-600 group-hover:border-blue-500 dark:border-blue-400/30 dark:text-blue-300"
+                }`}
+              >
+                {item.done && <Check className="h-5 w-5" />}
+              </div>
+              <div className="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900 dark:text-zinc-100">
+                {item.label}
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        renderDashboardEmptyState(
+          "No focus items",
+          "Add or schedule tasks to fill this card from real items.",
+          {
+            label: "Add task",
+            onClick: () =>
+              handleOpenAddTask(new Date().toISOString().split("T")[0]),
+          },
+        )
+      )}
     </section>
   );
 
@@ -1464,91 +1695,124 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         </div>
       </div>
 
-      <div className="space-y-4">
-        {goalDashboardItems.map((goal, index) => (
-          <div
-            key={goal.id}
-            className="grid grid-cols-[36px_minmax(0,1fr)_44px] items-center gap-3"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
-              {index === 0 ? (
-                <WalletIcon className="h-4 w-4" />
-              ) : index === 1 ? (
-                <BarChart3 className="h-4 w-4" />
-              ) : index === 2 ? (
-                <Target className="h-4 w-4" />
-              ) : (
-                <FileText className="h-4 w-4" />
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <div className="mb-1 truncate text-sm font-semibold text-slate-700 dark:text-zinc-200">
-                {goal.label}
+      {goalDashboardItems.length > 0 ? (
+        <div className="space-y-4">
+          {goalDashboardItems.map((goal, index) => (
+            <div
+              key={goal.id}
+              className="grid grid-cols-[2.25rem_minmax(0,1fr)_2.75rem] items-center gap-3"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+                {goal.kind === "investment" ? (
+                  <BarChart3 className="h-4 w-4" />
+                ) : goal.kind === "skill" ? (
+                  <Target className="h-4 w-4" />
+                ) : index === 0 ? (
+                  <WalletIcon className="h-4 w-4" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+
+              <div className="min-w-0">
+                <div className="mb-1 truncate text-sm font-semibold text-slate-700 dark:text-zinc-200">
+                  {goal.label}
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
+                    style={{ width: `${goal.progress}%` }}
+                  />
+                </div>
                 <div
-                  className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
-                  style={{ width: `${goal.progress}%` }}
-                />
+                  className={`mt-1 truncate text-[11px] font-semibold ${dashboardMuted}`}
+                >
+                  {goal.caption}
+                </div>
+              </div>
+
+              <div className="text-right text-sm font-black text-slate-900 dark:text-zinc-50">
+                {Math.round(goal.progress)}%
               </div>
             </div>
-
-            <div className="text-right text-sm font-black text-slate-900 dark:text-zinc-50">
-              {Math.round(goal.progress)}%
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        renderDashboardEmptyState(
+          "No goal tracked",
+          "Saving, investment, and skill targets will appear here once you add them.",
+          {
+            label: "Open plan",
+            onClick: () => {
+              setPlanSubTab("savings");
+              setActiveTab("plan");
+            },
+          },
+        )
+      )}
     </section>
   );
 
-  const renderHabitsCard = () => (
+  const renderRoutineCard = () => (
     <section className={`${dashboardCardClass} p-5 xl:p-6`}>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className={dashboardSectionTitle}>Habits / Rituals</h2>
+        <h2 className={dashboardSectionTitle}>Routine</h2>
         <div className={dashboardIconClass}>
           <CheckCircle2 className="h-5 w-5" />
         </div>
       </div>
 
-      <div className="mb-4 flex items-end gap-2">
-        <span className="text-4xl font-black text-blue-700 dark:text-blue-300">
-          {ritualDoneCount}
-        </span>
-        <span className="pb-1 text-2xl font-bold text-slate-500 dark:text-zinc-400">
-          / {ritualDashboardItems.length}
-        </span>
-        <span className={`pb-1 text-sm font-semibold ${dashboardMuted}`}>
-          done today
-        </span>
-      </div>
-
-      <div className="space-y-2.5">
-        {ritualDashboardItems.map((ritual) => (
-          <button
-            key={ritual.id}
-            type="button"
-            onClick={() => {
-              if (ritual.sourceId) handleToggleStatus(ritual.sourceId);
-            }}
-            className="flex w-full items-center gap-2.5 text-left"
-          >
-            <div
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                ritual.done
-                  ? "border-emerald-500 bg-emerald-500 text-white"
-                  : "border-blue-300 text-transparent dark:border-blue-300/40"
-              }`}
-            >
-              <Check className="h-3 w-3" />
-            </div>
-            <span className="truncate text-sm font-medium text-slate-700 dark:text-zinc-200">
-              {ritual.label}
+      {routineDashboardItems.length > 0 ? (
+        <>
+          <div className="mb-4 flex items-end gap-2">
+            <span className="text-4xl font-black text-blue-700 dark:text-blue-300">
+              {routineDoneCount}
             </span>
-          </button>
-        ))}
-      </div>
+            <span className="pb-1 text-2xl font-bold text-slate-500 dark:text-zinc-400">
+              / {routineDashboardItems.length}
+            </span>
+            <span className={`pb-1 text-sm font-semibold ${dashboardMuted}`}>
+              done today
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {routineDashboardItems.map((routine) => (
+              <button
+                key={routine.id}
+                type="button"
+                onClick={() => handleToggleStatus(routine.sourceId)}
+                className="flex w-full items-center gap-2.5 text-left"
+              >
+                <div
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                    routine.done
+                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      : "border-blue-300 text-transparent dark:border-blue-300/40"
+                  }`}
+                >
+                  <Check className="h-3 w-3" />
+                </div>
+                <span className="truncate text-sm font-medium text-slate-700 dark:text-zinc-200">
+                  {routine.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        renderDashboardEmptyState(
+          "No routine for today",
+          "Daily, weekly, monthly, or yearly routine items will be shown here.",
+          {
+            label: "Open plan",
+            onClick: () => {
+              setPlanSubTab("tasks");
+              setActiveTab("plan");
+            },
+          },
+        )
+      )}
     </section>
   );
 
@@ -1561,21 +1825,32 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         </div>
       </div>
 
-      <div className="space-y-3">
-        {nextUpItems.map((item) => (
-          <div
-            key={item.id}
-            className="grid grid-cols-[70px_minmax(0,1fr)] items-center gap-4"
-          >
-            <div className="rounded-2xl bg-slate-100 px-3 py-3 text-center text-base font-black text-slate-900 dark:bg-white/10 dark:text-zinc-50">
-              {item.time}
+      {nextUpItems.length > 0 ? (
+        <div className="space-y-3">
+          {nextUpItems.map((item) => (
+            <div
+              key={item.id}
+              className="grid grid-cols-[minmax(3.75rem,auto)_minmax(0,1fr)] items-center gap-4"
+            >
+              <div className="rounded-2xl bg-slate-100 px-3 py-3 text-center text-base font-black text-slate-900 dark:bg-white/10 dark:text-zinc-50">
+                {item.time}
+              </div>
+              <div className="min-w-0 truncate text-base font-semibold text-slate-800 dark:text-zinc-100">
+                {item.label}
+              </div>
             </div>
-            <div className="min-w-0 truncate text-base font-semibold text-slate-800 dark:text-zinc-100">
-              {item.label}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        renderDashboardEmptyState(
+          "Nothing scheduled",
+          "Add a dated task, event, or routine to fill the timeline.",
+          {
+            label: "Open calendar",
+            onClick: () => setActiveTab("calendar" as Tab),
+          },
+        )
+      )}
     </section>
   );
 
@@ -1586,13 +1861,30 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     >
       <div className="mb-5 flex items-center justify-between">
         <h2 className={dashboardSectionTitle}>Money Snapshot</h2>
-        <div className={dashboardIconClass}>
-          <WalletIcon className="h-5 w-5" />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowBalance(!showBalance);
+            }}
+            className="rounded-full bg-blue-50 p-2 text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
+            aria-label={showBalance ? "Hide balance" : "Show balance"}
+          >
+            {showBalance ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+          <div className={dashboardIconClass}>
+            <WalletIcon className="h-5 w-5" />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-white/10">
-        <div className="pr-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:divide-x sm:divide-slate-100 dark:sm:divide-white/10">
+        <div className="sm:pr-4">
           <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
             Net Worth
           </p>
@@ -1601,7 +1893,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           </div>
         </div>
 
-        <div className="px-4">
+        <div className="sm:px-4">
           <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
             Monthly Spending
           </p>
@@ -1610,7 +1902,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           </div>
         </div>
 
-        <div className="pl-4">
+        <div className="sm:pl-4">
           <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
             Savings Rate
           </p>
@@ -1633,16 +1925,41 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <div>
           <div className={dashboardKicker}>Weekly Win</div>
           <div className="mt-2 text-2xl font-black text-slate-900 dark:text-zinc-50">
-            Stayed consistent.
+            {weeklyWin.title}
           </div>
           <div className={`text-lg font-medium ${dashboardMuted}`}>
-            Progress over perfection.
+            {weeklyWin.subtitle}
           </div>
         </div>
       </div>
 
       <div className="hidden h-24 w-24 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300 xl:flex">
         <Sprout className="h-10 w-10" />
+      </div>
+    </section>
+  );
+
+  const renderMantraCard = () => (
+    <section
+      className={`${dashboardCardClass} flex items-center justify-between gap-6 px-6 py-4`}
+    >
+      <div className="flex items-center gap-4">
+        <div className={dashboardIconClass}>
+          <StickyNote className="h-5 w-5" />
+        </div>
+        <div className="text-base font-bold text-slate-700 dark:text-zinc-200">
+          Mantra
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={openThemeEditor}
+        className="min-w-0 truncate text-center text-lg font-black text-blue-700 transition-colors hover:text-blue-600 dark:text-blue-300 dark:hover:text-blue-200 xl:text-xl"
+      >
+        {hasThemeContent ? themeContent : "Add a monthly mantra"}
+      </button>
+      <div className="hidden text-7xl font-black leading-none text-blue-100 dark:text-blue-400/10 xl:block">
+        ”
       </div>
     </section>
   );
@@ -1657,136 +1974,24 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       style={{ x: swipeHandlers.dragOffset }}
     >
       <div className={dashboardShellClass}>
-        <div className="grid grid-cols-[minmax(0,1fr)_150px] gap-4 xl:grid-cols-[minmax(0,1fr)_170px]">
-          <button
-            type="button"
-            onClick={openThemeEditor}
-            className={`${dashboardCardClass} group relative min-h-[270px] overflow-hidden text-left transition-transform active:scale-[0.995] xl:min-h-[300px]`}
-          >
-            {themeHeroImage ? (
-              <img
-                src={themeHeroImage}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,rgba(191,219,254,0.9),transparent_34%),linear-gradient(135deg,#dbeafe_0%,#f8fafc_52%,#e0f2fe_100%)] dark:bg-[radial-gradient(circle_at_78%_35%,rgba(37,99,235,0.28),transparent_34%),linear-gradient(135deg,#0f172a_0%,#111827_52%,#020617_100%)]" />
-            )}
-
-            <div className="absolute inset-0 bg-gradient-to-r from-white/92 via-white/72 to-white/12 dark:from-zinc-950/90 dark:via-zinc-950/58 dark:to-zinc-950/15" />
-
-            {!themeHeroImage && (
-              <div className="absolute bottom-8 right-8 hidden h-44 w-72 items-center justify-center rounded-[32px] border border-blue-200/70 bg-white/35 text-blue-700/70 backdrop-blur-sm dark:border-blue-300/20 dark:bg-white/5 dark:text-blue-200/70 xl:flex">
-                <div className="text-center">
-                  <ImageIcon className="mx-auto mb-3 h-10 w-10" />
-                  <div className="text-xs font-black uppercase tracking-[0.22em]">
-                    Theme Image
-                  </div>
-                  <div className="mt-1 text-xs font-medium opacity-70">
-                    Add from theme modal
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="relative z-10 flex min-h-[270px] max-w-[680px] flex-col justify-center p-8 xl:min-h-[300px] xl:p-10">
-              <h1 className="max-w-2xl text-5xl font-black leading-[1.02] tracking-tight text-[#10233f] dark:text-white xl:text-6xl">
-                {themeContent || "Build today. Freedom tomorrow."}
-              </h1>
-
-              <div className="mt-6 text-xl font-black text-blue-700 dark:text-blue-300">
-                Mission of the Day
-              </div>
-              <p
-                className={`mt-2 max-w-xl text-base font-medium leading-relaxed ${dashboardMuted}`}
-              >
-                Focus on what matters. Protect your time. Move with intention.
-              </p>
-
-              <div className="mt-7 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-blue-700/80 opacity-0 transition-opacity group-hover:opacity-100 dark:text-blue-300/80">
-                <Pencil className="h-3.5 w-3.5" />
-                Edit mission & image
-              </div>
-            </div>
-          </button>
-
-          <div
-            data-swipe-date="summary-theme-month"
-            className={`${dashboardCardClass} flex min-h-[270px] flex-col items-center justify-center p-5 text-center touch-pan-y xl:min-h-[300px]`}
-            onTouchStart={dateSwipeHandlers.onTouchStart}
-            onTouchMove={dateSwipeHandlers.onTouchMove}
-            onTouchEnd={dateSwipeHandlers.onTouchEnd}
-          >
-            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
-              <CalendarDays className="h-7 w-7" />
-            </div>
-
-            <div className="text-base font-semibold text-slate-700 dark:text-zinc-300">
-              {todayDate.toLocaleDateString(undefined, { weekday: "long" })}
-            </div>
-            <div className="mt-1 text-6xl font-black leading-none text-blue-700 dark:text-blue-300">
-              {String(todayDate.getDate()).padStart(2, "0")}
-            </div>
-            <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
-              {themeNavDate.toLocaleDateString(undefined, {
-                month: "long",
-                year: "numeric",
-              })}
-            </div>
-
-            <div className="mt-6 flex items-center justify-center gap-2">
-              <button
-                onClick={() => changeThemeMonth(-1)}
-                className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/15"
-                aria-label="Previous theme month"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                onClick={openThemeEditor}
-                className="rounded-full bg-blue-50 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
-              >
-                Theme
-              </button>
-              <button
-                onClick={() => changeThemeMonth(1)}
-                className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/15"
-                aria-label="Next theme month"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+          <div className="xl:col-span-4">{renderHeroCard()}</div>
+          <div className="xl:col-span-1">{renderDateCard()}</div>
         </div>
 
-        <div className="mt-4 grid grid-cols-12 gap-4">
-          <div className="col-span-3">{renderTopThreeCard()}</div>
-          <div className="col-span-3">{renderGoalsCard()}</div>
-          <div className="col-span-3">{renderHabitsCard()}</div>
-          <div className="col-span-3">{renderNextUpCard()}</div>
-
-          <div className="col-span-5">{renderMoneyCard()}</div>
-          <div className="col-span-7">{renderWeeklyWinCard()}</div>
-
-          <section
-            className={`${dashboardCardClass} col-span-12 flex items-center justify-between gap-6 px-6 py-4`}
-          >
-            <div className="flex items-center gap-4">
-              <div className={dashboardIconClass}>
-                <StickyNote className="h-5 w-5" />
-              </div>
-              <div className="text-base font-bold text-slate-700 dark:text-zinc-200">
-                Mantra
-              </div>
-            </div>
-            <div className="text-center text-xl font-black text-blue-700 dark:text-blue-300">
-              Discipline today. Freedom tomorrow.
-            </div>
-            <div className="hidden text-7xl font-black leading-none text-blue-100 dark:text-blue-400/10 xl:block">
-              ”
-            </div>
-          </section>
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {renderTopThreeCard()}
+          {renderGoalsCard()}
+          {renderRoutineCard()}
+          {renderNextUpCard()}
         </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-5">
+          <div className="xl:col-span-2">{renderMoneyCard()}</div>
+          <div className="xl:col-span-3">{renderWeeklyWinCard()}</div>
+        </div>
+
+        <div className="mt-4">{renderMantraCard()}</div>
       </div>
     </motion.div>
   );
@@ -1843,34 +2048,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={openThemeEditor}
-            className="relative block min-h-[220px] w-full overflow-hidden rounded-[28px] text-left"
-          >
-            {themeHeroImage ? (
-              <img
-                src={themeHeroImage}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_30%,rgba(191,219,254,0.9),transparent_34%),linear-gradient(135deg,#dbeafe_0%,#f8fafc_50%,#e0f2fe_100%)] dark:bg-[radial-gradient(circle_at_80%_30%,rgba(37,99,235,0.26),transparent_34%),linear-gradient(135deg,#0f172a_0%,#111827_52%,#020617_100%)]" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-white/10 dark:from-zinc-950/90 dark:via-zinc-950/58 dark:to-zinc-950/15" />
-            <div className="relative z-10 p-6">
-              <div className="mb-2 text-xs font-black uppercase tracking-[0.22em] text-blue-700 dark:text-blue-300">
-                Mission of the Day
-              </div>
-              <h1 className="text-4xl font-black leading-tight text-[#10233f] dark:text-white">
-                {themeContent || "Build today. Freedom tomorrow."}
-              </h1>
-              <div className="mt-5 flex items-center gap-2 text-xs font-bold text-blue-700 dark:text-blue-300">
-                <Pencil className="h-3.5 w-3.5" />
-                Edit mission & image
-              </div>
-            </div>
-          </button>
+          {renderHeroCard(true)}
         </motion.div>
       </motion.div>
 
@@ -1878,11 +2056,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="space-y-4"
+        className="space-y-4 px-4"
       >
         {renderTopThreeCard()}
         {renderGoalsCard()}
-        {renderHabitsCard()}
+        {renderRoutineCard()}
         {renderNextUpCard()}
         {renderMoneyCard()}
 
@@ -1973,7 +2151,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           <section>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-bold">
-                Rituals
+                Routine
               </h2>
             </div>
 
@@ -1997,18 +2175,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         )}
 
         {renderWeeklyWinCard()}
-
-        <section
-          className={`${dashboardCardClass} flex items-center justify-between gap-3 px-5 py-4`}
-        >
-          <div className="flex items-center gap-3">
-            <StickyNote className="h-5 w-5 text-blue-700 dark:text-blue-300" />
-            <span className="font-bold">Mantra</span>
-          </div>
-          <span className="text-right font-black text-blue-700 dark:text-blue-300">
-            Discipline today. Freedom tomorrow.
-          </span>
-        </section>
+        {renderMantraCard()}
       </motion.div>
     </div>
   );
