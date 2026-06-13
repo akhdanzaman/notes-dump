@@ -155,6 +155,7 @@ const buildSkillRoutineItem = (skill: Skill, existing?: BrainDumpItem): BrainDum
       tags: Array.from(new Set([...(existing?.meta.tags || []), 'skills', 'routine'])),
       skillId: skill.id,
       skillName: skill.name,
+      skillRoutineId: existing?.meta.skillRoutineId || existing?.id || `skill-routine-${skill.id}`,
       durationMinutes,
       isRoutine: true,
       routineInterval: skill.schedule.interval,

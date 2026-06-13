@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat } from '../types';
+import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat, SkillSchedule } from '../types';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
 import { SAVING_GOALS_INVESTMENTS_SHEET_NAME } from '../utils/exportUtils';
@@ -58,6 +58,60 @@ const parseRoutineInterval = (value: unknown): 'daily' | 'weekly' | 'monthly' | 
         ? normalized
         : undefined;
 };
+
+const normalizeTimeCell = (value: unknown, fallback: string): string => {
+    const raw = String(value || '').trim();
+    const match = raw.match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return fallback;
+    const hour = Math.min(Math.max(parseInt(match[1], 10), 0), 23);
+    const minute = Math.min(Math.max(parseInt(match[2], 10), 0), 59);
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+};
+
+const getTimeCellFromDate = (value: unknown, fallback: string): string => {
+    const parsed = new Date(String(value || ''));
+    if (Number.isNaN(parsed.getTime())) return fallback;
+    return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+};
+
+const addMinutesToTime = (time: string, minutes: number): string => {
+    const [hourRaw, minuteRaw] = time.split(':');
+    const hour = parseInt(hourRaw, 10) || 0;
+    const minute = parseInt(minuteRaw, 10) || 0;
+    const total = (((hour * 60 + minute + Math.max(minutes, 1)) % 1440) + 1440) % 1440;
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};
+
+const buildSkillSchedule = (
+    enabledValue: unknown,
+    intervalValue: unknown,
+    daysOfWeekValue: unknown,
+    daysOfMonthValue: unknown,
+    monthsOfYearValue: unknown,
+    startTimeValue: unknown,
+    endTimeValue: unknown,
+): SkillSchedule | undefined => {
+    const enabled = parseSheetBoolean(enabledValue);
+    const interval = parseRoutineInterval(intervalValue);
+    const startTime = normalizeTimeCell(startTimeValue, '09:00');
+    const endTime = normalizeTimeCell(endTimeValue, '10:00');
+    const hasScheduleCells = enabled !== undefined || !!interval || !!String(startTimeValue || '').trim() || !!String(endTimeValue || '').trim();
+    if (!hasScheduleCells) return undefined;
+
+    const resolvedInterval = interval || 'weekly';
+    const schedule: SkillSchedule = {
+        enabled: enabled ?? true,
+        interval: resolvedInterval,
+        startTime,
+        endTime,
+    };
+
+    if (resolvedInterval === 'weekly') schedule.daysOfWeek = splitSheetNumberList(daysOfWeekValue) || [];
+    if (resolvedInterval === 'monthly') schedule.daysOfMonth = splitSheetNumberList(daysOfMonthValue) || [];
+    if (resolvedInterval === 'yearly') schedule.monthsOfYear = splitSheetNumberList(monthsOfYearValue) || [];
+    return schedule;
+};
+
 
 const cleanCell = (value: unknown): string | undefined => {
     if (typeof value !== 'string') return undefined;
@@ -285,7 +339,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     }
                 }
                 
-                const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
+                const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
                 const parsedDate = new Date(date);
@@ -410,6 +465,10 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const hasRoutineMonthsOfYearColumn = headers.includes("Routine_Months_Of_Year");
             const hasRecurrenceDaysColumn = headers.includes("Recurrence_Days");
             const hasLastGeneratedHistoryIdColumn = headers.includes("Last_Generated_History_ID");
+            const hasSkillIdColumn = headers.includes("Skill_ID");
+            const hasSkillNameColumn = headers.includes("Skill_Name");
+            const hasSkillRoutineIdColumn = headers.includes("Skill_Routine_ID");
+            const hasDurationMinutesColumn = headers.includes("Duration_Minutes");
             const parentTodoId = hasParentTodoIdColumn ? row[headers.indexOf("Parent_ID")] : undefined;
             const deepWorkRole = hasDeepWorkRoleColumn ? row[headers.indexOf("Deep_Work_Role")] : undefined;
             const stepOrderStr = hasStepOrderColumn ? row[headers.indexOf("Step_Order")] : undefined;
@@ -446,8 +505,18 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const routineMonthsOfYear = hasRoutineMonthsOfYearColumn ? splitSheetNumberList(getHeaderCell(headers, row, "Routine_Months_Of_Year")) : undefined;
             const recurrenceDays = hasRecurrenceDaysColumn ? parsePositiveInt(getHeaderCell(headers, row, "Recurrence_Days")) : undefined;
             const lastGeneratedHistoryId = hasLastGeneratedHistoryIdColumn ? cleanCell(getHeaderCell(headers, row, "Last_Generated_History_ID")) : undefined;
+            const sheetSkillName = hasSkillNameColumn ? cleanCell(getHeaderCell(headers, row, "Skill_Name")) : undefined;
+            const sheetSkillId = hasSkillIdColumn ? cleanCell(getHeaderCell(headers, row, "Skill_ID")) : undefined;
+            const skillRoutineId = hasSkillRoutineIdColumn ? cleanCell(getHeaderCell(headers, row, "Skill_Routine_ID")) : undefined;
+            const skillDurationMinutes = hasDurationMinutesColumn ? parsePositiveInt(getHeaderCell(headers, row, "Duration_Minutes")) : undefined;
             const normalizedType = String(typeStr || '').trim().toLowerCase();
             const todoLikeType = normalizedType === 'skills' ? ItemType.SKILLS : ItemType.TODO;
+            const resolvedSkillName = todoLikeType === ItemType.SKILLS ? (sheetSkillName || content || undefined) : sheetSkillName;
+            const resolvedSkillId = sheetSkillId || (todoLikeType === ItemType.SKILLS && resolvedSkillName ? getSkillId(resolvedSkillName) : undefined);
+            const resolvedSkillRoutineId = skillRoutineId || (todoLikeType === ItemType.SKILLS ? (idStr || undefined) : undefined);
+            const resolvedDurationMinutes = skillDurationMinutes || (todoLikeType === ItemType.SKILLS ? parsePositiveInt(getHeaderCell(headers, row, "Duration_Minutes")) : undefined);
+            const resolvedIsRoutine = todoLikeType === ItemType.SKILLS ? true : isRoutine;
+            const resolvedRoutineInterval = todoLikeType === ItemType.SKILLS ? (routineInterval || 'weekly') : routineInterval;
             
             const match = newItems.find(i => 
                 (idStr && i.id === idStr) ||
@@ -518,13 +587,17 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (hasDeepWorkReasonColumn && match.meta.deepWorkReason !== deepWorkReason) { match.meta.deepWorkReason = deepWorkReason; updated = true; }
                 if (hasSubtasksColumn && JSON.stringify(match.meta.subtasks || []) !== JSON.stringify(subtasks || [])) { match.meta.subtasks = subtasks; updated = true; }
                 if (hasHideFromCalendarColumn && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
-                if (hasIsRoutineColumn && match.meta.isRoutine !== isRoutine) { match.meta.isRoutine = isRoutine; updated = true; }
-                if (hasRoutineIntervalColumn && match.meta.routineInterval !== routineInterval) { match.meta.routineInterval = routineInterval; updated = true; }
+                if ((hasIsRoutineColumn || todoLikeType === ItemType.SKILLS) && match.meta.isRoutine !== resolvedIsRoutine) { match.meta.isRoutine = resolvedIsRoutine; updated = true; }
+                if ((hasRoutineIntervalColumn || todoLikeType === ItemType.SKILLS) && match.meta.routineInterval !== resolvedRoutineInterval) { match.meta.routineInterval = resolvedRoutineInterval; updated = true; }
                 if (hasRoutineDaysOfWeekColumn && JSON.stringify(match.meta.routineDaysOfWeek || []) !== JSON.stringify(routineDaysOfWeek || [])) { match.meta.routineDaysOfWeek = routineDaysOfWeek; updated = true; }
                 if (hasRoutineDaysOfMonthColumn && JSON.stringify(match.meta.routineDaysOfMonth || []) !== JSON.stringify(routineDaysOfMonth || [])) { match.meta.routineDaysOfMonth = routineDaysOfMonth; updated = true; }
                 if (hasRoutineMonthsOfYearColumn && JSON.stringify(match.meta.routineMonthsOfYear || []) !== JSON.stringify(routineMonthsOfYear || [])) { match.meta.routineMonthsOfYear = routineMonthsOfYear; updated = true; }
                 if (hasRecurrenceDaysColumn && match.meta.recurrenceDays !== recurrenceDays) { match.meta.recurrenceDays = recurrenceDays; updated = true; }
                 if (hasLastGeneratedHistoryIdColumn && match.meta.lastGeneratedHistoryId !== lastGeneratedHistoryId) { match.meta.lastGeneratedHistoryId = lastGeneratedHistoryId; updated = true; }
+                if ((hasSkillIdColumn || todoLikeType === ItemType.SKILLS) && match.meta.skillId !== resolvedSkillId) { match.meta.skillId = resolvedSkillId; updated = true; }
+                if ((hasSkillNameColumn || todoLikeType === ItemType.SKILLS) && match.meta.skillName !== resolvedSkillName) { match.meta.skillName = resolvedSkillName; updated = true; }
+                if ((hasSkillRoutineIdColumn || todoLikeType === ItemType.SKILLS) && match.meta.skillRoutineId !== resolvedSkillRoutineId) { match.meta.skillRoutineId = resolvedSkillRoutineId; updated = true; }
+                if ((hasDurationMinutesColumn || todoLikeType === ItemType.SKILLS) && resolvedDurationMinutes && match.meta.durationMinutes !== resolvedDurationMinutes) { match.meta.durationMinutes = resolvedDurationMinutes; updated = true; }
                 const newStepIndex = !isNaN(stepOrder) ? stepOrder : undefined;
                 if (hasStepOrderColumn && match.meta.deepWorkStepIndex !== newStepIndex) { match.meta.deepWorkStepIndex = newStepIndex; updated = true; }
                 const newStepCount = !isNaN(stepCount) ? stepCount : undefined;
@@ -532,7 +605,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if ((newDeepWorkParent || newParentTodoId) && !match.meta.deepWorkPlanId) { match.meta.deepWorkPlanId = newParentTodoId || match.id; updated = true; }
                 const normalizedMeta = normalizeDeepWorkTodoMeta(match.meta);
                 if (JSON.stringify(match.meta) !== JSON.stringify(normalizedMeta)) { match.meta = normalizedMeta; updated = true; }
-                const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
+                const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
                 if (dueDateStr) {
@@ -615,6 +689,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 }
 
                 const newId = idStr || uuidv4();
+                const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+                const nextTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
                 newItems.push({
                     id: newId,
                     type: todoLikeType,
@@ -624,7 +700,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     completed_at: isoCompletedAt,
                     meta: {
                         priority: priority || 'normal',
-                        tags: tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [],
+                        tags: nextTags,
                         progress: parseInt((progressStr || '').replace('%', '')) || 0,
                         progressNotes: progressNotes || '',
                         date: isoDueDate,
@@ -658,13 +734,17 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         deepWorkStepCount: !isNaN(stepCount) ? stepCount : undefined,
                         subtasks,
                         hideFromCalendar,
-                        isRoutine,
-                        routineInterval,
+                        isRoutine: resolvedIsRoutine,
+                        routineInterval: resolvedRoutineInterval,
                         routineDaysOfWeek,
                         routineDaysOfMonth,
                         routineMonthsOfYear,
                         recurrenceDays,
-                        lastGeneratedHistoryId
+                        lastGeneratedHistoryId,
+                        skillId: resolvedSkillId,
+                        skillName: resolvedSkillName,
+                        skillRoutineId: resolvedSkillRoutineId || newId,
+                        durationMinutes: resolvedDurationMinutes
                     }
                 });
                 seenItemIds.add(newId);
@@ -805,7 +885,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (investmentAvgBuyStr !== undefined && match.meta.investmentAveragePrice !== investmentAvgBuy) { match.meta.investmentAveragePrice = investmentAvgBuy; updated = true; }
                 if (investmentCurrentPriceStr !== undefined && match.meta.investmentCurrentPrice !== investmentCurrentPrice) { match.meta.investmentCurrentPrice = investmentCurrentPrice; updated = true; }
                 if (investmentPlatform !== undefined && match.meta.investmentPlatform !== (investmentPlatform || undefined)) { match.meta.investmentPlatform = investmentPlatform || undefined; updated = true; }
-                const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
+                const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
                 if (dueDateStr) {
@@ -1070,7 +1151,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     match.meta.priority = priority;
                     updated = true;
                 }
-                const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
+                const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 if (hasHideFromCalendar && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
                 
@@ -1190,7 +1272,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     if (match.completed_at !== journalCompletedAt) { match.completed_at = journalCompletedAt; updated = true; }
                 }
                 
-                const newTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()) : [];
+                const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
                 const parsedDate = new Date(date);
@@ -1342,14 +1425,68 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
     const skillConfigSheet = valueRanges.find(r => r.range && r.range.includes('Skills Config'));
     if (hasAuthoritativeRows(skillConfigSheet)) {
+        const headers = skillConfigSheet.values[0] || [];
         const rows = skillConfigSheet.values.slice(1);
-        db.skills = rows.map(row => ({
-            id: row[0],
-            name: row[1],
-            weeklyTargetMinutes: parseInt(row[2]) || 0,
-            created_at: row[3],
-            color: row[4]
-        }));
+        const cell = (row: unknown[], name: string, fallbackIndex: number) => getHeaderAwareCell(headers, row, name, fallbackIndex);
+
+        const inferScheduleFromRoutine = (skillId: string, skillName: string): SkillSchedule | undefined => {
+            const routine = newItems.find(item =>
+                item.type === ItemType.SKILLS
+                && !!item.meta.isRoutine
+                && (
+                    (!!item.meta.skillId && item.meta.skillId === skillId)
+                    || (!!item.meta.skillName && item.meta.skillName.toLowerCase() === skillName.toLowerCase())
+                    || (!item.meta.skillId && item.content.toLowerCase() === skillName.toLowerCase())
+                )
+            );
+            const interval = parseRoutineInterval(routine?.meta.routineInterval);
+            if (!routine || !interval) return undefined;
+
+            const startTime = getTimeCellFromDate(routine.meta.start || routine.meta.date, '09:00');
+            const endTime = routine.meta.end
+                ? getTimeCellFromDate(routine.meta.end, addMinutesToTime(startTime, Number(routine.meta.durationMinutes) || 60))
+                : addMinutesToTime(startTime, Number(routine.meta.durationMinutes) || 60);
+
+            return {
+                enabled: true,
+                interval,
+                daysOfWeek: interval === 'weekly' ? routine.meta.routineDaysOfWeek : undefined,
+                daysOfMonth: interval === 'monthly' ? routine.meta.routineDaysOfMonth : undefined,
+                monthsOfYear: interval === 'yearly' ? routine.meta.routineMonthsOfYear : undefined,
+                startTime,
+                endTime,
+            };
+        };
+
+        db.skills = rows
+            .map(row => {
+                const id = cleanCell(cell(row, 'ID', 0)) || uuidv4();
+                const name = cleanCell(cell(row, 'Name', 1));
+                if (!name) return null;
+
+                const schedule = buildSkillSchedule(
+                    cell(row, 'Schedule_Enabled', 5),
+                    cell(row, 'Schedule_Interval', 6),
+                    cell(row, 'Schedule_Days_Of_Week', 7),
+                    cell(row, 'Schedule_Days_Of_Month', 8),
+                    cell(row, 'Schedule_Months_Of_Year', 9),
+                    cell(row, 'Schedule_Start_Time', 10),
+                    cell(row, 'Schedule_End_Time', 11),
+                );
+                const inferredSchedule = !schedule ? inferScheduleFromRoutine(id, name) : undefined;
+
+                return {
+                    id,
+                    name,
+                    description: cleanCell(getHeaderCell(headers, row, 'Description')),
+                    imageUrl: cleanCell(getHeaderCell(headers, row, 'Image_URL')),
+                    weeklyTargetMinutes: parsePositiveInt(cell(row, 'Weekly_Target_Minutes', 4)),
+                    schedule: schedule || inferredSchedule,
+                    created_at: cleanCell(cell(row, 'Created_At', 12)) || new Date().toISOString(),
+                    color: cleanCell(cell(row, 'Color', 13)) || 'indigo-500'
+                };
+            })
+            .filter((skill): skill is NonNullable<typeof skill> => !!skill);
         hasChanges = true;
     }
 

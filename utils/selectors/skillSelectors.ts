@@ -34,6 +34,19 @@ const parseTime = (value?: string) => {
   };
 };
 
+const formatTimeFromDate = (value?: string, fallback = '09:00') => {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
+
+const addMinutesToTime = (time: string, minutes: number) => {
+  const { hour, minute } = parseTime(time);
+  const total = (((hour * 60 + minute + Math.max(minutes, 1)) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};
+
 const setTime = (date: Date, time?: string) => {
   const next = new Date(date);
   const { hour, minute } = parseTime(time);
@@ -72,6 +85,39 @@ const scheduleMatchesDate = (schedule: SkillSchedule, date: Date) => {
   }
 
   return false;
+};
+
+const isRoutineSkillItem = (item: BrainDumpItem, skill: Pick<Skill, 'id' | 'name'>) => {
+  if (item.type !== ItemType.SKILLS || !item.meta.isRoutine) return false;
+  if (item.meta.skillId && item.meta.skillId === skill.id) return true;
+  if (item.meta.skillName && item.meta.skillName.toLowerCase() === skill.name.toLowerCase()) return true;
+  return !item.meta.skillId && item.content.toLowerCase() === skill.name.toLowerCase();
+};
+
+const scheduleFromRoutineItem = (item: BrainDumpItem): SkillSchedule | undefined => {
+  const interval = item.meta.routineInterval;
+  if (!interval) return undefined;
+
+  const startTime = formatTimeFromDate(item.meta.start || item.meta.date, '09:00');
+  const endTime = item.meta.end
+    ? formatTimeFromDate(item.meta.end, addMinutesToTime(startTime, Number(item.meta.durationMinutes) || 60))
+    : addMinutesToTime(startTime, Number(item.meta.durationMinutes) || 60);
+
+  return {
+    enabled: true,
+    interval,
+    daysOfWeek: interval === 'weekly' ? item.meta.routineDaysOfWeek : undefined,
+    daysOfMonth: interval === 'monthly' ? item.meta.routineDaysOfMonth : undefined,
+    monthsOfYear: interval === 'yearly' ? item.meta.routineMonthsOfYear : undefined,
+    startTime,
+    endTime,
+  };
+};
+
+const resolveSkillSchedule = (skill: Skill, items: BrainDumpItem[]): SkillSchedule | undefined => {
+  if (skill.schedule) return skill.schedule;
+  const routineItem = items.find(item => isRoutineSkillItem(item, skill));
+  return routineItem ? scheduleFromRoutineItem(routineItem) : undefined;
 };
 
 export const getSkillScheduleSessionsForWeek = (
@@ -130,6 +176,8 @@ export const getSkillItems = (items: BrainDumpItem[], skills: Skill[]) => {
   const weekEnd = getEndOfWeek(new Date());
 
   const stats = skills.map(skill => {
+    const schedule = resolveSkillSchedule(skill, items);
+    const skillWithResolvedSchedule = { ...skill, schedule };
     const skillLogs = logs.filter(log =>
       (log.meta.skillId && log.meta.skillId === skill.id) ||
       (!log.meta.skillId && log.meta.skillName?.toLowerCase() === skill.name.toLowerCase())
@@ -143,14 +191,14 @@ export const getSkillItems = (items: BrainDumpItem[], skills: Skill[]) => {
       })
       .reduce((sum, log) => sum + (Number(log.meta.durationMinutes) || 0), 0);
 
-    const scheduleSessions = getSkillScheduleSessionsForWeek(skill);
+    const scheduleSessions = getSkillScheduleSessionsForWeek(skillWithResolvedSchedule);
     const scheduleWeeklyTargetMinutes = scheduleSessions.reduce((sum, session) => sum + session.durationMinutes, 0);
-    const effectiveWeeklyTargetMinutes = skill.schedule?.enabled
+    const effectiveWeeklyTargetMinutes = schedule?.enabled
       ? scheduleWeeklyTargetMinutes
       : (skill.weeklyTargetMinutes || 0);
 
     return {
-      ...skill,
+      ...skillWithResolvedSchedule,
       totalMinutes,
       totalHours: totalMinutes / 60,
       weeklyMinutes,

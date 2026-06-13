@@ -63,7 +63,7 @@ type SystemSheetSnapshotMeta = {
 
 export const SPREADSHEET_FETCH_RANGES = {
   Transactions: 'A:V',
-  Todos: 'A:AV',
+  Todos: 'A:AZ',
   Shopping: 'A:Z',
   [SAVING_GOALS_INVESTMENTS_SHEET_NAME]: 'A:R',
   Events: 'A:J',

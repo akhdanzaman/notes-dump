@@ -415,9 +415,14 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         }
 
         const formatTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        const dayVisibilityClass = (index: number) => {
+            if (index < 3) return '';
+            if (index === 3) return 'hidden min-[420px]:block md:block';
+            return 'hidden md:block';
+        };
 
         return (
-            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)] gap-5 items-start">
                 <div className="space-y-4">
                     {visibleSkillItems.visibleItems.map(skill => {
                         const progress = skill.weeklyProgress || 0;
@@ -431,29 +436,29 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 key={skill.id}
                                 layout={!isDragging}
                                 transition={{ type: "tween", duration: 0.3 }}
-                                className="group bg-surface border border-border rounded-[28px] p-4 sm:p-5 shadow-sm hover:border-indigo-500/40 transition-colors"
+                                className="group bg-surface border border-border rounded-[30px] p-1 shadow-sm hover:border-indigo-500/40 transition-colors overflow-hidden"
                             >
-                                <div className="grid grid-cols-[92px_minmax(0,1fr)] sm:grid-cols-[150px_minmax(0,1fr)_auto] gap-4 items-center">
-                                    <div className="h-24 sm:h-32 rounded-[24px] bg-background border border-border overflow-hidden flex items-center justify-center">
+                                <div className="grid grid-cols-1 sm:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_auto] gap-0 sm:gap-4 items-stretch">
+                                    <div className="w-full aspect-[16/9] sm:aspect-auto sm:h-full sm:min-h-[184px] rounded-[26px] bg-background border border-border overflow-hidden flex items-center justify-center">
                                         {skill.imageUrl ? (
                                             <img src={skill.imageUrl} alt={skill.name} className="h-full w-full object-cover" />
                                         ) : (
                                             <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-muted bg-indigo-500/5">
-                                                <Target className="w-7 h-7 text-indigo-500" />
+                                                <Target className="w-9 h-9 text-indigo-500" />
                                                 <span className="text-[10px] font-bold uppercase tracking-wider">No image</span>
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 p-4 sm:py-4 sm:pl-0 sm:pr-2">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
-                                                <h4 className="font-bold text-lg text-primary truncate">{skill.name}</h4>
-                                                <p className="text-xs text-muted mt-1 line-clamp-2">
+                                                <h4 className="font-bold text-xl text-primary truncate">{skill.name}</h4>
+                                                <p className="text-xs text-muted mt-1 line-clamp-2 leading-5">
                                                     {skill.description || 'No description yet. Add one from edit skill.'}
                                                 </p>
                                             </div>
-                                            <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-amber-500">
+                                            <div className="flex sm:hidden items-center gap-2 text-xs font-bold text-amber-500 shrink-0">
                                                 ★ {(progress / 20).toFixed(1)}
                                             </div>
                                         </div>
@@ -484,9 +489,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                                     style={{ width: `${Math.min(100, progress)}%` }}
                                                 />
                                             </div>
-                                            <div className="flex justify-between items-center mt-2">
+                                            <div className="flex justify-between items-center mt-2 gap-3">
                                                 <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Weekly Progress</span>
-                                                <span className="text-[10px] font-medium text-muted flex items-center gap-1">
+                                                <span className="text-[10px] font-medium text-muted flex items-center gap-1 whitespace-nowrap">
                                                     <Target className="w-3 h-3" />
                                                     Target: {target || 0}m/wk
                                                 </span>
@@ -494,7 +499,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="flex sm:flex-col gap-2 justify-end sm:justify-start col-span-2 sm:col-span-1">
+                                    <div className="flex sm:flex-col gap-2 justify-end sm:justify-start p-4 sm:pl-0">
+                                        <div className="hidden sm:flex items-center justify-center text-xs font-bold text-amber-500 mb-1">
+                                            ★ {(progress / 20).toFixed(1)}
+                                        </div>
                                         <button
                                             onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
                                             className="p-2 bg-background hover:bg-muted/10 rounded-xl transition-colors"
@@ -517,7 +525,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     <LoadMoreButton remainingCount={visibleSkillItems.remainingCount} onClick={visibleSkillItems.loadMore} />
                 </div>
 
-                <aside className="xl:sticky xl:top-4 bg-surface border border-border rounded-[28px] p-5 shadow-sm">
+                <aside className="xl:sticky xl:top-4 bg-surface border border-border rounded-[30px] p-4 sm:p-5 shadow-sm overflow-hidden">
                     <div className="flex items-center justify-between mb-5">
                         <div>
                             <h3 className="text-lg font-bold text-primary">Schedule</h3>
@@ -528,13 +536,13 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-7 gap-2 mb-5">
-                        {weekDays.map(day => {
+                    <div className="grid grid-cols-3 min-[420px]:grid-cols-4 md:grid-cols-7 gap-1.5 mb-5 overflow-hidden">
+                        {weekDays.map((day, index) => {
                             const hasSchedule = scheduleRows.some(row => row.session.start.toDateString() === day.toDateString());
                             const isToday = day.toDateString() === new Date().toDateString();
                             return (
-                                <div key={day.toISOString()} className={`rounded-2xl p-2 text-center border ${isToday ? 'border-indigo-500 bg-indigo-500/10' : 'border-border bg-background'}`}>
-                                    <div className="text-[10px] text-muted font-bold">{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
+                                <div key={day.toISOString()} className={`${dayVisibilityClass(index)} rounded-2xl p-2 text-center border min-w-0 ${isToday ? 'border-indigo-500 bg-indigo-500/10' : 'border-border bg-background'}`}>
+                                    <div className="text-[10px] text-muted font-bold truncate">{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
                                     <div className="text-sm font-bold text-primary">{day.getDate()}</div>
                                     {hasSchedule && <div className="mx-auto mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
                                 </div>
@@ -552,7 +560,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 const target = skill.effectiveWeeklyTargetMinutes || 0;
                                 const achieved = target ? Math.min(100, ((skill.weeklyMinutes || 0) / target) * 100) : 0;
                                 return (
-                                    <div key={`${skill.id}-${session.start.toISOString()}`} className="grid grid-cols-[44px_minmax(0,1fr)_auto] gap-3 items-center rounded-2xl bg-background border border-border p-3">
+                                    <div key={`${skill.id}-${session.start.toISOString()}`} className="grid grid-cols-[40px_minmax(0,1fr)] sm:grid-cols-[44px_minmax(0,1fr)_auto] gap-3 items-center rounded-2xl bg-background border border-border p-3 min-w-0">
                                         <div className="text-center border-r border-border pr-3">
                                             <div className="text-sm font-bold text-primary">{session.start.getDate().toString().padStart(2, '0')}</div>
                                         </div>
@@ -563,7 +571,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                                 <div className="h-full bg-indigo-500" style={{ width: `${achieved}%` }} />
                                             </div>
                                         </div>
-                                        <div className="text-right text-xs font-medium text-muted">
+                                        <div className="col-span-2 sm:col-span-1 sm:text-right text-xs font-medium text-muted pl-[52px] sm:pl-0">
                                             {formatTime(session.start)} - {formatTime(session.end)}
                                         </div>
                                     </div>
