@@ -1,5 +1,5 @@
---- a/components/views/SummaryView.tsx
-+++ b/components/views/SummaryView.tsx
+--- notes_original/components/views/SummaryView.tsx	2026-06-13 12:20:52.356844987 +0000
++++ fix2/components/views/SummaryView.tsx	2026-06-13 12:51:38.110380026 +0000
 @@ -73,6 +73,7 @@
  import { contentSurface } from "../layout/contentSurface";
  import { buildSummaryFocusDisplay } from "../../utils/summaryFocusUtils";
@@ -18,7 +18,7 @@
    ) => void;
    handleDelete: (id: string) => void;
    handleKeepRawTodo: (id: string) => void;
-@@ -215,6 +219,26 @@
+@@ -215,6 +219,27 @@
    }, []);
  
    const todayDate = systemNow;
@@ -42,10 +42,11 @@
 +    const dueDate = getRoutineDueDate(item);
 +    return !!dueDate && isSameCalendarDay(dueDate, date);
 +  };
++
    const { pendingGroups } = getFocusMonthData(items, todayDate, "", "");
  
    const shoppingGroups = useMemo(() => getShoppingItems(items), [items]);
-@@ -235,6 +259,15 @@
+@@ -235,6 +260,15 @@
        routines: Array.from(routineMap.values()),
      };
    }, [pendingGroups, routineShopping]);
@@ -61,7 +62,7 @@
    const { displayItems, displayTitle, displaySubtitle, isDoneState } =
      useMemo(() => {
        return buildSummaryFocusDisplay(
-@@ -245,7 +278,7 @@
+@@ -245,7 +279,7 @@
        );
      }, [items, summaryPendingGroups, urgent]);
  
@@ -70,7 +71,7 @@
      (r) => r.status === "pending",
    );
    const showRitualsSection =
-@@ -349,6 +382,10 @@
+@@ -349,6 +383,10 @@
    const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>(
      {},
    );
@@ -81,7 +82,22 @@
  
    useEffect(() => {
      if (isNotificationOpen) {
-@@ -1209,15 +1246,28 @@
+@@ -1158,8 +1196,13 @@
+             : `${Math.round(numbers.progress)}%`,
+           showProgress: !isInvestment,
+           kind: item.meta.shoppingCategory,
++          done: item.status === "done",
+         };
+-      });
++      })
++      .filter(
++        (goal) =>
++          goal.kind !== "saving" || (!goal.done && goal.progress < 100),
++      );
+ 
+     const startOfWeek = new Date(todayDate);
+     startOfWeek.setHours(0, 0, 0, 0);
+@@ -1209,15 +1252,28 @@
      });
    }, [items, skills, todayDate.getTime()]);
  
@@ -112,7 +128,22 @@
    );
  
    const routineDoneCount = routineDashboardItems.filter(
-@@ -1606,7 +1656,7 @@
+@@ -1344,6 +1400,14 @@
+     minute: "2-digit",
+     hour12: false,
+   });
++  const todayMonthYearLabel = todayDate.toLocaleDateString(undefined, {
++    month: "long",
++    year: "numeric",
++  });
++  const themeMonthYearLabel = themeNavDate.toLocaleDateString(undefined, {
++    month: "long",
++    year: "numeric",
++  });
+ 
+   const dashboardShellClass = [
+     "overflow-x-hidden overflow-y-visible rounded-none border-0 bg-transparent p-0 text-slate-950 shadow-none",
+@@ -1606,7 +1670,7 @@
      <button
        type="button"
        onClick={openThemeEditor}
@@ -121,7 +152,7 @@
          compact ? "rounded-[1.75rem]" : "xl:min-h-[18.75rem]"
        }`}
      >
-@@ -1615,7 +1665,7 @@
+@@ -1615,7 +1679,7 @@
        {renderThemeImageCta()}
  
        <div
@@ -130,7 +161,7 @@
        >
          <h1
            className={`${compact ? "text-4xl" : "text-5xl xl:text-6xl"} max-w-3xl font-black leading-[1.03] tracking-tight text-[#10233f] dark:text-white`}
-@@ -1643,7 +1693,7 @@
+@@ -1643,7 +1707,7 @@
    const renderDateCard = () => (
      <div
        data-swipe-date="summary-theme-month"
@@ -139,30 +170,49 @@
        onTouchStart={dateSwipeHandlers.onTouchStart}
        onTouchMove={dateSwipeHandlers.onTouchMove}
        onTouchEnd={dateSwipeHandlers.onTouchEnd}
-@@ -1658,19 +1708,14 @@
+@@ -1658,20 +1722,12 @@
        <div className="mt-1 text-6xl font-black leading-none text-blue-700 dark:text-blue-300">
          {String(todayDate.getDate()).padStart(2, "0")}
        </div>
--      <div className="mt-2 text-2xl font-black leading-none tracking-tight text-slate-900 dark:text-zinc-50">
--        {systemTimeLabel}
--      </div>
++      <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
++        {todayMonthYearLabel}
++      </div>
+       <div className="mt-2 text-2xl font-black leading-none tracking-tight text-slate-900 dark:text-zinc-50">
+         {systemTimeLabel}
+       </div>
 -      <div
 -        className={`mt-1 text-[11px] font-bold uppercase tracking-[0.18em] ${dashboardMuted}`}
 -      >
 -        System time
 -      </div>
-       <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
-         {themeNavDate.toLocaleDateString(undefined, {
-           month: "long",
-           year: "numeric",
-         })}
-+      </div>
-+      <div className="mt-2 text-2xl font-black leading-none tracking-tight text-slate-900 dark:text-zinc-50">
-+        {systemTimeLabel}
-       </div>
+-      <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
+-        {themeNavDate.toLocaleDateString(undefined, {
+-          month: "long",
+-          year: "numeric",
+-        })}
+-      </div>
  
        <div className="mt-6 flex items-center justify-center gap-2">
-@@ -1761,22 +1806,59 @@
+         <button
+@@ -1685,9 +1741,15 @@
+         <button
+           type="button"
+           onClick={openThemeEditor}
+-          className="rounded-full bg-blue-50 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
++          className="rounded-full bg-blue-50 px-3 py-2 text-center text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
++          aria-label={`Edit ${themeMonthYearLabel} theme`}
+         >
+-          Theme
++          <span className="block text-[10px] font-black uppercase tracking-[0.16em]">
++            Theme
++          </span>
++          <span className="mt-0.5 block text-[10px] font-bold normal-case tracking-normal">
++            {themeMonthYearLabel}
++          </span>
+         </button>
+         <button
+           type="button"
+@@ -1761,86 +1823,130 @@
      </section>
    );
  
@@ -176,12 +226,6 @@
 -          <BarChart3 className="h-5 w-5" />
 -        </div>
 -      </div>
--
--      {goalDashboardItems.length > 0 ? (
--        <div
--          className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
--        >
--          {goalDashboardItems.map((goal, index) => (
 +  const renderGoalsCard = () => {
 +    const goalToggleClass = (active: boolean) =>
 +      `rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${
@@ -189,59 +233,141 @@
 +          ? "bg-blue-700 text-white shadow-sm dark:bg-blue-300 dark:text-zinc-950"
 +          : "bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
 +      }`;
-+
+ 
+-      {goalDashboardItems.length > 0 ? (
+-        <div
+-          className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
+-        >
+-          {goalDashboardItems.map((goal, index) => (
+-            <div
+-              key={goal.id}
+-              className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
+-            >
+-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+-                {goal.kind === "investment" ? (
+-                  <BarChart3 className="h-4 w-4" />
+-                ) : goal.kind === "skill" ? (
+-                  <Target className="h-4 w-4" />
+-                ) : index === 0 ? (
+-                  <WalletIcon className="h-4 w-4" />
+-                ) : (
+-                  <FileText className="h-4 w-4" />
+-                )}
+-              </div>
 +    return (
 +      <section
 +        className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
 +      >
-+        <div className="mb-3 flex shrink-0 items-center justify-between">
++        <div className="mb-5 flex shrink-0 items-center justify-between gap-3">
 +          <h2 className={dashboardSectionTitle}>Goals Progress</h2>
-+          <div className={dashboardIconClass}>
-+            <BarChart3 className="h-5 w-5" />
++          <div className="flex shrink-0 items-center gap-2">
++            <div className="flex flex-wrap justify-end gap-2">
++              <button
++                type="button"
++                onClick={() =>
++                  setGoalDashboardVisibility((prev) => ({
++                    ...prev,
++                    savings: !prev.savings,
++                  }))
++                }
++                className={goalToggleClass(goalDashboardVisibility.savings)}
++                aria-pressed={goalDashboardVisibility.savings}
++              >
++                Savings
++              </button>
++              <button
++                type="button"
++                onClick={() =>
++                  setGoalDashboardVisibility((prev) => ({
++                    ...prev,
++                    skills: !prev.skills,
++                  }))
++                }
++                className={goalToggleClass(goalDashboardVisibility.skills)}
++                aria-pressed={goalDashboardVisibility.skills}
++              >
++                Skills
++              </button>
++            </div>
++            <div className={dashboardIconClass}>
++              <BarChart3 className="h-5 w-5" />
++            </div>
 +          </div>
 +        </div>
-+
-+        <div className="mb-4 flex shrink-0 flex-wrap gap-2">
-+          <button
-+            type="button"
-+            onClick={() =>
-+              setGoalDashboardVisibility((prev) => ({
-+                ...prev,
-+                savings: !prev.savings,
-+              }))
-+            }
-+            className={goalToggleClass(goalDashboardVisibility.savings)}
-+            aria-pressed={goalDashboardVisibility.savings}
-+          >
-+            Savings
-+          </button>
-+          <button
-+            type="button"
-+            onClick={() =>
-+              setGoalDashboardVisibility((prev) => ({
-+                ...prev,
-+                skills: !prev.skills,
-+              }))
-+            }
-+            className={goalToggleClass(goalDashboardVisibility.skills)}
-+            aria-pressed={goalDashboardVisibility.skills}
-+          >
-+            Skills
-+          </button>
-+        </div>
-+
+ 
+-              <div className="min-w-0">
+-                <div className="mb-1 truncate text-sm font-semibold text-slate-700 dark:text-zinc-200">
+-                  {goal.label}
 +        {visibleGoalDashboardItems.length > 0 ? (
 +          <div
 +            className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
 +          >
 +            {visibleGoalDashboardItems.map((goal, index) => (
-             <div
-               key={goal.id}
-               className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
-@@ -1822,25 +1904,31 @@
-                 {goal.valueLabel}
++              <div
++                key={goal.id}
++                className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
++              >
++                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
++                  {goal.kind === "investment" ? (
++                    <BarChart3 className="h-4 w-4" />
++                  ) : goal.kind === "skill" ? (
++                    <Target className="h-4 w-4" />
++                  ) : index === 0 ? (
++                    <WalletIcon className="h-4 w-4" />
++                  ) : (
++                    <FileText className="h-4 w-4" />
++                  )}
+                 </div>
+-                {goal.showProgress && (
+-                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+-                    <div
+-                      className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
+-                      style={{ width: `${goal.progress}%` }}
+-                    />
++
++                <div className="min-w-0">
++                  <div className="mb-1 truncate text-sm font-semibold text-slate-700 dark:text-zinc-200">
++                    {goal.label}
+                   </div>
+-                )}
++                  {goal.showProgress && (
++                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
++                      <div
++                        className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
++                        style={{ width: `${goal.progress}%` }}
++                      />
++                    </div>
++                  )}
++                  <div
++                    className={`mt-1 truncate text-[11px] font-semibold ${dashboardMuted}`}
++                  >
++                    {goal.caption}
++                  </div>
++                </div>
++
+                 <div
+-                  className={`mt-1 truncate text-[11px] font-semibold ${dashboardMuted}`}
++                  className={`text-right font-black text-slate-900 dark:text-zinc-50 ${
++                    goal.kind === "investment"
++                      ? "max-w-[8rem] truncate text-xs xl:text-sm"
++                      : "text-sm"
++                  }`}
+                 >
+-                  {goal.caption}
++                  {goal.valueLabel}
+                 </div>
                </div>
-             </div>
+-
+-              <div
+-                className={`text-right font-black text-slate-900 dark:text-zinc-50 ${
+-                  goal.kind === "investment"
+-                    ? "max-w-[8rem] truncate text-xs xl:text-sm"
+-                    : "text-sm"
+-                }`}
+-              >
+-                {goal.valueLabel}
+-              </div>
+-            </div>
 -          ))}
 -        </div>
 -      ) : (
@@ -289,7 +415,7 @@
  
    const renderRoutineCard = () => (
      <section
-@@ -2006,9 +2094,9 @@
+@@ -2006,9 +2112,9 @@
        style={{ x: swipeHandlers.dragOffset }}
      >
        <div className={dashboardShellClass}>
@@ -302,8 +428,8 @@
          </div>
  
          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
---- a/components/ShoppingItem.tsx
-+++ b/components/ShoppingItem.tsx
+--- notes_original/components/ShoppingItem.tsx	2026-06-13 12:20:52.175688291 +0000
++++ fix2/components/ShoppingItem.tsx	2026-06-13 12:54:00.306882777 +0000
 @@ -29,7 +29,13 @@
      newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
      newRoutineDaysOfWeek?: number[],
@@ -350,16 +476,16 @@
        );
    };
  
-@@ -134,20 +148,28 @@
+@@ -134,20 +148,33 @@
    // Routine next cycle logic
    let nextDueText = null;
    let isWaitingForNextCycle = false;
 +  let isRoutineLockedUntilNextDue = false;
 +  let routineNextDueDate: Date | null = null;
    if (isRoutine && isDone && completed_at) {
-      const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
-      const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
-      
+-     const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
+-     const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
+-     
 -     const nextDate = calculateNextDueDate(
 -         doneDate,
 -         meta.routineInterval || 'daily',
@@ -367,7 +493,15 @@
 -         meta.routineDaysOfMonth,
 -         meta.routineMonthsOfYear
 -     );
-+     if (meta.routineInterval) {
++     const completedDate = new Date(completed_at);
++     const scheduledDate = meta.date ? new Date(meta.date) : completedDate;
++     const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
++     const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
++     const doneDate = hasValidScheduledDate ? scheduledDate : completedDate;
++
++     if (hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
++         routineNextDueDate = scheduledDate;
++     } else if (meta.routineInterval) {
 +         routineNextDueDate = calculateNextDueDate(
 +             doneDate,
 +             meta.routineInterval,
@@ -387,7 +521,7 @@
    }
  
    const displayDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
-@@ -189,7 +211,7 @@
+@@ -189,7 +216,7 @@
          ${isDone 
              ? 'bg-surface/50 opacity-75' 
              : `bg-surface hover:bg-surface/80`
@@ -396,7 +530,7 @@
        onClick={toggleExpand}
      >
        <div className="flex flex-col gap-1">
-@@ -200,10 +222,11 @@
+@@ -200,10 +227,11 @@
                  <button 
                      onClick={(e) => {
                          e.stopPropagation();
@@ -411,7 +545,7 @@
                  >
                  {isDone ? (
                      <CheckCircle2 className="w-4 h-4 text-muted" />
-@@ -232,9 +255,15 @@
+@@ -232,9 +260,15 @@
                      <button
                          onClick={(e) => {
                              e.stopPropagation();
@@ -429,7 +563,7 @@
                      >
                          <RotateCcw className="w-2.5 h-2.5" /> Reset
                      </button>
-@@ -352,6 +381,18 @@
+@@ -352,6 +386,18 @@
                                  onChange={(e) => setEditDate(e.target.value)}
                              />
                        </div>
@@ -448,9 +582,9 @@
                    </div>
  
                    {/* Routine Extras */}
---- a/hooks/useBrainDumpData.ts
-+++ b/hooks/useBrainDumpData.ts
-@@ -96,48 +96,50 @@
+--- notes_original/hooks/useBrainDumpData.ts	2026-06-13 12:20:52.659359140 +0000
++++ fix2/hooks/useBrainDumpData.ts	2026-06-13 12:54:25.108306790 +0000
+@@ -96,48 +96,81 @@
      return merged;
  };
  
@@ -461,10 +595,17 @@
 +
 +    const completedDate = item.completed_at ? new Date(item.completed_at) : new Date();
 +    const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
-+    const anchorDate = !Number.isNaN(scheduledDate.getTime()) ? scheduledDate : completedDate;
++    const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
++    const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
++
++    if (item.status === 'done' && hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
++        return scheduledDate;
++    }
++
++    const anchorDate = hasValidScheduledDate ? scheduledDate : completedDate;
 +
 +    if (isShoppingRoutine && !item.meta.routineInterval) {
-+        const recurrenceDays = item.meta.recurrenceDays || 7;
++        const recurrenceDays = Math.max(Number(item.meta.recurrenceDays || 7), 1);
 +        return new Date(anchorDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000));
 +    }
 +
@@ -481,6 +622,30 @@
 +    if (item.status !== 'done') return false;
 +    const nextDueDate = getRoutineNextDueDate(item);
 +    return !!nextDueDate && now.getTime() < nextDueDate.getTime();
++};
++
++const calculateFirstRoutineDueDate = (
++    interval: 'daily' | 'weekly' | 'monthly' | 'yearly' | undefined,
++    daysOfWeek?: number[],
++    daysOfMonth?: number[],
++    monthsOfYear?: number[],
++    recurrenceDays?: number,
++    previousDate?: string
++): Date => {
++    const baseDate = new Date();
++    const previous = previousDate ? new Date(previousDate) : null;
++    if (previous && !Number.isNaN(previous.getTime())) {
++        baseDate.setHours(previous.getHours(), previous.getMinutes(), previous.getSeconds(), previous.getMilliseconds());
++    } else {
++        baseDate.setHours(9, 0, 0, 0);
++    }
++
++    if (!interval) {
++        const days = Math.max(Number(recurrenceDays || 1), 1);
++        return new Date(baseDate.getTime() + (days * 24 * 60 * 60 * 1000));
++    }
++
++    return calculateFirstDueDate(baseDate, interval, daysOfWeek, daysOfMonth, monthsOfYear);
 +};
 +
  export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
@@ -531,7 +696,7 @@
                          progress: 0,
                          progressNotes: undefined,
                          lastGeneratedHistoryId: undefined
-@@ -1693,14 +1695,16 @@
+@@ -1693,15 +1726,17 @@
          if (!targetItem) return;
          if (targetItem.type === ItemType.FINANCE) return;
          const isSavingGoal = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'saving';
@@ -545,13 +710,14 @@
          const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
          const newProgress = newStatus === 'done' ? 100 : 0;
          const newProgressNotes = targetItem.meta.progressNotes;
--
+ 
 -        const isShoppingRoutine = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'routine';
 -        const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
- 
+-
          let historyItemIdToCreate: string | undefined;
          let historyItemIdToDelete: string | undefined;
-@@ -1720,6 +1724,9 @@
+ 
+@@ -1720,6 +1755,9 @@
                      ...item.meta,
                      progress: newProgress,
                      progressNotes: newProgressNotes,
@@ -561,7 +727,7 @@
                      lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
                  }
              } : item
-@@ -1843,21 +1850,10 @@
+@@ -1843,21 +1881,10 @@
  
          if (!item || (!isTodoRoutine && !isShoppingRoutine) || item.status !== 'done') return;
  
@@ -587,3 +753,51 @@
  
          const updatedItem: BrainDumpItem = {
              ...item,
+@@ -2019,23 +2046,33 @@
+                 ? nextShoppingCategory === 'routine'
+                 : (newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine);
+ 
+-            if (!newDate && resolvedIsRoutine) {
+-                const interval = newRoutineInterval !== undefined ? newRoutineInterval : (item.meta.routineInterval || 'daily');
++            if (resolvedIsRoutine) {
++                const interval = newRoutineInterval !== undefined ? newRoutineInterval : item.meta.routineInterval;
+                 const daysOfWeek = newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek;
+                 const daysOfMonth = newRoutineDaysOfMonth !== undefined ? newRoutineDaysOfMonth : item.meta.routineDaysOfMonth;
+                 const monthsOfYear = newRoutineMonthsOfYear !== undefined ? newRoutineMonthsOfYear : item.meta.routineMonthsOfYear;
+-
+-                if (item.status === 'pending') {
+-                    const scheduleChanged =
+-                        interval !== item.meta.routineInterval ||
+-                        JSON.stringify(daysOfWeek) !== JSON.stringify(item.meta.routineDaysOfWeek) ||
+-                        JSON.stringify(daysOfMonth) !== JSON.stringify(item.meta.routineDaysOfMonth) ||
+-                        JSON.stringify(monthsOfYear) !== JSON.stringify(item.meta.routineMonthsOfYear);
+-
+-                    if (scheduleChanged) {
+-                        const nextDue = calculateFirstDueDate(new Date(), interval, daysOfWeek, daysOfMonth, monthsOfYear);
+-                        finalDate = nextDue.toISOString();
+-                    }
++                const recurrenceDays = newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays;
++                const wasRoutine = item.type === ItemType.SHOPPING
++                    ? item.meta.shoppingCategory === 'routine'
++                    : !!item.meta.isRoutine;
++                const scheduleChanged =
++                    !wasRoutine ||
++                    interval !== item.meta.routineInterval ||
++                    (newRecurrenceDays !== undefined && recurrenceDays !== item.meta.recurrenceDays) ||
++                    JSON.stringify(daysOfWeek || []) !== JSON.stringify(item.meta.routineDaysOfWeek || []) ||
++                    JSON.stringify(daysOfMonth || []) !== JSON.stringify(item.meta.routineDaysOfMonth || []) ||
++                    JSON.stringify(monthsOfYear || []) !== JSON.stringify(item.meta.routineMonthsOfYear || []);
++
++                if (scheduleChanged) {
++                    const nextDue = calculateFirstRoutineDueDate(
++                        interval,
++                        daysOfWeek,
++                        daysOfMonth,
++                        monthsOfYear,
++                        recurrenceDays,
++                        item.meta.date
++                    );
++                    finalDate = nextDue.toISOString();
+                 }
+             }
+ 

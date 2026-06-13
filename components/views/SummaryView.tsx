@@ -239,6 +239,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const dueDate = getRoutineDueDate(item);
     return !!dueDate && isSameCalendarDay(dueDate, date);
   };
+
   const { pendingGroups } = getFocusMonthData(items, todayDate, "", "");
 
   const shoppingGroups = useMemo(() => getShoppingItems(items), [items]);
@@ -1195,8 +1196,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             : `${Math.round(numbers.progress)}%`,
           showProgress: !isInvestment,
           kind: item.meta.shoppingCategory,
+          done: item.status === "done",
         };
-      });
+      })
+      .filter(
+        (goal) =>
+          goal.kind !== "saving" || (!goal.done && goal.progress < 100),
+      );
 
     const startOfWeek = new Date(todayDate);
     startOfWeek.setHours(0, 0, 0, 0);
@@ -1393,6 +1399,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+  });
+  const todayMonthYearLabel = todayDate.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+  const themeMonthYearLabel = themeNavDate.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
   });
 
   const dashboardShellClass = [
@@ -1709,10 +1723,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         {String(todayDate.getDate()).padStart(2, "0")}
       </div>
       <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
-        {themeNavDate.toLocaleDateString(undefined, {
-          month: "long",
-          year: "numeric",
-        })}
+        {todayMonthYearLabel}
       </div>
       <div className="mt-2 text-2xl font-black leading-none tracking-tight text-slate-900 dark:text-zinc-50">
         {systemTimeLabel}
@@ -1730,9 +1741,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <button
           type="button"
           onClick={openThemeEditor}
-          className="rounded-full bg-blue-50 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
+          className="rounded-full bg-blue-50 px-3 py-2 text-center text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
+          aria-label={`Edit ${themeMonthYearLabel} theme`}
         >
-          Theme
+          <span className="block text-[10px] font-black uppercase tracking-[0.16em]">
+            Theme
+          </span>
+          <span className="mt-0.5 block text-[10px] font-bold normal-case tracking-normal">
+            {themeMonthYearLabel}
+          </span>
         </button>
         <button
           type="button"
@@ -1818,40 +1835,41 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       <section
         className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
       >
-        <div className="mb-3 flex shrink-0 items-center justify-between">
+        <div className="mb-5 flex shrink-0 items-center justify-between gap-3">
           <h2 className={dashboardSectionTitle}>Goals Progress</h2>
-          <div className={dashboardIconClass}>
-            <BarChart3 className="h-5 w-5" />
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setGoalDashboardVisibility((prev) => ({
+                    ...prev,
+                    savings: !prev.savings,
+                  }))
+                }
+                className={goalToggleClass(goalDashboardVisibility.savings)}
+                aria-pressed={goalDashboardVisibility.savings}
+              >
+                Savings
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setGoalDashboardVisibility((prev) => ({
+                    ...prev,
+                    skills: !prev.skills,
+                  }))
+                }
+                className={goalToggleClass(goalDashboardVisibility.skills)}
+                aria-pressed={goalDashboardVisibility.skills}
+              >
+                Skills
+              </button>
+            </div>
+            <div className={dashboardIconClass}>
+              <BarChart3 className="h-5 w-5" />
+            </div>
           </div>
-        </div>
-
-        <div className="mb-4 flex shrink-0 flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              setGoalDashboardVisibility((prev) => ({
-                ...prev,
-                savings: !prev.savings,
-              }))
-            }
-            className={goalToggleClass(goalDashboardVisibility.savings)}
-            aria-pressed={goalDashboardVisibility.savings}
-          >
-            Savings
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              setGoalDashboardVisibility((prev) => ({
-                ...prev,
-                skills: !prev.skills,
-              }))
-            }
-            className={goalToggleClass(goalDashboardVisibility.skills)}
-            aria-pressed={goalDashboardVisibility.skills}
-          >
-            Skills
-          </button>
         </div>
 
         {visibleGoalDashboardItems.length > 0 ? (
@@ -1859,51 +1877,51 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
           >
             {visibleGoalDashboardItems.map((goal, index) => (
-            <div
-              key={goal.id}
-              className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
-                {goal.kind === "investment" ? (
-                  <BarChart3 className="h-4 w-4" />
-                ) : goal.kind === "skill" ? (
-                  <Target className="h-4 w-4" />
-                ) : index === 0 ? (
-                  <WalletIcon className="h-4 w-4" />
-                ) : (
-                  <FileText className="h-4 w-4" />
-                )}
-              </div>
-
-              <div className="min-w-0">
-                <div className="mb-1 truncate text-sm font-semibold text-slate-700 dark:text-zinc-200">
-                  {goal.label}
-                </div>
-                {goal.showProgress && (
-                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
-                      style={{ width: `${goal.progress}%` }}
-                    />
-                  </div>
-                )}
-                <div
-                  className={`mt-1 truncate text-[11px] font-semibold ${dashboardMuted}`}
-                >
-                  {goal.caption}
-                </div>
-              </div>
-
               <div
-                className={`text-right font-black text-slate-900 dark:text-zinc-50 ${
-                  goal.kind === "investment"
-                    ? "max-w-[8rem] truncate text-xs xl:text-sm"
-                    : "text-sm"
-                }`}
+                key={goal.id}
+                className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
               >
-                {goal.valueLabel}
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+                  {goal.kind === "investment" ? (
+                    <BarChart3 className="h-4 w-4" />
+                  ) : goal.kind === "skill" ? (
+                    <Target className="h-4 w-4" />
+                  ) : index === 0 ? (
+                    <WalletIcon className="h-4 w-4" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="mb-1 truncate text-sm font-semibold text-slate-700 dark:text-zinc-200">
+                    {goal.label}
+                  </div>
+                  {goal.showProgress && (
+                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
+                        style={{ width: `${goal.progress}%` }}
+                      />
+                    </div>
+                  )}
+                  <div
+                    className={`mt-1 truncate text-[11px] font-semibold ${dashboardMuted}`}
+                  >
+                    {goal.caption}
+                  </div>
+                </div>
+
+                <div
+                  className={`text-right font-black text-slate-900 dark:text-zinc-50 ${
+                    goal.kind === "investment"
+                      ? "max-w-[8rem] truncate text-xs xl:text-sm"
+                      : "text-sm"
+                  }`}
+                >
+                  {goal.valueLabel}
+                </div>
               </div>
-            </div>
             ))}
           </div>
         ) : (

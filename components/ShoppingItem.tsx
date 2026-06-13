@@ -151,10 +151,15 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   let isRoutineLockedUntilNextDue = false;
   let routineNextDueDate: Date | null = null;
   if (isRoutine && isDone && completed_at) {
-     const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
-     const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
-     
-     if (meta.routineInterval) {
+     const completedDate = new Date(completed_at);
+     const scheduledDate = meta.date ? new Date(meta.date) : completedDate;
+     const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
+     const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
+     const doneDate = hasValidScheduledDate ? scheduledDate : completedDate;
+
+     if (hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
+         routineNextDueDate = scheduledDate;
+     } else if (meta.routineInterval) {
          routineNextDueDate = calculateNextDueDate(
              doneDate,
              meta.routineInterval,

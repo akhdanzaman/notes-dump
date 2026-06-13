@@ -1,26 +1,29 @@
-# Notes Dump Fixes
+# Notes Dump Fixes v2
 
-This package contains the modified source files and a unified patch for the requested dashboard/routine updates.
+Files included:
 
-## Changed files
 - `components/views/SummaryView.tsx`
 - `components/ShoppingItem.tsx`
 - `hooks/useBrainDumpData.ts`
+- `changes.patch`
 
-## What changed
-- Removed the `System time` label from the summary date card and moved the clock below the month/year.
-- Matched the main hero card height to the date card in the desktop summary layout.
-- Added Goals Progress toggles for Savings/Investment and Skills, so not every goal group is shown at once.
-- Filtered the Summary routine card so it only shows routines due on the same day as the date card/today.
-- Kept completed shopping routine items disabled/marked done until their next scheduled due date.
-- Added `Hide from Calendar` to shopping/routine item edit options and passes it through to item metadata.
+## SummaryView changes
 
-## Apply
-You can either copy the included files into the same paths in your project, or apply:
+- The date card now uses the month/year above the clock for today's real calendar date.
+- The `Theme` slider control now shows the active theme slider month/year inside the Theme button.
+- The hero and date card are stretched to the same height on desktop.
+- Goals Progress toggles (`Savings`, `Skills`) are moved into the header, directly to the left of the chart icon.
+- Completed saving goals are hidden from Goals Progress. Investment goals remain visible.
+- Summary Routine still only shows routines whose due date matches today's calendar date.
 
-```bash
-git apply changes.patch
-```
+## Routine / shopping changes
 
-## Verification note
-A TypeScript check was attempted with `npx --no-install tsc --noEmit --pretty false`, but this extracted workspace does not include `node_modules` / local type packages, so it stopped on missing type definitions (`node`, `vite-plugin-pwa/client`) before checking project code.
+- Done shopping routines remain locked/disabled until their next due date.
+- The reset button for a locked done shopping routine is disabled until the next due date.
+- Shopping item edit panel now includes `Hide from Calendar`.
+- Saving an edited routine schedule recalculates the routine due date from the newly selected schedule for both routine tasks and routine shopping.
+- If a done routine is rescheduled to a future due date, it remains marked done and unlocks when that next due date arrives.
+
+## Validation note
+
+I ran TypeScript parsing/checking with the available global `tsc`. It reaches dependency/type-definition errors because this extracted workspace does not include `node_modules` and is missing local modules/type definitions such as `@types/node`, `vite-plugin-pwa/client`, React, and other app files. No syntax errors were reported in the edited files before those dependency errors.

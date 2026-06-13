@@ -103,10 +103,17 @@ const getRoutineNextDueDate = (item: BrainDumpItem): Date | null => {
 
     const completedDate = item.completed_at ? new Date(item.completed_at) : new Date();
     const scheduledDate = item.meta.date ? new Date(item.meta.date) : completedDate;
-    const anchorDate = !Number.isNaN(scheduledDate.getTime()) ? scheduledDate : completedDate;
+    const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
+    const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
+
+    if (item.status === 'done' && hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
+        return scheduledDate;
+    }
+
+    const anchorDate = hasValidScheduledDate ? scheduledDate : completedDate;
 
     if (isShoppingRoutine && !item.meta.routineInterval) {
-        const recurrenceDays = item.meta.recurrenceDays || 7;
+        const recurrenceDays = Math.max(Number(item.meta.recurrenceDays || 7), 1);
         return new Date(anchorDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000));
     }
 
@@ -123,6 +130,30 @@ const isRoutineLockedUntilNextDue = (item: BrainDumpItem, now = new Date()): boo
     if (item.status !== 'done') return false;
     const nextDueDate = getRoutineNextDueDate(item);
     return !!nextDueDate && now.getTime() < nextDueDate.getTime();
+};
+
+const calculateFirstRoutineDueDate = (
+    interval: 'daily' | 'weekly' | 'monthly' | 'yearly' | undefined,
+    daysOfWeek?: number[],
+    daysOfMonth?: number[],
+    monthsOfYear?: number[],
+    recurrenceDays?: number,
+    previousDate?: string
+): Date => {
+    const baseDate = new Date();
+    const previous = previousDate ? new Date(previousDate) : null;
+    if (previous && !Number.isNaN(previous.getTime())) {
+        baseDate.setHours(previous.getHours(), previous.getMinutes(), previous.getSeconds(), previous.getMilliseconds());
+    } else {
+        baseDate.setHours(9, 0, 0, 0);
+    }
+
+    if (!interval) {
+        const days = Math.max(Number(recurrenceDays || 1), 1);
+        return new Date(baseDate.getTime() + (days * 24 * 60 * 60 * 1000));
+    }
+
+    return calculateFirstDueDate(baseDate, interval, daysOfWeek, daysOfMonth, monthsOfYear);
 };
 
 export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
@@ -2015,23 +2046,33 @@ export const useBrainDumpData = () => {
                 ? nextShoppingCategory === 'routine'
                 : (newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine);
 
-            if (!newDate && resolvedIsRoutine) {
-                const interval = newRoutineInterval !== undefined ? newRoutineInterval : (item.meta.routineInterval || 'daily');
+            if (resolvedIsRoutine) {
+                const interval = newRoutineInterval !== undefined ? newRoutineInterval : item.meta.routineInterval;
                 const daysOfWeek = newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek;
                 const daysOfMonth = newRoutineDaysOfMonth !== undefined ? newRoutineDaysOfMonth : item.meta.routineDaysOfMonth;
                 const monthsOfYear = newRoutineMonthsOfYear !== undefined ? newRoutineMonthsOfYear : item.meta.routineMonthsOfYear;
+                const recurrenceDays = newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays;
+                const wasRoutine = item.type === ItemType.SHOPPING
+                    ? item.meta.shoppingCategory === 'routine'
+                    : !!item.meta.isRoutine;
+                const scheduleChanged =
+                    !wasRoutine ||
+                    interval !== item.meta.routineInterval ||
+                    (newRecurrenceDays !== undefined && recurrenceDays !== item.meta.recurrenceDays) ||
+                    JSON.stringify(daysOfWeek || []) !== JSON.stringify(item.meta.routineDaysOfWeek || []) ||
+                    JSON.stringify(daysOfMonth || []) !== JSON.stringify(item.meta.routineDaysOfMonth || []) ||
+                    JSON.stringify(monthsOfYear || []) !== JSON.stringify(item.meta.routineMonthsOfYear || []);
 
-                if (item.status === 'pending') {
-                    const scheduleChanged =
-                        interval !== item.meta.routineInterval ||
-                        JSON.stringify(daysOfWeek) !== JSON.stringify(item.meta.routineDaysOfWeek) ||
-                        JSON.stringify(daysOfMonth) !== JSON.stringify(item.meta.routineDaysOfMonth) ||
-                        JSON.stringify(monthsOfYear) !== JSON.stringify(item.meta.routineMonthsOfYear);
-
-                    if (scheduleChanged) {
-                        const nextDue = calculateFirstDueDate(new Date(), interval, daysOfWeek, daysOfMonth, monthsOfYear);
-                        finalDate = nextDue.toISOString();
-                    }
+                if (scheduleChanged) {
+                    const nextDue = calculateFirstRoutineDueDate(
+                        interval,
+                        daysOfWeek,
+                        daysOfMonth,
+                        monthsOfYear,
+                        recurrenceDays,
+                        item.meta.date
+                    );
+                    finalDate = nextDue.toISOString();
                 }
             }
 
