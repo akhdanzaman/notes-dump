@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, ShoppingCart, Clock, TrendingUp } from 'lucide-react';
+import { X, Check, ShoppingCart, Clock, TrendingUp, Image as ImageIcon } from 'lucide-react';
 import { ShoppingCategory, InvestmentAssetType, BudgetRule, Wallet } from '../types';
 import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 import { calculateFirstDueDate } from '../utils/selectors';
@@ -27,7 +27,8 @@ interface AddShoppingModalProps {
         investmentUnits?: number,
         investmentAveragePrice?: number,
         investmentCurrentPrice?: number,
-        investmentPlatform?: string
+        investmentPlatform?: string,
+        imageUrl?: string
     ) => void;
     initialCategory?: ShoppingCategory;
     budgetRules: BudgetRule[];
@@ -70,6 +71,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     const [content, setContent] = useState('');
     const [category, setCategory] = useState<ShoppingCategory>(initialCategory);
     const [quantity, setQuantity] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [amount, setAmount] = useState('');
     const [budgetCategory, setBudgetCategory] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -160,11 +162,13 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
             category === 'investment' ? parsedUnits : undefined,
             category === 'investment' ? parsedAveragePrice : undefined,
             category === 'investment' ? parsedCurrentPrice : undefined,
-            category === 'investment' ? investmentPlatform.trim() || undefined : undefined
+            category === 'investment' ? investmentPlatform.trim() || undefined : undefined,
+            (category === 'saving' || category === 'investment') ? imageUrl.trim() || undefined : undefined
         );
 
         setContent('');
         setQuantity('');
+        setImageUrl('');
         setAmount('');
         setBudgetCategory('');
         setDate(new Date().toISOString().split('T')[0]);
@@ -258,6 +262,22 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 }}
                             />
                         </div>
+
+                        {(category === 'saving' || category === 'investment') && (
+                            <div className={addItemModal.sectionPanel}>
+                                <label className={addItemModal.sectionTitle}>
+                                    <ImageIcon className="w-4 h-4" /> Thumbnail Image
+                                </label>
+                                <input
+                                    type="url"
+                                    value={imageUrl}
+                                    onChange={e => setImageUrl(e.target.value)}
+                                    placeholder="https://example.com/thumbnail.jpg"
+                                    className={addItemModal.input}
+                                />
+                                <p className={addItemModal.helpText}>Optional. The card thumbnail will use this URL directly; leave empty to show the default empty image state.</p>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>

@@ -1,6 +1,0 @@
-NDZ-016 runtime gate passed
-Preview URL: http://127.0.0.1:4176
-Viewports: 640x900, 820x1180, 1023x900
-Assertions: rail hidden; bottom stack visible; library masonry column-count=2; add-note modal centered at sm/max-w-md
-Proof: docs/ndz-016-screenshots/runtime-proof.json
-Metrics: docs/ndz-016-screenshots/metrics.json

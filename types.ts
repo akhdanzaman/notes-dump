@@ -173,6 +173,7 @@ export interface ItemMeta {
 
   tags?: string[];
   quantity?: string;
+  imageUrl?: string;
   shoppingCategory?: ShoppingCategory;
   recurrenceDays?: number;
   targetDay?: string;
@@ -526,6 +527,7 @@ export interface ParsedItemMetaV2 {
 
   tags?: string[];
   quantity?: string;
+  imageUrl?: string;
   priority?: Priority;
   hideFromCalendar?: boolean;
 

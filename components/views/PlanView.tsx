@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon } from 'lucide-react';
 import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, ItemType, InvestmentAssetType } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
@@ -10,7 +10,7 @@ import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
-import { contentSurface, responsiveModal } from '../layout/contentSurface';
+import { contentSurface, responsiveModal, addItemModal, addItemModalMotion } from '../layout/contentSurface';
 import { getInvestmentMetrics } from '../../utils/investmentMetrics';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../../utils/investmentFunding';
 
@@ -62,7 +62,11 @@ interface PlanViewProps {
         newInvestmentUnits?: number,
         newInvestmentAveragePrice?: number,
         newInvestmentCurrentPrice?: number,
-        newInvestmentPlatform?: string
+        newInvestmentPlatform?: string,
+        newCommodity?: string,
+        newSubcommodity?: string,
+        newNoteTitle?: string,
+        newImageUrl?: string
     ) => void;
     handleOpenAddRoutine: () => void;
     handleOpenAddTask: (initialDate?: string) => void;
@@ -277,10 +281,11 @@ const PlanView: React.FC<PlanViewProps> = ({
         resetFundModalState();
     };
 
-    const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+    const [editingGoal, setEditingGoal] = useState<BrainDumpItem | null>(null);
     const [editContent, setEditContent] = useState('');
     const [editAmount, setEditAmount] = useState('');
     const [editDate, setEditDate] = useState('');
+    const [editImageUrl, setEditImageUrl] = useState('');
     const [editDedicatedWalletId, setEditDedicatedWalletId] = useState('');
     const [editInvestmentAssetType, setEditInvestmentAssetType] = useState<InvestmentAssetType>('gold');
     const [editInvestmentSymbol, setEditInvestmentSymbol] = useState('');
@@ -288,6 +293,25 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [editInvestmentAveragePrice, setEditInvestmentAveragePrice] = useState('');
     const [editInvestmentCurrentPrice, setEditInvestmentCurrentPrice] = useState('');
     const [editInvestmentPlatform, setEditInvestmentPlatform] = useState('');
+
+    const formatIdr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n || 0);
+
+    const closeGoalEditModal = () => setEditingGoal(null);
+
+    const openGoalEditModal = (item: BrainDumpItem) => {
+        setEditingGoal(item);
+        setEditContent(item.content);
+        setEditAmount(item.meta.amount?.toString() || '');
+        setEditDate(item.meta.date ? item.meta.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+        setEditImageUrl(item.meta.imageUrl || '');
+        setEditDedicatedWalletId(item.meta.dedicatedWalletId || '');
+        setEditInvestmentAssetType(item.meta.investmentAssetType || 'other');
+        setEditInvestmentSymbol(item.meta.investmentSymbol || '');
+        setEditInvestmentUnits(item.meta.investmentUnits?.toString() || '');
+        setEditInvestmentAveragePrice(item.meta.investmentAveragePrice?.toString() || '');
+        setEditInvestmentCurrentPrice(item.meta.investmentCurrentPrice?.toString() || '');
+        setEditInvestmentPlatform(item.meta.investmentPlatform || '');
+    };
 
     const handleSaveEdit = (goal: BrainDumpItem) => {
         handleUpdateItem(
@@ -313,9 +337,69 @@ const PlanView: React.FC<PlanViewProps> = ({
             undefined,
             undefined,
             undefined,
-            editDedicatedWalletId
+            editDedicatedWalletId,
+            goal.meta.priority,
+            goal.meta.start,
+            goal.meta.end,
+            goal.meta.hideFromCalendar,
+            goal.meta.investmentAssetType,
+            goal.meta.investmentSymbol,
+            goal.meta.investmentUnits,
+            goal.meta.investmentAveragePrice,
+            goal.meta.investmentCurrentPrice,
+            goal.meta.investmentPlatform,
+            undefined,
+            undefined,
+            undefined,
+            editImageUrl
         );
-        setExpandedGoalId(null);
+        closeGoalEditModal();
+    };
+
+    const thumbnailEmptyState = (tone: 'saving' | 'investment') => (
+        <div className={`flex h-full w-full items-center justify-center rounded-[22px] ${tone === 'investment' ? 'bg-emerald-500/10 text-emerald-500/45' : 'bg-indigo-500/10 text-indigo-500/45'}`}>
+            <ImageIcon className="h-12 w-12" />
+        </div>
+    );
+
+    const renderThumbnail = (item: BrainDumpItem, tone: 'saving' | 'investment', className: string, actions: React.ReactNode) => {
+        const imageUrl = item.meta.imageUrl?.trim();
+        return (
+            <div className={`relative overflow-hidden rounded-[22px] border border-border/60 bg-background ${className}`}>
+                {imageUrl ? (
+                    <img
+                        src={imageUrl}
+                        alt={`${item.content} thumbnail`}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                    />
+                ) : thumbnailEmptyState(tone)}
+                <div className="absolute right-3 top-3 flex items-center gap-2">
+                    {actions}
+                </div>
+            </div>
+        );
+    };
+
+    const iconActionButton = (tone: 'saving' | 'investment' | 'neutral' | 'done', label: string, onClick: (event: React.MouseEvent<HTMLButtonElement>) => void, icon: React.ReactNode) => {
+        const toneClass = tone === 'investment'
+            ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'
+            : tone === 'saving'
+                ? 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20'
+                : tone === 'done'
+                    ? 'bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25'
+                    : 'bg-background/85 text-primary hover:bg-background';
+        return (
+            <button
+                type="button"
+                aria-label={label}
+                title={label}
+                onClick={onClick}
+                className={`grid h-9 w-9 place-items-center rounded-xl border border-border/60 shadow-sm backdrop-blur-md transition-colors ${toneClass}`}
+            >
+                {icon}
+            </button>
+        );
     };
 
     const renderGoalCard = (goal: BrainDumpItem) => {
@@ -323,164 +407,59 @@ const PlanView: React.FC<PlanViewProps> = ({
         const saved = goal.meta.savedAmount || 0;
         const progress = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
         const isDone = goal.status === 'done';
-        const isExpanded = expandedGoalId === goal.id;
 
-        const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+        const actions = (
+            <>
+                {iconActionButton('neutral', 'Edit saving goal', (e) => { e.stopPropagation(); openGoalEditModal(goal); }, <Pencil className="h-4 w-4" />)}
+                {!isDone && iconActionButton('saving', 'Add funds', (e) => {
+                    e.stopPropagation();
+                    setAddFundsModal({ isOpen: true, goalId: goal.id, goalName: goal.content, defaultWallet: goal.meta.dedicatedWalletId, targetType: 'saving' });
+                    setFundAmount('');
+                    setFundUnits('');
+                    setFundUnitPrice('');
+                    if (goal.meta.dedicatedWalletId) setFundWallet(goal.meta.dedicatedWalletId);
+                }, <Plus className="h-4 w-4" />)}
+                {(isDone || progress >= 100) && iconActionButton('done', isDone ? 'Reactivate saving goal' : 'Mark complete', (e) => {
+                    e.stopPropagation();
+                    if (isDone) handleToggleStatus(goal.id);
+                    else onCompleteGoal(goal);
+                }, <CheckCircle2 className="h-4 w-4" />)}
+            </>
+        );
 
         return (
-            <motion.div
+            <motion.article
                 layout={!isDragging}
                 transition={{ type: "tween", duration: 0.3 }}
                 key={goal.id}
-                className={`bg-surface rounded-[24px] overflow-hidden ${isDone ? 'opacity-60' : ''}`}
+                className={`overflow-hidden rounded-[28px] border border-border/70 bg-surface p-1 shadow-sm ${isDone ? 'opacity-70' : ''}`}
             >
-                <div
-                    className="p-5 cursor-pointer"
-                    onClick={() => {
-                        if (isExpanded) {
-                            setExpandedGoalId(null);
-                        } else {
-                            setExpandedGoalId(goal.id);
-                            setEditContent(goal.content);
-                            setEditAmount(goal.meta.amount?.toString() || '');
-                            setEditDate(goal.meta.date ? goal.meta.date.split('T')[0] : new Date().toISOString().split('T')[0]);
-                            setEditDedicatedWalletId(goal.meta.dedicatedWalletId || '');
-                        }
-                    }}
-                >
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                            <h4 className="font-bold text-lg text-primary">{goal.content}</h4>
-                            <div className="flex items-baseline gap-2 mt-1">
-                                <span className="text-xl font-bold text-indigo-500">{fmt(saved)}</span>
-                                <span className="text-sm text-muted font-medium">/ {fmt(target)}</span>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            {isDone ? (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleToggleStatus(goal.id); }}
-                                    className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
-                                >
-                                    <CheckCircle2 className="w-5 h-5" />
-                                </button>
-                            ) : (
-                                <>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setAddFundsModal({ isOpen: true, goalId: goal.id, goalName: goal.content, defaultWallet: goal.meta.dedicatedWalletId, targetType: 'saving' });
-                                            setFundAmount('');
-                                            setFundUnits('');
-                                            setFundUnitPrice('');
-                                            if (goal.meta.dedicatedWalletId) setFundWallet(goal.meta.dedicatedWalletId);
-                                        }}
-                                        className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl hover:bg-indigo-500/20 transition-colors"
-                                    >
-                                        <Plus className="w-5 h-5" />
-                                    </button>
-                                    {progress >= 100 && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onCompleteGoal(goal); }}
-                                            className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
-                                        >
-                                            <CheckCircle2 className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                </>
-                            )}
-                        </div>
+                {renderThumbnail(goal, 'saving', 'h-36 sm:h-40 lg:h-36 xl:h-40', actions)}
+                <div className="p-5 pt-4">
+                    <h4 className="truncate text-lg font-bold text-primary">{goal.content}</h4>
+                    <div className="mt-1 flex items-baseline gap-2">
+                        <span className={`text-xl font-bold ${progress >= 100 ? 'text-emerald-500' : 'text-indigo-500'}`}>{formatIdr(saved)}</span>
+                        <span className="text-sm font-medium text-muted">/ {formatIdr(target)}</span>
                     </div>
 
-                    <div className="w-full h-3 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
                         <div
                             className={`h-full transition-all duration-1000 ease-out ${progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
                             style={{ width: `${progress}%` }}
                         />
                     </div>
 
-                    <div className="flex justify-between items-center mt-3">
-                        <span className="text-xs font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Complete</span>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted">{progress.toFixed(0)}% Complete</span>
                         {goal.meta.date && (
-                            <span className="text-xs font-medium text-muted flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
+                            <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted">
+                                <Calendar className="h-3 w-3" />
                                 Target: {new Date(goal.meta.date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
                             </span>
                         )}
                     </div>
                 </div>
-
-                <AnimatePresence>
-                    {isExpanded && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="border-t border-border bg-black/5 dark:bg-white/10"
-                        >
-                            <div className="p-5 space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Goal Name</label>
-                                    <input
-                                        type="text"
-                                        value={editContent}
-                                        onChange={e => setEditContent(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Target Amount</label>
-                                        <input
-                                            type="number"
-                                            value={editAmount}
-                                            onChange={e => setEditAmount(e.target.value)}
-                                            className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Target Date</label>
-                                        <input
-                                            type="date"
-                                            value={editDate}
-                                            onChange={e => setEditDate(e.target.value)}
-                                            className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Dedicated Wallet (Optional)</label>
-                                    <select
-                                        value={editDedicatedWalletId}
-                                        onChange={e => setEditDedicatedWalletId(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-indigo-500 appearance-none"
-                                    >
-                                        <option value="">None</option>
-                                        {wallets.map(w => (
-                                            <option key={w.id} value={w.id}>{w.name}</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-[10px] text-muted mt-1">If set, funds can only be added from this wallet.</p>
-                                </div>
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <button
-                                        onClick={() => handleDelete(goal.id)}
-                                        className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleSaveEdit(goal)}
-                                        className="px-4 py-2 bg-indigo-500 text-white rounded-xl text-sm font-bold hover:bg-indigo-600 transition-colors"
-                                    >
-                                        Save Changes
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </motion.div>
+            </motion.article>
         );
     };
 
@@ -535,9 +514,13 @@ const PlanView: React.FC<PlanViewProps> = ({
             units,
             averagePrice,
             currentPrice,
-            linkedInvestmentWallet?.name || editInvestmentPlatform.trim() || undefined
+            linkedInvestmentWallet?.name || editInvestmentPlatform.trim() || undefined,
+            undefined,
+            undefined,
+            undefined,
+            editImageUrl
         );
-        setExpandedGoalId(null);
+        closeGoalEditModal();
     };
 
     const renderInvestmentCard = (investment: BrainDumpItem) => {
@@ -546,166 +529,126 @@ const PlanView: React.FC<PlanViewProps> = ({
         const currentValue = metrics.displayValue;
         const gain = metrics.profitLoss;
         const roi = metrics.roi;
-        const isExpanded = expandedGoalId === investment.id;
         const assetType = investment.meta.investmentAssetType || 'other';
-        const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+
+        const actions = (
+            <>
+                {iconActionButton('neutral', 'Edit investment', (e) => { e.stopPropagation(); openGoalEditModal(investment); }, <Pencil className="h-4 w-4" />)}
+                {investment.status !== 'done' && iconActionButton('investment', 'Add investment capital', (e) => {
+                    e.stopPropagation();
+                    setAddFundsModal({ isOpen: true, goalId: investment.id, goalName: investment.content, targetType: 'investment', destinationWalletId: investment.meta.dedicatedWalletId });
+                    setFundWallet('');
+                    setFundAmount('');
+                    setFundUnits('');
+                    setFundUnitPrice(getDefaultInvestmentUnitPrice(investment)?.toString() || '');
+                }, <Plus className="h-4 w-4" />)}
+                {iconActionButton('done', investment.status === 'done' ? 'Reactivate investment' : 'Archive investment', (e) => { e.stopPropagation(); handleToggleStatus(investment.id); }, <CheckCircle2 className="h-4 w-4" />)}
+            </>
+        );
 
         return (
-            <motion.div
+            <motion.article
                 layout={!isDragging}
                 transition={{ type: "tween", duration: 0.3 }}
                 key={investment.id}
-                className="bg-surface rounded-[24px] overflow-hidden border border-emerald-500/10 shadow-sm"
+                className="overflow-hidden rounded-[28px] border border-emerald-500/10 bg-surface p-1 shadow-sm"
             >
-                <div
-                    className="p-5 cursor-pointer"
-                    onClick={() => {
-                        if (isExpanded) {
-                            setExpandedGoalId(null);
-                        } else {
-                            setExpandedGoalId(investment.id);
-                            setEditContent(investment.content);
-                            setEditDate(investment.meta.date ? investment.meta.date.split('T')[0] : new Date().toISOString().split('T')[0]);
-                            setEditDedicatedWalletId(investment.meta.dedicatedWalletId || '');
-                            setEditInvestmentAssetType(investment.meta.investmentAssetType || 'other');
-                            setEditInvestmentSymbol(investment.meta.investmentSymbol || '');
-                            setEditInvestmentUnits(investment.meta.investmentUnits?.toString() || '');
-                            setEditInvestmentAveragePrice(investment.meta.investmentAveragePrice?.toString() || '');
-                            setEditInvestmentCurrentPrice(investment.meta.investmentCurrentPrice?.toString() || '');
-                            setEditInvestmentPlatform(investment.meta.investmentPlatform || '');
-                        }
-                    }}
-                >
-                    <div className="flex justify-between items-start gap-3 mb-4">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2 mb-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">{investmentTypeLabels[assetType]}</span>
-                                {investment.meta.investmentSymbol && <span className="text-[10px] font-bold text-muted bg-muted/10 px-2 py-1 rounded-full">{investment.meta.investmentSymbol}</span>}
-                            </div>
-                            <h4 className="font-bold text-lg text-primary truncate">{investment.content}</h4>
-                            <div className="flex items-baseline gap-2 mt-1">
-                                <span className="text-xl font-bold text-emerald-500">{fmt(currentValue)}</span>
-                                <span className="text-sm text-muted font-medium">owned value</span>
-                            </div>
+                <div className="flex flex-col gap-4 sm:flex-row">
+                    {renderThumbnail(investment, 'investment', 'h-36 sm:h-auto sm:w-40 sm:shrink-0 lg:w-36 xl:w-40', actions)}
+                    <div className="min-w-0 flex-1 p-4 pl-4 sm:pl-0">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-500">{investmentTypeLabels[assetType]}</span>
+                            {investment.meta.investmentSymbol && <span className="rounded-full bg-muted/10 px-2 py-1 text-[10px] font-bold text-muted">{investment.meta.investmentSymbol}</span>}
                         </div>
-                        <div className="flex gap-2">
-                            {investment.status !== 'done' && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setAddFundsModal({ isOpen: true, goalId: investment.id, goalName: investment.content, targetType: 'investment', destinationWalletId: investment.meta.dedicatedWalletId });
-                                        setFundWallet('');
-                                        setFundAmount('');
-                                        setFundUnits('');
-                                        setFundUnitPrice(getDefaultInvestmentUnitPrice(investment)?.toString() || '');
-                                    }}
-                                    className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
-                                    title="Add investment capital"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                </button>
-                            )}
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handleToggleStatus(investment.id); }}
-                                className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors"
-                                title={investment.status === 'done' ? 'Reactivate investment' : 'Archive investment'}
-                            >
-                                <CheckCircle2 className="w-5 h-5" />
-                            </button>
+                        <h4 className="truncate text-lg font-bold text-primary">{investment.content}</h4>
+                        <div className="mt-1 flex items-baseline gap-2">
+                            <span className="text-xl font-bold text-emerald-500">{formatIdr(currentValue)}</span>
+                            <span className="text-sm font-medium text-muted">owned value</span>
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3 border border-emerald-500/5">
-                            <div className="font-bold text-muted uppercase tracking-wider text-[9px]">Invested</div>
-                            <div className="font-bold text-primary mt-1">{fmt(invested)}</div>
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                            <div className="rounded-2xl border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
+                                <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Invested</div>
+                                <div className="mt-1 font-bold text-primary">{formatIdr(invested)}</div>
+                            </div>
+                            <div className="rounded-2xl border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
+                                <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Units</div>
+                                <div className="mt-1 font-bold text-primary">{investment.meta.investmentUnits || '-'}</div>
+                            </div>
+                            <div className="rounded-2xl border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
+                                <div className="text-[9px] font-bold uppercase tracking-wider text-muted">P/L</div>
+                                <div className={`mt-1 font-bold ${gain >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{gain >= 0 ? '+' : ''}{formatIdr(gain)} · {roi.toFixed(1)}%</div>
+                                <div className="mt-0.5 text-[9px] text-muted">vs cost basis</div>
+                            </div>
                         </div>
-                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3 border border-emerald-500/5">
-                            <div className="font-bold text-muted uppercase tracking-wider text-[9px]">Units</div>
-                            <div className="font-bold text-primary mt-1">{investment.meta.investmentUnits || '-'}</div>
-                        </div>
-                        <div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3 border border-emerald-500/5">
-                            <div className="font-bold text-muted uppercase tracking-wider text-[9px]">P/L</div>
-                            <div className={`font-bold mt-1 ${gain >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{gain >= 0 ? '+' : ''}{fmt(gain)} · {roi.toFixed(1)}%</div>
-                            <div className="text-[9px] text-muted mt-0.5">vs cost basis</div>
-                        </div>
+
+                        {(investment.meta.investmentPlatform || investment.meta.date) && (
+                            <div className="mt-3 flex items-center justify-between text-xs font-medium text-muted">
+                                <span>{investment.meta.investmentPlatform || 'No platform'}</span>
+                                {investment.meta.date && <span>Since {new Date(investment.meta.date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</span>}
+                            </div>
+                        )}
                     </div>
-                    {(investment.meta.investmentPlatform || investment.meta.date) && (
-                        <div className="flex justify-between items-center mt-3 text-xs text-muted font-medium">
-                            <span>{investment.meta.investmentPlatform || 'No platform'}</span>
-                            {investment.meta.date && <span>Since {new Date(investment.meta.date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}</span>}
-                        </div>
-                    )}
+                </div>
+            </motion.article>
+        );
+    };
+
+    const renderGoalMilestones = () => {
+        const milestones = [...savings].sort((a, b) => {
+            const aTarget = a.meta.amount || 0;
+            const bTarget = b.meta.amount || 0;
+            const aProgress = aTarget > 0 ? ((a.meta.savedAmount || 0) / aTarget) : 0;
+            const bProgress = bTarget > 0 ? ((b.meta.savedAmount || 0) / bTarget) : 0;
+            if (a.status !== b.status) return a.status === 'done' ? -1 : 1;
+            return bProgress - aProgress;
+        });
+
+        return (
+            <aside className="rounded-[28px] border border-border/70 bg-surface p-5 shadow-sm lg:sticky lg:top-6">
+                <div className="mb-5 flex items-start gap-3">
+                    <span className="grid h-8 w-8 place-items-center rounded-2xl bg-amber-500/10 text-amber-500">
+                        <Sparkles className="h-4 w-4" />
+                    </span>
+                    <div>
+                        <h3 className="font-bold text-primary">Goal Milestones</h3>
+                        <p className="mt-1 text-xs text-muted">Stay on track with your savings goals.</p>
+                    </div>
                 </div>
 
-                <AnimatePresence>
-                    {isExpanded && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="border-t border-emerald-500/10 bg-surface"
-                        >
-                            <div className="p-5 space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Asset / Product</label>
-                                    <input type="text" value={editContent} onChange={e => setEditContent(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Type</label>
-                                        <select value={editInvestmentAssetType} onChange={e => setEditInvestmentAssetType(e.target.value as InvestmentAssetType)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500 appearance-none">
-                                            {Object.entries(investmentTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Ticker / Code</label>
-                                        <input type="text" value={editInvestmentSymbol} onChange={e => setEditInvestmentSymbol(e.target.value.toUpperCase())} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Invested Capital</label>
-                                        <div className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary font-bold">{fmt(invested)}</div>
-                                        <p className="text-[10px] text-muted mt-1">From Saving transactions.</p>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Buy Date</label>
-                                        <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
+                {milestones.length > 0 ? (
+                    <div className="relative space-y-0 before:absolute before:left-3 before:top-4 before:h-[calc(100%-2rem)] before:w-px before:bg-border">
+                        {milestones.map(goal => {
+                            const target = goal.meta.amount || 0;
+                            const saved = goal.meta.savedAmount || 0;
+                            const progress = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
+                            const completed = goal.status === 'done' || progress >= 100;
+                            return (
+                                <div key={goal.id} className="relative flex gap-4 pb-5 last:pb-0">
+                                    <span className={`relative z-10 mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 bg-surface ${completed ? 'border-emerald-500 text-emerald-500' : 'border-amber-500 text-amber-500'}`}>
+                                        {completed ? <CheckCircle2 className="h-4 w-4" /> : null}
+                                    </span>
+                                    <div className="min-w-0 flex-1 border-b border-border/70 pb-5 last:border-b-0 last:pb-0">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="truncate text-sm font-bold text-primary">{goal.content}</h4>
+                                            <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${completed ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                                {completed ? 'Completed' : `${progress.toFixed(0)}%`}
+                                            </span>
+                                        </div>
+                                        <div className="mt-2 text-sm font-bold text-primary">
+                                            <span className={completed ? 'text-emerald-500' : 'text-indigo-500'}>{formatIdr(saved)}</span>
+                                            <span className="text-muted"> / {formatIdr(target)}</span>
+                                        </div>
+                                        <div className="mt-1 text-xs text-muted">Target: {goal.meta.date ? new Date(goal.meta.date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : '-'}</div>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Units</label>
-                                        <input type="number" step="any" value={editInvestmentUnits} onChange={e => setEditInvestmentUnits(e.target.value)} placeholder="Units" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Avg Buy</label>
-                                        <input type="number" value={editInvestmentAveragePrice} onChange={e => setEditInvestmentAveragePrice(e.target.value)} placeholder="Avg buy" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Current</label>
-                                        <input type="number" value={editInvestmentCurrentPrice} onChange={e => setEditInvestmentCurrentPrice(e.target.value)} placeholder="Current" className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-muted mb-1 uppercase tracking-wider">Investment Wallet / Platform</label>
-                                    <select value={editDedicatedWalletId} onChange={e => setEditDedicatedWalletId(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm text-primary focus:outline-none focus:border-emerald-500 appearance-none">
-                                        <option value="">No linked investment wallet</option>
-                                        {wallets.filter(w => w.type === 'investment').map(w => (
-                                            <option key={w.id} value={w.id}>{w.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <button onClick={() => handleDelete(investment.id)} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
-                                    <button onClick={() => handleSaveInvestmentEdit(investment)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors">Save Investment</button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </motion.div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">No milestones yet.</div>
+                )}
+            </aside>
         );
     };
 
@@ -1343,73 +1286,224 @@ const PlanView: React.FC<PlanViewProps> = ({
                     animate={{ opacity: 1 }}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
-                    <div className="space-y-8">
-                        <section>
-                            <div className="flex items-center justify-between mb-4 pl-1">
-                                <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider">Saving Goals</h3>
-                                <button
-                                    onClick={() => handleOpenAddShopping('saving')}
-                                    className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                </button>
-                            </div>
-
-                            {savings.length > 0 ? (
-                                <div className={contentSurface.cardGrid}>
-                                    {visibleSavings.visibleItems.map(goal => renderGoalCard(goal))}
-                                    <LoadMoreButton remainingCount={visibleSavings.remainingCount} onClick={visibleSavings.loadMore} />
-                                </div>
-                            ) : (
-                                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
-                                    <p className="text-muted font-medium">No saving goals yet.</p>
+                    <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_27rem] lg:items-start lg:gap-6 lg:space-y-0">
+                        <div className="space-y-8">
+                            <section className="rounded-[28px] border border-border/60 bg-surface/40 p-4 shadow-sm lg:p-5">
+                                <div className="mb-4 flex items-center justify-between pl-1">
+                                    <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-orange-500">
+                                        <span className="rounded-md bg-orange-500/10 p-1"><PiggyBank className="h-3 w-3" /></span> Saving Goals
+                                    </h3>
                                     <button
                                         onClick={() => handleOpenAddShopping('saving')}
-                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
+                                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-orange-500 transition-colors hover:bg-orange-500/10"
                                     >
-                                        <Plus className="w-4 h-4" /> Create Goal
+                                        <Plus className="h-4 w-4" /> Add Goal
                                     </button>
                                 </div>
-                            )}
-                        </section>
 
-                        <section>
-                            <div className="flex items-center justify-between mb-4 pl-1">
-                                <div>
-                                    <h3 className="text-sm font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-2">
-                                        <span className="bg-emerald-500/10 p-1 rounded-md"><TrendingUp className="w-3 h-3" /></span> Investments
-                                    </h3>
-                                    <p className="text-xs text-muted mt-1">Gold, stocks, mutual funds, crypto, deposits, bonds, and other real positions.</p>
-                                </div>
-                                <button
-                                    onClick={() => handleOpenAddShopping('investment')}
-                                    className="p-1 hover:bg-emerald-500/10 text-emerald-500 rounded-md transition-colors"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                </button>
-                            </div>
+                                {savings.length > 0 ? (
+                                    <div className="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0">
+                                        {visibleSavings.visibleItems.map(goal => renderGoalCard(goal))}
+                                        <LoadMoreButton remainingCount={visibleSavings.remainingCount} onClick={visibleSavings.loadMore} />
+                                    </div>
+                                ) : (
+                                    <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+                                        <p className="font-medium text-muted">No saving goals yet.</p>
+                                        <button
+                                            onClick={() => handleOpenAddShopping('saving')}
+                                            className="flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-bold text-indigo-500 transition-colors hover:bg-indigo-500/20"
+                                        >
+                                            <Plus className="h-4 w-4" /> Create Goal
+                                        </button>
+                                    </div>
+                                )}
+                            </section>
 
-                            {investments.length > 0 ? (
-                                <div className={contentSurface.cardGrid}>
-                                    {visibleInvestments.visibleItems.map(investment => renderInvestmentCard(investment))}
-                                    <LoadMoreButton remainingCount={visibleInvestments.remainingCount} onClick={visibleInvestments.loadMore} />
-                                </div>
-                            ) : (
-                                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
-                                    <p className="text-muted font-medium">No investments tracked yet.</p>
+                            <section className="rounded-[28px] border border-border/60 bg-surface/40 p-4 shadow-sm lg:p-5">
+                                <div className="mb-4 flex items-center justify-between pl-1">
+                                    <div>
+                                        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-emerald-500">
+                                            <span className="rounded-md bg-emerald-500/10 p-1"><TrendingUp className="h-3 w-3" /></span> Investments
+                                        </h3>
+                                        <p className="mt-1 text-xs text-muted">Gold, stocks, mutual funds, crypto, deposits, bonds, and other real positions.</p>
+                                    </div>
                                     <button
                                         onClick={() => handleOpenAddShopping('investment')}
-                                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-2xl text-sm font-bold transition-colors"
+                                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-emerald-500 transition-colors hover:bg-emerald-500/10"
                                     >
-                                        <Plus className="w-4 h-4" /> Add Investment
+                                        <Plus className="h-4 w-4" /> Add Investment
                                     </button>
                                 </div>
-                            )}
-                        </section>
+
+                                {investments.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {visibleInvestments.visibleItems.map(investment => renderInvestmentCard(investment))}
+                                        <LoadMoreButton remainingCount={visibleInvestments.remainingCount} onClick={visibleInvestments.loadMore} />
+                                    </div>
+                                ) : (
+                                    <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
+                                        <p className="font-medium text-muted">No investments tracked yet.</p>
+                                        <button
+                                            onClick={() => handleOpenAddShopping('investment')}
+                                            className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-500 transition-colors hover:bg-emerald-500/20"
+                                        >
+                                            <Plus className="h-4 w-4" /> Add Investment
+                                        </button>
+                                    </div>
+                                )}
+                            </section>
+                        </div>
+
+                        {renderGoalMilestones()}
                     </div>
                 </motion.div>
                 </motion.div>
             </motion.div>
+
+            {/* Saving / Investment Edit Modal */}
+            <AnimatePresence>
+                {editingGoal && (
+                    <div className={responsiveModal.sheetOverlay}>
+                        <motion.div
+                            initial={addItemModalMotion.initial}
+                            animate={addItemModalMotion.animate}
+                            exit={addItemModalMotion.exit}
+                            transition={addItemModalMotion.transition}
+                            className={addItemModal.panel}
+                        >
+                            <div className={addItemModal.header}>
+                                <h3 className={addItemModal.title}>
+                                    {editingGoal.meta.shoppingCategory === 'investment' ? <TrendingUp className="h-5 w-5 text-emerald-500" /> : <PiggyBank className="h-5 w-5 text-indigo-500" />}
+                                    {editingGoal.meta.shoppingCategory === 'investment' ? 'Edit Investment' : 'Edit Saving Goal'}
+                                </h3>
+                                <button onClick={closeGoalEditModal} className={addItemModal.closeButton}>
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className={addItemModal.body}>
+                                <div>
+                                    <label className={addItemModal.label}>{editingGoal.meta.shoppingCategory === 'investment' ? 'Asset / Product' : 'Goal Name'}</label>
+                                    <input
+                                        type="text"
+                                        value={editContent}
+                                        onChange={e => setEditContent(e.target.value)}
+                                        className={`${addItemModal.input} ${editingGoal.meta.shoppingCategory === 'investment' ? 'focus:border-emerald-500' : 'focus:border-indigo-500'}`}
+                                    />
+                                </div>
+
+                                <div className={editingGoal.meta.shoppingCategory === 'investment' ? addItemModal.accentSectionPanel : addItemModal.sectionPanel}>
+                                    <label className={editingGoal.meta.shoppingCategory === 'investment' ? addItemModal.accentSectionTitle : addItemModal.sectionTitle}>
+                                        <ImageIcon className="h-4 w-4" /> Thumbnail Image
+                                    </label>
+                                    <input
+                                        type="url"
+                                        value={editImageUrl}
+                                        onChange={e => setEditImageUrl(e.target.value)}
+                                        placeholder="https://example.com/thumbnail.jpg"
+                                        className={`${addItemModal.input} ${editingGoal.meta.shoppingCategory === 'investment' ? 'focus:border-emerald-500' : 'focus:border-indigo-500'}`}
+                                    />
+                                    <p className={addItemModal.helpText}>Optional. This URL is used as the card thumbnail.</p>
+                                </div>
+
+                                {editingGoal.meta.shoppingCategory === 'investment' ? (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className={addItemModal.label}>Type</label>
+                                                <select value={editInvestmentAssetType} onChange={e => setEditInvestmentAssetType(e.target.value as InvestmentAssetType)} className={`${addItemModal.select} focus:border-emerald-500`}>
+                                                    {Object.entries(investmentTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className={addItemModal.label}>Ticker / Code</label>
+                                                <input type="text" value={editInvestmentSymbol} onChange={e => setEditInvestmentSymbol(e.target.value.toUpperCase())} className={`${addItemModal.input} focus:border-emerald-500`} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className={addItemModal.label}>Invested Capital</label>
+                                                <div className={addItemModal.readonlyField}>{formatIdr(getInvestmentMetrics(editingGoal).investedCapital)}</div>
+                                                <p className={addItemModal.helpText}>From Saving transactions.</p>
+                                            </div>
+                                            <div>
+                                                <label className={addItemModal.label}>Buy Date</label>
+                                                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className={`${addItemModal.input} focus:border-emerald-500`} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div>
+                                                <label className={addItemModal.label}>Units</label>
+                                                <input type="number" step="any" value={editInvestmentUnits} onChange={e => setEditInvestmentUnits(e.target.value)} className={`${addItemModal.smallInput} focus:border-emerald-500`} />
+                                            </div>
+                                            <div>
+                                                <label className={addItemModal.label}>Avg Buy</label>
+                                                <input type="number" value={editInvestmentAveragePrice} onChange={e => setEditInvestmentAveragePrice(e.target.value)} className={`${addItemModal.smallInput} focus:border-emerald-500`} />
+                                            </div>
+                                            <div>
+                                                <label className={addItemModal.label}>Current</label>
+                                                <input type="number" value={editInvestmentCurrentPrice} onChange={e => setEditInvestmentCurrentPrice(e.target.value)} className={`${addItemModal.smallInput} focus:border-emerald-500`} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className={addItemModal.label}>Investment Wallet / Platform</label>
+                                            <select value={editDedicatedWalletId} onChange={e => setEditDedicatedWalletId(e.target.value)} className={`${addItemModal.select} focus:border-emerald-500`}>
+                                                <option value="">No linked investment wallet</option>
+                                                {wallets.filter(w => w.type === 'investment').map(w => (
+                                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className={addItemModal.label}>Target Amount</label>
+                                                <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className={addItemModal.input} />
+                                            </div>
+                                            <div>
+                                                <label className={addItemModal.label}>Target Date</label>
+                                                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className={addItemModal.input} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className={addItemModal.label}>Dedicated Wallet</label>
+                                            <select value={editDedicatedWalletId} onChange={e => setEditDedicatedWalletId(e.target.value)} className={addItemModal.select}>
+                                                <option value="">None</option>
+                                                {wallets.map(w => (
+                                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                                ))}
+                                            </select>
+                                            <p className={addItemModal.helpText}>If set, funds can only be added from this wallet.</p>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className={addItemModal.footer}>
+                                <div className={responsiveModal.footer}>
+                                    <button
+                                        onClick={() => {
+                                            handleDelete(editingGoal.id);
+                                            closeGoalEditModal();
+                                        }}
+                                        className="rounded-2xl px-4 py-3 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/10"
+                                    >
+                                        Delete
+                                    </button>
+                                    <button
+                                        onClick={() => editingGoal.meta.shoppingCategory === 'investment' ? handleSaveInvestmentEdit(editingGoal) : handleSaveEdit(editingGoal)}
+                                        className={`rounded-2xl px-5 py-3 text-sm font-bold text-white transition-colors ${editingGoal.meta.shoppingCategory === 'investment' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+                                    >
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Add Funds Modal */}
             <AnimatePresence>

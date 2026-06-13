@@ -65,7 +65,7 @@ export const SPREADSHEET_FETCH_RANGES = {
   Transactions: 'A:V',
   Todos: 'A:AZ',
   Shopping: 'A:Z',
-  [SAVING_GOALS_INVESTMENTS_SHEET_NAME]: 'A:R',
+  [SAVING_GOALS_INVESTMENTS_SHEET_NAME]: 'A:S',
   Events: 'A:J',
   'Notes & Journals': 'A:G',
   'Skill Logs': 'A:P',

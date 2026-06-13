@@ -1,6 +1,0 @@
-NDZ-017 runtime gate passed
-Preview URL: http://127.0.0.1:4177
-Viewports: 1680x1050, 1920x1080
-Assertions: seeded Summary rendered; dashboard side rhythm is 21rem/23rem/25rem; primary column widened over before metrics; right context retuned; no filler heading detected
-Proof: docs/ndz-task-specs/artifacts/ndz-017-runtime-proof.json
-Runtime screenshots: docs/ndz-task-specs/artifacts/ndz-017-runtime-1680.png, docs/ndz-task-specs/artifacts/ndz-017-runtime-1920.png

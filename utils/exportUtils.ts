@@ -591,6 +591,7 @@ export const generateExportData = (
       Created_At: item.created_at,
       Completed_At: item.completed_at || '',
       Tags: item.meta.tags?.join(', ') || '',
+      Image_URL: item.meta.imageUrl || '',
       Hide_From_Calendar: item.meta.hideFromCalendar ? 'TRUE' : '',
       Investment_Type: item.meta.investmentAssetType || '',
       Investment_Code: item.meta.investmentSymbol || '',
@@ -604,8 +605,8 @@ export const generateExportData = (
   sheets.push({
     name: SAVING_GOALS_INVESTMENTS_SHEET_NAME,
     data: [
-      ["Kind", "Status", "Name", "Target_Amount", "Saved_Amount", "Dedicated_Wallet_ID", "Due_Date", "Created_At", "Completed_At", "Tags", "Hide_From_Calendar", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"],
-      ...savingGoalInvestmentRows.map(row => [row.Kind, row.Status, row.Name, row.Target_Amount, row.Saved_Amount, row.Dedicated_Wallet_ID, row.Due_Date, row.Created_At, row.Completed_At, row.Tags, row.Hide_From_Calendar, row.Investment_Type, row.Investment_Code, row.Investment_Units, row.Investment_Avg_Buy, row.Investment_Current_Price, row.Investment_Platform, row.ID])
+      ["Kind", "Status", "Name", "Target_Amount", "Saved_Amount", "Dedicated_Wallet_ID", "Due_Date", "Created_At", "Completed_At", "Tags", "Image_URL", "Hide_From_Calendar", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID"],
+      ...savingGoalInvestmentRows.map(row => [row.Kind, row.Status, row.Name, row.Target_Amount, row.Saved_Amount, row.Dedicated_Wallet_ID, row.Due_Date, row.Created_At, row.Completed_At, row.Tags, row.Image_URL, row.Hide_From_Calendar, row.Investment_Type, row.Investment_Code, row.Investment_Units, row.Investment_Avg_Buy, row.Investment_Current_Price, row.Investment_Platform, row.ID])
     ]
   });
 

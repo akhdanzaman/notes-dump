@@ -1002,6 +1002,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const createdAtStr = cell(row, 'Created_At', 7);
             const completedAtStr = cell(row, 'Completed_At', 8);
             const tagsStr = cell(row, 'Tags', 9);
+            const imageUrl = String(getHeaderCell(headers, row, 'Image_URL') || '').trim();
+            const imageUrlCell = getHeaderCell(headers, row, 'Image_URL');
             const hideFromCalendarCell = cell(row, 'Hide_From_Calendar', 10);
             const investmentType = cell(row, 'Investment_Type', 11);
             const investmentCode = String(cell(row, 'Investment_Code', 12) || '').trim();
@@ -1064,6 +1066,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
                 if (savedAmountStr !== undefined && match.meta.savedAmount !== savedAmount) { match.meta.savedAmount = savedAmount; updated = true; }
                 if (dedicatedWalletId !== undefined && match.meta.dedicatedWalletId !== (dedicatedWalletId || undefined)) { match.meta.dedicatedWalletId = dedicatedWalletId || undefined; updated = true; }
+                if (imageUrlCell !== undefined && match.meta.imageUrl !== (imageUrl || undefined)) { match.meta.imageUrl = imageUrl || undefined; updated = true; }
                 if (hideFromCalendarCell !== undefined && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
                 if (dueDateStr !== undefined && match.meta.date !== isoDueDate) { match.meta.date = isoDueDate; updated = true; }
                 if (investmentType !== undefined && match.meta.investmentAssetType !== parsedInvestmentType) { match.meta.investmentAssetType = parsedInvestmentType; updated = true; }
@@ -1087,6 +1090,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         amount,
                         savedAmount,
                         shoppingCategory: parsedCategory,
+                        imageUrl: imageUrl || undefined,
                         dedicatedWalletId: dedicatedWalletId || undefined,
                         hideFromCalendar,
                         date: isoDueDate,

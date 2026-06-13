@@ -2115,7 +2115,8 @@ export const useBrainDumpData = () => {
         newInvestmentPlatform?: string,
         newCommodity?: string,
         newSubcommodity?: string,
-        newNoteTitle?: string
+        newNoteTitle?: string,
+        newImageUrl?: string
     ) => {
         const updatedItems = itemsRef.current.map(item => {
             if (item.id !== id) return item;
@@ -2180,6 +2181,7 @@ export const useBrainDumpData = () => {
                 ...item.meta,
                 tags: newTags,
                 title: newNoteTitle !== undefined ? (newNoteTitle.trim() || undefined) : item.meta.title,
+                imageUrl: newImageUrl !== undefined ? (newImageUrl.trim() || undefined) : item.meta.imageUrl,
                 amount: newAmount !== undefined ? newAmount : item.meta.amount,
                 date: finalDate,
                 start: newStart !== undefined ? newStart : item.meta.start,
@@ -2278,7 +2280,8 @@ export const useBrainDumpData = () => {
         investmentUnits?: number,
         investmentAveragePrice?: number,
         investmentCurrentPrice?: number,
-        investmentPlatform?: string
+        investmentPlatform?: string,
+        imageUrl?: string
     ) => {
         const normalizedInvestmentPlatform = category === 'investment' ? investmentPlatform?.trim() : undefined;
         let updatedWallets = walletsRef.current;
@@ -2313,6 +2316,7 @@ export const useBrainDumpData = () => {
                 tags: [],
                 shoppingCategory: category,
                 quantity,
+                imageUrl: (category === 'saving' || category === 'investment') ? (imageUrl?.trim() || undefined) : undefined,
                 amount: category === 'investment' ? undefined : amount,
                 budgetCategory,
                 date: date || new Date().toISOString(),
