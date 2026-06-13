@@ -448,6 +448,38 @@ export const getFinanceItems = (
   const plannedBudgetMap = new Map<string, number>();
   let uncategorized = 0;
   let projectedUncategorized = 0;
+  let totalBudgetUsed = 0;
+  let projectedBudgetUsed = 0;
+
+  const addBudgetUsage = (
+    item: BrainDumpItem,
+    amount: number,
+    isDone: boolean,
+    includeUncategorized = true,
+  ) => {
+    const catId = resolveCategory(item.meta.budgetCategory);
+
+    if (isDone) {
+      totalBudgetUsed += amount;
+
+      if (catId) {
+        budgetMap.set(catId, (budgetMap.get(catId) || 0) + amount);
+      } else if (includeUncategorized) {
+        uncategorized += amount;
+      }
+    } else {
+      projectedBudgetUsed += amount;
+
+      if (catId) {
+        plannedBudgetMap.set(
+          catId,
+          (plannedBudgetMap.get(catId) || 0) + amount,
+        );
+      } else if (includeUncategorized) {
+        projectedUncategorized += amount;
+      }
+    }
+  };
 
   // We need ALL actual items for the selected period (unfiltered) to calculate totals accurately.
   // Planned expenses are added separately from pending urgent shopping and routine shopping below
@@ -482,32 +514,24 @@ export const getFinanceItems = (
       if (isDone) {
         totalSavings += amount;
       }
+
+      // Saving hanya masuk budget analytics kalau punya budget category.
+      // Jadi saving goal biasa tanpa kategori tidak mengganggu uncategorized.
+      if (item.meta.budgetCategory) {
+        addBudgetUsage(item, amount, isDone, false);
+      }
+
       return;
     }
 
     if (type === "expense") {
       if (isDone) {
         totalExpense += amount;
-
-        const catId = resolveCategory(item.meta.budgetCategory);
-        if (catId) {
-          budgetMap.set(catId, (budgetMap.get(catId) || 0) + amount);
-        } else {
-          uncategorized += amount;
-        }
       } else {
         projectedExpense += amount;
-
-        const catId = resolveCategory(item.meta.budgetCategory);
-        if (catId) {
-          plannedBudgetMap.set(
-            catId,
-            (plannedBudgetMap.get(catId) || 0) + amount,
-          );
-        } else {
-          projectedUncategorized += amount;
-        }
       }
+
+      addBudgetUsage(item, amount, isDone, true);
     }
   });
 
@@ -664,7 +688,7 @@ export const getFinanceItems = (
       const projectedAmount = remainingOccurrences * (routine.meta.amount || 0);
 
       projectedExpense += projectedAmount;
-
+      projectedBudgetUsed += projectedAmount;
       const catId = resolveCategory(routine.meta.budgetCategory);
       if (catId) {
         plannedBudgetMap.set(
@@ -697,7 +721,7 @@ export const getFinanceItems = (
     if (isInPeriod) {
       const amount = item.meta.amount || 0;
       projectedExpense += amount;
-
+      projectedBudgetUsed += amount;
       const catId = resolveCategory(item.meta.budgetCategory);
       if (catId) {
         plannedBudgetMap.set(
@@ -720,5 +744,7 @@ export const getFinanceItems = (
     plannedBudgetMap,
     uncategorized,
     projectedUncategorized,
+    totalBudgetUsed,
+    projectedBudgetUsed,
   };
 };
