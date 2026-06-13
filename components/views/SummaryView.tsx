@@ -37,7 +37,6 @@ import {
   ListChecks,
   RotateCcw,
   CalendarDays,
-  Clock3,
   Trophy,
   Image as ImageIcon,
   Circle,
@@ -205,7 +204,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     () => changeThemeMonth(1),
   );
 
-  const todayDate = new Date();
+  const [systemNow, setSystemNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setSystemNow(new Date());
+    }, 30 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const todayDate = systemNow;
   const { pendingGroups } = getFocusMonthData(items, todayDate, "", "");
 
   const shoppingGroups = useMemo(() => getShoppingItems(items), [items]);
@@ -228,7 +237,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   }, [pendingGroups, routineShopping]);
   const { displayItems, displayTitle, displaySubtitle, isDoneState } =
     useMemo(() => {
-      return buildSummaryFocusDisplay(items, summaryPendingGroups, urgent, 5);
+      return buildSummaryFocusDisplay(
+        items,
+        summaryPendingGroups,
+        urgent,
+        Math.max(items.length, 1),
+      );
     }, [items, summaryPendingGroups, urgent]);
 
   const pendingRoutines = summaryPendingGroups.routines.filter(
@@ -1067,9 +1081,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     );
   };
 
-  const topThreeToday = useMemo(
+  const taskDashboardItems = useMemo(
     () =>
-      displayItems.slice(0, 3).map((item) => ({
+      displayItems.map((item) => ({
         id: item.id,
         label: item.content,
         done: item.status === "done",
@@ -1077,27 +1091,39 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     [displayItems],
   );
 
+  const taskDashboardTitle = isDoneState ? "All done" : displayTitle || "Tasks";
+
   const getGoalNumbers = (item: BrainDumpItem) => {
     const meta = item.meta as any;
-    const linkedSavings = items
+    const linkedGoalAmount = items
       .filter(
         (candidate) =>
           candidate.type === ItemType.FINANCE &&
-          candidate.meta.financeType === "saving" &&
           candidate.meta.savingGoalId === item.id &&
           (candidate.status === "done" || candidate.status === "pending"),
       )
       .reduce((sum, candidate) => sum + (candidate.meta.amount || 0), 0);
 
+    const investedAmount = Number(
+      meta.investedAmount ||
+        meta.currentValue ||
+        meta.savedAmount ||
+        linkedGoalAmount ||
+        (meta.shoppingCategory === "investment"
+          ? meta.amount || meta.targetAmount || meta.goalAmount || 0
+          : 0),
+    );
+
+    const savedAmount = Number(meta.savedAmount || linkedGoalAmount || 0);
     const targetAmount = Number(
       meta.targetAmount || meta.goalAmount || meta.amount || meta.target || 0,
     );
-    const savedAmount = Number(meta.savedAmount || linkedSavings || 0);
     const derivedProgress =
       targetAmount > 0 ? (savedAmount / targetAmount) * 100 : 0;
 
     return {
       savedAmount,
+      investedAmount,
       targetAmount,
       progress: Math.max(
         0,
@@ -1116,16 +1142,21 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       )
       .map((item) => {
         const numbers = getGoalNumbers(item);
+        const isInvestment = item.meta.shoppingCategory === "investment";
+
         return {
           id: item.id,
           label: item.content,
           progress: numbers.progress,
-          caption:
-            numbers.targetAmount > 0
+          caption: isInvestment
+            ? "Invested value"
+            : numbers.targetAmount > 0
               ? `${fmt(numbers.savedAmount)} / ${fmt(numbers.targetAmount)}`
-              : item.meta.shoppingCategory === "investment"
-                ? "Investment target"
-                : "Saving target",
+              : "Saving target",
+          valueLabel: isInvestment
+            ? fmt(numbers.investedAmount)
+            : `${Math.round(numbers.progress)}%`,
+          showProgress: !isInvestment,
           kind: item.meta.shoppingCategory,
         };
       });
@@ -1156,26 +1187,31 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             0,
           );
         const targetMinutes = Number(skill.weeklyTargetMinutes || 0);
+        const progress = Math.max(
+          0,
+          Math.min(100, (loggedMinutes / targetMinutes) * 100),
+        );
+
         return {
           id: skill.id,
           label: skill.name,
-          progress: Math.max(
-            0,
-            Math.min(100, (loggedMinutes / targetMinutes) * 100),
-          ),
+          progress,
           caption: `${loggedMinutes}/${targetMinutes} min this week`,
+          valueLabel: `${Math.round(progress)}%`,
+          showProgress: true,
           kind: "skill" as const,
         };
       });
 
-    return [...savingAndInvestmentGoals, ...skillGoals]
-      .sort((a, b) => b.progress - a.progress)
-      .slice(0, 4);
+    return [...savingAndInvestmentGoals, ...skillGoals].sort((a, b) => {
+      if (a.showProgress !== b.showProgress) return a.showProgress ? -1 : 1;
+      return b.progress - a.progress;
+    });
   }, [items, skills, todayDate.getTime()]);
 
   const routineDashboardItems = useMemo(
     () =>
-      summaryPendingGroups.routines.slice(0, 5).map((item) => ({
+      summaryPendingGroups.routines.map((item) => ({
         id: item.id,
         label: item.content,
         done: item.status === "done",
@@ -1303,6 +1339,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const missionSubtitle = hasThemeContent
     ? "Focus on what matters. Protect your time. Move with intention."
     : "Open Add Theme to set the mission and image URL for this month.";
+  const systemTimeLabel = systemNow.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
   const dashboardShellClass = [
     "overflow-visible rounded-none border-0 bg-transparent p-0 text-slate-950 shadow-none",
@@ -1603,6 +1644,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       <div className="mt-1 text-6xl font-black leading-none text-blue-700 dark:text-blue-300">
         {String(todayDate.getDate()).padStart(2, "0")}
       </div>
+      <div className="mt-2 text-2xl font-black leading-none tracking-tight text-slate-900 dark:text-zinc-50">
+        {systemTimeLabel}
+      </div>
+      <div
+        className={`mt-1 text-[11px] font-bold uppercase tracking-[0.18em] ${dashboardMuted}`}
+      >
+        System time
+      </div>
       <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
         {themeNavDate.toLocaleDateString(undefined, {
           month: "long",
@@ -1638,18 +1687,27 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     </div>
   );
 
-  const renderTopThreeCard = () => (
-    <section className={`${dashboardCardClass} p-5 xl:p-6`}>
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className={dashboardSectionTitle}>Top 3 Today</h2>
+  const renderTasksCard = () => (
+    <section
+      className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
+    >
+      <div className="mb-5 flex shrink-0 items-center justify-between">
+        <div>
+          <h2 className={dashboardSectionTitle}>{taskDashboardTitle}</h2>
+          {displaySubtitle && !isDoneState && (
+            <p className={`mt-1 text-xs font-semibold ${dashboardMuted}`}>
+              {displaySubtitle}
+            </p>
+          )}
+        </div>
         <div className={dashboardIconClass}>
           <ClipboardCheck className="h-5 w-5" />
         </div>
       </div>
 
-      {topThreeToday.length > 0 ? (
-        <div className="space-y-4">
-          {topThreeToday.map((item) => (
+      {taskDashboardItems.length > 0 ? (
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+          {taskDashboardItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -1672,22 +1730,26 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           ))}
         </div>
       ) : (
-        renderDashboardEmptyState(
-          "No focus items",
-          "Add or schedule tasks to fill this card from real items.",
-          {
-            label: "Add task",
-            onClick: () =>
-              handleOpenAddTask(new Date().toISOString().split("T")[0]),
-          },
-        )
+        <div className="flex min-h-0 flex-1 items-center">
+          {renderDashboardEmptyState(
+            "All done",
+            "No task for today, tomorrow, or later. Take a break or add a new task.",
+            {
+              label: "Add task",
+              onClick: () =>
+                handleOpenAddTask(new Date().toISOString().split("T")[0]),
+            },
+          )}
+        </div>
       )}
     </section>
   );
 
   const renderGoalsCard = () => (
-    <section className={`${dashboardCardClass} p-5 xl:p-6`}>
-      <div className="mb-5 flex items-center justify-between">
+    <section
+      className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
+    >
+      <div className="mb-5 flex shrink-0 items-center justify-between">
         <h2 className={dashboardSectionTitle}>Goals Progress</h2>
         <div className={dashboardIconClass}>
           <BarChart3 className="h-5 w-5" />
@@ -1695,11 +1757,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       </div>
 
       {goalDashboardItems.length > 0 ? (
-        <div className="space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {goalDashboardItems.map((goal, index) => (
             <div
               key={goal.id}
-              className="grid grid-cols-[2.25rem_minmax(0,1fr)_2.75rem] items-center gap-3"
+              className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
                 {goal.kind === "investment" ? (
@@ -1717,12 +1779,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 <div className="mb-1 truncate text-sm font-semibold text-slate-700 dark:text-zinc-200">
                   {goal.label}
                 </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
-                    style={{ width: `${goal.progress}%` }}
-                  />
-                </div>
+                {goal.showProgress && (
+                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
+                      style={{ width: `${goal.progress}%` }}
+                    />
+                  </div>
+                )}
                 <div
                   className={`mt-1 truncate text-[11px] font-semibold ${dashboardMuted}`}
                 >
@@ -1730,31 +1794,41 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 </div>
               </div>
 
-              <div className="text-right text-sm font-black text-slate-900 dark:text-zinc-50">
-                {Math.round(goal.progress)}%
+              <div
+                className={`text-right font-black text-slate-900 dark:text-zinc-50 ${
+                  goal.kind === "investment"
+                    ? "max-w-[8rem] truncate text-xs xl:text-sm"
+                    : "text-sm"
+                }`}
+              >
+                {goal.valueLabel}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        renderDashboardEmptyState(
-          "No goal tracked",
-          "Saving, investment, and skill targets will appear here once you add them.",
-          {
-            label: "Open plan",
-            onClick: () => {
-              setPlanSubTab("savings");
-              setActiveTab("plan");
+        <div className="flex min-h-0 flex-1 items-center">
+          {renderDashboardEmptyState(
+            "No goal tracked",
+            "Saving, investment, and skill targets will appear here once you add them.",
+            {
+              label: "Open plan",
+              onClick: () => {
+                setPlanSubTab("savings");
+                setActiveTab("plan");
+              },
             },
-          },
-        )
+          )}
+        </div>
       )}
     </section>
   );
 
   const renderRoutineCard = () => (
-    <section className={`${dashboardCardClass} p-5 xl:p-6`}>
-      <div className="mb-4 flex items-center justify-between">
+    <section
+      className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
+    >
+      <div className="mb-4 flex shrink-0 items-center justify-between">
         <h2 className={dashboardSectionTitle}>Routine</h2>
         <div className={dashboardIconClass}>
           <CheckCircle2 className="h-5 w-5" />
@@ -1763,7 +1837,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
       {routineDashboardItems.length > 0 ? (
         <>
-          <div className="mb-4 flex items-end gap-2">
+          <div className="mb-4 flex shrink-0 items-end gap-2">
             <span className="text-4xl font-black text-blue-700 dark:text-blue-300">
               {routineDoneCount}
             </span>
@@ -1775,7 +1849,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             </span>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
             {routineDashboardItems.map((routine) => (
               <button
                 key={routine.id}
@@ -1800,55 +1874,19 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           </div>
         </>
       ) : (
-        renderDashboardEmptyState(
-          "No routine for today",
-          "Daily, weekly, monthly, or yearly routine items will be shown here.",
-          {
-            label: "Open plan",
-            onClick: () => {
-              setPlanSubTab("tasks");
-              setActiveTab("plan");
+        <div className="flex min-h-0 flex-1 items-center">
+          {renderDashboardEmptyState(
+            "No routine for today",
+            "Daily, weekly, monthly, or yearly routine items will be shown here.",
+            {
+              label: "Open plan",
+              onClick: () => {
+                setPlanSubTab("tasks");
+                setActiveTab("plan");
+              },
             },
-          },
-        )
-      )}
-    </section>
-  );
-
-  const renderNextUpCard = () => (
-    <section className={`${dashboardCardClass} p-5 xl:p-6`}>
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className={dashboardSectionTitle}>Next Up</h2>
-        <div className={dashboardIconClass}>
-          <Clock3 className="h-5 w-5" />
+          )}
         </div>
-      </div>
-
-      {nextUpItems.length > 0 ? (
-        <div className="space-y-3">
-          {nextUpItems.map((item) => (
-            <div
-              key={item.id}
-              className="grid grid-cols-[minmax(3.75rem,auto)_minmax(0,1fr)] items-center gap-4"
-            >
-              <div className="rounded-2xl bg-slate-100 px-3 py-3 text-center text-base font-black text-slate-900 dark:bg-white/10 dark:text-zinc-50">
-                {item.time}
-              </div>
-              <div className="min-w-0 truncate text-base font-semibold text-slate-800 dark:text-zinc-100">
-                {item.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        renderDashboardEmptyState(
-          "Nothing scheduled",
-          "Add a dated task, event, or routine to fill the timeline.",
-          {
-            label: "Open calendar",
-            onClick: () => setActiveTab("calendar" as Tab),
-          },
-        )
       )}
     </section>
   );
@@ -1938,31 +1976,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     </section>
   );
 
-  const renderMantraCard = () => (
-    <section
-      className={`${dashboardCardClass} flex items-center justify-between gap-6 px-6 py-4`}
-    >
-      <div className="flex items-center gap-4">
-        <div className={dashboardIconClass}>
-          <StickyNote className="h-5 w-5" />
-        </div>
-        <div className="text-base font-bold text-slate-700 dark:text-zinc-200">
-          Mantra
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={openThemeEditor}
-        className="min-w-0 truncate text-center text-lg font-black text-blue-700 transition-colors hover:text-blue-600 dark:text-blue-300 dark:hover:text-blue-200 xl:text-xl"
-      >
-        {hasThemeContent ? themeContent : "Add a monthly mantra"}
-      </button>
-      <div className="hidden text-7xl font-black leading-none text-blue-100 dark:text-blue-400/10 xl:block">
-        ”
-      </div>
-    </section>
-  );
-
   const renderDesktopDashboard = () => (
     <motion.div
       data-swipe-tabs="summary"
@@ -1978,19 +1991,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           <div className="xl:col-span-1">{renderDateCard()}</div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {renderTopThreeCard()}
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {renderTasksCard()}
           {renderGoalsCard()}
           {renderRoutineCard()}
-          {renderNextUpCard()}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-5">
           <div className="xl:col-span-2">{renderMoneyCard()}</div>
           <div className="xl:col-span-3">{renderWeeklyWinCard()}</div>
         </div>
-
-        <div className="mt-4">{renderMantraCard()}</div>
       </div>
     </motion.div>
   );
@@ -2057,10 +2067,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         transition={{ duration: 0.4, delay: 0.1 }}
         className="space-y-4 px-4"
       >
-        {renderTopThreeCard()}
+        {renderTasksCard()}
         {renderGoalsCard()}
         {renderRoutineCard()}
-        {renderNextUpCard()}
         {renderMoneyCard()}
 
         <section className={contentSurface.primaryColumn}>
@@ -2174,7 +2183,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         )}
 
         {renderWeeklyWinCard()}
-        {renderMantraCard()}
       </motion.div>
     </div>
   );
