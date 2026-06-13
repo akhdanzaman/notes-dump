@@ -340,7 +340,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 }
                 
                 const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
-                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
+                const newTags = parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
                 const parsedDate = new Date(date);
@@ -886,7 +886,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (investmentCurrentPriceStr !== undefined && match.meta.investmentCurrentPrice !== investmentCurrentPrice) { match.meta.investmentCurrentPrice = investmentCurrentPrice; updated = true; }
                 if (investmentPlatform !== undefined && match.meta.investmentPlatform !== (investmentPlatform || undefined)) { match.meta.investmentPlatform = investmentPlatform || undefined; updated = true; }
                 const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
-                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
+                const newTags = parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
                 if (dueDateStr) {
@@ -1152,7 +1152,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     updated = true;
                 }
                 const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
-                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
+                const newTags = parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 if (hasHideFromCalendar && match.meta.hideFromCalendar !== hideFromCalendar) { match.meta.hideFromCalendar = hideFromCalendar; updated = true; }
                 
@@ -1273,7 +1273,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 }
                 
                 const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
-                const newTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
+                const newTags = parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
                 
                 const parsedDate = new Date(date);
