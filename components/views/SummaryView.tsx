@@ -36,6 +36,16 @@ import {
   ShieldAlert,
   ListChecks,
   RotateCcw,
+  CalendarDays,
+  Clock3,
+  Trophy,
+  Image as ImageIcon,
+  Circle,
+  Check,
+  BarChart3,
+  Home,
+  FileText,
+  Settings,
 } from "lucide-react";
 import {
   BrainDumpItem,
@@ -74,7 +84,14 @@ interface SummaryViewProps {
   themeNavDate: Date;
   setThemeNavDate: (d: Date) => void;
   monthlyThemes: Record<string, string>;
-  onThemeEdit: (content: string) => void;
+  monthlyThemeImages?: Record<string, string>;
+  onThemeEdit: (
+    content: string,
+    context?: {
+      key: string;
+      heroImage?: string;
+    },
+  ) => void;
   handleToggleStatus: (id: string) => void;
   setActiveTab: (tab: Tab) => void;
   setPlanSubTab: (tab: any) => void;
@@ -149,6 +166,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   themeNavDate,
   setThemeNavDate,
   monthlyThemes,
+  monthlyThemeImages = {},
   onThemeEdit,
   handleToggleStatus,
   setActiveTab,
@@ -256,7 +274,29 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     return { key, content: monthlyThemes[key] || "" };
   };
 
-  const { content: themeContent } = getThemeForDate(themeNavDate);
+  const { key: themeKey, content: themeContent } =
+    getThemeForDate(themeNavDate);
+
+  const localThemeImages = useMemo<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(
+        localStorage.getItem("braindump_monthly_theme_images") || "{}",
+      );
+    } catch {
+      return {};
+    }
+  }, [themeKey]);
+
+  const themeHeroImage =
+    monthlyThemeImages[themeKey] || localThemeImages[themeKey] || "";
+
+  const openThemeEditor = () => {
+    onThemeEdit(themeContent, {
+      key: themeKey,
+      heroImage: themeHeroImage,
+    });
+  };
 
   const localInsights = useMemo(
     () => generateInsights(items, budgetConfig, wallets, skills),
@@ -1027,8 +1067,732 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     );
   };
 
-  return (
-    <div className={contentSurface.pageShell}>
+  const topThreeToday = useMemo(() => {
+    const fallback = [
+      "Finish product sample",
+      "Laundry sepatu",
+      "Research new product ideas",
+    ];
+
+    const fromItems = displayItems.slice(0, 3).map((item) => ({
+      id: item.id,
+      label: item.content,
+      done: item.status === "done",
+    }));
+
+    return [
+      ...fromItems,
+      ...fallback.slice(fromItems.length).map((label, index) => ({
+        id: `fallback-top-${index}`,
+        label,
+        done: false,
+      })),
+    ].slice(0, 3);
+  }, [displayItems]);
+
+  const goalDashboardItems = useMemo(() => {
+    const targets = items
+      .filter(
+        (item) =>
+          item.type === ItemType.SHOPPING &&
+          (item.meta.shoppingCategory === "saving" ||
+            item.meta.shoppingCategory === "investment"),
+      )
+      .slice(0, 4)
+      .map((item) => {
+        const linkedSavings = items
+          .filter(
+            (candidate) =>
+              candidate.type === ItemType.FINANCE &&
+              candidate.meta.financeType === "saving" &&
+              candidate.meta.savingGoalId === item.id &&
+              (candidate.status === "done" || candidate.status === "pending"),
+          )
+          .reduce((sum, candidate) => sum + (candidate.meta.amount || 0), 0);
+
+        const targetAmount = Number(
+          item.meta.targetAmount ||
+            item.meta.goalAmount ||
+            item.meta.amount ||
+            item.meta.target ||
+            0,
+        );
+        const savedAmount = Number(item.meta.savedAmount || linkedSavings || 0);
+        const derivedProgress =
+          targetAmount > 0 ? (savedAmount / targetAmount) * 100 : 0;
+
+        return {
+          id: item.id,
+          label: item.content,
+          progress: Math.max(
+            0,
+            Math.min(100, Number(item.meta.progress ?? derivedProgress)),
+          ),
+        };
+      });
+
+    if (targets.length > 0) return targets;
+
+    return [
+      { id: "fallback-goal-1", label: "Financial Freedom", progress: 56 },
+      { id: "fallback-goal-2", label: "Build Online Income", progress: 41 },
+      { id: "fallback-goal-3", label: "Health & Fitness", progress: 63 },
+      { id: "fallback-goal-4", label: "Learn & Grow", progress: 37 },
+    ];
+  }, [items]);
+
+  const ritualDashboardItems = useMemo(() => {
+    const fallback = [
+      "Check balance",
+      "Move body",
+      "Journal",
+      "No impulsive spending",
+      "Review plan",
+    ];
+
+    const fromItems = summaryPendingGroups.routines.slice(0, 5).map((item) => ({
+      id: item.id,
+      label: item.content,
+      done: item.status === "done",
+      sourceId: item.id,
+    }));
+
+    return [
+      ...fromItems,
+      ...fallback.slice(fromItems.length).map((label, index) => ({
+        id: `fallback-ritual-${index}`,
+        label,
+        done: index < 3,
+        sourceId: undefined,
+      })),
+    ].slice(0, 5);
+  }, [summaryPendingGroups.routines]);
+
+  const ritualDoneCount = ritualDashboardItems.filter(
+    (item) => item.done,
+  ).length;
+
+  const nextUpItems = useMemo(() => {
+    const fallback = [
+      { id: "fallback-next-1", time: "10:00", label: "Focus Work Block" },
+      { id: "fallback-next-2", time: "13:00", label: "Product Research" },
+      { id: "fallback-next-3", time: "19:00", label: "Review & Plan" },
+    ];
+
+    const datedItems = items
+      .filter((item) => {
+        if (item.status === "done") return false;
+        return item.meta.date || item.meta.dueDate || item.meta.scheduledAt;
+      })
+      .map((item) => {
+        const rawDate =
+          item.meta.date || item.meta.dueDate || item.meta.scheduledAt;
+        const date = rawDate ? new Date(rawDate) : null;
+        return {
+          item,
+          date,
+          time:
+            date && !Number.isNaN(date.getTime())
+              ? date.toLocaleTimeString(undefined, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })
+              : "Today",
+        };
+      })
+      .filter(({ date }) => date && !Number.isNaN(date.getTime()))
+      .sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0))
+      .slice(0, 3)
+      .map(({ item, time }) => ({
+        id: item.id,
+        time,
+        label: item.content,
+      }));
+
+    return [...datedItems, ...fallback.slice(datedItems.length)].slice(0, 3);
+  }, [items]);
+
+  const savingsRate =
+    budgetConfig.monthlyIncome > 0
+      ? Math.max(
+          0,
+          Math.round(
+            ((budgetConfig.monthlyIncome - totalExpense) /
+              budgetConfig.monthlyIncome) *
+              100,
+          ),
+        )
+      : Math.max(0, Math.round(100 - budgetPercent));
+
+  const monthlySpendingLabel = showBalance ? fmt(totalExpense) : "••••••";
+  const netWorthLabel = showBalance ? fmt(totalNetWorth) : "••••••••";
+
+  const dashboardShellClass =
+    "rounded-[34px] bg-[#eaf3f8] p-4 text-slate-950 shadow-[0_22px_70px_rgba(37,64,90,0.16)] dark:bg-[#090d12] dark:text-zinc-50 dark:shadow-black/40 xl:p-5";
+  const dashboardCardClass =
+    "rounded-[24px] border border-white/70 bg-white/92 shadow-[0_16px_40px_rgba(37,64,90,0.08)] backdrop-blur dark:border-white/10 dark:bg-zinc-900/82 dark:shadow-black/25";
+  const dashboardIconClass =
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300";
+  const dashboardSectionTitle =
+    "text-sm font-black tracking-tight text-slate-950 dark:text-zinc-50";
+  const dashboardKicker =
+    "text-[11px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300";
+  const dashboardMuted = "text-slate-500 dark:text-zinc-400";
+
+  const renderDashboardOverlays = () =>
+    typeof window !== "undefined"
+      ? createPortal(
+          <AnimatePresence>
+            {isNotificationOpen && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={handleCloseNotification}
+                  className="fixed inset-0 z-[9998] bg-black/30"
+                />
+
+                <motion.div
+                  ref={popupRef}
+                  initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                  className="fixed z-[9999] flex max-h-[60vh] flex-col overflow-hidden rounded-3xl border border-border bg-surface lg:max-h-[70vh] lg:shadow-2xl"
+                  style={{
+                    top: popupPosition.top,
+                    left: popupPosition.left,
+                    width: popupPosition.width,
+                    transformOrigin: popupPosition.transformOrigin,
+                  }}
+                >
+                  <div className="flex items-center justify-between border-b border-border p-4">
+                    <h3 className="flex items-center gap-2 text-lg font-bold">
+                      <AlertTriangle className="h-5 w-5 text-blue-500" />
+                      Notifications
+                    </h3>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => fetchAIInsights(true)}
+                        disabled={isLoadingInsights}
+                        className="rounded-full p-2 transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+                        aria-label="Refresh insights"
+                      >
+                        <RefreshCw
+                          className={`h-4 w-4 ${
+                            isLoadingInsights ? "animate-spin" : ""
+                          }`}
+                        />
+                      </button>
+
+                      <button
+                        onClick={handleCloseNotification}
+                        className="rounded-full p-2 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                        aria-label="Close notifications"
+                      >
+                        <ChevronDown className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 overflow-y-auto p-4 lg:p-5">
+                    {displayInsights.length > 0 ? (
+                      displayInsights.map((insight, idx) => {
+                        let bgColor = "bg-black/5 dark:bg-white/10";
+                        let iconColor = "text-zinc-500";
+                        let Icon = AlertTriangle;
+
+                        if (insight.type === "warning") {
+                          bgColor = "border border-red-500/20 bg-red-500/10";
+                          iconColor = "text-red-500";
+                          Icon = AlertTriangle;
+                        } else if (insight.type === "success") {
+                          bgColor =
+                            "border border-emerald-500/20 bg-emerald-500/10";
+                          iconColor = "text-emerald-500";
+                          Icon = CheckCircle2;
+                        } else {
+                          bgColor = "border border-blue-500/20 bg-blue-500/10";
+                          iconColor = "text-blue-500";
+                          if (insight.iconType === "task") Icon = Target;
+                          else if (insight.iconType === "finance")
+                            Icon = WalletIcon;
+                          else if (insight.iconType === "shopping")
+                            Icon = ShoppingCart;
+                          else if (insight.iconType === "skill") Icon = Sprout;
+                        }
+
+                        return (
+                          <div
+                            key={`${insight.title}-${idx}`}
+                            className={`flex items-start gap-3 rounded-2xl p-4 ${bgColor}`}
+                          >
+                            <Icon
+                              className={`mt-0.5 h-5 w-5 shrink-0 ${iconColor}`}
+                            />
+                            <div>
+                              <h3 className="mb-0.5 text-sm font-bold">
+                                {insight.title}
+                              </h3>
+                              <p className="text-xs leading-relaxed opacity-70">
+                                {insight.message}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-8 text-center opacity-50">
+                        <p className="text-sm">No new notifications</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </>
+            )}
+
+            {isReviewOpen && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={handleCloseReview}
+                  className="fixed inset-0 z-[9998] bg-black/30"
+                />
+
+                <motion.div
+                  ref={reviewPopupRef}
+                  initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                  className="fixed z-[9999] flex max-h-[70vh] flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+                  style={{
+                    top: reviewPopupPosition.top,
+                    left: reviewPopupPosition.left,
+                    width: reviewPopupPosition.width,
+                    transformOrigin: reviewPopupPosition.transformOrigin,
+                  }}
+                >
+                  <div className="z-10 flex shrink-0 items-center justify-between border-b border-border bg-surface p-4">
+                    <h3 className="flex items-center gap-2 text-lg font-bold">
+                      <ClipboardCheck className="h-5 w-5 text-indigo-500" />
+                      Review Center
+                    </h3>
+
+                    <div className="flex items-center gap-2">
+                      {pendingReviews && pendingReviews.length > 0 && (
+                        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-600">
+                          {pendingReviews.length} Pending
+                        </span>
+                      )}
+                      <button
+                        onClick={handleCloseReview}
+                        className="ml-2 rounded-full p-2 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                        aria-label="Close review center"
+                      >
+                        <ChevronDown className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <ReviewCenterPanel
+                    parsingTasks={parsingTasks}
+                    pendingReviews={pendingReviews}
+                    onApproveReview={handleApproveReview}
+                    onRejectReview={handleRejectReview}
+                    retryParsing={retryParsing}
+                    clearParsingTask={clearParsingTask}
+                    undoParsingTask={undoParsingTask}
+                    deleteParsingTaskEntries={deleteParsingTaskEntries}
+                  />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )
+      : null;
+
+  const renderTopThreeCard = () => (
+    <section className={`${dashboardCardClass} p-5 xl:p-6`}>
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className={dashboardSectionTitle}>Top 3 Today</h2>
+        <div className={dashboardIconClass}>
+          <ClipboardCheck className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {topThreeToday.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => {
+              if (!item.id.startsWith("fallback")) handleToggleStatus(item.id);
+            }}
+            className="group flex w-full items-center gap-4 rounded-2xl py-1 text-left"
+          >
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                item.done
+                  ? "border-emerald-500 bg-emerald-500 text-white"
+                  : "border-blue-200 text-blue-600 group-hover:border-blue-500 dark:border-blue-400/30 dark:text-blue-300"
+              }`}
+            >
+              {item.done && <Check className="h-5 w-5" />}
+            </div>
+            <div className="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900 dark:text-zinc-100">
+              {item.label}
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+
+  const renderGoalsCard = () => (
+    <section className={`${dashboardCardClass} p-5 xl:p-6`}>
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className={dashboardSectionTitle}>Goals Progress</h2>
+        <div className={dashboardIconClass}>
+          <BarChart3 className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {goalDashboardItems.map((goal, index) => (
+          <div
+            key={goal.id}
+            className="grid grid-cols-[36px_minmax(0,1fr)_44px] items-center gap-3"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+              {index === 0 ? (
+                <WalletIcon className="h-4 w-4" />
+              ) : index === 1 ? (
+                <BarChart3 className="h-4 w-4" />
+              ) : index === 2 ? (
+                <Target className="h-4 w-4" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <div className="mb-1 truncate text-sm font-semibold text-slate-700 dark:text-zinc-200">
+                {goal.label}
+              </div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
+                  style={{ width: `${goal.progress}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="text-right text-sm font-black text-slate-900 dark:text-zinc-50">
+              {Math.round(goal.progress)}%
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  const renderHabitsCard = () => (
+    <section className={`${dashboardCardClass} p-5 xl:p-6`}>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className={dashboardSectionTitle}>Habits / Rituals</h2>
+        <div className={dashboardIconClass}>
+          <CheckCircle2 className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="mb-4 flex items-end gap-2">
+        <span className="text-4xl font-black text-blue-700 dark:text-blue-300">
+          {ritualDoneCount}
+        </span>
+        <span className="pb-1 text-2xl font-bold text-slate-500 dark:text-zinc-400">
+          / {ritualDashboardItems.length}
+        </span>
+        <span className={`pb-1 text-sm font-semibold ${dashboardMuted}`}>
+          done today
+        </span>
+      </div>
+
+      <div className="space-y-2.5">
+        {ritualDashboardItems.map((ritual) => (
+          <button
+            key={ritual.id}
+            type="button"
+            onClick={() => {
+              if (ritual.sourceId) handleToggleStatus(ritual.sourceId);
+            }}
+            className="flex w-full items-center gap-2.5 text-left"
+          >
+            <div
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                ritual.done
+                  ? "border-emerald-500 bg-emerald-500 text-white"
+                  : "border-blue-300 text-transparent dark:border-blue-300/40"
+              }`}
+            >
+              <Check className="h-3 w-3" />
+            </div>
+            <span className="truncate text-sm font-medium text-slate-700 dark:text-zinc-200">
+              {ritual.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+
+  const renderNextUpCard = () => (
+    <section className={`${dashboardCardClass} p-5 xl:p-6`}>
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className={dashboardSectionTitle}>Next Up</h2>
+        <div className={dashboardIconClass}>
+          <Clock3 className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {nextUpItems.map((item) => (
+          <div
+            key={item.id}
+            className="grid grid-cols-[70px_minmax(0,1fr)] items-center gap-4"
+          >
+            <div className="rounded-2xl bg-slate-100 px-3 py-3 text-center text-base font-black text-slate-900 dark:bg-white/10 dark:text-zinc-50">
+              {item.time}
+            </div>
+            <div className="min-w-0 truncate text-base font-semibold text-slate-800 dark:text-zinc-100">
+              {item.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  const renderMoneyCard = () => (
+    <section
+      onClick={() => setActiveTab("money")}
+      className={`${dashboardCardClass} cursor-pointer p-5 transition-transform active:scale-[0.995] xl:p-6`}
+    >
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className={dashboardSectionTitle}>Money Snapshot</h2>
+        <div className={dashboardIconClass}>
+          <WalletIcon className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-white/10">
+        <div className="pr-4">
+          <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
+            Net Worth
+          </p>
+          <div className="truncate text-xl font-black text-blue-700 dark:text-blue-300">
+            {netWorthLabel}
+          </div>
+        </div>
+
+        <div className="px-4">
+          <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
+            Monthly Spending
+          </p>
+          <div className="truncate text-xl font-black text-blue-700 dark:text-blue-300">
+            {monthlySpendingLabel}
+          </div>
+        </div>
+
+        <div className="pl-4">
+          <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
+            Savings Rate
+          </p>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+            {savingsRate}%
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderWeeklyWinCard = () => (
+    <section
+      className={`${dashboardCardClass} flex items-center justify-between gap-6 p-5 xl:p-6`}
+    >
+      <div className="flex items-center gap-4">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300">
+          <Trophy className="h-7 w-7" />
+        </div>
+        <div>
+          <div className={dashboardKicker}>Weekly Win</div>
+          <div className="mt-2 text-2xl font-black text-slate-900 dark:text-zinc-50">
+            Stayed consistent.
+          </div>
+          <div className={`text-lg font-medium ${dashboardMuted}`}>
+            Progress over perfection.
+          </div>
+        </div>
+      </div>
+
+      <div className="hidden h-24 w-24 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300 xl:flex">
+        <Sprout className="h-10 w-10" />
+      </div>
+    </section>
+  );
+
+  const renderDesktopDashboard = () => (
+    <motion.div
+      data-swipe-tabs="summary"
+      className="hidden lg:block"
+      onTouchStart={swipeHandlers.onTouchStart}
+      onTouchMove={swipeHandlers.onTouchMove}
+      onTouchEnd={swipeHandlers.onTouchEnd}
+      style={{ x: swipeHandlers.dragOffset }}
+    >
+      <div className={dashboardShellClass}>
+        <div className="grid grid-cols-[minmax(0,1fr)_150px] gap-4 xl:grid-cols-[minmax(0,1fr)_170px]">
+          <button
+            type="button"
+            onClick={openThemeEditor}
+            className={`${dashboardCardClass} group relative min-h-[270px] overflow-hidden text-left transition-transform active:scale-[0.995] xl:min-h-[300px]`}
+          >
+            {themeHeroImage ? (
+              <img
+                src={themeHeroImage}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,rgba(191,219,254,0.9),transparent_34%),linear-gradient(135deg,#dbeafe_0%,#f8fafc_52%,#e0f2fe_100%)] dark:bg-[radial-gradient(circle_at_78%_35%,rgba(37,99,235,0.28),transparent_34%),linear-gradient(135deg,#0f172a_0%,#111827_52%,#020617_100%)]" />
+            )}
+
+            <div className="absolute inset-0 bg-gradient-to-r from-white/92 via-white/72 to-white/12 dark:from-zinc-950/90 dark:via-zinc-950/58 dark:to-zinc-950/15" />
+
+            {!themeHeroImage && (
+              <div className="absolute bottom-8 right-8 hidden h-44 w-72 items-center justify-center rounded-[32px] border border-blue-200/70 bg-white/35 text-blue-700/70 backdrop-blur-sm dark:border-blue-300/20 dark:bg-white/5 dark:text-blue-200/70 xl:flex">
+                <div className="text-center">
+                  <ImageIcon className="mx-auto mb-3 h-10 w-10" />
+                  <div className="text-xs font-black uppercase tracking-[0.22em]">
+                    Theme Image
+                  </div>
+                  <div className="mt-1 text-xs font-medium opacity-70">
+                    Add from theme modal
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="relative z-10 flex min-h-[270px] max-w-[680px] flex-col justify-center p-8 xl:min-h-[300px] xl:p-10">
+              <h1 className="max-w-2xl text-5xl font-black leading-[1.02] tracking-tight text-[#10233f] dark:text-white xl:text-6xl">
+                {themeContent || "Build today. Freedom tomorrow."}
+              </h1>
+
+              <div className="mt-6 text-xl font-black text-blue-700 dark:text-blue-300">
+                Mission of the Day
+              </div>
+              <p
+                className={`mt-2 max-w-xl text-base font-medium leading-relaxed ${dashboardMuted}`}
+              >
+                Focus on what matters. Protect your time. Move with intention.
+              </p>
+
+              <div className="mt-7 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-blue-700/80 opacity-0 transition-opacity group-hover:opacity-100 dark:text-blue-300/80">
+                <Pencil className="h-3.5 w-3.5" />
+                Edit mission & image
+              </div>
+            </div>
+          </button>
+
+          <div
+            data-swipe-date="summary-theme-month"
+            className={`${dashboardCardClass} flex min-h-[270px] flex-col items-center justify-center p-5 text-center touch-pan-y xl:min-h-[300px]`}
+            onTouchStart={dateSwipeHandlers.onTouchStart}
+            onTouchMove={dateSwipeHandlers.onTouchMove}
+            onTouchEnd={dateSwipeHandlers.onTouchEnd}
+          >
+            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+              <CalendarDays className="h-7 w-7" />
+            </div>
+
+            <div className="text-base font-semibold text-slate-700 dark:text-zinc-300">
+              {todayDate.toLocaleDateString(undefined, { weekday: "long" })}
+            </div>
+            <div className="mt-1 text-6xl font-black leading-none text-blue-700 dark:text-blue-300">
+              {String(todayDate.getDate()).padStart(2, "0")}
+            </div>
+            <div className="mt-3 text-base font-semibold text-blue-700 dark:text-blue-300">
+              {themeNavDate.toLocaleDateString(undefined, {
+                month: "long",
+                year: "numeric",
+              })}
+            </div>
+
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <button
+                onClick={() => changeThemeMonth(-1)}
+                className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/15"
+                aria-label="Previous theme month"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={openThemeEditor}
+                className="rounded-full bg-blue-50 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
+              >
+                Theme
+              </button>
+              <button
+                onClick={() => changeThemeMonth(1)}
+                className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/15"
+                aria-label="Next theme month"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-12 gap-4">
+          <div className="col-span-3">{renderTopThreeCard()}</div>
+          <div className="col-span-3">{renderGoalsCard()}</div>
+          <div className="col-span-3">{renderHabitsCard()}</div>
+          <div className="col-span-3">{renderNextUpCard()}</div>
+
+          <div className="col-span-5">{renderMoneyCard()}</div>
+          <div className="col-span-7">{renderWeeklyWinCard()}</div>
+
+          <section
+            className={`${dashboardCardClass} col-span-12 flex items-center justify-between gap-6 px-6 py-4`}
+          >
+            <div className="flex items-center gap-4">
+              <div className={dashboardIconClass}>
+                <StickyNote className="h-5 w-5" />
+              </div>
+              <div className="text-base font-bold text-slate-700 dark:text-zinc-200">
+                Mantra
+              </div>
+            </div>
+            <div className="text-center text-xl font-black text-blue-700 dark:text-blue-300">
+              Discipline today. Freedom tomorrow.
+            </div>
+            <div className="hidden text-7xl font-black leading-none text-blue-100 dark:text-blue-400/10 xl:block">
+              ”
+            </div>
+          </section>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderMobileDashboard = () => (
+    <div className="lg:hidden">
       <motion.div
         layoutId="top-container"
         data-swipe-tabs="summary"
@@ -1045,106 +1809,68 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "linear" }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-sm font-bold opacity-60 uppercase tracking-wider">
-              <div className="w-2 h-2 rounded-full bg-black"></div>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider opacity-60">
+              <div className="h-2 w-2 rounded-full bg-black dark:bg-white"></div>
               Dashboard
             </div>
 
             <div className="flex items-center gap-2">
-              <div
-                data-swipe-date="summary-theme-month"
-                className="flex items-center bg-black/5 rounded-full p-1 touch-pan-y"
-                onTouchStart={dateSwipeHandlers.onTouchStart}
-                onTouchMove={dateSwipeHandlers.onTouchMove}
-                onTouchEnd={dateSwipeHandlers.onTouchEnd}
-              >
-                <button
-                  onClick={() => changeThemeMonth(-1)}
-                  className="p-2 hover:bg-black/5 rounded-full"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={themeNavDate.toISOString()}
-                    data-theme-month-label="true"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="px-2 text-sm font-bold min-w-[80px] text-center"
-                  >
-                    {themeNavDate.toLocaleDateString(undefined, {
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </motion.span>
-                </AnimatePresence>
-
-                <button
-                  onClick={() => changeThemeMonth(1)}
-                  className="p-2 hover:bg-black/5 rounded-full"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
               <button
                 ref={reviewButtonRef}
                 onClick={handleOpenReview}
-                className="relative flex items-center justify-center bg-black/5 rounded-full h-[36px] w-[36px] hover:bg-black/10 transition-colors"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15"
                 aria-label="Open review center"
               >
-                <ClipboardCheck className="w-[18px] h-[18px]" strokeWidth={2} />
+                <ClipboardCheck className="h-[18px] w-[18px]" strokeWidth={2} />
                 {((pendingReviews && pendingReviews.length > 0) ||
                   (parsingTasks && parsingTasks.length > 0)) && (
-                  <span className="absolute top-2 right-2.5 w-2 h-2 bg-indigo-500 rounded-full border border-surface"></span>
+                  <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full border border-surface bg-indigo-500"></span>
                 )}
               </button>
 
               <button
                 ref={notificationButtonRef}
                 onClick={handleOpenNotification}
-                className="relative flex items-center justify-center bg-black/5 rounded-full h-[36px] w-[36px] hover:bg-black/10 transition-colors"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15"
                 aria-label="Open notifications"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-                </svg>
-
+                <AlertTriangle className="h-[18px] w-[18px]" />
                 {hasNewNotification && (
-                  <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-surface"></span>
+                  <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full border border-surface bg-red-500"></span>
                 )}
               </button>
             </div>
           </div>
 
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-1 tracking-tight leading-tight">
-                {themeContent ? `"${themeContent}"` : "Set a theme..."}
+          <button
+            type="button"
+            onClick={openThemeEditor}
+            className="relative block min-h-[220px] w-full overflow-hidden rounded-[28px] text-left"
+          >
+            {themeHeroImage ? (
+              <img
+                src={themeHeroImage}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_30%,rgba(191,219,254,0.9),transparent_34%),linear-gradient(135deg,#dbeafe_0%,#f8fafc_50%,#e0f2fe_100%)] dark:bg-[radial-gradient(circle_at_80%_30%,rgba(37,99,235,0.26),transparent_34%),linear-gradient(135deg,#0f172a_0%,#111827_52%,#020617_100%)]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-white/10 dark:from-zinc-950/90 dark:via-zinc-950/58 dark:to-zinc-950/15" />
+            <div className="relative z-10 p-6">
+              <div className="mb-2 text-xs font-black uppercase tracking-[0.22em] text-blue-700 dark:text-blue-300">
+                Mission of the Day
+              </div>
+              <h1 className="text-4xl font-black leading-tight text-[#10233f] dark:text-white">
+                {themeContent || "Build today. Freedom tomorrow."}
               </h1>
-              <button
-                onClick={() => onThemeEdit(themeContent)}
-                className="text-sm font-medium opacity-50 hover:opacity-100 flex items-center gap-1 mt-2"
-              >
-                <Pencil className="w-3 h-3" /> Edit Theme
-              </button>
+              <div className="mt-5 flex items-center gap-2 text-xs font-bold text-blue-700 dark:text-blue-300">
+                <Pencil className="h-3.5 w-3.5" />
+                Edit mission & image
+              </div>
             </div>
-          </div>
+          </button>
         </motion.div>
       </motion.div>
 
@@ -1152,74 +1878,22 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className={contentSurface.summaryDashboardGrid}
+        className="space-y-4"
       >
-        <section className={`${contentSurface.sideColumn} lg:order-2`}>
-          <div className="grid grid-cols-4 gap-3 lg:grid-cols-2 lg:gap-3 lg:rounded-[28px] lg:border lg:border-border lg:bg-surface/70 lg:p-4">
-            <div className="hidden lg:col-span-2 lg:flex lg:items-center lg:justify-between lg:pb-1">
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-[0.22em] text-muted">
-                  Quick add
-                </h2>
-                <p className="mt-1 text-xs text-muted">
-                  Most-used captures stay one click away.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() =>
-                handleOpenAddTask(new Date().toISOString().split("T")[0])
-              }
-              className="flex flex-col items-center gap-2 group lg:rounded-2xl lg:bg-background/70 lg:p-3 lg:hover:bg-background"
-            >
-              <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
-                <Plus className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-medium opacity-70">Task</span>
-            </button>
+        {renderTopThreeCard()}
+        {renderGoalsCard()}
+        {renderHabitsCard()}
+        {renderNextUpCard()}
+        {renderMoneyCard()}
 
-            <button
-              onClick={() => handleOpenAddShopping()}
-              className="flex flex-col items-center gap-2 group lg:rounded-2xl lg:bg-background/70 lg:p-3 lg:hover:bg-background"
-            >
-              <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
-                <ShoppingCart className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-medium opacity-70">Buy</span>
-            </button>
-
-            <button
-              onClick={handleOpenAddNote}
-              className="flex flex-col items-center gap-2 group lg:rounded-2xl lg:bg-background/70 lg:p-3 lg:hover:bg-background"
-            >
-              <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
-                <StickyNote className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-medium opacity-70">Note</span>
-            </button>
-
-            <button
-              onClick={handleOpenAddExpense}
-              className="flex flex-col items-center gap-2 group lg:rounded-2xl lg:bg-background/70 lg:p-3 lg:hover:bg-background"
-            >
-              <div className="w-14 h-14 bg-white text-black border border-black/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition-transform">
-                <WalletIcon className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-medium opacity-70">Expense</span>
-            </button>
-          </div>
-        </section>
-
-        <section
-          className={`${contentSurface.primaryColumn} lg:order-1 lg:row-span-2 lg:rounded-[28px] lg:border lg:border-border/70 lg:bg-surface/35 lg:p-5 lg:shadow-sm`}
-        >
-          <div className="flex items-center justify-between mb-4">
+        <section className={contentSurface.primaryColumn}>
+          <div className="mb-4 flex items-center justify-between">
             <div className="flex flex-col">
-              <h2 className="text-lg font-bold flex items-center gap-2">
+              <h2 className="flex items-center gap-2 text-lg font-bold">
                 {displayTitle}
               </h2>
               {displaySubtitle && (
-                <p className="text-xs opacity-50 font-medium mt-0.5">
+                <p className="mt-0.5 text-xs font-medium opacity-50">
                   {displaySubtitle}
                 </p>
               )}
@@ -1227,7 +1901,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
             <button
               onClick={() => setActiveTab("plan")}
-              className="text-xs font-bold opacity-50 hover:opacity-100 uppercase tracking-wider"
+              className="text-xs font-bold uppercase tracking-wider opacity-50 hover:opacity-100"
             >
               View All
             </button>
@@ -1235,55 +1909,85 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
           {displayItems.length > 0 ? (
             <div
-              className={`${contentSurface.denseList} ${isDoneState ? "opacity-60 grayscale" : ""}`}
+              className={`${contentSurface.denseList} ${
+                isDoneState ? "opacity-60 grayscale" : ""
+              }`}
             >
               {displayItems.map((item) => renderSummaryFocusCard(item))}
             </div>
           ) : (
-            <div className={`${contentSurface.emptyStateCard} lg:text-left`}>
-              <p className="text-muted font-medium">All clear!</p>
-              <p className="text-xs opacity-50 mt-1">
+            <div className={contentSurface.emptyStateCard}>
+              <p className="font-medium text-muted">All clear!</p>
+              <p className="mt-1 text-xs opacity-50">
                 Take a break or plan ahead.
               </p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row lg:justify-start">
-                <button
-                  onClick={() =>
-                    handleOpenAddTask(new Date().toISOString().split("T")[0])
-                  }
-                  className="rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-600"
-                >
-                  Add task
-                </button>
-                <button
-                  onClick={handleOpenAddNote}
-                  className="rounded-2xl bg-black/5 px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15"
-                >
-                  Capture note
-                </button>
-              </div>
             </div>
           )}
         </section>
 
+        <div className="grid grid-cols-4 gap-3 rounded-[28px] border border-border bg-surface/70 p-4">
+          <button
+            onClick={() =>
+              handleOpenAddTask(new Date().toISOString().split("T")[0])
+            }
+            className="flex flex-col items-center gap-2"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white dark:bg-white dark:text-black">
+              <Plus className="h-6 w-6" />
+            </div>
+            <span className="text-xs font-medium opacity-70">Task</span>
+          </button>
+
+          <button
+            onClick={() => handleOpenAddShopping()}
+            className="flex flex-col items-center gap-2"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
+              <ShoppingCart className="h-6 w-6" />
+            </div>
+            <span className="text-xs font-medium opacity-70">Buy</span>
+          </button>
+
+          <button
+            onClick={handleOpenAddNote}
+            className="flex flex-col items-center gap-2"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
+              <StickyNote className="h-6 w-6" />
+            </div>
+            <span className="text-xs font-medium opacity-70">Note</span>
+          </button>
+
+          <button
+            onClick={handleOpenAddExpense}
+            className="flex flex-col items-center gap-2"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/10 bg-white text-black dark:border-white/10 dark:bg-white/10 dark:text-white">
+              <WalletIcon className="h-6 w-6" />
+            </div>
+            <span className="text-xs font-medium opacity-70">Expense</span>
+          </button>
+        </div>
+
         {showRitualsSection && (
-          <section className={`${contentSurface.sideColumn} lg:order-3`}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2">
+          <section>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-bold">
                 Rituals
               </h2>
             </div>
 
-            <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:p-0">
+            <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 scrollbar-hide">
               {pendingRoutines.map((routine) => (
                 <button
                   key={routine.id}
                   onClick={() => handleToggleStatus(routine.id)}
-                  className="flex-shrink-0 flex flex-col items-center gap-2 min-w-[72px] lg:min-w-0 lg:rounded-2xl lg:border lg:border-border/60 lg:bg-surface/70 lg:p-3"
+                  className="flex min-w-[72px] flex-shrink-0 flex-col items-center gap-2"
                 >
-                  <div className="w-16 h-16 bg-surface border-2 border-indigo-500/20 rounded-full flex items-center justify-center transition-all hover:border-indigo-500 hover:bg-indigo-500/10">
-                    <CheckCircle2 className="w-6 h-6 text-indigo-500 opacity-50" />
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-indigo-500/20 bg-surface transition-all hover:border-indigo-500 hover:bg-indigo-500/10">
+                    <CheckCircle2 className="h-6 w-6 text-indigo-500 opacity-50" />
                   </div>
-                  <span className="text-[10px] font-medium text-center line-clamp-2 w-full opacity-70 leading-tight">
+                  <span className="line-clamp-2 w-full text-center text-[10px] font-medium leading-tight opacity-70">
                     {routine.content}
                   </span>
                 </button>
@@ -1292,255 +1996,28 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           </section>
         )}
 
+        {renderWeeklyWinCard()}
+
         <section
-          onClick={() => setActiveTab("money")}
-          className={`${contentSurface.sideColumn} cursor-pointer group lg:order-4`}
+          className={`${dashboardCardClass} flex items-center justify-between gap-3 px-5 py-4`}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              Financials
-            </h2>
-            <ArrowRight className="w-4 h-4 opacity-30 group-hover:opacity-100 transition-opacity" />
+          <div className="flex items-center gap-3">
+            <StickyNote className="h-5 w-5 text-blue-700 dark:text-blue-300" />
+            <span className="font-bold">Mantra</span>
           </div>
-
-          <div className="bg-surface text-primary rounded-[24px] border border-border/70 p-5 relative overflow-hidden shadow-sm">
-            <div className="absolute top-0 right-0 p-5 opacity-5">
-              <WalletIcon className="w-24 h-24" />
-            </div>
-
-            <div className="relative z-10">
-              <div className="flex justify-between items-end mb-2">
-                <div>
-                  <p className="text-sm font-medium opacity-60 mb-1">
-                    Net Worth
-                  </p>
-                  <div className="text-2xl font-bold flex items-center gap-2">
-                    {showBalance ? fmt(totalNetWorth) : "••••••••"}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowBalance(!showBalance);
-                      }}
-                      className="opacity-50 hover:opacity-100"
-                    >
-                      {showBalance ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <div className="flex justify-between text-xs font-medium mb-2 opacity-80">
-                  <span>Monthly Spending</span>
-                  <span>{budgetPercent.toFixed(0)}% of Budget</span>
-                </div>
-                <div className="h-2 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${
-                      budgetPercent > 100 ? "bg-red-500" : "bg-emerald-500"
-                    }`}
-                    style={{ width: `${budgetPercent}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] mt-1 opacity-50">
-                  <span>{fmt(totalExpense)}</span>
-                  <span>{fmt(totalLimits)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <span className="text-right font-black text-blue-700 dark:text-blue-300">
+            Discipline today. Freedom tomorrow.
+          </span>
         </section>
-
-        {typeof window !== "undefined" &&
-          createPortal(
-            <AnimatePresence>
-              {isNotificationOpen && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={handleCloseNotification}
-                    className="fixed inset-0 bg-black/30 z-[9998]"
-                  />
-
-                  <motion.div
-                    ref={popupRef}
-                    initial={{ opacity: 0, scale: 0.92, y: -8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.92, y: -8 }}
-                    transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                    className="fixed bg-surface border border-border rounded-3xl z-[9999] overflow-hidden flex flex-col max-h-[60vh] lg:max-h-[70vh] lg:shadow-2xl"
-                    style={{
-                      top: popupPosition.top,
-                      left: popupPosition.left,
-                      width: popupPosition.width,
-                      transformOrigin: popupPosition.transformOrigin,
-                    }}
-                  >
-                    <div className="flex items-center justify-between p-4 border-b border-border">
-                      <h3 className="font-bold text-lg flex items-center gap-2">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-                        </svg>
-                        Notifications
-                      </h3>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => fetchAIInsights(true)}
-                          disabled={isLoadingInsights}
-                          className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
-                        >
-                          <RefreshCw
-                            className={`w-4 h-4 ${isLoadingInsights ? "animate-spin" : ""}`}
-                          />
-                        </button>
-
-                        <button
-                          onClick={handleCloseNotification}
-                          className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
-                        >
-                          <ChevronDown className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-4 lg:p-5 overflow-y-auto space-y-3">
-                      {displayInsights.length > 0 ? (
-                        displayInsights.map((insight, idx) => {
-                          let bgColor = "bg-black/5 dark:bg-white/10";
-                          let iconColor = "text-zinc-500";
-                          let Icon = AlertTriangle;
-
-                          if (insight.type === "warning") {
-                            bgColor = "bg-red-500/10 border border-red-500/20";
-                            iconColor = "text-red-500";
-                            Icon = AlertTriangle;
-                          } else if (insight.type === "success") {
-                            bgColor =
-                              "bg-emerald-500/10 border border-emerald-500/20";
-                            iconColor = "text-emerald-500";
-                            Icon = CheckCircle2;
-                          } else {
-                            bgColor =
-                              "bg-blue-500/10 border border-blue-500/20";
-                            iconColor = "text-blue-500";
-                            if (insight.iconType === "task") Icon = Target;
-                            else if (insight.iconType === "finance")
-                              Icon = WalletIcon;
-                            else if (insight.iconType === "shopping")
-                              Icon = ShoppingCart;
-                            else if (insight.iconType === "skill")
-                              Icon = Sprout;
-                          }
-
-                          return (
-                            <div
-                              key={idx}
-                              className={`p-4 rounded-2xl flex items-start gap-3 ${bgColor}`}
-                            >
-                              <Icon
-                                className={`w-5 h-5 mt-0.5 shrink-0 ${iconColor}`}
-                              />
-                              <div>
-                                <h3 className="text-sm font-bold mb-0.5">
-                                  {insight.title}
-                                </h3>
-                                <p className="text-xs opacity-70 leading-relaxed">
-                                  {insight.message}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-center py-8 opacity-50">
-                          <p className="text-sm">No new notifications</p>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-
-              {isReviewOpen && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={handleCloseReview}
-                    className="fixed inset-0 bg-black/30 z-[9998]"
-                  />
-
-                  <motion.div
-                    ref={reviewPopupRef}
-                    initial={{ opacity: 0, scale: 0.92, y: -8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.92, y: -8 }}
-                    transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                    className="fixed bg-surface border border-border rounded-3xl z-[9999] overflow-hidden flex flex-col max-h-[70vh] shadow-2xl"
-                    style={{
-                      top: reviewPopupPosition.top,
-                      left: reviewPopupPosition.left,
-                      width: reviewPopupPosition.width,
-                      transformOrigin: reviewPopupPosition.transformOrigin,
-                    }}
-                  >
-                    <div className="flex items-center justify-between p-4 border-b border-border bg-surface shrink-0 z-10">
-                      <h3 className="font-bold text-lg flex items-center gap-2">
-                        <ClipboardCheck className="w-5 h-5 text-indigo-500" />
-                        Review Center
-                      </h3>
-
-                      <div className="flex items-center gap-2">
-                        {pendingReviews && pendingReviews.length > 0 && (
-                          <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
-                            {pendingReviews.length} Pending
-                          </span>
-                        )}
-                        <button
-                          onClick={handleCloseReview}
-                          className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors ml-2"
-                        >
-                          <ChevronDown className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <ReviewCenterPanel
-                      parsingTasks={parsingTasks}
-                      pendingReviews={pendingReviews}
-                      onApproveReview={handleApproveReview}
-                      onRejectReview={handleRejectReview}
-                      retryParsing={retryParsing}
-                      clearParsingTask={clearParsingTask}
-                      undoParsingTask={undoParsingTask}
-                      deleteParsingTaskEntries={deleteParsingTaskEntries}
-                    />
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>,
-            document.body,
-          )}
       </motion.div>
+    </div>
+  );
+
+  return (
+    <div className={contentSurface.pageShell}>
+      {renderDesktopDashboard()}
+      {renderMobileDashboard()}
+      {renderDashboardOverlays()}
     </div>
   );
 };
