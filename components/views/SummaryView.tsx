@@ -1346,7 +1346,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   });
 
   const dashboardShellClass = [
-    "overflow-visible rounded-none border-0 bg-transparent p-0 text-slate-950 shadow-none",
+    "overflow-x-hidden overflow-y-visible rounded-none border-0 bg-transparent p-0 text-slate-950 shadow-none",
     "dark:border-0 dark:bg-transparent dark:text-zinc-50 dark:shadow-none",
   ].join(" ");
   const dashboardCardClass = [
@@ -1360,6 +1360,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const dashboardKicker =
     "text-[11px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300";
   const dashboardMuted = "text-slate-500 dark:text-zinc-400";
+  const dashboardScrollbarClass = [
+    "[scrollbar-width:thin]",
+    "[scrollbar-color:rgba(148,163,184,0.45)_transparent]",
+    "dark:[scrollbar-color:rgba(255,255,255,0.24)_transparent]",
+    "[&::-webkit-scrollbar]:h-1.5",
+    "[&::-webkit-scrollbar]:w-1.5",
+    "[&::-webkit-scrollbar-track]:bg-transparent",
+    "[&::-webkit-scrollbar-thumb]:rounded-full",
+    "[&::-webkit-scrollbar-thumb]:bg-slate-300/60",
+    "dark:[&::-webkit-scrollbar-thumb]:bg-white/20",
+    "[&::-webkit-scrollbar-corner]:bg-transparent",
+  ].join(" ");
 
   const renderDashboardEmptyState = (
     title: string,
@@ -1441,7 +1453,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="space-y-3 overflow-y-auto p-4 lg:p-5">
+                  <div
+                    className={`space-y-3 overflow-y-auto p-4 lg:p-5 ${dashboardScrollbarClass}`}
+                  >
                     {displayInsights.length > 0 ? (
                       displayInsights.map((insight, idx) => {
                         let bgColor = "bg-black/5 dark:bg-white/10";
@@ -1706,7 +1720,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       </div>
 
       {taskDashboardItems.length > 0 ? (
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <div
+          className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
+        >
           {taskDashboardItems.map((item) => (
             <button
               key={item.id}
@@ -1757,7 +1773,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       </div>
 
       {goalDashboardItems.length > 0 ? (
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <div
+          className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
+        >
           {goalDashboardItems.map((goal, index) => (
             <div
               key={goal.id}
@@ -1849,7 +1867,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             </span>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
+          <div
+            className={`min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
+          >
             {routineDashboardItems.map((routine) => (
               <button
                 key={routine.id}
@@ -2163,7 +2183,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               </h2>
             </div>
 
-            <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 scrollbar-hide">
+            <div
+              className={`-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 ${dashboardScrollbarClass}`}
+            >
               {pendingRoutines.map((routine) => (
                 <button
                   key={routine.id}
