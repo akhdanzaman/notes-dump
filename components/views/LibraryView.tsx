@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
-import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority } from '../../types';
-import { getJournalDayGroups, getNoteItems, getSkillItems, JournalDayGroup } from '../../utils/selectors';
+import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority, SkillSessionLogInput } from '../../types';
+import { getJournalDayGroups, getNoteItems, getSkillItems, getSkillLogActualRange, getSkillLogDurationMinutes, getSkillLogForSession, SkillScheduleSession, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
@@ -46,6 +46,7 @@ interface LibraryViewProps {
     ) => void;
     handleOpenEditSkill: (id: string, name: string, target?: number) => void;
     handleOpenAddSkill: () => void;
+    handleUpsertSkillSessionLog: (input: SkillSessionLogInput) => void;
     setDeleteId: (id: string) => void;
     setDeleteType: (type: 'skill' | 'wallet' | null) => void;
 
@@ -59,9 +60,22 @@ interface LibraryViewProps {
     onAddItem: (type: ItemType) => void;
 }
 
+type SkillScheduleRowSkill = Skill & {
+    weeklyMinutes?: number;
+    weeklyProgress?: number;
+    effectiveWeeklyTargetMinutes?: number;
+    scheduleSessions?: SkillScheduleSession[];
+};
+
+type SkillSessionEditorState = {
+    skill: SkillScheduleRowSkill;
+    session: SkillScheduleSession;
+    log?: BrainDumpItem;
+};
+
 const LibraryView: React.FC<LibraryViewProps> = ({
     items, skills, librarySubTab, setLibrarySubTab, appSettings,
-    handleDelete, handleUpdateItem, handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
+    handleDelete, handleUpdateItem, handleOpenEditSkill, handleOpenAddSkill, handleUpsertSkillSessionLog, setDeleteId, setDeleteType,
     selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab, onAddItem
 }) => {
     const libraryTabs: { key: LibrarySubTab; label: string; title: string; icon: React.ReactNode }[] = [
@@ -116,6 +130,69 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const visibleJournalGroups = useLazyItems(filteredJournalDayGroups, {
         resetKey: `library-journal-${journalDate.getFullYear()}-${journalDate.getMonth()}-${selectedTag}-${filterDate}-${filterDateTo}-${searchQuery}-${sortOrder}-${filteredJournalDayGroups.length}`,
     });
+
+    const [editingSkillSession, setEditingSkillSession] = useState<SkillSessionEditorState | null>(null);
+    const [actualStartInput, setActualStartInput] = useState('');
+    const [actualEndInput, setActualEndInput] = useState('');
+
+    const toDateTimeLocalInputValue = (value?: Date | string) => {
+        if (!value) return '';
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const offsetMs = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+    };
+
+    const parseDateTimeLocalInput = (value: string) => {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? undefined : date;
+    };
+
+    const formatDurationDelta = (deltaMinutes: number) => {
+        if (deltaMinutes === 0) return '';
+        const abs = Math.abs(deltaMinutes);
+        return deltaMinutes > 0 ? `+${abs}m bonus` : `-${abs}m`;
+    };
+
+    const formatSessionDateTime = (date: Date) => date.toLocaleString(undefined, {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+
+    const openSkillSessionEditor = (skill: SkillScheduleRowSkill, session: SkillScheduleSession, log?: BrainDumpItem) => {
+        const actualRange = getSkillLogActualRange(log, session);
+        setEditingSkillSession({ skill, session, log });
+        setActualStartInput(toDateTimeLocalInputValue(actualRange?.start || session.start));
+        setActualEndInput(toDateTimeLocalInputValue(actualRange?.end || session.end));
+    };
+
+    const closeSkillSessionEditor = () => {
+        setEditingSkillSession(null);
+        setActualStartInput('');
+        setActualEndInput('');
+    };
+
+    const saveSkillSessionActualTime = () => {
+        if (!editingSkillSession) return;
+        const actualStart = parseDateTimeLocalInput(actualStartInput);
+        const actualEnd = parseDateTimeLocalInput(actualEndInput);
+        if (!actualStart || !actualEnd || actualEnd <= actualStart) return;
+
+        handleUpsertSkillSessionLog({
+            logId: editingSkillSession.log?.id,
+            skillId: editingSkillSession.skill.id,
+            skillName: editingSkillSession.skill.name,
+            skillRoutineId: editingSkillSession.log?.meta.skillRoutineId,
+            plannedStart: editingSkillSession.session.start.toISOString(),
+            plannedEnd: editingSkillSession.session.end.toISOString(),
+            actualStart: actualStart.toISOString(),
+            actualEnd: actualEnd.toISOString(),
+        });
+        closeSkillSessionEditor();
+    };
 
     const formatCurrency = (amount?: number) => new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -387,8 +464,51 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     };
 
     const renderSkills = () => {
+        const now = new Date();
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        const tomorrowStart = new Date(todayStart);
+        tomorrowStart.setDate(todayStart.getDate() + 1);
+
         const scheduleRows = skillStats
-            .flatMap(skill => (skill.scheduleSessions || []).map(session => ({ skill, session })))
+            .flatMap(skill => (skill.scheduleSessions || []).map(session => {
+                const rowSkill = skill as SkillScheduleRowSkill;
+                const log = getSkillLogForSession(items, rowSkill, session);
+                const actualRange = getSkillLogActualRange(log, session);
+                const actualMinutes = log ? getSkillLogDurationMinutes(log, session.durationMinutes) : 0;
+                const plannedMinutes = session.durationMinutes;
+                const deltaMinutes = log ? actualMinutes - plannedMinutes : 0;
+                const sessionProgress = log
+                    ? Math.min(100, plannedMinutes ? (actualMinutes / plannedMinutes) * 100 : 0)
+                    : (now >= session.start && now <= session.end ? Math.min(100, ((now.getTime() - session.start.getTime()) / Math.max(session.end.getTime() - session.start.getTime(), 1)) * 100) : undefined);
+
+                let status: 'done' | 'partial' | 'missed' | 'today' | 'in_progress' | 'ready_to_log' | 'upcoming';
+                if (log) {
+                    status = actualMinutes >= plannedMinutes ? 'done' : (actualMinutes > 0 ? 'partial' : 'missed');
+                } else if (session.start < todayStart) {
+                    status = 'missed';
+                } else if (session.start >= tomorrowStart) {
+                    status = 'upcoming';
+                } else if (now >= session.start && now <= session.end) {
+                    status = 'in_progress';
+                } else if (now > session.end) {
+                    status = 'ready_to_log';
+                } else {
+                    status = 'today';
+                }
+
+                return {
+                    skill: rowSkill,
+                    session,
+                    log,
+                    actualRange,
+                    actualMinutes,
+                    plannedMinutes,
+                    deltaMinutes,
+                    sessionProgress,
+                    status,
+                };
+            }))
             .sort((a, b) => a.session.start.getTime() - b.session.start.getTime());
 
         const weekStart = new Date();
@@ -556,25 +676,63 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {scheduleRows.map(({ skill, session }) => {
-                                const target = skill.effectiveWeeklyTargetMinutes || 0;
-                                const achieved = target ? Math.min(100, ((skill.weeklyMinutes || 0) / target) * 100) : 0;
+                            {scheduleRows.map(({ skill, session, log, actualRange, actualMinutes, plannedMinutes, deltaMinutes, sessionProgress, status }) => {
+                                const statusMeta = {
+                                    done: { label: 'Done', className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+                                    partial: { label: 'Partial', className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+                                    missed: { label: 'Missed', className: 'bg-red-500/10 text-red-500 border-red-500/20' },
+                                    today: { label: 'Today', className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
+                                    in_progress: { label: 'In progress', className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
+                                    ready_to_log: { label: 'Ready to log', className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+                                    upcoming: { label: 'Upcoming', className: 'bg-surface text-muted border-border' },
+                                }[status];
+                                const varianceText = log ? formatDurationDelta(deltaMinutes) : '';
+                                const showProgress = status !== 'upcoming' && status !== 'today' && (sessionProgress !== undefined || status === 'missed' || status === 'ready_to_log');
+                                const progressWidth = status === 'missed' || status === 'ready_to_log'
+                                    ? 0
+                                    : Math.min(100, Math.max(0, sessionProgress || 0));
                                 return (
-                                    <div key={`${skill.id}-${session.start.toISOString()}`} className="grid grid-cols-[40px_minmax(0,1fr)] sm:grid-cols-[44px_minmax(0,1fr)_auto] gap-3 items-center rounded-2xl bg-background border border-border p-3 min-w-0">
+                                    <button
+                                        key={`${skill.id}-${session.start.toISOString()}`}
+                                        type="button"
+                                        onClick={() => openSkillSessionEditor(skill, session, log)}
+                                        className="w-full text-left grid grid-cols-[40px_minmax(0,1fr)] sm:grid-cols-[44px_minmax(0,1fr)_auto] gap-3 items-center rounded-2xl bg-background border border-border p-3 min-w-0 hover:border-indigo-500/40 transition-colors"
+                                    >
                                         <div className="text-center border-r border-border pr-3">
                                             <div className="text-sm font-bold text-primary">{session.start.getDate().toString().padStart(2, '0')}</div>
                                         </div>
                                         <div className="min-w-0">
-                                            <h4 className="text-sm font-bold text-primary truncate">{skill.name}</h4>
-                                            <p className="text-xs text-muted">{session.durationMinutes}m session</p>
-                                            <div className="mt-2 h-1.5 bg-surface rounded-full overflow-hidden border border-border">
-                                                <div className="h-full bg-indigo-500" style={{ width: `${achieved}%` }} />
+                                            <div className="flex items-center justify-between gap-2 min-w-0">
+                                                <h4 className="text-sm font-bold text-primary truncate">{skill.name}</h4>
+                                                <span className={`shrink-0 px-2 py-0.5 rounded-full border text-[10px] font-bold ${statusMeta.className}`}>
+                                                    {statusMeta.label}
+                                                </span>
                                             </div>
+                                            <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                                                <span className="text-muted">{actualMinutes || plannedMinutes}m session</span>
+                                                {varianceText && (
+                                                    <span className={deltaMinutes > 0 ? 'font-semibold text-emerald-500' : 'font-semibold text-amber-500'}>
+                                                        {varianceText}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {showProgress && (
+                                                <div className="mt-2 h-1.5 bg-surface rounded-full overflow-hidden border border-border">
+                                                    <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${progressWidth}%` }} />
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="col-span-2 sm:col-span-1 sm:text-right text-xs font-medium text-muted pl-[52px] sm:pl-0">
-                                            {formatTime(session.start)} - {formatTime(session.end)}
+                                        <div className="col-span-2 sm:col-span-1 sm:text-right text-xs font-medium pl-[52px] sm:pl-0 space-y-0.5">
+                                            {actualRange?.edited ? (
+                                                <>
+                                                    <div className="text-amber-500">{formatTime(session.start)} - {formatTime(session.end)}</div>
+                                                    <div className="text-muted">{formatTime(actualRange.start)} - {formatTime(actualRange.end)}</div>
+                                                </>
+                                            ) : (
+                                                <div className="text-muted">{formatTime(actualRange?.start || session.start)} - {formatTime(actualRange?.end || session.end)}</div>
+                                            )}
                                         </div>
-                                    </div>
+                                    </button>
                                 );
                             })}
                         </div>
@@ -583,6 +741,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             </div>
         );
     };
+
+    const modalActualStart = parseDateTimeLocalInput(actualStartInput);
+    const modalActualEnd = parseDateTimeLocalInput(actualEndInput);
+    const isSkillSessionSaveDisabled = !modalActualStart || !modalActualEnd || modalActualEnd <= modalActualStart;
 
     return (
         <div className={contentSurface.pageShell}>
@@ -751,6 +913,88 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 </motion.div>
                 </motion.div>
             </motion.div>
+
+            <AnimatePresence>
+                {editingSkillSession && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4"
+                        onMouseDown={closeSkillSessionEditor}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 28, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 28, scale: 0.98 }}
+                            transition={{ type: 'tween', duration: 0.18 }}
+                            className="w-full max-w-md rounded-[28px] bg-surface border border-border p-5 shadow-2xl"
+                            onMouseDown={(event) => event.stopPropagation()}
+                        >
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <h3 className="text-lg font-bold text-primary truncate">{editingSkillSession.skill.name}</h3>
+                                    <p className="mt-1 text-xs text-muted">{formatSessionDateTime(editingSkillSession.session.start)} - {editingSkillSession.session.end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={closeSkillSessionEditor}
+                                    className="rounded-xl bg-background border border-border px-3 py-2 text-xs font-bold text-muted hover:text-primary transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+
+                            <div className="mt-5 space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted">Actual start</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={actualStartInput}
+                                        onChange={(event) => setActualStartInput(event.target.value)}
+                                        className="mt-2 w-full rounded-2xl border border-border bg-background px-3 py-3 text-sm font-medium text-primary outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted">Actual end</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={actualEndInput}
+                                        onChange={(event) => setActualEndInput(event.target.value)}
+                                        className="mt-2 w-full rounded-2xl border border-border bg-background px-3 py-3 text-sm font-medium text-primary outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                                {modalActualStart && modalActualEnd && modalActualEnd > modalActualStart && (
+                                    <div className="rounded-2xl bg-background border border-border p-3 text-xs text-muted">
+                                        Duration: <span className="font-bold text-primary">{Math.round((modalActualEnd.getTime() - modalActualStart.getTime()) / 60000)}m session</span>
+                                    </div>
+                                )}
+                                {isSkillSessionSaveDisabled && (
+                                    <p className="text-xs font-medium text-red-500">Actual end must be after actual start.</p>
+                                )}
+                            </div>
+
+                            <div className="mt-6 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={closeSkillSessionEditor}
+                                    className="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-bold text-muted hover:text-primary transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={saveSkillSessionActualTime}
+                                    disabled={isSkillSessionSaveDisabled}
+                                    className="rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    Save actual time
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

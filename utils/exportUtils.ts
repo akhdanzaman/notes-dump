@@ -658,13 +658,20 @@ export const generateExportData = (
       Tags: item.meta.tags?.join(', ') || '',
       Created_At: item.created_at,
       Completed_At: item.completed_at || '',
-      ID: item.id
+      ID: item.id,
+      Skill_Routine_ID: item.meta.skillRoutineId || '',
+      Skill_Scheduled_Date: item.meta.skillScheduledDate || item.meta.plannedStart || item.meta.date || '',
+      Planned_Start: item.meta.plannedStart || '',
+      Planned_End: item.meta.plannedEnd || '',
+      Actual_Start: item.meta.actualStart || '',
+      Actual_End: item.meta.actualEnd || '',
+      Actual_Time_Edited: item.meta.actualTimeEdited ? 'TRUE' : ''
   }));
   sheets.push({
       name: "Skill Logs",
       data: [
-        ["Date", "Skill_Name", "Skill_ID", "Duration_Minutes", "Content", "Tags", "Created_At", "Completed_At", "ID"],
-        ...skillLogs.map(s => [s.Date, s.Skill_Name, s.Skill_ID, s.Duration_Minutes, s.Content, s.Tags, s.Created_At, s.Completed_At, s.ID])
+        ["Date", "Skill_Name", "Skill_ID", "Duration_Minutes", "Content", "Tags", "Created_At", "Completed_At", "ID", "Skill_Routine_ID", "Skill_Scheduled_Date", "Planned_Start", "Planned_End", "Actual_Start", "Actual_End", "Actual_Time_Edited"],
+        ...skillLogs.map(s => [s.Date, s.Skill_Name, s.Skill_ID, s.Duration_Minutes, s.Content, s.Tags, s.Created_At, s.Completed_At, s.ID, s.Skill_Routine_ID, s.Skill_Scheduled_Date, s.Planned_Start, s.Planned_End, s.Actual_Start, s.Actual_End, s.Actual_Time_Edited])
       ]
     });
 

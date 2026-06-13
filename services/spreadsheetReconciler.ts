@@ -1323,35 +1323,71 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const createdAtStr = cell(row, 'Created_At', 6) as string;
             const completedAtStr = cell(row, 'Completed_At', 7) as string;
             const idStr = cell(row, 'ID', 8) as string;
-            if (!content && !dateStr && !durationStr && !idStr) continue;
+            const skillRoutineId = cell(row, 'Skill_Routine_ID', 9) as string;
+            const skillScheduledDateStr = cell(row, 'Skill_Scheduled_Date', 10) as string;
+            const plannedStartStr = cell(row, 'Planned_Start', 11) as string;
+            const plannedEndStr = cell(row, 'Planned_End', 12) as string;
+            const actualStartStr = cell(row, 'Actual_Start', 13) as string;
+            const actualEndStr = cell(row, 'Actual_End', 14) as string;
+            const actualTimeEditedStr = cell(row, 'Actual_Time_Edited', 15) as string;
+            if (!content && !dateStr && !durationStr && !idStr && !plannedStartStr && !actualStartStr) continue;
 
-            const parsedDate = new Date(dateStr);
+            const parseOptionalIso = (value?: string) => {
+                const parsed = new Date(value || '');
+                return !isNaN(parsed.getTime()) ? parsed.toISOString() : undefined;
+            };
+            const parsedDate = new Date(dateStr || skillScheduledDateStr || plannedStartStr || actualStartStr || '');
             const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
             const parsedCreatedAt = new Date(createdAtStr);
             const isoCreatedAt = !isNaN(parsedCreatedAt.getTime()) ? parsedCreatedAt.toISOString() : isoDate;
-            const parsedCompletedAt = new Date(completedAtStr);
+            const parsedCompletedAt = new Date(completedAtStr || actualEndStr || actualStartStr || '');
             const isoCompletedAt = !isNaN(parsedCompletedAt.getTime()) ? parsedCompletedAt.toISOString() : isoDate;
             const durationMinutes = parseInt(String(durationStr || '').replace(/[^\d-]/g, ''), 10) || 0;
             const nextSkillId = skillId || getSkillId(skillName);
             const nextTags = tagsStr ? String(tagsStr).split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+            const nextSkillRoutineId = skillRoutineId ? String(skillRoutineId) : undefined;
+            const nextSkillScheduledDate = parseOptionalIso(skillScheduledDateStr) || parseOptionalIso(plannedStartStr) || isoDate;
+            const nextPlannedStart = parseOptionalIso(plannedStartStr);
+            const nextPlannedEnd = parseOptionalIso(plannedEndStr);
+            const nextActualStart = parseOptionalIso(actualStartStr);
+            const nextActualEnd = parseOptionalIso(actualEndStr);
+            const nextActualTimeEdited = String(actualTimeEditedStr || '').toUpperCase() === 'TRUE';
 
-            const match = newItems.find(i =>
-                (idStr && i.id === idStr) ||
-                (!idStr && i.type === ItemType.SKILL_LOG && i.content === content && fmtDate(i.meta.date || i.completed_at || i.created_at) === dateStr)
-            );
+            const match = newItems.find(i => {
+                if (idStr && i.id === idStr) return true;
+                if (i.type !== ItemType.SKILL_LOG) return false;
+                const sameSkill = i.meta.skillId ? i.meta.skillId === nextSkillId : i.meta.skillName?.toLowerCase() === String(skillName || '').toLowerCase();
+                if (!sameSkill) return false;
+                if (nextPlannedStart && i.meta.plannedStart) {
+                    const a = new Date(i.meta.plannedStart);
+                    const b = new Date(nextPlannedStart);
+                    if (!isNaN(a.getTime()) && !isNaN(b.getTime()) && Math.abs(a.getTime() - b.getTime()) < 60000) return true;
+                }
+                return !idStr && i.content === content && fmtDate(i.meta.date || i.completed_at || i.created_at) === dateStr;
+            });
 
             if (match) {
                 seenItemIds.add(match.id);
                 let updated = false;
+                const setMeta = (key: keyof typeof match.meta, value: any) => {
+                    if ((match.meta as any)[key] !== value) { (match.meta as any)[key] = value; updated = true; }
+                };
                 if (match.type !== ItemType.SKILL_LOG) { match.type = ItemType.SKILL_LOG; updated = true; }
-                if (match.content !== content) { match.content = content; updated = true; }
+                if (match.content !== (content || match.content)) { match.content = content || match.content; updated = true; }
                 if (match.status !== 'done') { match.status = 'done'; updated = true; }
                 if (match.created_at !== isoCreatedAt) { match.created_at = isoCreatedAt; updated = true; }
                 if (match.completed_at !== isoCompletedAt) { match.completed_at = isoCompletedAt; updated = true; }
-                if (match.meta.date !== isoDate) { match.meta.date = isoDate; updated = true; }
-                if (match.meta.skillName !== (skillName || undefined)) { match.meta.skillName = skillName || undefined; updated = true; }
-                if (match.meta.skillId !== (nextSkillId || undefined)) { match.meta.skillId = nextSkillId || undefined; updated = true; }
-                if (match.meta.durationMinutes !== durationMinutes) { match.meta.durationMinutes = durationMinutes; updated = true; }
+                setMeta('date', isoDate);
+                setMeta('skillName', skillName || undefined);
+                setMeta('skillId', nextSkillId || undefined);
+                setMeta('skillRoutineId', nextSkillRoutineId);
+                setMeta('skillScheduledDate', nextSkillScheduledDate);
+                setMeta('plannedStart', nextPlannedStart);
+                setMeta('plannedEnd', nextPlannedEnd);
+                setMeta('actualStart', nextActualStart);
+                setMeta('actualEnd', nextActualEnd);
+                setMeta('actualTimeEdited', nextActualTimeEdited || undefined);
+                setMeta('durationMinutes', durationMinutes);
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(nextTags)) { match.meta.tags = nextTags; updated = true; }
                 if (updated) hasChanges = true;
             } else {
@@ -1367,6 +1403,13 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         date: isoDate,
                         skillName: skillName || undefined,
                         skillId: nextSkillId || undefined,
+                        skillRoutineId: nextSkillRoutineId,
+                        skillScheduledDate: nextSkillScheduledDate,
+                        plannedStart: nextPlannedStart,
+                        plannedEnd: nextPlannedEnd,
+                        actualStart: nextActualStart,
+                        actualEnd: nextActualEnd,
+                        actualTimeEdited: nextActualTimeEdited || undefined,
                         durationMinutes,
                         tags: nextTags,
                     },

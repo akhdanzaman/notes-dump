@@ -33,7 +33,8 @@ import {
     CanonicalRule,
     ItemMeta,
     InvestmentAssetType,
-    EnrichmentTask
+    EnrichmentTask,
+    SkillSessionLogInput
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
@@ -1881,12 +1882,20 @@ export const useBrainDumpData = () => {
                 };
             } else if (isSkillRoutine) {
                 newType = ItemType.SKILL_LOG;
+                const plannedStart = targetItem.meta.start || targetItem.meta.date || completedAt || new Date().toISOString();
+                const plannedEnd = targetItem.meta.end || getRoutineEndForNextStart(targetItem, new Date(plannedStart)) || plannedStart;
                 newMeta = {
                     tags: Array.from(new Set([...(targetItem.meta.tags || []), 'skills', 'routine'])),
                     skillId: targetItem.meta.skillId,
                     skillName: targetItem.meta.skillName || targetItem.content,
                     durationMinutes: getRoutineDurationMinutes(targetItem),
                     skillRoutineId: targetItem.id,
+                    skillScheduledDate: plannedStart,
+                    plannedStart,
+                    plannedEnd,
+                    actualStart: plannedStart,
+                    actualEnd: plannedEnd,
+                    actualTimeEdited: false,
                 };
             }
 
@@ -2457,6 +2466,82 @@ export const useBrainDumpData = () => {
         saveAndSync(updated);
     };
 
+    const handleUpsertSkillSessionLog = (input: SkillSessionLogInput) => {
+        const plannedStart = new Date(input.plannedStart);
+        const plannedEnd = new Date(input.plannedEnd);
+        const actualStart = new Date(input.actualStart);
+        const actualEnd = new Date(input.actualEnd);
+        if ([plannedStart, plannedEnd, actualStart, actualEnd].some(date => Number.isNaN(date.getTime())) || actualEnd <= actualStart) return;
+
+        const now = new Date().toISOString();
+        const durationMinutes = Math.max(Math.round((actualEnd.getTime() - actualStart.getTime()) / 60000), 0);
+        const actualTimeEdited = Math.abs(actualStart.getTime() - plannedStart.getTime()) >= 60000
+            || Math.abs(actualEnd.getTime() - plannedEnd.getTime()) >= 60000;
+
+        const sameSkillLog = (item: BrainDumpItem) => {
+            if (item.type !== ItemType.SKILL_LOG) return false;
+            if (input.logId && item.id === input.logId) return true;
+            const sameSkill = item.meta.skillId
+                ? item.meta.skillId === input.skillId
+                : item.meta.skillName?.toLowerCase() === input.skillName.toLowerCase();
+            if (!sameSkill) return false;
+            if (item.meta.plannedStart) {
+                const itemPlannedStart = new Date(item.meta.plannedStart);
+                if (!Number.isNaN(itemPlannedStart.getTime()) && Math.abs(itemPlannedStart.getTime() - plannedStart.getTime()) < 60000) return true;
+            }
+            const itemScheduledDate = new Date(item.meta.skillScheduledDate || item.meta.date || item.completed_at || item.created_at);
+            return !Number.isNaN(itemScheduledDate.getTime())
+                && itemScheduledDate.toDateString() === plannedStart.toDateString();
+        };
+
+        const baseMeta: ItemMeta = {
+            tags: ['skills', 'routine'],
+            skillId: input.skillId,
+            skillName: input.skillName,
+            skillRoutineId: input.skillRoutineId,
+            skillScheduledDate: plannedStart.toISOString(),
+            plannedStart: plannedStart.toISOString(),
+            plannedEnd: plannedEnd.toISOString(),
+            actualStart: actualStart.toISOString(),
+            actualEnd: actualEnd.toISOString(),
+            actualTimeEdited,
+            durationMinutes,
+            date: plannedStart.toISOString(),
+        };
+
+        let updated = false;
+        const nextItems = itemsRef.current.map(item => {
+            if (!sameSkillLog(item)) return item;
+            updated = true;
+            return {
+                ...item,
+                content: item.content || `${input.skillName} skill session`,
+                type: ItemType.SKILL_LOG,
+                status: 'done' as const,
+                completed_at: actualEnd.toISOString(),
+                meta: {
+                    ...item.meta,
+                    ...baseMeta,
+                    tags: Array.from(new Set([...(item.meta.tags || []), 'skills', 'routine'])),
+                },
+            };
+        });
+
+        const finalItems = updated ? nextItems : [{
+            id: uuidv4(),
+            type: ItemType.SKILL_LOG,
+            content: `${input.skillName} skill session`,
+            status: 'done' as const,
+            created_at: now,
+            completed_at: actualEnd.toISOString(),
+            meta: baseMeta,
+        }, ...nextItems];
+
+        itemsRef.current = finalItems;
+        setItems(finalItems);
+        saveAndSync(finalItems);
+    };
+
     const {
         processEnrichmentTasks,
         enqueueEnrichmentForParserTask,
@@ -2530,6 +2615,7 @@ export const useBrainDumpData = () => {
         handleDismissDeepWorkPlan,
         handleResetRoutine,
         handleAddTransaction,
-        handleAddNote
+        handleAddNote,
+        handleUpsertSkillSessionLog
     };
 };

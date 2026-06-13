@@ -197,6 +197,12 @@ export interface ItemMeta {
   skillId?: string;
   skillName?: string;
   skillRoutineId?: string;
+  skillScheduledDate?: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  actualStart?: string;
+  actualEnd?: string;
+  actualTimeEdited?: boolean;
 
   progress?: number;
   progressNotes?: string;
@@ -270,6 +276,18 @@ export interface BrainDumpItem {
   completed_at?: string;
   meta: ItemMeta;
   isOptimistic?: boolean;
+}
+
+
+export interface SkillSessionLogInput {
+  logId?: string;
+  skillId: string;
+  skillName: string;
+  skillRoutineId?: string;
+  plannedStart: string;
+  plannedEnd: string;
+  actualStart: string;
+  actualEnd: string;
 }
 
 export interface ChatMessage {
@@ -527,6 +545,13 @@ export interface ParsedItemMetaV2 {
   durationMinutes?: number;
   skillName?: string;
   skillId?: string;
+  skillRoutineId?: string;
+  skillScheduledDate?: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  actualStart?: string;
+  actualEnd?: string;
+  actualTimeEdited?: boolean;
 
   progress?: number;
   progressNotes?: string;

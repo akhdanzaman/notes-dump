@@ -9,6 +9,66 @@ export type SkillScheduleSession = {
   durationMinutes: number;
 };
 
+const getLocalDateKey = (value: string | Date | undefined) => {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+const isSameSkillLog = (log: BrainDumpItem, skill: Pick<Skill, 'id' | 'name'>) => {
+  if (log.type !== ItemType.SKILL_LOG) return false;
+  if (log.meta.skillId && log.meta.skillId === skill.id) return true;
+  if (log.meta.skillName && log.meta.skillName.toLowerCase() === skill.name.toLowerCase()) return true;
+  return !log.meta.skillId && log.content.toLowerCase().includes(skill.name.toLowerCase());
+};
+
+export const getSkillLogDurationMinutes = (log: BrainDumpItem | undefined, fallbackMinutes = 0) => {
+  if (!log) return 0;
+  const actualStart = log.meta.actualStart ? new Date(log.meta.actualStart) : undefined;
+  const actualEnd = log.meta.actualEnd ? new Date(log.meta.actualEnd) : undefined;
+  if (actualStart && actualEnd && !Number.isNaN(actualStart.getTime()) && !Number.isNaN(actualEnd.getTime()) && actualEnd > actualStart) {
+    return Math.max(Math.round((actualEnd.getTime() - actualStart.getTime()) / 60000), 0);
+  }
+  const duration = Number(log.meta.durationMinutes);
+  return Number.isFinite(duration) && duration >= 0 ? duration : fallbackMinutes;
+};
+
+export const getSkillLogForSession = (
+  items: BrainDumpItem[],
+  skill: Pick<Skill, 'id' | 'name'>,
+  session: SkillScheduleSession,
+) => {
+  const sessionDateKey = getLocalDateKey(session.start);
+  const sessionStartMs = session.start.getTime();
+  const candidates = items
+    .filter(log => isSameSkillLog(log, skill))
+    .sort((a, b) => new Date(b.completed_at || b.meta.date || b.created_at).getTime() - new Date(a.completed_at || a.meta.date || a.created_at).getTime());
+
+  return candidates.find(log => {
+    const plannedStart = log.meta.plannedStart ? new Date(log.meta.plannedStart) : undefined;
+    if (plannedStart && !Number.isNaN(plannedStart.getTime()) && Math.abs(plannedStart.getTime() - sessionStartMs) < 60 * 1000) return true;
+
+    const hasRoutineContext = Boolean(log.meta.skillRoutineId || log.meta.plannedStart || (log.meta.tags || []).includes('routine'));
+    const loggedDateKey = getLocalDateKey(log.meta.skillScheduledDate || log.meta.plannedStart || log.meta.date || log.completed_at || log.created_at);
+    return hasRoutineContext && loggedDateKey === sessionDateKey;
+  });
+};
+
+export const getSkillLogActualRange = (log: BrainDumpItem | undefined, session: SkillScheduleSession) => {
+  if (!log) return undefined;
+  const actualStart = log.meta.actualStart ? new Date(log.meta.actualStart) : session.start;
+  const actualEnd = log.meta.actualEnd ? new Date(log.meta.actualEnd) : session.end;
+  if (Number.isNaN(actualStart.getTime()) || Number.isNaN(actualEnd.getTime())) {
+    return { start: session.start, end: session.end, edited: false };
+  }
+  const edited = Boolean(log.meta.actualTimeEdited) && (
+    Math.abs(actualStart.getTime() - session.start.getTime()) >= 60 * 1000 ||
+    Math.abs(actualEnd.getTime() - session.end.getTime()) >= 60 * 1000
+  );
+  return { start: actualStart, end: actualEnd, edited };
+};
+
 const getStartOfWeek = (date: Date) => {
   const d = new Date(date);
   const day = d.getDay();
@@ -183,13 +243,13 @@ export const getSkillItems = (items: BrainDumpItem[], skills: Skill[]) => {
       (!log.meta.skillId && log.meta.skillName?.toLowerCase() === skill.name.toLowerCase())
     );
 
-    const totalMinutes = skillLogs.reduce((sum, log) => sum + (Number(log.meta.durationMinutes) || 0), 0);
+    const totalMinutes = skillLogs.reduce((sum, log) => sum + getSkillLogDurationMinutes(log), 0);
     const weeklyMinutes = skillLogs
       .filter(log => {
         const logDate = new Date(log.meta.date || log.completed_at || log.created_at);
         return logDate >= weekStart && logDate < weekEnd;
       })
-      .reduce((sum, log) => sum + (Number(log.meta.durationMinutes) || 0), 0);
+      .reduce((sum, log) => sum + getSkillLogDurationMinutes(log), 0);
 
     const scheduleSessions = getSkillScheduleSessionsForWeek(skillWithResolvedSchedule);
     const scheduleWeeklyTargetMinutes = scheduleSessions.reduce((sum, session) => sum + session.durationMinutes, 0);

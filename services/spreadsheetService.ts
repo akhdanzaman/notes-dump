@@ -68,7 +68,7 @@ export const SPREADSHEET_FETCH_RANGES = {
   [SAVING_GOALS_INVESTMENTS_SHEET_NAME]: 'A:R',
   Events: 'A:J',
   'Notes & Journals': 'A:G',
-  'Skill Logs': 'A:I',
+  'Skill Logs': 'A:P',
   'Wallets Config': 'A:E',
   'Skills Config': 'A:N',
   'Budget Rules': 'A:C',
@@ -1782,6 +1782,13 @@ const parseRawItemRow = (row: any[], index: number, headers: unknown[] = []): Br
   if (cell('Skill_ID', 22)) meta.skillId = String(cell('Skill_ID', 22));
   const duration = Number(cell('Duration_Minutes', 23));
   if (!isNaN(duration)) meta.durationMinutes = duration;
+  if (cell('Skill_Routine_ID', 54)) meta.skillRoutineId = String(cell('Skill_Routine_ID', 54));
+  if (cell('Skill_Scheduled_Date', 55)) meta.skillScheduledDate = String(cell('Skill_Scheduled_Date', 55));
+  if (cell('Planned_Start', 56)) meta.plannedStart = String(cell('Planned_Start', 56));
+  if (cell('Planned_End', 57)) meta.plannedEnd = String(cell('Planned_End', 57));
+  if (cell('Actual_Start', 58)) meta.actualStart = String(cell('Actual_Start', 58));
+  if (cell('Actual_End', 59)) meta.actualEnd = String(cell('Actual_End', 59));
+  if (cell('Actual_Time_Edited', 60)) meta.actualTimeEdited = String(cell('Actual_Time_Edited', 60)).toUpperCase() === 'TRUE';
   if (cell('Shopping_Category', 24)) meta.shoppingCategory = String(cell('Shopping_Category', 24));
   if (cell('Investment_Type', 25)) meta.investmentAssetType = String(cell('Investment_Type', 25));
   if (cell('Investment_Code', 26, ['Investment_Symbol'])) meta.investmentSymbol = String(cell('Investment_Code', 26, ['Investment_Symbol']));

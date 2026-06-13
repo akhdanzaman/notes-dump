@@ -243,6 +243,7 @@ const App: React.FC = () => {
     handleResetRoutine,
     handleAddTransaction,
     handleAddNote,
+    handleUpsertSkillSessionLog,
     retryParsing,
     clearParsingTask,
     undoSuccessfulParsingTask,
@@ -1407,6 +1408,7 @@ const App: React.FC = () => {
                   handleUpdateItem={handleUpdateItem}
                   handleOpenEditSkill={handleOpenEditSkill}
                   handleOpenAddSkill={handleOpenAddSkill}
+                  handleUpsertSkillSessionLog={handleUpsertSkillSessionLog}
                   setDeleteId={setDeleteId}
                   setDeleteType={setDeleteType}
                   selectedTag={selectedTag}
