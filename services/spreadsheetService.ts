@@ -1933,6 +1933,10 @@ const parseConfigSheets = (valueRanges: any[]): {
           const settings = ensureAppSettings();
           if (second === 'Default Collapsed') settings.defaultCollapsed = truthySheetValue(r[2]);
           if (second === 'Hide Money') settings.hideMoney = truthySheetValue(r[2]);
+          if (second === 'Theme') {
+            const rawTheme = String(r[2] || '').trim().toLowerCase();
+            if (rawTheme === 'light' || rawTheme === 'dark') settings.theme = rawTheme;
+          }
           if (second === 'Google Calendar Sync') settings.googleCalendarSyncEnabled = truthySheetValue(r[2]);
           if (second === 'Google Calendar ID') settings.googleCalendarId = String(r[2] || 'primary');
           if (second === 'Custom Prompt') customPrompt = String(r[2] || '');
@@ -1951,6 +1955,9 @@ const parseConfigSheets = (valueRanges: any[]): {
           ensureAppSettings().defaultCollapsed = truthySheetValue(r[1]);
         } else if (first === 'hideMoney') {
           ensureAppSettings().hideMoney = truthySheetValue(r[1]);
+        } else if (first === 'theme') {
+          const rawTheme = String(r[1] || '').trim().toLowerCase();
+          if (rawTheme === 'light' || rawTheme === 'dark') ensureAppSettings().theme = rawTheme;
         } else if (first === 'googleCalendarSyncEnabled') {
           ensureAppSettings().googleCalendarSyncEnabled = truthySheetValue(r[1]);
         } else if (first === 'googleCalendarId') {

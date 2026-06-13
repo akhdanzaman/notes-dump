@@ -686,6 +686,7 @@ export const generateExportData = (
   const settingsData = [
     { Type: 'Setting', Key: 'Default Collapsed', Value: appSettings.defaultCollapsed ? 'TRUE' : 'FALSE' },
     { Type: 'Setting', Key: 'Hide Money', Value: appSettings.hideMoney ? 'TRUE' : 'FALSE' },
+    { Type: 'Setting', Key: 'Theme', Value: appSettings.theme || 'dark' },
     { Type: 'Setting', Key: 'Google Calendar Sync', Value: appSettings.googleCalendarSyncEnabled ? 'TRUE' : 'FALSE' },
     { Type: 'Setting', Key: 'Google Calendar ID', Value: appSettings.googleCalendarId || 'primary' }
   ];

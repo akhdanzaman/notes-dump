@@ -444,7 +444,7 @@ export const useBrainDumpData = () => {
     const [wallets, setWallets] = useState<Wallet[]>([]);
     const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
     const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
-    const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: true, hideMoney: false, enableDraftReview: false });
+    const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: true, hideMoney: false, enableDraftReview: false, theme: 'dark' });
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
         const local = localStorage.getItem('braindump_chat_history');
         return local ? JSON.parse(local) : [];
@@ -574,7 +574,7 @@ export const useBrainDumpData = () => {
                 lastSyncedItemsRef.current = merged.data;
                 skillsRef.current = merged.skills || [];
                 walletsRef.current = merged.wallets || [];
-                const mergedThemes = remoteSchema.monthlyThemes ? { ...remoteSchema.monthlyThemes, ...monthlyThemesRef.current } : monthlyThemesRef.current;
+                const mergedThemes = remoteSchema.monthlyThemes ? { ...remoteSchema.monthlyThemes, ...themesToSave } : themesToSave;
                 monthlyThemesRef.current = mergedThemes;
                 if (remoteSchema.canonicalRules) canonicalRulesRef.current = remoteSchema.canonicalRules;
                 setItems(merged.data);

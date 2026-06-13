@@ -1223,6 +1223,10 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             if (row[0] === 'Setting') {
                 if (row[1] === 'Default Collapsed') db.appSettings.defaultCollapsed = row[2] === 'TRUE';
                 if (row[1] === 'Hide Money') db.appSettings.hideMoney = row[2] === 'TRUE';
+                if (row[1] === 'Theme') {
+                    const rawTheme = String(row[2] || '').trim().toLowerCase();
+                    if (rawTheme === 'light' || rawTheme === 'dark') db.appSettings.theme = rawTheme;
+                }
                 if (row[1] === 'Google Calendar Sync') db.appSettings.googleCalendarSyncEnabled = row[2] === 'TRUE';
                 if (row[1] === 'Google Calendar ID') db.appSettings.googleCalendarId = row[2] || 'primary';
             } else if (row[0] === 'Theme') {
