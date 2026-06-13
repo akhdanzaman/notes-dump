@@ -279,9 +279,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       );
     }, [items, summaryPendingGroups, urgent]);
 
-  const pendingRoutines = routineDueToday.filter(
-    (r) => r.status === "pending",
-  );
+  const pendingRoutines = routineDueToday.filter((r) => r.status === "pending");
   const showRitualsSection =
     pendingRoutines.length > 0 && displayTitle !== "Daily Rituals";
 
@@ -1200,8 +1198,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         };
       })
       .filter(
-        (goal) =>
-          goal.kind !== "saving" || (!goal.done && goal.progress < 100),
+        (goal) => goal.kind !== "saving" || (!goal.done && goal.progress < 100),
       );
 
     const startOfWeek = new Date(todayDate);
@@ -1744,10 +1741,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           className="rounded-full bg-blue-50 px-3 py-2 text-center text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
           aria-label={`Edit ${themeMonthYearLabel} theme`}
         >
-          <span className="block text-[10px] font-black uppercase tracking-[0.16em]">
-            Theme
-          </span>
-          <span className="mt-0.5 block text-[10px] font-bold normal-case tracking-normal">
+          <span className="block text-[10px] font-bold normal-case tracking-normal">
             {themeMonthYearLabel}
           </span>
         </button>
