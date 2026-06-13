@@ -1814,9 +1814,7 @@ export const useBrainDumpData = () => {
         const isTodoRoutine = targetItem.type === ItemType.TODO && targetItem.meta.isRoutine;
         const isSkillRoutine = targetItem.type === ItemType.SKILLS && targetItem.meta.isRoutine;
         const isRoutineItem = isShoppingRoutine || isTodoRoutine || isSkillRoutine;
-        const routineNextDueDate = isRoutineItem ? getRoutineNextDueDate(targetItem) : null;
-
-        if (isRoutineItem && isRoutineLockedUntilNextDue(targetItem)) return;
+        if (isSkillRoutine && isRoutineLockedUntilNextDue(targetItem)) return;
 
         const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
         const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
@@ -1841,15 +1839,9 @@ export const useBrainDumpData = () => {
                     ...item.meta,
                     progress: newProgress,
                     progressNotes: newProgressNotes,
-                    date: (newStatus === 'pending' && isRoutineItem && routineNextDueDate)
-                        ? routineNextDueDate.toISOString()
-                        : item.meta.date,
-                    start: (newStatus === 'pending' && isRoutineItem && routineNextDueDate && item.meta.start)
-                        ? routineNextDueDate.toISOString()
-                        : item.meta.start,
-                    end: (newStatus === 'pending' && isRoutineItem && routineNextDueDate)
-                        ? getRoutineEndForNextStart(item, routineNextDueDate)
-                        : item.meta.end,
+                    date: item.meta.date,
+                    start: item.meta.start,
+                    end: item.meta.end,
                     lastGeneratedHistoryId: historyItemIdToCreate ? historyItemIdToCreate : (newStatus === 'pending' ? undefined : item.meta.lastGeneratedHistoryId)
                 }
             } : item
@@ -1990,7 +1982,6 @@ export const useBrainDumpData = () => {
 
         if (!item || (!isTodoRoutine && !isShoppingRoutine) || item.status !== 'done') return;
 
-        if (isShoppingRoutine && isRoutineLockedUntilNextDue(item)) return;
 
         const nextDueDate = getRoutineNextDueDate(item);
         if (!nextDueDate) return;

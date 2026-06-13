@@ -611,7 +611,7 @@ const Card: React.FC<CardProps> = ({
   const showCommodityFields = (type === ItemType.FINANCE || type === ItemType.SHOPPING) && (editFinanceType === 'expense' || editFinanceType === 'saving' || editFinanceType === 'income');
   const noteDisplay = isNote ? getNoteDisplayParts(item) : null;
   
-  const isDarkened = !noDarken && (isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
+  const isDarkened = !noDarken && (isRoutineDone || isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
   const isTaskWorkspaceEdit = editComfort === 'taskWorkspace' && enableCollapse && !isCollapsed;
   const showInlineEditPanel = !enableCollapse || !isCollapsed;
@@ -642,6 +642,7 @@ const Card: React.FC<CardProps> = ({
                   if (canToggleStatus) onToggleStatus(item.id);
                 }}
                 disabled={!canToggleStatus}
+                title={isRoutineDone ? 'Mark undone and remove the latest routine history' : undefined}
                 className={`transition-colors shrink-0 ${canToggleStatus ? 'hover:opacity-80' : 'cursor-default'}`}
               >
                 {status === 'done' ? (
@@ -693,6 +694,7 @@ const Card: React.FC<CardProps> = ({
                               e.stopPropagation();
                               onResetRoutine(item.id);
                           }}
+                          title="Reset for the next cycle and keep history"
                           className="ml-1 px-2 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
                       >
                           <RotateCcw className="w-2.5 h-2.5" /> Reset

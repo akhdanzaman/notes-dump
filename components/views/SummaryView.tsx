@@ -2123,7 +2123,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const renderDesktopDashboard = () => (
     <motion.div
       data-swipe-tabs="summary"
-      className="hidden lg:block lg:mt-6"
+      className="hidden w-full min-w-0 max-w-full overflow-x-hidden lg:block lg:mt-6"
       onTouchStart={swipeHandlers.onTouchStart}
       onTouchMove={swipeHandlers.onTouchMove}
       onTouchEnd={swipeHandlers.onTouchEnd}
@@ -2150,7 +2150,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   );
 
   const renderMobileDashboard = () => (
-    <div className="lg:hidden">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden lg:hidden">
       <motion.div
         layoutId="top-container"
         data-swipe-tabs="summary"
@@ -2209,7 +2209,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="space-y-4 px-4"
+        className="w-full min-w-0 max-w-full space-y-4 px-4"
       >
         {renderTasksCard()}
         {renderGoalsCard()}
@@ -2222,7 +2222,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   );
 
   return (
-    <div className={contentSurface.pageShell}>
+    <div className={contentSurface.summaryPageShell}>
       {renderDesktopDashboard()}
       {renderMobileDashboard()}
       {renderDashboardOverlays()}

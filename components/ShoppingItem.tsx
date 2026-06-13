@@ -216,7 +216,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
         ${isDone 
             ? 'bg-surface/50 opacity-75' 
             : `bg-surface hover:bg-surface/80`
-        } ${isRoutineLockedUntilNextDue ? 'cursor-default' : ''}`}
+        }`}
       onClick={toggleExpand}
     >
       <div className="flex flex-col gap-1">
@@ -227,11 +227,11 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                 <button 
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (!readonly && !isRoutineLockedUntilNextDue) onToggleStatus(item.id);
+                        if (!readonly) onToggleStatus(item.id);
                     }}
-                    disabled={readonly || isRoutineLockedUntilNextDue}
-                    title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Available again on ${routineNextDueDate.toLocaleDateString()}` : undefined}
-                    className={`transition-colors shrink-0 ${readonly || isRoutineLockedUntilNextDue ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
+                    disabled={readonly}
+                    title={isRoutine && isDone ? 'Mark undone and remove the latest routine history' : undefined}
+                    className={`transition-colors shrink-0 ${readonly ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
                 >
                 {isDone ? (
                     <CheckCircle2 className="w-4 h-4 text-muted" />
@@ -262,7 +262,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                             e.stopPropagation();
                             onResetRoutine(item.id);
                         }}
-                        title={isRoutineLockedUntilNextDue && routineNextDueDate ? `Reset routine now. Next scheduled due: ${routineNextDueDate.toLocaleDateString()}` : 'Reset routine'}
+                        title={routineNextDueDate ? `Reset for the next cycle and keep history. Next scheduled due: ${routineNextDueDate.toLocaleDateString()}` : 'Reset routine and keep history'}
                         className="ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500"
                     >
                         <RotateCcw className="w-2.5 h-2.5" /> Reset

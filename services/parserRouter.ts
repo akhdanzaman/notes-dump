@@ -7,6 +7,7 @@ import {
   ParserModelRoutingMetadata,
   ParserRouterDecisionMetadata,
   ParserRouterRoute,
+  ParsedItemType,
   Skill,
   Wallet,
 } from '../types';
@@ -135,7 +136,7 @@ const createItemResult = (
   needsReview: score < PARSER_ROUTER_THRESHOLDS.localSave,
   reviewReason,
   payload: {
-    itemType,
+    itemType: itemType as ParsedItemType,
     content,
     status: itemType === ItemType.FINANCE || itemType === ItemType.SKILL_LOG ? 'done' : 'pending',
     meta,
