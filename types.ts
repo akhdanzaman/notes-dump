@@ -130,6 +130,7 @@ export interface AppSettings {
   parserModelRouting?: ParserModelRoutingSettings;
   googleCalendarSyncEnabled?: boolean;
   googleCalendarId?: string;
+  securityPasswordHash?: string;
 }
 
 export type RoutineInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';

@@ -6,7 +6,7 @@ import {
     Moon, Sun, X, AlertTriangle,
     Monitor, Layout, Eye, EyeOff, Database, Download, Upload, Trash2,
     Check, Smartphone, CheckCircle2, PieChart, Plus, Sparkles,
-    MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History
+    MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History, Shield, Lock
 } from 'lucide-react';
 import { SyncProgress, SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, CanonicalRule, ParserResultV2, EnrichmentTask } from '../types';
 import { DEFAULT_PROMPT } from '../services/geminiService';
@@ -16,6 +16,7 @@ import { SERVICE_ACCOUNT_EMAIL, SpreadsheetHistoryEntry } from '../services/spre
 import { CHANGELOG_ENTRIES, LATEST_CHANGELOG_VERSION } from '../utils/changelog';
 import { contentSurface, controlCenterSurface } from './layout/contentSurface';
 import { buildParserHealthSummary } from '../utils/parserHealth';
+import { LocalSecuritySettings, SecurityPasswordRequestOptions } from '../utils/securitySettings';
 
 interface ControlCenterProps {
     isOpen: boolean;
@@ -55,6 +56,11 @@ interface ControlCenterProps {
     // External handlers
     onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onClearData: () => void;
+
+    // Local security settings (device-only)
+    securitySettings: LocalSecuritySettings;
+    onSecuritySettingsChange: (settings: LocalSecuritySettings) => void;
+    authorizeSecurityPassword: (options?: SecurityPasswordRequestOptions) => Promise<boolean>;
 }
 
 // Preset colors for budget categories
@@ -94,7 +100,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     appSettings, setAppSettings, error, pendingCount, parsingTasks, enrichmentTasks = [], retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
     allItems, allSkills, allWallets, monthlyThemes, monthlyThemeImages,
-    onImportData, onClearData
+    onImportData, onClearData,
+    securitySettings, onSecuritySettingsChange, authorizeSecurityPassword
 }) => {
     
     const [syncMode, setSyncMode] = useState<'merge' | 'overwrite'>('merge');
@@ -103,6 +110,21 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const [isFetchingHistory, setIsFetchingHistory] = useState(false);
     const [historyError, setHistoryError] = useState<string | null>(null);
     const [canonicalBackfillSummary, setCanonicalBackfillSummary] = useState<string | null>(null);
+    const [securityToggleBusy, setSecurityToggleBusy] = useState<keyof LocalSecuritySettings | null>(null);
+
+    const handleSecurityToggle = async (key: keyof LocalSecuritySettings, enabled: boolean) => {
+        setSecurityToggleBusy(key);
+        try {
+            const ok = await authorizeSecurityPassword({
+                allowCreate: true,
+                actionLabel: enabled ? 'enable security toggle' : 'disable security toggle',
+            });
+            if (!ok) return;
+            onSecuritySettingsChange({ ...securitySettings, [key]: enabled });
+        } finally {
+            setSecurityToggleBusy(null);
+        }
+    };
 
     const canonicalRuleStats = {
         learned: canonicalRules.filter(rule => rule.source === 'learned').length,
@@ -581,6 +603,55 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         <Monitor className="w-6 h-6" />
                                                         <span className="text-xs font-medium">System</span>
                                                     </button>
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Security</h3>
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-red-500/10 rounded-xl text-red-500">
+                                                                <Lock className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Lock Tab Transaction</div>
+                                                                <div className="text-xs text-muted">Require password before opening Transactions on this device</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className={`relative inline-flex items-center ${securityToggleBusy === 'lockTabTransaction' ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="sr-only peer"
+                                                                disabled={securityToggleBusy === 'lockTabTransaction'}
+                                                                checked={securitySettings.lockTabTransaction}
+                                                                onChange={(e) => handleSecurityToggle('lockTabTransaction', e.target.checked)}
+                                                            />
+                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-amber-500/10 rounded-xl text-amber-500">
+                                                                <Shield className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-primary text-sm">Force to Hide Money Value</div>
+                                                                <div className="text-xs text-muted">Always mask balances and money values on this device</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className={`relative inline-flex items-center ${securityToggleBusy === 'forceHideMoneyValue' ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="sr-only peer"
+                                                                disabled={securityToggleBusy === 'forceHideMoneyValue'}
+                                                                checked={securitySettings.forceHideMoneyValue}
+                                                                onChange={(e) => handleSecurityToggle('forceHideMoneyValue', e.target.checked)}
+                                                            />
+                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             </section>
 

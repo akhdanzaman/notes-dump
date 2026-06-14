@@ -19,8 +19,20 @@ import {
 } from "./types";
 import { useBrainDumpData } from "./hooks/useBrainDumpData";
 import { getShoppingItems } from "./utils/selectors";
-import { clearSpreadsheetConfig } from "./services/spreadsheetService";
+import {
+  clearSpreadsheetConfig,
+  encryptSecurityPassword,
+  fetchSecurityPasswordHash,
+  saveSecurityPasswordHash,
+  verifySecurityPassword,
+} from "./services/spreadsheetService";
 import { BackHandler } from "./utils/backHandler";
+import {
+  LocalSecuritySettings,
+  SecurityPasswordRequestOptions,
+  loadLocalSecuritySettings,
+  saveLocalSecuritySettings,
+} from "./utils/securitySettings";
 
 import InputBar from "./components/InputBar";
 import SkillModal from "./components/SkillModal";
@@ -266,6 +278,13 @@ const App: React.FC = () => {
     "general" | "skills" | "journal"
   >("general");
   const [showBalance, setShowBalance] = useState(false);
+  const [securitySettings, setSecuritySettingsState] = useState<LocalSecuritySettings>(() =>
+    loadLocalSecuritySettings(),
+  );
+  const [lockedSecurityPopup, setLockedSecurityPopup] = useState<{
+    target: keyof LocalSecuritySettings;
+    message: string;
+  } | null>(null);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [showChangelogPopup, setShowChangelogPopup] = useState(false);
   const [seenFeatureTutorials, setSeenFeatureTutorials] = useState<
@@ -348,6 +367,40 @@ const App: React.FC = () => {
       }),
     [activeTab, planSubTab, librarySubTab, moneyView],
   );
+
+  const setSecuritySettings = (next: LocalSecuritySettings) => {
+    setSecuritySettingsState(next);
+    saveLocalSecuritySettings(next);
+  };
+
+  const secureAppSettings = useMemo<AppSettings>(
+    () => ({
+      ...appSettings,
+      hideMoney: appSettings.hideMoney || securitySettings.forceHideMoneyValue,
+    }),
+    [appSettings, securitySettings.forceHideMoneyValue],
+  );
+  const effectiveShowBalance = showBalance && !securitySettings.forceHideMoneyValue;
+
+  const openLockedSecurityPopup = (target: keyof LocalSecuritySettings, message: string) => {
+    setLockedSecurityPopup({ target, message });
+  };
+
+  const handleSetShowBalance = (value: boolean) => {
+    if (securitySettings.forceHideMoneyValue && value) {
+      openLockedSecurityPopup('forceHideMoneyValue', 'Money values are locked and hidden on this device.');
+      return;
+    }
+    setShowBalance(value);
+  };
+
+  const handleSetMoneyView = (view: MoneyView) => {
+    if (view === 'transactions' && securitySettings.lockTabTransaction) {
+      openLockedSecurityPopup('lockTabTransaction', 'Transactions are locked on this device.');
+      return;
+    }
+    setMoneyView(view);
+  };
 
   // Input Focus State
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false);
@@ -813,6 +866,13 @@ const App: React.FC = () => {
         return true;
       });
   }, [activeTab, moneyView]);
+
+  useEffect(() => {
+    if (activeTab === "money" && moneyView === "transactions" && securitySettings.lockTabTransaction) {
+      setMoneyView("wallets");
+      openLockedSecurityPopup('lockTabTransaction', 'Transactions are locked on this device.');
+    }
+  }, [activeTab, moneyView, securitySettings.lockTabTransaction]);
   useEffect(() => {
     if (activeTab === "plan" && planSubTab !== "tasks")
       return BackHandler.register(() => {
@@ -870,6 +930,79 @@ const App: React.FC = () => {
     } else {
       handleSend(text);
     }
+  };
+
+  const authorizeSecurityPassword = async (
+    options: SecurityPasswordRequestOptions = {},
+  ): Promise<boolean> => {
+    const allowCreate = options.allowCreate ?? false;
+    let encryptedPassword = appSettings.securityPasswordHash || null;
+
+    try {
+      if (!encryptedPassword) {
+        encryptedPassword = await fetchSecurityPasswordHash();
+      }
+    } catch (error) {
+      console.error('Failed to load security password', error);
+      alert('Security password could not be loaded from Themes & Settings. Please check the spreadsheet connection.');
+      return false;
+    }
+
+    if (!encryptedPassword) {
+      if (!allowCreate) {
+        alert('Security password has not been created yet.');
+        return false;
+      }
+
+      const createdPassword = window.prompt('Create a security password first.');
+      if (!createdPassword) return false;
+      const confirmedPassword = window.prompt('Confirm the security password.');
+      if (confirmedPassword !== createdPassword) {
+        alert('Password confirmation does not match.');
+        return false;
+      }
+
+      const newEncryptedPassword = encryptSecurityPassword(createdPassword);
+      try {
+        await saveSecurityPasswordHash(newEncryptedPassword);
+      } catch (error) {
+        console.error('Failed to save security password', error);
+        alert('Security password could not be saved to Themes & Settings.');
+        return false;
+      }
+
+      setAppSettings({ ...appSettings, securityPasswordHash: newEncryptedPassword });
+      return true;
+    }
+
+    if (!appSettings.securityPasswordHash) {
+      setAppSettings({ ...appSettings, securityPasswordHash: encryptedPassword });
+    }
+
+    const actionLabel = options.actionLabel || 'change this security setting';
+    const enteredPassword = window.prompt(`Fill password to ${actionLabel}.`);
+    if (enteredPassword === null) return false;
+    if (!verifySecurityPassword(enteredPassword, encryptedPassword)) {
+      alert('Wrong password.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleDisableLockedSecurity = async () => {
+    if (!lockedSecurityPopup) return;
+    const ok = await authorizeSecurityPassword({
+      allowCreate: false,
+      actionLabel: 'disable this security setting',
+    });
+    if (!ok) return;
+
+    setSecuritySettings({
+      ...securitySettings,
+      [lockedSecurityPopup.target]: false,
+    });
+    setLockedSecurityPopup(null);
   };
 
   const handleSettingsSaved = (
@@ -1299,7 +1432,7 @@ const App: React.FC = () => {
                   skills={skills}
                   wallets={wallets}
                   budgetConfig={budgetConfig}
-                  appSettings={appSettings}
+                  appSettings={secureAppSettings}
                   themeNavDate={themeNavDate}
                   setThemeNavDate={setThemeNavDate}
                   monthlyThemes={monthlyThemes}
@@ -1316,8 +1449,8 @@ const App: React.FC = () => {
                   handleToggleStatus={handleToggleStatus}
                   setActiveTab={setActiveTab}
                   setPlanSubTab={setPlanSubTab}
-                  showBalance={showBalance}
-                  setShowBalance={setShowBalance}
+                  showBalance={effectiveShowBalance}
+                  setShowBalance={handleSetShowBalance}
                   pendingReviews={pendingReviews}
                   handleApproveReview={handleApproveReview}
                   handleRejectReview={handleRejectReview}
@@ -1357,7 +1490,7 @@ const App: React.FC = () => {
                   setPlanSubTab={setPlanSubTab}
                   focusDate={focusDate}
                   setFocusDate={setFocusDate}
-                  appSettings={appSettings}
+                  appSettings={secureAppSettings}
                   handleToggleStatus={handleToggleStatus}
                   handleDelete={requestDeleteItem}
                   handleKeepRawTodo={handleKeepRawTodo}
@@ -1403,7 +1536,7 @@ const App: React.FC = () => {
                   skills={skills}
                   librarySubTab={librarySubTab}
                   setLibrarySubTab={setLibrarySubTab}
-                  appSettings={appSettings}
+                  appSettings={secureAppSettings}
                   handleDelete={requestDeleteItem}
                   handleUpdateItem={handleUpdateItem}
                   handleOpenEditSkill={handleOpenEditSkill}
@@ -1436,12 +1569,12 @@ const App: React.FC = () => {
                   wallets={wallets}
                   budgetConfig={budgetConfig}
                   moneyView={moneyView}
-                  setMoneyView={setMoneyView}
+                  setMoneyView={handleSetMoneyView}
                   financeDate={financeDate}
                   setFinanceDate={setFinanceDate}
-                  showBalance={showBalance}
-                  setShowBalance={setShowBalance}
-                  appSettings={appSettings}
+                  showBalance={effectiveShowBalance}
+                  setShowBalance={handleSetShowBalance}
+                  appSettings={secureAppSettings}
                   handleDelete={requestDeleteItem}
                   handleUpdateItem={handleUpdateItem}
                   handleToggleStatus={handleToggleStatus}
@@ -1471,7 +1604,7 @@ const App: React.FC = () => {
                   items={items}
                   handleToggleStatus={handleToggleStatus}
                   handleDelete={requestDeleteItem}
-                  appSettings={appSettings}
+                  appSettings={secureAppSettings}
                   setActiveTab={setActiveTab}
                 />
               )}
@@ -1618,6 +1751,9 @@ const App: React.FC = () => {
         monthlyThemeImages={monthlyThemeImages}
         onImportData={handleImportData}
         onClearData={handleClearData}
+        securitySettings={securitySettings}
+        onSecuritySettingsChange={setSecuritySettings}
+        authorizeSecurityPassword={authorizeSecurityPassword}
       />
 
       <FeatureTutorialPopup
@@ -1962,6 +2098,43 @@ const App: React.FC = () => {
         }
         mode={addNoteModalType === ItemType.JOURNAL ? "journal" : "note"}
       />
+
+      <AnimatePresence>
+        {lockedSecurityPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[98] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
+              className="w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+            >
+              <div className="border-b border-border p-5">
+                <h3 className="text-xl font-bold text-primary">Locked</h3>
+                <p className="mt-2 text-sm text-muted">{lockedSecurityPopup.message}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 p-4">
+                <button
+                  onClick={() => setLockedSecurityPopup(null)}
+                  className="rounded-2xl border border-border px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-muted/10"
+                >
+                  Okay
+                </button>
+                <button
+                  onClick={handleDisableLockedSecurity}
+                  className="rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-background transition-opacity hover:opacity-90"
+                >
+                  Fill Password
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ConfirmDialog
         isOpen={!!deleteId}

@@ -1565,6 +1565,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 }
                 if (row[1] === 'Google Calendar Sync') db.appSettings.googleCalendarSyncEnabled = row[2] === 'TRUE';
                 if (row[1] === 'Google Calendar ID') db.appSettings.googleCalendarId = row[2] || 'primary';
+                if (row[1] === 'Security Password') db.appSettings.securityPasswordHash = String(row[2] || '');
             } else if (row[0] === 'Theme') {
                 if (row[1]) {
                     newThemes[row[1]] = String(row[2] || '');

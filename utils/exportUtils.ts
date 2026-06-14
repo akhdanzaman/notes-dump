@@ -756,6 +756,10 @@ export const generateExportData = (
     { Type: 'Setting', Key: 'Google Calendar ID', Value: appSettings.googleCalendarId || 'primary' }
   ];
 
+  if (appSettings.securityPasswordHash) {
+    settingsData.push({ Type: 'Setting', Key: 'Security Password', Value: appSettings.securityPasswordHash });
+  }
+
   if (extras.customPrompt) {
     settingsData.push({ Type: 'Setting', Key: 'Custom Prompt', Value: extras.customPrompt });
   }

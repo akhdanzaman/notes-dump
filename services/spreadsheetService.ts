@@ -1385,6 +1385,113 @@ const sheetsFetch = async (
   return oauthSheetsFetch(spreadsheetId, path, init, attempt, tokenOverride);
 };
 
+
+const SECURITY_PASSWORD_SETTING_KEY = 'Security Password';
+
+export const encryptSecurityPassword = (password: string) => password.replace(/[A-Za-z]/g, (char) => {
+  const base = char >= 'a' && char <= 'z' ? 97 : 65;
+  return String.fromCharCode(base + (25 - (char.charCodeAt(0) - base)));
+});
+
+export const verifySecurityPassword = (plainPassword: string, encryptedPassword: string) => (
+  encryptSecurityPassword(plainPassword) === encryptedPassword
+);
+
+export const fetchSecurityPasswordHash = async (): Promise<string | null> => {
+  const config = getSpreadsheetConfig();
+  if (!config) return null;
+
+  const range = `${escapeSheetName('Themes & Settings')}!A:D`;
+  const response = await sheetsFetch(config.spreadsheetId, `/values/${encodeURIComponent(range)}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch security password: ${errorText}`);
+  }
+
+  const payload = await response.json();
+  const rows = Array.isArray(payload.values) ? payload.values : [];
+  for (let i = 1; i < rows.length; i += 1) {
+    const row = rows[i] || [];
+    if (String(row[0] || '').trim() === 'Setting' && String(row[1] || '').trim() === SECURITY_PASSWORD_SETTING_KEY) {
+      const value = String(row[2] || '').trim();
+      return value || null;
+    }
+  }
+  return null;
+};
+
+export const saveSecurityPasswordHash = async (encryptedPassword: string): Promise<void> => {
+  const config = getSpreadsheetConfig();
+  if (!config) throw new Error('Spreadsheet is not connected.');
+
+  const { existingTitles } = await fetchSpreadsheetMetadata(config, true);
+  if (!existingTitles.has('Themes & Settings')) {
+    const addSheetResponse = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests: [{ addSheet: { properties: { title: 'Themes & Settings' } } }] })
+    });
+    if (!addSheetResponse.ok) {
+      const errorText = await addSheetResponse.text();
+      throw new Error(`Failed to create Themes & Settings sheet: ${errorText}`);
+    }
+
+    const headerRange = `${escapeSheetName('Themes & Settings')}!A1:D1`;
+    const headerResponse = await sheetsFetch(config.spreadsheetId, `/values/${encodeURIComponent(headerRange)}?valueInputOption=RAW`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [['Type', 'Key', 'Value', 'Hero_Image_URL']] })
+    });
+    if (!headerResponse.ok) {
+      const errorText = await headerResponse.text();
+      throw new Error(`Failed to initialize Themes & Settings sheet: ${errorText}`);
+    }
+  }
+
+  const range = `${escapeSheetName('Themes & Settings')}!A:D`;
+  const readResponse = await sheetsFetch(config.spreadsheetId, `/values/${encodeURIComponent(range)}`);
+  if (!readResponse.ok) {
+    const errorText = await readResponse.text();
+    throw new Error(`Failed to inspect security password row: ${errorText}`);
+  }
+
+  const payload = await readResponse.json();
+  const rows = Array.isArray(payload.values) ? payload.values : [];
+  let targetRow = -1;
+  for (let i = 1; i < rows.length; i += 1) {
+    const row = rows[i] || [];
+    if (String(row[0] || '').trim() === 'Setting' && String(row[1] || '').trim() === SECURITY_PASSWORD_SETTING_KEY) {
+      targetRow = i + 1;
+      break;
+    }
+  }
+
+  if (targetRow > 0) {
+    const updateRange = `${escapeSheetName('Themes & Settings')}!C${targetRow}:C${targetRow}`;
+    const updateResponse = await sheetsFetch(config.spreadsheetId, `/values/${encodeURIComponent(updateRange)}?valueInputOption=RAW`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [[encryptedPassword]] })
+    });
+    if (!updateResponse.ok) {
+      const errorText = await updateResponse.text();
+      throw new Error(`Failed to update security password: ${errorText}`);
+    }
+    return;
+  }
+
+  const appendRange = `${escapeSheetName('Themes & Settings')}!A:D`;
+  const appendResponse = await sheetsFetch(config.spreadsheetId, `/values/${encodeURIComponent(appendRange)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [['Setting', SECURITY_PASSWORD_SETTING_KEY, encryptedPassword, '']] })
+  });
+  if (!appendResponse.ok) {
+    const errorText = await appendResponse.text();
+    throw new Error(`Failed to save security password: ${errorText}`);
+  }
+};
+
 const getTitleFromRange = (range: string) => range.split('!')[0]?.replace(/^'/, '').replace(/'$/, '').replace(/''/g, "'") || '';
 
 const detectHeaderRewriteSheets = async (
@@ -1981,6 +2088,7 @@ const parseConfigSheets = (valueRanges: any[]): {
           }
           if (second === 'Google Calendar Sync') settings.googleCalendarSyncEnabled = truthySheetValue(r[2]);
           if (second === 'Google Calendar ID') settings.googleCalendarId = String(r[2] || 'primary');
+          if (second === 'Security Password') settings.securityPasswordHash = String(r[2] || '');
           if (second === 'Custom Prompt') customPrompt = String(r[2] || '');
           continue;
         }
@@ -2008,6 +2116,8 @@ const parseConfigSheets = (valueRanges: any[]): {
           ensureAppSettings().googleCalendarSyncEnabled = truthySheetValue(r[1]);
         } else if (first === 'googleCalendarId') {
           ensureAppSettings().googleCalendarId = String(r[1] || 'primary');
+        } else if (first === 'securityPasswordHash') {
+          ensureAppSettings().securityPasswordHash = String(r[1] || '');
         } else if (first === 'customPrompt') {
           customPrompt = String(r[1] || '');
         } else if (first.startsWith('theme_')) {
