@@ -153,7 +153,7 @@ type PopupPosition = {
   transformOrigin: string;
 };
 
-type TaskPanel = "edit" | "subtasks" | "none";
+type TaskPanel = "edit" | "subtasks" | "editSubtasks" | "none";
 
 const AI_INSIGHTS_CACHE_KEY = "braindump_ai_insights";
 const AI_INSIGHTS_CACHE_DATE_KEY = "braindump_ai_insights_date";
@@ -698,7 +698,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     children: BrainDumpItem[],
     isDeepWork: boolean,
   ): TaskPanel => {
-    return isDeepWork && children.length > 0 ? "subtasks" : "edit";
+    return isDeepWork && children.length > 0 ? "subtasks" : "none";
   };
 
   const getActiveTaskPanel = (
@@ -774,6 +774,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       .filter(Boolean);
     if (draft.length === 0) return;
     handleAcceptDeepWorkTodo(item.id, draft);
+    setSubtaskDrafts((prev) => {
+      const next = { ...prev };
+      delete next[item.id];
+      return next;
+    });
     setTaskPanel(item.id, "subtasks");
   };
 
@@ -781,9 +786,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const draft = getSubtaskDraft(item, children);
     setSubtaskDrafts((prev) => ({
       ...prev,
-      [item.id]: draft.length ? [...draft, ""] : [""],
+      [item.id]: draft.length ? draft : [""],
     }));
-    setTaskPanel(item.id, "subtasks");
+    setTaskPanel(item.id, "editSubtasks");
   };
 
   const renderSubtaskDraftEditor = (
@@ -882,8 +887,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     if (!isDeepWork) {
       const draft = getSubtaskDraft(item, children);
-      const hasManualSubtasks =
-        children.length > 0 || draft.some((step) => step.trim());
+      const isEditSubtasksExpanded = activePanel === "editSubtasks";
       const editPanelControls = isCardExpanded ? (
         <div className="flex flex-wrap gap-2 w-full">
           <button
@@ -900,26 +904,26 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           {canUseManualSubtasks && (
             <button
               onClick={() =>
-                hasManualSubtasks
-                  ? toggleTaskPanel(item.id, "subtasks", activePanel)
+                activePanel === "editSubtasks"
+                  ? setTaskPanel(item.id, "none")
                   : openManualSubtaskDraft(item)
               }
-              className={taskPanelButtonClass(isSubtasksExpanded, "subtasks")}
+              className={taskPanelButtonClass(isEditSubtasksExpanded, "subtasks")}
             >
-              {isSubtasksExpanded ? (
+              {isEditSubtasksExpanded ? (
                 <ChevronUp className="w-3 h-3" />
               ) : (
                 <Plus className="w-3 h-3" />
               )}
-              {hasManualSubtasks ? "Subtasks" : "Add subtask"}
+              Add subtasks
             </button>
           )}
         </div>
       ) : null;
       const manualSubtaskPanel =
-        canUseManualSubtasks && isCardExpanded && isSubtasksExpanded ? (
+        canUseManualSubtasks && isCardExpanded && isEditSubtasksExpanded ? (
           <AnimatePresence initial={false}>
-            {isSubtasksExpanded && (
+            {isEditSubtasksExpanded && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
@@ -928,7 +932,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               >
                 <div className="rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                    Manual subtasks
+                    Edit subtasks
                   </div>
                   {renderSubtaskDraftEditor(
                     { ...item, meta: { ...item.meta, subtasks: draft } },
@@ -971,6 +975,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       (child) => child.status === "done",
     ).length;
     const draft = getSubtaskDraft(item, children);
+    const hasSubtaskCards = children.length > 0;
+    const isEditSubtasksExpanded = activePanel === "editSubtasks";
     const totalSteps =
       children.length || draft.length || item.meta.deepWorkStepCount || 0;
     const progressPercent =
@@ -990,7 +996,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           )}
           Show edit
         </button>
-        {isSuggested && (
+        {isSuggested && !hasSubtaskCards && (
           <button
             onClick={() => acceptDeepWorkPlan(item, children)}
             className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors"
@@ -998,29 +1004,58 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             Transform into steps
           </button>
         )}
-        <button
-          onClick={() => toggleTaskPanel(item.id, "subtasks", activePanel)}
-          className={taskPanelButtonClass(isSubtasksExpanded, "subtasks")}
-        >
-          {isSubtasksExpanded ? (
-            <ChevronUp className="w-3 h-3" />
-          ) : (
-            <ChevronDown className="w-3 h-3" />
-          )}
-          {isSuggested ? "Preview/edit steps" : "Subtasks"}
-        </button>
-        <button
-          onClick={() => openManualSubtaskDraft(item, children)}
-          className="px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1"
-        >
-          <Plus className="w-3 h-3" /> Add todo subtask
-        </button>
-        <button
-          onClick={() => handleKeepRawTodo(item.id)}
-          className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-red-500/10 hover:text-red-500 transition-colors flex items-center gap-1"
-        >
-          <X className="w-3 h-3" /> Remove subtasks
-        </button>
+        {hasSubtaskCards ? (
+          <>
+            <button
+              onClick={() => toggleTaskPanel(item.id, "subtasks", activePanel)}
+              className={taskPanelButtonClass(isSubtasksExpanded, "subtasks")}
+            >
+              {isSubtasksExpanded ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <ChevronDown className="w-3 h-3" />
+              )}
+              Subtasks
+            </button>
+            <button
+              onClick={() =>
+                activePanel === "editSubtasks"
+                  ? setTaskPanel(item.id, "none")
+                  : openManualSubtaskDraft(item, children)
+              }
+              className={taskPanelButtonClass(isEditSubtasksExpanded, "subtasks")}
+            >
+              {isEditSubtasksExpanded ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <Pencil className="w-3 h-3" />
+              )}
+              Edit subtasks
+            </button>
+            <button
+              onClick={() => handleKeepRawTodo(item.id)}
+              className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-red-500/10 hover:text-red-500 transition-colors flex items-center gap-1"
+            >
+              <X className="w-3 h-3" /> Remove subtasks
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() =>
+              activePanel === "editSubtasks"
+                ? setTaskPanel(item.id, "none")
+                : openManualSubtaskDraft(item, children)
+            }
+            className={taskPanelButtonClass(isEditSubtasksExpanded, "subtasks")}
+          >
+            {isEditSubtasksExpanded ? (
+              <ChevronUp className="w-3 h-3" />
+            ) : (
+              <Plus className="w-3 h-3" />
+            )}
+            Add subtasks
+          </button>
+        )}
         {hasDeepWorkDetails && (
           <button
             onClick={() => handleRetriggerDeepWorkTodo(item.id)}
@@ -1031,9 +1066,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         )}
       </div>
     ) : null;
-    const deepWorkSubtaskPanel = isSubtasksExpanded ? (
+    const deepWorkSubtaskPanel = isSubtasksExpanded || isEditSubtasksExpanded ? (
       <AnimatePresence initial={false}>
-        {isSubtasksExpanded && (
+        {(isSubtasksExpanded || isEditSubtasksExpanded) && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -1100,19 +1135,19 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
               <div className="space-y-2">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                  Optional subtasks
+                  {isEditSubtasksExpanded ? "Edit subtasks" : "Optional subtasks"}
                 </div>
-                {isSuggested || children.length === 0 || Boolean(subtaskDrafts[item.id]) ? (
+                {isEditSubtasksExpanded ? (
                   renderSubtaskDraftEditor(
                     item,
                     children,
                     isSuggested
                       ? "Use these steps"
-                      : children.length === 0
-                        ? "Save as todo subtasks"
-                        : "Update subtasks",
+                      : hasSubtaskCards
+                        ? "Update subtasks"
+                        : "Save as todo subtasks",
                   )
-                ) : (
+                ) : hasSubtaskCards ? (
                   <div className="space-y-2">
                     {children.map((child) => (
                       <Card
@@ -1123,6 +1158,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         className="rounded-[14px]"
                       />
                     ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">
+                    No todo subtask cards yet. Use Add subtasks to create them.
                   </div>
                 )}
               </div>

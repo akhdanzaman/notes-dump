@@ -88,7 +88,7 @@ interface PlanViewProps {
     setActiveTab: (tab: Tab) => void;
 }
 
-type TaskPanel = 'edit' | 'subtasks' | 'none';
+type TaskPanel = 'edit' | 'subtasks' | 'editSubtasks' | 'none';
 
 const PlanView: React.FC<PlanViewProps> = ({
     items, skills, planSubTab, setPlanSubTab,
@@ -688,7 +688,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
     const getDefaultTaskPanel = (children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
         const hasAddedSubtasks = children.length > 0;
-        return isDeepWork && hasAddedSubtasks ? 'subtasks' : 'edit';
+        return isDeepWork && hasAddedSubtasks ? 'subtasks' : 'none';
     };
 
     const getActiveTaskPanel = (item: BrainDumpItem, children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
@@ -737,13 +737,18 @@ const PlanView: React.FC<PlanViewProps> = ({
         const draft = getSubtaskDraft(item, children).map(step => step.trim()).filter(Boolean);
         if (draft.length === 0) return;
         handleAcceptDeepWorkTodo(item.id, draft);
+        setSubtaskDrafts(prev => {
+            const next = { ...prev };
+            delete next[item.id];
+            return next;
+        });
         setTaskPanel(item.id, 'subtasks');
     };
 
     const openManualSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[] = []) => {
         const draft = getSubtaskDraft(item, children);
-        setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.length ? [...draft, ''] : [''] }));
-        setTaskPanel(item.id, 'subtasks');
+        setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.length ? draft : [''] }));
+        setTaskPanel(item.id, 'editSubtasks');
     };
 
     const renderSubtaskDraftEditor = (item: BrainDumpItem, children: BrainDumpItem[], saveLabel: string) => {
@@ -803,7 +808,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
         if (!isDeepWork) {
             const draft = getSubtaskDraft(item, children);
-            const hasManualSubtasks = children.length > 0 || draft.some(step => step.trim());
+            const isEditSubtasksExpanded = activePanel === 'editSubtasks';
             const editPanelControls = isCardExpanded ? (
                 <div className="flex flex-wrap gap-2 w-full">
                     <button
@@ -815,18 +820,18 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </button>
                     {canUseManualSubtasks && (
                         <button
-                            onClick={() => hasManualSubtasks ? toggleTaskPanel(item.id, 'subtasks', activePanel) : openManualSubtaskDraft(item)}
-                            className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}
+                            onClick={() => activePanel === 'editSubtasks' ? setTaskPanel(item.id, 'none') : openManualSubtaskDraft(item)}
+                            className={taskPanelButtonClass(isEditSubtasksExpanded, 'subtasks')}
                         >
-                            {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                            {hasManualSubtasks ? 'Subtasks' : 'Add subtask'}
+                            {isEditSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                            Add subtasks
                         </button>
                     )}
                 </div>
             ) : null;
-            const manualSubtaskPanel = canUseManualSubtasks && isCardExpanded && isSubtasksExpanded ? (
+            const manualSubtaskPanel = canUseManualSubtasks && isCardExpanded && isEditSubtasksExpanded ? (
                 <AnimatePresence initial={false}>
-                    {isSubtasksExpanded && (
+                    {isEditSubtasksExpanded && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
@@ -834,7 +839,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             className="overflow-hidden"
                         >
                             <div className="rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Manual subtasks</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Edit subtasks</div>
                                 {renderSubtaskDraftEditor({ ...item, meta: { ...item.meta, subtasks: draft } }, children, 'Create subtasks')}
                             </div>
                         </motion.div>
@@ -853,6 +858,8 @@ const PlanView: React.FC<PlanViewProps> = ({
         const hasDeepWorkDetails = !!(item.meta.deepWorkNextAction || item.meta.deepWorkFinalOutput || item.meta.deepWorkSessionEstimateMinutes || item.meta.deepWorkBlockerCheck || item.meta.deepWorkStatus === 'suggested');
         const doneCount = children.filter(child => child.status === 'done').length;
         const draft = getSubtaskDraft(item, children);
+        const hasSubtaskCards = children.length > 0;
+        const isEditSubtasksExpanded = activePanel === 'editSubtasks';
         const totalSteps = children.length || draft.length || item.meta.deepWorkStepCount || 0;
         const progressPercent = totalSteps > 0 ? Math.round((doneCount / totalSteps) * 100) : (item.meta.progress || 0);
         const deepWorkPanelControls = isCardExpanded ? (
@@ -864,21 +871,31 @@ const PlanView: React.FC<PlanViewProps> = ({
                     {activePanel === 'edit' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     Show edit
                 </button>
-                {isSuggested && (
+                {isSuggested && !hasSubtaskCards && (
                     <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors">
                         Transform into steps
                     </button>
                 )}
-                <button onClick={() => toggleTaskPanel(item.id, 'subtasks', activePanel)} className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}>
-                    {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    {isSuggested ? 'Preview/edit steps' : 'Subtasks'}
-                </button>
-                <button onClick={() => openManualSubtaskDraft(item, children)} className="px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1">
-                    <Plus className="w-3 h-3" /> Add todo subtask
-                </button>
-                <button onClick={() => handleKeepRawTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-red-500/10 hover:text-red-500 transition-colors flex items-center gap-1">
-                    <Trash2 className="w-3 h-3" /> Remove subtasks
-                </button>
+                {hasSubtaskCards ? (
+                    <>
+                        <button onClick={() => toggleTaskPanel(item.id, 'subtasks', activePanel)} className={taskPanelButtonClass(isSubtasksExpanded, 'subtasks')}>
+                            {isSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            Subtasks
+                        </button>
+                        <button onClick={() => activePanel === 'editSubtasks' ? setTaskPanel(item.id, 'none') : openManualSubtaskDraft(item, children)} className={taskPanelButtonClass(isEditSubtasksExpanded, 'subtasks')}>
+                            {isEditSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+                            Edit subtasks
+                        </button>
+                        <button onClick={() => handleKeepRawTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-red-500/10 hover:text-red-500 transition-colors flex items-center gap-1">
+                            <Trash2 className="w-3 h-3" /> Remove subtasks
+                        </button>
+                    </>
+                ) : (
+                    <button onClick={() => activePanel === 'editSubtasks' ? setTaskPanel(item.id, 'none') : openManualSubtaskDraft(item, children)} className={taskPanelButtonClass(isEditSubtasksExpanded, 'subtasks')}>
+                        {isEditSubtasksExpanded ? <ChevronUp className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        Add subtasks
+                    </button>
+                )}
                 {hasDeepWorkDetails && (
                     <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1">
                         <RotateCcw className="w-3 h-3" /> Retrigger
@@ -886,9 +903,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                 )}
             </div>
         ) : null;
-        const deepWorkSubtaskPanel = isSubtasksExpanded ? (
+        const deepWorkSubtaskPanel = isSubtasksExpanded || isEditSubtasksExpanded ? (
             <AnimatePresence initial={false}>
-                {isSubtasksExpanded && (
+                {(isSubtasksExpanded || isEditSubtasksExpanded) && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
@@ -926,18 +943,24 @@ const PlanView: React.FC<PlanViewProps> = ({
                             )}
 
                             <div className="space-y-2">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Optional subtasks</div>
-                                {isSuggested || children.length === 0 || Boolean(subtaskDrafts[item.id]) ? (
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                                    {isEditSubtasksExpanded ? 'Edit subtasks' : 'Optional subtasks'}
+                                </div>
+                                {isEditSubtasksExpanded ? (
                                     renderSubtaskDraftEditor(
                                         item,
                                         children,
-                                        isSuggested ? 'Use these steps' : children.length === 0 ? 'Save as todo subtasks' : 'Update subtasks'
+                                        isSuggested ? 'Use these steps' : hasSubtaskCards ? 'Update subtasks' : 'Save as todo subtasks'
                                     )
-                                ) : (
+                                ) : hasSubtaskCards ? (
                                     <div className="space-y-2">
                                         {children.map(child => (
                                             <Card key={child.id} item={child} {...getChildCardProps()} editComfort="taskWorkspace" className="rounded-[14px]" />
                                         ))}
+                                    </div>
+                                ) : (
+                                    <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">
+                                        No todo subtask cards yet. Use Add subtasks to create them.
                                     </div>
                                 )}
                             </div>

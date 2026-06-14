@@ -1,30 +1,44 @@
-Fix: routine task/skill subtasks + savings/skills metadata preservation
+# Fixed tasks routine subtasks files
 
-Cara pakai:
-1. Extract zip ini.
-2. Copy semua file di dalam folder ini ke root project kamu.
-3. Replace file lama dengan path yang sama.
-4. Jalankan install dependencies di project kamu kalau belum ada.
-5. Jalankan: npm test dan npm run build.
-6. Deploy ulang app.
+Replace the matching files in your project with the files in this zip, keeping the same folder paths.
 
-Perubahan utama:
-- Skill routine sekarang bisa membuat child TODO subtasks. Sebelumnya createDeepWorkSubtaskItems hanya menerima ItemType.TODO, jadi routine type skills gagal membuat subtasks.
-- Panel deep work routine sekarang tetap menampilkan editor subtasks kalau hanya ada Step_Count atau meta.subtasks tapi belum ada child TODO.
-- Ada tombol Add todo subtask untuk menambah todo subtask pada deep work/routine yang sudah aktif.
-- Ada tombol Remove subtasks untuk menghapus seluruh struktur subtasks dan mengembalikan parent menjadi task/routine biasa.
-- Subtasks dari Google Sheet sekarang bisa dibaca sebagai JSON array, newline list, numbered list, bullet list, atau dipisah semicolon.
-- Fix sebelumnya untuk metadata savings/skills tetap ikut: description, imageUrl, schedule, hero image aliases, dan merge skill metadata.
+## What changed in this version
 
-Catatan Google Sheet:
-- Untuk membuat subtasks dari sheet, isi kolom Subtasks dengan format seperti:
-  Step 1
-  Step 2
-  Step 3
-  atau:
-  Step 1; Step 2; Step 3
-- Step_Count hanya memberi jumlah placeholder. Isi langkah sebenarnya tetap harus ada di Subtasks supaya teksnya muncul.
+- Fixes the subtasks panel so it no longer stays stuck in edit mode after saving steps.
+- Splits subtasks into two separate panels:
+  - `Subtasks` shows the actual TODO child cards.
+  - `Edit subtasks` shows the editable step textarea list.
+- Updates button states:
+  - When there are no subtask cards: `Show edit` + `Add subtasks`.
+  - When subtask cards already exist: `Show edit` + `Subtasks` + `Edit subtasks` + `Remove subtasks`.
+- After pressing `Save as todo subtasks`, `Update subtasks`, or `Use these steps`, the temporary draft is cleared and the UI switches to the TODO card view.
+- Keeps the previous fixes for:
+  - skill routine subtasks generation,
+  - skills metadata merge (`description`, `imageUrl`, `schedule`),
+  - savings/theme image URL parsing.
 
-Catatan verifikasi:
-- Di sandbox ini test/build tidak bisa dijalankan penuh karena node_modules tidak tersedia dan type definitions project tidak terpasang.
-- Aku sudah cek static path dan menambahkan regression tests untuk skill routine subtasks + parsing Subtasks.
+## Files included
+
+- `components/views/PlanView.tsx`
+- `components/views/SummaryView.tsx`
+- `hooks/useDeepWork.ts`
+- `services/deepWorkTransformer.ts`
+- `services/spreadsheetReconciler.ts`
+- `services/spreadsheetService.ts`
+- `services/__tests__/deepWorkTransformer.test.ts`
+- `utils/deepWorkTodoModel.ts`
+- `utils/mergeUtils.ts`
+- `utils/__tests__/deepWorkTodoModel.test.ts`
+- `utils/__tests__/mergeUtils.test.ts`
+
+## After replacing
+
+Run:
+
+```bash
+npm install
+npm test
+npm run build
+```
+
+Then redeploy the app.
