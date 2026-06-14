@@ -1,0 +1,293 @@
+diff -ruN notes-orig/components/views/PlanView.tsx notes-work/components/views/PlanView.tsx
+--- notes-orig/components/views/PlanView.tsx	2026-06-14 01:10:39.374605496 +0000
++++ notes-work/components/views/PlanView.tsx	2026-06-14 01:10:06.351986154 +0000
+@@ -1,9 +1,9 @@
+ import React, { useState } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+ import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon } from 'lucide-react';
+-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, ItemType, InvestmentAssetType } from '../../types';
++import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType } from '../../types';
+ import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
+-import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
++import { getDeepWorkChildren, supportsNestedTodoSubtasks } from '../../utils/deepWorkTodoModel';
+ import Card from '../Card';
+ import ShoppingItem from '../ShoppingItem';
+ import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+@@ -792,7 +792,7 @@
+     const renderTaskCard = (item: BrainDumpItem) => {
+         const children = getDeepWorkChildren(items, item.id);
+         const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
+-        const canUseManualSubtasks = item.type === ItemType.TODO && !item.meta.parentTodoId;
++        const canUseManualSubtasks = supportsNestedTodoSubtasks(item) && !item.meta.parentTodoId;
+         const isCardExpanded = isTaskCardExpanded(item.id);
+         const activePanel = getActiveTaskPanel(item, children, isDeepWork);
+         const isSubtasksExpanded = activePanel === 'subtasks';
+diff -ruN notes-orig/components/views/SummaryView.tsx notes-work/components/views/SummaryView.tsx
+--- notes-orig/components/views/SummaryView.tsx	2026-06-14 01:10:39.443475100 +0000
++++ notes-work/components/views/SummaryView.tsx	2026-06-14 01:08:15.738540535 +0000
+@@ -72,7 +72,7 @@
+ import ReviewCenterPanel from "../ReviewCenterPanel";
+ import { contentSurface } from "../layout/contentSurface";
+ import { buildSummaryFocusDisplay } from "../../utils/summaryFocusUtils";
+-import { getDeepWorkChildren } from "../../utils/deepWorkTodoModel";
++import { getDeepWorkChildren, supportsNestedTodoSubtasks } from "../../utils/deepWorkTodoModel";
+ import { getShoppingDueDate } from "../../utils/shoppingDateUtils";
+ 
+ interface SummaryViewProps {
+@@ -876,7 +876,7 @@
+     const children = getDeepWorkChildren(items, item.id);
+     const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
+     const canUseManualSubtasks =
+-      item.type === ItemType.TODO && !item.meta.parentTodoId;
++      supportsNestedTodoSubtasks(item) && !item.meta.parentTodoId;
+     const isCardExpanded = isTaskCardExpanded(item.id);
+     const activePanel = getActiveTaskPanel(item, children, isDeepWork);
+     const isSubtasksExpanded = activePanel === "subtasks";
+diff -ruN notes-orig/hooks/useBrainDumpData.ts notes-work/hooks/useBrainDumpData.ts
+--- notes-orig/hooks/useBrainDumpData.ts	2026-06-14 01:10:39.578229938 +0000
++++ notes-work/hooks/useBrainDumpData.ts	2026-06-14 01:08:44.249805301 +0000
+@@ -49,7 +49,7 @@
+ import { canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta, HistoricalCanonicalReview } from '../services/canonicalizerService';
+ import { ASYNC_ENRICHMENT_REVIEW_PREFIX, queueCanonicalEnrichmentTasks, runCanonicalEnrichmentTasks } from '../services/asyncEnrichmentService';
+ import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
+-import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
++import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, supportsNestedTodoSubtasks } from '../utils/deepWorkTodoModel';
+ import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
+ import { stripDeepWorkFieldsFromMeta } from '../utils/stripDeepWorkFields';
+ import { useDeepWork } from './useDeepWork';
+@@ -191,7 +191,17 @@
+ };
+ 
+ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
+-    return currentItems.map(item => {
++    const childIdsByParentId = new Map<string, Set<string>>();
++    currentItems.forEach(item => {
++        if (item.meta.parentTodoId) {
++            const ids = childIdsByParentId.get(item.meta.parentTodoId) || new Set<string>();
++            ids.add(item.id);
++            childIdsByParentId.set(item.meta.parentTodoId, ids);
++        }
++    });
++
++    const childIdsToReset = new Set<string>();
++    const nextItems = currentItems.map(item => {
+         const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
+         const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
+         const isSkillRoutine = item.type === ItemType.SKILLS && item.meta.isRoutine;
+@@ -199,6 +209,11 @@
+         if ((isShoppingRoutine || isTodoRoutine || isSkillRoutine) && item.status === 'done' && item.completed_at) {
+             const nextDueDate = getRoutineNextDueDate(item);
+             if (nextDueDate && now.getTime() >= nextDueDate.getTime()) {
++                if (supportsNestedTodoSubtasks(item)) {
++                    (item.meta.childTodoIds || []).forEach(childId => childIdsToReset.add(childId));
++                    (childIdsByParentId.get(item.id) || new Set<string>()).forEach(childId => childIdsToReset.add(childId));
++                }
++
+                 return {
+                     ...item,
+                     status: 'pending' as const,
+@@ -218,6 +233,22 @@
+ 
+         return item;
+     });
++
++    if (childIdsToReset.size === 0) return nextItems;
++
++    return nextItems.map(item => {
++        if (!childIdsToReset.has(item.id)) return item;
++        return {
++            ...item,
++            status: 'pending' as const,
++            completed_at: undefined,
++            meta: {
++                ...item.meta,
++                progress: 0,
++                progressNotes: undefined,
++            }
++        };
++    });
+ };
+ 
+ const sanitizeNumber = (value: unknown): number | undefined => {
+diff -ruN notes-orig/hooks/useDeepWork.ts notes-work/hooks/useDeepWork.ts
+--- notes-orig/hooks/useDeepWork.ts	2026-06-14 01:10:39.644179453 +0000
++++ notes-work/hooks/useDeepWork.ts	2026-06-14 01:08:15.732815421 +0000
+@@ -1,7 +1,7 @@
+ import { useCallback } from 'react';
+ import { v4 as uuidv4 } from 'uuid';
+ import { BrainDumpItem, ItemType, ItemMeta } from '../types';
+-import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
++import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, supportsNestedTodoSubtasks } from '../utils/deepWorkTodoModel';
+ import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
+ import { stripDeepWorkFieldsFromMeta } from '../utils/stripDeepWorkFields';
+ import type { BrainDumpContext } from './brainDumpContext';
+@@ -55,7 +55,7 @@
+     const updatedItems = ctx.itemsRef.current
+       .filter(item => item.id === id || (item.meta.parentTodoId !== id && !childIds.has(item.id)))
+       .map(item => {
+-        if (item.id !== id || item.type !== ItemType.TODO) return item;
++        if (item.id !== id || !supportsNestedTodoSubtasks(item)) return item;
+         const baseMeta = stripDeepWorkFieldsFromMeta(item.meta);
+         const regeneratedMeta = buildDeepWorkSuggestionMeta(item.content, {
+           ...baseMeta,
+@@ -77,7 +77,7 @@
+     const now = new Date().toISOString();
+     let childItems: BrainDumpItem[] = [];
+     const updatedParents = ctx.itemsRef.current.map(item => {
+-      if (item.id !== id || item.type !== ItemType.TODO) return item;
++      if (item.id !== id || !supportsNestedTodoSubtasks(item)) return item;
+       const parentForChildren: BrainDumpItem = {
+         ...item,
+         meta: normalizeDeepWorkTodoMeta({
+@@ -146,7 +146,7 @@
+ 
+   const handleDismissDeepWorkPlan = useCallback((id: string) => {
+     const updated = ctx.itemsRef.current.map(item => {
+-      if (item.id !== id || item.type !== ItemType.TODO) return item;
++      if (item.id !== id || !supportsNestedTodoSubtasks(item)) return item;
+       return {
+         ...item,
+         meta: normalizeDeepWorkTodoMeta({
+diff -ruN notes-orig/utils/__tests__/deepWorkTodoModel.test.ts notes-work/utils/__tests__/deepWorkTodoModel.test.ts
+--- notes-orig/utils/__tests__/deepWorkTodoModel.test.ts	2026-06-14 01:10:43.722812827 +0000
++++ notes-work/utils/__tests__/deepWorkTodoModel.test.ts	2026-06-14 01:11:39.788677378 +0000
+@@ -208,6 +208,52 @@
+   assert.equal(updatedParent?.status, 'pending');
+ });
+ 
++test('skill routine parents can roll up manual subtask progress', () => {
++  const skillParent: BrainDumpItem = {
++    id: 'skill-routine-1',
++    type: ItemType.SKILLS,
++    content: 'English practice',
++    status: 'pending',
++    created_at: '2026-05-06T09:00:00.000Z',
++    meta: normalizeDeepWorkTodoMeta({
++      isRoutine: true,
++      tags: ['skills', 'routine'],
++      skillId: 'skill-1',
++      skillName: 'English practice',
++      childTodoIds: ['skill-step-1', 'skill-step-2'],
++      deepWorkParent: true,
++      deepWorkPlanId: 'skill-routine-1',
++      deepWorkStatus: 'active',
++      subtasks: ['Review vocabulary', 'Record speaking drill'],
++    }),
++  };
++  const children: BrainDumpItem[] = [
++    {
++      id: 'skill-step-1',
++      type: ItemType.TODO,
++      content: 'Review vocabulary',
++      status: 'done',
++      created_at: '2026-05-06T09:01:00.000Z',
++      completed_at: '2026-05-06T09:15:00.000Z',
++      meta: { parentTodoId: 'skill-routine-1', deepWorkStepIndex: 1, deepWorkStepCount: 2 },
++    },
++    {
++      id: 'skill-step-2',
++      type: ItemType.TODO,
++      content: 'Record speaking drill',
++      status: 'pending',
++      created_at: '2026-05-06T09:02:00.000Z',
++      meta: { parentTodoId: 'skill-routine-1', deepWorkStepIndex: 2, deepWorkStepCount: 2 },
++    },
++  ];
++
++  const rolledUp = applyDeepWorkChildProgress([skillParent, ...children]);
++  const updatedParent = rolledUp.find(item => item.id === 'skill-routine-1');
++
++  assert.equal(updatedParent?.meta.progress, 50);
++  assert.equal(updatedParent?.status, 'pending');
++});
++
+ test('legacy Todos sheet refresh does not erase existing nested metadata columns absent from old exports', () => {
+   const existing = makeDeepWorkItems()[0];
+   const db: DbSchema = {
+diff -ruN notes-orig/utils/__tests__/routineReset.test.ts notes-work/utils/__tests__/routineReset.test.ts
+--- notes-orig/utils/__tests__/routineReset.test.ts	2026-06-14 01:10:44.539488545 +0000
++++ notes-work/utils/__tests__/routineReset.test.ts	2026-06-14 01:11:39.789453547 +0000
+@@ -109,3 +109,44 @@
+   assert.equal(reset.status, 'pending');
+   assert.equal(reset.meta.date, '2026-05-14T00:00:00.000Z');
+ });
++
++test('skill routine reset also reopens child subtasks for the next session', () => {
++  const routine: BrainDumpItem = {
++    id: 'skill-routine-1',
++    type: ItemType.SKILLS,
++    content: 'English practice',
++    status: 'done',
++    created_at: '2026-05-01T09:00:00.000Z',
++    completed_at: '2026-05-01T10:00:00.000Z',
++    meta: {
++      isRoutine: true,
++      routineInterval: 'daily',
++      tags: ['skills', 'routine'],
++      skillId: 'skill-1',
++      skillName: 'English practice',
++      date: '2026-05-01T09:00:00.000Z',
++      childTodoIds: ['skill-step-1'],
++      deepWorkParent: true,
++      progress: 100,
++    },
++  };
++  const child: BrainDumpItem = {
++    id: 'skill-step-1',
++    type: ItemType.TODO,
++    content: 'Record speaking drill',
++    status: 'done',
++    created_at: '2026-05-01T09:05:00.000Z',
++    completed_at: '2026-05-01T09:45:00.000Z',
++    meta: { parentTodoId: 'skill-routine-1', deepWorkStepIndex: 1, deepWorkStepCount: 1 },
++  };
++
++  const resetItems = resetDueRoutineItems([routine, child], new Date('2026-05-02T09:00:01.000Z'));
++  const resetRoutine = resetItems.find(item => item.id === 'skill-routine-1');
++  const resetChild = resetItems.find(item => item.id === 'skill-step-1');
++
++  assert.equal(resetRoutine?.status, 'pending');
++  assert.equal(resetRoutine?.meta.progress, 0);
++  assert.equal(resetChild?.status, 'pending');
++  assert.equal(resetChild?.completed_at, undefined);
++});
++
+diff -ruN notes-orig/utils/deepWorkTodoModel.ts notes-work/utils/deepWorkTodoModel.ts
+--- notes-orig/utils/deepWorkTodoModel.ts	2026-06-14 01:10:45.025361268 +0000
++++ notes-work/utils/deepWorkTodoModel.ts	2026-06-14 01:08:15.728861062 +0000
+@@ -1,5 +1,8 @@
+ import { BrainDumpItem, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkConfidence, DeepWorkOutputFormat, DeepWorkPattern, ItemMeta, ItemType } from '../types';
+ 
++export const supportsNestedTodoSubtasks = (item: BrainDumpItem): boolean =>
++  item.type === ItemType.TODO || (item.type === ItemType.SKILLS && item.meta.isRoutine === true);
++
+ export const DEEP_WORK_DEFAULT_COMPLETION_MODE: DeepWorkCompletionMode = 'final_output_check';
+ 
+ const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
+@@ -134,7 +137,7 @@
+ export const applyDeepWorkChildProgress = (items: BrainDumpItem[]): BrainDumpItem[] => {
+   let changed = false;
+   const next = items.map(item => {
+-    if (item.type !== ItemType.TODO || (!item.meta.deepWorkParent && !item.meta.childTodoIds?.length)) return item;
++    if (!supportsNestedTodoSubtasks(item) || (!item.meta.deepWorkParent && !item.meta.childTodoIds?.length)) return item;
+     const childProgress = deriveDeepWorkChildProgress(items, item.id);
+     if (childProgress === undefined || item.meta.progress === childProgress) return item;
+     changed = true;
+@@ -150,7 +153,7 @@
+ };
+ 
+ export const shouldAutoCompleteDeepWorkParent = (parent: BrainDumpItem, children: BrainDumpItem[]): boolean => {
+-  if (parent.type !== ItemType.TODO) return false;
++  if (!supportsNestedTodoSubtasks(parent)) return false;
+   if (parent.status === 'done') return false;
+   if (parent.meta.deepWorkCompletionMode !== 'all_subtasks') return false;
+   return children.length > 0 && children.every(child => child.status === 'done');
+@@ -159,7 +162,7 @@
+ export const applyDeepWorkCompletionSemantics = (items: BrainDumpItem[], now = new Date().toISOString()): BrainDumpItem[] => {
+   let changed = false;
+   const next = items.map(item => {
+-    if (item.type !== ItemType.TODO) return item;
++    if (!supportsNestedTodoSubtasks(item)) return item;
+     const children = getDeepWorkChildren(items, item.id);
+     if (children.length === 0 || item.meta.deepWorkCompletionMode !== 'all_subtasks') return item;
+ 

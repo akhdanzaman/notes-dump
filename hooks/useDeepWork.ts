@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { BrainDumpItem, ItemType, ItemMeta } from '../types';
-import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
+import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, supportsNestedTodoSubtasks } from '../utils/deepWorkTodoModel';
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
 import { stripDeepWorkFieldsFromMeta } from '../utils/stripDeepWorkFields';
 import type { BrainDumpContext } from './brainDumpContext';
@@ -55,7 +55,7 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
     const updatedItems = ctx.itemsRef.current
       .filter(item => item.id === id || (item.meta.parentTodoId !== id && !childIds.has(item.id)))
       .map(item => {
-        if (item.id !== id || item.type !== ItemType.TODO) return item;
+        if (item.id !== id || !supportsNestedTodoSubtasks(item)) return item;
         const baseMeta = stripDeepWorkFieldsFromMeta(item.meta);
         const regeneratedMeta = buildDeepWorkSuggestionMeta(item.content, {
           ...baseMeta,
@@ -77,7 +77,7 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
     const now = new Date().toISOString();
     let childItems: BrainDumpItem[] = [];
     const updatedParents = ctx.itemsRef.current.map(item => {
-      if (item.id !== id || item.type !== ItemType.TODO) return item;
+      if (item.id !== id || !supportsNestedTodoSubtasks(item)) return item;
       const parentForChildren: BrainDumpItem = {
         ...item,
         meta: normalizeDeepWorkTodoMeta({
@@ -146,7 +146,7 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
 
   const handleDismissDeepWorkPlan = useCallback((id: string) => {
     const updated = ctx.itemsRef.current.map(item => {
-      if (item.id !== id || item.type !== ItemType.TODO) return item;
+      if (item.id !== id || !supportsNestedTodoSubtasks(item)) return item;
       return {
         ...item,
         meta: normalizeDeepWorkTodoMeta({

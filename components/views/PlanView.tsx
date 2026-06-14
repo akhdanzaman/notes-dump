@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, ItemType, InvestmentAssetType } from '../../types';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
-import { getDeepWorkChildren } from '../../utils/deepWorkTodoModel';
+import { getDeepWorkChildren, supportsNestedTodoSubtasks } from '../../utils/deepWorkTodoModel';
 import Card from '../Card';
 import ShoppingItem from '../ShoppingItem';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -792,7 +792,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const renderTaskCard = (item: BrainDumpItem) => {
         const children = getDeepWorkChildren(items, item.id);
         const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
-        const canUseManualSubtasks = item.type === ItemType.TODO && !item.meta.parentTodoId;
+        const canUseManualSubtasks = supportsNestedTodoSubtasks(item) && !item.meta.parentTodoId;
         const isCardExpanded = isTaskCardExpanded(item.id);
         const activePanel = getActiveTaskPanel(item, children, isDeepWork);
         const isSubtasksExpanded = activePanel === 'subtasks';

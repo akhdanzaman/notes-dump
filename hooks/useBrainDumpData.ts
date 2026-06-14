@@ -49,7 +49,7 @@ import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, isLegacyCompletedGoalC
 import { canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta, HistoricalCanonicalReview } from '../services/canonicalizerService';
 import { ASYNC_ENRICHMENT_REVIEW_PREFIX, queueCanonicalEnrichmentTasks, runCanonicalEnrichmentTasks } from '../services/asyncEnrichmentService';
 import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
-import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../utils/deepWorkTodoModel';
+import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, supportsNestedTodoSubtasks } from '../utils/deepWorkTodoModel';
 import { buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../services/deepWorkTransformer';
 import { stripDeepWorkFieldsFromMeta } from '../utils/stripDeepWorkFields';
 import { useDeepWork } from './useDeepWork';
@@ -191,7 +191,17 @@ const getRoutineEndForNextStart = (item: BrainDumpItem, nextStart: Date): string
 };
 
 export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
-    return currentItems.map(item => {
+    const childIdsByParentId = new Map<string, Set<string>>();
+    currentItems.forEach(item => {
+        if (item.meta.parentTodoId) {
+            const ids = childIdsByParentId.get(item.meta.parentTodoId) || new Set<string>();
+            ids.add(item.id);
+            childIdsByParentId.set(item.meta.parentTodoId, ids);
+        }
+    });
+
+    const childIdsToReset = new Set<string>();
+    const nextItems = currentItems.map(item => {
         const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'routine';
         const isTodoRoutine = item.type === ItemType.TODO && item.meta.isRoutine;
         const isSkillRoutine = item.type === ItemType.SKILLS && item.meta.isRoutine;
@@ -199,6 +209,11 @@ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Da
         if ((isShoppingRoutine || isTodoRoutine || isSkillRoutine) && item.status === 'done' && item.completed_at) {
             const nextDueDate = getRoutineNextDueDate(item);
             if (nextDueDate && now.getTime() >= nextDueDate.getTime()) {
+                if (supportsNestedTodoSubtasks(item)) {
+                    (item.meta.childTodoIds || []).forEach(childId => childIdsToReset.add(childId));
+                    (childIdsByParentId.get(item.id) || new Set<string>()).forEach(childId => childIdsToReset.add(childId));
+                }
+
                 return {
                     ...item,
                     status: 'pending' as const,
@@ -217,6 +232,22 @@ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Da
         }
 
         return item;
+    });
+
+    if (childIdsToReset.size === 0) return nextItems;
+
+    return nextItems.map(item => {
+        if (!childIdsToReset.has(item.id)) return item;
+        return {
+            ...item,
+            status: 'pending' as const,
+            completed_at: undefined,
+            meta: {
+                ...item.meta,
+                progress: 0,
+                progressNotes: undefined,
+            }
+        };
     });
 };
 

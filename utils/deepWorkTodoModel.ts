@@ -1,5 +1,8 @@
 import { BrainDumpItem, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkConfidence, DeepWorkOutputFormat, DeepWorkPattern, ItemMeta, ItemType } from '../types';
 
+export const supportsNestedTodoSubtasks = (item: BrainDumpItem): boolean =>
+  item.type === ItemType.TODO || (item.type === ItemType.SKILLS && item.meta.isRoutine === true);
+
 export const DEEP_WORK_DEFAULT_COMPLETION_MODE: DeepWorkCompletionMode = 'final_output_check';
 
 const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
@@ -134,7 +137,7 @@ export const deriveDeepWorkChildProgress = (items: BrainDumpItem[], parentId: st
 export const applyDeepWorkChildProgress = (items: BrainDumpItem[]): BrainDumpItem[] => {
   let changed = false;
   const next = items.map(item => {
-    if (item.type !== ItemType.TODO || (!item.meta.deepWorkParent && !item.meta.childTodoIds?.length)) return item;
+    if (!supportsNestedTodoSubtasks(item) || (!item.meta.deepWorkParent && !item.meta.childTodoIds?.length)) return item;
     const childProgress = deriveDeepWorkChildProgress(items, item.id);
     if (childProgress === undefined || item.meta.progress === childProgress) return item;
     changed = true;
@@ -150,7 +153,7 @@ export const applyDeepWorkChildProgress = (items: BrainDumpItem[]): BrainDumpIte
 };
 
 export const shouldAutoCompleteDeepWorkParent = (parent: BrainDumpItem, children: BrainDumpItem[]): boolean => {
-  if (parent.type !== ItemType.TODO) return false;
+  if (!supportsNestedTodoSubtasks(parent)) return false;
   if (parent.status === 'done') return false;
   if (parent.meta.deepWorkCompletionMode !== 'all_subtasks') return false;
   return children.length > 0 && children.every(child => child.status === 'done');
@@ -159,7 +162,7 @@ export const shouldAutoCompleteDeepWorkParent = (parent: BrainDumpItem, children
 export const applyDeepWorkCompletionSemantics = (items: BrainDumpItem[], now = new Date().toISOString()): BrainDumpItem[] => {
   let changed = false;
   const next = items.map(item => {
-    if (item.type !== ItemType.TODO) return item;
+    if (!supportsNestedTodoSubtasks(item)) return item;
     const children = getDeepWorkChildren(items, item.id);
     if (children.length === 0 || item.meta.deepWorkCompletionMode !== 'all_subtasks') return item;
 

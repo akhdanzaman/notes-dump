@@ -72,7 +72,7 @@ import Card from "../Card";
 import ReviewCenterPanel from "../ReviewCenterPanel";
 import { contentSurface } from "../layout/contentSurface";
 import { buildSummaryFocusDisplay } from "../../utils/summaryFocusUtils";
-import { getDeepWorkChildren } from "../../utils/deepWorkTodoModel";
+import { getDeepWorkChildren, supportsNestedTodoSubtasks } from "../../utils/deepWorkTodoModel";
 import { getShoppingDueDate } from "../../utils/shoppingDateUtils";
 
 interface SummaryViewProps {
@@ -876,7 +876,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const children = getDeepWorkChildren(items, item.id);
     const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
     const canUseManualSubtasks =
-      item.type === ItemType.TODO && !item.meta.parentTodoId;
+      supportsNestedTodoSubtasks(item) && !item.meta.parentTodoId;
     const isCardExpanded = isTaskCardExpanded(item.id);
     const activePanel = getActiveTaskPanel(item, children, isDeepWork);
     const isSubtasksExpanded = activePanel === "subtasks";

@@ -109,3 +109,44 @@ test('weekly routine reset follows selected schedule even when completed late in
   assert.equal(reset.status, 'pending');
   assert.equal(reset.meta.date, '2026-05-14T00:00:00.000Z');
 });
+
+test('skill routine reset also reopens child subtasks for the next session', () => {
+  const routine: BrainDumpItem = {
+    id: 'skill-routine-1',
+    type: ItemType.SKILLS,
+    content: 'English practice',
+    status: 'done',
+    created_at: '2026-05-01T09:00:00.000Z',
+    completed_at: '2026-05-01T10:00:00.000Z',
+    meta: {
+      isRoutine: true,
+      routineInterval: 'daily',
+      tags: ['skills', 'routine'],
+      skillId: 'skill-1',
+      skillName: 'English practice',
+      date: '2026-05-01T09:00:00.000Z',
+      childTodoIds: ['skill-step-1'],
+      deepWorkParent: true,
+      progress: 100,
+    },
+  };
+  const child: BrainDumpItem = {
+    id: 'skill-step-1',
+    type: ItemType.TODO,
+    content: 'Record speaking drill',
+    status: 'done',
+    created_at: '2026-05-01T09:05:00.000Z',
+    completed_at: '2026-05-01T09:45:00.000Z',
+    meta: { parentTodoId: 'skill-routine-1', deepWorkStepIndex: 1, deepWorkStepCount: 1 },
+  };
+
+  const resetItems = resetDueRoutineItems([routine, child], new Date('2026-05-02T09:00:01.000Z'));
+  const resetRoutine = resetItems.find(item => item.id === 'skill-routine-1');
+  const resetChild = resetItems.find(item => item.id === 'skill-step-1');
+
+  assert.equal(resetRoutine?.status, 'pending');
+  assert.equal(resetRoutine?.meta.progress, 0);
+  assert.equal(resetChild?.status, 'pending');
+  assert.equal(resetChild?.completed_at, undefined);
+});
+

@@ -208,6 +208,52 @@ test('manual focus subtasks create child todos and roll up parent progress', () 
   assert.equal(updatedParent?.status, 'pending');
 });
 
+test('skill routine parents can roll up manual subtask progress', () => {
+  const skillParent: BrainDumpItem = {
+    id: 'skill-routine-1',
+    type: ItemType.SKILLS,
+    content: 'English practice',
+    status: 'pending',
+    created_at: '2026-05-06T09:00:00.000Z',
+    meta: normalizeDeepWorkTodoMeta({
+      isRoutine: true,
+      tags: ['skills', 'routine'],
+      skillId: 'skill-1',
+      skillName: 'English practice',
+      childTodoIds: ['skill-step-1', 'skill-step-2'],
+      deepWorkParent: true,
+      deepWorkPlanId: 'skill-routine-1',
+      deepWorkStatus: 'active',
+      subtasks: ['Review vocabulary', 'Record speaking drill'],
+    }),
+  };
+  const children: BrainDumpItem[] = [
+    {
+      id: 'skill-step-1',
+      type: ItemType.TODO,
+      content: 'Review vocabulary',
+      status: 'done',
+      created_at: '2026-05-06T09:01:00.000Z',
+      completed_at: '2026-05-06T09:15:00.000Z',
+      meta: { parentTodoId: 'skill-routine-1', deepWorkStepIndex: 1, deepWorkStepCount: 2 },
+    },
+    {
+      id: 'skill-step-2',
+      type: ItemType.TODO,
+      content: 'Record speaking drill',
+      status: 'pending',
+      created_at: '2026-05-06T09:02:00.000Z',
+      meta: { parentTodoId: 'skill-routine-1', deepWorkStepIndex: 2, deepWorkStepCount: 2 },
+    },
+  ];
+
+  const rolledUp = applyDeepWorkChildProgress([skillParent, ...children]);
+  const updatedParent = rolledUp.find(item => item.id === 'skill-routine-1');
+
+  assert.equal(updatedParent?.meta.progress, 50);
+  assert.equal(updatedParent?.status, 'pending');
+});
+
 test('legacy Todos sheet refresh does not erase existing nested metadata columns absent from old exports', () => {
   const existing = makeDeepWorkItems()[0];
   const db: DbSchema = {
