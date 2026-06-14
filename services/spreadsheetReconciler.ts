@@ -171,6 +171,14 @@ const getHeaderCell = (headers: unknown[], row: unknown[], name: string): unknow
     return index >= 0 ? (index < row.length ? row[index] : '') : undefined;
 };
 
+const getHeaderCellAny = (headers: unknown[], row: unknown[], names: string[]): unknown => {
+    for (const name of names) {
+        const value = getHeaderCell(headers, row, name);
+        if (value !== undefined) return value;
+    }
+    return undefined;
+};
+
 const getHeaderAwareCell = (headers: unknown[], row: unknown[], name: string, fallbackIndex: number): unknown => {
     const index = headers.indexOf(name);
     return index >= 0 ? (index < row.length ? row[index] : '') : row[fallbackIndex];
@@ -1002,8 +1010,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const createdAtStr = cell(row, 'Created_At', 7);
             const completedAtStr = cell(row, 'Completed_At', 8);
             const tagsStr = cell(row, 'Tags', 9);
-            const imageUrl = String(getHeaderCell(headers, row, 'Image_URL') || '').trim();
-            const imageUrlCell = getHeaderCell(headers, row, 'Image_URL');
+            const imageUrlCell = getHeaderCellAny(headers, row, ['Image_URL', 'Image URL', 'Image_Url', 'ImageUrl']);
+            const imageUrl = String(imageUrlCell || '').trim();
             const hideFromCalendarCell = cell(row, 'Hide_From_Calendar', 10);
             const investmentType = cell(row, 'Investment_Type', 11);
             const investmentCode = String(cell(row, 'Investment_Code', 12) || '').trim();
@@ -1525,8 +1533,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 return {
                     id,
                     name,
-                    description: cleanCell(getHeaderCell(headers, row, 'Description')),
-                    imageUrl: cleanCell(getHeaderCell(headers, row, 'Image_URL')),
+                    description: cleanCell(getHeaderCellAny(headers, row, ['Description', 'Desc'])),
+                    imageUrl: cleanCell(getHeaderCellAny(headers, row, ['Image_URL', 'Image URL', 'Image_Url', 'ImageUrl'])),
                     weeklyTargetMinutes: parsePositiveInt(cell(row, 'Weekly_Target_Minutes', 4)),
                     schedule: schedule || inferredSchedule,
                     created_at: cleanCell(cell(row, 'Created_At', 12)) || new Date().toISOString(),
@@ -1560,7 +1568,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             } else if (row[0] === 'Theme') {
                 if (row[1]) {
                     newThemes[row[1]] = String(row[2] || '');
-                    const heroImageUrl = getHeaderAwareCell(headers, row, 'Hero_Image_URL', 3) || getHeaderCell(headers, row, 'Hero Image URL');
+                    const heroImageUrl = getHeaderCellAny(headers, row, ['Hero_Image_URL', 'Hero Image URL', 'Hero_Image_Url', 'Hero URL', 'Hero_URL', 'Image_URL', 'Image URL']) || row[3];
                     if (heroImageUrl) newThemeImages[row[1]] = String(heroImageUrl);
                 }
             } else if (typeof row[0] === 'string' && row[0].startsWith('themeImage_')) {

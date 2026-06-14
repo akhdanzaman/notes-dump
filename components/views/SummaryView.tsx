@@ -747,12 +747,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const getChildCardProps = () => cardProps;
 
   const getSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[]) => {
-    return (
-      subtaskDrafts[item.id] ||
-      item.meta.subtasks ||
-      children.map((child) => child.content) ||
-      []
-    );
+    if (subtaskDrafts[item.id]) return subtaskDrafts[item.id];
+    if (item.meta.subtasks?.length) return item.meta.subtasks;
+    if (children.length > 0) return children.map((child) => child.content);
+    const emptyStepCount = Math.min(item.meta.deepWorkStepCount || 0, 5);
+    return emptyStepCount > 0 ? Array.from({ length: emptyStepCount }, () => "") : [];
   };
 
   const updateSubtaskDraft = (
@@ -778,11 +777,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     setTaskPanel(item.id, "subtasks");
   };
 
-  const openManualSubtaskDraft = (item: BrainDumpItem) => {
-    const draft = getSubtaskDraft(item, []);
+  const openManualSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[] = []) => {
+    const draft = getSubtaskDraft(item, children);
     setSubtaskDrafts((prev) => ({
       ...prev,
-      [item.id]: draft.length ? draft : [""],
+      [item.id]: draft.length ? [...draft, ""] : [""],
     }));
     setTaskPanel(item.id, "subtasks");
   };
@@ -1010,21 +1009,25 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           )}
           {isSuggested ? "Preview/edit steps" : "Subtasks"}
         </button>
+        <button
+          onClick={() => openManualSubtaskDraft(item, children)}
+          className="px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1"
+        >
+          <Plus className="w-3 h-3" /> Add todo subtask
+        </button>
+        <button
+          onClick={() => handleKeepRawTodo(item.id)}
+          className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-red-500/10 hover:text-red-500 transition-colors flex items-center gap-1"
+        >
+          <X className="w-3 h-3" /> Remove subtasks
+        </button>
         {hasDeepWorkDetails && (
-          <>
-            <button
-              onClick={() => handleKeepRawTodo(item.id)}
-              className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
-            >
-              Keep raw
-            </button>
-            <button
-              onClick={() => handleRetriggerDeepWorkTodo(item.id)}
-              className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" /> Retrigger
-            </button>
-          </>
+          <button
+            onClick={() => handleRetriggerDeepWorkTodo(item.id)}
+            className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1"
+          >
+            <RotateCcw className="w-3 h-3" /> Retrigger
+          </button>
         )}
       </div>
     ) : null;
@@ -1099,8 +1102,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
                   Optional subtasks
                 </div>
-                {isSuggested ? (
-                  renderSubtaskDraftEditor(item, children, "Use these steps")
+                {isSuggested || children.length === 0 || Boolean(subtaskDrafts[item.id]) ? (
+                  renderSubtaskDraftEditor(
+                    item,
+                    children,
+                    isSuggested
+                      ? "Use these steps"
+                      : children.length === 0
+                        ? "Save as todo subtasks"
+                        : "Update subtasks",
+                  )
                 ) : (
                   <div className="space-y-2">
                     {children.map((child) => (

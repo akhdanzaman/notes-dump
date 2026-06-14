@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { generateExportData } from '../exportUtils';
-import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta } from '../deepWorkTodoModel';
+import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../deepWorkTodoModel';
 import { createDeepWorkSubtaskItems } from '../../services/deepWorkTransformer';
 import { reconcileSpreadsheetData } from '../../services/spreadsheetReconciler';
 import { AppSettings, BrainDumpItem, BudgetConfig, DbSchema, ItemType } from '../../types';
@@ -89,6 +89,12 @@ test('deep work metadata is optional and cache normalization is backward-compati
   assert.deepEqual(messyMeta.childTodoIds, ['child-1']);
   assert.equal(messyMeta.deepWorkSessionEstimateMinutes, 60);
   assert.deepEqual(messyMeta.subtasks, ['First step']);
+});
+
+
+test('parseSubtasksFromSheet accepts JSON arrays and human edited lists', () => {
+  assert.deepEqual(parseSubtasksFromSheet('["First", "Second"]'), ['First', 'Second']);
+  assert.deepEqual(parseSubtasksFromSheet('1. First step\n- Second step; Third step'), ['First step', 'Second step', 'Third step']);
 });
 
 test('spreadsheet export/import preserves nested todo structure and keeps parent completion intentional', () => {

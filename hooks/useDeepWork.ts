@@ -75,6 +75,15 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
 
   const handleAcceptDeepWorkTodo = useCallback(async (id: string, subtasks?: string[]) => {
     const now = new Date().toISOString();
+    const parentItem = ctx.itemsRef.current.find(item => item.id === id);
+    const previousChildIds = new Set(parentItem?.meta.childTodoIds || []);
+    const existingChildren = ctx.itemsRef.current
+      .filter(item => item.meta.parentTodoId === id || previousChildIds.has(item.id))
+      .sort((a, b) => (a.meta.deepWorkStepIndex || 0) - (b.meta.deepWorkStepIndex || 0));
+    const existingByTitle = new Map(
+      existingChildren.map(child => [child.content.trim().toLowerCase(), child])
+    );
+
     let childItems: BrainDumpItem[] = [];
     const updatedParents = ctx.itemsRef.current.map(item => {
       if (item.id !== id || !supportsNestedTodoSubtasks(item)) return item;
@@ -87,7 +96,23 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
           subtasks: subtasks?.length ? subtasks : item.meta.subtasks,
         })
       };
-      childItems = createDeepWorkSubtaskItems(parentForChildren, uuidv4, now);
+      childItems = createDeepWorkSubtaskItems(parentForChildren, uuidv4, now).map((child, index) => {
+        const titleKey = child.content.trim().toLowerCase();
+        const existing = existingByTitle.get(titleKey) || existingChildren[index];
+        if (!existing) return child;
+        return {
+          ...child,
+          id: existing.id,
+          status: existing.status,
+          created_at: existing.created_at,
+          completed_at: existing.completed_at,
+          meta: {
+            ...child.meta,
+            progress: existing.meta.progress,
+            progressNotes: existing.meta.progressNotes,
+          }
+        };
+      });
       const childIds = childItems.map(child => child.id);
       return {
         ...parentForChildren,
@@ -104,9 +129,8 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
       };
     });
 
-    const parentItem = ctx.itemsRef.current.find(item => item.id === id);
     const withoutExistingChildren = updatedParents.filter(
-      item => item.id === id || (item.meta.parentTodoId !== id && !(parentItem?.meta.childTodoIds || []).includes(item.id))
+      item => item.id === id || (item.meta.parentTodoId !== id && !previousChildIds.has(item.id))
     );
     saveDeepWorkItems([...childItems, ...withoutExistingChildren]);
   }, [ctx, saveDeepWorkItems]);

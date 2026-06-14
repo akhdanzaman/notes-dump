@@ -73,9 +73,12 @@ const mergeConcurrentSkill = (localSkill: Skill, remoteSkill: Skill, baseSkill?:
     return {
         id: localSkill.id,
         name: pickField(localSkill.name, remoteSkill.name, baseSkill.name),
+        description: pickField(localSkill.description, remoteSkill.description, baseSkill.description),
+        imageUrl: pickField(localSkill.imageUrl, remoteSkill.imageUrl, baseSkill.imageUrl),
         color: pickField(localSkill.color, remoteSkill.color, baseSkill.color),
         created_at: pickField(localSkill.created_at, remoteSkill.created_at, baseSkill.created_at),
         weeklyTargetMinutes: pickField(localSkill.weeklyTargetMinutes, remoteSkill.weeklyTargetMinutes, baseSkill.weeklyTargetMinutes),
+        schedule: pickField(localSkill.schedule, remoteSkill.schedule, baseSkill.schedule),
     };
 };
 

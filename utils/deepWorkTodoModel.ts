@@ -205,6 +205,25 @@ export const encodeSubtasksForSheet = (subtasks?: string[]): string =>
   (cleanStringArray(subtasks) || []).join('\n');
 
 export const parseSubtasksFromSheet = (value: unknown): string[] | undefined => {
+  if (Array.isArray(value)) return cleanStringArray(value);
   if (typeof value !== 'string') return undefined;
-  return cleanStringArray(value.split(/\r?\n|\s*;\s*/));
+
+  const raw = value.trim();
+  if (!raw) return undefined;
+
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      const cleaned = cleanStringArray(parsed);
+      if (cleaned) return cleaned;
+    } catch {
+      // Fall through to human-editable newline/semicolon parsing.
+    }
+  }
+
+  const withoutListMarkers = raw
+    .split(/\r?\n|\s*;\s*/)
+    .map(part => part.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim());
+
+  return cleanStringArray(withoutListMarkers);
 };

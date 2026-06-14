@@ -173,3 +173,41 @@ test('mergeDbData preserves manual spreadsheet edits to existing skills and wall
   assert.equal(merged.wallets?.[0].initialBalance, 125000);
   assert.equal(merged.data.some(item => item.id === 'local-new'), true);
 });
+
+test('mergeDbData keeps skill metadata during concurrent skill edits', () => {
+  const baseSkill = {
+    id: 'skill-1',
+    name: 'Coding',
+    description: 'Old description',
+    imageUrl: 'https://example.com/old.jpg',
+    color: 'blue',
+    created_at: '2026-05-01T00:00:00.000Z',
+    weeklyTargetMinutes: 120,
+    schedule: { enabled: true, interval: 'weekly' as const, daysOfWeek: [1], startTime: '09:00', endTime: '10:00' },
+  };
+
+  const base: DbSchema = { data: [], skills: [baseSkill] };
+  const local: DbSchema = {
+    data: [],
+    skills: [{
+      ...baseSkill,
+      description: 'Local description',
+      imageUrl: 'https://example.com/local.jpg',
+      schedule: { enabled: true, interval: 'weekly' as const, daysOfWeek: [2], startTime: '10:00', endTime: '11:00' },
+    }],
+  };
+  const remote: DbSchema = {
+    data: [],
+    skills: [{ ...baseSkill, name: 'Coding Pro', weeklyTargetMinutes: 180 }],
+  };
+
+  const merged = mergeDbData(local, remote, base);
+  const skill = merged.skills?.[0];
+
+  assert.equal(skill?.name, 'Coding Pro');
+  assert.equal(skill?.description, 'Local description');
+  assert.equal(skill?.imageUrl, 'https://example.com/local.jpg');
+  assert.equal(skill?.weeklyTargetMinutes, 180);
+  assert.deepEqual(skill?.schedule?.daysOfWeek, [2]);
+});
+

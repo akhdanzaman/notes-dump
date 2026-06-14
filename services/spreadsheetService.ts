@@ -4,6 +4,7 @@ import { SyncProgressCallback, SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, SAVING_GOALS_INVESTMENTS_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
+import { parseSubtasksFromSheet } from "../utils/deepWorkTodoModel";
 import { getValidGoogleAccessToken } from "./googleProfileService";
 
 const SETTINGS_KEY = 'braindump_spreadsheet_config';
@@ -1817,9 +1818,8 @@ const parseRawItemRow = (row: any[], index: number, headers: unknown[] = []): Br
   if (!isNaN(stepIndex)) meta.deepWorkStepIndex = stepIndex;
   const stepCount = Number(cell('Deep_Work_Step_Count', 44, ['Step_Count']));
   if (!isNaN(stepCount)) meta.deepWorkStepCount = stepCount;
-  if (cell('Deep_Work_Subtasks', 45, ['Subtasks'])) {
-    try { meta.subtasks = JSON.parse(String(cell('Deep_Work_Subtasks', 45, ['Subtasks']))); } catch { /* ignore */ }
-  }
+  const parsedSubtasks = parseSubtasksFromSheet(cell('Deep_Work_Subtasks', 45, ['Subtasks']));
+  if (parsedSubtasks) meta.subtasks = parsedSubtasks;
 
   return {
     id,
@@ -1988,7 +1988,7 @@ const parseConfigSheets = (valueRanges: any[]): {
         if (first === 'Theme') {
           if (second) {
             monthlyThemes[second] = String(r[2] || '');
-            const heroImageUrl = cell(r, 'Hero_Image_URL', 3, ['Hero Image URL', 'Hero_Image_Url']);
+            const heroImageUrl = cell(r, 'Hero_Image_URL', 3, ['Hero Image URL', 'Hero_Image_Url', 'Hero URL', 'Hero_URL', 'Image_URL', 'Image URL']);
             if (heroImageUrl) monthlyThemeImages[second] = String(heroImageUrl);
           }
           continue;

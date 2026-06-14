@@ -105,3 +105,32 @@ test('user-triggered accept path can materialize suggested subtasks with parent 
   assert.equal(children[0].meta.deepWorkStepIndex, 1);
   assert.equal(children[children.length - 1].meta.deepWorkStepCount, children.length);
 });
+
+test('skill routines can materialize explicit subtasks into todo children', () => {
+  const parent: BrainDumpItem = {
+    id: 'skill-routine-parent',
+    type: ItemType.SKILLS,
+    content: 'No AI Dependency',
+    status: 'pending',
+    created_at: '2026-06-14T00:00:00.000Z',
+    meta: {
+      isRoutine: true,
+      tags: ['skills', 'routine'],
+      date: '2026-06-14T00:00:00.000Z',
+      deepWorkParent: true,
+      deepWorkStatus: 'accepted',
+      deepWorkPlanId: 'skill-routine-parent',
+      subtasks: ['Read one chapter', 'Practice without AI', 'Write a short reflection'],
+    },
+  };
+
+  let n = 0;
+  const children = createDeepWorkSubtaskItems(parent, () => `skill-child-${++n}`, '2026-06-14T01:00:00.000Z');
+
+  assert.equal(children.length, 3);
+  assert.equal(children[0].type, ItemType.TODO);
+  assert.equal(children[0].meta.parentTodoId, 'skill-routine-parent');
+  assert.equal(children[0].meta.deepWorkStepIndex, 1);
+  assert.equal(children[2].meta.deepWorkStepCount, 3);
+  assert.deepEqual(children[0].meta.tags, ['skills', 'routine']);
+});

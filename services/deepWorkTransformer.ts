@@ -221,14 +221,19 @@ export const buildDeepWorkSuggestionMeta = (content: string, meta: ItemMeta = {}
 };
 
 export const createDeepWorkSubtaskItems = (parent: BrainDumpItem, idFactory: () => string, now = new Date().toISOString()): BrainDumpItem[] => {
-  if (parent.type !== ItemType.TODO) return [];
+  const canCreateNestedSubtasks = parent.type === ItemType.TODO || (parent.type === ItemType.SKILLS && parent.meta.isRoutine === true);
+  if (!canCreateNestedSubtasks) return [];
   const plan = analyzeDeepWorkTodo(parent.content, parent.meta);
   const subtaskTitles = parent.meta.subtasks?.length ? parent.meta.subtasks : plan.transform.subtasks?.map(subtask => subtask.title) || [];
   if ((parent.meta.childTodoIds?.length || 0) > 0 || subtaskTitles.length === 0) return [];
   const stepCount = Math.min(subtaskTitles.length, MAX_SUBTASKS);
+  const inheritedTags = parent.type === ItemType.SKILLS
+    ? Array.from(new Set([...(parent.meta.tags || []), 'skills', 'routine']))
+    : parent.meta.tags || [];
+  const inheritedDate = parent.meta.date || parent.meta.skillScheduledDate || parent.meta.start;
   return subtaskTitles.slice(0, MAX_SUBTASKS).map((title, index) => {
     const transformSubtask = plan.transform.subtasks?.[index];
-    return { id: idFactory(), type: ItemType.TODO, content: title, status: 'pending' as const, created_at: now, meta: { tags: parent.meta.tags || [], date: parent.meta.date, priority: parent.meta.priority || 'normal', parentTodoId: parent.id, deepWorkParent: false, deepWorkPlanId: parent.meta.deepWorkPlanId || parent.id, deepWorkStatus: 'active' as DeepWorkStatus, deepWorkStepIndex: index + 1, deepWorkStepCount: stepCount, deepWorkGeneratedAt: now, deepWorkReason: parent.meta.deepWorkReason, deepWorkSessionEstimateMinutes: transformSubtask?.estimateMinutes, deepWorkNextActionAcceptanceCheck: transformSubtask?.doneCheck } };
+    return { id: idFactory(), type: ItemType.TODO, content: title, status: 'pending' as const, created_at: now, meta: { tags: inheritedTags, date: inheritedDate, priority: parent.meta.priority || 'normal', parentTodoId: parent.id, deepWorkParent: false, deepWorkPlanId: parent.meta.deepWorkPlanId || parent.id, deepWorkStatus: 'active' as DeepWorkStatus, deepWorkStepIndex: index + 1, deepWorkStepCount: stepCount, deepWorkGeneratedAt: now, deepWorkReason: parent.meta.deepWorkReason, deepWorkSessionEstimateMinutes: transformSubtask?.estimateMinutes, deepWorkNextActionAcceptanceCheck: transformSubtask?.doneCheck } };
   });
 };
 
