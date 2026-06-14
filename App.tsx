@@ -386,6 +386,14 @@ const App: React.FC = () => {
     setLockedSecurityPopup({ target, message });
   };
 
+  const handleSetActiveTab = (tab: Tab) => {
+    if (tab === 'money' && securitySettings.lockTabTransaction) {
+      openLockedSecurityPopup('lockTabTransaction', 'Money tab is locked on this device.');
+      return;
+    }
+    setActiveTab(tab);
+  };
+
   const handleSetShowBalance = (value: boolean) => {
     if (securitySettings.forceHideMoneyValue && value) {
       openLockedSecurityPopup('forceHideMoneyValue', 'Money values are locked and hidden on this device.');
@@ -395,8 +403,8 @@ const App: React.FC = () => {
   };
 
   const handleSetMoneyView = (view: MoneyView) => {
-    if (view === 'transactions' && securitySettings.lockTabTransaction) {
-      openLockedSecurityPopup('lockTabTransaction', 'Transactions are locked on this device.');
+    if (securitySettings.lockTabTransaction) {
+      openLockedSecurityPopup('lockTabTransaction', 'Money tab is locked on this device.');
       return;
     }
     setMoneyView(view);
@@ -868,11 +876,11 @@ const App: React.FC = () => {
   }, [activeTab, moneyView]);
 
   useEffect(() => {
-    if (activeTab === "money" && moneyView === "transactions" && securitySettings.lockTabTransaction) {
-      setMoneyView("wallets");
-      openLockedSecurityPopup('lockTabTransaction', 'Transactions are locked on this device.');
+    if (activeTab === "money" && securitySettings.lockTabTransaction) {
+      setActiveTab("summary");
+      openLockedSecurityPopup('lockTabTransaction', 'Money tab is locked on this device.');
     }
-  }, [activeTab, moneyView, securitySettings.lockTabTransaction]);
+  }, [activeTab, securitySettings.lockTabTransaction]);
   useEffect(() => {
     if (activeTab === "plan" && planSubTab !== "tasks")
       return BackHandler.register(() => {
@@ -1396,7 +1404,7 @@ const App: React.FC = () => {
     >
       <DesktopNavRail
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleSetActiveTab}
         planSubTab={planSubTab}
         setPlanSubTab={setPlanSubTab}
         librarySubTab={librarySubTab}
@@ -1447,7 +1455,7 @@ const App: React.FC = () => {
                     setThemeEditMode(true);
                   }}
                   handleToggleStatus={handleToggleStatus}
-                  setActiveTab={setActiveTab}
+                  setActiveTab={handleSetActiveTab}
                   setPlanSubTab={setPlanSubTab}
                   showBalance={effectiveShowBalance}
                   setShowBalance={handleSetShowBalance}
@@ -1526,7 +1534,7 @@ const App: React.FC = () => {
                       handleToggleStatus(goal.id);
                     }
                   }}
-                  setActiveTab={setActiveTab}
+                  setActiveTab={handleSetActiveTab}
                 />
               )}
 
@@ -1549,7 +1557,7 @@ const App: React.FC = () => {
                   filterDateTo={filterDateTo}
                   searchQuery={searchQuery}
                   sortOrder={sortOrder}
-                  setActiveTab={setActiveTab}
+                  setActiveTab={handleSetActiveTab}
                   onAddItem={(type) => {
                     if (type === ItemType.NOTE) {
                       setAddNoteModalType(ItemType.NOTE);
@@ -1563,7 +1571,7 @@ const App: React.FC = () => {
                 />
               )}
 
-              {activeTab === "money" && (
+              {activeTab === "money" && !securitySettings.lockTabTransaction && (
                 <MoneyViewComponent
                   items={items}
                   wallets={wallets}
@@ -1592,7 +1600,7 @@ const App: React.FC = () => {
                   searchQuery={searchQuery}
                   sortOrder={sortOrder}
                   savingGoals={savingGoals}
-                  setActiveTab={setActiveTab}
+                  setActiveTab={handleSetActiveTab}
                   onAddItem={(type) => {
                     if (type === ItemType.FINANCE) setAddExpenseModalOpen(true);
                   }}
@@ -1605,7 +1613,7 @@ const App: React.FC = () => {
                   handleToggleStatus={handleToggleStatus}
                   handleDelete={requestDeleteItem}
                   appSettings={secureAppSettings}
-                  setActiveTab={setActiveTab}
+                  setActiveTab={handleSetActiveTab}
                 />
               )}
             </div>
@@ -1698,7 +1706,7 @@ const App: React.FC = () => {
         >
           <BottomNav
             activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            setActiveTab={handleSetActiveTab}
             planSubTab={planSubTab}
             setPlanSubTab={setPlanSubTab}
             librarySubTab={librarySubTab}

@@ -615,8 +615,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <Lock className="w-5 h-5" />
                                                             </div>
                                                             <div>
-                                                                <div className="font-medium text-primary text-sm">Lock Tab Transaction</div>
-                                                                <div className="text-xs text-muted">Require password before opening Transactions on this device</div>
+                                                                <div className="font-medium text-primary text-sm">Lock Money Tab</div>
+                                                                <div className="text-xs text-muted">Require password before opening Money, Wallet, Budget, and Transactions on this device</div>
                                                             </div>
                                                         </div>
                                                         <label className={`relative inline-flex items-center ${securityToggleBusy === 'lockTabTransaction' ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
