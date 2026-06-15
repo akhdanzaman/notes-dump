@@ -165,6 +165,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       : null;
   const isRoutineScheduledToday = !!routineCurrentDueDate && isSameLocalDay(routineCurrentDueDate, routineNow);
   const isRoutineUnavailable = isRoutine && !isRoutineScheduledToday;
+  const canResetRoutine = isRoutine && !!onResetRoutine && !readonly && (isDone || isRoutineUnavailable);
   
   // Date Logic for Display
   let dateDisplay = null;
@@ -179,11 +180,16 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   if (isRoutine && isDone && completed_at) {
      const completedDate = new Date(completed_at);
      const scheduledDate = meta.date ? new Date(meta.date) : completedDate;
+     const manualNextDueDateRaw = (meta as typeof meta & { routineManualNextDueDate?: string }).routineManualNextDueDate;
+     const manualNextDueDate = manualNextDueDateRaw ? new Date(manualNextDueDateRaw) : null;
      const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
      const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
+     const hasValidManualNextDueDate = !!manualNextDueDate && !Number.isNaN(manualNextDueDate.getTime());
      const doneDate = hasValidScheduledDate ? scheduledDate : completedDate;
 
-     if (hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime() && !isSameLocalDay(scheduledDate, completedDate)) {
+     if (hasValidCompletedDate && hasValidManualNextDueDate && manualNextDueDate.getTime() > completedDate.getTime() && !isSameLocalDay(manualNextDueDate, completedDate)) {
+         routineNextDueDate = getRoutineDateOnOrAfterToday(manualNextDueDate);
+     } else if (hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
          routineNextDueDate = getRoutineDateOnOrAfterToday(scheduledDate);
      } else if (meta.routineInterval) {
          routineNextDueDate = getRoutineDateOnOrAfterToday(calculateNextDueDate(
@@ -284,13 +290,13 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                         </span>
                     </div>
                 )}
-                {isRoutine && isDone && onResetRoutine && (
+                {canResetRoutine && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             onResetRoutine(item.id);
                         }}
-                        title={routineNextDueDate ? `Reset for the next cycle and keep history. Next scheduled due: ${routineNextDueDate.toLocaleDateString()}` : 'Reset routine and keep history'}
+                        title={isRoutineUnavailable ? 'Activate this routine for today without changing the next scheduled due date' : (routineNextDueDate ? `Reset for today and keep history. Next scheduled due: ${routineNextDueDate.toLocaleDateString()}` : 'Reset routine and keep history')}
                         className="ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500"
                     >
                         <RotateCcw className="w-2.5 h-2.5" /> Reset

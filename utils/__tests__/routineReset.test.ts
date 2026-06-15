@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resetDueRoutineItems } from '../../hooks/useBrainDumpData';
+import { resetDueRoutineItems, resetRoutineItemForToday } from '../../hooks/useBrainDumpData';
 import { BrainDumpItem, ItemType } from '../../types';
 
 test('due todo routine reset clears completion side effects for the next cycle', () => {
@@ -192,4 +192,61 @@ test('pending weekly routine skips missed day and waits for the next selected sc
 
   assert.equal(reset.status, 'pending');
   assert.equal(reset.meta.date, '2026-05-14T09:00:00.000Z');
+});
+
+test('manual reset activates an off-schedule pending weekly routine for today', () => {
+  const routine: BrainDumpItem = {
+    id: 'off-schedule-weekly-routine',
+    type: ItemType.TODO,
+    content: 'Monday planning',
+    status: 'pending',
+    created_at: '2026-05-01T00:00:00.000Z',
+    meta: {
+      isRoutine: true,
+      routineInterval: 'weekly',
+      routineDaysOfWeek: [1],
+      date: '2026-05-04T09:00:00.000Z',
+      progress: 0,
+    },
+  };
+
+  const [reset] = resetRoutineItemForToday([routine], 'off-schedule-weekly-routine', new Date('2026-05-06T12:00:00.000Z'));
+
+  assert.equal(reset.status, 'pending');
+  assert.equal(reset.completed_at, undefined);
+  assert.equal(reset.meta.date, '2026-05-06T09:00:00.000Z');
+  assert.equal((reset.meta as typeof reset.meta & { routineManualNextDueDate?: string }).routineManualNextDueDate, '2026-05-11T09:00:00.000Z');
+});
+
+test('manual reset keeps the existing next due date for legacy shopping recurrence', () => {
+  const routine: BrainDumpItem = {
+    id: 'legacy-shopping-routine',
+    type: ItemType.SHOPPING,
+    content: 'Buy groceries',
+    status: 'pending',
+    created_at: '2026-05-01T00:00:00.000Z',
+    meta: {
+      shoppingCategory: 'routine',
+      recurrenceDays: 7,
+      date: '2026-05-01T09:00:00.000Z',
+    },
+  };
+
+  const [activated] = resetRoutineItemForToday([routine], 'legacy-shopping-routine', new Date('2026-05-05T12:00:00.000Z'));
+
+  assert.equal(activated.meta.date, '2026-05-05T09:00:00.000Z');
+  assert.equal((activated.meta as typeof activated.meta & { routineManualNextDueDate?: string }).routineManualNextDueDate, '2026-05-08T09:00:00.000Z');
+
+  const completed: BrainDumpItem = {
+    ...activated,
+    status: 'done',
+    completed_at: '2026-05-05T13:00:00.000Z',
+  };
+
+  const [nextCycle] = resetDueRoutineItems([completed], new Date('2026-05-08T08:00:00.000Z'));
+
+  assert.equal(nextCycle.status, 'pending');
+  assert.equal(nextCycle.completed_at, undefined);
+  assert.equal(nextCycle.meta.date, '2026-05-08T09:00:00.000Z');
+  assert.equal((nextCycle.meta as typeof nextCycle.meta & { routineManualNextDueDate?: string }).routineManualNextDueDate, undefined);
 });

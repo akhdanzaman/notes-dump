@@ -486,9 +486,14 @@ const Card: React.FC<CardProps> = ({
   if (meta.isRoutine && status === 'done' && completed_at) {
      const completedDate = new Date(completed_at);
      const scheduledDate = meta.date ? new Date(meta.date) : completedDate;
+     const manualNextDueDateRaw = (meta as typeof meta & { routineManualNextDueDate?: string }).routineManualNextDueDate;
+     const manualNextDueDate = manualNextDueDateRaw ? new Date(manualNextDueDateRaw) : null;
      const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
      const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
-     const rawNextDate = hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime() && !isSameLocalDay(scheduledDate, completedDate)
+     const hasValidManualNextDueDate = !!manualNextDueDate && !Number.isNaN(manualNextDueDate.getTime());
+     const rawNextDate = hasValidCompletedDate && hasValidManualNextDueDate && manualNextDueDate.getTime() > completedDate.getTime() && !isSameLocalDay(manualNextDueDate, completedDate)
+       ? manualNextDueDate
+       : hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()
        ? scheduledDate
        : calculateNextDueDate(
            hasValidScheduledDate ? scheduledDate : completedDate,
@@ -629,6 +634,7 @@ const Card: React.FC<CardProps> = ({
 
   const isRecentlyDone = status === 'done' && completed_at && (new Date().getTime() - new Date(completed_at).getTime() < 86400000);
   const isRoutineDone = meta.isRoutine && status === 'done';
+  const canResetRoutine = !!meta.isRoutine && !!onResetRoutine && !readonly && (isRoutineDone || isRoutineUnavailable);
   const isParsingFailed = meta.tags?.includes('parsing_failed');
   const showDeepWorkSuggestion = type === ItemType.TODO && meta.deepWorkParent && meta.deepWorkStatus === 'suggested';
   const canShowMoneyMetadata = type === ItemType.FINANCE || type === ItemType.SHOPPING;
@@ -713,13 +719,13 @@ const Card: React.FC<CardProps> = ({
                           </span>
                       </div>
                   )}
-                  {isRoutineDone && onResetRoutine && (
+                  {canResetRoutine && (
                       <button
                           onClick={(e) => {
                               e.stopPropagation();
                               onResetRoutine(item.id);
                           }}
-                          title="Reset for the next cycle and keep history"
+                          title={isRoutineUnavailable ? 'Activate this routine for today without changing the next scheduled due date' : 'Reset for today and keep history'}
                           className="ml-1 px-2 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
                       >
                           <RotateCcw className="w-2.5 h-2.5" /> Reset

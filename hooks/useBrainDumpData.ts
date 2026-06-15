@@ -117,9 +117,36 @@ const isRoutineItem = (item?: BrainDumpItem | null): item is BrainDumpItem => {
     return isShoppingRoutine || isTodoRoutine || isSkillRoutine;
 };
 
+type RoutineManualMeta = ItemMeta & {
+    routineManualNextDueDate?: string;
+};
+
 const getValidRoutineDate = (rawDate?: string, fallback: Date = new Date()): Date => {
     const parsed = rawDate ? new Date(rawDate) : new Date(fallback);
     return Number.isNaN(parsed.getTime()) ? new Date(fallback) : parsed;
+};
+
+const getRoutineManualNextDueDate = (item: BrainDumpItem, now = new Date()): Date | null => {
+    const rawDate = (item.meta as RoutineManualMeta).routineManualNextDueDate;
+    if (!rawDate) return null;
+
+    const manualNextDueDate = new Date(rawDate);
+    if (Number.isNaN(manualNextDueDate.getTime())) return null;
+
+    return advanceRoutineDateToTodayOrFuture(item, manualNextDueDate, now);
+};
+
+const getRoutineTodayActivationDate = (item: BrainDumpItem, now = new Date(), timeSource?: Date | null): Date => {
+    const fallbackDate = getValidRoutineDate(item.meta.date, now);
+    const source = timeSource && !Number.isNaN(timeSource.getTime()) ? timeSource : fallbackDate;
+    const activationDate = new Date(now);
+    activationDate.setHours(
+        source.getHours(),
+        source.getMinutes(),
+        source.getSeconds(),
+        source.getMilliseconds()
+    );
+    return activationDate;
 };
 
 const advanceRoutineDateToTodayOrFuture = (item: BrainDumpItem, dueDate: Date, now = new Date()): Date => {
@@ -146,6 +173,12 @@ const advanceRoutineDateToTodayOrFuture = (item: BrainDumpItem, dueDate: Date, n
 const getRoutineCurrentDueDate = (item: BrainDumpItem, now = new Date()): Date | null => {
     if (!isRoutineItem(item)) return null;
     const scheduledDate = getValidRoutineDate(item.meta.date, now);
+    const manualNextDueDate = getRoutineManualNextDueDate(item, now);
+
+    if (item.status === 'pending' && manualNextDueDate && isBeforeLocalDay(scheduledDate, now)) {
+        return manualNextDueDate;
+    }
+
     return advanceRoutineDateToTodayOrFuture(item, scheduledDate, now);
 };
 
@@ -156,8 +189,19 @@ const getRoutineNextDueDate = (item: BrainDumpItem, now = new Date()): Date | nu
     const scheduledDate = getValidRoutineDate(item.meta.date, completedDate);
     const hasValidCompletedDate = !!item.completed_at && !Number.isNaN(new Date(item.completed_at).getTime());
     const hasValidScheduledDate = !!item.meta.date && !Number.isNaN(new Date(item.meta.date).getTime());
+    const manualNextDueDate = getRoutineManualNextDueDate(item, now);
 
-    if (item.status === 'done' && hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime() && !isSameLocalDay(scheduledDate, completedDate)) {
+    if (
+        item.status === 'done' &&
+        hasValidCompletedDate &&
+        manualNextDueDate &&
+        manualNextDueDate.getTime() > completedDate.getTime() &&
+        !isSameLocalDay(manualNextDueDate, completedDate)
+    ) {
+        return manualNextDueDate;
+    }
+
+    if (item.status === 'done' && hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
         return advanceRoutineDateToTodayOrFuture(item, scheduledDate, now);
     }
 
@@ -238,6 +282,63 @@ const getRoutineEndForNextStart = (item: BrainDumpItem, nextStart: Date): string
     return new Date(nextStart.getTime() + durationMinutes * 60000).toISOString();
 };
 
+export const resetRoutineItemForToday = (currentItems: BrainDumpItem[], id: string, now = new Date()): BrainDumpItem[] => {
+    const item = currentItems.find(candidate => candidate.id === id);
+    if (!item || !isRoutineItem(item)) return currentItems;
+
+    const currentDueDate = getRoutineCurrentDueDate(item, now);
+    const nextDueDate = getRoutineNextDueDate(item, now);
+    const isScheduledToday = !!currentDueDate && isSameLocalDay(currentDueDate, now);
+    const manualNextDueDate = !isScheduledToday ? (currentDueDate || nextDueDate) : null;
+    const resetDueDate = isScheduledToday && currentDueDate
+        ? currentDueDate
+        : getRoutineTodayActivationDate(item, now, currentDueDate || nextDueDate);
+
+    if (!resetDueDate) return currentItems;
+
+    const childIdsToReset = new Set<string>();
+    if (supportsNestedTodoSubtasks(item)) {
+        (item.meta.childTodoIds || []).forEach(childId => childIdsToReset.add(childId));
+        currentItems.forEach(candidate => {
+            if (candidate.meta.parentTodoId === item.id) childIdsToReset.add(candidate.id);
+        });
+    }
+
+    return currentItems.map(candidate => {
+        if (candidate.id === id) {
+            return {
+                ...item,
+                status: 'pending' as const,
+                completed_at: undefined,
+                meta: {
+                    ...item.meta,
+                    date: resetDueDate.toISOString(),
+                    start: item.meta.start ? resetDueDate.toISOString() : item.meta.start,
+                    end: getRoutineEndForNextStart(item, resetDueDate),
+                    progress: 0,
+                    progressNotes: undefined,
+                    lastGeneratedHistoryId: undefined,
+                    routineManualNextDueDate: manualNextDueDate && !isSameLocalDay(manualNextDueDate, resetDueDate)
+                        ? manualNextDueDate.toISOString()
+                        : undefined,
+                } as RoutineManualMeta,
+            };
+        }
+
+        if (!childIdsToReset.has(candidate.id)) return candidate;
+        return {
+            ...candidate,
+            status: 'pending' as const,
+            completed_at: undefined,
+            meta: {
+                ...candidate.meta,
+                progress: 0,
+                progressNotes: undefined,
+            }
+        };
+    });
+};
+
 export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Date()): BrainDumpItem[] => {
     const childIdsByParentId = new Map<string, Set<string>>();
     currentItems.forEach(item => {
@@ -269,7 +370,8 @@ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Da
                         date: currentDueDate.toISOString(),
                         start: item.meta.start ? currentDueDate.toISOString() : item.meta.start,
                         end: getRoutineEndForNextStart(item, currentDueDate),
-                    }
+                        routineManualNextDueDate: undefined,
+                    } as RoutineManualMeta
                 };
             }
 
@@ -295,8 +397,9 @@ export const resetDueRoutineItems = (currentItems: BrainDumpItem[], now = new Da
                         end: getRoutineEndForNextStart(item, nextDueDate),
                         progress: 0,
                         progressNotes: undefined,
-                        lastGeneratedHistoryId: undefined
-                    }
+                        lastGeneratedHistoryId: undefined,
+                        routineManualNextDueDate: undefined,
+                    } as RoutineManualMeta
                 };
             }
         }
@@ -2077,55 +2180,8 @@ export const useBrainDumpData = () => {
     };
 
     const handleResetRoutine = async (id: string) => {
-        const prev = itemsRef.current;
-        const item = prev.find(i => i.id === id);
-
-        if (!item || !isRoutineItem(item) || item.status !== 'done') return;
-
-        const now = new Date();
-        const currentDueDate = getRoutineCurrentDueDate(item, now);
-        const nextDueDate = getRoutineNextDueDate(item, now);
-        const resetDueDate = currentDueDate && isSameLocalDay(currentDueDate, now) ? currentDueDate : nextDueDate;
-        if (!resetDueDate) return;
-
-        const childIdsToReset = new Set<string>();
-        if (supportsNestedTodoSubtasks(item)) {
-            (item.meta.childTodoIds || []).forEach(childId => childIdsToReset.add(childId));
-            prev.forEach(candidate => {
-                if (candidate.meta.parentTodoId === item.id) childIdsToReset.add(candidate.id);
-            });
-        }
-
-        const updatedList = prev.map(i => {
-            if (i.id === id) {
-                return {
-                    ...item,
-                    status: 'pending' as const,
-                    completed_at: undefined,
-                    meta: {
-                        ...item.meta,
-                        date: resetDueDate.toISOString(),
-                        start: item.meta.start ? resetDueDate.toISOString() : item.meta.start,
-                        end: getRoutineEndForNextStart(item, resetDueDate),
-                        progress: 0,
-                        progressNotes: undefined,
-                        lastGeneratedHistoryId: undefined
-                    }
-                };
-            }
-
-            if (!childIdsToReset.has(i.id)) return i;
-            return {
-                ...i,
-                status: 'pending' as const,
-                completed_at: undefined,
-                meta: {
-                    ...i.meta,
-                    progress: 0,
-                    progressNotes: undefined,
-                }
-            };
-        });
+        const updatedList = resetRoutineItemForToday(itemsRef.current, id);
+        if (updatedList === itemsRef.current) return;
 
         itemsRef.current = updatedList;
         setItems(updatedList);
