@@ -14,6 +14,22 @@ export const getLocalISOString = (date: Date = new Date()): string => {
         ':' + pad(Math.abs(tzo) % 60);
 };
 
+
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+export const getLocalDayStart = (date: Date): Date =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+export const isSameLocalDay = (a: Date, b: Date): boolean =>
+    getLocalDayStart(a).getTime() === getLocalDayStart(b).getTime();
+
+export const isBeforeLocalDay = (a: Date, b: Date): boolean =>
+    getLocalDayStart(a).getTime() < getLocalDayStart(b).getTime();
+
+export const isAfterLocalDay = (a: Date, b: Date): boolean =>
+    getLocalDayStart(a).getTime() > getLocalDayStart(b).getTime();
+
 export const calculateNextDueDate = (
     completedDate: Date,
     interval: 'daily' | 'weekly' | 'monthly' | 'yearly',
@@ -95,6 +111,54 @@ export const calculateNextDueDate = (
     }
     
     return new Date(nextDueTime);
+};
+
+
+export const advanceRoutineDueDateToTodayOrFuture = (
+    dueDate: Date,
+    interval: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    daysOfWeek: number[] = [],
+    daysOfMonth: number[] = [],
+    monthsOfYear: number[] = [],
+    now: Date = new Date()
+): Date => {
+    let candidate = new Date(dueDate);
+    if (Number.isNaN(candidate.getTime())) return new Date(now);
+
+    const todayStart = getLocalDayStart(now).getTime();
+    let guard = 0;
+
+    while (getLocalDayStart(candidate).getTime() < todayStart && guard < 500) {
+        const next = calculateNextDueDate(candidate, interval, daysOfWeek, daysOfMonth, monthsOfYear);
+        if (Number.isNaN(next.getTime()) || next.getTime() <= candidate.getTime()) {
+            candidate = new Date(candidate.getTime() + ONE_DAY_MS);
+        } else {
+            candidate = next;
+        }
+        guard += 1;
+    }
+
+    return candidate;
+};
+
+export const advanceRecurringDueDateByDaysToTodayOrFuture = (
+    dueDate: Date,
+    recurrenceDays: number = 1,
+    now: Date = new Date()
+): Date => {
+    const days = Math.max(Number(recurrenceDays || 1), 1);
+    let candidate = new Date(dueDate);
+    if (Number.isNaN(candidate.getTime())) return new Date(now);
+
+    const todayStart = getLocalDayStart(now).getTime();
+    let guard = 0;
+
+    while (getLocalDayStart(candidate).getTime() < todayStart && guard < 500) {
+        candidate = new Date(candidate.getTime() + (days * ONE_DAY_MS));
+        guard += 1;
+    }
+
+    return candidate;
 };
 
 export const calculateFirstDueDate = (

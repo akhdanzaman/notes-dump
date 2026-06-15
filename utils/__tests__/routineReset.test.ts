@@ -150,3 +150,46 @@ test('skill routine reset also reopens child subtasks for the next session', () 
   assert.equal(resetChild?.completed_at, undefined);
 });
 
+
+test('pending daily routine skips missed past date and becomes due today', () => {
+  const routine: BrainDumpItem = {
+    id: 'stale-daily-routine',
+    type: ItemType.TODO,
+    content: 'Daily journal',
+    status: 'pending',
+    created_at: '2026-05-01T00:00:00.000Z',
+    meta: {
+      isRoutine: true,
+      routineInterval: 'daily',
+      date: '2026-05-01T09:00:00.000Z',
+      progress: 0,
+    },
+  };
+
+  const [reset] = resetDueRoutineItems([routine], new Date('2026-05-05T08:00:00.000Z'));
+
+  assert.equal(reset.status, 'pending');
+  assert.equal(reset.meta.date, '2026-05-05T09:00:00.000Z');
+});
+
+test('pending weekly routine skips missed day and waits for the next selected schedule', () => {
+  const routine: BrainDumpItem = {
+    id: 'stale-weekly-routine',
+    type: ItemType.TODO,
+    content: 'Laundry',
+    status: 'pending',
+    created_at: '2026-05-01T00:00:00.000Z',
+    meta: {
+      isRoutine: true,
+      routineInterval: 'weekly',
+      routineDaysOfWeek: [1, 4],
+      date: '2026-05-11T09:00:00.000Z',
+      progress: 0,
+    },
+  };
+
+  const [reset] = resetDueRoutineItems([routine], new Date('2026-05-13T08:00:00.000Z'));
+
+  assert.equal(reset.status, 'pending');
+  assert.equal(reset.meta.date, '2026-05-14T09:00:00.000Z');
+});

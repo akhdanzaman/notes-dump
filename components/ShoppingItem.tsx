@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet } from '../types';
 import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw } from 'lucide-react';
-import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
+import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, advanceRecurringDueDateByDaysToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 
 interface ShoppingItemProps {
@@ -139,6 +139,32 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const isDone = status === 'done';
   const isRoutine = meta?.shoppingCategory === 'routine';
   const isUrgent = meta?.shoppingCategory === 'urgent';
+  const routineNow = new Date();
+  const routineStoredDateRaw = getShoppingDueDate(item);
+  const routineStoredDate = routineStoredDateRaw ? new Date(routineStoredDateRaw) : null;
+  const getRoutineDateOnOrAfterToday = (date: Date): Date => {
+      if (!isRoutine) return date;
+      if (meta.routineInterval) {
+          return advanceRoutineDueDateToTodayOrFuture(
+              date,
+              meta.routineInterval,
+              meta.routineDaysOfWeek,
+              meta.routineDaysOfMonth,
+              meta.routineMonthsOfYear,
+              routineNow
+          );
+      }
+      return advanceRecurringDueDateByDaysToTodayOrFuture(
+          date,
+          Math.max(Number(meta.recurrenceDays || 7), 1),
+          routineNow
+      );
+  };
+  const routineCurrentDueDate = isRoutine && routineStoredDate && !Number.isNaN(routineStoredDate.getTime())
+      ? getRoutineDateOnOrAfterToday(routineStoredDate)
+      : null;
+  const isRoutineScheduledToday = !!routineCurrentDueDate && isSameLocalDay(routineCurrentDueDate, routineNow);
+  const isRoutineUnavailable = isRoutine && !isRoutineScheduledToday;
   
   // Date Logic for Display
   let dateDisplay = null;
@@ -157,27 +183,29 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
      const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
      const doneDate = hasValidScheduledDate ? scheduledDate : completedDate;
 
-     if (hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime()) {
-         routineNextDueDate = scheduledDate;
+     if (hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime() && !isSameLocalDay(scheduledDate, completedDate)) {
+         routineNextDueDate = getRoutineDateOnOrAfterToday(scheduledDate);
      } else if (meta.routineInterval) {
-         routineNextDueDate = calculateNextDueDate(
+         routineNextDueDate = getRoutineDateOnOrAfterToday(calculateNextDueDate(
              doneDate,
              meta.routineInterval,
              meta.routineDaysOfWeek,
              meta.routineDaysOfMonth,
              meta.routineMonthsOfYear
-         );
+         ));
      } else {
          const recurrenceDays = Math.max(Number(meta.recurrenceDays || 7), 1);
-         routineNextDueDate = new Date(doneDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000));
+         routineNextDueDate = getRoutineDateOnOrAfterToday(new Date(doneDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000)));
      }
      
      isWaitingForNextCycle = true;
-     isRoutineLockedUntilNextDue = routineNextDueDate.getTime() > Date.now();
+     isRoutineLockedUntilNextDue = !isSameLocalDay(routineNextDueDate, routineNow);
      nextDueText = `Next: ${routineNextDueDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
   }
 
-  const displayDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
+  const displayDate = isRoutine && routineCurrentDueDate
+      ? routineCurrentDueDate.toISOString()
+      : (shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item));
   if (displayDate) {
       const d = new Date(displayDate);
       const now = new Date();
@@ -213,7 +241,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   return (
     <div 
       className={`group flex flex-col rounded-[24px] p-4 shadow-sm transition-all overflow-hidden cursor-pointer
-        ${isDone 
+        ${(isDone || isRoutineUnavailable)
             ? 'bg-surface/50 opacity-75' 
             : `bg-surface hover:bg-surface/80`
         }`}
@@ -227,11 +255,11 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                 <button 
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (!readonly) onToggleStatus(item.id);
+                        if (!readonly && !isRoutineUnavailable) onToggleStatus(item.id);
                     }}
-                    disabled={readonly}
-                    title={isRoutine && isDone ? 'Mark undone and remove the latest routine history' : undefined}
-                    className={`transition-colors shrink-0 ${readonly ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
+                    disabled={readonly || isRoutineUnavailable}
+                    title={isRoutineUnavailable ? 'Routine is not scheduled for today' : (isRoutine && isDone ? 'Mark undone and remove the latest routine history' : undefined)}
+                    className={`transition-colors shrink-0 ${(readonly || isRoutineUnavailable) ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
                 >
                 {isDone ? (
                     <CheckCircle2 className="w-4 h-4 text-muted" />

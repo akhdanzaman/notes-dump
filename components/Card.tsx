@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType } from '../types';
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
-import { calculateNextDueDate, getRoutineScheduleLabel } from '../utils/selectors';
+import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, formatFinanceTypeLabel } from '../utils/financeTypeUtils';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { getNoteDisplayParts } from '../utils/noteDisplay';
@@ -462,24 +462,48 @@ const Card: React.FC<CardProps> = ({
   // --- Display Logic for Collapsed State ---
   let displayDate = null;
   const isShoppingItem = type === ItemType.SHOPPING;
+  const routineNow = new Date();
+  const routineStoredDate = meta?.date && meta.date !== 'null' ? new Date(meta.date) : null;
+  const routineCurrentDueDate = meta.isRoutine && routineStoredDate && !Number.isNaN(routineStoredDate.getTime())
+    ? advanceRoutineDueDateToTodayOrFuture(
+        routineStoredDate,
+        meta.routineInterval || 'daily',
+        meta.routineDaysOfWeek,
+        meta.routineDaysOfMonth,
+        meta.routineMonthsOfYear,
+        routineNow
+      )
+    : null;
+  const isRoutineScheduledToday = !!routineCurrentDueDate && isSameLocalDay(routineCurrentDueDate, routineNow);
   const rawDate = isShoppingItem
     ? (shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item))
-    : (readonly && completed_at ? completed_at : (meta?.date && meta.date !== 'null' ? meta.date : created_at));
+    : (routineCurrentDueDate ? routineCurrentDueDate.toISOString() : (readonly && completed_at ? completed_at : (meta?.date && meta.date !== 'null' ? meta.date : created_at)));
   const isCreatedDate = !isShoppingItem && (!meta?.date || meta.date === 'null');
 
   // Routine next cycle logic
   let nextDueText = null;
   let isWaitingForNextCycle = false;
   if (meta.isRoutine && status === 'done' && completed_at) {
-     const scheduledDate = meta.date ? new Date(meta.date) : new Date(completed_at);
-     const doneDate = Number.isNaN(scheduledDate.getTime()) ? new Date(completed_at) : scheduledDate;
-     
-     const nextDate = calculateNextDueDate(
-         doneDate,
+     const completedDate = new Date(completed_at);
+     const scheduledDate = meta.date ? new Date(meta.date) : completedDate;
+     const hasValidCompletedDate = !Number.isNaN(completedDate.getTime());
+     const hasValidScheduledDate = !Number.isNaN(scheduledDate.getTime());
+     const rawNextDate = hasValidCompletedDate && hasValidScheduledDate && scheduledDate.getTime() > completedDate.getTime() && !isSameLocalDay(scheduledDate, completedDate)
+       ? scheduledDate
+       : calculateNextDueDate(
+           hasValidScheduledDate ? scheduledDate : completedDate,
+           meta.routineInterval || 'daily',
+           meta.routineDaysOfWeek,
+           meta.routineDaysOfMonth,
+           meta.routineMonthsOfYear
+         );
+     const nextDate = advanceRoutineDueDateToTodayOrFuture(
+         rawNextDate,
          meta.routineInterval || 'daily',
          meta.routineDaysOfWeek,
          meta.routineDaysOfMonth,
-         meta.routineMonthsOfYear
+         meta.routineMonthsOfYear,
+         routineNow
      );
      
      isWaitingForNextCycle = true;
@@ -523,7 +547,8 @@ const Card: React.FC<CardProps> = ({
 
   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
   const displayAmount = (type !== ItemType.TODO && type !== ItemType.SKILLS) ? formatMoney(meta?.amount) : null;
-  const canToggleStatus = !readonly && !!onToggleStatus && type !== ItemType.FINANCE;
+  const isRoutineUnavailable = !!meta.isRoutine && !isRoutineScheduledToday;
+  const canToggleStatus = !readonly && !!onToggleStatus && type !== ItemType.FINANCE && !isRoutineUnavailable;
   const displayTypeLabel = type === ItemType.FINANCE ? formatFinanceTypeLabel(meta?.financeType) : type.toLowerCase();
 
   // Field visibilities
@@ -611,7 +636,7 @@ const Card: React.FC<CardProps> = ({
   const showCommodityFields = (type === ItemType.FINANCE || type === ItemType.SHOPPING) && (editFinanceType === 'expense' || editFinanceType === 'saving' || editFinanceType === 'income');
   const noteDisplay = isNote ? getNoteDisplayParts(item) : null;
   
-  const isDarkened = !noDarken && (isRoutineDone || isRecentlyDone || isParsingFailed) && type !== ItemType.JOURNAL;
+  const isDarkened = !noDarken && (isRoutineDone || isRecentlyDone || isParsingFailed || isRoutineUnavailable) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
   const isTaskWorkspaceEdit = editComfort === 'taskWorkspace' && enableCollapse && !isCollapsed;
   const showInlineEditPanel = !enableCollapse || !isCollapsed;

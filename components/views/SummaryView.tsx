@@ -64,6 +64,8 @@ import {
   getWalletStats,
   getFinanceItems,
   generateInsights,
+  advanceRoutineDueDateToTodayOrFuture,
+  advanceRecurringDueDateByDaysToTodayOrFuture,
 } from "../../utils/selectors";
 import { generateAIInsights, Insight } from "../../services/insightService";
 import { useSwipeTabs } from "../../hooks/useSwipeTabs";
@@ -231,17 +233,38 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
-  const getRoutineDueDate = (item: BrainDumpItem) => {
+  const getRoutineDueDate = (item: BrainDumpItem, referenceDate: Date = todayDate) => {
     const rawDate =
       item.type === ItemType.SHOPPING
         ? getShoppingDueDate(item)
         : item.meta.date || item.meta.dateTime || item.meta.start;
     if (!rawDate) return null;
     const date = new Date(rawDate);
-    return Number.isNaN(date.getTime()) ? null : date;
+    if (Number.isNaN(date.getTime())) return null;
+
+    const isShoppingRoutine = item.type === ItemType.SHOPPING && item.meta.shoppingCategory === "routine";
+    const isScheduledRoutine = isShoppingRoutine || item.meta.isRoutine;
+    if (!isScheduledRoutine) return date;
+
+    if (isShoppingRoutine && !item.meta.routineInterval) {
+      return advanceRecurringDueDateByDaysToTodayOrFuture(
+        date,
+        Math.max(Number(item.meta.recurrenceDays || 7), 1),
+        referenceDate,
+      );
+    }
+
+    return advanceRoutineDueDateToTodayOrFuture(
+      date,
+      item.meta.routineInterval || "daily",
+      item.meta.routineDaysOfWeek,
+      item.meta.routineDaysOfMonth,
+      item.meta.routineMonthsOfYear,
+      referenceDate,
+    );
   };
   const isRoutineDueOnDate = (item: BrainDumpItem, date: Date) => {
-    const dueDate = getRoutineDueDate(item);
+    const dueDate = getRoutineDueDate(item, date);
     return !!dueDate && isSameCalendarDay(dueDate, date);
   };
   const { pendingGroups } = getFocusMonthData(items, todayDate, "", "");

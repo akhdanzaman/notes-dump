@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { calculateFirstDueDate, calculateNextDueDate } from '../selectors/dateUtils';
+import { calculateFirstDueDate, calculateNextDueDate, advanceRoutineDueDateToTodayOrFuture, advanceRecurringDueDateByDaysToTodayOrFuture } from '../selectors/dateUtils';
 
 test('monthly routine dates clamp end-of-month selections instead of overflowing months', () => {
   const next = calculateNextDueDate(new Date('2026-01-31T09:00:00.000Z'), 'monthly', [], [31], []);
@@ -17,4 +17,37 @@ test('first monthly routine date accepts today and clamps invalid selected days 
 
   const later = calculateFirstDueDate(new Date('2026-02-20T00:00:00.000Z'), 'monthly', [], [31], []);
   assert.equal(later.toISOString(), '2026-02-28T00:00:00.000Z');
+});
+
+test('routine due dates catch up to the next scheduled day instead of staying in the past', () => {
+  const next = advanceRoutineDueDateToTodayOrFuture(
+    new Date('2026-05-11T09:00:00.000Z'),
+    'weekly',
+    [1, 4],
+    [],
+    [],
+    new Date('2026-05-13T12:00:00.000Z'),
+  );
+  assert.equal(next.toISOString(), '2026-05-14T09:00:00.000Z');
+});
+
+test('routine catch-up keeps today active even when the scheduled time has already passed', () => {
+  const today = advanceRoutineDueDateToTodayOrFuture(
+    new Date('2026-05-14T09:00:00.000Z'),
+    'weekly',
+    [1, 4],
+    [],
+    [],
+    new Date('2026-05-14T22:00:00.000Z'),
+  );
+  assert.equal(today.toISOString(), '2026-05-14T09:00:00.000Z');
+});
+
+test('legacy recurrence-day shopping routines also skip missed past dates', () => {
+  const next = advanceRecurringDueDateByDaysToTodayOrFuture(
+    new Date('2026-05-10T09:00:00.000Z'),
+    3,
+    new Date('2026-05-15T12:00:00.000Z'),
+  );
+  assert.equal(next.toISOString(), '2026-05-16T09:00:00.000Z');
 });
