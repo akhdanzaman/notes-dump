@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType } from '../../types';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType, ShoppingLineItem } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import { getDeepWorkChildren, supportsNestedTodoSubtasks } from '../../utils/deepWorkTodoModel';
 import Card from '../Card';
@@ -66,7 +66,8 @@ interface PlanViewProps {
         newCommodity?: string,
         newSubcommodity?: string,
         newNoteTitle?: string,
-        newImageUrl?: string
+        newImageUrl?: string,
+        newShoppingLineItems?: ShoppingLineItem[]
     ) => void;
     handleOpenAddRoutine: () => void;
     handleOpenAddTask: (initialDate?: string) => void;

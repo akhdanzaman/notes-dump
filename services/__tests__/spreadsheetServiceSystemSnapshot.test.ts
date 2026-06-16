@@ -356,7 +356,7 @@ test('write verification detects item ids missing from required destination shee
       ],
     },
     {
-      range: "'Shopping'!A:Z",
+      range: "'Shopping'!A:AA",
       values: [
         ['Item', 'Category', 'Amount', 'Status', 'Created_At', 'Completed_At', 'Tags', 'ID'],
         ['Bought rice', 'urgent', 25000, 'done', '2026-05-10', '2026-05-10', '', 'shopping-done-1'],

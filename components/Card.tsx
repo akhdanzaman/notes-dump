@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType } from '../types';
+import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType, ShoppingLineItem } from '../types';
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
@@ -126,7 +126,9 @@ interface CardProps {
     newInvestmentPlatform?: string,
     newCommodity?: string,
     newSubcommodity?: string,
-    newNoteTitle?: string
+    newNoteTitle?: string,
+    newImageUrl?: string,
+    newShoppingLineItems?: ShoppingLineItem[]
   ) => void;
   onResetRoutine?: (id: string) => void;
   onAcceptDeepWorkPlan?: (id: string) => void;

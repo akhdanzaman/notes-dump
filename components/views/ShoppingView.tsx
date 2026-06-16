@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainDumpItem, FinanceType, ShoppingCategory, BudgetRule, Wallet, Tab, Priority } from '../../types';
+import { BrainDumpItem, FinanceType, ShoppingCategory, BudgetRule, Wallet, Tab, Priority, InvestmentAssetType, ShoppingLineItem } from '../../types';
 import { getShoppingItems } from '../../utils/selectors';
 import ShoppingItem from '../ShoppingItem';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
@@ -37,7 +37,21 @@ interface ShoppingViewProps {
         newRoutineMonthsOfYear?: number[],
         newSavingGoalId?: string,
         newDedicatedWalletId?: string,
-        newPriority?: Priority
+        newPriority?: Priority,
+        newStart?: string,
+        newEnd?: string,
+        newHideFromCalendar?: boolean,
+        newInvestmentAssetType?: InvestmentAssetType,
+        newInvestmentSymbol?: string,
+        newInvestmentUnits?: number,
+        newInvestmentAveragePrice?: number,
+        newInvestmentCurrentPrice?: number,
+        newInvestmentPlatform?: string,
+        newCommodity?: string,
+        newSubcommodity?: string,
+        newNoteTitle?: string,
+        newImageUrl?: string,
+        newShoppingLineItems?: ShoppingLineItem[]
     ) => void;
     budgetRules: BudgetRule[];
     handleResetRoutine: (id: string) => void;

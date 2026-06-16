@@ -164,6 +164,13 @@ export interface Wallet {
   color: string;
 }
 
+export interface ShoppingLineItem {
+  id: string;
+  name: string;
+  quantity?: string;
+  amount?: number;
+}
+
 export interface ItemMeta {
   title?: string;
   date?: string;
@@ -174,6 +181,7 @@ export interface ItemMeta {
 
   tags?: string[];
   quantity?: string;
+  shoppingLineItems?: ShoppingLineItem[];
   imageUrl?: string;
   shoppingCategory?: ShoppingCategory;
   recurrenceDays?: number;
@@ -528,6 +536,7 @@ export interface ParsedItemMetaV2 {
 
   tags?: string[];
   quantity?: string;
+  shoppingLineItems?: ShoppingLineItem[];
   imageUrl?: string;
   priority?: Priority;
   hideFromCalendar?: boolean;
@@ -644,6 +653,7 @@ export interface UpdateItemPayload {
     merchant: string;
     canonical: ItemCanonicalMeta;
     quantity: string;
+    shoppingLineItems: ShoppingLineItem[];
     durationMinutes: number;
     skillName: string;
     progress: number;

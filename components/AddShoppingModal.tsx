@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, ShoppingCart, Clock, TrendingUp, Image as ImageIcon } from 'lucide-react';
-import { ShoppingCategory, InvestmentAssetType, BudgetRule, Wallet } from '../types';
+import { X, Check, ShoppingCart, Clock, TrendingUp, Image as ImageIcon, Plus } from 'lucide-react';
+import { ShoppingCategory, InvestmentAssetType, BudgetRule, Wallet, ShoppingLineItem } from '../types';
 import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 import { calculateFirstDueDate } from '../utils/selectors';
+import { createShoppingLineItemId, sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
 
 interface AddShoppingModalProps {
     isOpen: boolean;
@@ -28,7 +29,8 @@ interface AddShoppingModalProps {
         investmentAveragePrice?: number,
         investmentCurrentPrice?: number,
         investmentPlatform?: string,
-        imageUrl?: string
+        imageUrl?: string,
+        shoppingLineItems?: ShoppingLineItem[]
     ) => void;
     initialCategory?: ShoppingCategory;
     budgetRules: BudgetRule[];
@@ -71,6 +73,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     const [content, setContent] = useState('');
     const [category, setCategory] = useState<ShoppingCategory>(initialCategory);
     const [quantity, setQuantity] = useState('');
+    const [shoppingLineItems, setShoppingLineItems] = useState<ShoppingLineItem[]>([]);
     const [imageUrl, setImageUrl] = useState('');
     const [amount, setAmount] = useState('');
     const [budgetCategory, setBudgetCategory] = useState('');
@@ -90,6 +93,23 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
     const [daysOfMonth, setDaysOfMonth] = useState<number[]>([]);
     const [monthsOfYear, setMonthsOfYear] = useState<number[]>([]);
+
+    const isPurchaseCategory = category !== 'saving' && category !== 'investment';
+    const sanitizedLineItems = sanitizeShoppingLineItems(shoppingLineItems);
+    const hasLineItems = isPurchaseCategory && sanitizedLineItems.length > 0;
+    const lineItemsTotal = sumShoppingLineItems(sanitizedLineItems);
+
+    const addShoppingLineItem = () => {
+        setShoppingLineItems(prev => [...prev, { id: createShoppingLineItemId(), name: '', quantity: '', amount: undefined }]);
+    };
+
+    const updateShoppingLineItem = (id: string, changes: Partial<ShoppingLineItem>) => {
+        setShoppingLineItems(prev => prev.map(line => line.id === id ? { ...line, ...changes } : line));
+    };
+
+    const removeShoppingLineItem = (id: string) => {
+        setShoppingLineItems(prev => prev.filter(line => line.id !== id));
+    };
 
     const updateDateFromRoutineSchedule = (
         nextInterval: 'daily' | 'weekly' | 'monthly' | 'yearly',
@@ -139,9 +159,11 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         const parsedUnits = investmentUnits ? Number(investmentUnits) : undefined;
         const parsedAveragePrice = investmentAveragePrice ? Number(investmentAveragePrice) : undefined;
         const parsedCurrentPrice = investmentCurrentPrice ? Number(investmentCurrentPrice) : undefined;
-        const resolvedAmount = amount
-            ? Number(amount)
-            : (category === 'investment' && parsedUnits && parsedAveragePrice ? parsedUnits * parsedAveragePrice : undefined);
+        const resolvedAmount = hasLineItems
+            ? lineItemsTotal
+            : amount
+                ? Number(amount)
+                : (category === 'investment' && parsedUnits && parsedAveragePrice ? parsedUnits * parsedAveragePrice : undefined);
 
         onSave(
             content,
@@ -163,11 +185,13 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
             category === 'investment' ? parsedAveragePrice : undefined,
             category === 'investment' ? parsedCurrentPrice : undefined,
             category === 'investment' ? investmentPlatform.trim() || undefined : undefined,
-            (category === 'saving' || category === 'investment') ? imageUrl.trim() || undefined : undefined
+            (category === 'saving' || category === 'investment') ? imageUrl.trim() || undefined : undefined,
+            isPurchaseCategory && hasLineItems ? sanitizedLineItems : undefined
         );
 
         setContent('');
         setQuantity('');
+        setShoppingLineItems([]);
         setImageUrl('');
         setAmount('');
         setBudgetCategory('');
@@ -332,11 +356,15 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 </label>
                                 <input
                                     type="number"
-                                    value={amount}
+                                    value={isPurchaseCategory && hasLineItems ? lineItemsTotal || '' : amount}
                                     onChange={e => setAmount(e.target.value)}
+                                    readOnly={isPurchaseCategory && hasLineItems}
                                     placeholder="0"
-                                    className={addItemModal.input}
+                                    className={`${addItemModal.input} ${isPurchaseCategory && hasLineItems ? 'opacity-80 cursor-not-allowed' : ''}`}
                                 />
+                                {isPurchaseCategory && hasLineItems && (
+                                    <p className={addItemModal.helpText}>Auto-summed from line items.</p>
+                                )}
                             </div>
                             )}
                         </div>
@@ -433,6 +461,63 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                         className={`${addItemModal.input} focus:border-emerald-500`}
                                     />
                                     <p className={addItemModal.helpText}>This platform becomes an investment wallet. Invested capital is added later via Money &gt; Saving transaction, so wallet movement stays accurate.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {isPurchaseCategory && (
+                            <div className={addItemModal.sectionPanel}>
+                                <div className="flex items-center justify-between gap-3">
+                                    <label className={addItemModal.sectionTitle}>
+                                        <ShoppingCart className="w-4 h-4" /> Line Items
+                                    </label>
+                                    <span className="text-xs font-bold text-acc-shopping">
+                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(lineItemsTotal)}
+                                    </span>
+                                </div>
+                                <p className={addItemModal.helpText}>Optional. Add each grocery/product row here; the shopping total is summarized from these amounts.</p>
+
+                                <div className="space-y-2">
+                                    {shoppingLineItems.map((line, index) => (
+                                        <div key={line.id} className="grid grid-cols-[1fr_72px_112px_auto] gap-2 items-center">
+                                            <input
+                                                type="text"
+                                                value={line.name}
+                                                onChange={e => updateShoppingLineItem(line.id, { name: e.target.value })}
+                                                placeholder={`Item ${index + 1}`}
+                                                className={addItemModal.input}
+                                            />
+                                            <input
+                                                type="text"
+                                                value={line.quantity || ''}
+                                                onChange={e => updateShoppingLineItem(line.id, { quantity: e.target.value })}
+                                                placeholder="Qty"
+                                                className={addItemModal.input}
+                                            />
+                                            <input
+                                                type="number"
+                                                value={line.amount ?? ''}
+                                                onChange={e => updateShoppingLineItem(line.id, { amount: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                                placeholder="0"
+                                                className={addItemModal.input}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeShoppingLineItem(line.id)}
+                                                className="p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                                aria-label="Remove line item"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={addShoppingLineItem}
+                                        className="px-3 py-2 rounded-xl bg-acc-shopping/10 text-acc-shopping text-xs font-bold hover:bg-acc-shopping/20 transition-colors flex items-center gap-1"
+                                    >
+                                        <Plus className="w-3 h-3" /> Add line item
+                                    </button>
                                 </div>
                             </div>
                         )}

@@ -28,6 +28,7 @@ import {
 import { DEFAULT_PROMPT } from './geminiService';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_PRO_MODEL } from './aiService';
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
+import { sanitizeShoppingLineItems } from '../utils/shoppingLineItems';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -311,6 +312,7 @@ function normalizeMeta(meta: any): ParsedItemMetaV2 {
     when: typeof meta.when === 'string' ? meta.when as ParsedItemMetaV2['when'] : undefined,
 
     tags: safeArrayStrings(meta.tags),
+    shoppingLineItems: sanitizeShoppingLineItems(meta.shoppingLineItems).length ? sanitizeShoppingLineItems(meta.shoppingLineItems) : undefined,
     quantity: typeof meta.quantity === 'string' ? normalizeWhitespace(meta.quantity) : undefined,
     priority: isValidPriority(meta.priority) ? meta.priority : undefined,
     hideFromCalendar: typeof meta.hideFromCalendar === 'boolean' ? meta.hideFromCalendar : undefined,
@@ -606,6 +608,18 @@ const stage2Schema = {
               skillName: { type: Type.STRING },
               skillId: { type: Type.STRING },
               quantity: { type: Type.STRING },
+              shoppingLineItems: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    name: { type: Type.STRING },
+                    quantity: { type: Type.STRING },
+                    amount: { type: Type.NUMBER }
+                  }
+                }
+              },
               progress: { type: Type.NUMBER },
               progressNotes: { type: Type.STRING },
               parentTodoId: { type: Type.STRING },
@@ -645,6 +659,18 @@ const stage2Schema = {
               when: { type: Type.STRING },
               tags: { type: Type.ARRAY, items: { type: Type.STRING } },
               quantity: { type: Type.STRING },
+              shoppingLineItems: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    name: { type: Type.STRING },
+                    quantity: { type: Type.STRING },
+                    amount: { type: Type.NUMBER }
+                  }
+                }
+              },
               priority: { type: Type.STRING },
               hideFromCalendar: { type: Type.BOOLEAN },
 
@@ -1024,6 +1050,7 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
           commodity: typeof changes.commodity === 'string' ? normalizeWhitespace(changes.commodity) : undefined,
           subcommodity: typeof changes.subcommodity === 'string' ? normalizeWhitespace(changes.subcommodity) : undefined,
           merchant: typeof changes.merchant === 'string' ? normalizeWhitespace(changes.merchant) : undefined,
+          shoppingLineItems: sanitizeShoppingLineItems(changes.shoppingLineItems).length ? sanitizeShoppingLineItems(changes.shoppingLineItems) : undefined,
           quantity: typeof changes.quantity === 'string' ? normalizeWhitespace(changes.quantity) : undefined,
           durationMinutes: sanitizeNumber(changes.durationMinutes),
           skillName: typeof changes.skillName === 'string' ? normalizeWhitespace(changes.skillName) : undefined,

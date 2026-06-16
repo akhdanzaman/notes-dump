@@ -3,6 +3,7 @@ import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, 
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
 import { SAVING_GOALS_INVESTMENTS_SHEET_NAME } from '../utils/exportUtils';
+import { parseShoppingLineItemsFromSheet, sumShoppingLineItems } from '../utils/shoppingLineItems';
 
 const fmtDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -784,7 +785,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         for (const row of rows) {
             let status, item, amountStr, category, quantity, dueDateStr, createdAtStr, tagsStr, completedAtStr, idStr;
             let budgetCategory, paymentMethod, dedicatedWalletId, hideFromCalendarStr, routineIntervalStr, routineDaysOfWeekStr, routineDaysOfMonthStr, routineMonthsOfYearStr, recurrenceDaysStr, lastGeneratedHistoryId;
-            let investmentType, investmentCode, investmentUnitsStr, investmentAvgBuyStr, investmentCurrentPriceStr, investmentPlatform;
+            let investmentType, investmentCode, investmentUnitsStr, investmentAvgBuyStr, investmentCurrentPriceStr, investmentPlatform, lineItemsStr;
             
             if (hasDueDate && hasCompletedAt && hasCreatedAt) {
                 status = readByHeader(row, "Status");
@@ -813,6 +814,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 routineMonthsOfYearStr = readByHeader(row, "Routine_Months_Of_Year");
                 recurrenceDaysStr = readByHeader(row, "Recurrence_Days");
                 lastGeneratedHistoryId = readByHeader(row, "Last_Generated_History_ID");
+                lineItemsStr = readByHeader(row, "Line_Items");
             } else if (hasDueDate && hasCompletedAt) {
                 [status, item, amountStr, category, quantity, dueDateStr, tagsStr, completedAtStr, idStr] = row;
             } else if (hasDueDate) {
@@ -838,6 +840,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const routineDaysOfMonth = splitSheetNumberList(routineDaysOfMonthStr);
             const routineMonthsOfYear = splitSheetNumberList(routineMonthsOfYearStr);
             const recurrenceDays = recurrenceDaysStr !== undefined && recurrenceDaysStr !== '' ? parsePositiveInt(recurrenceDaysStr) : undefined;
+            const parsedShoppingLineItems = parseShoppingLineItemsFromSheet(lineItemsStr);
+            const resolvedShoppingAmount = parsedShoppingLineItems?.length ? sumShoppingLineItems(parsedShoppingLineItems) : amount;
             
             const exactIdMatch = idStr ? newItems.find(i => i.id === idStr) : undefined;
             const semanticRoutineMatch = parsedCategory === 'routine'
@@ -845,13 +849,13 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     i.type === ItemType.SHOPPING &&
                     i.meta.shoppingCategory === 'routine' &&
                     cleanCell(i.content).toLowerCase() === cleanCell(item).toLowerCase() &&
-                    (i.meta.amount || 0) === amount
+                    (i.meta.amount || 0) === resolvedShoppingAmount
                 )
                 : undefined;
             const semanticNoIdMatch = !idStr ? newItems.find(i =>
                 i.type === ItemType.SHOPPING &&
                 i.content === item &&
-                (i.meta.amount || 0) === amount
+                (i.meta.amount || 0) === resolvedShoppingAmount
             ) : undefined;
 
             const match = exactIdMatch || semanticRoutineMatch || semanticNoIdMatch;
@@ -860,7 +864,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 seenItemIds.add(match.id);
                 let updated = false;
                 if (match.content !== item) { match.content = item; updated = true; }
-                if (match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
+                if (match.meta.amount !== resolvedShoppingAmount) { match.meta.amount = resolvedShoppingAmount; updated = true; }
                 if (match.status !== status && (status === 'pending' || status === 'done')) {
                     match.status = status;
                     updated = true;
@@ -893,6 +897,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (investmentAvgBuyStr !== undefined && match.meta.investmentAveragePrice !== investmentAvgBuy) { match.meta.investmentAveragePrice = investmentAvgBuy; updated = true; }
                 if (investmentCurrentPriceStr !== undefined && match.meta.investmentCurrentPrice !== investmentCurrentPrice) { match.meta.investmentCurrentPrice = investmentCurrentPrice; updated = true; }
                 if (investmentPlatform !== undefined && match.meta.investmentPlatform !== (investmentPlatform || undefined)) { match.meta.investmentPlatform = investmentPlatform || undefined; updated = true; }
+                if (lineItemsStr !== undefined && JSON.stringify(match.meta.shoppingLineItems || []) !== JSON.stringify(parsedShoppingLineItems || [])) { match.meta.shoppingLineItems = parsedShoppingLineItems; updated = true; }
                 const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
                 const newTags = parsedTags;
                 if (JSON.stringify(match.meta.tags || []) !== JSON.stringify(newTags)) { match.meta.tags = newTags; updated = true; }
@@ -960,7 +965,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                     created_at: isoCreatedAt,
                     completed_at: isoCompletedAt,
                     meta: {
-                        amount: amount,
+                        amount: resolvedShoppingAmount,
+                        shoppingLineItems: parsedShoppingLineItems,
                         shoppingCategory: parsedCategory,
                         quantity: quantity || '',
                         budgetCategory: (budgetCategory && budgetCategory !== '') ? budgetCategory : undefined,
@@ -1071,7 +1077,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (match.meta.routineMonthsOfYear !== undefined) { match.meta.routineMonthsOfYear = undefined; updated = true; }
                 if (match.meta.recurrenceDays !== undefined) { match.meta.recurrenceDays = undefined; updated = true; }
                 if (match.meta.lastGeneratedHistoryId !== undefined) { match.meta.lastGeneratedHistoryId = undefined; updated = true; }
-                if (match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
+                if (targetAmountStr !== undefined && match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
                 if (savedAmountStr !== undefined && match.meta.savedAmount !== savedAmount) { match.meta.savedAmount = savedAmount; updated = true; }
                 if (dedicatedWalletId !== undefined && match.meta.dedicatedWalletId !== (dedicatedWalletId || undefined)) { match.meta.dedicatedWalletId = dedicatedWalletId || undefined; updated = true; }
                 if (imageUrlCell !== undefined && match.meta.imageUrl !== (imageUrl || undefined)) { match.meta.imageUrl = imageUrl || undefined; updated = true; }

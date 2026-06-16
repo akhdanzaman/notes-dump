@@ -34,7 +34,8 @@ import {
     ItemMeta,
     InvestmentAssetType,
     EnrichmentTask,
-    SkillSessionLogInput
+    SkillSessionLogInput,
+    ShoppingLineItem
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
@@ -59,6 +60,7 @@ import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
 import { shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { applyInvestmentFundingToInvestment, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 import { dedupeBrainDumpItems } from '../utils/itemDedupe';
+import { sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -1174,6 +1176,7 @@ export const useBrainDumpData = () => {
             when: meta?.when,
             tags: meta?.tags || [],
             quantity: meta?.quantity,
+            shoppingLineItems: sanitizeShoppingLineItems(meta?.shoppingLineItems).length ? sanitizeShoppingLineItems(meta?.shoppingLineItems) : undefined,
             shoppingCategory: meta?.shoppingCategory,
             recurrenceDays: meta?.recurrenceDays,
             targetDay: meta?.targetDay,
@@ -1461,6 +1464,7 @@ export const useBrainDumpData = () => {
                                 merchant: changes.merchant,
                                 canonical: changes.canonical ? { ...(i.meta.canonical || {}), ...changes.canonical } : undefined,
                                 quantity: changes.quantity,
+                                shoppingLineItems: sanitizeShoppingLineItems(changes.shoppingLineItems).length ? sanitizeShoppingLineItems(changes.shoppingLineItems) : undefined,
                                 shoppingCategory: changes.shoppingCategory,
                                 priority: changes.priority,
                                 durationMinutes: sanitizeNumber(changes.durationMinutes),
@@ -2298,7 +2302,8 @@ export const useBrainDumpData = () => {
         newCommodity?: string,
         newSubcommodity?: string,
         newNoteTitle?: string,
-        newImageUrl?: string
+        newImageUrl?: string,
+        newShoppingLineItems?: ShoppingLineItem[]
     ) => {
         const updatedItems = itemsRef.current.map(item => {
             if (item.id !== id) return item;
@@ -2325,6 +2330,8 @@ export const useBrainDumpData = () => {
             }
 
             const nextShoppingCategory = newShoppingCategory !== undefined ? newShoppingCategory : item.meta.shoppingCategory;
+            const nextShoppingLineItems = newShoppingLineItems !== undefined ? sanitizeShoppingLineItems(newShoppingLineItems) : item.meta.shoppingLineItems;
+            const hasNextShoppingLineItems = item.type === ItemType.SHOPPING && sanitizeShoppingLineItems(nextShoppingLineItems).length > 0;
             const resolvedIsRoutine = item.type === ItemType.SHOPPING
                 ? nextShoppingCategory === 'routine'
                 : (newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine);
@@ -2364,7 +2371,7 @@ export const useBrainDumpData = () => {
                 tags: newTags,
                 title: newNoteTitle !== undefined ? (newNoteTitle.trim() || undefined) : item.meta.title,
                 imageUrl: newImageUrl !== undefined ? (newImageUrl.trim() || undefined) : item.meta.imageUrl,
-                amount: newAmount !== undefined ? newAmount : item.meta.amount,
+                amount: hasNextShoppingLineItems ? sumShoppingLineItems(nextShoppingLineItems) : (newAmount !== undefined ? newAmount : item.meta.amount),
                 date: finalDate,
                 start: newStart !== undefined ? newStart : item.meta.start,
                 end: newEnd !== undefined ? newEnd : item.meta.end,
@@ -2382,6 +2389,7 @@ export const useBrainDumpData = () => {
                 shoppingCategory: nextShoppingCategory,
                 recurrenceDays: !resolvedIsRoutine ? undefined : (newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays),
                 quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
+                shoppingLineItems: item.type === ItemType.SHOPPING ? (hasNextShoppingLineItems ? sanitizeShoppingLineItems(nextShoppingLineItems) : undefined) : item.meta.shoppingLineItems,
                 isRoutine: resolvedIsRoutine || undefined,
                 routineInterval: !resolvedIsRoutine ? undefined : (newRoutineInterval !== undefined ? newRoutineInterval : item.meta.routineInterval),
                 routineDaysOfWeek: !resolvedIsRoutine ? undefined : (newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek),
@@ -2463,7 +2471,8 @@ export const useBrainDumpData = () => {
         investmentAveragePrice?: number,
         investmentCurrentPrice?: number,
         investmentPlatform?: string,
-        imageUrl?: string
+        imageUrl?: string,
+        shoppingLineItems?: ShoppingLineItem[]
     ) => {
         const normalizedInvestmentPlatform = category === 'investment' ? investmentPlatform?.trim() : undefined;
         let updatedWallets = walletsRef.current;
@@ -2488,6 +2497,10 @@ export const useBrainDumpData = () => {
             }
         }
 
+        const sanitizedShoppingLineItems = sanitizeShoppingLineItems(shoppingLineItems);
+        const shoppingLineItemsTotal = sumShoppingLineItems(sanitizedShoppingLineItems);
+        const hasShoppingLineItemDetails = category !== 'saving' && category !== 'investment' && sanitizedShoppingLineItems.length > 0;
+
         const newItem: BrainDumpItem = {
             id: uuidv4(),
             type: ItemType.SHOPPING,
@@ -2498,8 +2511,9 @@ export const useBrainDumpData = () => {
                 tags: [],
                 shoppingCategory: category,
                 quantity,
+                shoppingLineItems: hasShoppingLineItemDetails ? sanitizedShoppingLineItems : undefined,
                 imageUrl: (category === 'saving' || category === 'investment') ? (imageUrl?.trim() || undefined) : undefined,
-                amount: category === 'investment' ? undefined : amount,
+                amount: category === 'investment' ? undefined : (hasShoppingLineItemDetails ? shoppingLineItemsTotal : amount),
                 budgetCategory,
                 date: date || new Date().toISOString(),
                 isRoutine: category === 'routine',

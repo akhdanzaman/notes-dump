@@ -4,6 +4,7 @@ import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from '.
 import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils';
+import { encodeShoppingLineItemsForSheet } from './shoppingLineItems';
 import {
   buildDailyMoneyDriverSummary,
   buildDataQualityIssues,
@@ -561,6 +562,7 @@ export const generateExportData = (
       Routine_Months_Of_Year: encodeNumberListForSheet(item.meta.routineMonthsOfYear),
       Recurrence_Days: item.meta.recurrenceDays || '',
       Last_Generated_History_ID: item.meta.lastGeneratedHistoryId || '',
+      Line_Items: encodeShoppingLineItemsForSheet(item.meta.shoppingLineItems),
       Investment_Type: item.meta.investmentAssetType || '',
       Investment_Code: item.meta.investmentSymbol || '',
       Investment_Units: item.meta.investmentUnits || '',
@@ -572,8 +574,8 @@ export const generateExportData = (
   sheets.push({
       name: "Shopping",
       data: [
-        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID", "Budget_Category", "Payment_Method", "Dedicated_Wallet_ID", "Hide_From_Calendar", "Routine_Interval", "Routine_Days_Of_Week", "Routine_Days_Of_Month", "Routine_Months_Of_Year", "Recurrence_Days", "Last_Generated_History_ID"],
-        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.Investment_Type, s.Investment_Code, s.Investment_Units, s.Investment_Avg_Buy, s.Investment_Current_Price, s.Investment_Platform, s.ID, s.Budget_Category, s.Payment_Method, s.Dedicated_Wallet_ID, s.Hide_From_Calendar, s.Routine_Interval, s.Routine_Days_Of_Week, s.Routine_Days_Of_Month, s.Routine_Months_Of_Year, s.Recurrence_Days, s.Last_Generated_History_ID])
+        ["Status", "Item", "Amount", "Category", "Quantity", "Due_Date", "Created_At", "Tags", "Completed_At", "Investment_Type", "Investment_Code", "Investment_Units", "Investment_Avg_Buy", "Investment_Current_Price", "Investment_Platform", "ID", "Budget_Category", "Payment_Method", "Dedicated_Wallet_ID", "Hide_From_Calendar", "Routine_Interval", "Routine_Days_Of_Week", "Routine_Days_Of_Month", "Routine_Months_Of_Year", "Recurrence_Days", "Last_Generated_History_ID", "Line_Items"],
+        ...shopping.map(s => [s.Status, s.Item, s.Amount, s.Category, s.Quantity, s.Due_Date, s.Created_At, s.Tags, s.Completed_At, s.Investment_Type, s.Investment_Code, s.Investment_Units, s.Investment_Avg_Buy, s.Investment_Current_Price, s.Investment_Platform, s.ID, s.Budget_Category, s.Payment_Method, s.Dedicated_Wallet_ID, s.Hide_From_Calendar, s.Routine_Interval, s.Routine_Days_Of_Week, s.Routine_Days_Of_Month, s.Routine_Months_Of_Year, s.Recurrence_Days, s.Last_Generated_History_ID, s.Line_Items])
       ]
     });
 

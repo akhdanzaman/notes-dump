@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet } from '../types';
-import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw } from 'lucide-react';
+import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet, ShoppingLineItem } from '../types';
+import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw, Plus, X } from 'lucide-react';
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, advanceRecurringDueDateByDaysToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
+import { createShoppingLineItemId, sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
 
 interface ShoppingItemProps {
   item: BrainDumpItem;
@@ -35,7 +36,18 @@ interface ShoppingItemProps {
     newPriority?: any,
     newStart?: string,
     newEnd?: string,
-    newHideFromCalendar?: boolean
+    newHideFromCalendar?: boolean,
+    newInvestmentAssetType?: any,
+    newInvestmentSymbol?: string,
+    newInvestmentUnits?: number,
+    newInvestmentAveragePrice?: number,
+    newInvestmentCurrentPrice?: number,
+    newInvestmentPlatform?: string,
+    newCommodity?: string,
+    newSubcommodity?: string,
+    newNoteTitle?: string,
+    newImageUrl?: string,
+    newShoppingLineItems?: ShoppingLineItem[]
   ) => void;
   readonly?: boolean;
   handleUpdateItem?: any; // To match prop drilling, though we use onUpdate
@@ -51,6 +63,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   // Edit State
   const [editContent, setEditContent] = useState(content);
   const [editQuantity, setEditQuantity] = useState(meta.quantity || '');
+  const [editShoppingLineItems, setEditShoppingLineItems] = useState<ShoppingLineItem[]>(sanitizeShoppingLineItems(meta.shoppingLineItems));
   const [editAmount, setEditAmount] = useState(meta.amount ? meta.amount.toString() : '');
   const [editCategory, setEditCategory] = useState<ShoppingCategory>(meta.shoppingCategory || 'not_urgent');
   const [editRecurrence, setEditRecurrence] = useState(meta.recurrenceDays ? meta.recurrenceDays.toString() : '');
@@ -67,6 +80,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   useEffect(() => {
       setEditContent(content);
       setEditQuantity(meta.quantity || '');
+      setEditShoppingLineItems(sanitizeShoppingLineItems(meta.shoppingLineItems));
       setEditAmount(meta.amount ? meta.amount.toString() : '');
       setEditCategory(meta.shoppingCategory || 'not_urgent');
       setEditRecurrence(meta.recurrenceDays ? meta.recurrenceDays.toString() : '');
@@ -98,7 +112,9 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   const handleSave = () => {
       if (!updateFn) return;
-      const numAmount = editAmount ? parseFloat(editAmount) : undefined;
+      const sanitizedEditLineItems = sanitizeShoppingLineItems(editShoppingLineItems);
+      const hasEditLineItems = sanitizedEditLineItems.length > 0;
+      const numAmount = hasEditLineItems ? sumShoppingLineItems(sanitizedEditLineItems) : (editAmount ? parseFloat(editAmount) : undefined);
       const numRecurrence = editRecurrence ? parseInt(editRecurrence) : undefined;
       
       let finalDate: string | undefined = undefined;
@@ -132,7 +148,18 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           meta.priority,
           meta.start,
           meta.end,
-          editHideFromCalendar
+          editHideFromCalendar,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          hasEditLineItems ? sanitizedEditLineItems : undefined
       );
   };
 
@@ -166,6 +193,23 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const isRoutineScheduledToday = !!routineCurrentDueDate && isSameLocalDay(routineCurrentDueDate, routineNow);
   const isRoutineUnavailable = isRoutine && !isRoutineScheduledToday;
   const canResetRoutine = isRoutine && !!onResetRoutine && !readonly && (isDone || isRoutineUnavailable);
+  const lineItems = sanitizeShoppingLineItems(meta.shoppingLineItems);
+  const lineItemsTotal = sumShoppingLineItems(lineItems);
+  const hasLineItems = lineItems.length > 0;
+  const editLineItemsTotal = sumShoppingLineItems(editShoppingLineItems);
+  const hasEditLineItems = sanitizeShoppingLineItems(editShoppingLineItems).length > 0;
+
+  const addLineItem = () => {
+      setEditShoppingLineItems(prev => [...prev, { id: createShoppingLineItemId(), name: '', quantity: '', amount: undefined }]);
+  };
+
+  const updateLineItem = (id: string, changes: Partial<ShoppingLineItem>) => {
+      setEditShoppingLineItems(prev => prev.map(line => line.id === id ? { ...line, ...changes } : line));
+  };
+
+  const removeLineItem = (id: string) => {
+      setEditShoppingLineItems(prev => prev.filter(line => line.id !== id));
+  };
   
   // Date Logic for Display
   let dateDisplay = null;
@@ -317,20 +361,40 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                 </div>
                 
                 {/* Extra Metadata Row */}
-                {(meta.quantity) && (
+                {(meta.quantity || hasLineItems) && (
                     <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
                         {meta.quantity && (
                             <span className="px-1.5 py-0.5 rounded bg-muted/10 font-mono">
                                 Qty: {meta.quantity}
                             </span>
                         )}
+                        {hasLineItems && (
+                            <span className="px-1.5 py-0.5 rounded bg-acc-shopping/10 text-acc-shopping font-bold">
+                                {lineItems.length} line items
+                            </span>
+                        )}
+                    </div>
+                )}
+                {hasLineItems && (
+                    <div className="mt-2 space-y-1">
+                        {lineItems.slice(0, 3).map(line => (
+                            <div key={line.id} className="flex items-center justify-between gap-2 rounded-xl bg-background/60 px-2 py-1 text-[11px] text-muted">
+                                <span className="truncate">{line.name || 'Untitled item'}{line.quantity ? ` · ${line.quantity}` : ''}</span>
+                                <span className="shrink-0 font-bold text-primary">
+                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(line.amount || 0)}
+                                </span>
+                            </div>
+                        ))}
+                        {lineItems.length > 3 && (
+                            <div className="text-[10px] font-bold text-muted">+{lineItems.length - 3} more</div>
+                        )}
                     </div>
                 )}
             </div>
 
-            {meta.amount && (
+            {(meta.amount || hasLineItems) && (
                 <div className="text-base font-bold text-primary shrink-0 mt-0.5">
-                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(meta.amount)}
+                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(hasLineItems ? lineItemsTotal : (meta.amount || 0))}
                 </div>
             )}
         </div>
@@ -354,6 +418,54 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                           onChange={(e) => setEditQuantity(e.target.value)}
                           placeholder="Qty"
                       />
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-background/60 p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                          <div>
+                              <div className="text-[10px] uppercase text-muted font-bold tracking-wider">Line Items</div>
+                              <div className="text-[10px] text-muted">Optional detail rows; total is auto-summed.</div>
+                          </div>
+                          <div className="text-xs font-bold text-acc-shopping">
+                              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(editLineItemsTotal)}
+                          </div>
+                      </div>
+                      {editShoppingLineItems.map((line, index) => (
+                          <div key={line.id} className="grid grid-cols-[1fr_64px_96px_auto] gap-2 items-center">
+                              <input
+                                  className="bg-surface border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
+                                  value={line.name}
+                                  onChange={(e) => updateLineItem(line.id, { name: e.target.value })}
+                                  placeholder={`Item ${index + 1}`}
+                              />
+                              <input
+                                  className="bg-surface border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
+                                  value={line.quantity || ''}
+                                  onChange={(e) => updateLineItem(line.id, { quantity: e.target.value })}
+                                  placeholder="Qty"
+                              />
+                              <input
+                                  type="number"
+                                  className="bg-surface border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
+                                  value={line.amount ?? ''}
+                                  onChange={(e) => updateLineItem(line.id, { amount: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                  placeholder="0"
+                              />
+                              <button
+                                  onClick={() => removeLineItem(line.id)}
+                                  className="p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                  aria-label="Remove line item"
+                              >
+                                  <X className="w-4 h-4" />
+                              </button>
+                          </div>
+                      ))}
+                      <button
+                          onClick={addLineItem}
+                          className="px-3 py-2 rounded-xl bg-acc-shopping/10 text-acc-shopping text-xs font-bold hover:bg-acc-shopping/20 transition-colors flex items-center gap-1"
+                      >
+                          <Plus className="w-3 h-3" /> Add line item
+                      </button>
                   </div>
 
                   {/* Settings Grid */}
@@ -400,11 +512,13 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Est. Cost</label>
                            <input 
                               type="number"
-                              className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
-                              value={editAmount}
+                              className={`w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping ${hasEditLineItems ? 'opacity-80 cursor-not-allowed' : ''}`}
+                              value={hasEditLineItems ? editLineItemsTotal || '' : editAmount}
                               onChange={(e) => setEditAmount(e.target.value)}
+                              readOnly={hasEditLineItems}
                               placeholder="0"
                            />
+                           {hasEditLineItems && <p className="mt-1 text-[10px] text-muted">Auto-summed from line items.</p>}
                       </div>
                       <div className="col-span-2">
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{shouldShoppingDateEditCompletion(item) ? 'Completed date' : 'Due date'}</label>
