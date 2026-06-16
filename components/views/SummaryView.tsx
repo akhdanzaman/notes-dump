@@ -323,8 +323,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         summaryFocusGroups,
         summaryUrgentShopping,
         Math.max(summaryFocusItems.length + summaryUrgentShopping.length, 1),
+        todayDate,
       );
-    }, [summaryFocusItems, summaryFocusGroups, summaryUrgentShopping]);
+    }, [summaryFocusItems, summaryFocusGroups, summaryUrgentShopping, todayCalendarKey]);
 
   const { totalExpense } = getFinanceItems(
     items,

@@ -30,9 +30,30 @@ const getValidDateTime = (value?: string) => {
   return Number.isFinite(time) ? time : Infinity;
 };
 
-const getFocusDueTime = (item: BrainDumpItem) => getValidDateTime(item.meta.start || item.meta.date || item.meta.dateTime);
+const getFocusDateValue = (item: BrainDumpItem) => item.meta.start || item.meta.date || item.meta.dateTime;
+const getFocusDueTime = (item: BrainDumpItem) => getValidDateTime(getFocusDateValue(item));
 const getShoppingDueTime = (item: BrainDumpItem) => getValidDateTime(getShoppingDueDate(item));
 const isRootFocusItem = (item: BrainDumpItem) => !item.meta.parentTodoId;
+
+const getStartOfCalendarDay = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+const isDateTodayOrTomorrow = (value: string | undefined, referenceDate: Date) => {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return false;
+
+  const todayStart = getStartOfCalendarDay(referenceDate);
+  const afterTomorrowStart = todayStart + 2 * 24 * 60 * 60 * 1000;
+
+  return time >= todayStart && time < afterTomorrowStart;
+};
+
+const isFocusDueTodayOrTomorrow = (item: BrainDumpItem, referenceDate: Date) =>
+  isDateTodayOrTomorrow(getFocusDateValue(item), referenceDate);
+
+const isShoppingDueTodayOrTomorrow = (item: BrainDumpItem, referenceDate: Date) =>
+  isDateTodayOrTomorrow(getShoppingDueDate(item), referenceDate);
 
 const compareCandidates = (left: SummaryFocusCandidate, right: SummaryFocusCandidate) => {
   if (left.dueTime !== right.dueTime) return left.dueTime - right.dueTime;
@@ -70,12 +91,17 @@ export const buildMixedTodayFocusItems = (
   urgentShoppingItems: BrainDumpItem[],
   todayFocusItems: BrainDumpItem[],
   limit = 5,
-  upcomingFocusItems: BrainDumpItem[] = []
+  upcomingFocusItems: BrainDumpItem[] = [],
+  referenceDate: Date = new Date()
 ): BrainDumpItem[] => {
   if (limit <= 0) return [];
 
-  const pendingUrgentShopping = urgentShoppingItems.filter(item => item.status === 'pending');
-  const focusCandidates = [...todayFocusItems, ...upcomingFocusItems].filter(item => item.status === 'pending' && isRootFocusItem(item));
+  const pendingUrgentShopping = urgentShoppingItems.filter(item =>
+    item.status === 'pending' && isShoppingDueTodayOrTomorrow(item, referenceDate)
+  );
+  const focusCandidates = [...todayFocusItems, ...upcomingFocusItems].filter(item =>
+    item.status === 'pending' && isRootFocusItem(item) && isFocusDueTodayOrTomorrow(item, referenceDate)
+  );
 
   const focus = focusCandidates.map((item, sequence): SummaryFocusCandidate => ({
     item,
@@ -98,7 +124,7 @@ export const buildMixedTodayFocusItems = (
   // 1. Show both worlds when both exist: at least one focus task/event and one urgent shopping item.
   // 2. Fill the rest by nearest due date across focus + urgent shopping.
   // 3. If dates tie, focus tasks/events win before shopping.
-  // 4. Undated urgent shopping is allowed, but it sorts after dated focus/shopping.
+  // 4. Items outside today/tomorrow, including undated items, are excluded from Today's Focus.
   const result: SummaryFocusCandidate[] = [];
   const seen = new Set<string>();
 
@@ -113,10 +139,18 @@ export const buildSummaryFocusDisplay = (
   items: BrainDumpItem[],
   pendingGroups: PendingGroups,
   urgentShoppingItems: BrainDumpItem[],
-  limit = 5
+  limit = 5,
+  referenceDate: Date = new Date()
 ): SummaryFocusDisplay => {
-  const pendingUrgentShopping = urgentShoppingItems.filter(item => item.status === 'pending');
-  const pendingTodayFocus = pendingGroups.today.filter(item => item.status === 'pending' && isRootFocusItem(item));
+  const pendingUrgentShopping = urgentShoppingItems.filter(item =>
+    item.status === 'pending' && isShoppingDueTodayOrTomorrow(item, referenceDate)
+  );
+  const pendingTodayFocus = pendingGroups.today.filter(item =>
+    item.status === 'pending' && isRootFocusItem(item) && isFocusDueTodayOrTomorrow(item, referenceDate)
+  );
+  const pendingTomorrowFocus = pendingGroups.tomorrow.filter(item =>
+    item.status === 'pending' && isRootFocusItem(item) && isFocusDueTodayOrTomorrow(item, referenceDate)
+  );
   const shouldBuildTodayFocus = pendingTodayFocus.length > 0 || pendingUrgentShopping.length > 0;
 
   if (shouldBuildTodayFocus) {
@@ -124,7 +158,8 @@ export const buildSummaryFocusDisplay = (
       pendingUrgentShopping,
       pendingTodayFocus,
       limit,
-      [...pendingGroups.tomorrow, ...pendingGroups.later].filter(isRootFocusItem)
+      pendingTomorrowFocus,
+      referenceDate
     );
 
     return {
@@ -170,7 +205,8 @@ export const buildSummaryFocusDisplay = (
       (item.type === ItemType.TODO || item.type === ItemType.EVENT) &&
       item.status === 'done' &&
       item.completed_at &&
-      isRootFocusItem(item)
+      isRootFocusItem(item) &&
+      (isFocusDueTodayOrTomorrow(item, referenceDate) || isDateTodayOrTomorrow(item.completed_at, referenceDate))
     )
     .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
     .slice(0, limit);
