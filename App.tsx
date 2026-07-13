@@ -85,6 +85,7 @@ import {
   parseSeenFeatureTutorials,
 } from "./utils/featureTutorials";
 import { classifyText } from "./services/geminiService";
+import { parseReceiptImage } from "./services/receiptParserService";
 
 const getThemeMonthKey = (date: Date) => {
   const year = date.getFullYear();
@@ -905,7 +906,42 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
-  const handleAppSend = (text: string) => {
+  const handleAppSend = async (text: string, image?: File) => {
+    if (image) {
+      const parsed = await parseReceiptImage(
+        image,
+        text,
+        wallets,
+        budgetConfig.rules || [],
+        appSettings.parsingModel,
+      );
+      const categoryIds = Array.from(new Set(
+        parsed.lineItems.map((line) => line.budgetCategory).filter((value): value is string => !!value),
+      ));
+      const description = parsed.merchant
+        || image.name.replace(/\.[^.]+$/, '').trim()
+        || 'Receipt transaction';
+
+      await handleAddTransaction(
+        description,
+        parsed.totalAmount,
+        'expense',
+        parsed.walletId,
+        categoryIds.length === 1 ? categoryIds[0] : undefined,
+        undefined,
+        parsed.date,
+        parsed.lineItems,
+        parsed.merchant,
+        {
+          imageName: image.name,
+          imageMimeType: image.type,
+          context: text.trim() || undefined,
+          extractedAt: new Date().toISOString(),
+        },
+      );
+      return;
+    }
+
     const lower = text.toLowerCase().trim();
     const isQuestion =
       lower.endsWith("?") ||
@@ -936,7 +972,7 @@ const App: React.FC = () => {
       setNewChatMessage({ text, id: uuidv4() });
       setIsChatOpen(true);
     } else {
-      handleSend(text);
+      await handleSend(text);
     }
   };
 
@@ -2105,7 +2141,6 @@ const App: React.FC = () => {
         wallets={wallets}
         budgetConfig={budgetConfig}
         savingGoals={savingGoals}
-        parsingModel={appSettings.parsingModel}
       />
 
       <AddNoteModal

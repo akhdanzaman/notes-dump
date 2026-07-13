@@ -2339,6 +2339,10 @@ export const useBrainDumpData = () => {
             const nextShoppingCategory = newShoppingCategory !== undefined ? newShoppingCategory : item.meta.shoppingCategory;
             const nextShoppingLineItems = newShoppingLineItems !== undefined ? sanitizeShoppingLineItems(newShoppingLineItems) : item.meta.shoppingLineItems;
             const hasNextShoppingLineItems = item.type === ItemType.SHOPPING && sanitizeShoppingLineItems(nextShoppingLineItems).length > 0;
+            const existingTransactionLineItems = item.type === ItemType.FINANCE
+                ? sanitizeTransactionLineItems(item.meta.transactionLineItems)
+                : [];
+            const hasTransactionLineItems = existingTransactionLineItems.length > 0;
             const resolvedIsRoutine = item.type === ItemType.SHOPPING
                 ? nextShoppingCategory === 'routine'
                 : (newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine);
@@ -2378,7 +2382,11 @@ export const useBrainDumpData = () => {
                 tags: newTags,
                 title: newNoteTitle !== undefined ? (newNoteTitle.trim() || undefined) : item.meta.title,
                 imageUrl: newImageUrl !== undefined ? (newImageUrl.trim() || undefined) : item.meta.imageUrl,
-                amount: hasNextShoppingLineItems ? sumShoppingLineItems(nextShoppingLineItems) : (newAmount !== undefined ? newAmount : item.meta.amount),
+                amount: hasTransactionLineItems
+                    ? sumTransactionLineItems(existingTransactionLineItems)
+                    : hasNextShoppingLineItems
+                        ? sumShoppingLineItems(nextShoppingLineItems)
+                        : (newAmount !== undefined ? newAmount : item.meta.amount),
                 date: finalDate,
                 start: newStart !== undefined ? newStart : item.meta.start,
                 end: newEnd !== undefined ? newEnd : item.meta.end,

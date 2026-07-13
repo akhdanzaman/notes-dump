@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, ReactNode } from 'react';
+import React, { useEffect, useRef, useState, ReactNode } from 'react';
 import {
   SendHorizonal,
   TrendingDown,
@@ -10,12 +10,14 @@ import {
   PiggyBank,
   Loader2,
   MessageSquareText,
-  ClipboardCheck
+  ClipboardCheck,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import { SyncProgress, SyncStatus } from '../types';
 
 interface InputBarProps {
-  onSend: (text: string) => void;
+  onSend: (text: string, image?: File) => void | Promise<void>;
   onFocus?: () => void;
   onBlur?: () => void;
   startAction?: ReactNode;
@@ -59,11 +61,16 @@ const InputBar: React.FC<InputBarProps> = ({
   reviewCenterActive,
   reviewCenterCount,
   onOpenReviewCenter,
-  error
+  error,
 }) => {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+  const [imageError, setImageError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -72,18 +79,39 @@ const InputBar: React.FC<InputBarProps> = ({
     }
   }, [input]);
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  useEffect(() => {
+    if (!image) {
+      setImagePreviewUrl('');
+      return;
+    }
+    const url = URL.createObjectURL(image);
+    setImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [image]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!input.trim()) return;
-    onSend(input);
-    setInput('');
-    textareaRef.current?.focus();
+    if ((!input.trim() && !image) || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setImageError('');
+    try {
+      await onSend(input.trim(), image || undefined);
+      setInput('');
+      setImage(null);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      textareaRef.current?.focus();
+    } catch (submitError) {
+      setImageError(submitError instanceof Error ? submitError.message : 'Gagal mengirim input.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      void handleSubmit();
     }
   };
 
@@ -108,6 +136,27 @@ const InputBar: React.FC<InputBarProps> = ({
     textareaRef.current?.focus();
   };
 
+  const handleImageChange = (file?: File) => {
+    setImageError('');
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setImageError('File harus berupa gambar.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImageError('Ukuran gambar maksimal 10 MB.');
+      return;
+    }
+    setImage(file);
+    textareaRef.current?.focus();
+  };
+
+  const removeImage = () => {
+    setImage(null);
+    setImageError('');
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
   const isPopupVisible =
     showSuggestions ||
     !!startAction ||
@@ -115,28 +164,26 @@ const InputBar: React.FC<InputBarProps> = ({
     fetchStatus === 'syncing' ||
     showReviewCenterButton ||
     (pendingCount !== undefined && pendingCount > 0);
+  const visibleError = imageError || error;
 
   return (
     <div data-global-composer="true" className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none lg:px-0 lg:pb-6">
       <div className="max-w-2xl mx-auto pointer-events-none lg:mx-0 lg:max-w-none lg:w-full">
         <div className="relative">
-          {/* Error Banner */}
-          {error && (
+          {visibleError && (
             <div className="absolute bottom-full left-0 w-full mb-3 pointer-events-auto">
               <div className="mx-4 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 text-xs font-medium animate-in slide-in-from-bottom-2">
-                ⚠️ {error}
+                ⚠️ {visibleError}
               </div>
             </div>
           )}
 
-          {/* Top Content (e.g. Pending Reviews) */}
           {topContent && (
             <div className="absolute bottom-full left-0 w-full mb-16 pointer-events-none">
               {topContent}
             </div>
           )}
 
-          {/* Quick Suggestions & Actions Popup */}
           <div
             className={`absolute bottom-full left-0 w-full mb-3 transition-all duration-300 ease-out origin-bottom ${
               isPopupVisible
@@ -146,14 +193,12 @@ const InputBar: React.FC<InputBarProps> = ({
           >
             <div className="flex items-center justify-between gap-2 px-1 py-1 w-full pointer-events-none">
               <div className="flex items-center gap-2 flex-1 overflow-hidden pointer-events-none">
-                {/* Start Action */}
                 {startAction && (
                   <div className="shrink-0 z-20 pointer-events-auto">
                     {startAction}
                   </div>
                 )}
 
-                {/* Suggestions List */}
                 {showSuggestions && (
                   <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1 pointer-events-auto">
                     {SUGGESTIONS.map((item) => (
@@ -173,7 +218,6 @@ const InputBar: React.FC<InputBarProps> = ({
                 )}
               </div>
 
-              {/* Review Center / Syncing Animation */}
               {showReviewCenterButton ? (
                 <div className="shrink-0 z-20 pointer-events-auto">
                   <button
@@ -233,40 +277,84 @@ const InputBar: React.FC<InputBarProps> = ({
             </div>
           </div>
 
-          {/* Glow Effect */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2rem] opacity-20 group-hover:opacity-40 transition duration-500 blur pointer-events-none"></div>
 
-          {/* Input Area */}
-          <div data-composer-surface="true" className="relative flex items-end bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden min-h-[56px] pointer-events-auto">
-            <button
-              onClick={onOpenChat}
-              className={`p-4 mb-0.5 transition-colors ${
-                isChatOpen ? 'text-indigo-500' : 'text-muted hover:text-indigo-500'
-              }`}
-              title="Open AI Chat"
-            >
-              <MessageSquareText className="w-5 h-5" />
-            </button>
+          <div data-composer-surface="true" className="relative bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden pointer-events-auto">
+            {image && (
+              <div className="flex items-center gap-3 px-4 pt-3">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-background/60">
+                  {imagePreviewUrl && <img src={imagePreviewUrl} alt="Lampiran nota" className="h-full w-full object-cover" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-bold text-primary">{image.name}</div>
+                  <div className="mt-0.5 text-[10px] text-muted">Gambar akan dibaca sebagai nota atau invoice.</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  disabled={isSubmitting}
+                  className="rounded-full p-2 text-muted hover:bg-black/5 hover:text-red-500 dark:hover:bg-white/10 disabled:opacity-50"
+                  title="Hapus gambar"
+                  aria-label="Hapus gambar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
 
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              placeholder={isChatOpen ? 'Ask a follow-up question...' : 'Dump your brain here...'}
-              className="flex-1 bg-transparent py-4 text-primary placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
-              rows={1}
-            />
+            <div className="flex min-h-[56px] items-end">
+              <button
+                type="button"
+                onClick={onOpenChat}
+                className={`p-4 mb-0.5 transition-colors ${
+                  isChatOpen ? 'text-indigo-500' : 'text-muted hover:text-indigo-500'
+                }`}
+                title="Open AI Chat"
+              >
+                <MessageSquareText className="w-5 h-5" />
+              </button>
 
-            <button
-              onClick={() => handleSubmit()}
-              disabled={!input.trim()}
-              className="p-4 mb-0.5 text-muted hover:text-indigo-500 disabled:opacity-30 transition-colors"
-            >
-              <SendHorizonal className="w-5 h-5" />
-            </button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => handleImageChange(event.target.files?.[0])}
+              />
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isSubmitting}
+                className={`p-3 mb-1 transition-colors disabled:opacity-50 ${image ? 'text-indigo-500' : 'text-muted hover:text-indigo-500'}`}
+                title="Tambahkan gambar nota atau invoice"
+                aria-label="Tambahkan gambar nota atau invoice"
+              >
+                <ImagePlus className="w-5 h-5" />
+              </button>
+
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                placeholder={image ? 'Tambahkan wallet, tanggal, atau info lain...' : (isChatOpen ? 'Ask a follow-up question...' : 'Dump your brain here...')}
+                className="flex-1 bg-transparent py-4 text-primary placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
+                rows={1}
+              />
+
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={(!input.trim() && !image) || isSubmitting}
+                className="p-4 mb-0.5 text-muted hover:text-indigo-500 disabled:opacity-30 transition-colors"
+                title={image ? 'Ekstrak dan simpan transaksi' : 'Kirim'}
+              >
+                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <SendHorizonal className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>

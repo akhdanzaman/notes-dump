@@ -1,16 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Check,
   Wallet,
   DollarSign,
-  ImagePlus,
-  Sparkles,
-  Loader2,
   Plus,
   Trash2,
-  AlertTriangle,
 } from 'lucide-react';
 import {
   BudgetConfig,
@@ -22,7 +18,6 @@ import {
 import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 import { sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
-import { parseReceiptImage } from '../services/receiptParserService';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -46,7 +41,6 @@ interface AddExpenseModalProps {
   wallets: WalletType[];
   budgetConfig: BudgetConfig;
   savingGoals: BrainDumpItem[];
-  parsingModel?: string;
 }
 
 const todayInputValue = () => {
@@ -68,7 +62,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   wallets,
   budgetConfig,
   savingGoals,
-  parsingModel,
 }) => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -82,13 +75,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [investmentUnits, setInvestmentUnits] = useState('');
   const [investmentUnitPrice, setInvestmentUnitPrice] = useState('');
   const [transactionLineItems, setTransactionLineItems] = useState<TransactionLineItem[]>([]);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState('');
-  const [receiptContext, setReceiptContext] = useState('');
-  const [receiptWarnings, setReceiptWarnings] = useState<string[]>([]);
-  const [receiptError, setReceiptError] = useState('');
-  const [isAnalyzingReceipt, setIsAnalyzingReceipt] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedSavingGoal = transactionType === 'saving'
     ? savingGoals.find((goal) => goal.id === savingGoalId)
@@ -109,16 +95,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     [sanitizedLineItems],
   );
   const hasLineItems = transactionType === 'expense' && sanitizedLineItems.length > 0;
-
-  useEffect(() => {
-    if (!receiptFile) {
-      setReceiptPreviewUrl('');
-      return;
-    }
-    const url = URL.createObjectURL(receiptFile);
-    setReceiptPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [receiptFile]);
 
   const formatInvestmentInputNumber = (value: number) => {
     if (!Number.isFinite(value)) return '';
@@ -171,50 +147,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setInvestmentUnits('');
     setInvestmentUnitPrice('');
     setTransactionLineItems([]);
-    setReceiptFile(null);
-    setReceiptContext('');
-    setReceiptWarnings([]);
-    setReceiptError('');
-    setIsAnalyzingReceipt(false);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
-  };
-
-  const handleAnalyzeReceipt = async () => {
-    if (!receiptFile || isAnalyzingReceipt) return;
-    setReceiptError('');
-    setReceiptWarnings([]);
-    setIsAnalyzingReceipt(true);
-    try {
-      const parsed = await parseReceiptImage(
-        receiptFile,
-        receiptContext,
-        wallets,
-        budgetConfig.rules || [],
-        parsingModel,
-      );
-      setTransactionLineItems(parsed.lineItems);
-      setAmount(String(parsed.totalAmount));
-      if (parsed.merchant) {
-        setMerchant(parsed.merchant);
-        setDescription((current) => current.trim() || parsed.merchant || 'Receipt transaction');
-      } else {
-        setDescription((current) => current.trim() || receiptFile.name.replace(/\.[^.]+$/, ''));
-      }
-      if (parsed.walletId) setWalletId(parsed.walletId);
-      if (parsed.date) setDate(parsed.date);
-
-      const categories = Array.from(new Set(parsed.lineItems.map((line) => line.budgetCategory).filter(Boolean)));
-      if (categories.length === 1) setCategory(categories[0] || '');
-      setReceiptWarnings(parsed.warnings);
-    } catch (error: any) {
-      setReceiptError(error?.message || 'Gagal membaca gambar nota.');
-    } finally {
-      setIsAnalyzingReceipt(false);
-    }
   };
 
   const updateLineItem = (id: string, patch: Partial<TransactionLineItem>) => {
@@ -248,15 +185,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     if (transactionType !== 'saving' && transactionType !== 'transfer' && !walletId) return;
     if (transactionType === 'saving' && isInvestmentTarget && (!walletId || !toWalletId)) return;
 
-    const receiptCapture: ReceiptCaptureMeta | undefined = receiptFile
-      ? {
-          imageName: receiptFile.name,
-          imageMimeType: receiptFile.type,
-          context: receiptContext.trim() || undefined,
-          extractedAt: new Date().toISOString(),
-        }
-      : undefined;
-
     onSave(
       finalAmount,
       finalDescription,
@@ -271,7 +199,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       isInvestmentTarget ? resolvedInvestmentFunding.unitPrice : undefined,
       transactionType === 'expense' && sanitizedLineItems.length ? sanitizedLineItems : undefined,
       merchant.trim() || undefined,
-      receiptCapture,
+      undefined,
     );
     resetForm();
     onClose();
@@ -324,73 +252,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 </button>
               ))}
             </div>
-
-            {transactionType === 'expense' && (
-              <section className={addItemModal.sectionPanel}>
-                <div className={addItemModal.sectionTitle}>
-                  <ImagePlus className="w-4 h-4" />
-                  Scan nota / invoice
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] || null;
-                    setReceiptFile(file);
-                    setReceiptError('');
-                    setReceiptWarnings([]);
-                  }}
-                />
-                <div className="grid gap-3 sm:grid-cols-[120px_1fr]">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="min-h-[110px] rounded-2xl border border-dashed border-indigo-500/40 bg-indigo-500/5 overflow-hidden flex items-center justify-center text-indigo-500"
-                  >
-                    {receiptPreviewUrl ? (
-                      <img src={receiptPreviewUrl} alt="Preview nota" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-xs font-bold">
-                        <ImagePlus className="w-6 h-6" />
-                        Pilih gambar
-                      </div>
-                    )}
-                  </button>
-                  <div className="space-y-3">
-                    <textarea
-                      value={receiptContext}
-                      onChange={(event) => setReceiptContext(event.target.value)}
-                      placeholder="Info tambahan, misalnya: bayar pakai GoPay, tanggal kemarin, item kantor masuk kategori Work..."
-                      className={`${addItemModal.textarea} min-h-[86px]`}
-                    />
-                    <button
-                      type="button"
-                      disabled={!receiptFile || isAnalyzingReceipt}
-                      onClick={handleAnalyzeReceipt}
-                      className="w-full rounded-xl bg-indigo-600 text-white py-3 font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {isAnalyzingReceipt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      {isAnalyzingReceipt ? 'Menganalisis...' : 'Ekstrak transaksi'}
-                    </button>
-                  </div>
-                </div>
-                {receiptFile && (
-                  <div className="flex items-center justify-between gap-3 text-xs text-muted">
-                    <span className="truncate">{receiptFile.name}</span>
-                    <button type="button" className="text-red-500 font-bold" onClick={() => setReceiptFile(null)}>Hapus gambar</button>
-                  </div>
-                )}
-                {receiptError && <p className="text-sm text-red-500">{receiptError}</p>}
-                {receiptWarnings.map((warning) => (
-                  <p key={warning} className="text-xs text-amber-500 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />{warning}
-                  </p>
-                ))}
-              </section>
-            )}
 
             <div>
               <label className={addItemModal.label}>{isInvestmentTarget ? 'Invested Capital' : 'Amount'}</label>

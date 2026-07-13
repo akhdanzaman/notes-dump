@@ -8,6 +8,7 @@ import { ACHIEVED_GOAL_FINANCE_TYPE, formatFinanceTypeLabel } from '../utils/fin
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { getNoteDisplayParts } from '../utils/noteDisplay';
 import { taskEditSurface } from './layout/contentSurface';
+import { sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
 
 // Helper to calculate next due date based on schedule (Same as RoutineTaskModal)
 const calculateNextDate = (
@@ -195,7 +196,10 @@ const Card: React.FC<CardProps> = ({
   // --- Edit State ---
   const [editContent, setEditContent] = useState(content);
   const [editTitle, setEditTitle] = useState(meta.title || '');
-  const [editAmount, setEditAmount] = useState<string>(meta.amount ? meta.amount.toString() : '');
+  const initialTransactionAmount = type === ItemType.FINANCE && sanitizeTransactionLineItems(meta.transactionLineItems).length
+      ? sumTransactionLineItems(meta.transactionLineItems)
+      : meta.amount;
+  const [editAmount, setEditAmount] = useState<string>(initialTransactionAmount ? initialTransactionAmount.toString() : '');
   const [editTags, setEditTags] = useState(meta.tags?.join(', ') || '');
   const [editDate, setEditDate] = useState<string>('');
   const [editStart, setEditStart] = useState<string>('');
@@ -261,7 +265,10 @@ const Card: React.FC<CardProps> = ({
   useEffect(() => {
     setEditContent(content);
     setEditTitle(meta.title || '');
-    setEditAmount(meta.amount ? meta.amount.toString() : '');
+    const nextTransactionAmount = type === ItemType.FINANCE && sanitizeTransactionLineItems(meta.transactionLineItems).length
+        ? sumTransactionLineItems(meta.transactionLineItems)
+        : meta.amount;
+    setEditAmount(nextTransactionAmount ? nextTransactionAmount.toString() : '');
     setEditTags(meta.tags?.join(', ') || '');
     setEditFinanceType(normalizeEditableFinanceType(meta.financeType));
     setEditPaymentMethod(getWalletValue(meta.paymentMethod) || '');
@@ -553,7 +560,13 @@ const Card: React.FC<CardProps> = ({
   }
 
   const validTags = meta?.tags?.filter(t => t && t !== 'null' && t !== 'undefined') || [];
-  const displayAmount = (type !== ItemType.TODO && type !== ItemType.SKILLS) ? formatMoney(meta?.amount) : null;
+  const transactionLineItems = type === ItemType.FINANCE
+      ? sanitizeTransactionLineItems(meta.transactionLineItems)
+      : [];
+  const transactionLineItemsTotal = sumTransactionLineItems(transactionLineItems);
+  const hasTransactionLineItems = transactionLineItems.length > 0;
+  const resolvedDisplayAmount = hasTransactionLineItems ? transactionLineItemsTotal : meta?.amount;
+  const displayAmount = (type !== ItemType.TODO && type !== ItemType.SKILLS) ? formatMoney(resolvedDisplayAmount) : null;
   const isRoutineUnavailable = !!meta.isRoutine && !isRoutineScheduledToday;
   const canToggleStatus = !readonly && !!onToggleStatus && type !== ItemType.FINANCE && !isRoutineUnavailable;
   const displayTypeLabel = type === ItemType.FINANCE ? formatFinanceTypeLabel(meta?.financeType) : type.toLowerCase();
@@ -785,7 +798,7 @@ const Card: React.FC<CardProps> = ({
                     )}
                     
                     {/* Extra Metadata Row */}
-                    {(hasMoneyMetadata || skillName) && (
+                    {(hasMoneyMetadata || skillName || hasTransactionLineItems) && (
                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
                             {hasMoneyMetadata && (
                                 <span className="flex items-center gap-0.5">
@@ -806,6 +819,11 @@ const Card: React.FC<CardProps> = ({
                             )}
                             {skillName && (
                                 <span className="text-indigo-500">{skillName}</span>
+                            )}
+                            {hasTransactionLineItems && (
+                                <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 font-bold">
+                                    {transactionLineItems.length} line items
+                                </span>
                             )}
                         </div>
                     )}
@@ -828,33 +846,30 @@ const Card: React.FC<CardProps> = ({
             </div>
         ) : null}
 
-        {type === ItemType.FINANCE && meta.transactionLineItems && meta.transactionLineItems.length > 0 && (
-            <div className="mt-2 rounded-xl border border-border/60 bg-background/35 p-2.5 space-y-1.5">
-                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted">
-                    <span>{meta.transactionLineItems.length} line items</span>
-                    <span>{new Set(meta.transactionLineItems.map(line => line.budgetCategory || meta.budgetCategory).filter(Boolean)).size > 1 ? 'Mixed budgets' : 'Single budget'}</span>
-                </div>
-                {meta.transactionLineItems.slice(0, 5).map((line) => {
+        {hasTransactionLineItems && (
+            <div className="mt-2 space-y-1">
+                {transactionLineItems.slice(0, 3).map((line) => {
                     const lineCategoryId = line.budgetCategory || meta.budgetCategory;
-                    const lineCategoryName = budgetRules.find(rule => rule.id === lineCategoryId)?.name || lineCategoryId || 'Uncategorized';
+                    const lineCategoryName = budgetRules.find((rule) => rule.id === lineCategoryId)?.name || lineCategoryId;
                     return (
-                        <div key={line.id} className="grid grid-cols-[1fr_auto] gap-3 text-xs">
+                        <div key={line.id} className="flex items-center justify-between gap-2 rounded-xl bg-background/60 px-2 py-1 text-[11px] text-muted">
                             <div className="min-w-0">
-                                <div className="truncate text-primary">{line.name}</div>
-                                <div className="text-[10px] text-muted truncate">{line.quantity ? `${line.quantity} · ` : ''}{lineCategoryName}</div>
+                                <div className="truncate">{line.name || 'Untitled item'}{line.quantity ? ` · ${line.quantity}` : ''}</div>
+                                {lineCategoryName && <div className="truncate text-[9px] opacity-75">{lineCategoryName}</div>}
                             </div>
-                            <div className="font-semibold text-primary">Rp {line.amount.toLocaleString('id-ID')}</div>
+                            <span className="shrink-0 font-bold text-primary">{formatMoney(line.amount)}</span>
                         </div>
                     );
                 })}
-                {meta.transactionLineItems.length > 5 && (
-                    <div className="text-[10px] text-muted">+{meta.transactionLineItems.length - 5} item lainnya</div>
+                {transactionLineItems.length > 3 && (
+                    <div className="text-[10px] font-bold text-muted">+{transactionLineItems.length - 3} more</div>
                 )}
                 {meta.receiptCapture?.imageName && (
-                    <div className="pt-1 text-[10px] text-muted border-t border-border/40 truncate">Source: {meta.receiptCapture.imageName}</div>
+                    <div className="truncate px-2 pt-1 text-[9px] text-muted">Source: {meta.receiptCapture.imageName}</div>
                 )}
             </div>
         )}
+
       </div>
 
       {/* EXPANDED EDIT BODY */}
