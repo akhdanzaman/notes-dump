@@ -1,6 +1,7 @@
 import { BrainDumpItem, BudgetConfig, ItemType, Wallet } from '../types';
 import { getCanonicalMetaValue, getCanonicalOrRawItemValue } from './canonicalization/accessors';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
+import { getTransactionBudgetAllocations } from './transactionLineItems';
 
 export type DataQualitySeverity = 'critical' | 'warning' | 'info';
 
@@ -172,20 +173,26 @@ export const buildDataQualityIssues = (
     }
 
     if (isSpreadsheetExpenseItem(item)) {
-      if (!item.meta.budgetCategory) {
+      const allocations = getTransactionBudgetAllocations(item);
+      const missingCategory = allocations.some(allocation => !allocation.budgetCategory);
+      const unknownCategory = allocations.find(allocation =>
+        allocation.budgetCategory && budgetConfig.rules.length > 0 && !hasKnownBudgetCategory(allocation.budgetCategory, budgetConfig)
+      )?.budgetCategory;
+
+      if (missingCategory) {
         issues.push({
           severity: 'warning',
           itemId: item.id,
           sheet,
-          reason: 'Expense is missing budgetCategory, so budget pace and driver summaries are incomplete.',
-          suggestedFix: 'Set Category to one of the Budget Rules categories instead of relying on the description.',
+          reason: 'Expense has an uncategorized transaction line, so budget pace and driver summaries are incomplete.',
+          suggestedFix: 'Set a category on every line item, or set the transaction default Category as fallback.',
         });
-      } else if (budgetConfig.rules.length > 0 && !hasKnownBudgetCategory(item.meta.budgetCategory, budgetConfig)) {
+      } else if (unknownCategory) {
         issues.push({
           severity: 'warning',
           itemId: item.id,
           sheet,
-          reason: `Expense category '${item.meta.budgetCategory}' is not in Budget Rules.`,
+          reason: `Expense category '${unknownCategory}' is not in Budget Rules.`,
           suggestedFix: 'Use an existing Budget Rules ID/name, or add the category to Budget Rules.',
         });
       }

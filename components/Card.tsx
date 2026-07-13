@@ -827,6 +827,34 @@ const Card: React.FC<CardProps> = ({
                 )}
             </div>
         ) : null}
+
+        {type === ItemType.FINANCE && meta.transactionLineItems && meta.transactionLineItems.length > 0 && (
+            <div className="mt-2 rounded-xl border border-border/60 bg-background/35 p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <span>{meta.transactionLineItems.length} line items</span>
+                    <span>{new Set(meta.transactionLineItems.map(line => line.budgetCategory || meta.budgetCategory).filter(Boolean)).size > 1 ? 'Mixed budgets' : 'Single budget'}</span>
+                </div>
+                {meta.transactionLineItems.slice(0, 5).map((line) => {
+                    const lineCategoryId = line.budgetCategory || meta.budgetCategory;
+                    const lineCategoryName = budgetRules.find(rule => rule.id === lineCategoryId)?.name || lineCategoryId || 'Uncategorized';
+                    return (
+                        <div key={line.id} className="grid grid-cols-[1fr_auto] gap-3 text-xs">
+                            <div className="min-w-0">
+                                <div className="truncate text-primary">{line.name}</div>
+                                <div className="text-[10px] text-muted truncate">{line.quantity ? `${line.quantity} · ` : ''}{lineCategoryName}</div>
+                            </div>
+                            <div className="font-semibold text-primary">Rp {line.amount.toLocaleString('id-ID')}</div>
+                        </div>
+                    );
+                })}
+                {meta.transactionLineItems.length > 5 && (
+                    <div className="text-[10px] text-muted">+{meta.transactionLineItems.length - 5} item lainnya</div>
+                )}
+                {meta.receiptCapture?.imageName && (
+                    <div className="pt-1 text-[10px] text-muted border-t border-border/40 truncate">Source: {meta.receiptCapture.imageName}</div>
+                )}
+            </div>
+        )}
       </div>
 
       {/* EXPANDED EDIT BODY */}
@@ -911,6 +939,8 @@ const Card: React.FC<CardProps> = ({
                                     className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                     value={editAmount}
                                     onChange={(e) => setEditAmount(e.target.value)}
+                                    readOnly={!!meta.transactionLineItems?.length}
+                                    title={meta.transactionLineItems?.length ? 'Amount is calculated from transaction line items.' : undefined}
                                     placeholder="0"
                                 />
                             </div>

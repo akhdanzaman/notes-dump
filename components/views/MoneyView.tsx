@@ -46,6 +46,7 @@ import {
   type BudgetCommodityBreakdown,
 } from "../../utils/budgetAnalytics";
 import { getCanonicalOrRawItemValue } from "../../utils/canonicalization/accessors";
+import { getTransactionCategoryIds } from "../../utils/transactionLineItems";
 
 interface MoneyViewProps {
   items: BrainDumpItem[];
@@ -945,10 +946,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   data-money-primary-column="true"
                 >
                   {visibleTransactions.visibleItems.map((item) => {
-                    const categoryName =
-                      budgetConfig.rules.find(
-                        (r) => r.id === item.meta.budgetCategory,
-                      )?.name || item.meta.budgetCategory;
+                    const transactionCategoryIds = getTransactionCategoryIds(item);
+                    const categoryName = transactionCategoryIds.length > 1
+                      ? `Mixed · ${transactionCategoryIds.length} budgets`
+                      : budgetConfig.rules.find(
+                          (r) => r.id === (transactionCategoryIds[0] || item.meta.budgetCategory),
+                        )?.name || transactionCategoryIds[0] || item.meta.budgetCategory;
                     return (
                       <Card
                         key={item.id}

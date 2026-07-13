@@ -13,7 +13,7 @@ import { generateExportData } from '../../utils/exportUtils';
 import { DbSchema, ItemType } from '../../types';
 
 test('spreadsheet fetch ranges include the expanded schema columns', () => {
-  assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:V');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:X');
   assert.equal(SPREADSHEET_FETCH_RANGES.Todos, 'A:AZ');
   assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:AA');
   assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:J');

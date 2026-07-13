@@ -2055,6 +2055,9 @@ const App: React.FC = () => {
           savingGoalName,
           investmentUnits,
           investmentUnitPrice,
+          transactionLineItems,
+          merchant,
+          receiptCapture,
         ) => {
           if (type === "saving" && savingGoalId && savingGoalName) {
             handleAddSavingTransaction(
@@ -2078,6 +2081,9 @@ const App: React.FC = () => {
                   category,
                   toWalletId,
                   date,
+                  transactionLineItems,
+                  merchant,
+                  receiptCapture,
                 );
               } else {
                 handleAddTransaction(
@@ -2088,6 +2094,9 @@ const App: React.FC = () => {
                   category,
                   undefined,
                   date,
+                  transactionLineItems,
+                  merchant,
+                  receiptCapture,
                 );
               }
             }
@@ -2096,6 +2105,7 @@ const App: React.FC = () => {
         wallets={wallets}
         budgetConfig={budgetConfig}
         savingGoals={savingGoals}
+        parsingModel={appSettings.parsingModel}
       />
 
       <AddNoteModal

@@ -389,10 +389,10 @@ test('transaction spreadsheet export round-trips ID after canonical columns and 
   const transactionsSheet = sheets.find(sheet => sheet.name === 'Transactions');
   assert.ok(transactionsSheet);
   assert.equal(transactionsSheet!.data[0].indexOf('ID'), 18);
-  assert.deepEqual(transactionsSheet!.data[0].slice(19), ['Saving_Goal_ID', 'Investment_Units', 'Investment_Avg_Buy']);
+  assert.deepEqual(transactionsSheet!.data[0].slice(19), ['Saving_Goal_ID', 'Investment_Units', 'Investment_Avg_Buy', 'Line_Items', 'Receipt_Capture']);
 
   const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
-    range: "'Transactions'!A1:S",
+    range: "'Transactions'!A1:X",
     values: transactionsSheet!.data,
   }]);
 

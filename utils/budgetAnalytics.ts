@@ -6,6 +6,7 @@ import {
 } from "./canonicalization/transactionInference";
 import { ACHIEVED_GOAL_FINANCE_TYPE } from "./financeTypeUtils";
 import { getShoppingTransactionDate } from "./shoppingDateUtils";
+import { getTransactionBudgetAllocations } from "./transactionLineItems";
 
 export interface BudgetSubcommodityBreakdown {
   name: string;
@@ -157,17 +158,26 @@ const isIncomeItem = (item: BrainDumpItem) =>
   item.meta.financeType === "income" &&
   (item.meta.amount || 0) > 0;
 
-const resolveBudgetCategoryLabel = (
-  item: BrainDumpItem,
+const resolveBudgetCategoryValueLabel = (
+  raw: string | undefined,
   budgetConfig?: BudgetConfig,
 ) => {
-  const raw = item.meta.budgetCategory;
   const rule = budgetConfig?.rules.find(
     (candidate) =>
       candidate.id === raw ||
       candidate.name.toLowerCase() === (raw || "").toLowerCase(),
   );
   return rule?.name || raw || "Other";
+};
+
+const incrementItemCategories = (
+  map: Map<string, { total: number; count: number }>,
+  item: BrainDumpItem,
+  budgetConfig?: BudgetConfig,
+) => {
+  getTransactionBudgetAllocations(item).forEach((allocation) => {
+    increment(map, resolveBudgetCategoryValueLabel(allocation.budgetCategory, budgetConfig), allocation.amount);
+  });
 };
 
 const buildTrendPoint = (
@@ -227,11 +237,7 @@ export const getBudgetTrendAnalytics = (
       if (dayIndex < 0 || dayIndex > 6) return;
       const amount = item.meta.amount || 0;
       dailyTotals[dayIndex] += amount;
-      increment(
-        dailyCategories[dayIndex],
-        resolveBudgetCategoryLabel(item, budgetConfig),
-        amount,
-      );
+      incrementItemCategories(dailyCategories[dayIndex], item, budgetConfig);
     });
 
     incomeItems.forEach((item) => {
@@ -277,11 +283,7 @@ export const getBudgetTrendAnalytics = (
       if (d.getFullYear() === currentYear) {
         const month = d.getMonth();
         monthlyTotals[month] += amount;
-        increment(
-          monthlyCategories[month],
-          resolveBudgetCategoryLabel(item, budgetConfig),
-          amount,
-        );
+        incrementItemCategories(monthlyCategories[month], item, budgetConfig);
       }
       if (d.getFullYear() === currentYear - 1)
         previousMonthlyTotals[d.getMonth()] += amount;
@@ -335,11 +337,7 @@ export const getBudgetTrendAnalytics = (
     const dayIndex = d.getDate() - 1;
     const amount = item.meta.amount || 0;
     dailyTotals[dayIndex] += amount;
-    increment(
-      dailyCategories[dayIndex],
-      resolveBudgetCategoryLabel(item, budgetConfig),
-      amount,
-    );
+    incrementItemCategories(dailyCategories[dayIndex], item, budgetConfig);
   });
 
   incomeItems.forEach((item) => {
@@ -401,46 +399,48 @@ export const getBudgetCategoryAnalytics = (
         isBudgetUsageLike(item) && isInPeriod(item, financeDate, viewMode),
     )
     .forEach((item) => {
-      const amount = item.meta.amount || 0;
-      const category = resolveCategory(item.meta.budgetCategory);
-      const categoryBucket = categoryMap.get(category.id) || {
-        categoryId: category.id,
-        categoryName: category.name,
-        color: category.color,
-        total: 0,
-        commodities: new Map(),
-      };
-
-      const commodity = getCommodityForItemAnalytics(item);
-      const subcommodity = getSubcommodityForItemAnalytics(item);
       const merchant =
         getCanonicalMetaValue(item.meta, "merchant") ||
         item.meta.merchant ||
         "";
-      const commodityBucket = categoryBucket.commodities.get(commodity) || {
-        total: 0,
-        count: 0,
-        subcommodities: new Map(),
-        merchants: new Map(),
-        transactions: [],
-      };
+      const allocations = getTransactionBudgetAllocations(item);
 
-      categoryBucket.total += amount;
-      commodityBucket.total += amount;
-      commodityBucket.count += 1;
-      increment(commodityBucket.subcommodities, subcommodity, amount);
-      if (merchant) increment(commodityBucket.merchants, merchant, amount);
-      commodityBucket.transactions.push({
-        id: item.id,
-        content: item.content,
-        amount,
-        date: getExpenseDate(item)?.toISOString(),
-        categoryName: category.name,
-        subcommodity,
+      allocations.forEach((allocation) => {
+        const category = resolveCategory(allocation.budgetCategory);
+        const categoryBucket = categoryMap.get(category.id) || {
+          categoryId: category.id,
+          categoryName: category.name,
+          color: category.color,
+          total: 0,
+          commodities: new Map(),
+        };
+        const commodity = allocation.commodity || getCommodityForItemAnalytics(item);
+        const subcommodity = allocation.subcommodity || getSubcommodityForItemAnalytics(item);
+        const commodityBucket = categoryBucket.commodities.get(commodity) || {
+          total: 0,
+          count: 0,
+          subcommodities: new Map(),
+          merchants: new Map(),
+          transactions: [],
+        };
+
+        categoryBucket.total += allocation.amount;
+        commodityBucket.total += allocation.amount;
+        commodityBucket.count += 1;
+        increment(commodityBucket.subcommodities, subcommodity, allocation.amount);
+        if (merchant) increment(commodityBucket.merchants, merchant, allocation.amount);
+        commodityBucket.transactions.push({
+          id: allocation.id,
+          content: allocation.name || item.content,
+          amount: allocation.amount,
+          date: getExpenseDate(item)?.toISOString(),
+          categoryName: category.name,
+          subcommodity,
+        });
+
+        categoryBucket.commodities.set(commodity, commodityBucket);
+        categoryMap.set(category.id, categoryBucket);
       });
-
-      categoryBucket.commodities.set(commodity, commodityBucket);
-      categoryMap.set(category.id, categoryBucket);
     });
 
   return Array.from(categoryMap.values())

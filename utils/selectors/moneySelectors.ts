@@ -18,6 +18,7 @@ import {
 } from "../shoppingDateUtils";
 import { BudgetAnalyticsViewMode, getWeekBounds } from "../budgetAnalytics";
 import { getInvestmentMetrics } from "../investmentMetrics";
+import { getTransactionBudgetAllocations } from "../transactionLineItems";
 
 const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
   const normalized = value?.toLowerCase().trim();
@@ -377,11 +378,12 @@ export const getFinanceItems = (
       if (filterTransactionType === "saving") {
         return i.meta.savingGoalId === filterCategory;
       }
-      const catId = resolveCategory(i.meta.budgetCategory);
+      const allocations = getTransactionBudgetAllocations(i);
+      const categoryIds = allocations.map((allocation) => resolveCategory(allocation.budgetCategory));
       if (filterCategory === "uncategorized") {
-        return !catId;
+        return categoryIds.length === 0 || categoryIds.some((catId) => !catId);
       }
-      return catId === filterCategory;
+      return categoryIds.includes(filterCategory);
     });
   }
 
@@ -414,7 +416,8 @@ export const getFinanceItems = (
   if (searchQuery) {
     const lowerQ = searchQuery.toLowerCase();
     allTransactions = allTransactions.filter((i) =>
-      itemMatchesCanonicalSearch(i, lowerQ),
+      itemMatchesCanonicalSearch(i, lowerQ) ||
+      (i.meta.transactionLineItems || []).some((line) => line.name.toLowerCase().includes(lowerQ)),
     );
   }
 
@@ -457,28 +460,23 @@ export const getFinanceItems = (
     isDone: boolean,
     includeUncategorized = true,
   ) => {
-    const catId = resolveCategory(item.meta.budgetCategory);
+    const allocations = item.meta.transactionLineItems?.length
+      ? getTransactionBudgetAllocations(item)
+      : [{ amount, budgetCategory: item.meta.budgetCategory }];
 
-    if (isDone) {
-      totalBudgetUsed += amount;
+    if (isDone) totalBudgetUsed += amount;
+    else projectedBudgetUsed += amount;
 
-      if (catId) {
-        budgetMap.set(catId, (budgetMap.get(catId) || 0) + amount);
-      } else if (includeUncategorized) {
-        uncategorized += amount;
+    allocations.forEach((allocation) => {
+      const catId = resolveCategory(allocation.budgetCategory);
+      if (isDone) {
+        if (catId) budgetMap.set(catId, (budgetMap.get(catId) || 0) + allocation.amount);
+        else if (includeUncategorized) uncategorized += allocation.amount;
+      } else {
+        if (catId) plannedBudgetMap.set(catId, (plannedBudgetMap.get(catId) || 0) + allocation.amount);
+        else if (includeUncategorized) projectedUncategorized += allocation.amount;
       }
-    } else {
-      projectedBudgetUsed += amount;
-
-      if (catId) {
-        plannedBudgetMap.set(
-          catId,
-          (plannedBudgetMap.get(catId) || 0) + amount,
-        );
-      } else if (includeUncategorized) {
-        projectedUncategorized += amount;
-      }
-    }
+    });
   };
 
   // We need ALL actual items for the selected period (unfiltered) to calculate totals accurately.

@@ -35,7 +35,9 @@ import {
     InvestmentAssetType,
     EnrichmentTask,
     SkillSessionLogInput,
-    ShoppingLineItem
+    ShoppingLineItem,
+    TransactionLineItem,
+    ReceiptCaptureMeta
 } from '../types';
 import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
 import { SyncResult } from '../services/syncTypes';
@@ -61,6 +63,7 @@ import { shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { applyInvestmentFundingToInvestment, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 import { dedupeBrainDumpItems } from '../utils/itemDedupe';
 import { sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
+import { sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -648,6 +651,8 @@ const convertLegacyResultsToNative = (legacyResults: Partial<BrainDumpItem>[], o
                     paymentMethod: meta.paymentMethod,
                     toWallet: meta.toWallet,
                     budgetCategory: meta.budgetCategory,
+                    transactionLineItems: sanitizeTransactionLineItems(meta.transactionLineItems).length ? sanitizeTransactionLineItems(meta.transactionLineItems) : undefined,
+                    receiptCapture: meta.receiptCapture,
                     commodity: meta.commodity,
                     subcommodity: meta.subcommodity,
                     merchant: meta.merchant,
@@ -1191,6 +1196,8 @@ export const useBrainDumpData = () => {
             paymentMethod: meta?.paymentMethod,
             toWallet: meta?.toWallet,
             budgetCategory: meta?.budgetCategory,
+            transactionLineItems: sanitizeTransactionLineItems(meta?.transactionLineItems).length ? sanitizeTransactionLineItems(meta?.transactionLineItems) : undefined,
+            receiptCapture: meta?.receiptCapture,
             commodity: meta?.commodity,
             subcommodity: meta?.subcommodity,
             merchant: meta?.merchant,
@@ -2593,23 +2600,34 @@ export const useBrainDumpData = () => {
         paymentMethod?: string,
         budgetCategory?: string,
         toWallet?: string,
-        date?: string
+        date?: string,
+        transactionLineItems?: TransactionLineItem[],
+        merchant?: string,
+        receiptCapture?: ReceiptCaptureMeta
     ) => {
+        const sanitizedTransactionLineItems = sanitizeTransactionLineItems(transactionLineItems);
+        const resolvedAmount = sanitizedTransactionLineItems.length
+            ? sumTransactionLineItems(sanitizedTransactionLineItems)
+            : amount;
+        const normalizedDate = date ? new Date(`${date}T12:00:00`).toISOString() : new Date().toISOString();
         const newItem: BrainDumpItem = {
             id: uuidv4(),
             type: ItemType.FINANCE,
             content,
             status: 'done',
             created_at: new Date().toISOString(),
-            completed_at: new Date().toISOString(),
+            completed_at: normalizedDate,
             meta: {
                 tags: [],
-                amount,
+                amount: resolvedAmount,
                 financeType: type,
                 paymentMethod,
                 budgetCategory,
+                transactionLineItems: sanitizedTransactionLineItems.length ? sanitizedTransactionLineItems : undefined,
+                receiptCapture,
+                merchant: merchant?.trim() || undefined,
                 toWallet,
-                date: date || new Date().toISOString()
+                date: normalizedDate
             }
         };
 

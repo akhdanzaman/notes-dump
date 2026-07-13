@@ -4,6 +4,7 @@ import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } fro
 import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
 import { SAVING_GOALS_INVESTMENTS_SHEET_NAME } from '../utils/exportUtils';
 import { parseShoppingLineItemsFromSheet, sumShoppingLineItems } from '../utils/shoppingLineItems';
+import { parseTransactionLineItemsFromSheet, sumTransactionLineItems } from '../utils/transactionLineItems';
 
 const fmtDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -275,6 +276,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const savingGoalId = cell(row, 'Saving_Goal_ID', 19) as string;
             const investmentUnitsStr = cell(row, 'Investment_Units', 20) as string;
             const investmentAvgBuyStr = cell(row, 'Investment_Avg_Buy', 21) as string;
+            const transactionLineItemsStr = cell(row, 'Line_Items', 22) as string;
+            const receiptCaptureStr = cell(row, 'Receipt_Capture', 23) as string;
             if (!date && !description && !amountStr && !idStr) continue;
 
             if (idStr && shoppingSheetIds.has(String(idStr))) {
@@ -282,7 +285,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (!existingShoppingItem) continue;
             }
 
-            const amount = parseSheetAmount(amountStr);
+            const parsedTransactionLineItems = parseTransactionLineItemsFromSheet(transactionLineItemsStr);
+            const amount = parsedTransactionLineItems.length ? sumTransactionLineItems(parsedTransactionLineItems) : parseSheetAmount(amountStr);
             const financeType = parseFinanceType(type) || 'expense';
             
             const match = newItems.find(i => 
@@ -304,6 +308,12 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 
                 if (match.content !== description) { match.content = description; updated = true; }
                 if (match.meta.amount !== amount) { match.meta.amount = amount; updated = true; }
+                if (transactionLineItemsStr !== undefined && JSON.stringify(match.meta.transactionLineItems || []) !== JSON.stringify(parsedTransactionLineItems || [])) { match.meta.transactionLineItems = parsedTransactionLineItems.length ? parsedTransactionLineItems : undefined; updated = true; }
+                if (receiptCaptureStr !== undefined) {
+                    let parsedReceiptCapture: any = undefined;
+                    if (receiptCaptureStr) { try { parsedReceiptCapture = JSON.parse(receiptCaptureStr); } catch { parsedReceiptCapture = undefined; } }
+                    if (JSON.stringify(match.meta.receiptCapture || null) !== JSON.stringify(parsedReceiptCapture || null)) { match.meta.receiptCapture = parsedReceiptCapture; updated = true; }
+                }
                 
                 const newCatId = getCatId(category);
                 if (match.meta.budgetCategory !== newCatId) { match.meta.budgetCategory = newCatId; updated = true; }
@@ -389,6 +399,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         date: isoDate,
                         financeType,
                         amount: amount,
+                        transactionLineItems: parsedTransactionLineItems.length ? parsedTransactionLineItems : undefined,
+                        receiptCapture: (() => { if (!receiptCaptureStr) return undefined; try { return JSON.parse(receiptCaptureStr); } catch { return undefined; } })(),
                         budgetCategory: getCatId(category),
                         paymentMethod: rawPaymentMethod ? getWalId(rawPaymentMethod) : getWalId(wallet),
                         toWallet: getWalId(toWallet),

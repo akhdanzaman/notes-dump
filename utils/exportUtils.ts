@@ -5,6 +5,7 @@ import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils';
 import { encodeShoppingLineItemsForSheet } from './shoppingLineItems';
+import { encodeTransactionLineItemsForSheet, getTransactionBudgetAllocations } from './transactionLineItems';
 import {
   buildDailyMoneyDriverSummary,
   buildDataQualityIssues,
@@ -191,8 +192,10 @@ const buildDashboardSheet = (
   const activeSavingGoals = items.filter(item => item.type === ItemType.SHOPPING && item.meta.shoppingCategory === 'saving' && item.status !== 'done').length;
 
   const expenseCategoryTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
-    const key = getCategoryName(item.meta.budgetCategory, budgetConfig) || 'Uncategorised';
-    acc[key] = (acc[key] || 0) + (item.meta.amount || 0);
+    getTransactionBudgetAllocations(item).forEach((allocation) => {
+      const key = getCategoryName(allocation.budgetCategory, budgetConfig) || 'Uncategorised';
+      acc[key] = (acc[key] || 0) + allocation.amount;
+    });
     return acc;
   }, {});
 
@@ -201,13 +204,15 @@ const buildDashboardSheet = (
     .slice(0, 5);
 
   const spendDriverTotals = currentMonthExpenseItems.reduce<Record<string, number>>((acc, item) => {
-    const category = getCategoryName(item.meta.budgetCategory, budgetConfig) || 'Uncategorised';
-    const commodity = getCommodityForItemAnalytics(item);
-    const subcommodity = getSubcommodityForItemAnalytics(item);
-    const key = [category, commodity, subcommodity]
-      .filter(Boolean)
-      .join(' › ');
-    acc[key] = (acc[key] || 0) + (item.meta.amount || 0);
+    getTransactionBudgetAllocations(item).forEach((allocation) => {
+      const category = getCategoryName(allocation.budgetCategory, budgetConfig) || 'Uncategorised';
+      const commodity = allocation.commodity || getCommodityForItemAnalytics(item);
+      const subcommodity = allocation.subcommodity || getSubcommodityForItemAnalytics(item);
+      const key = [category, commodity, subcommodity]
+        .filter(Boolean)
+        .join(' › ');
+      acc[key] = (acc[key] || 0) + allocation.amount;
+    });
     return acc;
   }, {});
 
@@ -460,14 +465,16 @@ export const generateExportData = (
         Saving_Goal_ID: item.meta.savingGoalId || '',
         Investment_Units: item.meta.investmentUnits || '',
         Investment_Avg_Buy: item.meta.investmentAveragePrice || '',
+        Line_Items: encodeTransactionLineItemsForSheet(item.meta.transactionLineItems),
+        Receipt_Capture: item.meta.receiptCapture ? JSON.stringify(item.meta.receiptCapture) : '',
       };
     });
 
   sheets.push({
       name: "Transactions",
       data: [
-        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID", "Saving_Goal_ID", "Investment_Units", "Investment_Avg_Buy"],
-        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID, t.Saving_Goal_ID, t.Investment_Units, t.Investment_Avg_Buy])
+        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID", "Saving_Goal_ID", "Investment_Units", "Investment_Avg_Buy", "Line_Items", "Receipt_Capture"],
+        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID, t.Saving_Goal_ID, t.Investment_Units, t.Investment_Avg_Buy, t.Line_Items, t.Receipt_Capture])
       ]
     });
 

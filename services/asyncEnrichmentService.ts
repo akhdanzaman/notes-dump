@@ -8,6 +8,7 @@ import {
 } from '../types';
 import { CanonicalizerContext, HistoricalCanonicalReview, sweepHistoricalCanonicalMeta } from './canonicalizerService';
 import { inferBudgetCategoryId } from './budgetCategoryService';
+import { sanitizeTransactionLineItems } from '../utils/transactionLineItems';
 
 export const ASYNC_ENRICHMENT_REVIEW_PREFIX = 'canonical-enrichment-';
 export const ASYNC_ENRICHMENT_VERSION = 1;
@@ -182,6 +183,10 @@ const backfillMissingBudgetCategory = (
 ): { item: BrainDumpItem; backfilled: boolean } => {
   const meta = merged.meta || {};
   if (meta.budgetCategory) return { item: merged, backfilled: false };
+  const transactionLineItems = sanitizeTransactionLineItems(meta.transactionLineItems);
+  if (transactionLineItems.length > 0 && transactionLineItems.every(line => !!line.budgetCategory)) {
+    return { item: merged, backfilled: false };
+  }
   if (current.type !== 'FINANCE') return { item: merged, backfilled: false };
   if (meta.financeType !== 'expense' && meta.financeType !== 'saving') return { item: merged, backfilled: false };
 

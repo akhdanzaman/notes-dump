@@ -171,6 +171,25 @@ export interface ShoppingLineItem {
   amount?: number;
 }
 
+export interface TransactionLineItem {
+  id: string;
+  name: string;
+  quantity?: string;
+  unitPrice?: number;
+  amount: number;
+  budgetCategory?: string;
+  commodity?: string;
+  subcommodity?: string;
+  kind?: 'item' | 'tax' | 'fee' | 'discount' | 'adjustment';
+}
+
+export interface ReceiptCaptureMeta {
+  imageName?: string;
+  imageMimeType?: string;
+  context?: string;
+  extractedAt?: string;
+}
+
 export interface ItemMeta {
   title?: string;
   date?: string;
@@ -199,6 +218,8 @@ export interface ItemMeta {
   paymentMethod?: string;
   toWallet?: string;
   budgetCategory?: string;
+  transactionLineItems?: TransactionLineItem[];
+  receiptCapture?: ReceiptCaptureMeta;
   commodity?: string;
   subcommodity?: string;
   merchant?: string;
@@ -550,6 +571,8 @@ export interface ParsedItemMetaV2 {
   paymentMethod?: string;
   toWallet?: string;
   budgetCategory?: string;
+  transactionLineItems?: TransactionLineItem[];
+  receiptCapture?: ReceiptCaptureMeta;
   commodity?: string;
   subcommodity?: string;
   merchant?: string;
