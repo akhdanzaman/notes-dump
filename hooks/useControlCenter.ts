@@ -6,6 +6,7 @@ import { exportToExcel } from '../services/exportService';
 import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
 import { syncItemsToGoogleCalendar } from '../services/googleCalendarService';
 import { BackHandler } from '../utils/backHandler';
+import { notifyUser, requestUserConfirmation } from '../utils/uiFeedback';
 
 export interface UseControlCenterProps {
     isOpen: boolean;
@@ -39,7 +40,7 @@ export const useControlCenter = ({
     currentPrompt
 }: UseControlCenterProps) => {
     // --- Settings State ---
-    const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect' | 'notifications' | 'changelog'>('main');
+    const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect' | 'notifications' | 'security' | 'advanced' | 'changelog'>('main');
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
     const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saved'>('idle');
 
@@ -233,7 +234,7 @@ export const useControlCenter = ({
                     saveSpreadsheetConfig(newConfig);
                     setSpreadsheetConfig(newConfig);
                     setSpreadsheetLink(newConfig.spreadsheetUrl);
-                    alert(`Welcome back, ${profile.name}! Settings synced from cloud.`);
+                    notifyUser(`Selamat datang kembali, ${profile.name}. Pengaturan sudah disinkronkan dari cloud.`, 'success');
                 }
                 
                 if (cloudConfig.theme || cloudConfig.googleCalendarId || typeof cloudConfig.googleCalendarSyncEnabled === 'boolean') {
@@ -280,16 +281,16 @@ export const useControlCenter = ({
                         googleCalendarSyncEnabled: localAppSettingsRef.current.googleCalendarSyncEnabled,
                         googleCalendarId: localAppSettingsRef.current.googleCalendarId
                     }, token);
-                    alert(`Welcome, ${profile.name}! Your current spreadsheet has been linked to your account.`);
+                    notifyUser(`Selamat datang, ${profile.name}. Spreadsheet saat ini sudah ditautkan ke akunmu.`, 'success');
                 } else {
                     // Just save the token for future use (we need a dummy config or just store it separately)
                     // For now, we wait for user to enter spreadsheet link
-                    alert(`Welcome, ${profile.name}! Please enter your spreadsheet link below to finish setup.`);
+                    notifyUser(`Selamat datang, ${profile.name}. Masukkan link spreadsheet untuk menyelesaikan pengaturan.`, 'info');
                 }
             }
         } catch (error) {
             console.error("Profile sync error:", error);
-            alert("Failed to sync profile data. Please check your connection or try again.");
+            notifyUser('Profil gagal disinkronkan. Periksa koneksi lalu coba lagi.', 'error');
         } finally {
             setIsSyncingProfile(false);
             // Trigger refresh to update UI
@@ -315,24 +316,24 @@ export const useControlCenter = ({
             if (!authWindow) {
                 oauthPopupRef.current = null;
                 // Popup was blocked
-                alert('Please allow popups for this site to connect your account.');
+                notifyUser('Izinkan popup untuk menghubungkan akun Google.', 'error');
             }
         } catch (error) {
             console.error('Login error:', error);
-            alert('Failed to start login process.');
+            notifyUser('Proses login tidak dapat dimulai.', 'error');
         }
     };
 
     const handleConnectSpreadsheet = async () => {
         if (isConnectingSpreadsheet) return;
         if (!spreadsheetLink) {
-            alert("Please enter a spreadsheet link first.");
+            notifyUser('Masukkan link spreadsheet terlebih dahulu.', 'error');
             return;
         }
         
         const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
         if (!match) {
-            alert("Invalid spreadsheet link. Please make sure it contains /d/SPREADSHEET_ID");
+            notifyUser('Link spreadsheet tidak valid. Pastikan link berisi /d/SPREADSHEET_ID.', 'error');
             return;
         }
 
@@ -351,13 +352,13 @@ export const useControlCenter = ({
 
                 saveSpreadsheetConfig(newConfig);
                 setSpreadsheetConfig(newConfig);
-                alert("Spreadsheet connected via service account. No Google sign-in needed.");
+                notifyUser('Spreadsheet berhasil terhubung melalui service account.', 'success');
                 onSyncClick(false);
                 return;
             }
 
             if (serviceAccountStatus.configured && serviceAccountStatus.needsSharing) {
-                alert(`Service account belum punya akses. Share spreadsheet ini ke ${serviceAccountStatus.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL} sebagai Editor, lalu klik Connect Spreadsheet lagi.`);
+                notifyUser(`Service account belum punya akses. Bagikan spreadsheet ke ${serviceAccountStatus.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL} sebagai Editor, lalu coba lagi.`, 'error');
                 return;
             }
 
@@ -370,7 +371,7 @@ export const useControlCenter = ({
             setIsConnectingSpreadsheet(false);
         }
 
-        alert(`Belum bisa connect via service account. Pastikan spreadsheet sudah di-share ke ${SERVICE_ACCOUNT_EMAIL} sebagai Editor, lalu klik Connect Spreadsheet lagi. Google login tidak diperlukan untuk mode ini.`);
+        notifyUser(`Spreadsheet belum dapat dihubungkan. Pastikan sudah dibagikan ke ${SERVICE_ACCOUNT_EMAIL} sebagai Editor.`, 'error');
     };
 
     const handleGoogleSignOut = () => {
@@ -378,13 +379,19 @@ export const useControlCenter = ({
         setGoogleProfile(null);
     };
 
-    const handleDisconnectSpreadsheet = () => {
-        if (window.confirm("Are you sure you want to disconnect your spreadsheet?")) {
-            clearSpreadsheetConfig();
-            setSpreadsheetConfig(null);
-            setSpreadsheetLink('');
-            if (onRefreshClick) onRefreshClick();
-        }
+    const handleDisconnectSpreadsheet = async () => {
+        const confirmed = await requestUserConfirmation({
+            title: 'Putuskan spreadsheet?',
+            message: 'Data lokal tetap tersedia, tetapi sinkronisasi Google Sheets akan dihentikan sampai spreadsheet dihubungkan kembali.',
+            confirmLabel: 'Putuskan koneksi',
+            tone: 'danger',
+        });
+        if (!confirmed) return;
+        clearSpreadsheetConfig();
+        setSpreadsheetConfig(null);
+        setSpreadsheetLink('');
+        notifyUser('Koneksi spreadsheet diputus.', 'success');
+        if (onRefreshClick) onRefreshClick();
     };
 
     const handleSave = async () => {

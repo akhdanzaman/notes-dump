@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, RefreshCw, RotateCcw, Trash2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, FileImage, RefreshCw, RotateCcw, Trash2, X } from 'lucide-react';
 import PendingReviewList from './PendingReviewList';
 import ReceiptReviewCard from './ReceiptReviewCard';
 import {
@@ -7,6 +7,7 @@ import {
   ParsingTask,
   EnrichmentTask,
   ReceiptReviewDraft,
+  ReceiptProcessingTask,
   Wallet,
   BudgetRule,
   BrainDumpItem,
@@ -22,6 +23,7 @@ import {
 interface ReviewCenterPanelProps {
   parsingTasks?: ParsingTask[];
   enrichmentTasks?: EnrichmentTask[];
+  receiptTasks?: ReceiptProcessingTask[];
   pendingReviews?: { id: string; text: string; results: ParserResultV2[] }[];
   receiptReviews?: ReceiptReviewDraft[];
   wallets?: Wallet[];
@@ -31,6 +33,9 @@ interface ReviewCenterPanelProps {
   onApproveReceiptReview?: (draft: ReceiptReviewDraft) => void;
   onRejectReceiptReview?: (draft: ReceiptReviewDraft) => void;
   onViewDuplicateReceipt?: (item: BrainDumpItem) => void;
+  onRetryReceiptTask?: (id: string) => void;
+  onClearReceiptTask?: (id: string) => void;
+  onViewReceiptTaskTransaction?: (itemId: string) => void;
   onApproveReview?: (id: string, updatedResults: ParserResultV2[]) => void;
   onRejectReview?: (id: string) => void;
   retryParsing?: (id: string) => void;
@@ -46,21 +51,31 @@ const createsSavedEntry = (result: ParserResultV2) => (
   result.action === 'unknown'
 );
 
+const RECEIPT_STAGE_LABELS: Record<ReceiptProcessingTask['stage'], string> = {
+  uploading: 'Menyiapkan gambar',
+  reading: 'Membaca nota',
+  categorizing: 'Menyusun item dan kategori',
+  saving: 'Menyimpan transaksi',
+  ready: 'Selesai',
+};
+
+const PARSER_STAGE_LABELS: Record<NonNullable<ParsingTask['stage']>, string> = {
+  router: 'Mengenali jenis input',
+  local: 'Memproses cepat',
+  stage1: 'Membaca isi',
+  stage2: 'Menyusun detail',
+  legacy: 'Memproses input',
+  batch: 'Memproses beberapa entry',
+  fast_extraction: 'Mengambil informasi utama',
+  deep_parse: 'Memeriksa detail',
+};
+
 const formatBatchSummary = (task: ParsingTask): string | undefined => {
   const batch = task.batch || task.routerDecision?.batch;
   if (!batch) return undefined;
-  const reviewText = batch.reviewItemCount ? ` · ${batch.reviewItemCount} review` : '';
-  const failedText = batch.failedItemCount ? ` · ${batch.failedItemCount} failed` : '';
-  return `Batch parse: ${batch.itemCount} items · ${batch.localItemCount} local · ${batch.aiItemCount} AI fallback · ${batch.aiCallCount} AI batch call${batch.aiCallCount === 1 ? '' : 's'}${reviewText}${failedText}`;
-};
-
-const formatModelRoutingSummary = (task: ParsingTask): string | undefined => {
-  const routing = task.routerDecision?.modelRouting || task.routerDecision?.batch?.modelRouting || task.batch?.modelRouting;
-  if (!routing || !routing.enabled) return undefined;
-  const tier = routing.selectedTier === 'fast_extraction' ? 'fast extraction' : 'deep parse';
-  const escalation = routing.escalationReasonCodes.length ? ` · escalated: ${routing.escalationReasonCodes.join(', ')}` : '';
-  const warnings = routing.warnings?.length ? ` · warnings: ${routing.warnings.join(', ')}` : '';
-  return `Model routing: ${tier} (${routing.finalModel || 'unknown model'}) · fast=${routing.fastModel || 'n/a'} · deep=${routing.deepModel || 'n/a'} · AI calls=${routing.aiCallCount}${escalation}${warnings}`;
+  const reviewText = batch.reviewItemCount ? ` · ${batch.reviewItemCount} perlu ditinjau` : '';
+  const failedText = batch.failedItemCount ? ` · ${batch.failedItemCount} gagal` : '';
+  return `${batch.itemCount} entry diproses · ${batch.localItemCount} selesai cepat · ${batch.aiItemCount} diperiksa lebih lanjut${reviewText}${failedText}`;
 };
 
 const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }> = ({ result, index = 0 }) => {
@@ -121,6 +136,7 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
 const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   parsingTasks = [],
   enrichmentTasks = [],
+  receiptTasks = [],
   pendingReviews = [],
   receiptReviews = [],
   wallets = [],
@@ -130,6 +146,9 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   onApproveReceiptReview,
   onRejectReceiptReview,
   onViewDuplicateReceipt,
+  onRetryReceiptTask,
+  onClearReceiptTask,
+  onViewReceiptTaskTransaction,
   onApproveReview,
   onRejectReview,
   retryParsing,
@@ -141,11 +160,87 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   const visibleParsingTasks = parsingTasks.filter(shouldShowParserTaskInReviewCenter);
   const hasParsingTasks = visibleParsingTasks.length > 0;
   const hasEnrichmentTasks = visibleEnrichmentTasks.length > 0;
+  const hasReceiptTasks = receiptTasks.length > 0;
   const hasPendingReviews = pendingReviews.length > 0;
   const hasReceiptReviews = receiptReviews.length > 0;
 
   return (
     <div className="overflow-y-auto px-4 py-4 bg-background">
+
+      {hasReceiptTasks && (
+        <div className="mb-6 flex flex-col gap-2">
+          <span className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">Pemrosesan nota</span>
+          {receiptTasks.map((task) => (
+            <div key={task.id} className="rounded-xl border border-border bg-surface p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
+                    <FileImage className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold text-primary" title={task.imageName}>{task.imageName}</div>
+                    {task.context && <div className="mt-0.5 truncate text-[11px] text-muted" title={task.context}>{task.context}</div>}
+                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium">
+                      {task.status === 'pending' && (
+                        <span className="flex items-center gap-1.5 text-amber-500">
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          {RECEIPT_STAGE_LABELS[task.stage]}
+                        </span>
+                      )}
+                      {task.status === 'success' && (
+                        <span className="flex items-center gap-1.5 text-emerald-500">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {task.outcome === 'review' ? 'Siap ditinjau' : 'Tersimpan di Transactions'}
+                        </span>
+                      )}
+                      {task.status === 'failed' && (
+                        <span className="flex items-center gap-1.5 text-red-500">
+                          <AlertCircle className="h-3.5 w-3.5" /> Gagal memproses nota
+                        </span>
+                      )}
+                    </div>
+                    {task.error && (
+                      <div className="mt-2 rounded-lg border border-red-500/20 bg-red-500/5 p-2 text-xs leading-relaxed text-red-500">
+                        {task.error}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {task.status === 'failed' && onRetryReceiptTask && (
+                    <button
+                      type="button"
+                      onClick={() => onRetryReceiptTask(task.id)}
+                      className="rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20"
+                    >
+                      Coba lagi
+                    </button>
+                  )}
+                  {task.status === 'success' && task.transactionItemId && onViewReceiptTaskTransaction && (
+                    <button
+                      type="button"
+                      onClick={() => onViewReceiptTaskTransaction(task.transactionItemId!)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/10 px-2.5 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-500/20"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> Lihat
+                    </button>
+                  )}
+                  {task.status !== 'pending' && onClearReceiptTask && (
+                    <button
+                      type="button"
+                      onClick={() => onClearReceiptTask(task.id)}
+                      className="rounded-lg p-1.5 text-muted hover:bg-red-500/10 hover:text-red-500"
+                      aria-label="Tutup aktivitas nota"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {hasReceiptReviews && (
         <div className="mb-6 flex flex-col gap-3">
@@ -168,11 +263,10 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
 
       {hasParsingTasks && (
         <div className="mb-6 flex flex-col gap-2">
-          <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Parsing Queue</span>
+          <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Aktivitas input</span>
           {visibleParsingTasks.map(task => {
             const duplicateSummary = getParserTaskDuplicateSummary(task);
             const batchSummary = formatBatchSummary(task);
-            const modelRoutingSummary = formatModelRoutingSummary(task);
             const visibleResults = (task.results || []).filter(result => !getParserResultSummary(result).noop);
             return (
             <div key={task.id} className="bg-surface border border-border rounded-xl p-3 shadow-sm space-y-3">
@@ -183,19 +277,19 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     {task.status === 'pending' && (
                       <span className="text-xs text-amber-500 flex items-center gap-1 font-medium">
                         <RefreshCw className="w-3 h-3 animate-spin" />
-                        Parsing... {task.stage ? `(${task.stage})` : ''}
+                        {task.stage ? PARSER_STAGE_LABELS[task.stage] : 'Memproses input'}
                       </span>
                     )}
                     {task.status === 'failed' && (
                       <span className="text-xs text-red-500 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3 h-3" />
-                        Failed
+                        Gagal
                       </span>
                     )}
                     {task.status === 'success' && (
                       <span className={`text-xs flex items-center gap-1 font-medium ${task.undoStatus === 'undone' ? 'text-amber-500' : task.undoStatus === 'deleted' ? 'text-red-500' : 'text-emerald-500'}`}>
                         <CheckCircle2 className="w-3 h-3" />
-                        {task.undoStatus === 'undone' ? 'Undone' : task.undoStatus === 'deleted' ? 'Deleted' : 'Success'}
+                        {task.undoStatus === 'undone' ? 'Dibatalkan' : task.undoStatus === 'deleted' ? 'Dihapus' : 'Selesai'}
                       </span>
                     )}
                   </div>
@@ -205,20 +299,20 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     <button
                       onClick={() => undoParsingTask(task.id)}
                       className="shrink-0 px-2.5 py-1.5 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 rounded-md text-xs font-bold transition-colors inline-flex items-center gap-1"
-                      title="Undo this successful parse"
+                      title="Batalkan hasil parsing ini"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      Undo
+                      Batalkan
                     </button>
                   )}
                   {task.status === 'success' && !task.undoStatus && deleteParsingTaskEntries && task.results?.some(createsSavedEntry) && (
                     <button
                       onClick={() => deleteParsingTaskEntries(task.id)}
                       className="shrink-0 px-2.5 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500/20 rounded-md text-xs font-bold transition-colors inline-flex items-center gap-1"
-                      title="Delete saved entries from this parse"
+                      title="Hapus entry yang dibuat oleh parsing ini"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      Delete
+                      Hapus entry
                     </button>
                   )}
                   {task.status === 'failed' && retryParsing && (
@@ -226,14 +320,14 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                       onClick={() => retryParsing(task.id)}
                       className="shrink-0 px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md text-xs font-bold transition-colors"
                     >
-                      Retry
+                      Coba lagi
                     </button>
                   )}
                   {task.status !== 'pending' && clearParsingTask && (
                     <button
                       onClick={() => clearParsingTask(task.id)}
                       className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-                      title="Dismiss"
+                      title="Tutup"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -244,12 +338,6 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
               {task.status === 'success' && batchSummary && (
                 <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2 text-[11px] text-indigo-600">
                   {batchSummary}
-                </div>
-              )}
-
-              {task.status === 'success' && modelRoutingSummary && (
-                <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-2 text-[11px] text-sky-600">
-                  {modelRoutingSummary}
                 </div>
               )}
 
@@ -269,7 +357,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
 
               {task.status === 'failed' && (
                 <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-red-500 mb-1">Failure details</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-red-500 mb-1">Detail kegagalan</div>
                   <p className="text-xs text-red-500 leading-relaxed whitespace-pre-wrap">
                     {task.error || 'Unknown parser error'}
                   </p>
@@ -282,7 +370,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
 
       {hasEnrichmentTasks && (
         <div className="mb-6 flex flex-col gap-2">
-          <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Background Enrichment</span>
+          <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Penyempurnaan data</span>
           {visibleEnrichmentTasks.map(task => (
             <div key={task.id} className="bg-surface border border-border rounded-xl p-3 shadow-sm space-y-2">
               <div className="flex items-center justify-between gap-3">
@@ -291,23 +379,23 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                 </span>
                 {task.status === 'running' ? (
                   <span className="text-xs text-amber-500 flex items-center gap-1 font-medium">
-                    <RefreshCw className="w-3 h-3 animate-spin" /> Enriching...
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Menyempurnakan...
                   </span>
                 ) : task.status === 'failed' ? (
                   <span className="text-xs text-red-500 flex items-center gap-1 font-medium">
-                    <AlertCircle className="w-3 h-3" /> Failed
+                    <AlertCircle className="w-3 h-3" /> Gagal
                   </span>
                 ) : task.reviewCount ? (
-                  <span className="text-xs text-indigo-500 font-bold">Needs review</span>
+                  <span className="text-xs text-indigo-500 font-bold">Perlu ditinjau</span>
                 ) : (
-                  <span className="text-xs text-emerald-500 font-bold">Updated</span>
+                  <span className="text-xs text-emerald-500 font-bold">Diperbarui</span>
                 )}
               </div>
               {task.appliedFields && task.appliedFields.length > 0 && (
-                <p className="text-[11px] text-muted">Applied: {task.appliedFields.join(', ')}</p>
+                <p className="text-[11px] text-muted">Diterapkan: {task.appliedFields.join(', ')}</p>
               )}
               {!!task.reviewCount && (
-                <p className="text-[11px] text-amber-600">{task.reviewCount} ambiguous suggestion{task.reviewCount === 1 ? '' : 's'} moved to Review Center.</p>
+                <p className="text-[11px] text-amber-600">{task.reviewCount} saran ambigu dipindahkan ke Review Center.</p>
               )}
               {task.error && <p className="text-[11px] text-red-500">{task.error}</p>}
             </div>
@@ -322,13 +410,13 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
           onReject={(id) => onRejectReview?.(id)}
         />
       ) : (
-        !hasReceiptReviews && !hasParsingTasks && !hasEnrichmentTasks && (
+        !hasReceiptReviews && !hasReceiptTasks && !hasParsingTasks && !hasEnrichmentTasks && (
           <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
             <div className="w-12 h-12 rounded-full border border-current flex items-center justify-center mb-3">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <p className="text-sm font-bold">All caught up!</p>
-            <p className="text-xs mt-1">No entries awaiting review.</p>
+            <p className="text-sm font-bold">Semua sudah beres</p>
+            <p className="text-xs mt-1">Tidak ada entry yang menunggu proses atau tinjauan.</p>
           </div>
         )
       )}

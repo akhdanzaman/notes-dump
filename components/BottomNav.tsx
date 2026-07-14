@@ -35,17 +35,13 @@ const BottomNav: React.FC<BottomNavProps> = ({
 
               return (
                 <button
-                  key={`${tab.id}-${tab.subTab || 'main'}`}
+                  key={tab.id}
                   data-mobile-nav-tab={tab.id}
                   data-active={isActive ? 'true' : 'false'}
                   aria-current={isActive ? 'page' : undefined}
                   aria-label={tab.label}
                   onClick={() => {
                     setActiveTab(tab.id);
-                    if (tab.subTab) {
-                      if (tab.id === 'plan') setPlanSubTab(tab.subTab as PlanSubTab);
-                      if (tab.id === 'library') setLibrarySubTab(tab.subTab as LibrarySubTab);
-                    }
                   }}
                   className={[
                     'group relative flex shrink-0 items-center overflow-hidden rounded-full',

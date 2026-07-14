@@ -202,8 +202,21 @@ export interface ReceiptCaptureMeta {
   exchangeRateToIdr?: number;
 }
 
-export type ReceiptProcessingStage = 'uploading' | 'reading' | 'categorizing' | 'ready';
+export type ReceiptProcessingStage = 'uploading' | 'reading' | 'categorizing' | 'saving' | 'ready';
 export type ImageAttachmentMode = 'receipt' | 'chat';
+
+export interface ReceiptProcessingTask {
+  id: string;
+  createdAt: number;
+  imageName: string;
+  context?: string;
+  status: 'pending' | 'success' | 'failed';
+  stage: ReceiptProcessingStage;
+  outcome?: 'review' | 'saved';
+  error?: string;
+  transactionItemId?: string;
+  completedAt?: number;
+}
 
 export interface ReceiptReviewDraft {
   id: string;

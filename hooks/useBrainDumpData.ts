@@ -64,6 +64,7 @@ import { applyInvestmentFundingToInvestment, resolveInvestmentFundingInput } fro
 import { dedupeBrainDumpItems } from '../utils/itemDedupe';
 import { sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
 import { sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
+import { requestUserConfirmation } from '../utils/uiFeedback';
 
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 
@@ -1984,7 +1985,7 @@ export const useBrainDumpData = () => {
         setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, undoStatus: 'undone' } : t));
     };
 
-    const deleteSuccessfulParsingTaskEntries = (taskId: string) => {
+    const deleteSuccessfulParsingTaskEntries = async (taskId: string) => {
         const task = parsingTasks.find(t => t.id === taskId);
         if (!task || task.status !== 'success' || task.undoStatus) return;
 
@@ -1993,9 +1994,13 @@ export const useBrainDumpData = () => {
         const createdItems = itemsRef.current.filter(item => item.meta?.parserTaskId === taskId && !previousItemIds.has(item.id));
         if (createdItems.length === 0) return;
 
-        if (typeof window !== 'undefined' && !window.confirm(`Delete ${createdItems.length} saved entr${createdItems.length === 1 ? 'y' : 'ies'} from this successful parse?`)) {
-            return;
-        }
+        const confirmed = await requestUserConfirmation({
+            title: 'Hapus hasil parsing?',
+            message: `${createdItems.length} entry yang dibuat oleh proses ini akan dihapus.`,
+            confirmLabel: 'Hapus entry',
+            tone: 'danger',
+        });
+        if (!confirmed) return;
 
         const createdItemIds = new Set(createdItems.map(item => item.id));
         setItems(prev => {

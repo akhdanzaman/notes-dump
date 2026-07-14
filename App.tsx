@@ -17,7 +17,7 @@ import {
   ItemType,
   ShoppingCategory,
   ImageAttachmentMode,
-  ReceiptProcessingStage,
+  ReceiptProcessingTask,
   ReceiptReviewDraft,
 } from "./types";
 import { useBrainDumpData } from "./hooks/useBrainDumpData";
@@ -41,6 +41,7 @@ import InputBar from "./components/InputBar";
 import SkillModal from "./components/SkillModal";
 import WalletModal from "./components/WalletModal";
 import ConfirmDialog from "./components/ConfirmDialog";
+import PasswordDialog from "./components/PasswordDialog";
 
 import BottomNav from "./components/BottomNav";
 import FloatingSearch from "./components/FloatingSearch";
@@ -98,6 +99,13 @@ import {
 import { findDuplicateReceiptTransaction } from "./utils/receiptDuplicate";
 import { getReceiptTransactionViewDate, shouldQueueReceiptReview } from "./utils/receiptReviewPolicy";
 import { convertTransactionLineItemsToIdr, sumTransactionLineItems } from "./utils/transactionLineItems";
+import {
+  UI_CONFIRM_EVENT,
+  UI_NOTICE_EVENT,
+  UiConfirmationOptions,
+  UiNoticeDetail,
+  requestUserConfirmation,
+} from "./utils/uiFeedback";
 
 const getThemeMonthKey = (date: Date) => {
   const year = date.getFullYear();
@@ -308,6 +316,10 @@ const App: React.FC = () => {
     handleApproveReview,
     handleRejectReview,
   } = useBrainDumpData();
+  const appItemsRef = useRef(items);
+  useEffect(() => {
+    appItemsRef.current = items;
+  }, [items]);
 
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -330,6 +342,21 @@ const App: React.FC = () => {
     target: keyof LocalSecuritySettings;
     message: string;
   } | null>(null);
+  const [securityPasswordDialog, setSecurityPasswordDialog] = useState<{
+    mode: 'create' | 'verify';
+    title: string;
+    message: string;
+    resolve: (password: string | null) => void;
+  } | null>(null);
+  const [appNotice, setAppNotice] = useState<{
+    id: string;
+    message: string;
+    tone: 'success' | 'error' | 'info';
+  } | null>(null);
+  const [globalConfirmation, setGlobalConfirmation] = useState<{
+    options: UiConfirmationOptions;
+    resolve: (confirmed: boolean) => void;
+  } | null>(null);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [showChangelogPopup, setShowChangelogPopup] = useState(false);
   const [seenFeatureTutorials, setSeenFeatureTutorials] = useState<
@@ -345,6 +372,28 @@ const App: React.FC = () => {
     () => localStorage.getItem(FEATURE_TUTORIALS_DISABLED_KEY) === "true",
   );
   const [themeNavDate, setThemeNavDate] = useState(new Date());
+
+  useEffect(() => {
+    const handleNotice = (event: Event) => {
+      const detail = (event as CustomEvent<UiNoticeDetail>).detail;
+      if (!detail?.message) return;
+      showAppNotice(detail.message, detail.tone || 'info');
+    };
+    const handleConfirmation = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        options: UiConfirmationOptions;
+        resolve: (confirmed: boolean) => void;
+      }>).detail;
+      if (!detail?.options || typeof detail.resolve !== 'function') return;
+      setGlobalConfirmation(detail);
+    };
+    window.addEventListener(UI_NOTICE_EVENT, handleNotice);
+    window.addEventListener(UI_CONFIRM_EVENT, handleConfirmation);
+    return () => {
+      window.removeEventListener(UI_NOTICE_EVENT, handleNotice);
+      window.removeEventListener(UI_CONFIRM_EVENT, handleConfirmation);
+    };
+  }, []);
 
   // Focus View State
   const [focusDate, setFocusDate] = useState(new Date());
@@ -469,7 +518,8 @@ const App: React.FC = () => {
   // Review Center nudge above the input bar
   const [isReviewCenterOpen, setIsReviewCenterOpen] = useState(false);
   const [lastReviewCenterOpenedAt, setLastReviewCenterOpenedAt] = useState(0);
-  const [receiptStage, setReceiptStage] = useState<ReceiptProcessingStage | null>(null);
+  const [receiptTasks, setReceiptTasks] = useState<ReceiptProcessingTask[]>([]);
+  const receiptTaskFilesRef = useRef(new Map<string, { file: File; context: string }>());
   const [receiptReviews, setReceiptReviews] = useState<ReceiptReviewDraft[]>(readStoredReceiptReviews);
 
   const updateReceiptReviews = (
@@ -517,6 +567,11 @@ const App: React.FC = () => {
     0,
   ), [receiptReviews]);
 
+  const latestReceiptTaskAt = useMemo(() => receiptTasks.reduce(
+    (latest, task) => Math.max(latest, task.createdAt || 0, task.completedAt || 0),
+    0,
+  ), [receiptTasks]);
+
   const hasRunningProcess = useMemo(() => {
     return (
       pendingCount > 0 ||
@@ -524,11 +579,11 @@ const App: React.FC = () => {
       enrichmentTasks.some(
         (task) => task.status === "pending" || task.status === "running",
       ) ||
+      receiptTasks.some((task) => task.status === 'pending') ||
       saveStatus === "saving" ||
-      fetchStatus === "syncing" ||
-      receiptStage !== null
+      fetchStatus === "syncing"
     );
-  }, [enrichmentTasks, fetchStatus, parsingTasks, pendingCount, receiptStage, saveStatus]);
+  }, [enrichmentTasks, fetchStatus, parsingTasks, pendingCount, receiptTasks, saveStatus]);
 
   const unresolvedParsingCount = parsingTasks.filter(
     (task) => task.status === 'pending' || task.status === 'failed',
@@ -536,14 +591,18 @@ const App: React.FC = () => {
   const unresolvedEnrichmentCount = enrichmentTasks.filter(
     (task) => task.status === 'pending' || task.status === 'running' || task.status === 'failed',
   ).length;
+  const unresolvedReceiptTaskCount = receiptTasks.filter(
+    (task) => task.status === 'pending' || task.status === 'failed',
+  ).length;
   const reviewCenterBadgeCount =
     receiptReviews.length
     + pendingReviews.length
     + unresolvedParsingCount
-    + unresolvedEnrichmentCount;
+    + unresolvedEnrichmentCount
+    + unresolvedReceiptTaskCount;
   const showReviewCenterNudge =
     reviewCenterBadgeCount > 0
-    && Math.max(latestParsingTaskAt, latestReceiptReviewAt) > lastReviewCenterOpenedAt;
+    && Math.max(latestParsingTaskAt, latestReceiptReviewAt, latestReceiptTaskAt) > lastReviewCenterOpenedAt;
 
   const openReviewCenterFromInput = () => {
     setLastReviewCenterOpenedAt(Date.now());
@@ -635,7 +694,7 @@ const App: React.FC = () => {
 
       if (type === "GOOGLE_OAUTH_ERROR") {
         console.error("Google login failed:", error);
-        alert(`Login gagal: ${error}`);
+        showAppNotice(`Login gagal: ${error}`, 'error');
       }
     };
 
@@ -987,7 +1046,7 @@ const App: React.FC = () => {
   // --- Handlers ---
 
   const handleChangeReceiptReview = (draft: ReceiptReviewDraft) => {
-    const duplicate = findDuplicateReceiptTransaction(items, {
+    const duplicate = findDuplicateReceiptTransaction(appItemsRef.current, {
       merchant: draft.merchant,
       date: draft.date,
       totalAmount: sumTransactionLineItems(draft.lineItems),
@@ -1024,7 +1083,7 @@ const App: React.FC = () => {
     draft: ReceiptReviewDraft,
     options: { requireWallet: boolean; revealTransaction: boolean },
   ) => {
-    const duplicate = findDuplicateReceiptTransaction(items, {
+    const duplicate = findDuplicateReceiptTransaction(appItemsRef.current, {
       merchant: draft.merchant,
       date: draft.date,
       totalAmount: sumTransactionLineItems(draft.lineItems),
@@ -1101,6 +1160,146 @@ const App: React.FC = () => {
     setIsReviewCenterOpen(false);
   };
 
+  const updateReceiptTask = (taskId: string, changes: Partial<ReceiptProcessingTask>) => {
+    setReceiptTasks((current) => current.map((task) => task.id === taskId ? { ...task, ...changes } : task));
+  };
+
+  const clearReceiptTask = (taskId: string) => {
+    receiptTaskFilesRef.current.delete(taskId);
+    setReceiptTasks((current) => current.filter((task) => task.id !== taskId));
+  };
+
+  const processReceiptInBackground = async (taskId: string, image: File, text: string) => {
+    let attachmentId: string | undefined;
+    updateReceiptTask(taskId, {
+      status: 'pending',
+      stage: 'uploading',
+      error: undefined,
+      outcome: undefined,
+      transactionItemId: undefined,
+      completedAt: undefined,
+    });
+
+    try {
+      const [savedAttachmentId, fingerprint] = await Promise.all([
+        saveReceiptAttachment(image),
+        createReceiptFingerprint(image),
+      ]);
+      attachmentId = savedAttachmentId;
+      updateReceiptTask(taskId, { stage: 'reading' });
+
+      const parsed = await parseReceiptImage(
+        image,
+        text,
+        wallets,
+        budgetConfig.rules || [],
+        appSettings.parsingModel,
+      );
+      updateReceiptTask(taskId, { stage: 'categorizing' });
+
+      const originalCurrency = (parsed.currency || 'IDR').toUpperCase();
+      const originalTotal = sumTransactionLineItems(parsed.lineItems);
+      const duplicate = findDuplicateReceiptTransaction(appItemsRef.current, {
+        merchant: parsed.merchant,
+        date: parsed.date,
+        totalAmount: originalTotal,
+        lineItems: parsed.lineItems,
+        fingerprint,
+      });
+      const draft: ReceiptReviewDraft = {
+        id: uuidv4(),
+        createdAt: new Date().toISOString(),
+        imageName: image.name,
+        imageMimeType: image.type,
+        imageSize: image.size,
+        attachmentId,
+        fingerprint,
+        context: text.trim() || undefined,
+        merchant: parsed.merchant,
+        date: parsed.date || getLocalDateInput(),
+        walletId: parsed.walletId,
+        originalCurrency,
+        originalTotal,
+        exchangeRateToIdr: originalCurrency === 'IDR' ? 1 : undefined,
+        lineItems: parsed.lineItems,
+        warnings: parsed.warnings,
+        duplicateItemId: duplicate?.id,
+        allowDuplicate: false,
+      };
+
+      if (shouldQueueReceiptReview(appSettings)) {
+        updateReceiptReviews((current) => [draft, ...current]);
+        updateReceiptTask(taskId, {
+          status: 'success',
+          stage: 'ready',
+          outcome: 'review',
+          completedAt: Date.now(),
+        });
+        showAppNotice('Nota selesai dibaca dan siap ditinjau di Review Center.', 'success');
+        window.setTimeout(() => clearReceiptTask(taskId), 2500);
+      } else {
+        updateReceiptTask(taskId, { stage: 'saving' });
+        const savedItem = await commitReceiptDraft(draft, {
+          requireWallet: false,
+          revealTransaction: false,
+        });
+        updateReceiptTask(taskId, {
+          status: 'success',
+          stage: 'ready',
+          outcome: 'saved',
+          transactionItemId: savedItem.id,
+          completedAt: Date.now(),
+        });
+        showAppNotice('Transaksi dari nota sudah disimpan. Proses lengkap tersedia di Review Center.', 'success');
+        receiptTaskFilesRef.current.delete(taskId);
+        window.setTimeout(() => clearReceiptTask(taskId), 12000);
+      }
+    } catch (scanError) {
+      if (attachmentId) await deleteReceiptAttachment(attachmentId).catch(() => undefined);
+      const message = scanError instanceof Error ? scanError.message : 'Gagal memproses nota.';
+      updateReceiptTask(taskId, {
+        status: 'failed',
+        error: message,
+        completedAt: Date.now(),
+      });
+      showAppNotice(`Gagal memproses nota: ${message}`, 'error');
+    }
+  };
+
+  const enqueueReceiptProcessing = (image: File, text: string) => {
+    const taskId = uuidv4();
+    receiptTaskFilesRef.current.set(taskId, { file: image, context: text });
+    setReceiptTasks((current) => [{
+      id: taskId,
+      createdAt: Date.now(),
+      imageName: image.name,
+      context: text.trim() || undefined,
+      status: 'pending',
+      stage: 'uploading',
+    }, ...current]);
+    showAppNotice('Nota diproses di latar belakang. Kamu tetap bisa menambahkan input baru.', 'info');
+    void processReceiptInBackground(taskId, image, text);
+  };
+
+  const retryReceiptTask = (taskId: string) => {
+    const source = receiptTaskFilesRef.current.get(taskId);
+    if (!source) {
+      updateReceiptTask(taskId, {
+        status: 'failed',
+        error: 'Gambar asli tidak lagi tersedia. Lampirkan ulang nota dari chat bar.',
+        completedAt: Date.now(),
+      });
+      return;
+    }
+    void processReceiptInBackground(taskId, source.file, source.context);
+  };
+
+  const handleViewReceiptTaskTransaction = (itemId: string) => {
+    const item = appItemsRef.current.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+    revealReceiptTransaction(item.meta.date || item.completed_at || item.created_at);
+  };
+
   const handleAppSend = async (
     text: string,
     image?: File,
@@ -1127,68 +1326,7 @@ const App: React.FC = () => {
     }
 
     if (image) {
-      setReceiptStage('uploading');
-      let attachmentId: string | undefined;
-      try {
-        const savedAttachment = await Promise.all([
-          saveReceiptAttachment(image),
-          createReceiptFingerprint(image),
-        ]);
-        attachmentId = savedAttachment[0];
-        const fingerprint = savedAttachment[1];
-        setReceiptStage('reading');
-        const parsed = await parseReceiptImage(
-          image,
-          text,
-          wallets,
-          budgetConfig.rules || [],
-          appSettings.parsingModel,
-        );
-        setReceiptStage('categorizing');
-        const originalCurrency = (parsed.currency || 'IDR').toUpperCase();
-        const originalTotal = sumTransactionLineItems(parsed.lineItems);
-        const duplicate = findDuplicateReceiptTransaction(items, {
-          merchant: parsed.merchant,
-          date: parsed.date,
-          totalAmount: originalTotal,
-          lineItems: parsed.lineItems,
-          fingerprint,
-        });
-        const draft: ReceiptReviewDraft = {
-          id: uuidv4(),
-          createdAt: new Date().toISOString(),
-          imageName: image.name,
-          imageMimeType: image.type,
-          imageSize: image.size,
-          attachmentId,
-          fingerprint,
-          context: text.trim() || undefined,
-          merchant: parsed.merchant,
-          date: parsed.date || getLocalDateInput(),
-          walletId: parsed.walletId,
-          originalCurrency,
-          originalTotal,
-          exchangeRateToIdr: originalCurrency === 'IDR' ? 1 : undefined,
-          lineItems: parsed.lineItems,
-          warnings: parsed.warnings,
-          duplicateItemId: duplicate?.id,
-          allowDuplicate: false,
-        };
-
-        setReceiptStage('ready');
-        if (shouldQueueReceiptReview(appSettings)) {
-          updateReceiptReviews((current) => [draft, ...current]);
-          setLastReviewCenterOpenedAt(Date.now());
-          setIsReviewCenterOpen(true);
-        } else {
-          await commitReceiptDraft(draft, { requireWallet: false, revealTransaction: true });
-        }
-      } catch (scanError) {
-        if (attachmentId) await deleteReceiptAttachment(attachmentId).catch(() => undefined);
-        setReceiptStage(null);
-        throw scanError;
-      }
-      setReceiptStage(null);
+      enqueueReceiptProcessing(image, text);
       return;
     }
 
@@ -1226,6 +1364,28 @@ const App: React.FC = () => {
     }
   };
 
+  const showAppNotice = (message: string, tone: 'success' | 'error' | 'info' = 'info') => {
+    const id = uuidv4();
+    setAppNotice({ id, message, tone });
+    window.setTimeout(() => {
+      setAppNotice((current) => current?.id === id ? null : current);
+    }, 4500);
+  };
+
+  const requestSecurityPassword = (
+    mode: 'create' | 'verify',
+    title: string,
+    message: string,
+  ) => new Promise<string | null>((resolve) => {
+    setSecurityPasswordDialog({ mode, title, message, resolve });
+  });
+
+  const closeSecurityPasswordDialog = (password: string | null) => {
+    const dialog = securityPasswordDialog;
+    setSecurityPasswordDialog(null);
+    dialog?.resolve(password);
+  };
+
   const authorizeSecurityPassword = async (
     options: SecurityPasswordRequestOptions = {},
   ): Promise<boolean> => {
@@ -1238,34 +1398,34 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load security password', error);
-      alert('Security password could not be loaded from Themes & Settings. Please check the spreadsheet connection.');
+      showAppNotice('Password keamanan tidak dapat dimuat. Periksa koneksi Google Sheets.', 'error');
       return false;
     }
 
     if (!encryptedPassword) {
       if (!allowCreate) {
-        alert('Security password has not been created yet.');
+        showAppNotice('Password keamanan belum dibuat.', 'error');
         return false;
       }
 
-      const createdPassword = window.prompt('Create a security password first.');
+      const createdPassword = await requestSecurityPassword(
+        'create',
+        'Buat password keamanan',
+        'Password ini digunakan untuk mengubah pengaturan keamanan pada perangkat ini.',
+      );
       if (!createdPassword) return false;
-      const confirmedPassword = window.prompt('Confirm the security password.');
-      if (confirmedPassword !== createdPassword) {
-        alert('Password confirmation does not match.');
-        return false;
-      }
 
       const newEncryptedPassword = encryptSecurityPassword(createdPassword);
       try {
         await saveSecurityPasswordHash(newEncryptedPassword);
       } catch (error) {
         console.error('Failed to save security password', error);
-        alert('Security password could not be saved to Themes & Settings.');
+        showAppNotice('Password keamanan tidak dapat disimpan ke Themes & Settings.', 'error');
         return false;
       }
 
       setAppSettings({ ...appSettings, securityPasswordHash: newEncryptedPassword });
+      showAppNotice('Password keamanan berhasil dibuat.', 'success');
       return true;
     }
 
@@ -1273,11 +1433,15 @@ const App: React.FC = () => {
       setAppSettings({ ...appSettings, securityPasswordHash: encryptedPassword });
     }
 
-    const actionLabel = options.actionLabel || 'change this security setting';
-    const enteredPassword = window.prompt(`Fill password to ${actionLabel}.`);
+    const actionLabel = options.actionLabel || 'mengubah pengaturan keamanan ini';
+    const enteredPassword = await requestSecurityPassword(
+      'verify',
+      'Konfirmasi password',
+      `Masukkan password untuk ${actionLabel}.`,
+    );
     if (enteredPassword === null) return false;
     if (!verifySecurityPassword(enteredPassword, encryptedPassword)) {
-      alert('Wrong password.');
+      showAppNotice('Password salah.', 'error');
       return false;
     }
 
@@ -1422,14 +1586,14 @@ const App: React.FC = () => {
             data.monthlyThemes || monthlyThemes,
             data.appSettings || appSettings,
           );
-          alert("Data imported successfully!");
+          showAppNotice('Data berhasil diimpor.', 'success');
           setIsControlCenterOpen(false);
         } else {
-          alert("Invalid backup file format.");
+          showAppNotice('Format file cadangan tidak valid.', 'error');
         }
       } catch (err) {
         console.error("Import error:", err);
-        alert("Failed to parse backup file.");
+        showAppNotice('File cadangan tidak dapat dibaca.', 'error');
       }
     };
     reader.readAsText(file);
@@ -1817,14 +1981,14 @@ const App: React.FC = () => {
                   budgetRules={budgetConfig.rules}
                   handleResetRoutine={handleResetRoutine}
                   onAddFunds={handleAddSavingTransaction}
-                  onCompleteGoal={(goal) => {
-                    if (
-                      confirm(
-                        `Complete goal "${goal.content}"? This will record it in Transactions as Achieved Goals and release the reserved savings from its wallet.`,
-                      )
-                    ) {
-                      handleToggleStatus(goal.id);
-                    }
+                  onCompleteGoal={async (goal) => {
+                    const confirmed = await requestUserConfirmation({
+                      title: 'Selesaikan saving goal?',
+                      message: `Goal "${goal.content}" akan dicatat ke Transactions sebagai Achieved Goals dan dana yang dicadangkan akan dilepas dari wallet.`,
+                      confirmLabel: 'Selesaikan goal',
+                      tone: 'primary',
+                    });
+                    if (confirmed) handleToggleStatus(goal.id);
                   }}
                   setActiveTab={handleSetActiveTab}
                 />
@@ -1955,7 +2119,6 @@ const App: React.FC = () => {
             reviewCenterActive={hasRunningProcess}
             reviewCenterCount={reviewCenterBadgeCount}
             onOpenReviewCenter={openReviewCenterFromInput}
-            receiptStage={receiptStage}
             startAction={
               activeTab === "library" || activeTab === "money" ? (
                 <FloatingSearch
@@ -2093,9 +2256,9 @@ const App: React.FC = () => {
                       Review Center
                     </h3>
                     <div className="flex items-center gap-2">
-                      {(receiptReviews.length + pendingReviews.length) > 0 && (
+                      {(receiptReviews.length + pendingReviews.length + unresolvedReceiptTaskCount) > 0 && (
                         <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
-                          {receiptReviews.length + pendingReviews.length} Pending
+                          {receiptReviews.length + pendingReviews.length + unresolvedReceiptTaskCount} Perlu perhatian
                         </span>
                       )}
                       {hasRunningProcess && (
@@ -2115,6 +2278,7 @@ const App: React.FC = () => {
                   <ReviewCenterPanel
                     parsingTasks={parsingTasks}
                     enrichmentTasks={enrichmentTasks}
+                    receiptTasks={receiptTasks}
                     pendingReviews={pendingReviews}
                     receiptReviews={receiptReviews}
                     wallets={wallets}
@@ -2124,6 +2288,9 @@ const App: React.FC = () => {
                     onApproveReceiptReview={handleApproveReceiptReview}
                     onRejectReceiptReview={handleRejectReceiptReview}
                     onViewDuplicateReceipt={handleViewDuplicateReceipt}
+                    onRetryReceiptTask={retryReceiptTask}
+                    onClearReceiptTask={clearReceiptTask}
+                    onViewReceiptTaskTransaction={handleViewReceiptTaskTransaction}
                     onApproveReview={handleApproveReview}
                     onRejectReview={handleRejectReview}
                     retryParsing={retryParsing}
@@ -2433,7 +2600,7 @@ const App: React.FC = () => {
               className="w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
             >
               <div className="border-b border-border p-5">
-                <h3 className="text-xl font-bold text-primary">Locked</h3>
+                <h3 className="text-xl font-bold text-primary">Akses terkunci</h3>
                 <p className="mt-2 text-sm text-muted">{lockedSecurityPopup.message}</p>
               </div>
               <div className="grid grid-cols-2 gap-3 p-4">
@@ -2441,13 +2608,13 @@ const App: React.FC = () => {
                   onClick={() => setLockedSecurityPopup(null)}
                   className="rounded-2xl border border-border px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-muted/10"
                 >
-                  Okay
+                  Tutup
                 </button>
                 <button
                   onClick={handleDisableLockedSecurity}
                   className="rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-background transition-opacity hover:opacity-90"
                 >
-                  Fill Password
+                  Masukkan password
                 </button>
               </div>
             </motion.div>
@@ -2455,15 +2622,61 @@ const App: React.FC = () => {
         )}
       </AnimatePresence>
 
+      <PasswordDialog
+        isOpen={!!securityPasswordDialog}
+        mode={securityPasswordDialog?.mode || 'verify'}
+        title={securityPasswordDialog?.title || ''}
+        message={securityPasswordDialog?.message || ''}
+        onSubmit={(password) => closeSecurityPasswordDialog(password)}
+        onCancel={() => closeSecurityPasswordDialog(null)}
+      />
+
+      <AnimatePresence>
+        {appNotice && (
+          <motion.div
+            key={appNotice.id}
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.96 }}
+            className={`fixed bottom-28 left-1/2 z-[120] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 rounded-2xl border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur-xl lg:bottom-8 ${
+              appNotice.tone === 'error'
+                ? 'border-red-500/30 bg-red-950/90 text-red-100'
+                : appNotice.tone === 'success'
+                  ? 'border-emerald-500/30 bg-emerald-950/90 text-emerald-100'
+                  : 'border-indigo-500/30 bg-slate-950/90 text-white'
+            }`}
+          >
+            {appNotice.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ConfirmDialog
+        isOpen={!!globalConfirmation}
+        title={globalConfirmation?.options.title || ''}
+        message={globalConfirmation?.options.message || ''}
+        confirmLabel={globalConfirmation?.options.confirmLabel}
+        cancelLabel={globalConfirmation?.options.cancelLabel}
+        tone={globalConfirmation?.options.tone}
+        onConfirm={() => {
+          globalConfirmation?.resolve(true);
+          setGlobalConfirmation(null);
+        }}
+        onCancel={() => {
+          globalConfirmation?.resolve(false);
+          setGlobalConfirmation(null);
+        }}
+      />
+
       <ConfirmDialog
         isOpen={!!deleteId}
-        title="Confirm Delete"
+        title="Konfirmasi penghapusan"
         message={
           deleteType === "skill"
-            ? "Delete this skill? History will remain but tracking will stop."
+            ? "Hapus skill ini? Riwayat tetap tersimpan, tetapi tracking akan dihentikan."
             : deleteType === "wallet"
-              ? "Delete this wallet? Balance history might be affected."
-              : "Delete this item?"
+              ? "Hapus wallet ini? Riwayat saldo dapat ikut terpengaruh."
+              : "Hapus entry ini?"
         }
         onConfirm={handleConfirmDelete}
         onCancel={() => {

@@ -14,7 +14,7 @@ import {
   ImagePlus,
   X,
 } from 'lucide-react';
-import { ImageAttachmentMode, ReceiptProcessingStage, SyncProgress, SyncStatus } from '../types';
+import { ImageAttachmentMode, SyncProgress, SyncStatus } from '../types';
 
 interface InputBarProps {
   onSend: (text: string, image?: File, options?: { imageMode: ImageAttachmentMode }) => void | Promise<void>;
@@ -33,7 +33,6 @@ interface InputBarProps {
   reviewCenterCount?: number;
   onOpenReviewCenter?: () => void;
   error?: string | null;
-  receiptStage?: ReceiptProcessingStage | null;
 }
 
 const SUGGESTIONS = [
@@ -52,14 +51,6 @@ const RECEIPT_SUGGESTIONS = [
   { label: 'Tambah catatan', value: 'catatan:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
 ];
 
-const RECEIPT_STAGE_LABELS: Record<ReceiptProcessingStage, string> = {
-  uploading: 'Menyiapkan gambar',
-  reading: 'Membaca nota',
-  categorizing: 'Mengelompokkan item',
-  ready: 'Siap ditinjau',
-};
-
-
 const InputBar: React.FC<InputBarProps> = ({
   onSend,
   onFocus,
@@ -77,7 +68,6 @@ const InputBar: React.FC<InputBarProps> = ({
   reviewCenterCount,
   onOpenReviewCenter,
   error,
-  receiptStage,
 }) => {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -310,11 +300,6 @@ const InputBar: React.FC<InputBarProps> = ({
                       <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-500">
                         {imageMode === 'receipt' ? 'Nota' : 'Gambar chat'}
                       </span>
-                      {receiptStage && imageMode === 'receipt' && (
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-amber-500">
-                          <Loader2 className="h-3 w-3 animate-spin" /> {RECEIPT_STAGE_LABELS[receiptStage]}
-                        </span>
-                      )}
                     </div>
                     <div className="mt-1 truncate text-xs font-bold text-primary">{image.name}</div>
                   </div>
@@ -398,11 +383,11 @@ const InputBar: React.FC<InputBarProps> = ({
                 onClick={() => void handleSubmit()}
                 disabled={(!input.trim() && !image) || isSubmitting}
                 className="p-4 mb-0.5 text-muted hover:text-indigo-500 disabled:opacity-30 transition-colors"
-                title={image ? (imageMode === 'receipt' ? 'Tinjau nota' : 'Tanyakan tentang gambar') : 'Kirim'}
+                title={image ? (imageMode === 'receipt' ? 'Proses nota di latar belakang' : 'Tanyakan tentang gambar') : 'Kirim'}
               >
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <span className="flex items-center gap-1.5">
-                    {image && <span className="hidden text-[10px] font-bold sm:inline">{imageMode === 'receipt' ? 'Tinjau' : 'Tanya'}</span>}
+                    {image && <span className="hidden text-[10px] font-bold sm:inline">{imageMode === 'receipt' ? 'Proses' : 'Tanya'}</span>}
                     <SendHorizonal className="w-5 h-5" />
                   </span>
                 )}

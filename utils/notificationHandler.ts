@@ -1,3 +1,5 @@
+import { notifyUser } from './uiFeedback';
+
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) {
     console.warn('This browser does not support desktop notification');
@@ -76,7 +78,7 @@ export const showPromptNotification = async () => {
 
 export const sendTestNotification = async (customSettings?: any) => {
   if (!('serviceWorker' in navigator)) {
-    alert('Service Worker is not supported in this browser.');
+    notifyUser('Service Worker tidak didukung oleh browser ini.', 'error');
     return;
   }
   
@@ -95,10 +97,10 @@ export const sendTestNotification = async (customSettings?: any) => {
       registration.showNotification('Arkaiv Test', options as any);
     } catch (e) {
       console.error('Failed to show test notification', e);
-      alert('Failed to show test notification.');
+      notifyUser('Notifikasi uji gagal ditampilkan.', 'error');
     }
   } else {
-    alert('Notification permission not granted.');
+    notifyUser('Izin notifikasi belum diberikan.', 'error');
   }
 };
 

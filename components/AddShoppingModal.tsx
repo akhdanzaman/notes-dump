@@ -87,6 +87,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     const [investmentAveragePrice, setInvestmentAveragePrice] = useState('');
     const [investmentCurrentPrice, setInvestmentCurrentPrice] = useState('');
     const [investmentPlatform, setInvestmentPlatform] = useState('');
+    const [formError, setFormError] = useState('');
 
     // Routine specific state
     const [interval, setInterval] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -125,34 +126,39 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     useEffect(() => {
         if (isOpen) {
             setCategory(initialCategory);
+            setFormError('');
         }
     }, [isOpen, initialCategory]);
 
     const handleSave = () => {
-        if (!content.trim()) return;
+        setFormError('');
+        if (!content.trim()) {
+            setFormError('Nama atau deskripsi item harus diisi.');
+            return;
+        }
 
         if (category === 'routine') {
             if (interval === 'weekly' && daysOfWeek.length === 0) {
-                alert('Please select at least one day of the week.');
+                setFormError('Pilih minimal satu hari untuk jadwal mingguan.');
                 return;
             }
             if (interval === 'monthly' && daysOfMonth.length === 0) {
-                alert('Please select at least one date of the month.');
+                setFormError('Pilih minimal satu tanggal untuk jadwal bulanan.');
                 return;
             }
             if (interval === 'yearly' && monthsOfYear.length === 0) {
-                alert('Please select at least one month of the year.');
+                setFormError('Pilih minimal satu bulan untuk jadwal tahunan.');
                 return;
             }
         }
 
         if (category === 'saving' && !dedicatedWalletId) {
-            alert('Please select a dedicated wallet for this saving goal.');
+            setFormError('Pilih wallet khusus untuk saving goal ini.');
             return;
         }
 
         if (category === 'investment' && !investmentPlatform.trim()) {
-            alert('Please enter the investment platform/broker/storage. It will be tracked as an investment wallet.');
+            setFormError('Isi platform, broker, atau tempat penyimpanan investasi.');
             return;
         }
 
@@ -268,6 +274,11 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                     </div>
 
                     <div className={addItemModal.body}>
+                        {formError && (
+                            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-500">
+                                {formError}
+                            </div>
+                        )}
                         <div>
                             <label className={addItemModal.label}>
                                 {category === 'saving' ? 'Goal Name' : (category === 'investment' ? 'Asset / Product Name' : 'Item Description')}

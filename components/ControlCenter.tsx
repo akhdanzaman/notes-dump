@@ -6,7 +6,7 @@ import {
     Moon, Sun, X, AlertTriangle,
     Monitor, Layout, Eye, EyeOff, Database, Download, Upload, Trash2,
     Check, Smartphone, CheckCircle2, PieChart, Plus, Sparkles,
-    MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History, Shield, Lock
+    MessageSquare, Calendar, AlertCircle, ChevronRight, ArrowLeft, CheckSquare, Bell, History, Shield, Lock, Wrench
 } from 'lucide-react';
 import { SyncProgress, SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet, CanonicalRule, ParserResultV2, EnrichmentTask } from '../types';
 import { DEFAULT_PROMPT } from '../services/geminiService';
@@ -17,6 +17,7 @@ import { CHANGELOG_ENTRIES, LATEST_CHANGELOG_VERSION } from '../utils/changelog'
 import { contentSurface, controlCenterSurface } from './layout/contentSurface';
 import { buildParserHealthSummary } from '../utils/parserHealth';
 import { LocalSecuritySettings, SecurityPasswordRequestOptions } from '../utils/securitySettings';
+import { notifyUser, requestUserConfirmation } from '../utils/uiFeedback';
 
 interface ControlCenterProps {
     isOpen: boolean;
@@ -163,8 +164,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         }
     };
 
-    const handleRestoreHistory = (entry: SpreadsheetHistoryEntry) => {
-        if (window.confirm(`Are you sure you want to restore the database to the version from ${new Date(entry.timestamp).toLocaleString()}? This will overwrite your current data.`)) {
+    const handleRestoreHistory = async (entry: SpreadsheetHistoryEntry) => {
+        const confirmed = await requestUserConfirmation({
+            title: 'Pulihkan cadangan?',
+            message: `Data saat ini akan diganti dengan versi ${new Date(entry.timestamp).toLocaleString()}.`,
+            confirmLabel: 'Pulihkan',
+            tone: 'danger',
+        });
+        if (confirmed) {
             // Create a Blob from the JSON string
             const jsonString = JSON.stringify(entry.data);
             const blob = new Blob([jsonString], { type: 'application/json' });
@@ -283,13 +290,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     };
 
     const menuItems = [
-        { id: 'appearance', label: 'Appearance', icon: <Monitor className="w-5 h-5" />, desc: 'Theme, UI options' },
-        { id: 'behavior', label: 'Behavior', icon: <Smartphone className="w-5 h-5" />, desc: 'Prompts, defaults' },
-        { id: 'notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" />, desc: 'Alerts, reminders' },
-        { id: 'budget', label: 'Budget', icon: <PieChart className="w-5 h-5" />, desc: 'Income, categories' },
-        { id: 'data', label: 'Data', icon: <Database className="w-5 h-5" />, desc: 'Export, import, reset' },
-        { id: 'connect', label: 'Connect', icon: <Layout className="w-5 h-5" />, desc: 'Google Sheets, Gemini, APIs' },
-        { id: 'changelog', label: 'Changelog', icon: <History className="w-5 h-5" />, desc: 'Recent updates' },
+        { id: 'appearance', label: 'Tampilan', icon: <Monitor className="w-5 h-5" />, desc: 'Tema dan tampilan kartu' },
+        { id: 'behavior', label: 'Perilaku', icon: <Smartphone className="w-5 h-5" />, desc: 'Review AI dan kebiasaan aplikasi' },
+        { id: 'notifications', label: 'Notifikasi', icon: <Bell className="w-5 h-5" />, desc: 'Pengingat dan jenis pemberitahuan' },
+        { id: 'budget', label: 'Anggaran', icon: <PieChart className="w-5 h-5" />, desc: 'Pendapatan dan kategori budget' },
+        { id: 'connect', label: 'Koneksi', icon: <Layout className="w-5 h-5" />, desc: 'Google Sheets dan Calendar' },
+        { id: 'data', label: 'Data & cadangan', icon: <Database className="w-5 h-5" />, desc: 'Sinkronisasi, ekspor, dan pemulihan' },
+        { id: 'security', label: 'Keamanan', icon: <Shield className="w-5 h-5" />, desc: 'Kunci dan privasi nilai uang' },
+        { id: 'advanced', label: 'Lanjutan', icon: <Wrench className="w-5 h-5" />, desc: 'Model AI dan alat diagnostik' },
     ];
 
     return (
@@ -330,7 +338,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         </button>
                                     )}
                                     <h2 className="text-2xl font-bold tracking-tight text-primary">
-                                        {activeTab === 'main' ? 'Control Center' : menuItems.find(m => m.id === activeTab)?.label}
+                                        {activeTab === 'main' ? 'Pengaturan' : menuItems.find(m => m.id === activeTab)?.label}
                                     </h2>
                                 </div>
                                 <div className="flex gap-2">
@@ -389,8 +397,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         >
                                             <Settings className="w-5 h-5 shrink-0" />
                                             <span>
-                                                <span className="block text-sm font-bold">Overview</span>
-                                                <span className={`block text-xs ${activeTab === 'main' ? 'text-background/70' : 'text-muted/80'}`}>Sync, theme, sections</span>
+                                                <span className="block text-sm font-bold">Ringkasan</span>
+                                                <span className={`block text-xs ${activeTab === 'main' ? 'text-background/70' : 'text-muted/80'}`}>Status, tema, dan bagian pengaturan</span>
                                             </span>
                                         </button>
                                         <div className="my-2 h-px bg-border" />
@@ -453,7 +461,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         )}
                                                         <div className="flex flex-col gap-1">
-                                                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">System Status</span>
+                                                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Status sistem</span>
                                                             {renderSyncStatus()}
                                                         </div>
                                                     </div>
@@ -556,7 +564,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {activeTab === 'appearance' && (
                                         <div className={contentSurface.desktopSettingsGrid}>
                                             <section>
-                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Theme</h3>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Tema</h3>
                                                 <div className="grid grid-cols-3 gap-3">
                                                     <button
                                                         onClick={() => {
@@ -606,57 +614,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 </div>
                                             </section>
 
-                                            <section>
-                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Security</h3>
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-red-500/10 rounded-xl text-red-500">
-                                                                <Lock className="w-5 h-5" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-medium text-primary text-sm">Lock Money Tab</div>
-                                                                <div className="text-xs text-muted">Require password before opening Money, Wallet, Budget, and Transactions on this device</div>
-                                                            </div>
-                                                        </div>
-                                                        <label className={`relative inline-flex items-center ${securityToggleBusy === 'lockTabTransaction' ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
-                                                            <input
-                                                                type="checkbox"
-                                                                className="sr-only peer"
-                                                                disabled={securityToggleBusy === 'lockTabTransaction'}
-                                                                checked={securitySettings.lockTabTransaction}
-                                                                onChange={(e) => handleSecurityToggle('lockTabTransaction', e.target.checked)}
-                                                            />
-                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
-                                                        </label>
-                                                    </div>
-
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-amber-500/10 rounded-xl text-amber-500">
-                                                                <Shield className="w-5 h-5" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-medium text-primary text-sm">Force to Hide Money Value</div>
-                                                                <div className="text-xs text-muted">Always mask balances and money values on this device</div>
-                                                            </div>
-                                                        </div>
-                                                        <label className={`relative inline-flex items-center ${securityToggleBusy === 'forceHideMoneyValue' ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
-                                                            <input
-                                                                type="checkbox"
-                                                                className="sr-only peer"
-                                                                disabled={securityToggleBusy === 'forceHideMoneyValue'}
-                                                                checked={securitySettings.forceHideMoneyValue}
-                                                                onChange={(e) => handleSecurityToggle('forceHideMoneyValue', e.target.checked)}
-                                                            />
-                                                            <div className="relative w-11 h-6 overflow-hidden rounded-full bg-muted/30 peer-focus:outline-none peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-[18px]"></div>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </section>
 
                                             <section>
-                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Interface</h3>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Tampilan aplikasi</h3>
                                                 <div className="space-y-3">
                                                     <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
                                                         <div className="flex items-center gap-3">
@@ -664,8 +624,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <EyeOff className="w-5 h-5" />
                                                             </div>
                                                             <div>
-                                                                <div className="font-medium text-primary text-sm">Hide Money Values</div>
-                                                                <div className="text-xs text-muted">Obfuscate amounts by default</div>
+                                                                <div className="font-medium text-primary text-sm">Sembunyikan nilai uang</div>
+                                                                <div className="text-xs text-muted">Mask nominal secara default</div>
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
@@ -685,8 +645,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <Sparkles className="w-5 h-5" />
                                                             </div>
                                                             <div>
-                                                                <div className="font-medium text-primary text-sm">Daily AI Insights</div>
-                                                                <div className="text-xs text-muted">Automatically generate insights daily</div>
+                                                                <div className="font-medium text-primary text-sm">Insight AI harian</div>
+                                                                <div className="text-xs text-muted">Buat insight harian secara otomatis</div>
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
@@ -706,8 +666,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <Layout className="w-5 h-5" />
                                                             </div>
                                                             <div>
-                                                                <div className="font-medium text-primary text-sm">Compact Cards</div>
-                                                                <div className="text-xs text-muted">Start with items collapsed</div>
+                                                                <div className="font-medium text-primary text-sm">Kartu ringkas</div>
+                                                                <div className="text-xs text-muted">Tampilkan entry dalam keadaan tertutup</div>
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
@@ -725,13 +685,53 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         </div>
                                     )}
 
+                                    {/* SECURITY TAB */}
+                                    {activeTab === 'security' && (
+                                        <div className={contentSurface.desktopSettingsGrid}>
+                                            <section className={contentSurface.desktopSettingsWide}>
+                                                <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Keamanan perangkat</h3>
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="rounded-xl bg-red-500/10 p-2 text-red-500"><Lock className="h-5 w-5" /></div>
+                                                            <div>
+                                                                <div className="text-sm font-medium text-primary">Kunci tab Money</div>
+                                                                <div className="text-xs text-muted">Minta password sebelum membuka wallet, budget, dan transaksi pada perangkat ini.</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className={`relative inline-flex items-center ${securityToggleBusy === 'lockTabTransaction' ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
+                                                            <input type="checkbox" className="sr-only peer" disabled={securityToggleBusy === 'lockTabTransaction'} checked={securitySettings.lockTabTransaction} onChange={(e) => handleSecurityToggle('lockTabTransaction', e.target.checked)} />
+                                                            <div className="relative h-6 w-11 overflow-hidden rounded-full bg-muted/30 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
+                                                    <div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="rounded-xl bg-amber-500/10 p-2 text-amber-500"><Shield className="h-5 w-5" /></div>
+                                                            <div>
+                                                                <div className="text-sm font-medium text-primary">Selalu sembunyikan nilai uang</div>
+                                                                <div className="text-xs text-muted">Mask saldo dan nominal pada perangkat ini, terlepas dari pengaturan tampilan umum.</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className={`relative inline-flex items-center ${securityToggleBusy === 'forceHideMoneyValue' ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
+                                                            <input type="checkbox" className="sr-only peer" disabled={securityToggleBusy === 'forceHideMoneyValue'} checked={securitySettings.forceHideMoneyValue} onChange={(e) => handleSecurityToggle('forceHideMoneyValue', e.target.checked)} />
+                                                            <div className="relative h-6 w-11 overflow-hidden rounded-full bg-muted/30 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 text-xs leading-relaxed text-muted">
+                                                        Password keamanan disimpan melalui konfigurasi yang terhubung, sedangkan status kunci berlaku hanya pada perangkat ini.
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        </div>
+                                    )}
+
                                     {/* BEHAVIOR TAB */}
                                     {activeTab === 'behavior' && (
                                         <div className={contentSurface.desktopSettingsGrid}>
                                             <section>
-                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Parsing Mode</h3>
+                                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Alur input AI</h3>
                                                 <div className="flex flex-col gap-3">
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="hidden items-center justify-between p-4 bg-background border border-border rounded-2xl">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
                                                                 <Sparkles className="w-5 h-5" />
@@ -758,8 +758,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <CheckSquare className="w-5 h-5" />
                                                             </div>
                                                             <div>
-                                                                <div className="font-medium text-primary text-sm">Enable AI Draft Review</div>
-                                                                <div className="text-xs text-muted">Review AI parsing results before saving</div>
+                                                                <div className="font-medium text-primary text-sm">Tinjau draft AI sebelum disimpan</div>
+                                                                <div className="text-xs text-muted">Jika aktif, hasil parsing chat dan nota menunggu persetujuan di Review Center.</div>
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
@@ -774,7 +774,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     </div>
                                                 </div>
                                             </section>
-                                            <section className={contentSurface.desktopSettingsWide}>
+                                            <section className={`${contentSurface.desktopSettingsWide} hidden`}>
                                                 <div className="flex items-center justify-between mb-3">
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider ml-1">System Prompt</h3>
                                                     <button 
@@ -803,7 +803,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     />
                                                 </div>
                                             </section>
-                                            <section>
+                                            <section className="hidden">
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">AI Models</h3>
                                                 <div className="bg-background border border-border rounded-2xl p-4 space-y-4">
                                                     <div>
@@ -862,6 +862,115 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         </div>
                                     )}
 
+                                    {/* ADVANCED TAB */}
+                                    {activeTab === 'advanced' && (
+                                        <div className={contentSurface.desktopSettingsGrid}>
+                                            <section>
+                                                <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Mesin parsing</h3>
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-500"><Sparkles className="h-5 w-5" /></div>
+                                                            <div>
+                                                                <div className="text-sm font-medium text-primary">Pro parsing mode</div>
+                                                                <div className="text-xs text-muted">Gunakan parsing bertahap untuk input yang lebih kompleks.</div>
+                                                            </div>
+                                                        </div>
+                                                        <label className="relative inline-flex cursor-pointer items-center">
+                                                            <input type="checkbox" className="sr-only peer" checked={localAppSettings.useProParser ?? false} onChange={(e) => setLocalAppSettings({ ...localAppSettings, useProParser: e.target.checked })} />
+                                                            <div className="relative h-6 w-11 overflow-hidden rounded-full bg-muted/30 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-[18px]"></div>
+                                                        </label>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs leading-relaxed text-muted">
+                                                        Pengaturan di halaman ini ditujukan untuk diagnosis dan eksperimen. Pengguna umum tidak perlu mengubahnya.
+                                                    </div>
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Model AI</h3>
+                                                <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                                                    {[
+                                                        ['Parser input', 'parsingModel'],
+                                                        ['Chat AI', 'chatModel'],
+                                                        ['Insight', 'insightModel'],
+                                                    ].map(([label, key]) => (
+                                                        <label key={key} className="block">
+                                                            <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
+                                                            <select
+                                                                className="w-full rounded-xl border border-border bg-surface p-3 text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                                                                value={(localAppSettings as any)[key] || 'gemini-3-flash-preview'}
+                                                                onChange={(e) => setLocalAppSettings({ ...localAppSettings, [key]: e.target.value })}
+                                                            >
+                                                                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                                                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                                                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                                                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                                                <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
+                                                                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
+                                                            </select>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </section>
+
+                                            <section className={contentSurface.desktopSettingsWide}>
+                                                <div className="mb-3 flex items-center justify-between">
+                                                    <h3 className="ml-1 text-xs font-bold uppercase tracking-wider text-muted">Instruksi parser</h3>
+                                                    <button type="button" onClick={() => setPrompt(DEFAULT_PROMPT)} disabled={prompt === DEFAULT_PROMPT} className="text-[10px] font-bold text-indigo-500 disabled:opacity-40">Pulihkan default</button>
+                                                </div>
+                                                <textarea
+                                                    className="h-72 w-full resize-y rounded-2xl border border-border bg-background p-4 font-mono text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                                                    value={prompt}
+                                                    onChange={(e) => setPrompt(e.target.value)}
+                                                    placeholder="Instruksi khusus untuk parser..."
+                                                />
+                                            </section>
+
+                                            <section>
+                                                <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Kesehatan parser</h3>
+                                                <div className="rounded-2xl border border-border bg-background p-4 space-y-3" data-testid="parser-health-card">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div>
+                                                            <div className="text-sm font-bold text-primary">Aktivitas terbaru</div>
+                                                            <div className="text-xs text-muted">Ringkasan performa parsing, bukan pengaturan harian.</div>
+                                                        </div>
+                                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${parserHealthToneClass}`}>{parserHealth.healthTone === 'empty' ? 'belum ada data' : parserHealth.healthTone}</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.fastPathRate}%</div><div className="text-[10px] text-muted">jalur cepat</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.aiCallCount}</div><div className="text-[10px] text-muted">panggilan AI</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.averageLatencyMs === null ? '—' : `${parserHealth.averageLatencyMs}ms`}</div><div className="text-[10px] text-muted">latensi rata-rata</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.reviewRate}%</div><div className="text-[10px] text-muted">perlu review</div></div>
+                                                    </div>
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Kualitas data</h3>
+                                                <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                                                    <div className="grid grid-cols-2 gap-2 text-center">
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{canonicalizedItemCount}</div><div className="text-[10px] text-muted">entry dinormalisasi</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{canonicalRuleStats.activeLearned}</div><div className="text-[10px] text-muted">aturan aktif</div></div>
+                                                    </div>
+                                                    {onRunCanonicalBackfill && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const result = onRunCanonicalBackfill();
+                                                                setCanonicalBackfillSummary(`${result.autoAppliedCount} perubahan diterapkan dan ${result.reviewSuggestionCount} saran dikirim ke Review Center.`);
+                                                            }}
+                                                            className="w-full rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-background hover:opacity-90"
+                                                        >
+                                                            Periksa ulang data lama
+                                                        </button>
+                                                    )}
+                                                    {canonicalBackfillSummary && <p className="text-xs leading-relaxed text-muted">{canonicalBackfillSummary}</p>}
+                                                </div>
+                                            </section>
+                                        </div>
+                                    )}
+
                                     {/* NOTIFICATIONS TAB */}
                                     {activeTab === 'notifications' && (
                                         <div className={contentSurface.desktopSettingsGrid}>
@@ -882,9 +991,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                             const { requestNotificationPermission } = await import('../utils/notificationHandler');
                                                                             const granted = await requestNotificationPermission();
                                                                             if (granted) {
-                                                                                alert('Permission granted!');
+                                                                                notifyUser('Izin notifikasi diberikan.', 'success');
                                                                             } else {
-                                                                                alert('Permission denied or not supported.');
+                                                                                notifyUser('Izin notifikasi ditolak atau tidak didukung.', 'error');
                                                                             }
                                                                         }}
                                                                         className="px-3 py-1.5 bg-indigo-500 text-white text-xs font-medium rounded-lg hover:bg-indigo-600 transition-colors"
@@ -1127,7 +1236,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             </section>
 
                                             {onRunCanonicalBackfill && (
-                                                <section className={contentSurface.desktopSettingsWide}>
+                                                <section className={`${contentSurface.desktopSettingsWide} hidden`}>
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Parser Health</h3>
                                                     <div className="bg-background border border-border rounded-2xl p-4 space-y-3 mb-4" data-testid="parser-health-card">
                                                         <div className="flex items-start gap-3">
@@ -1276,11 +1385,16 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Database History</h3>
                                                         <div className="flex items-center gap-3">
                                                             <button 
-                                                                onClick={() => {
-                                                                    if (window.confirm('Create a new backup version now?')) {
-                                                                        onSyncClick(true);
-                                                                        setTimeout(fetchHistory, 2000);
-                                                                    }
+                                                                onClick={async () => {
+                                                                    const confirmed = await requestUserConfirmation({
+                                                                        title: 'Buat cadangan sekarang?',
+                                                                        message: 'Arkaiv akan menyimpan versi database saat ini ke riwayat Google Sheets.',
+                                                                        confirmLabel: 'Buat cadangan',
+                                                                        tone: 'primary',
+                                                                    });
+                                                                    if (!confirmed) return;
+                                                                    onSyncClick(true);
+                                                                    setTimeout(fetchHistory, 2000);
                                                                 }}
                                                                 className="text-xs text-emerald-500 hover:text-emerald-400 flex items-center gap-1"
                                                             >
@@ -1357,10 +1471,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </div>
                                                     </div>
                                                     <button 
-                                                        onClick={() => {
-                                                            if (window.confirm('Are you absolutely sure? This will wipe all your data.')) {
-                                                                onClearData();
-                                                            }
+                                                        onClick={async () => {
+                                                            const confirmed = await requestUserConfirmation({
+                                                                title: 'Hapus seluruh data?',
+                                                                message: 'Semua entry, wallet, dan pengaturan akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',
+                                                                confirmLabel: 'Hapus seluruh data',
+                                                                tone: 'danger',
+                                                            });
+                                                            if (confirmed) onClearData();
                                                         }}
                                                         className="w-full py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-colors shadow-sm"
                                                     >
@@ -1478,7 +1596,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                     if (!spreadsheetLink) return;
                                                                     const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
                                                                     if (!match) {
-                                                                        alert("Invalid link");
+                                                                        notifyUser('Link tidak valid.', 'error');
                                                                         return;
                                                                     }
                                                                     handleConnectSpreadsheet(); 

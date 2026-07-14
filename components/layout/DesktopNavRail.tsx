@@ -51,46 +51,46 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
   const statusConfig = {
     synced: {
       icon: CloudCheck,
-      label: 'Saved',
-      helper: 'Click to refresh from Sheets',
+      label: 'Tersinkron',
+      helper: 'Data lokal dan Google Sheets sudah sama',
       color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
       onClick: onRefreshClick,
     },
     syncing: {
       icon: RefreshCw,
-      label: 'Fetching...',
-      helper: 'Sync in progress',
+      label: 'Mengambil data',
+      helper: 'Sinkronisasi sedang berjalan',
       color: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
       onClick: undefined,
     },
     saving: {
       icon: Save,
-      label: saveProgress?.label || 'Saving...',
-      helper: saveProgress?.detail || 'Writing changes',
+      label: saveProgress?.label || 'Menyimpan',
+      helper: saveProgress?.detail || 'Menyimpan perubahan',
       color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
       onClick: undefined,
     },
     error: {
       icon: CloudOff,
-      label: 'Sync failed',
-      helper: 'Click to retry',
+      label: 'Sinkronisasi gagal',
+      helper: 'Klik untuk mencoba lagi',
       color: 'text-red-500 bg-red-500/10 border-red-500/20',
       onClick: onSyncClick,
     },
     local: {
       icon: Save,
-      label: 'Local changes',
-      helper: 'Click to sync',
+      label: 'Tersimpan lokal',
+      helper: 'Perubahan menunggu sinkronisasi',
       color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
       onClick: onSyncClick,
     },
   }[activeStatus];
 
   const StatusIcon = statusConfig.icon;
-  const syncActionLabel = activeStatus === 'error' ? 'Retry sync' : activeStatus === 'local' ? 'Sync now' : 'Manual sync';
+  const syncActionLabel = activeStatus === 'error' ? 'Coba lagi' : activeStatus === 'local' ? 'Sinkronkan' : 'Sinkron manual';
   const queueTooltip = reviewQueueCount > 0 || pendingCount > 0
-    ? `${reviewQueueCount} waiting for review · ${pendingCount} pending write${pendingCount === 1 ? '' : 's'}`
-    : 'Review queue clear · no pending writes';
+    ? `${reviewQueueCount} menunggu tinjauan · ${pendingCount} perubahan menunggu simpan`
+    : 'Tidak ada review atau perubahan tertunda';
   const syncTooltip = `${statusConfig.label} — ${statusConfig.helper}`;
 
   const StatusSquare = ({
@@ -153,14 +153,10 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
 
             return (
               <button
-                key={`${item.id}-${item.subTab || 'main'}`}
+                key={item.id}
                 type="button"
                 onClick={() => {
                   setActiveTab(item.id);
-                  if (item.subTab) {
-                    if (item.id === 'plan') setPlanSubTab(item.subTab as PlanSubTab);
-                    if (item.id === 'library') setLibrarySubTab(item.subTab as LibrarySubTab);
-                  }
                 }}
                 className={[
                   'group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-all duration-200',
@@ -195,7 +191,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
             <div className="mb-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-red-500">
               <div className="mb-1 flex items-center gap-2 text-sm font-bold">
                 <AlertTriangle className="h-4 w-4" />
-                Sync needs attention
+                Sinkronisasi perlu perhatian
               </div>
               <p className="text-xs leading-relaxed">{error}</p>
             </div>
@@ -211,7 +207,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
             />
 
             <StatusSquare
-              label="Review + writes"
+              label="Review & proses"
               description={queueTooltip}
               onClick={onOpenReviewCenter}
               className="border-indigo-500/20 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/15"
@@ -231,8 +227,8 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
             />
 
             <StatusSquare
-              label="Refresh"
-              description="Pull the latest data from Sheets"
+              label="Muat ulang"
+              description="Ambil data terbaru dari Google Sheets"
               onClick={onRefreshClick}
               className="border-border bg-surface/80 text-primary hover:bg-background"
               icon={<RefreshCw className="h-5 w-5" />}
@@ -240,7 +236,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
 
             <StatusSquare
               label={syncActionLabel}
-              description={activeStatus === 'error' ? 'Retry the failed sync' : activeStatus === 'local' ? 'Push local changes to Sheets' : 'Run a manual sync'}
+              description={activeStatus === 'error' ? 'Ulangi sinkronisasi yang gagal' : activeStatus === 'local' ? 'Kirim perubahan lokal ke Google Sheets' : 'Jalankan sinkronisasi manual'}
               onClick={onSyncClick}
               className="border-border bg-surface/80 text-primary hover:bg-background"
               icon={<Save className="h-5 w-5" />}
@@ -253,7 +249,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
           onClick={onSettingsClick}
           className="flex w-full items-center justify-between rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-muted/10"
         >
-          Control Center
+          Pengaturan
           <Settings className="h-5 w-5 text-muted" />
         </button>
       </div>

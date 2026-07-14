@@ -44,6 +44,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
     const [monthsOfYear, setMonthsOfYear] = useState<number[]>([]);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [priority, setPriority] = useState<Priority>('normal');
+    const [formError, setFormError] = useState('');
 
     // Helper to calculate next due date based on schedule
     const calculateNextDate = (
@@ -143,19 +144,23 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
     };
 
     const handleSave = () => {
-        if (!content.trim()) return;
+        setFormError('');
+        if (!content.trim()) {
+            setFormError('Nama routine harus diisi.');
+            return;
+        }
 
         // Validation: ensure at least one selection for non-daily
         if (interval === 'weekly' && daysOfWeek.length === 0) {
-            alert('Please select at least one day of the week.');
+            setFormError('Pilih minimal satu hari untuk jadwal mingguan.');
             return;
         }
         if (interval === 'monthly' && daysOfMonth.length === 0) {
-            alert('Please select at least one date of the month.');
+            setFormError('Pilih minimal satu tanggal untuk jadwal bulanan.');
             return;
         }
         if (interval === 'yearly' && monthsOfYear.length === 0) {
-            alert('Please select at least one month of the year.');
+            setFormError('Pilih minimal satu bulan untuk jadwal tahunan.');
             return;
         }
 
@@ -169,6 +174,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
         setMonthsOfYear([]);
         setDate(new Date().toISOString().split('T')[0]);
         setPriority('normal');
+        setFormError('');
         onClose();
     };
 
@@ -228,6 +234,11 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                     </div>
 
                     <div className={addItemModal.body}>
+                        {formError && (
+                            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-500">
+                                {formError}
+                            </div>
+                        )}
                         <div>
                             <label className={addItemModal.label}>Task Description</label>
                             <input
