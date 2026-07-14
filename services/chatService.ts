@@ -70,3 +70,55 @@ ${JSON.stringify(skills, null, 2)}
         return "Sorry, I encountered an error while processing your request.";
     }
 };
+
+const fileToBase64 = async (file: File): Promise<string> => {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const chunkSize = 0x8000;
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+    }
+    return btoa(binary);
+};
+
+export const analyzeImageForChat = async (
+    file: File,
+    question: string,
+    items: BrainDumpItem[],
+    budgetConfig: BudgetConfig,
+    wallets: Wallet[],
+    skills: Skill[],
+    monthlyThemes: Record<string, string>,
+    chatModel?: string,
+): Promise<string> => {
+    if (!file.type.startsWith('image/')) throw new Error('File harus berupa gambar.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('Ukuran gambar maksimal 10 MB.');
+    const apiKey = getGeminiKey();
+    const ai = createGeminiClient(apiKey);
+    if (!ai || !apiKey) throw new Error('Gemini API key belum dikonfigurasi.');
+
+    const activeModel = chatModel || DEFAULT_FLASH_MODEL;
+    const dataContext = {
+        recentItems: items.slice(-100).map(item => ({ type: item.type, content: item.content, status: item.status, meta: item.meta })),
+        budgetConfig,
+        wallets,
+        skills,
+        monthlyThemes,
+    };
+    const prompt = `${question.trim() || 'Jelaskan isi gambar ini dan hubungkan dengan konteks aplikasi bila relevan.'}\n\nKonteks data Arkaiv pengguna:\n${JSON.stringify(dataContext)}`;
+    const imageData = await fileToBase64(file);
+    const response = await withAiRetry(() => ai.models.generateContent({
+        model: activeModel,
+        contents: [{
+            role: 'user',
+            parts: [
+                { text: prompt },
+                { inlineData: { mimeType: file.type, data: imageData } },
+            ],
+        }],
+        config: {
+            temperature: 0.5,
+        },
+    }));
+    return response.text?.trim() || 'Tidak ada jawaban yang dapat dihasilkan dari gambar.';
+};

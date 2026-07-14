@@ -5,8 +5,6 @@ import {
   Check,
   Wallet,
   DollarSign,
-  Plus,
-  Trash2,
 } from 'lucide-react';
 import {
   BudgetConfig,
@@ -18,6 +16,7 @@ import {
 import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 import { sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
+import LineItemsEditor from './LineItemsEditor';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -47,13 +46,6 @@ const todayInputValue = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
-
-const createBlankLineItem = (): TransactionLineItem => ({
-  id: `manual-line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  name: '',
-  amount: 0,
-  kind: 'item',
-});
 
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   isOpen,
@@ -95,6 +87,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     [sanitizedLineItems],
   );
   const hasLineItems = transactionType === 'expense' && sanitizedLineItems.length > 0;
+  const needsDefaultCategory = transactionType !== 'expense' || transactionLineItems.length === 0 || transactionLineItems.some((line) =>
+    line.allocationMode !== 'proportional'
+    && line.allocationMode !== 'uncategorized'
+    && !line.budgetCategory
+  );
 
   const formatInvestmentInputNumber = (value: number) => {
     if (!Number.isFinite(value)) return '';
@@ -152,14 +149,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const handleClose = () => {
     resetForm();
     onClose();
-  };
-
-  const updateLineItem = (id: string, patch: Partial<TransactionLineItem>) => {
-    setTransactionLineItems((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
-  };
-
-  const removeLineItem = (id: string) => {
-    setTransactionLineItems((current) => current.filter((line) => line.id !== id));
   };
 
   const handleSave = () => {
@@ -232,7 +221,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           <div className={addItemModal.header}>
             <h3 className={addItemModal.title}>
               <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-indigo-500'}`} />
-              {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
+              {transactionType === 'expense' ? 'Pengeluaran' : transactionType === 'income' ? 'Pemasukan' : transactionType === 'transfer' ? 'Transfer' : 'Tabungan'}
             </h3>
             <button onClick={handleClose} className={addItemModal.closeButton}>
               <X className="w-5 h-5" />
@@ -254,7 +243,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </div>
 
             <div>
-              <label className={addItemModal.label}>{isInvestmentTarget ? 'Invested Capital' : 'Amount'}</label>
+              <label className={addItemModal.label}>{isInvestmentTarget ? 'Modal investasi' : 'Jumlah'}</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-bold">Rp</span>
                 <input
@@ -266,18 +255,18 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   className={`${addItemModal.titleInput} pl-12 ${hasLineItems ? 'opacity-70' : ''}`}
                 />
               </div>
-              {hasLineItems && <p className={addItemModal.helpText}>Total dihitung otomatis dari semua line item.</p>}
+              {hasLineItems && <p className={addItemModal.helpText}>Total dihitung otomatis dari seluruh rincian item.</p>}
             </div>
 
             {transactionType !== 'saving' && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className={transactionType === 'transfer' ? 'sm:col-span-2' : ''}>
-                  <label className={addItemModal.label}>Description</label>
+                  <label className={addItemModal.label}>Deskripsi</label>
                   <input
                     type="text"
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
-                    placeholder={transactionType === 'expense' ? 'Nama transaksi / ringkasan nota' : transactionType === 'income' ? 'Source of income?' : 'Description'}
+                    placeholder={transactionType === 'expense' ? 'Nama transaksi' : transactionType === 'income' ? 'Sumber pemasukan' : 'Deskripsi'}
                     className={addItemModal.input}
                   />
                 </div>
@@ -288,7 +277,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       type="text"
                       value={merchant}
                       onChange={(event) => setMerchant(event.target.value)}
-                      placeholder="Optional"
+                      placeholder="Opsional"
                       className={addItemModal.input}
                     />
                   </div>
@@ -297,86 +286,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             )}
 
             {transactionType === 'expense' && (
-              <section className={addItemModal.sectionPanel}>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className={addItemModal.sectionTitle}>Line items</div>
-                    <p className="text-xs text-muted -mt-2">Satu nota tetap satu transaksi. Kategori budget dapat berbeda per item.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setTransactionLineItems((current) => [...current, createBlankLineItem()])}
-                    className="rounded-xl border border-border px-3 py-2 text-xs font-bold flex items-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" /> Item
-                  </button>
-                </div>
-
-                {transactionLineItems.length === 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setTransactionLineItems([createBlankLineItem()])}
-                    className="w-full rounded-xl border border-dashed border-border py-4 text-sm text-muted"
-                  >
-                    Tambahkan line item manual
-                  </button>
-                ) : (
-                  <div className="space-y-3">
-                    {transactionLineItems.map((line, index) => (
-                      <div key={line.id} className="rounded-2xl border border-border p-3 space-y-3 bg-background/40">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-muted w-6">{index + 1}.</span>
-                          <input
-                            value={line.name}
-                            onChange={(event) => updateLineItem(line.id, { name: event.target.value })}
-                            placeholder="Nama item"
-                            className={`${addItemModal.smallInput} flex-1`}
-                          />
-                          <button type="button" onClick={() => removeLineItem(line.id)} className="p-2 text-red-500">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          <input
-                            value={line.quantity || ''}
-                            onChange={(event) => updateLineItem(line.id, { quantity: event.target.value || undefined })}
-                            placeholder="Qty"
-                            className={addItemModal.smallInput}
-                          />
-                          <input
-                            type="number"
-                            value={line.unitPrice ?? ''}
-                            onChange={(event) => updateLineItem(line.id, { unitPrice: event.target.value ? Number(event.target.value) : undefined })}
-                            placeholder="Harga/unit"
-                            className={addItemModal.smallInput}
-                          />
-                          <input
-                            type="number"
-                            value={line.amount || ''}
-                            onChange={(event) => updateLineItem(line.id, { amount: Number(event.target.value) || 0 })}
-                            placeholder="Total item"
-                            className={addItemModal.smallInput}
-                          />
-                          <select
-                            value={line.budgetCategory || ''}
-                            onChange={(event) => updateLineItem(line.id, { budgetCategory: event.target.value || undefined })}
-                            className={addItemModal.smallInput}
-                          >
-                            <option value="">Pakai default</option>
-                            {budgetConfig.rules?.map((rule) => (
-                              <option key={rule.id} value={rule.id}>{rule.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between text-sm font-bold">
-                      <span>Total line items</span>
-                      <span>Rp {lineItemsTotal.toLocaleString('id-ID')}</span>
-                    </div>
-                  </div>
-                )}
-              </section>
+              <LineItemsEditor
+                variant="transaction"
+                value={transactionLineItems}
+                onChange={setTransactionLineItems}
+                budgetRules={budgetConfig.rules || []}
+                defaultBudgetCategory={category || undefined}
+                title="Rincian transaksi"
+                helpText="Satu transaksi dapat memakai beberapa kategori budget. Total dihitung otomatis."
+              />
             )}
 
             <div className="grid grid-cols-2 gap-4">
@@ -423,7 +341,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       </div>
                     ) : (
                       <select value={walletId} onChange={(event) => setWalletId(event.target.value)} className={addItemModal.select}>
-                        <option value="">Select Wallet</option>
+                        <option value="">Pilih wallet</option>
                         {wallets.filter((wallet) => wallet.id !== selectedSavingGoal?.meta.dedicatedWalletId).map((wallet) => (
                           <option key={wallet.id} value={wallet.id}>{wallet.name}</option>
                         ))}
@@ -466,7 +384,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   <div>
                     <label className={addItemModal.label}>{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
                     <select value={walletId} onChange={(event) => setWalletId(event.target.value)} className={addItemModal.select}>
-                      <option value="">Select Wallet</option>
+                      <option value="">Pilih wallet</option>
                       {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                     </select>
                   </div>
@@ -474,26 +392,26 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     <div>
                       <label className={addItemModal.label}>To</label>
                       <select value={toWalletId} onChange={(event) => setToWalletId(event.target.value)} className={addItemModal.select}>
-                        <option value="">Select Wallet</option>
+                        <option value="">Pilih wallet</option>
                         {wallets.filter((wallet) => wallet.id !== walletId).map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                       </select>
                     </div>
-                  ) : (
+                  ) : needsDefaultCategory ? (
                     <div>
-                      <label className={addItemModal.label}>{transactionType === 'expense' ? 'Default category' : 'Category'}</label>
+                      <label className={addItemModal.label}>{transactionType === 'expense' ? 'Kategori default' : 'Kategori'}</label>
                       <select value={category} onChange={(event) => setCategory(event.target.value)} className={addItemModal.select}>
-                        <option value="">Uncategorized</option>
+                        <option value="">Tanpa kategori</option>
                         {budgetConfig.rules?.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}
                       </select>
-                      {transactionType === 'expense' && <p className={addItemModal.helpText}>Dipakai hanya untuk line item yang belum punya kategori sendiri.</p>}
+                      {transactionType === 'expense' && <p className={addItemModal.helpText}>Dipakai hanya untuk item yang memilih kategori default.</p>}
                     </div>
-                  )}
+                  ) : null}
                 </>
               )}
             </div>
 
             <div>
-              <label className={addItemModal.label}>Date</label>
+              <label className={addItemModal.label}>Tanggal</label>
               <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className={addItemModal.input} />
             </div>
           </div>
@@ -501,7 +419,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           <div className={addItemModal.footer}>
             <button onClick={handleSave} disabled={!canSave} className={addItemModal.primaryButton}>
               <Check className="w-5 h-5" />
-              Save {transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}
+              Save {transactionType === 'expense' ? 'Pengeluaran' : transactionType === 'income' ? 'Pemasukan' : transactionType === 'transfer' ? 'Transfer' : 'Tabungan'}
             </button>
           </div>
         </motion.div>

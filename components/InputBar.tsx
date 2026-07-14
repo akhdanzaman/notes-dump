@@ -14,10 +14,10 @@ import {
   ImagePlus,
   X,
 } from 'lucide-react';
-import { SyncProgress, SyncStatus } from '../types';
+import { ImageAttachmentMode, ReceiptProcessingStage, SyncProgress, SyncStatus } from '../types';
 
 interface InputBarProps {
-  onSend: (text: string, image?: File) => void | Promise<void>;
+  onSend: (text: string, image?: File, options?: { imageMode: ImageAttachmentMode }) => void | Promise<void>;
   onFocus?: () => void;
   onBlur?: () => void;
   startAction?: ReactNode;
@@ -33,6 +33,7 @@ interface InputBarProps {
   reviewCenterCount?: number;
   onOpenReviewCenter?: () => void;
   error?: string | null;
+  receiptStage?: ReceiptProcessingStage | null;
 }
 
 const SUGGESTIONS = [
@@ -44,6 +45,20 @@ const SUGGESTIONS = [
   { label: 'Notes', value: 'notes:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
   { label: 'Journal', value: 'Journal:', icon: <BookText className="w-3 h-3 text-fuchsia-400" /> },
 ];
+
+const RECEIPT_SUGGESTIONS = [
+  { label: 'Pilih wallet', value: 'wallet:', icon: <TrendingDown className="w-3 h-3 text-indigo-400" /> },
+  { label: 'Atur tanggal', value: 'tanggal:', icon: <ClipboardCheck className="w-3 h-3 text-emerald-400" /> },
+  { label: 'Tambah catatan', value: 'catatan:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
+];
+
+const RECEIPT_STAGE_LABELS: Record<ReceiptProcessingStage, string> = {
+  uploading: 'Menyiapkan gambar',
+  reading: 'Membaca nota',
+  categorizing: 'Mengelompokkan item',
+  ready: 'Siap ditinjau',
+};
+
 
 const InputBar: React.FC<InputBarProps> = ({
   onSend,
@@ -62,10 +77,12 @@ const InputBar: React.FC<InputBarProps> = ({
   reviewCenterCount,
   onOpenReviewCenter,
   error,
+  receiptStage,
 }) => {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [image, setImage] = useState<File | null>(null);
+  const [imageMode, setImageMode] = useState<ImageAttachmentMode>('receipt');
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [imageError, setImageError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +113,7 @@ const InputBar: React.FC<InputBarProps> = ({
     setIsSubmitting(true);
     setImageError('');
     try {
-      await onSend(input.trim(), image || undefined);
+      await onSend(input.trim(), image || undefined, image ? { imageMode } : undefined);
       setInput('');
       setImage(null);
       if (imageInputRef.current) imageInputRef.current.value = '';
@@ -148,11 +165,13 @@ const InputBar: React.FC<InputBarProps> = ({
       return;
     }
     setImage(file);
+    setImageMode('receipt');
     textareaRef.current?.focus();
   };
 
   const removeImage = () => {
     setImage(null);
+    setImageMode('receipt');
     setImageError('');
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
@@ -201,7 +220,7 @@ const InputBar: React.FC<InputBarProps> = ({
 
                 {showSuggestions && (
                   <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1 pointer-events-auto">
-                    {SUGGESTIONS.map((item) => (
+                    {(image && imageMode === 'receipt' ? RECEIPT_SUGGESTIONS : SUGGESTIONS).map((item) => (
                       <button
                         key={item.label}
                         onMouseDown={(e) => {
@@ -281,24 +300,53 @@ const InputBar: React.FC<InputBarProps> = ({
 
           <div data-composer-surface="true" className="relative bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden pointer-events-auto">
             {image && (
-              <div className="flex items-center gap-3 px-4 pt-3">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-background/60">
-                  {imagePreviewUrl && <img src={imagePreviewUrl} alt="Lampiran nota" className="h-full w-full object-cover" />}
+              <div className="space-y-2 px-4 pt-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-background/60">
+                    {imagePreviewUrl && <img src={imagePreviewUrl} alt="Lampiran gambar" className="h-full w-full object-cover" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-500">
+                        {imageMode === 'receipt' ? 'Nota' : 'Gambar chat'}
+                      </span>
+                      {receiptStage && imageMode === 'receipt' && (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-amber-500">
+                          <Loader2 className="h-3 w-3 animate-spin" /> {RECEIPT_STAGE_LABELS[receiptStage]}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 truncate text-xs font-bold text-primary">{image.name}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    disabled={isSubmitting}
+                    className="rounded-full p-2 text-muted hover:bg-black/5 hover:text-red-500 dark:hover:bg-white/10 disabled:opacity-50"
+                    title="Hapus gambar"
+                    aria-label="Hapus gambar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-xs font-bold text-primary">{image.name}</div>
-                  <div className="mt-0.5 text-[10px] text-muted">Gambar akan dibaca sebagai nota atau invoice.</div>
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-background/50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('receipt')}
+                    disabled={isSubmitting}
+                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors ${imageMode === 'receipt' ? 'bg-indigo-500 text-white' : 'text-muted hover:text-primary'}`}
+                  >
+                    Scan nota
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('chat')}
+                    disabled={isSubmitting}
+                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors ${imageMode === 'chat' ? 'bg-indigo-500 text-white' : 'text-muted hover:text-primary'}`}
+                  >
+                    Tanya tentang gambar
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  disabled={isSubmitting}
-                  className="rounded-full p-2 text-muted hover:bg-black/5 hover:text-red-500 dark:hover:bg-white/10 disabled:opacity-50"
-                  title="Hapus gambar"
-                  aria-label="Hapus gambar"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
             )}
 
@@ -340,7 +388,7 @@ const InputBar: React.FC<InputBarProps> = ({
                 onKeyDown={handleKeyDown}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
-                placeholder={image ? 'Tambahkan wallet, tanggal, atau info lain...' : (isChatOpen ? 'Ask a follow-up question...' : 'Dump your brain here...')}
+                placeholder={image ? (imageMode === 'receipt' ? 'Tambahkan wallet, tanggal, atau catatan...' : 'Tanyakan sesuatu tentang gambar...') : (isChatOpen ? 'Tanyakan lanjutan...' : 'Tulis apa saja di sini...')}
                 className="flex-1 bg-transparent py-4 text-primary placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
                 rows={1}
               />
@@ -350,9 +398,14 @@ const InputBar: React.FC<InputBarProps> = ({
                 onClick={() => void handleSubmit()}
                 disabled={(!input.trim() && !image) || isSubmitting}
                 className="p-4 mb-0.5 text-muted hover:text-indigo-500 disabled:opacity-30 transition-colors"
-                title={image ? 'Ekstrak dan simpan transaksi' : 'Kirim'}
+                title={image ? (imageMode === 'receipt' ? 'Tinjau nota' : 'Tanyakan tentang gambar') : 'Kirim'}
               >
-                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <SendHorizonal className="w-5 h-5" />}
+                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                  <span className="flex items-center gap-1.5">
+                    {image && <span className="hidden text-[10px] font-bold sm:inline">{imageMode === 'receipt' ? 'Tinjau' : 'Tanya'}</span>}
+                    <SendHorizonal className="w-5 h-5" />
+                  </span>
+                )}
               </button>
             </div>
           </div>

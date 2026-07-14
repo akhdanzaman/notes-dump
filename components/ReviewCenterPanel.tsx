@@ -1,10 +1,15 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, RefreshCw, RotateCcw, Trash2, X } from 'lucide-react';
 import PendingReviewList from './PendingReviewList';
+import ReceiptReviewCard from './ReceiptReviewCard';
 import {
   ParserResultV2,
   ParsingTask,
   EnrichmentTask,
+  ReceiptReviewDraft,
+  Wallet,
+  BudgetRule,
+  BrainDumpItem,
 } from '../types';
 import {
   getParserResultDetails,
@@ -18,6 +23,14 @@ interface ReviewCenterPanelProps {
   parsingTasks?: ParsingTask[];
   enrichmentTasks?: EnrichmentTask[];
   pendingReviews?: { id: string; text: string; results: ParserResultV2[] }[];
+  receiptReviews?: ReceiptReviewDraft[];
+  wallets?: Wallet[];
+  budgetRules?: BudgetRule[];
+  items?: BrainDumpItem[];
+  onChangeReceiptReview?: (draft: ReceiptReviewDraft) => void;
+  onApproveReceiptReview?: (draft: ReceiptReviewDraft) => void;
+  onRejectReceiptReview?: (draft: ReceiptReviewDraft) => void;
+  onViewDuplicateReceipt?: (item: BrainDumpItem) => void;
   onApproveReview?: (id: string, updatedResults: ParserResultV2[]) => void;
   onRejectReview?: (id: string) => void;
   retryParsing?: (id: string) => void;
@@ -109,6 +122,14 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   parsingTasks = [],
   enrichmentTasks = [],
   pendingReviews = [],
+  receiptReviews = [],
+  wallets = [],
+  budgetRules = [],
+  items = [],
+  onChangeReceiptReview,
+  onApproveReceiptReview,
+  onRejectReceiptReview,
+  onViewDuplicateReceipt,
   onApproveReview,
   onRejectReview,
   retryParsing,
@@ -121,9 +142,30 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   const hasParsingTasks = visibleParsingTasks.length > 0;
   const hasEnrichmentTasks = visibleEnrichmentTasks.length > 0;
   const hasPendingReviews = pendingReviews.length > 0;
+  const hasReceiptReviews = receiptReviews.length > 0;
 
   return (
     <div className="overflow-y-auto px-4 py-4 bg-background">
+
+      {hasReceiptReviews && (
+        <div className="mb-6 flex flex-col gap-3">
+          <span className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">Nota menunggu tinjauan</span>
+          {receiptReviews.map((draft) => (
+            <ReceiptReviewCard
+              key={draft.id}
+              draft={draft}
+              wallets={wallets}
+              budgetRules={budgetRules}
+              duplicateItem={draft.duplicateItemId ? items.find((item) => item.id === draft.duplicateItemId) : undefined}
+              onChange={(next) => onChangeReceiptReview?.(next)}
+              onApprove={(next) => onApproveReceiptReview?.(next)}
+              onReject={(next) => onRejectReceiptReview?.(next)}
+              onViewDuplicate={onViewDuplicateReceipt}
+            />
+          ))}
+        </div>
+      )}
+
       {hasParsingTasks && (
         <div className="mb-6 flex flex-col gap-2">
           <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Parsing Queue</span>
@@ -280,7 +322,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
           onReject={(id) => onRejectReview?.(id)}
         />
       ) : (
-        !hasParsingTasks && !hasEnrichmentTasks && (
+        !hasReceiptReviews && !hasParsingTasks && !hasEnrichmentTasks && (
           <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
             <div className="w-12 h-12 rounded-full border border-current flex items-center justify-center mb-3">
               <CheckCircle2 className="w-6 h-6" />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType, ShoppingLineItem } from '../types';
+import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta } from '../types';
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
@@ -8,7 +8,10 @@ import { ACHIEVED_GOAL_FINANCE_TYPE, formatFinanceTypeLabel } from '../utils/fin
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { getNoteDisplayParts } from '../utils/noteDisplay';
 import { taskEditSurface } from './layout/contentSurface';
-import { sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
+import { countUncategorizedTransactionLines, getTransactionCategorySummary, sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
+import LineItemsEditor from './LineItemsEditor';
+import LineItemsPreview from './LineItemsPreview';
+import ReceiptAttachmentPanel from './ReceiptAttachmentPanel';
 
 // Helper to calculate next due date based on schedule (Same as RoutineTaskModal)
 const calculateNextDate = (
@@ -129,8 +132,15 @@ interface CardProps {
     newSubcommodity?: string,
     newNoteTitle?: string,
     newImageUrl?: string,
-    newShoppingLineItems?: ShoppingLineItem[]
+    newShoppingLineItems?: ShoppingLineItem[],
+    newTransactionLineItems?: TransactionLineItem[],
+    newMerchant?: string,
+    newReceiptCapture?: ReceiptCaptureMeta | null,
+    newOriginalCurrency?: string,
+    newOriginalAmount?: number,
+    newExchangeRateToIdr?: number
   ) => void;
+  onUpdateReceiptCapture?: (id: string, capture: ReceiptCaptureMeta | null) => void | Promise<void>;
   onResetRoutine?: (id: string) => void;
   onAcceptDeepWorkPlan?: (id: string) => void;
   onDismissDeepWorkPlan?: (id: string) => void;
@@ -154,7 +164,7 @@ interface CardProps {
   // Context Props
   skills?: Skill[];
   wallets?: Wallet[];
-  budgetRules?: BudgetRule[];
+  budgetRules?: { id: string; name: string; color?: string; percentage?: number }[];
   savingGoals?: BrainDumpItem[];
   commodityOptions?: { name: string; subcommodities: string[] }[];
 }
@@ -164,6 +174,7 @@ const Card: React.FC<CardProps> = ({
     onToggleStatus, 
     onDelete, 
     onUpdate,
+    onUpdateReceiptCapture,
     onResetRoutine,
     onAcceptDeepWorkPlan,
     onDismissDeepWorkPlan,
@@ -212,6 +223,9 @@ const Card: React.FC<CardProps> = ({
   const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
   const [editToWallet, setEditToWallet] = useState(meta.toWallet || '');
   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
+  const [editTransactionLineItems, setEditTransactionLineItems] = useState<TransactionLineItem[]>(sanitizeTransactionLineItems(meta.transactionLineItems));
+  const [editMerchant, setEditMerchant] = useState(meta.merchant || '');
+  const [showAllTransactionLineItems, setShowAllTransactionLineItems] = useState(false);
   const [editCommodity, setEditCommodity] = useState(meta.commodity || '');
   const [editSubcommodity, setEditSubcommodity] = useState(meta.subcommodity || '');
   const [editDuration, setEditDuration] = useState<string>(meta.durationMinutes ? meta.durationMinutes.toString() : '');
@@ -274,6 +288,8 @@ const Card: React.FC<CardProps> = ({
     setEditPaymentMethod(getWalletValue(meta.paymentMethod) || '');
     setEditToWallet(getWalletValue(meta.toWallet) || '');
     setEditBudgetCategory(meta.budgetCategory || '');
+    setEditTransactionLineItems(sanitizeTransactionLineItems(meta.transactionLineItems));
+    setEditMerchant(meta.merchant || '');
     setEditCommodity(meta.commodity || '');
     setEditSubcommodity(meta.subcommodity || '');
     setEditDuration(meta.durationMinutes ? meta.durationMinutes.toString() : '');
@@ -339,7 +355,8 @@ const Card: React.FC<CardProps> = ({
       if (!onUpdate) return;
 
       const tagArray = editTags.split(',').map(t => t.trim()).filter(t => t);
-      const numAmount = editAmount ? parseFloat(editAmount) : undefined;
+      const finalTransactionLineItems = type === ItemType.FINANCE ? sanitizeTransactionLineItems(editTransactionLineItems) : [];
+      const numAmount = finalTransactionLineItems.length ? sumTransactionLineItems(finalTransactionLineItems) : (editAmount ? parseFloat(editAmount) : undefined);
       const numDuration = editDuration ? parseFloat(editDuration) : undefined;
       
       let finalDate: string | undefined = undefined;
@@ -409,7 +426,11 @@ const Card: React.FC<CardProps> = ({
           undefined,
           finalCommodity,
           finalSubcommodity,
-          isNote ? editTitle.trim() : undefined
+          isNote ? editTitle.trim() : undefined,
+          undefined, // newImageUrl
+          undefined, // newShoppingLineItems
+          finalTransactionLineItems.length ? finalTransactionLineItems : undefined,
+          editMerchant.trim() || undefined
       );
       
       if (enableCollapse) {
@@ -433,6 +454,19 @@ const Card: React.FC<CardProps> = ({
       if (amount === undefined || amount === null) return null;
       if (hideMoney) return 'Rp •••••••';
       return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+  };
+
+  const formatCurrency = (amount: number, currency = 'IDR') => {
+      if (hideMoney) return `${currency} •••••`;
+      try {
+          return new Intl.NumberFormat('id-ID', {
+              style: 'currency',
+              currency,
+              maximumFractionDigits: currency === 'IDR' ? 0 : 2,
+          }).format(amount);
+      } catch {
+          return `${currency} ${amount.toLocaleString('id-ID')}`;
+      }
   };
 
   const getStyles = () => {
@@ -565,6 +599,15 @@ const Card: React.FC<CardProps> = ({
       : [];
   const transactionLineItemsTotal = sumTransactionLineItems(transactionLineItems);
   const hasTransactionLineItems = transactionLineItems.length > 0;
+  const transactionCategorySummary = type === ItemType.FINANCE ? getTransactionCategorySummary(item) : [];
+  const uncategorizedTransactionLineCount = type === ItemType.FINANCE ? countUncategorizedTransactionLines(item) : 0;
+  const editTransactionTotal = sumTransactionLineItems(editTransactionLineItems);
+  const hasEditTransactionLineItems = editTransactionLineItems.length > 0;
+  const needsEditDefaultCategory = !hasEditTransactionLineItems || editTransactionLineItems.some((line) =>
+      line.allocationMode !== 'proportional'
+      && line.allocationMode !== 'uncategorized'
+      && !line.budgetCategory
+  );
   const resolvedDisplayAmount = hasTransactionLineItems ? transactionLineItemsTotal : meta?.amount;
   const displayAmount = (type !== ItemType.TODO && type !== ItemType.SKILLS) ? formatMoney(resolvedDisplayAmount) : null;
   const isRoutineUnavailable = !!meta.isRoutine && !isRoutineScheduledToday;
@@ -822,7 +865,7 @@ const Card: React.FC<CardProps> = ({
                             )}
                             {hasTransactionLineItems && (
                                 <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 font-bold">
-                                    {transactionLineItems.length} line items
+                                    {transactionLineItems.length} item
                                 </span>
                             )}
                         </div>
@@ -839,34 +882,60 @@ const Card: React.FC<CardProps> = ({
                 </div>
 
                 {(displayAmount || meta.durationMinutes) && (
-                    <div className={`text-base font-bold shrink-0 mt-0.5 ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-400' : (type === 'FINANCE' && meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'text-amber-500' : 'text-primary'))}`}>
-                        {displayAmount || `${meta.durationMinutes}m`}
+                    <div className="shrink-0 mt-0.5 text-right">
+                        <div className={`text-base font-bold ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-400' : (type === 'FINANCE' && meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'text-amber-500' : 'text-primary'))}`}>
+                            {displayAmount || `${meta.durationMinutes}m`}
+                        </div>
+                        {type === ItemType.FINANCE && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) && (meta.originalAmount ?? meta.receiptCapture?.originalTotal) !== undefined && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) !== 'IDR' && (
+                            <div className="text-[9px] font-medium text-muted">
+                                {formatCurrency((meta.originalAmount ?? meta.receiptCapture?.originalTotal) || 0, (meta.originalCurrency || meta.receiptCapture?.originalCurrency) || 'IDR')}
+                                {(meta.exchangeRateToIdr || meta.receiptCapture?.exchangeRateToIdr) ? ` · kurs ${(meta.exchangeRateToIdr || meta.receiptCapture?.exchangeRateToIdr || 0).toLocaleString('id-ID')}` : ''}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
         ) : null}
 
         {hasTransactionLineItems && (
-            <div className="mt-2 space-y-1">
-                {transactionLineItems.slice(0, 3).map((line) => {
-                    const lineCategoryId = line.budgetCategory || meta.budgetCategory;
-                    const lineCategoryName = budgetRules.find((rule) => rule.id === lineCategoryId)?.name || lineCategoryId;
-                    return (
-                        <div key={line.id} className="flex items-center justify-between gap-2 rounded-xl bg-background/60 px-2 py-1 text-[11px] text-muted">
-                            <div className="min-w-0">
-                                <div className="truncate">{line.name || 'Untitled item'}{line.quantity ? ` · ${line.quantity}` : ''}</div>
-                                {lineCategoryName && <div className="truncate text-[9px] opacity-75">{lineCategoryName}</div>}
-                            </div>
-                            <span className="shrink-0 font-bold text-primary">{formatMoney(line.amount)}</span>
-                        </div>
-                    );
-                })}
-                {transactionLineItems.length > 3 && (
-                    <div className="text-[10px] font-bold text-muted">+{transactionLineItems.length - 3} more</div>
+            <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+                {transactionCategorySummary.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                        {transactionCategorySummary.map((entry) => {
+                            const name = entry.budgetCategory
+                                ? (budgetRules.find((rule) => rule.id === entry.budgetCategory)?.name || entry.budgetCategory)
+                                : 'Belum berkategori';
+                            return (
+                                <span key={entry.budgetCategory || 'uncategorized'} className={`rounded-full px-2 py-1 text-[9px] font-bold ${entry.budgetCategory ? 'bg-indigo-500/10 text-indigo-500' : 'bg-amber-500/10 text-amber-600'}`}>
+                                    {name} · {formatMoney(entry.amount)}
+                                </span>
+                            );
+                        })}
+                    </div>
                 )}
-                {meta.receiptCapture?.imageName && (
-                    <div className="truncate px-2 pt-1 text-[9px] text-muted">Source: {meta.receiptCapture.imageName}</div>
+                {uncategorizedTransactionLineCount > 0 && (
+                    <div className="mb-1.5 text-[10px] font-bold text-amber-600">
+                        {uncategorizedTransactionLineCount} item perlu kategori
+                    </div>
                 )}
+                <LineItemsPreview
+                    items={transactionLineItems}
+                    currency="IDR"
+                    budgetRules={budgetRules}
+                    defaultBudgetCategory={meta.budgetCategory}
+                    expanded={showAllTransactionLineItems}
+                    onToggleExpanded={() => setShowAllTransactionLineItems((current) => !current)}
+                />
+            </div>
+        )}
+
+        {type === ItemType.FINANCE && meta.receiptCapture?.imageName && (isCollapsed || !enableCollapse || readonly) && (
+            <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+                <ReceiptAttachmentPanel
+                    capture={meta.receiptCapture}
+                    compact
+                    onChange={onUpdateReceiptCapture ? (capture) => onUpdateReceiptCapture(item.id, capture) : undefined}
+                />
             </div>
         )}
 
@@ -943,19 +1012,32 @@ const Card: React.FC<CardProps> = ({
                        </div>
                    )}
 
+                   {type === ItemType.FINANCE && editFinanceType === 'expense' && (
+                       <div className="col-span-2">
+                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Merchant</label>
+                           <input
+                               type="text"
+                               className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                               value={editMerchant}
+                               onChange={(event) => setEditMerchant(event.target.value)}
+                               placeholder="Nama merchant"
+                           />
+                       </div>
+                   )}
+
                    {/* Amount */}
                    {showAmountField && (
                         <div className={type === ItemType.FINANCE && editFinanceType === 'transfer' ? "col-span-2" : ""}>
-                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Amount</label>
+                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Jumlah transaksi</label>
                             <div className="relative">
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
                                     type="number"
                                     className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
-                                    value={editAmount}
+                                    value={hasEditTransactionLineItems ? editTransactionTotal : editAmount}
                                     onChange={(e) => setEditAmount(e.target.value)}
-                                    readOnly={!!meta.transactionLineItems?.length}
-                                    title={meta.transactionLineItems?.length ? 'Amount is calculated from transaction line items.' : undefined}
+                                    readOnly={hasEditTransactionLineItems}
+                                    title={hasEditTransactionLineItems ? 'Jumlah dihitung otomatis dari seluruh rincian item.' : undefined}
                                     placeholder="0"
                                 />
                             </div>
@@ -1271,25 +1353,26 @@ const Card: React.FC<CardProps> = ({
                                            value={editBudgetCategory}
                                            onChange={(e) => setEditBudgetCategory(e.target.value)}
                                        >
-                                           <option value="">None</option>
+                                           <option value="">Tanpa kategori</option>
                                            {budgetRules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                                        </select>
                                    </div>
                                    )}
                                </>
-                           ) : (
+                           ) : needsEditDefaultCategory ? (
                                <div>
-                                   <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget</label>
+                                   <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{hasEditTransactionLineItems ? 'Kategori default' : 'Kategori budget'}</label>
                                    <select
                                        className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
                                        value={editBudgetCategory}
                                        onChange={(e) => setEditBudgetCategory(e.target.value)}
                                    >
-                                       <option value="">None</option>
+                                       <option value="">Tanpa kategori</option>
                                        {budgetRules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                                    </select>
+                                   {hasEditTransactionLineItems && <div className="mt-1 text-[9px] text-muted">Hanya dipakai untuk item yang memilih kategori default.</div>}
                                </div>
-                           )}
+                           ) : null}
                            {showCommodityFields && (
                                <>
                                    <div>
@@ -1323,6 +1406,30 @@ const Card: React.FC<CardProps> = ({
                        </>
                    )}
                </div>
+
+               {type === ItemType.FINANCE && editFinanceType === 'expense' && (
+                   <div className="mb-3">
+                       <LineItemsEditor
+                           variant="transaction"
+                           value={editTransactionLineItems}
+                           onChange={setEditTransactionLineItems}
+                           budgetRules={budgetRules}
+                           defaultBudgetCategory={editBudgetCategory || undefined}
+                           currency="IDR"
+                           title="Rincian transaksi"
+                           helpText="Jumlah transaksi dihitung otomatis dari seluruh item. Kategori default hanya dipakai untuk item yang belum memiliki kategori."
+                       />
+                   </div>
+               )}
+
+               {type === ItemType.FINANCE && meta.receiptCapture?.imageName && (
+                   <div className="mb-3">
+                       <ReceiptAttachmentPanel
+                           capture={meta.receiptCapture}
+                           onChange={onUpdateReceiptCapture ? (capture) => onUpdateReceiptCapture(item.id, capture) : undefined}
+                       />
+                   </div>
+               )}
 
                {/* Progress Control (Only for Todo) */}
                {showProgress && (

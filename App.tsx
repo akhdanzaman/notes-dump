@@ -16,6 +16,9 @@ import {
   SortOrder,
   ItemType,
   ShoppingCategory,
+  ImageAttachmentMode,
+  ReceiptProcessingStage,
+  ReceiptReviewDraft,
 } from "./types";
 import { useBrainDumpData } from "./hooks/useBrainDumpData";
 import { getShoppingItems } from "./utils/selectors";
@@ -86,12 +89,26 @@ import {
 } from "./utils/featureTutorials";
 import { classifyText } from "./services/geminiService";
 import { parseReceiptImage } from "./services/receiptParserService";
+import { analyzeImageForChat } from "./services/chatService";
+import {
+  createReceiptFingerprint,
+  deleteReceiptAttachment,
+  saveReceiptAttachment,
+} from "./services/receiptAttachmentService";
+import { findDuplicateReceiptTransaction } from "./utils/receiptDuplicate";
+import { convertTransactionLineItemsToIdr, sumTransactionLineItems } from "./utils/transactionLineItems";
 
 const getThemeMonthKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
 };
+
+const RECEIPT_REVIEWS_STORAGE_KEY = "braindump_receipt_reviews";
+
+const getLocalDateInput = (date = new Date()) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
 
 type SkillModalPayload = {
   name: string;
@@ -243,6 +260,7 @@ const App: React.FC = () => {
     handleToggleStatus,
     handleDelete,
     handleUpdateItem,
+    handleUpdateReceiptCapture,
     loadData,
     runCanonicalBackfill,
     toggleCanonicalRuleDisabled,
@@ -425,6 +443,19 @@ const App: React.FC = () => {
   // Review Center nudge above the input bar
   const [isReviewCenterOpen, setIsReviewCenterOpen] = useState(false);
   const [lastReviewCenterOpenedAt, setLastReviewCenterOpenedAt] = useState(0);
+  const [receiptStage, setReceiptStage] = useState<ReceiptProcessingStage | null>(null);
+  const [receiptReviews, setReceiptReviews] = useState<ReceiptReviewDraft[]>(() => {
+    try {
+      const stored = localStorage.getItem(RECEIPT_REVIEWS_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(RECEIPT_REVIEWS_STORAGE_KEY, JSON.stringify(receiptReviews));
+  }, [receiptReviews]);
 
   const latestParsingTaskAt = useMemo(() => {
     const latestParsing = parsingTasks.reduce(
@@ -439,6 +470,11 @@ const App: React.FC = () => {
     );
   }, [enrichmentTasks, parsingTasks]);
 
+  const latestReceiptReviewAt = useMemo(() => receiptReviews.reduce(
+    (latest, review) => Math.max(latest, new Date(review.createdAt).getTime() || 0),
+    0,
+  ), [receiptReviews]);
+
   const hasRunningProcess = useMemo(() => {
     return (
       pendingCount > 0 ||
@@ -447,9 +483,10 @@ const App: React.FC = () => {
         (task) => task.status === "pending" || task.status === "running",
       ) ||
       saveStatus === "saving" ||
-      fetchStatus === "syncing"
+      fetchStatus === "syncing" ||
+      receiptStage !== null
     );
-  }, [enrichmentTasks, fetchStatus, parsingTasks, pendingCount, saveStatus]);
+  }, [enrichmentTasks, fetchStatus, parsingTasks, pendingCount, receiptStage, saveStatus]);
 
   const noisyEnrichmentCount = enrichmentTasks.filter(
     (task) =>
@@ -458,12 +495,13 @@ const App: React.FC = () => {
       (task.appliedFields?.length || 0) > 0,
   ).length;
   const showReviewCenterNudge =
-    (parsingTasks.length > 0 ||
+    (receiptReviews.length > 0 ||
+      parsingTasks.length > 0 ||
       pendingReviews.length > 0 ||
       noisyEnrichmentCount > 0) &&
-    latestParsingTaskAt > lastReviewCenterOpenedAt;
+    Math.max(latestParsingTaskAt, latestReceiptReviewAt) > lastReviewCenterOpenedAt;
   const reviewCenterBadgeCount =
-    pendingReviews.length + parsingTasks.length + noisyEnrichmentCount;
+    receiptReviews.length + pendingReviews.length + parsingTasks.length + noisyEnrichmentCount;
 
   const openReviewCenterFromInput = () => {
     setLastReviewCenterOpenedAt(Date.now());
@@ -906,39 +944,170 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
-  const handleAppSend = async (text: string, image?: File) => {
-    if (image) {
-      const parsed = await parseReceiptImage(
+  const handleChangeReceiptReview = (draft: ReceiptReviewDraft) => {
+    const duplicate = findDuplicateReceiptTransaction(items, {
+      merchant: draft.merchant,
+      date: draft.date,
+      totalAmount: sumTransactionLineItems(draft.lineItems),
+      lineItems: draft.lineItems,
+      fingerprint: draft.fingerprint,
+    });
+    setReceiptReviews((current) => current.map((review) => review.id === draft.id
+      ? {
+          ...draft,
+          duplicateItemId: duplicate?.id,
+          allowDuplicate: duplicate?.id === draft.duplicateItemId ? draft.allowDuplicate : false,
+        }
+      : review));
+  };
+
+  const handleApproveReceiptReview = async (draft: ReceiptReviewDraft) => {
+    const duplicate = findDuplicateReceiptTransaction(items, {
+      merchant: draft.merchant,
+      date: draft.date,
+      totalAmount: sumTransactionLineItems(draft.lineItems),
+      lineItems: draft.lineItems,
+      fingerprint: draft.fingerprint,
+    });
+    if (duplicate && !draft.allowDuplicate) {
+      throw new Error('Transaksi serupa sudah ada. Tinjau transaksi lama atau izinkan penyimpanan duplikat.');
+    }
+
+    const currency = (draft.originalCurrency || 'IDR').toUpperCase();
+    const exchangeRate = currency === 'IDR' ? 1 : Number(draft.exchangeRateToIdr || 0);
+    const convertedLineItems = convertTransactionLineItemsToIdr(draft.lineItems, currency, exchangeRate);
+    if (!draft.walletId || !draft.date || !convertedLineItems.length) {
+      throw new Error('Lengkapi wallet, tanggal, dan rincian item sebelum menyimpan.');
+    }
+    if (currency !== 'IDR' && (!Number.isFinite(exchangeRate) || exchangeRate <= 0)) {
+      throw new Error('Masukkan kurs mata uang ke IDR sebelum menyimpan.');
+    }
+
+    const originalTotal = sumTransactionLineItems(draft.lineItems);
+    const description = draft.merchant?.trim()
+      || draft.imageName.replace(/\.[^.]+$/, '').trim()
+      || 'Transaksi dari nota';
+
+    await handleAddTransaction(
+      description,
+      sumTransactionLineItems(convertedLineItems),
+      'expense',
+      draft.walletId,
+      draft.defaultBudgetCategory,
+      undefined,
+      draft.date,
+      convertedLineItems,
+      draft.merchant,
+      {
+        attachmentId: draft.attachmentId,
+        imageName: draft.imageName,
+        imageMimeType: draft.imageMimeType,
+        imageSize: draft.imageSize,
+        fingerprint: draft.fingerprint,
+        context: draft.context,
+        extractedAt: draft.createdAt,
+        originalCurrency: currency,
+        originalTotal,
+        exchangeRateToIdr: exchangeRate,
+      },
+      currency,
+      originalTotal,
+      exchangeRate,
+    );
+    setReceiptReviews((current) => current.filter((review) => review.id !== draft.id));
+  };
+
+  const handleRejectReceiptReview = async (draft: ReceiptReviewDraft) => {
+    setReceiptReviews((current) => current.filter((review) => review.id !== draft.id));
+    await deleteReceiptAttachment(draft.attachmentId).catch(() => undefined);
+  };
+
+  const handleViewDuplicateReceipt = (item: BrainDumpItem) => {
+    setActiveTab('money');
+    setMoneyView('transactions');
+    setSearchQuery(item.meta.merchant || item.content);
+    setIsReviewCenterOpen(false);
+  };
+
+  const handleAppSend = async (
+    text: string,
+    image?: File,
+    options?: { imageMode: ImageAttachmentMode },
+  ) => {
+    if (image && options?.imageMode === 'chat') {
+      const userText = `${text.trim() || 'Jelaskan gambar ini.'}\n\n[Gambar: ${image.name}]`;
+      const userMessage = { role: 'user' as const, text: userText };
+      const nextHistory = [...chatHistory, userMessage];
+      setChatHistory(nextHistory);
+      setIsChatOpen(true);
+      const response = await analyzeImageForChat(
         image,
         text,
+        items,
+        budgetConfig,
         wallets,
-        budgetConfig.rules || [],
-        appSettings.parsingModel,
+        skills,
+        monthlyThemes,
+        appSettings.chatModel,
       );
-      const categoryIds = Array.from(new Set(
-        parsed.lineItems.map((line) => line.budgetCategory).filter((value): value is string => !!value),
-      ));
-      const description = parsed.merchant
-        || image.name.replace(/\.[^.]+$/, '').trim()
-        || 'Receipt transaction';
+      setChatHistory([...nextHistory, { role: 'model', text: response }]);
+      return;
+    }
 
-      await handleAddTransaction(
-        description,
-        parsed.totalAmount,
-        'expense',
-        parsed.walletId,
-        categoryIds.length === 1 ? categoryIds[0] : undefined,
-        undefined,
-        parsed.date,
-        parsed.lineItems,
-        parsed.merchant,
-        {
+    if (image) {
+      setReceiptStage('uploading');
+      try {
+        const [attachmentId, fingerprint] = await Promise.all([
+          saveReceiptAttachment(image),
+          createReceiptFingerprint(image),
+        ]);
+        setReceiptStage('reading');
+        const parsed = await parseReceiptImage(
+          image,
+          text,
+          wallets,
+          budgetConfig.rules || [],
+          appSettings.parsingModel,
+        );
+        setReceiptStage('categorizing');
+        const originalCurrency = (parsed.currency || 'IDR').toUpperCase();
+        const originalTotal = sumTransactionLineItems(parsed.lineItems);
+        const duplicate = findDuplicateReceiptTransaction(items, {
+          merchant: parsed.merchant,
+          date: parsed.date,
+          totalAmount: originalTotal,
+          lineItems: parsed.lineItems,
+          fingerprint,
+        });
+        const draft: ReceiptReviewDraft = {
+          id: uuidv4(),
+          createdAt: new Date().toISOString(),
           imageName: image.name,
           imageMimeType: image.type,
+          imageSize: image.size,
+          attachmentId,
+          fingerprint,
           context: text.trim() || undefined,
-          extractedAt: new Date().toISOString(),
-        },
-      );
+          merchant: parsed.merchant,
+          date: parsed.date || getLocalDateInput(),
+          walletId: parsed.walletId,
+          originalCurrency,
+          originalTotal,
+          exchangeRateToIdr: originalCurrency === 'IDR' ? 1 : undefined,
+          lineItems: parsed.lineItems,
+          warnings: parsed.warnings,
+          duplicateItemId: duplicate?.id,
+          allowDuplicate: false,
+        };
+        setReceiptReviews((current) => [draft, ...current]);
+        setReceiptStage('ready');
+        setLastReviewCenterOpenedAt(Date.now());
+        setIsReviewCenterOpen(true);
+      } catch (scanError) {
+        setReceiptStage(null);
+        throw scanError;
+      }
+      setReceiptStage(null);
       return;
     }
 
@@ -1496,6 +1665,11 @@ const App: React.FC = () => {
                   showBalance={effectiveShowBalance}
                   setShowBalance={handleSetShowBalance}
                   pendingReviews={pendingReviews}
+                  receiptReviews={receiptReviews}
+                  onChangeReceiptReview={handleChangeReceiptReview}
+                  onApproveReceiptReview={handleApproveReceiptReview}
+                  onRejectReceiptReview={handleRejectReceiptReview}
+                  onViewDuplicateReceipt={handleViewDuplicateReceipt}
                   handleApproveReview={handleApproveReview}
                   handleRejectReview={handleRejectReview}
                   parsingTasks={parsingTasks}
@@ -1518,6 +1692,7 @@ const App: React.FC = () => {
                     setAddNoteModalOpen(true);
                   }}
                   handleUpdateItem={handleUpdateItem}
+                  handleUpdateReceiptCapture={handleUpdateReceiptCapture}
                   handleDelete={requestDeleteItem}
                   handleKeepRawTodo={handleKeepRawTodo}
                   handleRetriggerDeepWorkTodo={handleRetriggerDeepWorkTodo}
@@ -1621,6 +1796,7 @@ const App: React.FC = () => {
                   appSettings={secureAppSettings}
                   handleDelete={requestDeleteItem}
                   handleUpdateItem={handleUpdateItem}
+                  handleUpdateReceiptCapture={handleUpdateReceiptCapture}
                   handleToggleStatus={handleToggleStatus}
                   handleOpenEditWallet={handleOpenEditWallet}
                   handleOpenAddWallet={handleOpenAddWallet}
@@ -1698,6 +1874,7 @@ const App: React.FC = () => {
             reviewCenterActive={hasRunningProcess}
             reviewCenterCount={reviewCenterBadgeCount}
             onOpenReviewCenter={openReviewCenterFromInput}
+            receiptStage={receiptStage}
             startAction={
               activeTab === "library" || activeTab === "money" ? (
                 <FloatingSearch
@@ -1835,9 +2012,9 @@ const App: React.FC = () => {
                       Review Center
                     </h3>
                     <div className="flex items-center gap-2">
-                      {pendingReviews.length > 0 && (
+                      {(receiptReviews.length + pendingReviews.length) > 0 && (
                         <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
-                          {pendingReviews.length} Pending
+                          {receiptReviews.length + pendingReviews.length} Pending
                         </span>
                       )}
                       {hasRunningProcess && (
@@ -1858,6 +2035,14 @@ const App: React.FC = () => {
                     parsingTasks={parsingTasks}
                     enrichmentTasks={enrichmentTasks}
                     pendingReviews={pendingReviews}
+                    receiptReviews={receiptReviews}
+                    wallets={wallets}
+                    budgetRules={budgetConfig.rules || []}
+                    items={items}
+                    onChangeReceiptReview={handleChangeReceiptReview}
+                    onApproveReceiptReview={handleApproveReceiptReview}
+                    onRejectReceiptReview={handleRejectReceiptReview}
+                    onViewDuplicateReceipt={handleViewDuplicateReceipt}
                     onApproveReview={handleApproveReview}
                     onRejectReview={handleRejectReview}
                     retryParsing={retryParsing}

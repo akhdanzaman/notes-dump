@@ -57,6 +57,8 @@ import {
   ShoppingCategory,
   AppSettings,
   ItemType,
+  ReceiptReviewDraft,
+  ReceiptCaptureMeta,
 } from "../../types";
 import {
   getFocusMonthData,
@@ -94,6 +96,7 @@ interface SummaryViewProps {
       heroImage?: string;
     },
   ) => void;
+  handleUpdateReceiptCapture: (id: string, capture: ReceiptCaptureMeta | null) => void;
   handleToggleStatus: (id: string) => void;
   setActiveTab: (tab: Tab) => void;
   setPlanSubTab: (tab: any) => void;
@@ -139,6 +142,11 @@ interface SummaryViewProps {
   handleAcceptDeepWorkTodo: (id: string, subtasks?: string[]) => void;
   handleResetRoutine: (id: string) => void;
   pendingReviews?: { id: string; text: string; results: any[] }[];
+  receiptReviews?: ReceiptReviewDraft[];
+  onChangeReceiptReview?: (draft: ReceiptReviewDraft) => void;
+  onApproveReceiptReview?: (draft: ReceiptReviewDraft) => void;
+  onRejectReceiptReview?: (draft: ReceiptReviewDraft) => void;
+  onViewDuplicateReceipt?: (item: BrainDumpItem) => void;
   handleApproveReview?: (id: string, updatedResults: any[]) => void;
   handleRejectReview?: (id: string) => void;
   parsingTasks?: import("../../types").ParsingTask[];
@@ -188,12 +196,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   handleOpenAddExpense,
   handleOpenAddNote,
   handleUpdateItem,
+  handleUpdateReceiptCapture,
   handleDelete,
   handleKeepRawTodo,
   handleRetriggerDeepWorkTodo,
   handleAcceptDeepWorkTodo,
   handleResetRoutine,
   pendingReviews = [],
+  receiptReviews = [],
+  onChangeReceiptReview,
+  onApproveReceiptReview,
+  onRejectReceiptReview,
+  onViewDuplicateReceipt,
   handleApproveReview,
   handleRejectReview,
   parsingTasks = [],
@@ -683,6 +697,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const cardProps = {
     onToggleStatus: handleToggleStatus,
     onUpdate: handleUpdateItem,
+    onUpdateReceiptCapture: handleUpdateReceiptCapture,
     onDelete: handleDelete,
     enableCollapse: true,
     defaultCollapsed: true,
@@ -1698,9 +1713,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </h3>
 
                     <div className="flex items-center gap-2">
-                      {pendingReviews && pendingReviews.length > 0 && (
+                      {(pendingReviews.length + receiptReviews.length) > 0 && (
                         <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-600">
-                          {pendingReviews.length} Pending
+                          {pendingReviews.length + receiptReviews.length} Pending
                         </span>
                       )}
                       <button
@@ -1716,6 +1731,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   <ReviewCenterPanel
                     parsingTasks={parsingTasks}
                     pendingReviews={pendingReviews}
+                    receiptReviews={receiptReviews}
+                    wallets={wallets}
+                    budgetRules={budgetConfig.rules || []}
+                    items={items}
+                    onChangeReceiptReview={onChangeReceiptReview}
+                    onApproveReceiptReview={onApproveReceiptReview}
+                    onRejectReceiptReview={onRejectReceiptReview}
+                    onViewDuplicateReceipt={onViewDuplicateReceipt}
                     onApproveReview={handleApproveReview}
                     onRejectReview={handleRejectReview}
                     retryParsing={retryParsing}
@@ -2256,6 +2279,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               >
                 <ClipboardCheck className="h-[18px] w-[18px]" strokeWidth={2} />
                 {((pendingReviews && pendingReviews.length > 0) ||
+                  receiptReviews.length > 0 ||
                   (parsingTasks && parsingTasks.length > 0)) && (
                   <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full border border-surface bg-indigo-500"></span>
                 )}

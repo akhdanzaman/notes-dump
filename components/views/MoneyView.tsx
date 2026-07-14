@@ -30,6 +30,7 @@ import {
   ItemType,
   Tab,
   Priority,
+  ReceiptCaptureMeta,
 } from "../../types";
 import { getWalletStats, getFinanceItems } from "../../utils/selectors";
 import Card from "../Card";
@@ -87,6 +88,7 @@ interface MoneyViewProps {
     newDedicatedWalletId?: string,
     newPriority?: Priority,
   ) => void;
+  handleUpdateReceiptCapture: (id: string, capture: ReceiptCaptureMeta | null) => void;
   handleToggleStatus: (id: string) => void;
   handleOpenEditWallet: (w: Wallet) => void;
   handleOpenAddWallet: () => void;
@@ -121,6 +123,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
   appSettings,
   handleDelete,
   handleUpdateItem,
+  handleUpdateReceiptCapture,
   handleToggleStatus,
   handleOpenEditWallet,
   handleOpenAddWallet,
@@ -555,6 +558,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
   const cardProps = {
     onUpdate: handleUpdateItem,
+    onUpdateReceiptCapture: handleUpdateReceiptCapture,
     onDelete: handleDelete,
     onToggleStatus: handleToggleStatus,
     enableCollapse: true,
@@ -948,7 +952,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   {visibleTransactions.visibleItems.map((item) => {
                     const transactionCategoryIds = getTransactionCategoryIds(item);
                     const categoryName = transactionCategoryIds.length > 1
-                      ? `Mixed · ${transactionCategoryIds.length} budgets`
+                      ? `${transactionCategoryIds.length} kategori`
                       : budgetConfig.rules.find(
                           (r) => r.id === (transactionCategoryIds[0] || item.meta.budgetCategory),
                         )?.name || transactionCategoryIds[0] || item.meta.budgetCategory;

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet, ShoppingLineItem } from '../types';
-import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw, Plus, X } from 'lucide-react';
+import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw } from 'lucide-react';
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, advanceRecurringDueDateByDaysToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
-import { createShoppingLineItemId, sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
+import { sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
+import LineItemsEditor from './LineItemsEditor';
+import LineItemsPreview from './LineItemsPreview';
 
 interface ShoppingItemProps {
   item: BrainDumpItem;
@@ -58,6 +60,7 @@ interface ShoppingItemProps {
 
 const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], wallets = [], onResetRoutine }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showAllLineItems, setShowAllLineItems] = useState(false);
   const { content, meta, status, completed_at } = item;
   
   // Edit State
@@ -199,17 +202,6 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const editLineItemsTotal = sumShoppingLineItems(editShoppingLineItems);
   const hasEditLineItems = sanitizeShoppingLineItems(editShoppingLineItems).length > 0;
 
-  const addLineItem = () => {
-      setEditShoppingLineItems(prev => [...prev, { id: createShoppingLineItemId(), name: '', quantity: '', amount: undefined }]);
-  };
-
-  const updateLineItem = (id: string, changes: Partial<ShoppingLineItem>) => {
-      setEditShoppingLineItems(prev => prev.map(line => line.id === id ? { ...line, ...changes } : line));
-  };
-
-  const removeLineItem = (id: string) => {
-      setEditShoppingLineItems(prev => prev.filter(line => line.id !== id));
-  };
   
   // Date Logic for Display
   let dateDisplay = null;
@@ -376,19 +368,12 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                     </div>
                 )}
                 {hasLineItems && (
-                    <div className="mt-2 space-y-1">
-                        {lineItems.slice(0, 3).map(line => (
-                            <div key={line.id} className="flex items-center justify-between gap-2 rounded-xl bg-background/60 px-2 py-1 text-[11px] text-muted">
-                                <span className="truncate">{line.name || 'Untitled item'}{line.quantity ? ` · ${line.quantity}` : ''}</span>
-                                <span className="shrink-0 font-bold text-primary">
-                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(line.amount || 0)}
-                                </span>
-                            </div>
-                        ))}
-                        {lineItems.length > 3 && (
-                            <div className="text-[10px] font-bold text-muted">+{lineItems.length - 3} more</div>
-                        )}
-                    </div>
+                    <LineItemsPreview
+                        items={lineItems}
+                        expanded={showAllLineItems}
+                        onToggleExpanded={() => setShowAllLineItems((current) => !current)}
+                        accentClassName="text-acc-shopping"
+                    />
                 )}
             </div>
 
@@ -420,53 +405,13 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       />
                   </div>
 
-                  <div className="rounded-2xl border border-border bg-background/60 p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                          <div>
-                              <div className="text-[10px] uppercase text-muted font-bold tracking-wider">Line Items</div>
-                              <div className="text-[10px] text-muted">Optional detail rows; total is auto-summed.</div>
-                          </div>
-                          <div className="text-xs font-bold text-acc-shopping">
-                              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(editLineItemsTotal)}
-                          </div>
-                      </div>
-                      {editShoppingLineItems.map((line, index) => (
-                          <div key={line.id} className="grid grid-cols-[1fr_64px_96px_auto] gap-2 items-center">
-                              <input
-                                  className="bg-surface border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
-                                  value={line.name}
-                                  onChange={(e) => updateLineItem(line.id, { name: e.target.value })}
-                                  placeholder={`Item ${index + 1}`}
-                              />
-                              <input
-                                  className="bg-surface border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
-                                  value={line.quantity || ''}
-                                  onChange={(e) => updateLineItem(line.id, { quantity: e.target.value })}
-                                  placeholder="Qty"
-                              />
-                              <input
-                                  type="number"
-                                  className="bg-surface border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
-                                  value={line.amount ?? ''}
-                                  onChange={(e) => updateLineItem(line.id, { amount: e.target.value === '' ? undefined : Number(e.target.value) })}
-                                  placeholder="0"
-                              />
-                              <button
-                                  onClick={() => removeLineItem(line.id)}
-                                  className="p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                                  aria-label="Remove line item"
-                              >
-                                  <X className="w-4 h-4" />
-                              </button>
-                          </div>
-                      ))}
-                      <button
-                          onClick={addLineItem}
-                          className="px-3 py-2 rounded-xl bg-acc-shopping/10 text-acc-shopping text-xs font-bold hover:bg-acc-shopping/20 transition-colors flex items-center gap-1"
-                      >
-                          <Plus className="w-3 h-3" /> Add line item
-                      </button>
-                  </div>
+                  <LineItemsEditor
+                      variant="shopping"
+                      value={editShoppingLineItems}
+                      onChange={setEditShoppingLineItems}
+                      title="Rincian belanja"
+                      helpText="Opsional. Total estimasi dihitung otomatis dari seluruh item."
+                  />
 
                   {/* Settings Grid */}
                   <div className="grid grid-cols-2 gap-3">

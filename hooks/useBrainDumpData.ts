@@ -2310,7 +2310,13 @@ export const useBrainDumpData = () => {
         newSubcommodity?: string,
         newNoteTitle?: string,
         newImageUrl?: string,
-        newShoppingLineItems?: ShoppingLineItem[]
+        newShoppingLineItems?: ShoppingLineItem[],
+        newTransactionLineItems?: TransactionLineItem[],
+        newMerchant?: string,
+        newReceiptCapture?: ReceiptCaptureMeta | null,
+        newOriginalCurrency?: string,
+        newOriginalAmount?: number,
+        newExchangeRateToIdr?: number
     ) => {
         const updatedItems = itemsRef.current.map(item => {
             if (item.id !== id) return item;
@@ -2339,10 +2345,10 @@ export const useBrainDumpData = () => {
             const nextShoppingCategory = newShoppingCategory !== undefined ? newShoppingCategory : item.meta.shoppingCategory;
             const nextShoppingLineItems = newShoppingLineItems !== undefined ? sanitizeShoppingLineItems(newShoppingLineItems) : item.meta.shoppingLineItems;
             const hasNextShoppingLineItems = item.type === ItemType.SHOPPING && sanitizeShoppingLineItems(nextShoppingLineItems).length > 0;
-            const existingTransactionLineItems = item.type === ItemType.FINANCE
-                ? sanitizeTransactionLineItems(item.meta.transactionLineItems)
+            const nextTransactionLineItems = item.type === ItemType.FINANCE
+                ? sanitizeTransactionLineItems(newTransactionLineItems !== undefined ? newTransactionLineItems : item.meta.transactionLineItems)
                 : [];
-            const hasTransactionLineItems = existingTransactionLineItems.length > 0;
+            const hasTransactionLineItems = nextTransactionLineItems.length > 0;
             const resolvedIsRoutine = item.type === ItemType.SHOPPING
                 ? nextShoppingCategory === 'routine'
                 : (newIsRoutine !== undefined ? newIsRoutine : item.meta.isRoutine);
@@ -2383,7 +2389,7 @@ export const useBrainDumpData = () => {
                 title: newNoteTitle !== undefined ? (newNoteTitle.trim() || undefined) : item.meta.title,
                 imageUrl: newImageUrl !== undefined ? (newImageUrl.trim() || undefined) : item.meta.imageUrl,
                 amount: hasTransactionLineItems
-                    ? sumTransactionLineItems(existingTransactionLineItems)
+                    ? sumTransactionLineItems(nextTransactionLineItems)
                     : hasNextShoppingLineItems
                         ? sumShoppingLineItems(nextShoppingLineItems)
                         : (newAmount !== undefined ? newAmount : item.meta.amount),
@@ -2405,6 +2411,12 @@ export const useBrainDumpData = () => {
                 recurrenceDays: !resolvedIsRoutine ? undefined : (newRecurrenceDays !== undefined ? newRecurrenceDays : item.meta.recurrenceDays),
                 quantity: newQuantity !== undefined ? newQuantity : item.meta.quantity,
                 shoppingLineItems: item.type === ItemType.SHOPPING ? (hasNextShoppingLineItems ? sanitizeShoppingLineItems(nextShoppingLineItems) : undefined) : item.meta.shoppingLineItems,
+                transactionLineItems: item.type === ItemType.FINANCE ? (hasTransactionLineItems ? nextTransactionLineItems : undefined) : item.meta.transactionLineItems,
+                merchant: newMerchant !== undefined ? (newMerchant.trim() || undefined) : item.meta.merchant,
+                receiptCapture: newReceiptCapture !== undefined ? (newReceiptCapture || undefined) : item.meta.receiptCapture,
+                originalCurrency: newOriginalCurrency !== undefined ? (newOriginalCurrency || undefined) : item.meta.originalCurrency,
+                originalAmount: newOriginalAmount !== undefined ? newOriginalAmount : item.meta.originalAmount,
+                exchangeRateToIdr: newExchangeRateToIdr !== undefined ? newExchangeRateToIdr : item.meta.exchangeRateToIdr,
                 isRoutine: resolvedIsRoutine || undefined,
                 routineInterval: !resolvedIsRoutine ? undefined : (newRoutineInterval !== undefined ? newRoutineInterval : item.meta.routineInterval),
                 routineDaysOfWeek: !resolvedIsRoutine ? undefined : (newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek),
@@ -2435,6 +2447,22 @@ export const useBrainDumpData = () => {
         setItems(reconciledDeepWorkItems);
         saveAndSync(reconciledDeepWorkItems);
     };
+
+    const handleUpdateReceiptCapture = async (id: string, receiptCapture: ReceiptCaptureMeta | null) => {
+        const updatedItems = itemsRef.current.map((item) => item.id === id
+            ? {
+                ...item,
+                meta: {
+                    ...item.meta,
+                    receiptCapture: receiptCapture || undefined,
+                },
+            }
+            : item);
+        itemsRef.current = updatedItems;
+        setItems(updatedItems);
+        saveAndSync(updatedItems);
+    };
+
 
     const handleAddTask = async (content: string, date: string, priority: Priority = 'normal', start?: string, end?: string, hideFromCalendar?: boolean) => {
         const newItems = buildItemsFromCreatePayload(
@@ -2611,7 +2639,10 @@ export const useBrainDumpData = () => {
         date?: string,
         transactionLineItems?: TransactionLineItem[],
         merchant?: string,
-        receiptCapture?: ReceiptCaptureMeta
+        receiptCapture?: ReceiptCaptureMeta,
+        originalCurrency?: string,
+        originalAmount?: number,
+        exchangeRateToIdr?: number
     ) => {
         const sanitizedTransactionLineItems = sanitizeTransactionLineItems(transactionLineItems);
         const resolvedAmount = sanitizedTransactionLineItems.length
@@ -2634,6 +2665,10 @@ export const useBrainDumpData = () => {
                 transactionLineItems: sanitizedTransactionLineItems.length ? sanitizedTransactionLineItems : undefined,
                 receiptCapture,
                 merchant: merchant?.trim() || undefined,
+                currency: 'IDR',
+                originalCurrency: originalCurrency && originalCurrency !== 'IDR' ? originalCurrency : undefined,
+                originalAmount: originalCurrency && originalCurrency !== 'IDR' ? originalAmount : undefined,
+                exchangeRateToIdr: originalCurrency && originalCurrency !== 'IDR' ? exchangeRateToIdr : undefined,
                 toWallet,
                 date: normalizedDate
             }
@@ -2820,6 +2855,7 @@ export const useBrainDumpData = () => {
         handleToggleStatus,
         handleDelete,
         handleUpdateItem,
+        handleUpdateReceiptCapture,
         handleKeepRawTodo,
         handleUpdateDeepWorkTodo,
         handleRetriggerDeepWorkTodo,

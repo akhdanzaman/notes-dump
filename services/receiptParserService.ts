@@ -89,6 +89,7 @@ Aturan wajib:
 - Gunakan walletId hanya dari ID wallet yang tersedia. Jika konteks menyebut wallet, prioritaskan itu.
 - date harus YYYY-MM-DD. Jika konteks memberi tanggal, prioritaskan konteks.
 - Sertakan pajak, service charge, biaya admin, pembulatan, atau diskon sebagai line item tersendiri agar jumlah lineItems sedekat mungkin dengan totalAmount. Diskon boleh bernilai negatif.
+- Untuk pajak/biaya/diskon yang berlaku pada seluruh nota, set allocationMode menjadi proportional. Jika jelas hanya untuk satu kategori, set category.
 - Jangan mengarang item yang tidak terlihat. Bila teks tidak jelas, beri nama yang konservatif.
 - commodity dan subcommodity berupa label ringkas berbahasa Inggris untuk analitik.
 - totalAmount adalah grand total yang benar-benar dibayar.
@@ -126,6 +127,7 @@ Aturan wajib:
                 commodity: { type: Type.STRING },
                 subcommodity: { type: Type.STRING },
                 kind: { type: Type.STRING },
+                allocationMode: { type: Type.STRING },
               },
               required: ['name', 'amount'],
             },
@@ -142,6 +144,7 @@ Aturan wajib:
         ...line,
         id: `receipt-line-${Date.now()}-${index + 1}`,
         budgetCategory: resolveBudgetCategoryIdFromRules(line?.budgetCategory, budgetRules),
+        allocationMode: line?.allocationMode,
       }))
     : [];
   let lineItems = sanitizeTransactionLineItems(mapped);
@@ -163,6 +166,7 @@ Aturan wajib:
         commodity: difference > 0 ? 'fees' : 'discount',
         subcommodity: 'receipt_adjustment',
         kind: difference > 0 ? 'adjustment' : 'discount',
+        allocationMode: 'proportional',
       },
     ]);
     warnings.push('Selisih grand total dimasukkan sebagai line item penyesuaian.');

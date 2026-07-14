@@ -171,6 +171,8 @@ export interface ShoppingLineItem {
   amount?: number;
 }
 
+export type TransactionLineAllocationMode = 'category' | 'proportional' | 'uncategorized';
+
 export interface TransactionLineItem {
   id: string;
   name: string;
@@ -181,13 +183,48 @@ export interface TransactionLineItem {
   commodity?: string;
   subcommodity?: string;
   kind?: 'item' | 'tax' | 'fee' | 'discount' | 'adjustment';
+  allocationMode?: TransactionLineAllocationMode;
+  originalAmount?: number;
+  originalUnitPrice?: number;
+  originalCurrency?: string;
 }
 
 export interface ReceiptCaptureMeta {
+  attachmentId?: string;
   imageName?: string;
   imageMimeType?: string;
+  imageSize?: number;
+  fingerprint?: string;
   context?: string;
   extractedAt?: string;
+  originalCurrency?: string;
+  originalTotal?: number;
+  exchangeRateToIdr?: number;
+}
+
+export type ReceiptProcessingStage = 'uploading' | 'reading' | 'categorizing' | 'ready';
+export type ImageAttachmentMode = 'receipt' | 'chat';
+
+export interface ReceiptReviewDraft {
+  id: string;
+  createdAt: string;
+  imageName: string;
+  imageMimeType: string;
+  imageSize: number;
+  attachmentId?: string;
+  fingerprint?: string;
+  context?: string;
+  merchant?: string;
+  date: string;
+  walletId?: string;
+  defaultBudgetCategory?: string;
+  originalCurrency: string;
+  originalTotal: number;
+  exchangeRateToIdr?: number;
+  lineItems: TransactionLineItem[];
+  warnings: string[];
+  duplicateItemId?: string;
+  allowDuplicate?: boolean;
 }
 
 export interface ItemMeta {
@@ -223,6 +260,9 @@ export interface ItemMeta {
   commodity?: string;
   subcommodity?: string;
   merchant?: string;
+  originalCurrency?: string;
+  originalAmount?: number;
+  exchangeRateToIdr?: number;
 
   durationMinutes?: number;
   skillId?: string;
@@ -576,6 +616,9 @@ export interface ParsedItemMetaV2 {
   commodity?: string;
   subcommodity?: string;
   merchant?: string;
+  originalCurrency?: string;
+  originalAmount?: number;
+  exchangeRateToIdr?: number;
 
   durationMinutes?: number;
   skillName?: string;
