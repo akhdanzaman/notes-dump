@@ -96,6 +96,7 @@ import {
   saveReceiptAttachment,
 } from "./services/receiptAttachmentService";
 import { findDuplicateReceiptTransaction } from "./utils/receiptDuplicate";
+import { getReceiptTransactionViewDate, shouldQueueReceiptReview } from "./utils/receiptReviewPolicy";
 import { convertTransactionLineItemsToIdr, sumTransactionLineItems } from "./utils/transactionLineItems";
 
 const getThemeMonthKey = (date: Date) => {
@@ -105,6 +106,31 @@ const getThemeMonthKey = (date: Date) => {
 };
 
 const RECEIPT_REVIEWS_STORAGE_KEY = "braindump_receipt_reviews";
+
+const readStoredReceiptReviews = (): ReceiptReviewDraft[] => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECEIPT_REVIEWS_STORAGE_KEY) || '[]');
+    if (!Array.isArray(raw)) return [];
+    const seenIds = new Set<string>();
+    return raw.filter((review): review is ReceiptReviewDraft => {
+      if (!review || typeof review !== 'object') return false;
+      if (typeof review.id !== 'string' || !review.id || seenIds.has(review.id)) return false;
+      if (!Array.isArray(review.lineItems) || typeof review.date !== 'string') return false;
+      seenIds.add(review.id);
+      return true;
+    });
+  } catch {
+    return [];
+  }
+};
+
+const persistReceiptReviews = (reviews: ReceiptReviewDraft[]) => {
+  try {
+    localStorage.setItem(RECEIPT_REVIEWS_STORAGE_KEY, JSON.stringify(reviews));
+  } catch {
+    // Storage may be unavailable in private/restricted browser contexts.
+  }
+};
 
 const getLocalDateInput = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -444,18 +470,34 @@ const App: React.FC = () => {
   const [isReviewCenterOpen, setIsReviewCenterOpen] = useState(false);
   const [lastReviewCenterOpenedAt, setLastReviewCenterOpenedAt] = useState(0);
   const [receiptStage, setReceiptStage] = useState<ReceiptProcessingStage | null>(null);
-  const [receiptReviews, setReceiptReviews] = useState<ReceiptReviewDraft[]>(() => {
-    try {
-      const stored = localStorage.getItem(RECEIPT_REVIEWS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [receiptReviews, setReceiptReviews] = useState<ReceiptReviewDraft[]>(readStoredReceiptReviews);
+
+  const updateReceiptReviews = (
+    updater: (current: ReceiptReviewDraft[]) => ReceiptReviewDraft[],
+  ) => {
+    setReceiptReviews((current) => {
+      const next = updater(current);
+      persistReceiptReviews(next);
+      return next;
+    });
+  };
 
   useEffect(() => {
-    localStorage.setItem(RECEIPT_REVIEWS_STORAGE_KEY, JSON.stringify(receiptReviews));
-  }, [receiptReviews]);
+    if (!receiptReviews.length || !items.length) return;
+    const committedAttachmentIds = new Set(
+      items
+        .map((item) => item.meta.receiptCapture?.attachmentId)
+        .filter((value): value is string => !!value),
+    );
+    if (!committedAttachmentIds.size) return;
+
+    updateReceiptReviews((current) => {
+      const next = current.filter((review) =>
+        !review.attachmentId || !committedAttachmentIds.has(review.attachmentId),
+      );
+      return next.length === current.length ? current : next;
+    });
+  }, [items, receiptReviews.length]);
 
   const latestParsingTaskAt = useMemo(() => {
     const latestParsing = parsingTasks.reduce(
@@ -488,20 +530,20 @@ const App: React.FC = () => {
     );
   }, [enrichmentTasks, fetchStatus, parsingTasks, pendingCount, receiptStage, saveStatus]);
 
-  const noisyEnrichmentCount = enrichmentTasks.filter(
-    (task) =>
-      task.status === "failed" ||
-      task.reviewCount ||
-      (task.appliedFields?.length || 0) > 0,
+  const unresolvedParsingCount = parsingTasks.filter(
+    (task) => task.status === 'pending' || task.status === 'failed',
   ).length;
-  const showReviewCenterNudge =
-    (receiptReviews.length > 0 ||
-      parsingTasks.length > 0 ||
-      pendingReviews.length > 0 ||
-      noisyEnrichmentCount > 0) &&
-    Math.max(latestParsingTaskAt, latestReceiptReviewAt) > lastReviewCenterOpenedAt;
+  const unresolvedEnrichmentCount = enrichmentTasks.filter(
+    (task) => task.status === 'pending' || task.status === 'running' || task.status === 'failed',
+  ).length;
   const reviewCenterBadgeCount =
-    receiptReviews.length + pendingReviews.length + parsingTasks.length + noisyEnrichmentCount;
+    receiptReviews.length
+    + pendingReviews.length
+    + unresolvedParsingCount
+    + unresolvedEnrichmentCount;
+  const showReviewCenterNudge =
+    reviewCenterBadgeCount > 0
+    && Math.max(latestParsingTaskAt, latestReceiptReviewAt) > lastReviewCenterOpenedAt;
 
   const openReviewCenterFromInput = () => {
     setLastReviewCenterOpenedAt(Date.now());
@@ -952,7 +994,7 @@ const App: React.FC = () => {
       lineItems: draft.lineItems,
       fingerprint: draft.fingerprint,
     });
-    setReceiptReviews((current) => current.map((review) => review.id === draft.id
+    updateReceiptReviews((current) => current.map((review) => review.id === draft.id
       ? {
           ...draft,
           duplicateItemId: duplicate?.id,
@@ -961,7 +1003,27 @@ const App: React.FC = () => {
       : review));
   };
 
-  const handleApproveReceiptReview = async (draft: ReceiptReviewDraft) => {
+  const revealReceiptTransaction = (date: string) => {
+    const parsedDate = getReceiptTransactionViewDate(date);
+    if (parsedDate) setFinanceDate(parsedDate);
+
+    setFilterWallet('');
+    setFilterTransactionType('');
+    setFilterCategory('');
+    setFilterMinAmount('');
+    setFilterMaxAmount('');
+    setSelectedTag('');
+    setSearchQuery('');
+    setSortOrder('newest');
+    setActiveTab('money');
+    setMoneyView('transactions');
+    setIsReviewCenterOpen(false);
+  };
+
+  const commitReceiptDraft = async (
+    draft: ReceiptReviewDraft,
+    options: { requireWallet: boolean; revealTransaction: boolean },
+  ) => {
     const duplicate = findDuplicateReceiptTransaction(items, {
       merchant: draft.merchant,
       date: draft.date,
@@ -975,12 +1037,15 @@ const App: React.FC = () => {
 
     const currency = (draft.originalCurrency || 'IDR').toUpperCase();
     const exchangeRate = currency === 'IDR' ? 1 : Number(draft.exchangeRateToIdr || 0);
-    const convertedLineItems = convertTransactionLineItemsToIdr(draft.lineItems, currency, exchangeRate);
-    if (!draft.walletId || !draft.date || !convertedLineItems.length) {
-      throw new Error('Lengkapi wallet, tanggal, dan rincian item sebelum menyimpan.');
-    }
     if (currency !== 'IDR' && (!Number.isFinite(exchangeRate) || exchangeRate <= 0)) {
-      throw new Error('Masukkan kurs mata uang ke IDR sebelum menyimpan.');
+      throw new Error('Kurs mata uang ke IDR diperlukan sebelum transaksi dapat disimpan.');
+    }
+
+    const convertedLineItems = convertTransactionLineItemsToIdr(draft.lineItems, currency, exchangeRate);
+    if (!draft.date || !convertedLineItems.length || (options.requireWallet && !draft.walletId)) {
+      throw new Error(options.requireWallet
+        ? 'Lengkapi wallet, tanggal, dan rincian item sebelum menyimpan.'
+        : 'Tanggal dan rincian item harus tersedia sebelum menyimpan.');
     }
 
     const originalTotal = sumTransactionLineItems(draft.lineItems);
@@ -988,7 +1053,7 @@ const App: React.FC = () => {
       || draft.imageName.replace(/\.[^.]+$/, '').trim()
       || 'Transaksi dari nota';
 
-    await handleAddTransaction(
+    const savedItem = await handleAddTransaction(
       description,
       sumTransactionLineItems(convertedLineItems),
       'expense',
@@ -1014,11 +1079,18 @@ const App: React.FC = () => {
       originalTotal,
       exchangeRate,
     );
-    setReceiptReviews((current) => current.filter((review) => review.id !== draft.id));
+
+    if (options.revealTransaction) revealReceiptTransaction(draft.date);
+    return savedItem;
+  };
+
+  const handleApproveReceiptReview = async (draft: ReceiptReviewDraft) => {
+    await commitReceiptDraft(draft, { requireWallet: true, revealTransaction: true });
+    updateReceiptReviews((current) => current.filter((review) => review.id !== draft.id));
   };
 
   const handleRejectReceiptReview = async (draft: ReceiptReviewDraft) => {
-    setReceiptReviews((current) => current.filter((review) => review.id !== draft.id));
+    updateReceiptReviews((current) => current.filter((review) => review.id !== draft.id));
     await deleteReceiptAttachment(draft.attachmentId).catch(() => undefined);
   };
 
@@ -1056,11 +1128,14 @@ const App: React.FC = () => {
 
     if (image) {
       setReceiptStage('uploading');
+      let attachmentId: string | undefined;
       try {
-        const [attachmentId, fingerprint] = await Promise.all([
+        const savedAttachment = await Promise.all([
           saveReceiptAttachment(image),
           createReceiptFingerprint(image),
         ]);
+        attachmentId = savedAttachment[0];
+        const fingerprint = savedAttachment[1];
         setReceiptStage('reading');
         const parsed = await parseReceiptImage(
           image,
@@ -1099,11 +1174,17 @@ const App: React.FC = () => {
           duplicateItemId: duplicate?.id,
           allowDuplicate: false,
         };
-        setReceiptReviews((current) => [draft, ...current]);
+
         setReceiptStage('ready');
-        setLastReviewCenterOpenedAt(Date.now());
-        setIsReviewCenterOpen(true);
+        if (shouldQueueReceiptReview(appSettings)) {
+          updateReceiptReviews((current) => [draft, ...current]);
+          setLastReviewCenterOpenedAt(Date.now());
+          setIsReviewCenterOpen(true);
+        } else {
+          await commitReceiptDraft(draft, { requireWallet: false, revealTransaction: true });
+        }
       } catch (scanError) {
+        if (attachmentId) await deleteReceiptAttachment(attachmentId).catch(() => undefined);
         setReceiptStage(null);
         throw scanError;
       }

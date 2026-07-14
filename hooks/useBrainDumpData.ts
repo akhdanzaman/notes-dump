@@ -2677,7 +2677,8 @@ export const useBrainDumpData = () => {
         const updated = [newItem, ...itemsRef.current];
         itemsRef.current = updated;
         setItems(updated);
-        saveAndSync(updated);
+        await saveAndSync(updated);
+        return newItem;
     };
 
     const handleAddNote = async (title: string, content: string, tags: string[], type: ItemType.NOTE | ItemType.JOURNAL = ItemType.NOTE) => {
@@ -2805,7 +2806,7 @@ export const useBrainDumpData = () => {
         itemsRef, setItems, saveAndSync,
         canonicalRulesRef, setCanonicalRules,
         walletsRef, budgetConfigRef,
-        enrichmentTasksRef, setEnrichmentTasks,
+        enrichmentTasksRef, setEnrichmentTasks, setParsingTasks,
         setPendingReviews, pendingReviews,
         executeParserResults,
         replaceHistoricalCanonicalReviews,

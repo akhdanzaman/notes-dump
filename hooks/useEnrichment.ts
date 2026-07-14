@@ -1,9 +1,33 @@
 import { useCallback } from 'react';
-import { BrainDumpItem, CanonicalRule, ParserResultV2 } from '../types';
+import { BrainDumpItem, CanonicalRule, EnrichmentTask, ParserResultV2, ParsingTask } from '../types';
 import { HistoricalCanonicalReview, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta } from '../services/canonicalizerService';
 import { ASYNC_ENRICHMENT_REVIEW_PREFIX, queueCanonicalEnrichmentTasks, runCanonicalEnrichmentTasks } from '../services/asyncEnrichmentService';
 import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
 import { guardParserResultMultiplicity } from '../utils/parserResultGuards';
+
+
+export const mergeAsyncEnrichmentReviews = (
+  reviews: HistoricalCanonicalReview[],
+  previous: HistoricalCanonicalReview[],
+): HistoricalCanonicalReview[] => {
+  const reviewIds = new Set(reviews.map(review => review.id));
+  return [
+    ...reviews,
+    ...previous.filter(review => !reviewIds.has(review.id) && !review.id.startsWith(ASYNC_ENRICHMENT_REVIEW_PREFIX)),
+  ];
+};
+
+export const removeResolvedReviewActivity = (
+  id: string,
+  parsingTasks: ParsingTask[],
+  enrichmentTasks: EnrichmentTask[],
+) => ({
+  parsingTasks: parsingTasks.filter(task => task.id !== id),
+  enrichmentTasks: enrichmentTasks.filter(task => {
+    const enrichmentReviewId = `${ASYNC_ENRICHMENT_REVIEW_PREFIX}${task.itemId}`;
+    return task.id !== id && task.parserTaskId !== id && enrichmentReviewId !== id;
+  }),
+});
 
 type EnrichmentDeps = {
   itemsRef: { current: BrainDumpItem[] };
@@ -15,6 +39,7 @@ type EnrichmentDeps = {
   budgetConfigRef: { current: any };
   enrichmentTasksRef: { current: any[] };
   setEnrichmentTasks: (updater: any) => void;
+  setParsingTasks: (updater: any) => void;
   setPendingReviews: (updater: any) => void;
   pendingReviews: any[];
   executeParserResults: (results: ParserResultV2[], text: string, id: string, rules?: CanonicalRule[]) => void;
@@ -26,18 +51,13 @@ export const useEnrichment = (deps: EnrichmentDeps) => {
     itemsRef, setItems, saveAndSync,
     canonicalRulesRef, setCanonicalRules,
     walletsRef, budgetConfigRef,
-    enrichmentTasksRef, setEnrichmentTasks,
+    enrichmentTasksRef, setEnrichmentTasks, setParsingTasks,
     setPendingReviews, pendingReviews,
     executeParserResults, replaceHistoricalCanonicalReviews,
   } = deps;
 
   const replaceAsyncEnrichmentReviews = useCallback((reviews: HistoricalCanonicalReview[]) => {
-    if (reviews.length === 0) return;
-    const reviewIds = new Set(reviews.map(review => review.id));
-    setPendingReviews((prev: any[]) => [
-      ...reviews,
-      ...prev.filter((review: any) => !reviewIds.has(review.id) && !review.id.startsWith(ASYNC_ENRICHMENT_REVIEW_PREFIX))
-    ]);
+    setPendingReviews((prev: HistoricalCanonicalReview[]) => mergeAsyncEnrichmentReviews(reviews, prev));
   }, [setPendingReviews]);
 
   const processEnrichmentTasks = useCallback(async (tasks: any[]) => {
@@ -61,7 +81,7 @@ export const useEnrichment = (deps: EnrichmentDeps) => {
         },
       });
 
-      if (result.reviews.length > 0) replaceAsyncEnrichmentReviews(result.reviews);
+      replaceAsyncEnrichmentReviews(result.reviews);
 
       if (result.changedItemIds.length > 0) {
         itemsRef.current = result.items;
@@ -139,9 +159,18 @@ export const useEnrichment = (deps: EnrichmentDeps) => {
     saveAndSync(undefined, undefined, undefined, undefined, undefined, undefined, undefined, nextRules);
   }, [canonicalRulesRef, setCanonicalRules, saveAndSync]);
 
+  const clearResolvedReviewActivity = (id: string) => {
+    setParsingTasks((prev: ParsingTask[]) => removeResolvedReviewActivity(id, prev, []).parsingTasks);
+    setEnrichmentTasks((prev: EnrichmentTask[]) => removeResolvedReviewActivity(id, [], prev).enrichmentTasks);
+  };
+
   const handleApproveReview = (id: string, updatedResults: ParserResultV2[]) => {
     const review = pendingReviews.find((r: any) => r.id === id);
-    if (!review) return;
+    if (!review) {
+      setPendingReviews((prev: any[]) => prev.filter((r: any) => r.id !== id));
+      clearResolvedReviewActivity(id);
+      return;
+    }
 
     const nextCanonicalRules = learnCanonicalRulesFromReview({
       originalResults: review.originalResults,
@@ -154,16 +183,12 @@ export const useEnrichment = (deps: EnrichmentDeps) => {
     const guardedResults = guardParserResultMultiplicity(updatedResults, review.text).results;
     executeParserResults(guardedResults, review.text, id, nextCanonicalRules);
     setPendingReviews((prev: any[]) => prev.filter((r: any) => r.id !== id));
+    clearResolvedReviewActivity(id);
   };
 
   const handleRejectReview = (id: string) => {
     setPendingReviews((prev: any[]) => prev.filter((r: any) => r.id !== id));
-    setItems((prev: BrainDumpItem[]) => {
-      const updated = prev.filter(i => i.id !== id);
-      itemsRef.current = updated;
-      saveAndSync(updated);
-      return updated;
-    });
+    clearResolvedReviewActivity(id);
   };
 
   return {
