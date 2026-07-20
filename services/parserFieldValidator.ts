@@ -6,7 +6,7 @@ export type ParserValidationContext = {
   availableBudgetRules: BudgetRule[];
 };
 
-const FINANCE_TYPES: FinanceType[] = ['expense', 'income', 'transfer', 'saving'];
+const FINANCE_TYPES: FinanceType[] = ['expense', 'income', 'transfer', 'saving', 'saving_withdrawal', 'loan_out', 'loan_in', 'loan_repayment_in', 'loan_repayment_out', 'achieved_goal'];
 const normalizeWhitespace = (input: string) => input.replace(/\s+/g, ' ').trim();
 const lower = (input: string) => normalizeWhitespace(input).toLowerCase();
 
@@ -102,9 +102,9 @@ const sanitizeMeta = (result: ParserResultV2, meta: any, ctx: ParserValidationCo
   }
 
   if (next.toWallet) {
-    if (itemType === 'FINANCE' && next.financeType !== 'transfer' && next.financeType !== 'saving') {
+    if (itemType === 'FINANCE' && next.financeType !== 'transfer' && next.financeType !== 'saving' && next.financeType !== 'saving_withdrawal') {
       delete next.toWallet;
-      appendReviewReason(result, 'Destination wallet is only valid for transfer or saving transactions.');
+      appendReviewReason(result, 'Destination wallet is only valid for transfer, saving, or saving-withdrawal transactions.');
     } else {
       const toWalletId = strictReferenceMatch(next.toWallet, ctx.availableWallets);
       if (toWalletId) next.toWallet = toWalletId;
@@ -154,7 +154,7 @@ export function sanitizeParserResultsBeforeResolve(results: ParserResultV2[], ct
       payload.changes = sanitizeMeta(next, payload.changes, ctx, next.entityType === 'finance' ? 'FINANCE' : undefined);
     }
 
-    if ((next.action === 'transfer_money' || next.action === 'add_saving_funds') && payload?.date !== undefined) {
+    if ((next.action === 'transfer_money' || next.action === 'add_saving_funds' || next.action === 'withdraw_saving_funds' || next.action === 'record_loan_transaction') && payload?.date !== undefined) {
       const date = normalizeDate(payload.date);
       if (date) payload.date = date;
       else {

@@ -1,5 +1,6 @@
 import { BrainDumpItem, ItemType } from '../../types';
 import { getShoppingCreatedSortTime, getShoppingDueSortTime } from '../shoppingDateUtils';
+import { getSavedAmountForGoal } from '../savingTransactionUtils';
 
 export const getShoppingItems = (items: BrainDumpItem[]) => {
     const visibleItems = items.filter(i => {
@@ -20,9 +21,7 @@ export const getShoppingItems = (items: BrainDumpItem[]) => {
     const urgent = visibleItems.filter(i => i.meta?.shoppingCategory === 'urgent');
     const routine = visibleItems.filter(i => i.meta?.shoppingCategory === 'routine');
     const withSavedAmount = (target: BrainDumpItem) => {
-        const savedAmount = items
-            .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId === target.id)
-            .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+        const savedAmount = getSavedAmountForGoal(items, target.id);
         return { ...target, meta: { ...target.meta, savedAmount } };
     };
 

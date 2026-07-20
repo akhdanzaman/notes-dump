@@ -48,6 +48,8 @@ const createsSavedEntry = (result: ParserResultV2) => (
   result.action === 'create_item' ||
   result.action === 'transfer_money' ||
   result.action === 'add_saving_funds' ||
+  result.action === 'withdraw_saving_funds' ||
+  result.action === 'record_loan_transaction' ||
   result.action === 'unknown'
 );
 

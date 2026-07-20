@@ -14,7 +14,7 @@ TYPE (pick one):
 - SHOPPING: planned purchases/errands (future/plan) OR any upcoming/unpaid financial transactions. IMPORTANT: “Buy X 50k” => SHOPPING, not FINANCE. "Saving for X 100m" => SHOPPING with shoppingCategory "saving". If a transaction is not yet done/paid, it MUST be SHOPPING with shoppingCategory "not_urgent".
 - NOTE: ideas/knowledge/random thoughts.
 - EVENT: scheduled dates/times.
-- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received) OR money movement OR adding funds to a saving goal. ALL FINANCE entries are considered DONE.
+- FINANCE: ONLY transactions that ALREADY happened (paid/bought/received), money movement, saving funding/withdrawal, lending/borrowing, or loan repayment. ALL FINANCE entries are considered DONE.
 - JOURNAL: personal diary entries, feelings, daily recaps, "Dear Diary", or explicit "Log to journal".
 - SKILL_LOG: explicit practice/training/study sessions with a skill name and duration. ALL SKILL_LOG entries are considered DONE.
 
@@ -49,7 +49,7 @@ DEEP WORK TODO (OPTIONAL):
 - Do not add subtasks for concrete errands, payments, simple calls/messages, or already checklist-like input.
 
 MONEY META (FINANCE + money-related SHOPPING):
-- financeType ∈ {expense, income, transfer, saving}
+- financeType ∈ {expense, income, transfer, saving, saving_withdrawal, loan_out, loan_in, loan_repayment_in, loan_repayment_out}
 - budgetCategory: use the exact configured budget category id when Known Budget Categories are provided. If no configured categories are provided, use a sensible broad value from {needs, wants, savings, sedekah, fixed, unintend}.
   - needs: groceries/electricity/health
   - wants: dining/hobby/entertainment/subscription entertainment
@@ -71,7 +71,8 @@ MONEY META (FINANCE + money-related SHOPPING):
   - social: gift, donation, party, hangout
   - others: miscellaneous
 - paymentMethod: EXACT text from user (Source Wallet), else "".
-- toWallet: Destination wallet (transfer only).
+- toWallet: Destination wallet (transfer or saving withdrawal).
+- loanCounterparty: person/entity on the other side of a loan transaction.
 - merchant: Vendor name if mentioned.
 - amount: number.
 
@@ -92,6 +93,8 @@ FINANCE META:
     - IF transfer: set 'paymentMethod' = Source Wallet, 'toWallet' = Destination Wallet.
 - saving: adding funds to an existing saving goal (e.g., "saved 500k for car from BCA").
     - IF saving: set 'paymentMethod' = Source Wallet, 'financeType' = 'saving'.
+- saving_withdrawal: withdrawing/liquidating funds from a saving or investment goal. Set paymentMethod to the dedicated source wallet when known and toWallet to the receiving wallet.
+- loan_out: user lends money to someone; loan_in: user borrows money; loan_repayment_in: user receives repayment; loan_repayment_out: user repays someone. Set loanCounterparty and paymentMethod.
 - IMPORTANT: You MUST ALWAYS set 'budgetCategory' for 'expense' and 'saving' transactions when the spending purpose is present.
   - Prefer the user's spreadsheet/configured categories. If there is no exact rule or reference, creatively infer the closest configured category from purpose, commodity, merchant, and wording instead of returning "none".
   - Leave budgetCategory blank only for income, transfer, or totally purpose-less amount-only inputs.
@@ -116,6 +119,9 @@ Examples:
 - "Journal kemarin: pergi ke pantai sama keluarga" => JOURNAL, content="Pergi ke pantai sama keluarga", date=YESTERDAY
 - "Saving for a new car 100 million" => SHOPPING saving, content "new car", amount 100000000
 - "Saved 500k for car from BCA" => FINANCE saving, content "Saved for car", amount 500000, paymentMethod "BCA"
+- "Tarik 200rb dari investasi BBCA ke BCA" => FINANCE saving_withdrawal, amount 200000, toWallet "BCA"
+- "Pinjamkan 300rb ke Budi dari BCA" => FINANCE loan_out, amount 300000, paymentMethod "BCA", loanCounterparty "Budi"
+- "Budi mengembalikan 100rb ke BCA" => FINANCE loan_repayment_in, amount 100000, paymentMethod "BCA", loanCounterparty "Budi"
 `;
 
 export const classifyText = async (

@@ -22,6 +22,9 @@ import {
   ThemePayload,
   TransferMoneyPayload,
   AddSavingFundsPayload,
+  WithdrawSavingFundsPayload,
+  RecordLoanTransactionPayload,
+  LoanTransactionKind,
   ParsedWalletType,
   ParsedItemType
 } from '../types';
@@ -29,6 +32,7 @@ import { DEFAULT_PROMPT } from './geminiService';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_PRO_MODEL } from './aiService';
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
 import { sanitizeShoppingLineItems } from '../utils/shoppingLineItems';
+import { parseLocalFinanceResults } from './localFinanceParser';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -95,7 +99,11 @@ function isValidItemType(value: unknown): value is ParsedItemType {
 }
 
 function isValidFinanceType(value: unknown): value is FinanceType {
-  return typeof value === 'string' && ['expense', 'income', 'transfer', 'saving'].includes(value);
+  return typeof value === 'string' && ['expense', 'income', 'transfer', 'saving', 'saving_withdrawal', 'loan_out', 'loan_in', 'loan_repayment_in', 'loan_repayment_out', 'achieved_goal'].includes(value);
+}
+
+function isValidLoanTransactionKind(value: unknown): value is LoanTransactionKind {
+  return typeof value === 'string' && ['loan_out', 'loan_in', 'loan_repayment_in', 'loan_repayment_out'].includes(value);
 }
 
 function isValidPriority(value: unknown): value is Priority {
@@ -128,6 +136,8 @@ function sanitizeAction(value: unknown): ParserAction {
     'update_theme',
     'transfer_money',
     'add_saving_funds',
+    'withdraw_saving_funds',
+    'record_loan_transaction',
     'query_only',
     'unknown'
   ];
@@ -192,7 +202,7 @@ function buildContext(
 
 export function buildContextText(ctx: ParserContext): string {
   const savingGoals = ctx.existingItems
-    .filter(i => i.type === 'SHOPPING' && (i.meta as any)?.shoppingCategory === 'saving')
+    .filter(i => i.type === 'SHOPPING' && ((i.meta as any)?.shoppingCategory === 'saving' || (i.meta as any)?.shoppingCategory === 'investment'))
     .map(i => i.content);
 
   const pendingItems = ctx.existingItems
@@ -361,6 +371,7 @@ function normalizeMeta(meta: any): ParsedItemMetaV2 {
     dedicatedWalletId: typeof meta.dedicatedWalletId === 'string' ? normalizeWhitespace(meta.dedicatedWalletId) : undefined,
     dedicatedWalletName: typeof meta.dedicatedWalletName === 'string' ? normalizeWhitespace(meta.dedicatedWalletName) : undefined,
     savedAmount: sanitizeNumber(meta.savedAmount),
+    loanCounterparty: typeof meta.loanCounterparty === 'string' ? normalizeWhitespace(meta.loanCounterparty) : undefined,
 
     isRoutine: typeof meta.isRoutine === 'boolean' ? meta.isRoutine : undefined,
     routineInterval: typeof meta.routineInterval === 'string'
@@ -403,6 +414,8 @@ Allowed actions:
 - update_theme
 - transfer_money
 - add_saving_funds
+- withdraw_saving_funds
+- record_loan_transaction
 - query_only
 - unknown
 
@@ -430,16 +443,18 @@ Rules:
 7. Create new wallet/account => create_wallet.
 8. Set monthly theme => create_theme.
 9. Move money between own wallets/accounts => transfer_money.
-10. Add money to existing saving goal => add_saving_funds.
-11. Pure question only => query_only.
-12. Never invent ids.
-13. If ambiguous, set needsReview=true and lower confidence.
-14. CRITICAL RULE FOR MULTIPLICITY: Return EXACTLY ONE object in the array for a single logical input. Do NOT split a single transaction or thought into multiple array elements. A single transaction must result in exactly 1 array item. Only return multiple objects if the user explicitly listed multiple separate things.
+10. Add money to existing saving/investment goal => add_saving_funds.
+11. Withdraw or liquidate money from an existing saving/investment goal => withdraw_saving_funds.
+12. Record lending, borrowing, or repayment cash movement => record_loan_transaction.
+13. Pure question only => query_only.
+14. Never invent ids.
+15. If ambiguous, set needsReview=true and lower confidence.
+16. CRITICAL RULE FOR MULTIPLICITY: Return EXACTLY ONE object in the array for a single logical input. Do NOT split a single transaction or thought into multiple array elements. A single transaction must result in exactly 1 array item. Only return multiple objects if the user explicitly listed multiple separate things.
 
 Entity hints:
 - todo = focus/task/routine action
 - shopping = planned purchase, errand, shopping list, saving goal target
-- finance = already happened transaction, income, expense, transfer, saving funding
+- finance = already happened transaction, income, expense, transfer, saving funding/withdrawal, lending, borrowing, or repayment
 - journal = diary/feelings/recap
 - skill_log = practice/training/study session entry with duration
 - skill = skill master entry
@@ -567,6 +582,9 @@ const stage2Schema = {
           savingGoalName: { type: Type.STRING },
           budgetCategory: { type: Type.STRING },
           note: { type: Type.STRING },
+          transactionKind: { type: Type.STRING },
+          wallet: { type: Type.STRING },
+          counterparty: { type: Type.STRING },
 
           question: { type: Type.STRING },
           scope: { type: Type.STRING },
@@ -604,6 +622,7 @@ const stage2Schema = {
               commodity: { type: Type.STRING },
               subcommodity: { type: Type.STRING },
               merchant: { type: Type.STRING },
+              loanCounterparty: { type: Type.STRING },
               durationMinutes: { type: Type.NUMBER },
               skillName: { type: Type.STRING },
               skillId: { type: Type.STRING },
@@ -685,6 +704,7 @@ const stage2Schema = {
               commodity: { type: Type.STRING },
               subcommodity: { type: Type.STRING },
               merchant: { type: Type.STRING },
+              loanCounterparty: { type: Type.STRING },
 
               durationMinutes: { type: Type.NUMBER },
               skillName: { type: Type.STRING },
@@ -763,7 +783,10 @@ async function parseStage1(
 - "hapus note github token" => delete_item + note
 - "ubah bayar parkiran jadi tiap senin jumat" => update_item
 - "transfer 250rb dari BCA ke Cash" => transfer_money
-- "tabung 500rb ke Emergency Savings dari BCA" => add_saving_funds`
+- "tabung 500rb ke Emergency Savings dari BCA" => add_saving_funds
+- "tarik 200rb dari Emergency Savings ke Cash" => withdraw_saving_funds
+- "pinjamkan 300rb ke Budi dari BCA" => record_loan_transaction with transactionKind loan_out
+- "Budi mengembalikan 100rb ke BCA" => record_loan_transaction with transactionKind loan_repayment_in`
     ].join('\n\n'),
     config: {
       temperature: 0.1,
@@ -856,6 +879,22 @@ Multiplicity rules:
 - payload.amount
 - payload.savingGoalName
 - payload.fromWallet
+- payload.date if specified
+
+10) withdraw_saving_funds
+- payload.amount
+- payload.savingGoalName
+- payload.fromWallet = dedicated saving/investment wallet when known
+- payload.toWallet = wallet receiving the liquidated funds when stated
+- payload.date if specified
+
+11) record_loan_transaction
+- payload.transactionKind must be one of loan_out|loan_in|loan_repayment_in|loan_repayment_out
+- loan_out = user lends money to someone
+- loan_in = user borrows money from someone
+- loan_repayment_in = someone repays the user
+- loan_repayment_out = user repays someone
+- payload.amount, payload.wallet, payload.counterparty
 - payload.date if specified
 
 Date rules:
@@ -983,7 +1022,7 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
         const walletId = findClosestMatch(meta.toWallet, ctx.availableWallets);
         if (walletId) meta.toWallet = walletId;
       }
-      if (itemType === 'FINANCE' && meta.financeType !== 'transfer' && meta.financeType !== 'saving') {
+      if (itemType === 'FINANCE' && meta.financeType !== 'transfer' && meta.financeType !== 'saving' && meta.financeType !== 'saving_withdrawal') {
         delete meta.toWallet;
       }
       if (meta.budgetCategory) {
@@ -996,7 +1035,7 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
       }
       if (meta.savingGoalName && !meta.savingGoalId) {
         const savingGoals = ctx.existingItems
-          .filter(i => i.type === ItemType.SHOPPING && i.meta?.shoppingCategory === 'saving')
+          .filter(i => i.type === ItemType.SHOPPING && (i.meta?.shoppingCategory === 'saving' || i.meta?.shoppingCategory === 'investment'))
           .map(i => ({ id: i.id, name: i.content }));
         const goalId = findClosestMatch(meta.savingGoalName, savingGoals);
         if (goalId) meta.savingGoalId = goalId;
@@ -1305,7 +1344,7 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
         ''
       );
       const savingGoals = ctx.existingItems
-        .filter(i => i.type === ItemType.SHOPPING && i.meta?.shoppingCategory === 'saving')
+        .filter(i => i.type === ItemType.SHOPPING && (i.meta?.shoppingCategory === 'saving' || i.meta?.shoppingCategory === 'investment'))
         .map(i => ({ id: i.id, name: i.content }));
       const goalId = payload.savingGoalId ||
         resolved.entityRefs?.savingGoalId ||
@@ -1347,6 +1386,88 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
       return resolved;
     }
 
+    if (resolved.action === 'withdraw_saving_funds') {
+      const payload = (resolved.payload || {}) as WithdrawSavingFundsPayload;
+      const rawGoalName = normalizeWhitespace(
+        payload.savingGoalName ||
+        resolved.entityRefs?.savingGoalName ||
+        ''
+      );
+      const savingGoals = ctx.existingItems
+        .filter(i => i.type === ItemType.SHOPPING && (i.meta?.shoppingCategory === 'saving' || i.meta?.shoppingCategory === 'investment'))
+        .map(i => ({ id: i.id, name: i.content, dedicatedWalletId: i.meta.dedicatedWalletId }));
+      const goalId = payload.savingGoalId ||
+        resolved.entityRefs?.savingGoalId ||
+        findClosestMatch(rawGoalName, savingGoals);
+      const matchedGoal = savingGoals.find(goal => goal.id === goalId);
+      const goalName = rawGoalName || matchedGoal?.name || '';
+
+      const rawFromWallet = normalizeWhitespace(payload.fromWallet || resolved.entityRefs?.walletName || '');
+      const rawToWallet = normalizeWhitespace(payload.toWallet || resolved.entityRefs?.toWalletName || '');
+      const fromWalletId = findClosestMatch(rawFromWallet, ctx.availableWallets)
+        || matchedGoal?.dedicatedWalletId;
+      const toWalletId = findClosestMatch(rawToWallet, ctx.availableWallets);
+      const amount = sanitizeNumber(payload.amount);
+
+      resolved.entityRefs = stripUndefined({
+        ...(resolved.entityRefs || {}),
+        savingGoalId: goalId,
+        savingGoalName: goalName || undefined,
+        walletId: fromWalletId,
+        walletName: rawFromWallet || ctx.availableWallets.find(wallet => wallet.id === fromWalletId)?.name,
+        toWalletId,
+        toWalletName: rawToWallet || undefined
+      });
+      resolved.payload = {
+        savingGoalId: goalId,
+        savingGoalName: goalName || undefined,
+        amount,
+        fromWallet: fromWalletId,
+        toWallet: toWalletId || rawToWallet || undefined,
+        date: typeof payload.date === 'string' ? payload.date : undefined,
+        note: typeof payload.note === 'string' ? normalizeWhitespace(payload.note) : undefined
+      } satisfies WithdrawSavingFundsPayload;
+
+      if (!amount || !goalId || (fromWalletId && !toWalletId && !rawToWallet)) {
+        resolved.needsReview = true;
+        resolved.reviewReason = resolved.reviewReason || 'Saving withdrawal is missing amount, matched goal, or destination wallet.';
+        resolved.confidence = 'low';
+      }
+      return resolved;
+    }
+
+    if (resolved.action === 'record_loan_transaction') {
+      const payload = (resolved.payload || {}) as RecordLoanTransactionPayload;
+      const transactionKind = isValidLoanTransactionKind(payload.transactionKind)
+        ? payload.transactionKind
+        : undefined;
+      const rawWallet = normalizeWhitespace(payload.wallet || resolved.entityRefs?.walletName || '');
+      const walletId = findClosestMatch(rawWallet, ctx.availableWallets);
+      const counterparty = normalizeWhitespace(payload.counterparty || '');
+      const amount = sanitizeNumber(payload.amount);
+
+      resolved.entityRefs = stripUndefined({
+        ...(resolved.entityRefs || {}),
+        walletId,
+        walletName: rawWallet || undefined
+      });
+      resolved.payload = {
+        transactionKind,
+        amount,
+        wallet: walletId || rawWallet || undefined,
+        counterparty: counterparty || undefined,
+        date: typeof payload.date === 'string' ? payload.date : undefined,
+        note: typeof payload.note === 'string' ? normalizeWhitespace(payload.note) : undefined
+      } satisfies RecordLoanTransactionPayload;
+
+      if (!transactionKind || !amount || !walletId || !counterparty) {
+        resolved.needsReview = true;
+        resolved.reviewReason = resolved.reviewReason || 'Loan transaction is missing direction, amount, wallet, or counterparty.';
+        resolved.confidence = 'low';
+      }
+      return resolved;
+    }
+
     return resolved;
   });
 }
@@ -1363,6 +1484,13 @@ export const parsePro = async (
   retryCount = 0,
   onProgress?: (stage: 'stage1' | 'stage2') => void
 ): Promise<ParserResultV2[]> => {
+  const localFinanceResults = parseLocalFinanceResults(text, {
+    availableWallets,
+    availableBudgetRules,
+    existingItems,
+  });
+  if (localFinanceResults) return localFinanceResults;
+
   const apiKey = getGeminiKey();
 
   if (!apiKey) {

@@ -1,5 +1,7 @@
 import {
   AddSavingFundsPayload,
+  LoanTransactionKind,
+  RecordLoanTransactionPayload,
   BrainDumpItem,
   BudgetRule,
   CreateItemPayload,
@@ -8,11 +10,12 @@ import {
   ParserConfidence,
   ParserResultV2,
   TransferMoneyPayload,
+  WithdrawSavingFundsPayload,
   Wallet,
 } from '../types';
 import { enrichFinanceMetaFromText } from './parserSignalService';
 
-export type LocalFinanceFastPathKind = 'expense' | 'income' | 'transfer' | 'saving';
+export type LocalFinanceFastPathKind = 'expense' | 'income' | 'transfer' | 'saving' | 'saving_withdrawal' | LoanTransactionKind;
 
 export interface LocalFinanceParseOptions {
   availableWallets?: Wallet[];
@@ -45,7 +48,8 @@ const PURCHASE_EXPENSE_KEYWORDS = ['beli', 'buy', 'belanja', 'purchase'];
 const INCOME_KEYWORDS = ['income', 'pemasukan', 'masuk', 'gaji', 'salary', 'bonus', 'refund', 'cashback', 'reimburse', 'reimbursement'];
 const TRANSFER_KEYWORDS = ['transfer', 'tf', 'trf', 'pindah', 'mutasi'];
 const SAVING_KEYWORDS = ['saving', 'savings', 'tabung', 'nabung', 'simpan', 'invest', 'investasi', 'investment'];
-const ALL_KEYWORDS = [...EXPENSE_KEYWORDS, ...PURCHASE_EXPENSE_KEYWORDS, ...INCOME_KEYWORDS, ...TRANSFER_KEYWORDS, ...SAVING_KEYWORDS];
+const SAVING_WITHDRAWAL_KEYWORDS = ['withdraw', 'tarik', 'cair', 'cairkan', 'ambil'];
+const ALL_KEYWORDS = [...EXPENSE_KEYWORDS, ...PURCHASE_EXPENSE_KEYWORDS, ...INCOME_KEYWORDS, ...TRANSFER_KEYWORDS, ...SAVING_KEYWORDS, ...SAVING_WITHDRAWAL_KEYWORDS];
 const CONNECTOR_WORDS = ['dari', 'from', 'pakai', 'pake', 'via', 'with', 'ke', 'to', 'into', 'tujuan', 'buat', 'untuk', 'di', 'on'];
 const UNKNOWN_WALLET_HINTS = ['cash', 'tunai', 'qris', 'gopay', 'go-pay', 'ovo', 'dana', 'shopeepay', 'shoppepay', 'spay', 'bca', 'bni', 'bri', 'mandiri', 'jago', 'blu', 'seabank', 'jenius', 'permata', 'cimb', 'bsi', 'bibit', 'ajaib'];
 const AMBIGUOUS_FALLBACK_PATTERN = /\b(split|patungan|utang|hutang|pinjam|reimburse(?:ment)?|dibalikin|kayaknya|kayanya|mungkin|kurang lebih|approx|maybe)\b/i;
@@ -241,10 +245,238 @@ const resolveWalletRoles = (kind: LocalFinanceFastPathKind, text: string, matche
 const confidenceFromMissing = (missingFields: string[]): ParserConfidence => missingFields.length >= 2 ? 'low' : missingFields.length === 1 ? 'medium' : 'high';
 const reviewReasonFromMissing = (missingFields: string[]): string | undefined => missingFields.length ? `Local finance parser missing: ${missingFields.join(', ')}` : undefined;
 
+const savingTargets = (items: BrainDumpItem[]): BrainDumpItem[] => items.filter(item =>
+  item.type === ItemType.SHOPPING &&
+  (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment')
+);
+
+const findSavingGoalMentionedInText = (text: string, items: BrainDumpItem[]): BrainDumpItem | undefined => {
+  const normalizedText = normalizeKey(text);
+  return savingTargets(items)
+    .filter(goal => normalizeKey(goal.content).length >= 3 && normalizedText.includes(normalizeKey(goal.content)))
+    .sort((a, b) => normalizeKey(b.content).length - normalizeKey(a.content).length)[0];
+};
+
+const parseSavingWithdrawalCommand = (
+  normalizedText: string,
+  options: LocalFinanceParseOptions,
+  startedAt: number,
+): LocalFinanceParseResult | null => {
+  const triggerMatch = normalizedText.match(/^\s*(withdraw|tarik|cairkan?|ambil)\b/i);
+  if (!triggerMatch) return null;
+
+  const dateHint = extractDateHint(normalizedText, options.now || new Date());
+  const textWithoutDateHint = dateHint
+    ? normalizeWhitespace(normalizedText.replace(new RegExp(escapeRegExp(dateHint.raw), 'i'), ' '))
+    : normalizedText;
+  const amountMatches = findAmountMatches(textWithoutDateHint);
+  if (amountMatches.length > 1) return null;
+
+  const amount = amountMatches[0];
+  const wallets = findWalletMatches(normalizedText, options.availableWallets || []);
+  const trigger: TriggerSpec = { kind: 'saving_withdrawal', keyword: triggerMatch[1].toLowerCase() };
+  const label = buildContentLabel(normalizedText, trigger, amount, wallets, dateHint)
+    .replace(/\b(?:dari|from|ke|to|into)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const mentionedGoal = findSavingGoalMentionedInText(normalizedText, options.existingItems || []);
+  const matchedGoal = mentionedGoal || findClosestSavingGoal(label, options.existingItems || []);
+  const hasSavingHint = /\b(saving|savings|tabungan|goal|target|investasi|investment|invest)\b/i.test(normalizedText);
+  if (!matchedGoal && !hasSavingHint) return null; // Keep generic "tarik tunai" as wallet transfer/deep parsing.
+
+  const roles = resolveWalletRoles('transfer', normalizedText, wallets);
+  const dedicatedWalletId = matchedGoal?.meta.dedicatedWalletId;
+  const explicitSourceWalletId = roles.fromWallet?.wallet.id;
+  const destinationWalletId = roles.toWallet?.wallet.id
+    || wallets.find(match => match.wallet.id !== explicitSourceWalletId && match.wallet.id !== dedicatedWalletId)?.wallet.id;
+  const inferredSourceWalletId = explicitSourceWalletId
+    || (dedicatedWalletId && dedicatedWalletId !== destinationWalletId ? dedicatedWalletId : undefined);
+  const sourceWallet = (options.availableWallets || []).find(wallet => wallet.id === inferredSourceWalletId);
+  const destinationWallet = (options.availableWallets || []).find(wallet => wallet.id === destinationWalletId);
+  const missingFields: string[] = [];
+
+  if (!amount) missingFields.push('amount');
+  if (!matchedGoal) missingFields.push(label ? 'savingGoal:notMatched' : 'savingGoal');
+  if (inferredSourceWalletId && !destinationWalletId) missingFields.push('toWallet');
+
+  const confidence = confidenceFromMissing(missingFields);
+  const goalName = matchedGoal?.content || label || undefined;
+  const payload: WithdrawSavingFundsPayload = {
+    savingGoalId: matchedGoal?.id,
+    savingGoalName: goalName,
+    amount: amount?.amount,
+    fromWallet: inferredSourceWalletId,
+    toWallet: destinationWalletId,
+    date: dateHint?.date,
+    note: goalName ? `Withdraw from: ${goalName}` : undefined,
+  };
+  const result: ParserResultV2 = {
+    action: 'withdraw_saving_funds',
+    entityType: 'saving_goal',
+    content: goalName ? `Withdraw from: ${goalName}` : normalizedText,
+    confidence,
+    needsReview: missingFields.length > 0,
+    reviewReason: reviewReasonFromMissing(missingFields),
+    entityRefs: {
+      walletId: inferredSourceWalletId,
+      walletName: sourceWallet?.name,
+      toWalletId: destinationWalletId,
+      toWalletName: destinationWallet?.name,
+      savingGoalId: matchedGoal?.id,
+      savingGoalName: goalName,
+    },
+    payload,
+  };
+
+  return {
+    result,
+    kind: 'saving_withdrawal',
+    confidenceScore: confidence === 'high' ? 0.95 : confidence === 'medium' ? 0.72 : 0.45,
+    missingFields,
+    telemetry: { elapsedMs: nowMs() - startedAt, matchedFastPath: true },
+  };
+};
+
+const detectLoanTransactionKind = (text: string): LoanTransactionKind | undefined => {
+  const lowerText = text.toLowerCase();
+  const userPronoun = '(?:saya|aku|gue|gw|user|me)';
+
+  if (
+    /\b(?:dikembalikan|dibalikin|dibayar\s+balik|pengembalian\s+pinjaman|loan\s+repayment)\b/i.test(lowerText) ||
+    /^\s*[^\d]+?\s+(?:mengembalikan|balikin|membayar\s+balik|repaid?)\b/i.test(lowerText) ||
+    new RegExp(`\\b(?:mengembalikan|balikin|membayar\\s+balik|repaid?)\\b.*\\b(?:ke|kepada|to)\\s+${userPronoun}\\b`, 'i').test(lowerText)
+  ) return 'loan_repayment_in';
+
+  if (/\b(?:kembalikan|balikin|bayar\s+(?:utang|hutang|pinjaman)|lunasi\s+(?:utang|hutang|pinjaman)|repay)\b/i.test(lowerText)) {
+    return 'loan_repayment_out';
+  }
+
+  if (
+    /\b(?:pinjamkan|meminjamkan|dipinjamkan|kasih\s+pinjaman|beri\s+pinjaman|lend|lent)\b/i.test(lowerText) ||
+    new RegExp(`^\\s*[^\\d]+?\\s+(?:pinjam|borrow)\\b.*\\b(?:dari|from)\\s+${userPronoun}\\b`, 'i').test(lowerText)
+  ) return 'loan_out';
+
+  if (/\b(?:terima\s+pinjaman|pinjam|meminjam|borrow|borrowed)\b/i.test(lowerText)) return 'loan_in';
+  return undefined;
+};
+
+const cleanLoanCounterparty = (value?: string): string | undefined => {
+  if (!value) return undefined;
+  const cleaned = normalizeWhitespace(value)
+    .replace(/^[\s,:;-]+|[\s,:;-]+$/g, '')
+    .replace(/\b(?:uang|dana|pinjaman|utang|hutang|saya|aku|gue|gw|user|me)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || undefined;
+};
+
+const extractLoanCounterparty = (
+  text: string,
+  kind: LoanTransactionKind,
+  amount: AmountMatch | undefined,
+  wallets: WalletMatch[],
+  dateHint?: DateHint,
+): string | undefined => {
+  let cleaned = text;
+  if (amount) cleaned = cleaned.replace(amount.raw, ' ');
+  wallets.forEach(wallet => {
+    cleaned = cleaned.replace(new RegExp(`\\b${escapeRegExp(wallet.raw)}\\b`, 'ig'), ' ');
+  });
+  if (dateHint) cleaned = cleaned.replace(new RegExp(`\\b${escapeRegExp(dateHint.raw)}\\b`, 'i'), ' ');
+  cleaned = normalizeWhitespace(cleaned);
+
+  const outgoing = kind === 'loan_out' || kind === 'loan_repayment_out';
+  const connectorPattern = outgoing
+    ? /\b(?:ke|kepada|to)\s+(.+?)(?=\s+\b(?:dari|from|pakai|pake|via|with)\b|$)/i
+    : /\b(?:dari|from|oleh|by)\s+(.+?)(?=\s+\b(?:ke|to|into|masuk|via|with)\b|$)/i;
+  const connectorMatch = cleaned.match(connectorPattern);
+  if (connectorMatch) return cleanLoanCounterparty(connectorMatch[1]);
+
+  if (kind === 'loan_repayment_in') {
+    const subjectMatch = cleaned.match(/^(.+?)\s+(?:mengembalikan|balikin|membayar\s+balik|repaid?)\b/i);
+    if (subjectMatch) return cleanLoanCounterparty(subjectMatch[1]);
+  }
+  if (kind === 'loan_out') {
+    const borrowerSubject = cleaned.match(/^(.+?)\s+(?:pinjam|borrow)\b.*\b(?:dari|from)\s+(?:saya|aku|gue|gw|user|me)\b/i);
+    if (borrowerSubject) return cleanLoanCounterparty(borrowerSubject[1]);
+  }
+  return undefined;
+};
+
+const parseLoanTransactionCommand = (
+  normalizedText: string,
+  options: LocalFinanceParseOptions,
+  startedAt: number,
+): LocalFinanceParseResult | null => {
+  const transactionKind = detectLoanTransactionKind(normalizedText);
+  if (!transactionKind) return null;
+
+  const tokenCount = normalizedText.split(/\s+/).length;
+  if (tokenCount > 24 || normalizedText.length > 180) return null;
+  const dateHint = extractDateHint(normalizedText, options.now || new Date());
+  const textWithoutDateHint = dateHint
+    ? normalizeWhitespace(normalizedText.replace(new RegExp(escapeRegExp(dateHint.raw), 'i'), ' '))
+    : normalizedText;
+  const amountMatches = findAmountMatches(textWithoutDateHint);
+  if (amountMatches.length > 1) return null;
+
+  const amount = amountMatches[0];
+  const wallets = findWalletMatches(normalizedText, options.availableWallets || []);
+  const lowerText = normalizedText.toLowerCase();
+  const incoming = transactionKind === 'loan_in' || transactionKind === 'loan_repayment_in';
+  const wallet = incoming
+    ? wallets.find(match => /\b(ke|to|into|masuk)\s*$/i.test(lowerText.slice(Math.max(0, match.index - 12), match.index))) || wallets[0]
+    : wallets.find(match => /\b(dari|from|pakai|pake|via|with)\s*$/i.test(lowerText.slice(Math.max(0, match.index - 14), match.index))) || wallets[0];
+  const counterparty = extractLoanCounterparty(normalizedText, transactionKind, amount, wallets, dateHint);
+  const missingFields: string[] = [];
+  if (!amount) missingFields.push('amount');
+  if (!wallet) missingFields.push('wallet');
+  if (!counterparty) missingFields.push('counterparty');
+
+  const labels: Record<LoanTransactionKind, string> = {
+    loan_out: 'Money lent to',
+    loan_in: 'Money borrowed from',
+    loan_repayment_in: 'Loan repayment from',
+    loan_repayment_out: 'Loan repayment to',
+  };
+  const content = counterparty ? `${labels[transactionKind]} ${counterparty}` : labels[transactionKind];
+  const confidence = confidenceFromMissing(missingFields);
+  const payload: RecordLoanTransactionPayload = {
+    transactionKind,
+    amount: amount?.amount,
+    wallet: wallet?.wallet.id,
+    counterparty,
+    date: dateHint?.date,
+    note: content,
+  };
+  const result: ParserResultV2 = {
+    action: 'record_loan_transaction',
+    entityType: 'finance',
+    content,
+    confidence,
+    needsReview: missingFields.length > 0,
+    reviewReason: reviewReasonFromMissing(missingFields),
+    entityRefs: { walletId: wallet?.wallet.id, walletName: wallet?.wallet.name },
+    payload,
+  };
+
+  return {
+    result,
+    kind: transactionKind,
+    confidenceScore: confidence === 'high' ? 0.95 : confidence === 'medium' ? 0.72 : 0.45,
+    missingFields,
+    telemetry: { elapsedMs: nowMs() - startedAt, matchedFastPath: true },
+  };
+};
+
 export const parseLocalFinanceCommand = (text: string, options: LocalFinanceParseOptions = {}): LocalFinanceParseResult | null => {
   const startedAt = nowMs();
   const normalizedText = normalizeWhitespace(text);
   if (!normalizedText) return null;
+  const savingWithdrawal = parseSavingWithdrawalCommand(normalizedText, options, startedAt);
+  if (savingWithdrawal) return savingWithdrawal;
+  const loanTransaction = parseLoanTransactionCommand(normalizedText, options, startedAt);
+  if (loanTransaction) return loanTransaction;
   const trigger = detectTrigger(normalizedText);
   if (!trigger) return null;
   const tokenCount = normalizedText.split(/\s+/).length;

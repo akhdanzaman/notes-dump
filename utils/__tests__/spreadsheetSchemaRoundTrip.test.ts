@@ -389,10 +389,10 @@ test('transaction spreadsheet export round-trips ID after canonical columns and 
   const transactionsSheet = sheets.find(sheet => sheet.name === 'Transactions');
   assert.ok(transactionsSheet);
   assert.equal(transactionsSheet!.data[0].indexOf('ID'), 18);
-  assert.deepEqual(transactionsSheet!.data[0].slice(19), ['Saving_Goal_ID', 'Investment_Units', 'Investment_Avg_Buy', 'Line_Items', 'Receipt_Capture']);
+  assert.deepEqual(transactionsSheet!.data[0].slice(19), ['Saving_Goal_ID', 'Investment_Units', 'Investment_Avg_Buy', 'Line_Items', 'Receipt_Capture', 'Loan_Counterparty']);
 
   const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
-    range: "'Transactions'!A1:X",
+    range: "'Transactions'!A1:Y",
     values: transactionsSheet!.data,
   }]);
 
@@ -405,6 +405,45 @@ test('transaction spreadsheet export round-trips ID after canonical columns and 
 
   const { walletStats } = getWalletStats(reconciled.data, wallets);
   assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 75_000);
+});
+
+test('loan counterparty round-trips through the Transactions sheet', () => {
+  const loan: BrainDumpItem = {
+    id: 'loan-1',
+    type: ItemType.FINANCE,
+    content: 'Money lent to Budi',
+    status: 'done',
+    created_at: '2026-07-19T08:00:00.000Z',
+    completed_at: '2026-07-19T08:00:00.000Z',
+    meta: {
+      date: '2026-07-19T08:00:00.000Z',
+      amount: 20_000,
+      financeType: 'loan_out',
+      paymentMethod: 'bca-wallet',
+      loanCounterparty: 'Budi',
+    },
+  };
+  const db: DbSchema = {
+    data: [loan],
+    budgetConfig,
+    skills: [],
+    wallets,
+    monthlyThemes: {},
+    appSettings,
+  };
+
+  const sheets = generateExportData(db.data, [], wallets, budgetConfig, {}, appSettings);
+  const transactionsSheet = sheets.find(sheet => sheet.name === 'Transactions');
+  assert.ok(transactionsSheet);
+  const counterpartyIndex = transactionsSheet!.data[0].indexOf('Loan_Counterparty');
+  assert.equal(transactionsSheet!.data[1][counterpartyIndex], 'Budi');
+
+  const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
+    range: "'Transactions'!A1:Y",
+    values: transactionsSheet!.data,
+  }]);
+  assert.equal(reconciled.data[0].meta.financeType, 'loan_out');
+  assert.equal(reconciled.data[0].meta.loanCounterparty, 'Budi');
 });
 
 test('spreadsheet reconciliation treats blank trailing schema cells as user clears', () => {

@@ -11,7 +11,13 @@ import {
   getRawMetaValue,
   itemMatchesCanonicalSearch,
 } from "../canonicalization/accessors";
-import { ACHIEVED_GOAL_FINANCE_TYPE } from "../financeTypeUtils";
+import {
+  ACHIEVED_GOAL_FINANCE_TYPE,
+  SAVING_WITHDRAWAL_FINANCE_TYPE,
+  isIncomingLoanFinanceType,
+  isOutgoingLoanFinanceType,
+} from "../financeTypeUtils";
+import { getSavingTransactionDelta } from "../savingTransactionUtils";
 import {
   getShoppingDueDate,
   getShoppingTransactionDate,
@@ -111,10 +117,13 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
       const isIncome = isFinance && item.meta.financeType === "income";
       const isTransfer = isFinance && item.meta.financeType === "transfer";
       const isSaving = isFinance && item.meta.financeType === "saving";
+      const isSavingWithdrawal = isFinance && item.meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE;
+      const isIncomingLoan = isFinance && isIncomingLoanFinanceType(item.meta.financeType);
+      const isOutgoingLoan = isFinance && isOutgoingLoanFinanceType(item.meta.financeType);
       const isAchievedGoal =
         isFinance && item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE;
 
-      if (isIncome) {
+      if (isIncome || isIncomingLoan) {
         // Income adds to Asset. If CC, it reduces debt (by subtracting from the 'positive' debt balance).
         if (isCC) balanceMap.set(walletName, Math.max(0, current - amount));
         else balanceMap.set(walletName, current + amount);
@@ -148,9 +157,24 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
           balanceMap.set(destName, destCurrent + amount);
         }
         // Regular saving goals without a destination wallet keep existing behavior: wallet balance remains unchanged.
+      } else if (isSavingWithdrawal) {
+        // Liquidating an investment/dedicated saving wallet reverses the original saving movement.
+        if (isCC) balanceMap.set(walletName, Math.max(0, current - amount));
+        else balanceMap.set(walletName, current - amount);
+
+        const destName = resolveWalletBalanceKey(wallets, item.meta.toWallet);
+        if (destName && balanceMap.has(destName)) {
+          const destCurrent = balanceMap.get(destName) || 0;
+          const destWallet = wallets.find((w) => w.name.toLowerCase() === destName);
+          if (destWallet?.type === "cc") balanceMap.set(destName, Math.max(0, destCurrent - amount));
+          else balanceMap.set(destName, destCurrent + amount);
+        }
       } else if (isAchievedGoal) {
         // Achieved goals spend from the wallet now,
         // while staying out of expense analytics.
+        if (isCC) balanceMap.set(walletName, current + amount);
+        else balanceMap.set(walletName, current - amount);
+      } else if (isOutgoingLoan) {
         if (isCC) balanceMap.set(walletName, current + amount);
         else balanceMap.set(walletName, current - amount);
       } else {
@@ -185,10 +209,9 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
           (item) =>
             item.type === ItemType.FINANCE &&
             item.status === "done" &&
-            item.meta.financeType === "saving" &&
             item.meta.savingGoalId === investment.id,
         )
-        .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+        .reduce((sum, item) => sum + getSavingTransactionDelta(item), 0);
       const metrics = getInvestmentMetrics({
         ...investment,
         meta: {
@@ -237,11 +260,10 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
       (i) =>
         i.type === ItemType.FINANCE &&
         (i.status === "done" || i.status === "pending") &&
-        i.meta.financeType === "saving" &&
         i.meta.savingGoalId &&
         activeSavingsTargets.has(i.meta.savingGoalId),
     )
-    .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+    .reduce((sum, item) => sum + getSavingTransactionDelta(item), 0);
 
   const totalNetWorth =
     totalAssets - totalDebt - totalSavings - unassignedExpenses;
@@ -508,10 +530,12 @@ export const getFinanceItems = (
       return;
     }
 
-    if (type === "saving") {
+    if (type === "saving" || type === SAVING_WITHDRAWAL_FINANCE_TYPE) {
       if (isDone) {
-        totalSavings += amount;
+        totalSavings += type === "saving" ? amount : -amount;
       }
+
+      if (type === SAVING_WITHDRAWAL_FINANCE_TYPE) return;
 
       // Saving hanya masuk budget analytics kalau punya budget category.
       // Jadi saving goal biasa tanpa kategori tidak mengganggu uncategorized.

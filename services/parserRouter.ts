@@ -72,19 +72,19 @@ const countIntentSignals = (text: string) => {
   if (/\b(note|catatan|idea|ide)\s*:/.test(text)) signals.add('note');
   if (/\b(journal|jurnal|diary|dear diary)\b/.test(text)) signals.add('journal');
   if (/\b(event|calendar|jadwal|schedule|meeting|rapat|appointment)\b/.test(text)) signals.add('event');
-  if (/\b(expense|spent|paid|bayar|income|gaji|salary|transfer|topup|tarik tunai|setor|saved?\s+\d|saving funds?)\b/.test(text)) signals.add('finance');
+  if (/\b(expense|spent|paid|bayar|income|gaji|salary|transfer|topup|tarik tunai|setor|saved?\s+\d|saving funds?|withdraw|cairkan?|pinjam(?:kan)?|utang|hutang|loan|repay)\b/.test(text)) signals.add('finance');
   if (/\?$/.test(text) || /^(what|how|why|when|where|who|apa|berapa|kenapa|kapan|dimana|siapa)\b/.test(text)) signals.add('query_only');
   return signals;
 };
 
 const isLocalFinanceFallbackCandidate = (text: string): boolean => {
-  if (!/^(expense|pengeluaran|keluar|bayar|beli|jajan|spent|spend|buy|paid|income|pemasukan|masuk|gaji|salary|bonus|refund|cashback|reimburse|reimbursement|transfer|tf|trf|pindah|mutasi|saving|savings|tabung|nabung|simpan|invest|investasi|investment)\b/.test(text)) return false;
+  if (!/^(expense|pengeluaran|keluar|bayar|beli|jajan|spent|spend|buy|paid|income|pemasukan|masuk|gaji|salary|bonus|refund|cashback|reimburse|reimbursement|transfer|tf|trf|pindah|mutasi|saving|savings|tabung|nabung|simpan|invest|investasi|investment|withdraw|tarik|cairkan?|ambil|pinjamkan|meminjamkan|pinjam|meminjam|kembalikan|balikin|lunasi|borrow|lend|repay)\b/.test(text)) return false;
   const tokenCount = text.split(/\s+/).length;
   const amountCount = [...text.matchAll(/\b(?:rp|idr)?\s*\d+(?:[.,]\d{3})*(?:[.,]\d+)?\s*(?:ribu|rb|k|juta|jt|mio|m)?\b/gi)].length;
   return tokenCount > 14
     || text.length > 120
     || amountCount > 1
-    || /\b(split|patungan|utang|hutang|pinjam|reimburse(?:ment)?|dibalikin|kayaknya|kayanya|mungkin|kurang lebih|approx|maybe)\b/i.test(text);
+    || /\b(split|patungan|reimburse(?:ment)?|kayaknya|kayanya|mungkin|kurang lebih|approx|maybe)\b/i.test(text);
 };
 
 const isComplexInput = (rawText: string) => {
@@ -96,7 +96,7 @@ const isComplexInput = (rawText: string) => {
   const signals = countIntentSignals(text);
   if (signals.size <= 1) return false;
   if (signals.size === 2 && signals.has('shopping') && signals.has('finance')) {
-    return /\b(expense|spent|paid|bayar|income|gaji|salary|transfer|topup|tarik tunai|setor|saved?\s+\d|saving funds?)\b/.test(text);
+    return /\b(expense|spent|paid|bayar|income|gaji|salary|transfer|topup|tarik tunai|setor|saved?\s+\d|saving funds?|withdraw|cairkan?|pinjam(?:kan)?|utang|hutang|loan|repay)\b/.test(text);
   }
   return true;
 };
@@ -228,7 +228,7 @@ export const classifyLocalIntent = (rawText: string, ctx: LocalClassifierContext
     if (!hasPaidSignal) return classifyExplicitItem(normalized, ItemType.SHOPPING, 'shopping', 'obvious_shopping_intent', ctx);
   }
 
-  if (/\b(expense|spent|paid|bayar|income|gaji|salary|transfer|topup|tarik tunai|setor|saved?\s+\d|saving funds?)\b/.test(text)) return classifyFinance(normalized, ctx);
+  if (/\b(expense|spent|paid|bayar|income|gaji|salary|transfer|topup|tarik tunai|setor|saved?\s+\d|saving funds?|withdraw|cairkan?|pinjam(?:kan)?|utang|hutang|loan|repay)\b/.test(text)) return classifyFinance(normalized, ctx);
   if (parseAmount(normalized) && /\b(makan|sarapan|breakfast|lunch|dinner|kopi|coffee|parkir|parking|bensin|grab|gojek|token|listrik|laundry)\b/.test(text)) {
     return classifyFinance(normalized, ctx, 0.88, ['obvious_spend_phrase_with_amount']);
   }

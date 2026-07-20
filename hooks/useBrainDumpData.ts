@@ -29,6 +29,8 @@ import {
     ThemePayload,
     TransferMoneyPayload,
     AddSavingFundsPayload,
+    WithdrawSavingFundsPayload,
+    RecordLoanTransactionPayload,
     ParsingTask,
     CanonicalRule,
     ItemMeta,
@@ -47,8 +49,10 @@ import { recoverMisclassifiedJournalNotes, upsertDailyJournalEntry } from '../ut
 import { mergeDbData } from '../utils/mergeUtils';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
 import { parsePro } from '../services/geminiProService';
+import { parseLocalFinanceResults } from '../services/localFinanceParser';
 import { calculateNextDueDate, calculateFirstDueDate, advanceRoutineDueDateToTodayOrFuture, advanceRecurringDueDateByDaysToTodayOrFuture, isBeforeLocalDay, isSameLocalDay } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, isLegacyCompletedGoalContent } from '../utils/financeTypeUtils';
+import { getSavedAmountForGoal, getSavingTransactionDelta } from '../utils/savingTransactionUtils';
 import { canonicalizeParserResults, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta, HistoricalCanonicalReview } from '../services/canonicalizerService';
 import { ASYNC_ENRICHMENT_REVIEW_PREFIX, queueCanonicalEnrichmentTasks, runCanonicalEnrichmentTasks } from '../services/asyncEnrichmentService';
 import { getSystemCanonicalRules } from '../utils/canonicalization/systemRules';
@@ -520,8 +524,8 @@ const migrateAchievedGoalItems = (items: BrainDumpItem[]) => {
 
     const totalSavedByGoalId = new Map<string, number>();
     updatedItems.forEach(item => {
-        if (item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'saving' && item.meta.savingGoalId) {
-            totalSavedByGoalId.set(item.meta.savingGoalId, (totalSavedByGoalId.get(item.meta.savingGoalId) || 0) + (item.meta.amount || 0));
+        if (item.type === ItemType.FINANCE && item.status === 'done' && item.meta.savingGoalId) {
+            totalSavedByGoalId.set(item.meta.savingGoalId, (totalSavedByGoalId.get(item.meta.savingGoalId) || 0) + getSavingTransactionDelta(item));
         }
     });
 
@@ -1237,6 +1241,7 @@ export const useBrainDumpData = () => {
             savedAmount: meta?.savedAmount,
             savingGoalId: meta?.savingGoalId,
             dedicatedWalletId: meta?.dedicatedWalletId,
+            loanCounterparty: meta?.loanCounterparty,
             investmentAssetType: isValidInvestmentAssetType(meta?.investmentAssetType) ? meta?.investmentAssetType : undefined,
             investmentSymbol: meta?.investmentSymbol,
             investmentUnits: meta?.investmentUnits,
@@ -1362,6 +1367,45 @@ export const useBrainDumpData = () => {
                 budgetCategory: payload.budgetCategory || 'savings',
                 savingGoalId: payload.savingGoalId,
                 tags: ['saving']
+            }, result.action, result.entityType, result.confidence, result.needsReview, result.reviewReason)
+        };
+    };
+
+    const buildSavingWithdrawalItem = (result: ParserResultV2, payload: WithdrawSavingFundsPayload): BrainDumpItem => {
+        return {
+            id: uuidv4(),
+            type: ItemType.FINANCE,
+            content: payload.note || result.content || `Withdraw from: ${payload.savingGoalName || 'Saving Goal'}`,
+            status: 'done',
+            created_at: new Date().toISOString(),
+            completed_at: payload.date || new Date().toISOString(),
+            meta: buildMetaFromParsed({
+                date: payload.date || new Date().toISOString(),
+                amount: sanitizeNumber(payload.amount),
+                financeType: 'saving_withdrawal',
+                paymentMethod: payload.fromWallet,
+                toWallet: payload.toWallet,
+                savingGoalId: payload.savingGoalId,
+                tags: ['saving-withdrawal']
+            }, result.action, result.entityType, result.confidence, result.needsReview, result.reviewReason)
+        };
+    };
+
+    const buildLoanTransactionItem = (result: ParserResultV2, payload: RecordLoanTransactionPayload): BrainDumpItem => {
+        return {
+            id: uuidv4(),
+            type: ItemType.FINANCE,
+            content: payload.note || result.content || 'Loan transaction',
+            status: 'done',
+            created_at: new Date().toISOString(),
+            completed_at: payload.date || new Date().toISOString(),
+            meta: buildMetaFromParsed({
+                date: payload.date || new Date().toISOString(),
+                amount: sanitizeNumber(payload.amount),
+                financeType: payload.transactionKind,
+                paymentMethod: payload.wallet,
+                loanCounterparty: payload.counterparty,
+                tags: ['loan', payload.transactionKind].filter(Boolean) as string[]
             }, result.action, result.entityType, result.confidence, result.needsReview, result.reviewReason)
         };
     };
@@ -1519,6 +1563,7 @@ export const useBrainDumpData = () => {
                                 investmentAveragePrice: sanitizeNumber(changes.investmentAveragePrice),
                                 investmentCurrentPrice: sanitizeNumber(changes.investmentCurrentPrice),
                                 investmentPlatform: changes.investmentPlatform,
+                                loanCounterparty: changes.loanCounterparty,
                                 status: undefined
                             });
 
@@ -1749,6 +1794,22 @@ export const useBrainDumpData = () => {
                         break;
                     }
 
+                    case 'withdraw_saving_funds': {
+                        const payload = result.payload as WithdrawSavingFundsPayload | undefined;
+                        if (!payload) break;
+                        const newItem = markParserCreatedItem(buildSavingWithdrawalItem(result, payload));
+                        itemsToAdd.push(newItem);
+                        break;
+                    }
+
+                    case 'record_loan_transaction': {
+                        const payload = result.payload as RecordLoanTransactionPayload | undefined;
+                        if (!payload) break;
+                        const newItem = markParserCreatedItem(buildLoanTransactionItem(result, payload));
+                        itemsToAdd.push(newItem);
+                        break;
+                    }
+
                     case 'query_only': {
                         break;
                     }
@@ -1821,8 +1882,17 @@ export const useBrainDumpData = () => {
             itemsRef.current.forEach(i => i.meta?.tags?.forEach(t => currentTags.add(t)));
 
             let parsedResults: ParserResultV2[] = [];
+            const localFinanceResults = parseLocalFinanceResults(text, {
+                availableWallets: walletsRef.current,
+                availableBudgetRules: budgetConfigRef.current?.rules || [],
+                existingItems: itemsRef.current,
+                now: new Date(),
+            });
 
-            if (appSettingsRef.current.useProParser) {
+            if (localFinanceResults) {
+                parsedResults = localFinanceResults;
+                setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'stage2' } : t));
+            } else if (appSettingsRef.current.useProParser) {
                 setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'stage1' } : t));
                 parsedResults = await parsePro(
                     text,
@@ -2130,9 +2200,7 @@ export const useBrainDumpData = () => {
         }
 
         if (isSavingGoal) {
-            const savedAmount = prevItems
-                .filter(item => item.type === ItemType.FINANCE && item.status === 'done' && item.meta.financeType === 'saving' && item.meta.savingGoalId === targetItem.id)
-                .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+            const savedAmount = getSavedAmountForGoal(prevItems, targetItem.id);
 
             const achievedGoalItems = updatedItems.filter(item =>
                 item.type === ItemType.FINANCE && (

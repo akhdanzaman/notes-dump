@@ -103,7 +103,7 @@ export function buildLegacyParserContextText(ctx: IntentParserContext): string {
 export function resolveParserContextIntent(stage1Results: ParserResultV2[]): ParserContextIntent {
   const first = stage1Results[0];
   if (!first) return 'general';
-  if (first.entityType === 'finance' || first.action === 'transfer_money' || first.action === 'add_saving_funds') return 'finance';
+  if (first.entityType === 'finance' || first.action === 'transfer_money' || first.action === 'add_saving_funds' || first.action === 'withdraw_saving_funds' || first.action === 'record_loan_transaction') return 'finance';
   if (first.entityType === 'shopping' || first.entityType === 'saving_goal') return 'shopping';
   if (first.entityType === 'todo' || first.entityType === 'event' || first.entityType === 'skill_log' || first.entityType === 'skill') return 'task';
   return 'general';

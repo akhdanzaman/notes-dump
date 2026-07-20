@@ -5,6 +5,7 @@ import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAU
 import { generateBehaviorDriftInsights } from '../utils/behaviorDrift';
 import { getCanonicalOrRawItemValue } from '../utils/canonicalization/accessors';
 import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from '../utils/canonicalization/transactionInference';
+import { getSavedAmountForGoal } from '../utils/savingTransactionUtils';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -181,9 +182,7 @@ export const generateAIInsights = async (
   const savingGoals = items
       .filter(i => i.type === ItemType.SHOPPING && i.meta.shoppingCategory === 'saving')
       .map(goal => {
-          const savedAmount = items
-              .filter(i => i.type === ItemType.FINANCE && i.status === 'done' && i.meta.financeType === 'saving' && i.meta.savingGoalId === goal.id)
-              .reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+          const savedAmount = getSavedAmountForGoal(items, goal.id);
           
           return {
               name: goal.content,

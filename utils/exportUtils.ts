@@ -3,6 +3,7 @@ import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicaliz
 import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from './canonicalization/transactionInference';
 import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
+import { getSavingTransactionDelta } from './savingTransactionUtils';
 import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils';
 import { encodeShoppingLineItemsForSheet } from './shoppingLineItems';
 import { encodeTransactionLineItemsForSheet, getTransactionBudgetAllocations } from './transactionLineItems';
@@ -147,7 +148,7 @@ const buildDashboardSheet = (
   const currentMonthExpenseItems = expenseLikeItems.filter(item => {
     if (!isInCurrentMonth(item)) return false;
     if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0;
-    return item.meta.financeType !== 'income' && item.meta.financeType !== 'transfer' && item.meta.financeType !== 'saving' && item.meta.financeType !== ACHIEVED_GOAL_FINANCE_TYPE;
+    return !item.meta.financeType || item.meta.financeType === 'expense';
   });
 
   const currentMonthIncomeItems = items.filter(item =>
@@ -160,13 +161,13 @@ const buildDashboardSheet = (
   const currentMonthSavingItems = items.filter(item =>
     item.type === ItemType.FINANCE
     && item.status === 'done'
-    && item.meta.financeType === 'saving'
+    && (item.meta.financeType === 'saving' || item.meta.financeType === 'saving_withdrawal')
     && isInCurrentMonth(item)
   );
 
   const totalExpenses = currentMonthExpenseItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
   const totalIncome = currentMonthIncomeItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
-  const totalSavings = currentMonthSavingItems.reduce((sum, item) => sum + (item.meta.amount || 0), 0);
+  const totalSavings = currentMonthSavingItems.reduce((sum, item) => sum + getSavingTransactionDelta(item), 0);
   const netCashFlow = totalIncome - totalExpenses - totalSavings;
   const budgetUsed = budgetConfig.monthlyIncome > 0 ? totalExpenses / budgetConfig.monthlyIncome : 0;
   const avgDailyExpense = totalExpenses / daysElapsed;
@@ -258,7 +259,7 @@ const buildDashboardSheet = (
         const ts = getItemTimestamp(item);
         if (ts < dayStart.getTime() || ts >= dayEnd.getTime()) return false;
         if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0 && item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment';
-        return item.status === 'done' && item.meta.financeType !== 'income' && item.meta.financeType !== 'transfer' && item.meta.financeType !== 'saving' && item.meta.financeType !== ACHIEVED_GOAL_FINANCE_TYPE;
+        return item.status === 'done' && (!item.meta.financeType || item.meta.financeType === 'expense');
       })
       .reduce((sum, item) => sum + (item.meta.amount || 0), 0)
   );
@@ -467,14 +468,15 @@ export const generateExportData = (
         Investment_Avg_Buy: item.meta.investmentAveragePrice || '',
         Line_Items: encodeTransactionLineItemsForSheet(item.meta.transactionLineItems),
         Receipt_Capture: item.meta.receiptCapture ? JSON.stringify(item.meta.receiptCapture) : '',
+        Loan_Counterparty: item.meta.loanCounterparty || '',
       };
     });
 
   sheets.push({
       name: "Transactions",
       data: [
-        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID", "Saving_Goal_ID", "Investment_Units", "Investment_Avg_Buy", "Line_Items", "Receipt_Capture"],
-        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID, t.Saving_Goal_ID, t.Investment_Units, t.Investment_Avg_Buy, t.Line_Items, t.Receipt_Capture])
+        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID", "Saving_Goal_ID", "Investment_Units", "Investment_Avg_Buy", "Line_Items", "Receipt_Capture", "Loan_Counterparty"],
+        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID, t.Saving_Goal_ID, t.Investment_Units, t.Investment_Avg_Buy, t.Line_Items, t.Receipt_Capture, t.Loan_Counterparty])
       ]
     });
 

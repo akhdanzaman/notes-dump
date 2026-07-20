@@ -40,8 +40,8 @@ const compact = (text: string): string => text.replace(/\s+/g, ' ').trim();
 const hasItemLikeSignal = (text: string): boolean => {
   const normalized = compact(text).toLowerCase();
   if (!normalized) return false;
-  if (/^(todo|task|tugas|remind me to|ingatkan|shopping|belanja|buy|beli|note|catatan|idea|ide|journal|jurnal|event|calendar|jadwal|schedule|finance|expense|income|pemasukan|transfer|tf|trf|saving|savings|tabung|nabung)\b/.test(normalized)) return true;
-  if (/\b(expense|spent|paid|bayar|income|gaji|salary|bonus|refund|transfer|topup|tarik tunai|setor|saving|nabung|meeting|rapat)\b/.test(normalized)) return true;
+  if (/^(todo|task|tugas|remind me to|ingatkan|shopping|belanja|buy|beli|note|catatan|idea|ide|journal|jurnal|event|calendar|jadwal|schedule|finance|expense|income|pemasukan|transfer|tf|trf|saving|savings|tabung|nabung|withdraw|tarik|cairkan|ambil|pinjam|pinjamkan|kembalikan|balikin|lunasi|borrow|lend|repay)\b/.test(normalized)) return true;
+  if (/\b(expense|spent|paid|bayar|income|gaji|salary|bonus|refund|transfer|topup|tarik tunai|setor|saving|nabung|withdraw|cairkan|pinjam|pinjamkan|utang|hutang|loan|repay|meeting|rapat)\b/.test(normalized)) return true;
   if (AMOUNT_RE.test(normalized)) return true;
   return false;
 };
@@ -49,7 +49,7 @@ const hasItemLikeSignal = (text: string): boolean => {
 const hasStrongItemPrefix = (text: string): boolean => {
   const normalized = compact(normalizeCandidate(text)).toLowerCase();
   if (!normalized) return false;
-  if (/^(todo|task|tugas|remind me to|ingatkan|shopping|belanja|buy|beli|note|catatan|idea|ide|journal|jurnal|event|calendar|jadwal|schedule|finance|expense|income|pemasukan|gaji|salary|bonus|refund|transfer|tf|trf|saving|savings|tabung|nabung)\b/.test(normalized)) return true;
+  if (/^(todo|task|tugas|remind me to|ingatkan|shopping|belanja|buy|beli|note|catatan|idea|ide|journal|jurnal|event|calendar|jadwal|schedule|finance|expense|income|pemasukan|gaji|salary|bonus|refund|transfer|tf|trf|saving|savings|tabung|nabung|withdraw|tarik|cairkan|ambil|pinjam|pinjamkan|kembalikan|balikin|lunasi|borrow|lend|repay)\b/.test(normalized)) return true;
   if (/^(bayar|paid|spent)\b/.test(normalized) && !/^(paid attention|spent time)\b/.test(normalized) && AMOUNT_RE.test(normalized)) return true;
   return false;
 };

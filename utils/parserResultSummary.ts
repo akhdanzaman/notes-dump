@@ -10,6 +10,8 @@ import {
   ParsingTask,
   ThemePayload,
   TransferMoneyPayload,
+  WithdrawSavingFundsPayload,
+  RecordLoanTransactionPayload,
   UpdateItemPayload,
   UpdateSkillPayload,
   UpdateWalletPayload,
@@ -94,6 +96,10 @@ const DETAIL_LABELS: Record<string, string> = {
   note: 'note',
   savingGoalName: 'saving goal',
   savingGoalId: 'saving goal id',
+  transactionKind: 'loan transaction',
+  wallet: 'wallet',
+  counterparty: 'counterparty',
+  loanCounterparty: 'counterparty',
   dedicatedWalletName: 'dedicated wallet',
   dedicatedWalletId: 'dedicated wallet id',
   savedAmount: 'saved amount',
@@ -122,7 +128,8 @@ export const parserActionDestination = (result: ParserResultV2): string => {
   if (result.action === 'create_wallet' || result.action === 'update_wallet') return 'Money > Wallets';
   if (result.action === 'create_theme' || result.action === 'update_theme') return 'Summary > Monthly Theme';
   if (result.action === 'transfer_money') return 'Money > Wallet transfer';
-  if (result.action === 'add_saving_funds') return 'Plan > Savings + Money';
+  if (result.action === 'add_saving_funds' || result.action === 'withdraw_saving_funds') return 'Plan > Savings + Money';
+  if (result.action === 'record_loan_transaction') return 'Money > Transactions';
   if (result.action === 'query_only') return 'No data saved';
 
   return result.entityType ? `${result.entityType}` : 'Needs review';
@@ -195,7 +202,7 @@ export const getParserResultDetails = (result: ParserResultV2): Array<[string, s
     pushDetails(details, updatePayload.match as Record<string, unknown>);
     pushDetails(details, updatePayload.changes as Record<string, unknown>);
   } else if ('savingGoalName' in payload || 'savingGoalId' in payload) {
-    pushDetails(details, payload as AddSavingFundsPayload as Record<string, unknown>);
+    pushDetails(details, payload as AddSavingFundsPayload | WithdrawSavingFundsPayload as Record<string, unknown>);
   } else if ('fromWallet' in payload || 'toWallet' in payload) {
     pushDetails(details, payload as TransferMoneyPayload as Record<string, unknown>);
   } else if ('walletType' in payload || 'initialBalance' in payload || 'isDebtAccount' in payload) {
@@ -255,6 +262,10 @@ export const getParserResultSummary = (result: ParserResultV2): ParserResultSumm
       return { title: titleWithParts('Saved transfer', `${payload?.fromWallet || 'wallet'} → ${payload?.toWallet || 'wallet'}`, [amountPart(payload?.amount)]), destination, details };
     case 'add_saving_funds':
       return { title: titleWithParts('Saved fund contribution', firstText(payload?.savingGoalName, result.content), [amountPart(payload?.amount), firstText(payload?.fromWallet)]), destination, details };
+    case 'withdraw_saving_funds':
+      return { title: titleWithParts('Saved fund withdrawal', firstText(payload?.savingGoalName, result.content), [amountPart(payload?.amount), firstText(payload?.toWallet)]), destination, details };
+    case 'record_loan_transaction':
+      return { title: titleWithParts('Saved loan transaction', firstText(payload?.counterparty, result.content), [firstText(payload?.transactionKind), amountPart(payload?.amount), firstText(payload?.wallet)]), destination, details };
     case 'query_only':
       return { title: 'No saved changes', destination, details, noop: true };
     case 'unknown':

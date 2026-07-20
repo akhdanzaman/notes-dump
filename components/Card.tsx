@@ -4,7 +4,7 @@ import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priori
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
-import { ACHIEVED_GOAL_FINANCE_TYPE, formatFinanceTypeLabel } from '../utils/financeTypeUtils';
+import { ACHIEVED_GOAL_FINANCE_TYPE, SAVING_WITHDRAWAL_FINANCE_TYPE, formatFinanceTypeLabel, isIncomingLoanFinanceType, isOutgoingLoanFinanceType } from '../utils/financeTypeUtils';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { getNoteDisplayParts } from '../utils/noteDisplay';
 import { taskEditSurface } from './layout/contentSurface';
@@ -484,8 +484,11 @@ const Card: React.FC<CardProps> = ({
         const isIncome = meta?.financeType === 'income';
         const isTransfer = meta?.financeType === 'transfer';
         const isSaving = meta?.financeType === 'saving';
+        const isSavingWithdrawal = meta?.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE;
+        const isIncomingLoan = isIncomingLoanFinanceType(meta?.financeType);
+        const isOutgoingLoan = isOutgoingLoanFinanceType(meta?.financeType);
         const isAchievedGoal = meta?.financeType === ACHIEVED_GOAL_FINANCE_TYPE;
-        const iconColor = isTransfer ? 'text-blue-400' : (isIncome ? 'text-emerald-500' : (isSaving ? 'text-[#6366F1]' : (isAchievedGoal ? 'text-amber-500' : 'text-red-500')));
+        const iconColor = isTransfer ? 'text-blue-400' : ((isIncome || isIncomingLoan) ? 'text-emerald-500' : (isSaving ? 'text-[#6366F1]' : ((isSavingWithdrawal || isAchievedGoal) ? 'text-amber-500' : (isOutgoingLoan ? 'text-orange-500' : 'text-red-500'))));
         
         return {
             textColor: iconColor,
@@ -696,7 +699,7 @@ const Card: React.FC<CardProps> = ({
   const isParsingFailed = meta.tags?.includes('parsing_failed');
   const showDeepWorkSuggestion = type === ItemType.TODO && meta.deepWorkParent && meta.deepWorkStatus === 'suggested';
   const canShowMoneyMetadata = type === ItemType.FINANCE || type === ItemType.SHOPPING;
-  const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
+  const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
   const showCommodityFields = (type === ItemType.FINANCE || type === ItemType.SHOPPING) && (editFinanceType === 'expense' || editFinanceType === 'saving' || editFinanceType === 'income');
   const noteDisplay = isNote ? getNoteDisplayParts(item) : null;
   
@@ -846,13 +849,13 @@ const Card: React.FC<CardProps> = ({
                             {hasMoneyMetadata && (
                                 <span className="flex items-center gap-0.5">
                                     <WalletIcon className="w-3 h-3" />
-                                    {meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE) ? (() => {
+                                    {meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE) ? (() => {
                                         const goal = savingGoals.find(g => g.id === meta.savingGoalId);
                                         const walletId = goal?.meta.dedicatedWalletId;
                                         const wallet = wallets.find(w => w.id === walletId);
                                         return wallet ? wallet.name : (getWalletName(meta.paymentMethod) || 'Linked to Goal');
                                     })() : getWalletName(meta.paymentMethod)}
-                                    {meta.financeType === 'transfer' && meta.toWallet && (
+                                    {(meta.financeType === 'transfer' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE) && meta.toWallet && (
                                         <>
                                             <ArrowRight className="w-3 h-3" />
                                             {getWalletName(meta.toWallet)}

@@ -11,7 +11,8 @@ export enum ItemType {
 
 export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving' | 'investment';
 export type InvestmentAssetType = 'gold' | 'stock' | 'mutual_fund' | 'crypto' | 'bond' | 'deposit' | 'other';
-export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving' | 'achieved_goal';
+export type LoanTransactionKind = 'loan_out' | 'loan_in' | 'loan_repayment_in' | 'loan_repayment_out';
+export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving' | 'saving_withdrawal' | LoanTransactionKind | 'achieved_goal';
 export type Priority = 'low' | 'normal' | 'high';
 export type DeepWorkCompletionMode = 'manual' | 'all_subtasks' | 'final_output_check';
 export type DeepWorkStatus = 'suggested' | 'accepted' | 'active' | 'dismissed' | 'done';
@@ -322,6 +323,7 @@ export interface ItemMeta {
   savedAmount?: number;
   savingGoalId?: string;
   dedicatedWalletId?: string;
+  loanCounterparty?: string;
 
   investmentAssetType?: InvestmentAssetType;
   investmentSymbol?: string;
@@ -459,6 +461,8 @@ export type ParserAction =
   | 'update_theme'
   | 'transfer_money'
   | 'add_saving_funds'
+  | 'withdraw_saving_funds'
+  | 'record_loan_transaction'
   | 'query_only'
   | 'unknown';
 
@@ -678,6 +682,7 @@ export interface ParsedItemMetaV2 {
   savingGoalId?: string;
   savingGoalName?: string;
   dedicatedWalletId?: string;
+  loanCounterparty?: string;
   dedicatedWalletName?: string;
   savedAmount?: number;
 
@@ -777,6 +782,7 @@ export interface UpdateItemPayload {
     investmentAveragePrice: number;
     investmentCurrentPrice: number;
     investmentPlatform: string;
+    loanCounterparty: string;
   }>;
 }
 
@@ -867,6 +873,25 @@ export interface AddSavingFundsPayload {
   budgetCategory?: string;
 }
 
+export interface WithdrawSavingFundsPayload {
+  savingGoalName?: string;
+  savingGoalId?: string;
+  amount?: number;
+  fromWallet?: string;
+  toWallet?: string;
+  date?: string;
+  note?: string;
+}
+
+export interface RecordLoanTransactionPayload {
+  transactionKind?: LoanTransactionKind;
+  amount?: number;
+  wallet?: string;
+  counterparty?: string;
+  date?: string;
+  note?: string;
+}
+
 export interface QueryOnlyPayload {
   question?: string;
   scope?: 'dashboard' | 'focus' | 'money' | 'notes' | 'shopping' | 'skills' | 'general';
@@ -884,6 +909,8 @@ export type ParserPayloadV2 =
   | ThemePayload
   | TransferMoneyPayload
   | AddSavingFundsPayload
+  | WithdrawSavingFundsPayload
+  | RecordLoanTransactionPayload
   | QueryOnlyPayload;
 
 export interface CanonicalizationResult {
