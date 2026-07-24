@@ -1242,6 +1242,8 @@ export const useBrainDumpData = () => {
             savingGoalId: meta?.savingGoalId,
             dedicatedWalletId: meta?.dedicatedWalletId,
             loanCounterparty: meta?.loanCounterparty,
+            loanAccountId: meta?.loanAccountId,
+            loanDueDate: meta?.loanDueDate,
             investmentAssetType: isValidInvestmentAssetType(meta?.investmentAssetType) ? meta?.investmentAssetType : undefined,
             investmentSymbol: meta?.investmentSymbol,
             investmentUnits: meta?.investmentUnits,
@@ -1405,6 +1407,8 @@ export const useBrainDumpData = () => {
                 financeType: payload.transactionKind,
                 paymentMethod: payload.wallet,
                 loanCounterparty: payload.counterparty,
+                loanAccountId: payload.transactionKind === 'loan_out' || payload.transactionKind === 'loan_in' ? uuidv4() : undefined,
+                loanDueDate: payload.dueDate,
                 tags: ['loan', payload.transactionKind].filter(Boolean) as string[]
             }, result.action, result.entityType, result.confidence, result.needsReview, result.reviewReason)
         };
@@ -2389,7 +2393,10 @@ export const useBrainDumpData = () => {
         newReceiptCapture?: ReceiptCaptureMeta | null,
         newOriginalCurrency?: string,
         newOriginalAmount?: number,
-        newExchangeRateToIdr?: number
+        newExchangeRateToIdr?: number,
+        newLoanCounterparty?: string,
+        newLoanAccountId?: string,
+        newLoanDueDate?: string
     ) => {
         const updatedItems = itemsRef.current.map(item => {
             if (item.id !== id) return item;
@@ -2490,6 +2497,11 @@ export const useBrainDumpData = () => {
                 originalCurrency: newOriginalCurrency !== undefined ? (newOriginalCurrency || undefined) : item.meta.originalCurrency,
                 originalAmount: newOriginalAmount !== undefined ? newOriginalAmount : item.meta.originalAmount,
                 exchangeRateToIdr: newExchangeRateToIdr !== undefined ? newExchangeRateToIdr : item.meta.exchangeRateToIdr,
+                loanCounterparty: newLoanCounterparty !== undefined ? (newLoanCounterparty.trim() || undefined) : item.meta.loanCounterparty,
+                loanAccountId: newLoanAccountId !== undefined
+                    ? (newLoanAccountId || ((newFinanceType === 'loan_out' || newFinanceType === 'loan_in') ? (item.meta.loanAccountId || uuidv4()) : undefined))
+                    : (((newFinanceType === 'loan_out' || newFinanceType === 'loan_in') && !item.meta.loanAccountId) ? uuidv4() : item.meta.loanAccountId),
+                loanDueDate: newLoanDueDate !== undefined ? (newLoanDueDate || undefined) : item.meta.loanDueDate,
                 isRoutine: resolvedIsRoutine || undefined,
                 routineInterval: !resolvedIsRoutine ? undefined : (newRoutineInterval !== undefined ? newRoutineInterval : item.meta.routineInterval),
                 routineDaysOfWeek: !resolvedIsRoutine ? undefined : (newRoutineDaysOfWeek !== undefined ? newRoutineDaysOfWeek : item.meta.routineDaysOfWeek),
@@ -2715,7 +2727,10 @@ export const useBrainDumpData = () => {
         receiptCapture?: ReceiptCaptureMeta,
         originalCurrency?: string,
         originalAmount?: number,
-        exchangeRateToIdr?: number
+        exchangeRateToIdr?: number,
+        loanCounterparty?: string,
+        loanAccountId?: string,
+        loanDueDate?: string
     ) => {
         const sanitizedTransactionLineItems = sanitizeTransactionLineItems(transactionLineItems);
         const resolvedAmount = sanitizedTransactionLineItems.length
@@ -2742,6 +2757,9 @@ export const useBrainDumpData = () => {
                 originalCurrency: originalCurrency && originalCurrency !== 'IDR' ? originalCurrency : undefined,
                 originalAmount: originalCurrency && originalCurrency !== 'IDR' ? originalAmount : undefined,
                 exchangeRateToIdr: originalCurrency && originalCurrency !== 'IDR' ? exchangeRateToIdr : undefined,
+                loanCounterparty: loanCounterparty?.trim() || undefined,
+                loanAccountId: type === 'loan_out' || type === 'loan_in' ? (loanAccountId || uuidv4()) : loanAccountId,
+                loanDueDate: loanDueDate || undefined,
                 toWallet,
                 date: normalizedDate
             }

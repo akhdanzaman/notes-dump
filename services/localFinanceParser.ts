@@ -205,6 +205,13 @@ const extractDateHint = (text: string, now: Date): DateHint | undefined => {
   return undefined;
 };
 
+const extractLoanDueDateHint = (text: string, now: Date): DateHint | undefined => {
+  const match = text.match(/\b(?:jatuh\s+tempo|tempo|due(?:\s+date)?)\s*(?:pada|tanggal|tgl)?\s*((?:besok|tomorrow|hari\s+ini|today)|(?:20\d{2}-\d{1,2}-\d{1,2})|(?:\d{1,2}[/-]\d{1,2}(?:[/-]20\d{2})?))/i);
+  if (!match) return undefined;
+  const parsed = extractDateHint(match[1], now);
+  return parsed ? { date: parsed.date, raw: match[0] } : undefined;
+};
+
 const buildContentLabel = (originalText: string, trigger: TriggerSpec, amount?: AmountMatch, wallets: WalletMatch[] = [], dateHint?: DateHint): string => {
   let label = originalText;
   label = label.replace(new RegExp(`\\b${escapeRegExp(trigger.keyword)}\\b`, 'i'), ' ');
@@ -413,21 +420,28 @@ const parseLoanTransactionCommand = (
 
   const tokenCount = normalizedText.split(/\s+/).length;
   if (tokenCount > 24 || normalizedText.length > 180) return null;
-  const dateHint = extractDateHint(normalizedText, options.now || new Date());
-  const textWithoutDateHint = dateHint
-    ? normalizeWhitespace(normalizedText.replace(new RegExp(escapeRegExp(dateHint.raw), 'i'), ' '))
+  const now = options.now || new Date();
+  const dueDateHint = transactionKind === 'loan_out' || transactionKind === 'loan_in'
+    ? extractLoanDueDateHint(normalizedText, now)
+    : undefined;
+  const textWithoutDueDate = dueDateHint
+    ? normalizeWhitespace(normalizedText.replace(new RegExp(escapeRegExp(dueDateHint.raw), 'i'), ' '))
     : normalizedText;
+  const dateHint = extractDateHint(textWithoutDueDate, now);
+  const textWithoutDateHint = dateHint
+    ? normalizeWhitespace(textWithoutDueDate.replace(new RegExp(escapeRegExp(dateHint.raw), 'i'), ' '))
+    : textWithoutDueDate;
   const amountMatches = findAmountMatches(textWithoutDateHint);
   if (amountMatches.length > 1) return null;
 
   const amount = amountMatches[0];
-  const wallets = findWalletMatches(normalizedText, options.availableWallets || []);
-  const lowerText = normalizedText.toLowerCase();
+  const wallets = findWalletMatches(textWithoutDateHint, options.availableWallets || []);
+  const lowerText = textWithoutDateHint.toLowerCase();
   const incoming = transactionKind === 'loan_in' || transactionKind === 'loan_repayment_in';
   const wallet = incoming
     ? wallets.find(match => /\b(ke|to|into|masuk)\s*$/i.test(lowerText.slice(Math.max(0, match.index - 12), match.index))) || wallets[0]
     : wallets.find(match => /\b(dari|from|pakai|pake|via|with)\s*$/i.test(lowerText.slice(Math.max(0, match.index - 14), match.index))) || wallets[0];
-  const counterparty = extractLoanCounterparty(normalizedText, transactionKind, amount, wallets, dateHint);
+  const counterparty = extractLoanCounterparty(textWithoutDateHint, transactionKind, amount, wallets, undefined);
   const missingFields: string[] = [];
   if (!amount) missingFields.push('amount');
   if (!wallet) missingFields.push('wallet');
@@ -447,6 +461,7 @@ const parseLoanTransactionCommand = (
     wallet: wallet?.wallet.id,
     counterparty,
     date: dateHint?.date,
+    dueDate: dueDateHint?.date,
     note: content,
   };
   const result: ParserResultV2 = {

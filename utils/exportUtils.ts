@@ -469,14 +469,16 @@ export const generateExportData = (
         Line_Items: encodeTransactionLineItemsForSheet(item.meta.transactionLineItems),
         Receipt_Capture: item.meta.receiptCapture ? JSON.stringify(item.meta.receiptCapture) : '',
         Loan_Counterparty: item.meta.loanCounterparty || '',
+        Loan_Account_ID: item.meta.loanAccountId || '',
+        Loan_Due_Date: item.meta.loanDueDate || '',
       };
     });
 
   sheets.push({
       name: "Transactions",
       data: [
-        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID", "Saving_Goal_ID", "Investment_Units", "Investment_Avg_Buy", "Line_Items", "Receipt_Capture", "Loan_Counterparty"],
-        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID, t.Saving_Goal_ID, t.Investment_Units, t.Investment_Avg_Buy, t.Line_Items, t.Receipt_Capture, t.Loan_Counterparty])
+        ["Date", "Type", "Category", "Description", "Amount", "Wallet", "To_Wallet", "Payment_Method", "Canonical_Payment_Method", "Merchant", "Canonical_Merchant", "Commodity", "Canonical_Commodity", "Subcommodity", "Canonical_Subcommodity", "Tags", "Created_At", "Completed_At", "ID", "Saving_Goal_ID", "Investment_Units", "Investment_Avg_Buy", "Line_Items", "Receipt_Capture", "Loan_Counterparty", "Loan_Account_ID", "Loan_Due_Date"],
+        ...transactions.map(t => [t.Date, t.Type, t.Category, t.Description, t.Amount, t.Wallet, t.To_Wallet, t.Payment_Method, t.Canonical_Payment_Method, t.Merchant, t.Canonical_Merchant, t.Commodity, t.Canonical_Commodity, t.Subcommodity, t.Canonical_Subcommodity, t.Tags, t.Created_At, t.Completed_At, t.ID, t.Saving_Goal_ID, t.Investment_Units, t.Investment_Avg_Buy, t.Line_Items, t.Receipt_Capture, t.Loan_Counterparty, t.Loan_Account_ID, t.Loan_Due_Date])
       ]
     });
 

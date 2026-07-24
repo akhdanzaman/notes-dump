@@ -324,6 +324,8 @@ export interface ItemMeta {
   savingGoalId?: string;
   dedicatedWalletId?: string;
   loanCounterparty?: string;
+  loanAccountId?: string;
+  loanDueDate?: string;
 
   investmentAssetType?: InvestmentAssetType;
   investmentSymbol?: string;
@@ -401,7 +403,7 @@ export interface GitHubFileResponse {
 }
 
 export type Tab = 'summary' | 'plan' | 'library' | 'money' | 'calendar';
-export type PlanSubTab = 'tasks' | 'shopping' | 'savings';
+export type PlanSubTab = 'tasks' | 'shopping' | 'savings' | 'loans';
 export type FocusSubTab = 'tasks' | 'skills';
 export type LibrarySubTab = 'general' | 'skills' | 'journal';
 export type NotesSubTab = LibrarySubTab;
@@ -683,6 +685,8 @@ export interface ParsedItemMetaV2 {
   savingGoalName?: string;
   dedicatedWalletId?: string;
   loanCounterparty?: string;
+  loanAccountId?: string;
+  loanDueDate?: string;
   dedicatedWalletName?: string;
   savedAmount?: number;
 
@@ -783,6 +787,8 @@ export interface UpdateItemPayload {
     investmentCurrentPrice: number;
     investmentPlatform: string;
     loanCounterparty: string;
+    loanAccountId: string;
+    loanDueDate: string;
   }>;
 }
 
@@ -889,6 +895,7 @@ export interface RecordLoanTransactionPayload {
   wallet?: string;
   counterparty?: string;
   date?: string;
+  dueDate?: string;
   note?: string;
 }
 

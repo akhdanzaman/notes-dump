@@ -372,6 +372,8 @@ function normalizeMeta(meta: any): ParsedItemMetaV2 {
     dedicatedWalletName: typeof meta.dedicatedWalletName === 'string' ? normalizeWhitespace(meta.dedicatedWalletName) : undefined,
     savedAmount: sanitizeNumber(meta.savedAmount),
     loanCounterparty: typeof meta.loanCounterparty === 'string' ? normalizeWhitespace(meta.loanCounterparty) : undefined,
+    loanAccountId: typeof meta.loanAccountId === 'string' ? normalizeWhitespace(meta.loanAccountId) : undefined,
+    loanDueDate: typeof meta.loanDueDate === 'string' ? normalizeWhitespace(meta.loanDueDate) : undefined,
 
     isRoutine: typeof meta.isRoutine === 'boolean' ? meta.isRoutine : undefined,
     routineInterval: typeof meta.routineInterval === 'string'
@@ -585,6 +587,7 @@ const stage2Schema = {
           transactionKind: { type: Type.STRING },
           wallet: { type: Type.STRING },
           counterparty: { type: Type.STRING },
+          dueDate: { type: Type.STRING },
 
           question: { type: Type.STRING },
           scope: { type: Type.STRING },
@@ -623,6 +626,8 @@ const stage2Schema = {
               subcommodity: { type: Type.STRING },
               merchant: { type: Type.STRING },
               loanCounterparty: { type: Type.STRING },
+              loanAccountId: { type: Type.STRING },
+              loanDueDate: { type: Type.STRING },
               durationMinutes: { type: Type.NUMBER },
               skillName: { type: Type.STRING },
               skillId: { type: Type.STRING },
@@ -705,6 +710,8 @@ const stage2Schema = {
               subcommodity: { type: Type.STRING },
               merchant: { type: Type.STRING },
               loanCounterparty: { type: Type.STRING },
+              loanAccountId: { type: Type.STRING },
+              loanDueDate: { type: Type.STRING },
 
               durationMinutes: { type: Type.NUMBER },
               skillName: { type: Type.STRING },
@@ -786,6 +793,7 @@ async function parseStage1(
 - "tabung 500rb ke Emergency Savings dari BCA" => add_saving_funds
 - "tarik 200rb dari Emergency Savings ke Cash" => withdraw_saving_funds
 - "pinjamkan 300rb ke Budi dari BCA" => record_loan_transaction with transactionKind loan_out
+- "pinjamkan 300rb ke Budi dari BCA jatuh tempo 30/07/2026" => record_loan_transaction with transactionKind loan_out and dueDate 2026-07-30
 - "Budi mengembalikan 100rb ke BCA" => record_loan_transaction with transactionKind loan_repayment_in`
     ].join('\n\n'),
     config: {
@@ -895,7 +903,8 @@ Multiplicity rules:
 - loan_repayment_in = someone repays the user
 - loan_repayment_out = user repays someone
 - payload.amount, payload.wallet, payload.counterparty
-- payload.date if specified
+- payload.date if the cash movement date is specified
+- payload.dueDate for loan_out or loan_in when a due date is specified; do not confuse it with payload.date
 
 Date rules:
 - "today/hari ini" => today
@@ -1457,6 +1466,7 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
         wallet: walletId || rawWallet || undefined,
         counterparty: counterparty || undefined,
         date: typeof payload.date === 'string' ? payload.date : undefined,
+        dueDate: typeof payload.dueDate === 'string' ? payload.dueDate : undefined,
         note: typeof payload.note === 'string' ? normalizeWhitespace(payload.note) : undefined
       } satisfies RecordLoanTransactionPayload;
 

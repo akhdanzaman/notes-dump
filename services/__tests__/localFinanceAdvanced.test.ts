@@ -76,3 +76,17 @@ test('loan parser distinguishes lending, borrowing, incoming repayment, and outg
     assert.equal((parsed.result.payload as any).wallet, 'bca', text);
   });
 });
+
+test('loan parser keeps due date separate from transaction date', () => {
+  const parsed = parseLocalFinanceCommand('pinjamkan 300rb ke Budi dari BCA jatuh tempo 30/07/2026', options);
+
+  assert.ok(parsed);
+  assert.equal(parsed.result.action, 'record_loan_transaction');
+  assert.equal(parsed.result.needsReview, false);
+  assert.equal((parsed.result.payload as any).transactionKind, 'loan_out');
+  assert.equal((parsed.result.payload as any).counterparty, 'Budi');
+  assert.equal((parsed.result.payload as any).wallet, 'bca');
+  assert.equal((parsed.result.payload as any).amount, 300_000);
+  assert.equal((parsed.result.payload as any).date, undefined);
+  assert.equal((parsed.result.payload as any).dueDate, '2026-07-30T00:00:00.000Z');
+});

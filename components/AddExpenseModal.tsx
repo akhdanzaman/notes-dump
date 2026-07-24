@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Check,
   Wallet,
   DollarSign,
+  HandCoins,
+  CalendarClock,
 } from 'lucide-react';
 import {
   BudgetConfig,
@@ -12,11 +14,16 @@ import {
   BrainDumpItem,
   TransactionLineItem,
   ReceiptCaptureMeta,
+  FinanceType,
+  LoanTransactionKind,
 } from '../types';
 import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 import { sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
+import { getLoanAccounts } from '../utils/loanAccounts';
 import LineItemsEditor from './LineItemsEditor';
+
+export type TransactionComposerMode = 'expense' | 'income' | 'transfer' | 'saving' | 'loan';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -27,7 +34,7 @@ interface AddExpenseModalProps {
     category: string,
     walletId: string,
     date: string,
-    type: 'expense' | 'income' | 'transfer' | 'saving',
+    type: FinanceType,
     toWalletId?: string,
     savingGoalId?: string,
     savingGoalName?: string,
@@ -36,15 +43,36 @@ interface AddExpenseModalProps {
     transactionLineItems?: TransactionLineItem[],
     merchant?: string,
     receiptCapture?: ReceiptCaptureMeta,
+    loanCounterparty?: string,
+    loanAccountId?: string,
+    loanDueDate?: string,
   ) => void;
   wallets: WalletType[];
   budgetConfig: BudgetConfig;
   savingGoals: BrainDumpItem[];
+  items: BrainDumpItem[];
+  initialMode?: TransactionComposerMode;
+  initialLoanAccountId?: string;
 }
 
 const todayInputValue = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+const dateInputValue = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
+
+const loanActionLabels: Record<LoanTransactionKind, { title: string; description: string }> = {
+  loan_out: { title: 'Saya meminjamkan', description: 'Uang keluar dan menjadi piutang.' },
+  loan_in: { title: 'Saya meminjam', description: 'Uang masuk dan menjadi utang.' },
+  loan_repayment_in: { title: 'Pengembalian diterima', description: 'Piutang berkurang.' },
+  loan_repayment_out: { title: 'Saya membayar kembali', description: 'Utang berkurang.' },
 };
 
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
@@ -54,6 +82,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   wallets,
   budgetConfig,
   savingGoals,
+  items,
+  initialMode = 'expense',
+  initialLoanAccountId,
 }) => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -63,10 +94,36 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [toWalletId, setToWalletId] = useState('');
   const [savingGoalId, setSavingGoalId] = useState('');
   const [date, setDate] = useState(todayInputValue());
-  const [transactionType, setTransactionType] = useState<'expense' | 'income' | 'transfer' | 'saving'>('expense');
+  const [transactionType, setTransactionType] = useState<TransactionComposerMode>(initialMode);
   const [investmentUnits, setInvestmentUnits] = useState('');
   const [investmentUnitPrice, setInvestmentUnitPrice] = useState('');
   const [transactionLineItems, setTransactionLineItems] = useState<TransactionLineItem[]>([]);
+  const [loanKind, setLoanKind] = useState<LoanTransactionKind>('loan_out');
+  const [loanCounterparty, setLoanCounterparty] = useState('');
+  const [loanAccountId, setLoanAccountId] = useState('');
+  const [loanDueDate, setLoanDueDate] = useState('');
+
+  const loanAccounts = useMemo(() => getLoanAccounts(items), [items]);
+  const selectedLoanAccount = loanAccounts.find((account) => account.id === loanAccountId);
+  const repaymentDirection = loanKind === 'loan_repayment_in' ? 'receivable' : 'payable';
+  const repaymentAccounts = loanAccounts.filter((account) =>
+    account.remainingAmount > 0 && account.direction === repaymentDirection
+  );
+  const isLoanMode = transactionType === 'loan';
+  const isLoanRepayment = loanKind === 'loan_repayment_in' || loanKind === 'loan_repayment_out';
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setTransactionType(initialMode);
+    if (initialMode !== 'loan' || !initialLoanAccountId) return;
+    const account = loanAccounts.find((candidate) => candidate.id === initialLoanAccountId);
+    if (!account || account.remainingAmount <= 0) return;
+    setLoanKind(account.direction === 'receivable' ? 'loan_repayment_in' : 'loan_repayment_out');
+    setLoanAccountId(account.id);
+    setLoanCounterparty(account.counterparty);
+    setWalletId(account.preferredWalletId || '');
+    setLoanDueDate(dateInputValue(account.dueDate));
+  }, [isOpen, initialMode, initialLoanAccountId, loanAccounts]);
 
   const selectedSavingGoal = transactionType === 'saving'
     ? savingGoals.find((goal) => goal.id === savingGoalId)
@@ -144,11 +201,40 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setInvestmentUnits('');
     setInvestmentUnitPrice('');
     setTransactionLineItems([]);
+    setLoanKind('loan_out');
+    setLoanCounterparty('');
+    setLoanAccountId('');
+    setLoanDueDate('');
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  const chooseLoanKind = (kind: LoanTransactionKind) => {
+    setLoanKind(kind);
+    setLoanAccountId('');
+    setLoanDueDate('');
+    if (kind === 'loan_out' || kind === 'loan_in') setLoanCounterparty('');
+  };
+
+  const chooseLoanAccount = (accountId: string) => {
+    setLoanAccountId(accountId);
+    const account = loanAccounts.find((candidate) => candidate.id === accountId);
+    if (!account) return;
+    setLoanCounterparty(account.counterparty);
+    setWalletId(account.preferredWalletId || walletId);
+  };
+
+  const generatedLoanDescription = () => {
+    const counterparty = loanCounterparty.trim();
+    switch (loanKind) {
+      case 'loan_out': return `Pinjaman kepada ${counterparty}`;
+      case 'loan_in': return `Pinjaman dari ${counterparty}`;
+      case 'loan_repayment_in': return `Pengembalian pinjaman dari ${counterparty}`;
+      case 'loan_repayment_out': return `Pembayaran pinjaman kepada ${counterparty}`;
+    }
   };
 
   const handleSave = () => {
@@ -160,12 +246,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const finalToWalletId = transactionType === 'saving' && isInvestmentTarget ? toWalletId : toWalletId;
     const finalDescription = transactionType === 'saving'
       ? (isInvestmentTarget ? `Invested into: ${goalName}` : `Saved for: ${goalName}`)
-      : description.trim();
+      : isLoanMode
+        ? (description.trim() || generatedLoanDescription())
+        : description.trim();
     const finalAmount = transactionType === 'expense' && sanitizedLineItems.length
       ? lineItemsTotal
       : isInvestmentTarget
         ? resolvedInvestmentFunding.investedCapital
         : Number(amount);
+    const finalFinanceType: FinanceType = isLoanMode ? loanKind : transactionType;
 
     if (!finalAmount || finalAmount <= 0) return;
     if (transactionType !== 'saving' && !finalDescription) return;
@@ -173,6 +262,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     if (transactionType === 'saving' && !savingGoalId) return;
     if (transactionType !== 'saving' && transactionType !== 'transfer' && !walletId) return;
     if (transactionType === 'saving' && isInvestmentTarget && (!walletId || !toWalletId)) return;
+    if (isLoanMode && !loanCounterparty.trim()) return;
+    if (isLoanMode && isLoanRepayment && !loanAccountId) return;
+    if (isLoanMode && isLoanRepayment && selectedLoanAccount && finalAmount > selectedLoanAccount.remainingAmount) return;
 
     onSave(
       finalAmount,
@@ -180,7 +272,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       category,
       finalWalletId,
       date,
-      transactionType,
+      finalFinanceType,
       finalToWalletId,
       savingGoalId,
       goalName,
@@ -189,6 +281,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       transactionType === 'expense' && sanitizedLineItems.length ? sanitizedLineItems : undefined,
       merchant.trim() || undefined,
       undefined,
+      isLoanMode ? loanCounterparty.trim() : undefined,
+      isLoanMode ? (loanAccountId || undefined) : undefined,
+      isLoanMode && !isLoanRepayment && loanDueDate ? new Date(`${loanDueDate}T12:00:00`).toISOString() : undefined,
     );
     resetForm();
     onClose();
@@ -199,12 +294,26 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     : isInvestmentTarget
       ? resolvedInvestmentFunding.investedCapital || 0
       : Number(amount) || 0;
+  const exceedsLoanBalance = isLoanMode && isLoanRepayment && !!selectedLoanAccount && effectiveAmount > selectedLoanAccount.remainingAmount;
   const canSave = effectiveAmount > 0
-    && (transactionType === 'saving' || !!description.trim())
+    && (transactionType === 'saving' || isLoanMode || !!description.trim())
     && (transactionType === 'saving' || transactionType === 'transfer' || !!walletId)
     && (transactionType !== 'transfer' || (!!walletId && !!toWalletId))
     && (transactionType !== 'saving' || !!savingGoalId)
-    && !(transactionType === 'saving' && isInvestmentTarget && (!walletId || !toWalletId));
+    && !(transactionType === 'saving' && isInvestmentTarget && (!walletId || !toWalletId))
+    && (!isLoanMode || !!loanCounterparty.trim())
+    && (!isLoanMode || !isLoanRepayment || !!loanAccountId)
+    && !exceedsLoanBalance;
+
+  const modeLabel = transactionType === 'expense'
+    ? 'Pengeluaran'
+    : transactionType === 'income'
+      ? 'Pemasukan'
+      : transactionType === 'transfer'
+        ? 'Transfer'
+        : transactionType === 'saving'
+          ? 'Tabungan'
+          : 'Utang & Piutang';
 
   if (!isOpen) return null;
 
@@ -220,8 +329,10 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         >
           <div className={addItemModal.header}>
             <h3 className={addItemModal.title}>
-              <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-indigo-500'}`} />
-              {transactionType === 'expense' ? 'Pengeluaran' : transactionType === 'income' ? 'Pemasukan' : transactionType === 'transfer' ? 'Transfer' : 'Tabungan'}
+              {isLoanMode
+                ? <HandCoins className="w-5 h-5 text-amber-500" />
+                : <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-indigo-500'}`} />}
+              {modeLabel}
             </h3>
             <button onClick={handleClose} className={addItemModal.closeButton}>
               <X className="w-5 h-5" />
@@ -229,21 +340,57 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           </div>
 
           <div className={addItemModal.body}>
-            <div className={addItemModal.tabGroup}>
-              {(['expense', 'income', 'transfer', 'saving'] as const).map((type) => (
+            <div className={`${addItemModal.tabGroup} overflow-x-auto no-scrollbar`}>
+              {(['expense', 'income', 'transfer', 'saving', 'loan'] as TransactionComposerMode[]).map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setTransactionType(type)}
-                  className={addItemModal.tabButton(transactionType === type)}
+                  className={`${addItemModal.tabButton(transactionType === type)} whitespace-nowrap`}
                 >
-                  {type}
+                  {type === 'loan' ? 'pinjaman' : type}
                 </button>
               ))}
             </div>
 
+            {isLoanMode && (
+              <div>
+                <label className={addItemModal.label}>Arah transaksi</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(loanActionLabels) as LoanTransactionKind[]).map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => chooseLoanKind(kind)}
+                      className={`rounded-2xl border p-3 text-left transition-colors ${loanKind === kind ? 'border-amber-500 bg-amber-500/10' : 'border-border bg-background hover:border-amber-500/40'}`}
+                    >
+                      <div className="text-xs font-bold text-primary">{loanActionLabels[kind].title}</div>
+                      <div className="mt-1 text-[10px] leading-relaxed text-muted">{loanActionLabels[kind].description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isLoanMode && isLoanRepayment && (
+              <div>
+                <label className={addItemModal.label}>Pinjaman yang dibayar</label>
+                <select value={loanAccountId} onChange={(event) => chooseLoanAccount(event.target.value)} className={addItemModal.select}>
+                  <option value="">Pilih tanggungan aktif</option>
+                  {repaymentAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.counterparty} · sisa Rp {account.remainingAmount.toLocaleString('id-ID')}
+                    </option>
+                  ))}
+                </select>
+                {repaymentAccounts.length === 0 && (
+                  <p className={addItemModal.helpText}>Belum ada tanggungan aktif yang sesuai dengan arah pengembalian ini.</p>
+                )}
+              </div>
+            )}
+
             <div>
-              <label className={addItemModal.label}>{isInvestmentTarget ? 'Modal investasi' : 'Jumlah'}</label>
+              <label className={addItemModal.label}>{isInvestmentTarget ? 'Modal investasi' : isLoanRepayment ? 'Jumlah pembayaran' : 'Jumlah'}</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-bold">Rp</span>
                 <input
@@ -251,14 +398,44 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   value={hasLineItems ? String(lineItemsTotal) : amount}
                   onChange={(event) => handleAmountChange(event.target.value)}
                   readOnly={hasLineItems}
+                  max={selectedLoanAccount?.remainingAmount}
                   placeholder="0"
                   className={`${addItemModal.titleInput} pl-12 ${hasLineItems ? 'opacity-70' : ''}`}
                 />
               </div>
               {hasLineItems && <p className={addItemModal.helpText}>Total dihitung otomatis dari seluruh rincian item.</p>}
+              {isLoanRepayment && selectedLoanAccount && (
+                <p className={`${addItemModal.helpText} ${exceedsLoanBalance ? 'text-red-500' : ''}`}>
+                  Sisa tanggungan: Rp {selectedLoanAccount.remainingAmount.toLocaleString('id-ID')}. Pembayaran boleh parsial, tetapi tidak melebihi sisa.
+                </p>
+              )}
             </div>
 
-            {transactionType !== 'saving' && (
+            {isLoanMode ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={addItemModal.label}>Pihak terkait</label>
+                  <input
+                    type="text"
+                    value={loanCounterparty}
+                    onChange={(event) => setLoanCounterparty(event.target.value)}
+                    readOnly={isLoanRepayment && !!selectedLoanAccount}
+                    placeholder={loanKind === 'loan_out' || loanKind === 'loan_repayment_in' ? 'Nama peminjam' : 'Nama pemberi pinjaman'}
+                    className={`${addItemModal.input} ${isLoanRepayment && selectedLoanAccount ? 'opacity-70' : ''}`}
+                  />
+                </div>
+                <div>
+                  <label className={addItemModal.label}>Catatan</label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Opsional; dibuat otomatis bila kosong"
+                    className={addItemModal.input}
+                  />
+                </div>
+              </div>
+            ) : transactionType !== 'saving' && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className={transactionType === 'transfer' ? 'sm:col-span-2' : ''}>
                   <label className={addItemModal.label}>Deskripsi</label>
@@ -381,8 +558,16 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 </>
               ) : (
                 <>
-                  <div>
-                    <label className={addItemModal.label}>{transactionType === 'transfer' ? 'From' : 'Wallet'}</label>
+                  <div className={isLoanMode ? 'col-span-2' : ''}>
+                    <label className={addItemModal.label}>
+                      {transactionType === 'transfer'
+                        ? 'From'
+                        : isLoanMode && (loanKind === 'loan_in' || loanKind === 'loan_repayment_in')
+                          ? 'Wallet penerima'
+                          : isLoanMode
+                            ? 'Wallet pembayaran'
+                            : 'Wallet'}
+                    </label>
                     <select value={walletId} onChange={(event) => setWalletId(event.target.value)} className={addItemModal.select}>
                       <option value="">Pilih wallet</option>
                       {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
@@ -396,7 +581,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         {wallets.filter((wallet) => wallet.id !== walletId).map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                       </select>
                     </div>
-                  ) : needsDefaultCategory ? (
+                  ) : !isLoanMode && needsDefaultCategory ? (
                     <div>
                       <label className={addItemModal.label}>{transactionType === 'expense' ? 'Kategori default' : 'Kategori'}</label>
                       <select value={category} onChange={(event) => setCategory(event.target.value)} className={addItemModal.select}>
@@ -410,8 +595,19 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               )}
             </div>
 
+            {isLoanMode && !isLoanRepayment && (
+              <div>
+                <label className={addItemModal.label}>Jatuh tempo</label>
+                <div className="relative">
+                  <CalendarClock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <input type="date" value={loanDueDate} onChange={(event) => setLoanDueDate(event.target.value)} className={`${addItemModal.input} pl-10`} />
+                </div>
+                <p className={addItemModal.helpText}>Opsional, tetapi disarankan agar pengingat tanggungan lebih berguna.</p>
+              </div>
+            )}
+
             <div>
-              <label className={addItemModal.label}>Tanggal</label>
+              <label className={addItemModal.label}>Tanggal transaksi</label>
               <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className={addItemModal.input} />
             </div>
           </div>
@@ -419,7 +615,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           <div className={addItemModal.footer}>
             <button onClick={handleSave} disabled={!canSave} className={addItemModal.primaryButton}>
               <Check className="w-5 h-5" />
-              Save {transactionType === 'expense' ? 'Pengeluaran' : transactionType === 'income' ? 'Pemasukan' : transactionType === 'transfer' ? 'Transfer' : 'Tabungan'}
+              Simpan {modeLabel}
             </button>
           </div>
         </motion.div>

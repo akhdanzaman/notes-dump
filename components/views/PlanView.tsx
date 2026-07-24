@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType, ShoppingLineItem } from '../../types';
+import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon, HandCoins, ArrowDownLeft, ArrowUpRight, Clock3, CheckCircle } from 'lucide-react';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import { getDeepWorkChildren, supportsNestedTodoSubtasks } from '../../utils/deepWorkTodoModel';
 import Card from '../Card';
@@ -13,6 +13,7 @@ import LoadMoreButton from '../LoadMoreButton';
 import { contentSurface, responsiveModal, addItemModal, addItemModalMotion } from '../layout/contentSurface';
 import { getInvestmentMetrics } from '../../utils/investmentMetrics';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../../utils/investmentFunding';
+import { getLoanAccounts, getLoanSummary, LoanAccount } from '../../utils/loanAccounts';
 
 interface PlanViewProps {
     items: BrainDumpItem[];
@@ -67,7 +68,16 @@ interface PlanViewProps {
         newSubcommodity?: string,
         newNoteTitle?: string,
         newImageUrl?: string,
-        newShoppingLineItems?: ShoppingLineItem[]
+        newShoppingLineItems?: ShoppingLineItem[],
+        newTransactionLineItems?: TransactionLineItem[],
+        newMerchant?: string,
+        newReceiptCapture?: ReceiptCaptureMeta | null,
+        newOriginalCurrency?: string,
+        newOriginalAmount?: number,
+        newExchangeRateToIdr?: number,
+        newLoanCounterparty?: string,
+        newLoanAccountId?: string,
+        newLoanDueDate?: string
     ) => void;
     handleOpenAddRoutine: () => void;
     handleOpenAddTask: (initialDate?: string) => void;
@@ -86,6 +96,7 @@ interface PlanViewProps {
     handleResetRoutine: (id: string) => void;
     onAddFunds: (amount: number, walletId: string, date: string, goalId: string, goalName: string, toWalletId?: string, investmentUnits?: number, investmentUnitPrice?: number) => void;
     onCompleteGoal: (goal: BrainDumpItem) => void;
+    handleOpenAddLoan: (loanAccountId?: string) => void;
     setActiveTab: (tab: Tab) => void;
 }
 
@@ -97,7 +108,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     appSettings, handleToggleStatus, handleDelete, handleKeepRawTodo, handleRetriggerDeepWorkTodo, handleAcceptDeepWorkTodo, handleUpdateItem,
     handleOpenAddRoutine, handleOpenAddTask, handleOpenAddShopping, handleOpenEditSkill, handleOpenAddSkill, setDeleteId, setDeleteType,
     searchQuery, selectedTag,
-    wallets, budgetRules, handleResetRoutine, onAddFunds, onCompleteGoal, setActiveTab
+    wallets, budgetRules, handleResetRoutine, onAddFunds, onCompleteGoal, handleOpenAddLoan, setActiveTab
 }) => {
 
     // Data Preparation
@@ -123,6 +134,10 @@ const PlanView: React.FC<PlanViewProps> = ({
     const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal-${normal.length}` });
     const visibleSavings = useLazyItems(savings, { resetKey: `plan-savings-${savings.length}` });
     const visibleInvestments = useLazyItems(investments, { resetKey: `plan-investments-${investments.length}` });
+    const loanAccounts = React.useMemo(() => getLoanAccounts(items), [items]);
+    const loanSummary = React.useMemo(() => getLoanSummary(loanAccounts), [loanAccounts]);
+    const activeLoanAccounts = loanAccounts.filter(account => account.remainingAmount > 0);
+    const settledLoanAccounts = loanAccounts.filter(account => account.status === 'paid' && account.originalAmount > 0);
 
     const [addFundsModal, setAddFundsModal] = useState<{ isOpen: boolean, goalId: string, goalName: string, defaultWallet?: string, targetType?: 'saving' | 'investment', destinationWalletId?: string } | null>(null);
     const [fundAmount, setFundAmount] = useState('');
@@ -155,7 +170,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const touchStartRef = React.useRef<{ x: number, y: number } | null>(null);
     const isHorizontalSwipe = React.useRef<boolean | null>(null);
 
-    const tabs: PlanSubTab[] = ['tasks', 'shopping', 'savings'];
+    const tabs: PlanSubTab[] = ['tasks', 'shopping', 'savings', 'loans'];
     const activeIndex = tabs.indexOf(planSubTab);
 
     const onTouchStart = (e: React.TouchEvent) => {
@@ -296,6 +311,110 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [editInvestmentPlatform, setEditInvestmentPlatform] = useState('');
 
     const formatIdr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n || 0);
+
+
+    const formatLoanDate = (value?: string) => {
+        if (!value) return 'Belum ditentukan';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Belum ditentukan';
+        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
+    const renderLoanAccountCard = (account: LoanAccount) => {
+        const isReceivable = account.direction === 'receivable';
+        const progress = account.originalAmount > 0
+            ? Math.min(100, (account.repaidAmount / account.originalAmount) * 100)
+            : 100;
+        const statusLabel = account.status === 'overdue'
+            ? 'Lewat jatuh tempo'
+            : account.status === 'due_soon'
+                ? 'Segera jatuh tempo'
+                : account.status === 'paid'
+                    ? 'Lunas'
+                    : 'Aktif';
+        const statusClass = account.status === 'overdue'
+            ? 'bg-red-500/10 text-red-500'
+            : account.status === 'due_soon'
+                ? 'bg-amber-500/10 text-amber-600'
+                : account.status === 'paid'
+                    ? 'bg-emerald-500/10 text-emerald-500'
+                    : 'bg-indigo-500/10 text-indigo-500';
+
+        return (
+            <article key={account.id} className="rounded-[24px] border border-border/60 bg-surface p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <div className={`mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider ${isReceivable ? 'text-emerald-500' : 'text-orange-500'}`}>
+                            {isReceivable ? <ArrowDownLeft className="h-3.5 w-3.5" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
+                            {isReceivable ? 'Piutang' : 'Utang'}
+                        </div>
+                        <h4 className="truncate text-base font-bold text-primary">{account.counterparty}</h4>
+                        <p className="mt-1 text-xs text-muted">
+                            {isReceivable ? 'Dana yang perlu dikembalikan kepada Anda.' : 'Dana yang perlu Anda kembalikan.'}
+                        </p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${statusClass}`}>
+                        {statusLabel}
+                    </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-black/5 p-3 dark:bg-white/5">
+                    <div>
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Awal</div>
+                        <div className="mt-1 truncate text-xs font-bold text-primary">{formatIdr(account.originalAmount)}</div>
+                    </div>
+                    <div>
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Terbayar</div>
+                        <div className="mt-1 truncate text-xs font-bold text-emerald-500">{formatIdr(account.repaidAmount)}</div>
+                    </div>
+                    <div>
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Sisa</div>
+                        <div className={`mt-1 truncate text-xs font-bold ${account.remainingAmount > 0 ? 'text-primary' : 'text-emerald-500'}`}>{formatIdr(account.remainingAmount)}</div>
+                    </div>
+                </div>
+
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                    <div className={`h-full rounded-full transition-all ${isReceivable ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{ width: `${Math.max(account.repaidAmount > 0 ? 3 : 0, progress)}%` }} />
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted">
+                    <span className="flex items-center gap-1">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        Jatuh tempo: <strong className={account.status === 'overdue' ? 'text-red-500' : 'text-primary'}>{formatLoanDate(account.dueDate)}</strong>
+                    </span>
+                    <span>{account.transactions.length} transaksi</span>
+                </div>
+
+                {account.transactions.length > 0 && (
+                    <details className="mt-3 rounded-2xl border border-border/50 bg-background/50 px-3 py-2">
+                        <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider text-muted">Riwayat terbaru</summary>
+                        <div className="mt-2 space-y-2">
+                            {account.transactions.slice(0, 3).map(transaction => (
+                                <div key={transaction.id} className="flex items-center justify-between gap-3 text-xs">
+                                    <div className="min-w-0">
+                                        <div className="truncate font-medium text-primary">{transaction.content}</div>
+                                        <div className="text-[10px] text-muted">{formatLoanDate(transaction.meta.date || transaction.completed_at || transaction.created_at)}</div>
+                                    </div>
+                                    <div className="shrink-0 font-bold text-primary">{formatIdr(transaction.meta.amount || 0)}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </details>
+                )}
+
+                {account.remainingAmount > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => handleOpenAddLoan(account.id)}
+                        className={`mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-bold transition-colors ${isReceivable ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/20'}`}
+                    >
+                        <HandCoins className="h-4 w-4" />
+                        {isReceivable ? 'Catat pengembalian diterima' : 'Catat pembayaran'}
+                    </button>
+                )}
+            </article>
+        );
+    };
 
     const closeGoalEditModal = () => setEditingGoal(null);
 
@@ -1015,6 +1134,12 @@ const PlanView: React.FC<PlanViewProps> = ({
                         >
                             <PiggyBank className="w-4 h-4" /> Goals
                         </button>
+                        <button
+                            onClick={() => setPlanSubTab('loans')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'loans' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                        >
+                            <HandCoins className="w-4 h-4" /> <span className="hidden sm:inline">Loans</span>
+                        </button>
                     </div>
 
                     <AnimatePresence mode="wait">
@@ -1084,6 +1209,30 @@ const PlanView: React.FC<PlanViewProps> = ({
                                                 </span>
                                             </p>
                                         </div>
+                                    </div>
+                                </div>
+                            )}
+                            {planSubTab === 'loans' && (
+                                <div>
+                                    <div className="flex items-start justify-between gap-4 mb-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold tracking-tight">Utang & Piutang</h2>
+                                            <p className="text-sm text-muted font-medium flex flex-wrap items-center gap-2 mt-1">
+                                                <span className="text-emerald-500">Piutang {formatIdr(loanSummary.receivable)}</span>
+                                                <span>•</span>
+                                                <span className="text-orange-500">Utang {formatIdr(loanSummary.payable)}</span>
+                                                {(loanSummary.overdueCount > 0 || loanSummary.dueSoonCount > 0) && <span>•</span>}
+                                                {loanSummary.overdueCount > 0 && <span className="text-red-500">{loanSummary.overdueCount} terlambat</span>}
+                                                {loanSummary.dueSoonCount > 0 && <span className="text-amber-500">{loanSummary.dueSoonCount} segera jatuh tempo</span>}
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleOpenAddLoan()}
+                                            className="flex shrink-0 items-center gap-2 rounded-2xl bg-amber-500/10 px-4 py-2.5 text-xs font-bold text-amber-600 transition-colors hover:bg-amber-500/20"
+                                        >
+                                            <Plus className="h-4 w-4" /> Catat
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -1388,6 +1537,95 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </div>
 
                         {renderGoalMilestones()}
+                    </div>
+                </motion.div>
+
+                {/* VIEW: Loans */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+                >
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/5 p-4">
+                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
+                                    <ArrowDownLeft className="h-4 w-4" /> Akan diterima
+                                </div>
+                                <div className="mt-2 text-xl font-bold text-primary">{formatIdr(loanSummary.receivable)}</div>
+                                <p className="mt-1 text-xs text-muted">Total uang yang masih perlu dikembalikan kepada Anda.</p>
+                            </div>
+                            <div className="rounded-[24px] border border-orange-500/20 bg-orange-500/5 p-4">
+                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-orange-500">
+                                    <ArrowUpRight className="h-4 w-4" /> Harus dibayar
+                                </div>
+                                <div className="mt-2 text-xl font-bold text-primary">{formatIdr(loanSummary.payable)}</div>
+                                <p className="mt-1 text-xs text-muted">Total kewajiban yang masih harus Anda lunasi.</p>
+                            </div>
+                            <div className="rounded-[24px] border border-border/60 bg-surface/60 p-4">
+                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted">
+                                    <Clock3 className="h-4 w-4" /> Pengingat
+                                </div>
+                                <div className="mt-2 text-xl font-bold text-primary">{loanSummary.openCount} aktif</div>
+                                <p className="mt-1 text-xs text-muted">
+                                    {loanSummary.overdueCount > 0
+                                        ? `${loanSummary.overdueCount} sudah melewati jatuh tempo.`
+                                        : loanSummary.dueSoonCount > 0
+                                            ? `${loanSummary.dueSoonCount} segera jatuh tempo.`
+                                            : 'Tidak ada tanggungan mendesak.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <section className="rounded-[28px] border border-border/60 bg-surface/40 p-4 shadow-sm lg:p-5">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-primary">
+                                        <HandCoins className="h-4 w-4 text-amber-500" /> Tanggungan aktif
+                                    </h3>
+                                    <p className="mt-1 text-xs text-muted">Diurutkan dari yang terlambat dan paling dekat jatuh tempo.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleOpenAddLoan()}
+                                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-amber-600 transition-colors hover:bg-amber-500/10"
+                                >
+                                    <Plus className="h-4 w-4" /> Tambah
+                                </button>
+                            </div>
+
+                            {activeLoanAccounts.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                                    {activeLoanAccounts.map(renderLoanAccountCard)}
+                                </div>
+                            ) : (
+                                <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4 text-center`}>
+                                    <CheckCircle className="h-8 w-8 text-emerald-500" />
+                                    <div>
+                                        <p className="font-bold text-primary">Tidak ada tanggungan aktif.</p>
+                                        <p className="mt-1 text-sm text-muted">Pinjaman baru dan cicilan akan muncul di sini secara otomatis.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenAddLoan()}
+                                        className="flex items-center gap-2 rounded-2xl bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-600 hover:bg-amber-500/20"
+                                    >
+                                        <Plus className="h-4 w-4" /> Catat pinjaman
+                                    </button>
+                                </div>
+                            )}
+                        </section>
+
+                        {settledLoanAccounts.length > 0 && (
+                            <details className="rounded-[28px] border border-border/60 bg-surface/30 p-4 lg:p-5">
+                                <summary className="cursor-pointer text-sm font-bold uppercase tracking-wider text-muted">
+                                    Riwayat lunas · {settledLoanAccounts.length}
+                                </summary>
+                                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                                    {settledLoanAccounts.map(renderLoanAccountCard)}
+                                </div>
+                            </details>
+                        )}
                     </div>
                 </motion.div>
                 </motion.div>

@@ -55,7 +55,7 @@ import CalendarView from "./components/views/CalendarView";
 import RoutineTaskModal from "./components/RoutineTaskModal";
 import AddTaskModal from "./components/AddTaskModal";
 import AddShoppingModal from "./components/AddShoppingModal";
-import AddExpenseModal from "./components/AddExpenseModal";
+import AddExpenseModal, { TransactionComposerMode } from "./components/AddExpenseModal";
 import AddNoteModal from "./components/AddNoteModal";
 import FloatingChatBox from "./components/FloatingChatBox";
 import ReviewCenterPanel from "./components/ReviewCenterPanel";
@@ -328,9 +328,7 @@ const App: React.FC = () => {
 
   // --- UI State ---
   const [activeTab, setActiveTab] = useState<Tab>("summary");
-  const [planSubTab, setPlanSubTab] = useState<
-    "tasks" | "shopping" | "savings"
-  >("tasks");
+  const [planSubTab, setPlanSubTab] = useState<PlanSubTab>("tasks");
   const [librarySubTab, setLibrarySubTab] = useState<
     "general" | "skills" | "journal"
   >("general");
@@ -421,6 +419,18 @@ const App: React.FC = () => {
     initialCategory?: ShoppingCategory;
   }>({ isOpen: false });
   const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
+  const [addExpenseInitialMode, setAddExpenseInitialMode] = useState<TransactionComposerMode>('expense');
+  const [addExpenseInitialLoanAccountId, setAddExpenseInitialLoanAccountId] = useState<string | undefined>();
+  const openAddTransactionModal = (mode: TransactionComposerMode = 'expense', loanAccountId?: string) => {
+    setAddExpenseInitialMode(mode);
+    setAddExpenseInitialLoanAccountId(loanAccountId);
+    setAddExpenseModalOpen(true);
+  };
+  const closeAddTransactionModal = () => {
+    setAddExpenseModalOpen(false);
+    setAddExpenseInitialMode('expense');
+    setAddExpenseInitialLoanAccountId(undefined);
+  };
   const [addNoteModalOpen, setAddNoteModalOpen] = useState(false);
   const [addNoteModalType, setAddNoteModalType] = useState<
     ItemType.NOTE | ItemType.JOURNAL
@@ -974,7 +984,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (addExpenseModalOpen)
       return BackHandler.register(() => {
-        setAddExpenseModalOpen(false);
+        closeAddTransactionModal();
         return true;
       });
   }, [addExpenseModalOpen]);
@@ -1931,7 +1941,7 @@ const App: React.FC = () => {
                       initialCategory: category,
                     })
                   }
-                  handleOpenAddExpense={() => setAddExpenseModalOpen(true)}
+                  handleOpenAddExpense={() => openAddTransactionModal('expense')}
                   handleOpenAddNote={() => {
                     setAddNoteModalType(ItemType.NOTE);
                     setAddNoteModalOpen(true);
@@ -1990,6 +2000,7 @@ const App: React.FC = () => {
                     });
                     if (confirmed) handleToggleStatus(goal.id);
                   }}
+                  handleOpenAddLoan={(loanAccountId) => openAddTransactionModal('loan', loanAccountId)}
                   setActiveTab={handleSetActiveTab}
                 />
               )}
@@ -2059,7 +2070,7 @@ const App: React.FC = () => {
                   savingGoals={savingGoals}
                   setActiveTab={handleSetActiveTab}
                   onAddItem={(type) => {
-                    if (type === ItemType.FINANCE) setAddExpenseModalOpen(true);
+                    if (type === ItemType.FINANCE) openAddTransactionModal('expense');
                   }}
                 />
               )}
@@ -2511,7 +2522,7 @@ const App: React.FC = () => {
 
       <AddExpenseModal
         isOpen={addExpenseModalOpen}
-        onClose={() => setAddExpenseModalOpen(false)}
+        onClose={closeAddTransactionModal}
         onSave={(
           amount,
           description,
@@ -2527,6 +2538,9 @@ const App: React.FC = () => {
           transactionLineItems,
           merchant,
           receiptCapture,
+          loanCounterparty,
+          loanAccountId,
+          loanDueDate,
         ) => {
           if (type === "saving" && savingGoalId && savingGoalName) {
             handleAddSavingTransaction(
@@ -2553,6 +2567,12 @@ const App: React.FC = () => {
                   transactionLineItems,
                   merchant,
                   receiptCapture,
+                  undefined,
+                  undefined,
+                  undefined,
+                  loanCounterparty,
+                  loanAccountId,
+                  loanDueDate,
                 );
               } else {
                 handleAddTransaction(
@@ -2566,6 +2586,12 @@ const App: React.FC = () => {
                   transactionLineItems,
                   merchant,
                   receiptCapture,
+                  undefined,
+                  undefined,
+                  undefined,
+                  loanCounterparty,
+                  loanAccountId,
+                  loanDueDate,
                 );
               }
             }
@@ -2574,6 +2600,9 @@ const App: React.FC = () => {
         wallets={wallets}
         budgetConfig={budgetConfig}
         savingGoals={savingGoals}
+        items={items}
+        initialMode={addExpenseInitialMode}
+        initialLoanAccountId={addExpenseInitialLoanAccountId}
       />
 
       <AddNoteModal

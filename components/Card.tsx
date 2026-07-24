@@ -4,7 +4,7 @@ import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priori
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
-import { ACHIEVED_GOAL_FINANCE_TYPE, SAVING_WITHDRAWAL_FINANCE_TYPE, formatFinanceTypeLabel, isIncomingLoanFinanceType, isOutgoingLoanFinanceType } from '../utils/financeTypeUtils';
+import { ACHIEVED_GOAL_FINANCE_TYPE, SAVING_WITHDRAWAL_FINANCE_TYPE, formatFinanceTypeLabel, isIncomingLoanFinanceType, isOutgoingLoanFinanceType, isLoanFinanceType } from '../utils/financeTypeUtils';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { getNoteDisplayParts } from '../utils/noteDisplay';
 import { taskEditSurface } from './layout/contentSurface';
@@ -138,7 +138,10 @@ interface CardProps {
     newReceiptCapture?: ReceiptCaptureMeta | null,
     newOriginalCurrency?: string,
     newOriginalAmount?: number,
-    newExchangeRateToIdr?: number
+    newExchangeRateToIdr?: number,
+    newLoanCounterparty?: string,
+    newLoanAccountId?: string,
+    newLoanDueDate?: string
   ) => void;
   onUpdateReceiptCapture?: (id: string, capture: ReceiptCaptureMeta | null) => void | Promise<void>;
   onResetRoutine?: (id: string) => void;
@@ -231,6 +234,9 @@ const Card: React.FC<CardProps> = ({
   const [editDuration, setEditDuration] = useState<string>(meta.durationMinutes ? meta.durationMinutes.toString() : '');
   const [editSkillId, setEditSkillId] = useState(meta.skillId || '');
   const [editSavingGoalId, setEditSavingGoalId] = useState(meta.savingGoalId || '');
+  const [editLoanCounterparty, setEditLoanCounterparty] = useState(meta.loanCounterparty || '');
+  const [editLoanAccountId, setEditLoanAccountId] = useState(meta.loanAccountId || '');
+  const [editLoanDueDate, setEditLoanDueDate] = useState(meta.loanDueDate ? meta.loanDueDate.slice(0, 10) : '');
 
   // Routine
   const [editRecurrenceDays, setEditRecurrenceDays] = useState<string>(meta.recurrenceDays ? meta.recurrenceDays.toString() : '1');
@@ -295,6 +301,9 @@ const Card: React.FC<CardProps> = ({
     setEditDuration(meta.durationMinutes ? meta.durationMinutes.toString() : '');
     setEditSkillId(meta.skillId || '');
     setEditSavingGoalId(meta.savingGoalId || '');
+    setEditLoanCounterparty(meta.loanCounterparty || '');
+    setEditLoanAccountId(meta.loanAccountId || '');
+    setEditLoanDueDate(meta.loanDueDate ? meta.loanDueDate.slice(0, 10) : '');
     setEditProgress(meta.progress || 0);
     setEditProgressNotes(meta.progressNotes || '');
     
@@ -386,6 +395,11 @@ const Card: React.FC<CardProps> = ({
               ? (selectedSavingGoalWalletId || undefined)
               : undefined;
       const finalSavingGoalId = editFinanceType === 'saving' && editSavingGoalId ? editSavingGoalId : undefined;
+      const editingLoan = isLoanFinanceType(editFinanceType);
+      const finalLoanDueDate = editingLoan && (editFinanceType === 'loan_out' || editFinanceType === 'loan_in') && editLoanDueDate
+          ? new Date(`${editLoanDueDate}T12:00:00`).toISOString()
+          : '';
+      const finalLoanAccountId = editingLoan ? editLoanAccountId : '';
 
       const numRecurrence = editRecurrenceDays ? parseInt(editRecurrenceDays) : undefined;
 
@@ -430,7 +444,14 @@ const Card: React.FC<CardProps> = ({
           undefined, // newImageUrl
           undefined, // newShoppingLineItems
           finalTransactionLineItems.length ? finalTransactionLineItems : undefined,
-          editMerchant.trim() || undefined
+          editMerchant.trim() || undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          editingLoan ? editLoanCounterparty.trim() : '',
+          finalLoanAccountId,
+          finalLoanDueDate
       );
       
       if (enableCollapse) {
@@ -699,7 +720,7 @@ const Card: React.FC<CardProps> = ({
   const isParsingFailed = meta.tags?.includes('parsing_failed');
   const showDeepWorkSuggestion = type === ItemType.TODO && meta.deepWorkParent && meta.deepWorkStatus === 'suggested';
   const canShowMoneyMetadata = type === ItemType.FINANCE || type === ItemType.SHOPPING;
-  const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
+  const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || meta.loanCounterparty || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
   const showCommodityFields = (type === ItemType.FINANCE || type === ItemType.SHOPPING) && (editFinanceType === 'expense' || editFinanceType === 'saving' || editFinanceType === 'income');
   const noteDisplay = isNote ? getNoteDisplayParts(item) : null;
   
@@ -847,21 +868,36 @@ const Card: React.FC<CardProps> = ({
                     {(hasMoneyMetadata || skillName || hasTransactionLineItems) && (
                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
                             {hasMoneyMetadata && (
-                                <span className="flex items-center gap-0.5">
-                                    <WalletIcon className="w-3 h-3" />
-                                    {meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE) ? (() => {
-                                        const goal = savingGoals.find(g => g.id === meta.savingGoalId);
-                                        const walletId = goal?.meta.dedicatedWalletId;
-                                        const wallet = wallets.find(w => w.id === walletId);
-                                        return wallet ? wallet.name : (getWalletName(meta.paymentMethod) || 'Linked to Goal');
-                                    })() : getWalletName(meta.paymentMethod)}
-                                    {(meta.financeType === 'transfer' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE) && meta.toWallet && (
-                                        <>
-                                            <ArrowRight className="w-3 h-3" />
-                                            {getWalletName(meta.toWallet)}
-                                        </>
+                                <>
+                                    {(meta.paymentMethod || meta.toWallet || meta.savingGoalId) && (
+                                        <span className="flex items-center gap-0.5">
+                                            <WalletIcon className="w-3 h-3" />
+                                            {meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE) ? (() => {
+                                                const goal = savingGoals.find(g => g.id === meta.savingGoalId);
+                                                const walletId = goal?.meta.dedicatedWalletId;
+                                                const wallet = wallets.find(w => w.id === walletId);
+                                                return wallet ? wallet.name : (getWalletName(meta.paymentMethod) || 'Linked to Goal');
+                                            })() : getWalletName(meta.paymentMethod)}
+                                            {(meta.financeType === 'transfer' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE) && meta.toWallet && (
+                                                <>
+                                                    <ArrowRight className="w-3 h-3" />
+                                                    {getWalletName(meta.toWallet)}
+                                                </>
+                                            )}
+                                        </span>
                                     )}
-                                </span>
+                                    {isLoanFinanceType(meta.financeType) && meta.loanCounterparty && (
+                                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-bold text-amber-600">
+                                            {meta.loanCounterparty}
+                                        </span>
+                                    )}
+                                    {isLoanFinanceType(meta.financeType) && meta.loanDueDate && (meta.financeType === 'loan_out' || meta.financeType === 'loan_in') && (
+                                        <span className="flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            Jatuh tempo {new Date(meta.loanDueDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    )}
+                                </>
                             )}
                             {skillName && (
                                 <span className="text-indigo-500">{skillName}</span>
@@ -1003,13 +1039,13 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
                        <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1 overflow-x-auto no-scrollbar">
-                           {(['expense', 'income', 'transfer', 'saving'] as FinanceType[]).map(ft => (
+                           {(['expense', 'income', 'transfer', 'saving', 'loan_out', 'loan_in', 'loan_repayment_in', 'loan_repayment_out'] as FinanceType[]).map(ft => (
                                <button
                                    key={ft}
                                    onClick={() => setEditFinanceType(ft)}
-                                   className={`flex-1 py-1 px-2 text-[10px] font-medium rounded-xl capitalize whitespace-nowrap ${editFinanceType === ft ? 'bg-[#6366F1] text-white' : 'text-muted hover:text-primary'}`}
+                                   className={`flex-none py-1 px-2 text-[10px] font-medium rounded-xl whitespace-nowrap ${editFinanceType === ft ? 'bg-[#6366F1] text-white' : 'text-muted hover:text-primary'}`}
                                >
-                                   {formatFinanceTypeLabel(ft)}
+                                   {ft === 'loan_out' ? 'Pinjamkan' : ft === 'loan_in' ? 'Pinjam' : ft === 'loan_repayment_in' ? 'Terima kembali' : ft === 'loan_repayment_out' ? 'Bayar kembali' : formatFinanceTypeLabel(ft)}
                                </button>
                            ))}
                        </div>
@@ -1276,10 +1312,35 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Extras (Payment/Budget) */}
                    {showFinanceExtras && (
                        <>
+                           {type === ItemType.FINANCE && isLoanFinanceType(editFinanceType) && (
+                               <>
+                                   <div className={editFinanceType === 'loan_repayment_in' || editFinanceType === 'loan_repayment_out' ? 'col-span-2' : ''}>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Pihak terkait</label>
+                                       <input
+                                           type="text"
+                                           className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           value={editLoanCounterparty}
+                                           onChange={(e) => setEditLoanCounterparty(e.target.value)}
+                                           placeholder={editFinanceType === 'loan_out' || editFinanceType === 'loan_repayment_in' ? 'Nama peminjam' : 'Nama pemberi pinjaman'}
+                                       />
+                                   </div>
+                                   {(editFinanceType === 'loan_out' || editFinanceType === 'loan_in') && (
+                                       <div>
+                                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Jatuh tempo</label>
+                                           <input
+                                               type="date"
+                                               className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                               value={editLoanDueDate}
+                                               onChange={(e) => setEditLoanDueDate(e.target.value)}
+                                           />
+                                       </div>
+                                   )}
+                               </>
+                           )}
                            {editFinanceType !== 'saving' && (
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">
-                                       {editFinanceType === 'transfer' ? 'From' : editFinanceType === 'income' ? 'To' : 'Wallet'}
+                                       {editFinanceType === 'transfer' ? 'From' : editFinanceType === 'income' ? 'To' : (editFinanceType === 'loan_in' || editFinanceType === 'loan_repayment_in') ? 'Wallet penerima' : (editFinanceType === 'loan_out' || editFinanceType === 'loan_repayment_out') ? 'Wallet pembayaran' : 'Wallet'}
                                    </label>
                                    <select
                                        className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
@@ -1362,7 +1423,7 @@ const Card: React.FC<CardProps> = ({
                                    </div>
                                    )}
                                </>
-                           ) : needsEditDefaultCategory ? (
+                           ) : !isLoanFinanceType(editFinanceType) && needsEditDefaultCategory ? (
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{hasEditTransactionLineItems ? 'Kategori default' : 'Kategori budget'}</label>
                                    <select

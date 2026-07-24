@@ -279,6 +279,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const transactionLineItemsStr = cell(row, 'Line_Items', 22) as string;
             const receiptCaptureStr = cell(row, 'Receipt_Capture', 23) as string;
             const loanCounterparty = cell(row, 'Loan_Counterparty', 24) as string;
+            const loanAccountId = cell(row, 'Loan_Account_ID', 25) as string;
+            const loanDueDate = cell(row, 'Loan_Due_Date', 26) as string;
             if (!date && !description && !amountStr && !idStr) continue;
 
             if (idStr && shoppingSheetIds.has(String(idStr))) {
@@ -336,6 +338,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (commodity !== undefined && match.meta.commodity !== (commodity || undefined)) { match.meta.commodity = commodity || undefined; updated = true; }
                 if (subcommodity !== undefined && match.meta.subcommodity !== (subcommodity || undefined)) { match.meta.subcommodity = subcommodity || undefined; updated = true; }
                 if (loanCounterparty !== undefined && match.meta.loanCounterparty !== (loanCounterparty || undefined)) { match.meta.loanCounterparty = loanCounterparty || undefined; updated = true; }
+                if (loanAccountId !== undefined && match.meta.loanAccountId !== (loanAccountId || undefined)) { match.meta.loanAccountId = loanAccountId || undefined; updated = true; }
+                if (loanDueDate !== undefined && match.meta.loanDueDate !== (loanDueDate || undefined)) { match.meta.loanDueDate = loanDueDate || undefined; updated = true; }
                 if (canonicalPaymentMethod || canonicalMerchant || canonicalCommodity || canonicalSubcommodity) {
                     const nextCanonical = { ...(match.meta.canonical || {}) };
                     if (canonicalPaymentMethod) nextCanonical.paymentMethod = { rawValue: rawPaymentMethod || wallet || undefined, value: canonicalPaymentMethod };
@@ -415,6 +419,8 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                         commodity: commodity || undefined,
                         subcommodity: subcommodity || undefined,
                         loanCounterparty: loanCounterparty || undefined,
+                        loanAccountId: loanAccountId || undefined,
+                        loanDueDate: loanDueDate || undefined,
                         canonical: (canonicalPaymentMethod || canonicalMerchant || canonicalCommodity || canonicalSubcommodity) ? {
                             paymentMethod: canonicalPaymentMethod ? { rawValue: rawPaymentMethod || wallet || undefined, value: canonicalPaymentMethod } : undefined,
                             merchant: canonicalMerchant ? { rawValue: merchant || undefined, value: canonicalMerchant } : undefined,

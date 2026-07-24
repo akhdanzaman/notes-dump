@@ -73,6 +73,8 @@ MONEY META (FINANCE + money-related SHOPPING):
 - paymentMethod: EXACT text from user (Source Wallet), else "".
 - toWallet: Destination wallet (transfer or saving withdrawal).
 - loanCounterparty: person/entity on the other side of a loan transaction.
+- loanAccountId: stable identifier that links a loan opening transaction and its repayments when known.
+- loanDueDate: due date for an opening loan (loan_out or loan_in), separate from the transaction date.
 - merchant: Vendor name if mentioned.
 - amount: number.
 
@@ -94,7 +96,7 @@ FINANCE META:
 - saving: adding funds to an existing saving goal (e.g., "saved 500k for car from BCA").
     - IF saving: set 'paymentMethod' = Source Wallet, 'financeType' = 'saving'.
 - saving_withdrawal: withdrawing/liquidating funds from a saving or investment goal. Set paymentMethod to the dedicated source wallet when known and toWallet to the receiving wallet.
-- loan_out: user lends money to someone; loan_in: user borrows money; loan_repayment_in: user receives repayment; loan_repayment_out: user repays someone. Set loanCounterparty and paymentMethod.
+- loan_out: user lends money to someone; loan_in: user borrows money; loan_repayment_in: user receives repayment; loan_repayment_out: user repays someone. Set loanCounterparty and paymentMethod. For loan_out/loan_in, capture any due date as loanDueDate and keep it separate from the cash transaction date.
 - IMPORTANT: You MUST ALWAYS set 'budgetCategory' for 'expense' and 'saving' transactions when the spending purpose is present.
   - Prefer the user's spreadsheet/configured categories. If there is no exact rule or reference, creatively infer the closest configured category from purpose, commodity, merchant, and wording instead of returning "none".
   - Leave budgetCategory blank only for income, transfer, or totally purpose-less amount-only inputs.
@@ -121,6 +123,7 @@ Examples:
 - "Saved 500k for car from BCA" => FINANCE saving, content "Saved for car", amount 500000, paymentMethod "BCA"
 - "Tarik 200rb dari investasi BBCA ke BCA" => FINANCE saving_withdrawal, amount 200000, toWallet "BCA"
 - "Pinjamkan 300rb ke Budi dari BCA" => FINANCE loan_out, amount 300000, paymentMethod "BCA", loanCounterparty "Budi"
+- "Pinjamkan 300rb ke Budi dari BCA jatuh tempo 30/07/2026" => FINANCE loan_out, amount 300000, paymentMethod "BCA", loanCounterparty "Budi", loanDueDate "2026-07-30"
 - "Budi mengembalikan 100rb ke BCA" => FINANCE loan_repayment_in, amount 100000, paymentMethod "BCA", loanCounterparty "Budi"
 `;
 

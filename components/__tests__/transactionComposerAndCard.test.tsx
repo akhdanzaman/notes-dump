@@ -75,7 +75,65 @@ test('image attachment control belongs to the global input bar, not Add Expense 
     wallets: [],
     budgetConfig: { monthlyIncome: 0, rules: [] },
     savingGoals: [],
+    items: [],
   }));
   assert.doesNotMatch(modalHtml, /Scan nota \/ invoice/);
   assert.doesNotMatch(modalHtml, /Ekstrak transaksi/);
+});
+
+test('manual transaction modal exposes loan and repayment flows', () => {
+  const html = renderToStaticMarkup(React.createElement(AddExpenseModal, {
+    isOpen: true,
+    onClose: () => undefined,
+    onSave: () => undefined,
+    wallets: [{ id: 'bca', name: 'BCA', initialBalance: 1_000_000, type: 'bank', color: '#000000' }],
+    budgetConfig: { monthlyIncome: 0, rules: [] },
+    savingGoals: [],
+    items: [],
+    initialMode: 'loan',
+  }));
+
+  assert.match(html, /Saya meminjamkan/);
+  assert.match(html, /Saya meminjam/);
+  assert.match(html, /Pengembalian diterima/);
+  assert.match(html, /Saya membayar kembali/);
+  assert.match(html, /Pihak terkait/);
+  assert.match(html, /Jatuh tempo/);
+});
+
+test('transaction card edit mode exposes loan directions and obligation fields', () => {
+  const loanTransaction: BrainDumpItem = {
+    id: 'loan-1',
+    type: ItemType.FINANCE,
+    content: 'Pinjaman kepada Budi',
+    status: 'done',
+    created_at: '2026-07-13T08:00:00.000Z',
+    completed_at: '2026-07-13T08:00:00.000Z',
+    meta: {
+      financeType: 'loan_out',
+      amount: 300_000,
+      paymentMethod: 'BCA',
+      loanCounterparty: 'Budi',
+      loanAccountId: 'loan-account-1',
+      loanDueDate: '2026-07-30T00:00:00.000Z',
+      date: '2026-07-13T08:00:00.000Z',
+    },
+  };
+
+  const html = renderToStaticMarkup(React.createElement(Card, {
+    item: loanTransaction,
+    enableCollapse: true,
+    defaultCollapsed: false,
+    wallets: [{ id: 'bca', name: 'BCA', initialBalance: 1_000_000, type: 'bank', color: '#000000' }],
+    budgetRules,
+    onUpdate: () => undefined,
+  }));
+
+  assert.match(html, /Pinjamkan/);
+  assert.match(html, /Pinjam/);
+  assert.match(html, /Terima kembali/);
+  assert.match(html, /Bayar kembali/);
+  assert.match(html, /Pihak terkait/);
+  assert.match(html, /Jatuh tempo/);
+  assert.match(html, /value="Budi"/);
 });

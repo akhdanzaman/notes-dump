@@ -389,10 +389,10 @@ test('transaction spreadsheet export round-trips ID after canonical columns and 
   const transactionsSheet = sheets.find(sheet => sheet.name === 'Transactions');
   assert.ok(transactionsSheet);
   assert.equal(transactionsSheet!.data[0].indexOf('ID'), 18);
-  assert.deepEqual(transactionsSheet!.data[0].slice(19), ['Saving_Goal_ID', 'Investment_Units', 'Investment_Avg_Buy', 'Line_Items', 'Receipt_Capture', 'Loan_Counterparty']);
+  assert.deepEqual(transactionsSheet!.data[0].slice(19), ['Saving_Goal_ID', 'Investment_Units', 'Investment_Avg_Buy', 'Line_Items', 'Receipt_Capture', 'Loan_Counterparty', 'Loan_Account_ID', 'Loan_Due_Date']);
 
   const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
-    range: "'Transactions'!A1:Y",
+    range: "'Transactions'!A1:AA",
     values: transactionsSheet!.data,
   }]);
 
@@ -421,6 +421,8 @@ test('loan counterparty round-trips through the Transactions sheet', () => {
       financeType: 'loan_out',
       paymentMethod: 'bca-wallet',
       loanCounterparty: 'Budi',
+      loanAccountId: 'loan-account-1',
+      loanDueDate: '2026-08-01T12:00:00.000Z',
     },
   };
   const db: DbSchema = {
@@ -436,14 +438,20 @@ test('loan counterparty round-trips through the Transactions sheet', () => {
   const transactionsSheet = sheets.find(sheet => sheet.name === 'Transactions');
   assert.ok(transactionsSheet);
   const counterpartyIndex = transactionsSheet!.data[0].indexOf('Loan_Counterparty');
+  const accountIdIndex = transactionsSheet!.data[0].indexOf('Loan_Account_ID');
+  const dueDateIndex = transactionsSheet!.data[0].indexOf('Loan_Due_Date');
   assert.equal(transactionsSheet!.data[1][counterpartyIndex], 'Budi');
+  assert.equal(transactionsSheet!.data[1][accountIdIndex], 'loan-account-1');
+  assert.equal(transactionsSheet!.data[1][dueDateIndex], '2026-08-01T12:00:00.000Z');
 
   const reconciled = reconcileSpreadsheetData(structuredClone(db), [{
-    range: "'Transactions'!A1:Y",
+    range: "'Transactions'!A1:AA",
     values: transactionsSheet!.data,
   }]);
   assert.equal(reconciled.data[0].meta.financeType, 'loan_out');
   assert.equal(reconciled.data[0].meta.loanCounterparty, 'Budi');
+  assert.equal(reconciled.data[0].meta.loanAccountId, 'loan-account-1');
+  assert.equal(reconciled.data[0].meta.loanDueDate, '2026-08-01T12:00:00.000Z');
 });
 
 test('spreadsheet reconciliation treats blank trailing schema cells as user clears', () => {
