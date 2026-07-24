@@ -176,8 +176,8 @@ const InputBar: React.FC<InputBarProps> = ({
   const visibleError = imageError || error;
 
   return (
-    <div data-global-composer="true" className="w-full pt-2 pb-4 px-4 z-[60] pointer-events-none lg:px-0 lg:pb-6">
-      <div className="max-w-2xl mx-auto pointer-events-none lg:mx-0 lg:max-w-none lg:w-full">
+    <div data-global-composer="true" className="z-[60] w-full px-3 pb-3 pt-2 pointer-events-none sm:px-5 lg:px-0 lg:pb-5">
+      <div className="mx-auto w-full max-w-3xl pointer-events-none lg:max-w-4xl">
         <div className="relative">
           {visibleError && (
             <div className="absolute bottom-full left-0 w-full mb-3 pointer-events-auto">
@@ -217,7 +217,7 @@ const InputBar: React.FC<InputBarProps> = ({
                           e.preventDefault();
                           addTemplate(item.value);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/80 backdrop-blur-md border border-border rounded-full text-xs font-medium text-primary shadow-lg hover:border-primary/50 hover:bg-surface active:scale-95 transition-all whitespace-nowrap"
+                        className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border/80 bg-surface/92 px-3 py-1.5 text-[11px] font-semibold text-primary shadow-sm backdrop-blur-xl transition-colors hover:border-indigo-500/30 hover:bg-surface active:scale-95"
                       >
                         {item.icon}
                         {item.label}
@@ -233,7 +233,7 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={onOpenReviewCenter}
-                    className="relative w-10 h-10 rounded-full bg-indigo-500/15 border border-indigo-500/40 text-indigo-500 backdrop-blur-xl flex items-center justify-center shadow-xl shadow-indigo-500/20 hover:bg-indigo-500/25 active:scale-95 transition-all"
+                    className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-indigo-500/25 bg-indigo-500/10 text-indigo-500 shadow-sm backdrop-blur-xl transition-colors hover:bg-indigo-500/15 active:scale-95"
                     title="Open Review Center"
                     aria-label="Open Review Center"
                   >
@@ -286,9 +286,7 @@ const InputBar: React.FC<InputBarProps> = ({
             </div>
           </div>
 
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2rem] opacity-20 group-hover:opacity-40 transition duration-500 blur pointer-events-none"></div>
-
-          <div data-composer-surface="true" className="relative bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden pointer-events-auto">
+          <div data-composer-surface="true" className="relative overflow-hidden rounded-[1.6rem] border border-border/90 bg-surface/92 shadow-[0_16px_50px_rgba(0,0,0,0.14)] backdrop-blur-2xl pointer-events-auto">
             {image && (
               <div className="space-y-2 px-4 pt-3">
                 <div className="flex items-center gap-3">
@@ -339,10 +337,11 @@ const InputBar: React.FC<InputBarProps> = ({
               <button
                 type="button"
                 onClick={onOpenChat}
-                className={`p-4 mb-0.5 transition-colors ${
-                  isChatOpen ? 'text-indigo-500' : 'text-muted hover:text-indigo-500'
+                className={`m-2 mr-0 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                  isChatOpen ? 'bg-indigo-500/10 text-indigo-500' : 'text-muted hover:bg-black/[0.04] hover:text-indigo-500 dark:hover:bg-white/[0.06]'
                 }`}
-                title="Open AI Chat"
+                title="Buka AI Chat"
+                aria-label="Buka AI Chat"
               >
                 <MessageSquareText className="w-5 h-5" />
               </button>
@@ -359,7 +358,7 @@ const InputBar: React.FC<InputBarProps> = ({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => imageInputRef.current?.click()}
                 disabled={isSubmitting}
-                className={`p-3 mb-1 transition-colors disabled:opacity-50 ${image ? 'text-indigo-500' : 'text-muted hover:text-indigo-500'}`}
+                className={`my-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-50 ${image ? 'bg-indigo-500/10 text-indigo-500' : 'text-muted hover:bg-black/[0.04] hover:text-indigo-500 dark:hover:bg-white/[0.06]'}`}
                 title="Tambahkan gambar nota atau invoice"
                 aria-label="Tambahkan gambar nota atau invoice"
               >
@@ -374,7 +373,7 @@ const InputBar: React.FC<InputBarProps> = ({
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 placeholder={image ? (imageMode === 'receipt' ? 'Tambahkan wallet, tanggal, atau catatan...' : 'Tanyakan sesuatu tentang gambar...') : (isChatOpen ? 'Tanyakan lanjutan...' : 'Tulis apa saja di sini...')}
-                className="flex-1 bg-transparent py-4 text-primary placeholder-muted focus:outline-none resize-none no-scrollbar max-h-[120px]"
+                className="max-h-[120px] min-w-0 flex-1 resize-none bg-transparent px-3 py-[18px] text-[15px] font-medium leading-5 text-primary placeholder:text-muted/75 focus:outline-none no-scrollbar"
                 rows={1}
               />
 
@@ -382,7 +381,7 @@ const InputBar: React.FC<InputBarProps> = ({
                 type="button"
                 onClick={() => void handleSubmit()}
                 disabled={(!input.trim() && !image) || isSubmitting}
-                className="p-4 mb-0.5 text-muted hover:text-indigo-500 disabled:opacity-30 transition-colors"
+                className="m-2 ml-1 flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-3 text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500 disabled:bg-muted/20 disabled:text-muted disabled:opacity-60 disabled:shadow-none"
                 title={image ? (imageMode === 'receipt' ? 'Proses nota di latar belakang' : 'Tanyakan tentang gambar') : 'Kirim'}
               >
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (

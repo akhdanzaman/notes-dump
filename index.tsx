@@ -90,22 +90,23 @@ class RootErrorBoundary extends React.Component<React.PropsWithChildren, RootErr
     if (!this.state.error) return this.props.children;
 
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-6">
-        <div className="max-w-md w-full rounded-3xl border border-red-500/30 bg-zinc-900 p-6 shadow-2xl">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-red-300 mb-3">Arkaiv crashed</p>
-          <h1 className="text-2xl font-black mb-3">The app could not render.</h1>
-          <p className="text-sm text-zinc-300 mb-5">
-            This is usually caused by a stale cached PWA bundle after an update. Reloading refreshes the app assets.
+      <div className="flex min-h-screen items-center justify-center bg-background p-6 text-primary">
+        <div className="w-full max-w-md rounded-[28px] border border-red-500/25 bg-surface p-6 shadow-2xl">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">!</div>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-red-500">Arkaiv berhenti</p>
+          <h1 className="mb-2 text-2xl font-extrabold tracking-tight">Aplikasi tidak dapat ditampilkan.</h1>
+          <p className="mb-5 text-sm leading-relaxed text-muted">
+            Biasanya ini terjadi karena cache PWA lama setelah pembaruan. Muat ulang untuk mengambil aset aplikasi terbaru.
           </p>
-          <pre className="mb-5 max-h-40 overflow-auto rounded-2xl bg-black/40 p-3 text-xs text-red-100 whitespace-pre-wrap">
+          <pre className="mb-5 max-h-40 overflow-auto whitespace-pre-wrap rounded-xl border border-red-500/15 bg-red-500/[0.06] p-3 text-xs text-red-500">
             {this.state.error.message}
           </pre>
           <button
             type="button"
             onClick={() => recoverFromStaleAssets()}
-            className="w-full rounded-2xl bg-red-400 px-4 py-3 font-bold text-zinc-950 hover:bg-red-300"
+            className="w-full rounded-xl bg-red-500 px-4 py-3 font-semibold text-white transition-colors hover:bg-red-400"
           >
-            Refresh app assets
+            Muat ulang aplikasi
           </button>
         </div>
       </div>

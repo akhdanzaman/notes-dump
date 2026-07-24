@@ -17,76 +17,64 @@ const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
   setActiveTab,
   planSubTab,
-  setPlanSubTab,
   librarySubTab,
-  setLibrarySubTab,
   onMenuClick,
 }) => {
   const tabs = getAppNavigationItems(planSubTab, librarySubTab);
 
   return (
-    <div data-mobile-bottom-nav="true" className="w-full pb-6 px-4 z-40 lg:hidden" role="navigation" aria-label="Mobile bottom navigation">
-      <div className="flex justify-center">
-        <div className="w-fit">
-          <div className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-2 backdrop-blur-xl">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              const Icon = tab.icon;
+    <div
+      data-mobile-bottom-nav="true"
+      className="z-40 w-full px-3 sm:px-5 lg:hidden"
+      role="navigation"
+      aria-label="Navigasi utama"
+    >
+      <div className="mx-auto max-w-lg">
+        <div className="grid grid-cols-6 gap-1 rounded-[1.4rem] border border-border/80 bg-surface/90 p-1.5 backdrop-blur-2xl">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
 
-              return (
-                <button
-                  key={tab.id}
-                  data-mobile-nav-tab={tab.id}
-                  data-active={isActive ? 'true' : 'false'}
-                  aria-current={isActive ? 'page' : undefined}
-                  aria-label={tab.label}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                  }}
-                  className={[
-                    'group relative flex shrink-0 items-center overflow-hidden rounded-full',
-                    'transition-all duration-300 ease-in-out',
-                    'h-10',
-                    isActive
-                      ? 'w-[116px] bg-black/5 dark:bg-white/10 text-primary shadow-sm'
-                      : 'w-10 bg-transparent text-muted hover:bg-black/5 hover:text-primary dark:hover:bg-white/10',
-                  ].join(' ')}
-                >
-                  <div
-                    className={[
-                      'flex w-full items-center transition-all duration-300 ease-in-out',
-                      isActive ? 'justify-center px-3' : 'justify-center px-0',
-                    ].join(' ')}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                data-mobile-nav-tab={tab.id}
+                data-active={isActive ? 'true' : 'false'}
+                aria-current={isActive ? 'page' : undefined}
+                aria-label={tab.label}
+                onClick={() => setActiveTab(tab.id)}
+                className={[
+                  'group relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-[1rem] px-1 py-2',
+                  'transition-colors duration-200 active:scale-[0.97]',
+                  isActive
+                    ? 'bg-indigo-500/12 text-indigo-600 dark:text-indigo-300'
+                    : 'text-muted hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]',
+                ].join(' ')}
+              >
+                <span className="relative flex h-5 items-center justify-center">
+                  <Icon className="h-[19px] w-[19px]" strokeWidth={isActive ? 2.35 : 2} />
+                  {isActive && (
+                    <span className="absolute -bottom-2 h-0.5 w-4 rounded-full bg-indigo-500" />
+                  )}
+                </span>
+                <span className="max-w-full truncate text-[9px] font-semibold leading-none sm:text-[10px]">
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
 
-                    <span
-                      className={[
-                        'overflow-hidden whitespace-nowrap text-sm font-medium leading-none',
-                        'transition-all duration-300 ease-in-out',
-                        isActive
-                          ? 'ml-2 max-w-[64px] opacity-100'
-                          : 'ml-0 max-w-0 opacity-0',
-                      ].join(' ')}
-                    >
-                      {tab.label}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-
-            <div className="mx-1 h-5 w-px shrink-0 bg-border" />
-
-            <button
-              data-mobile-nav-menu="true"
-              onClick={onMenuClick}
-              aria-label="Menu"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted transition-all duration-300 ease-in-out hover:bg-black/5 hover:text-primary dark:hover:bg-white/10"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            data-mobile-nav-menu="true"
+            type="button"
+            onClick={onMenuClick}
+            aria-label="Buka menu dan pengaturan"
+            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[1rem] px-1 py-2 text-muted transition-colors duration-200 hover:bg-black/[0.04] hover:text-primary active:scale-[0.97] dark:hover:bg-white/[0.06]"
+          >
+            <Menu className="h-[19px] w-[19px]" />
+            <span className="text-[9px] font-semibold leading-none sm:text-[10px]">Menu</span>
+          </button>
         </div>
       </div>
     </div>

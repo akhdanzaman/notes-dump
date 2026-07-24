@@ -152,10 +152,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             exit={{ opacity: 0, y: -20 }}
             className="flex flex-col items-center text-center space-y-6 lg:max-w-3xl lg:mx-auto"
           >
-            <div className="w-24 h-24 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4">
-              <Sparkles className="w-12 h-12 text-indigo-500" />
+            <div className="mb-2 flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-500/10 ring-1 ring-indigo-500/15">
+              <Sparkles className="h-9 w-9 text-indigo-500" />
             </div>
-            <h1 className="text-3xl font-bold text-primary">Welcome to Arkaiv</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Welcome to Arkaiv</h1>
             <p className="text-muted text-lg max-w-md">
               Ngarsip Harian — your AI-powered second brain for tracking expenses, tasks, notes, shopping, habits, and calendar context. This setup covers the basics; detailed tips will appear only when you first open each tab or feature.
             </p>
@@ -166,7 +166,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 ['Library', 'Notes, skills, journal memory'],
                 ['Money', 'Wallet ledger, budget, transactions'],
               ].map(([title, body]) => (
-                <div key={title} className="p-3 rounded-2xl bg-surface border border-border">
+                <div key={title} className="rounded-2xl border border-border/75 bg-background/55 p-3.5">
                   <div className="text-sm font-bold text-primary">{title}</div>
                   <div className="text-xs text-muted mt-1 leading-relaxed">{body}</div>
                 </div>
@@ -189,10 +189,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setTheme('light')}
-                className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-4 transition-all ${
+                className={`p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all ${
                   theme === 'light' 
-                    ? 'border-indigo-500 bg-indigo-500/10' 
-                    : 'border-border bg-surface hover:border-primary/30'
+                    ? 'border-indigo-500/40 bg-indigo-500/10 ring-4 ring-indigo-500/[0.06]' 
+                    : 'border-border/80 bg-surface/70 hover:border-indigo-500/25 hover:bg-surface'
                 }`}
               >
                 <Sun className={`w-8 h-8 ${theme === 'light' ? 'text-indigo-500' : 'text-muted'}`} />
@@ -200,10 +200,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               </button>
               <button
                 onClick={() => setTheme('dark')}
-                className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-4 transition-all ${
+                className={`p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all ${
                   theme === 'dark' 
-                    ? 'border-indigo-500 bg-indigo-500/10' 
-                    : 'border-border bg-surface hover:border-primary/30'
+                    ? 'border-indigo-500/40 bg-indigo-500/10 ring-4 ring-indigo-500/[0.06]' 
+                    : 'border-border/80 bg-surface/70 hover:border-indigo-500/25 hover:bg-surface'
                 }`}
               >
                 <Moon className={`w-8 h-8 ${theme === 'dark' ? 'text-indigo-500' : 'text-muted'}`} />
@@ -235,7 +235,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                   value={walletName}
                   onChange={(e) => setWalletName(e.target.value)}
                   placeholder="e.g., Main Bank, Cash"
-                  className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-primary focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                 />
               </div>
               <div>
@@ -247,7 +247,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                     value={walletBalance}
                     onChange={(e) => setWalletBalance(e.target.value)}
                     placeholder="0"
-                    className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                   />
                 </div>
               </div>
@@ -279,7 +279,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                     value={monthlyIncome}
                     onChange={(e) => setMonthlyIncome(e.target.value)}
                     placeholder="e.g., 10000000"
-                    className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                   />
                 </div>
                 <p className="text-xs text-muted mt-2">
@@ -341,7 +341,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                   onChange={(e) => setTestInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleTestAI()}
                   placeholder="e.g., Bought coffee for 35k"
-                  className="w-full bg-surface border border-border rounded-xl pl-4 pr-12 py-4 text-primary focus:outline-none focus:border-indigo-500 transition-colors shadow-sm"
+                  className="w-full bg-surface border border-border rounded-xl pl-4 pr-12 py-4 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
                 />
                 <button 
                   onClick={handleTestAI}
@@ -356,7 +356,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-surface-elevated border border-border rounded-xl p-4 text-left"
+                  className="bg-surface border border-border rounded-xl p-4 text-left"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="px-2 py-1 bg-indigo-500/20 text-indigo-500 text-xs font-bold rounded uppercase">
@@ -408,51 +408,70 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-4 sm:p-8 lg:p-10">
-      {/* Progress Bar */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-surface">
-        <div 
-          className="h-full bg-indigo-500 transition-all duration-500 ease-out"
+    <div className="fixed inset-0 z-[100] flex flex-col overflow-y-auto bg-background px-4 py-5 sm:px-8 sm:py-7 lg:px-10">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img src="/icon.svg" alt="Arkaiv" className="h-10 w-10 rounded-xl bg-zinc-950 ring-1 ring-white/10" />
+          <div>
+            <div className="text-sm font-extrabold tracking-tight text-primary">Arkaiv</div>
+            <div className="text-[11px] font-medium text-muted">Setup awal</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleComplete}
+          className="rounded-xl px-3 py-2 text-xs font-semibold text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]"
+        >
+          Lewati setup
+        </button>
+      </div>
+
+      <div className="mx-auto mt-4 h-1 w-full max-w-7xl overflow-hidden rounded-full bg-border/70">
+        <div
+          className="h-full rounded-full bg-indigo-500 transition-all duration-500 ease-out"
           style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
         />
       </div>
 
-      <div className="hidden lg:block absolute left-10 top-1/2 w-64 -translate-y-1/2 rounded-3xl border border-border bg-surface/70 p-4 shadow-2xl shadow-black/5 backdrop-blur-xl">
-        <div className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-muted">Setup path</div>
+      <div className="relative mx-auto flex w-full max-w-7xl flex-1 items-center justify-center py-6 lg:py-8">
+      <div className="absolute left-0 top-1/2 hidden w-64 -translate-y-1/2 rounded-[28px] border border-border/80 bg-surface/75 p-3 shadow-sm backdrop-blur-xl lg:block">
+        <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Setup path</div>
         <div className="space-y-2">
           {STEPS.map((step, i) => (
             <div
               key={step.id}
-              className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${i === currentStep ? 'bg-primary text-background' : 'text-muted'}`}
+              className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${i === currentStep ? 'bg-indigo-500/10 text-primary ring-1 ring-inset ring-indigo-500/15' : 'text-muted'}`}
             >
-              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i === currentStep ? 'bg-background/15' : i < currentStep ? 'bg-emerald-500/15 text-emerald-500' : 'bg-background text-muted'}`}>
+              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i === currentStep ? 'bg-indigo-500 text-white' : i < currentStep ? 'bg-emerald-500/15 text-emerald-500' : 'bg-background text-muted'}`}>
                 {i < currentStep ? <Check className="h-4 w-4" /> : i + 1}
               </span>
               <span>
                 <span className="block text-sm font-bold">{step.title}</span>
-                <span className={`block text-xs ${i === currentStep ? 'text-background/70' : 'text-muted/80'}`}>{i < currentStep ? 'Done' : i === currentStep ? 'Now' : 'Next'}</span>
+                <span className={`block text-xs ${i === currentStep ? 'text-muted' : 'text-muted/80'}`}>{i < currentStep ? 'Done' : i === currentStep ? 'Now' : 'Next'}</span>
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="w-full max-w-2xl lg:max-w-5xl flex-1 flex flex-col justify-center min-h-[400px]">
+      <div className="flex min-h-[460px] w-full max-w-2xl flex-col justify-center rounded-[30px] border border-border/80 bg-surface/72 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:max-w-3xl lg:p-10">
+        <div className="mb-6 flex items-center justify-between lg:hidden">
+          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">{STEPS[currentStep].title}</span>
+          <span className="rounded-full bg-indigo-500/10 px-2.5 py-1 text-[11px] font-bold text-indigo-500">{currentStep + 1}/{STEPS.length}</span>
+        </div>
         <AnimatePresence mode="wait">
           <div key={currentStep} className="w-full">
             {renderStep()}
           </div>
         </AnimatePresence>
-      </div>
 
-      {/* Navigation */}
-      <div className="w-full max-w-md lg:max-w-5xl flex items-center justify-between mt-8 pt-8 border-t border-border">
+        <div className="mt-8 flex w-full items-center justify-between border-t border-border/80 pt-5">
         <button
           onClick={handleBack}
-          className={`px-6 py-3 font-medium rounded-xl transition-colors ${
+          className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
             currentStep === 0 
               ? 'opacity-0 pointer-events-none' 
-              : 'text-muted hover:bg-surface-elevated'
+              : 'text-muted hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]'
           }`}
         >
           Back
@@ -471,7 +490,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
 
         <button
           onClick={handleNext}
-          className="px-6 py-3 bg-indigo-500 text-white font-medium rounded-xl hover:bg-indigo-600 transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/20"
+          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
         >
           {currentStep === STEPS.length - 1 ? (
             <>Get Started <Check className="w-5 h-5" /></>
@@ -479,6 +498,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             <>Next <ArrowRight className="w-5 h-5" /></>
           )}
         </button>
+        </div>
+      </div>
       </div>
     </div>
   );

@@ -88,16 +88,18 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
 
     const isMoney = activeTab === 'money';
     const isTransactions = moneyView === 'transactions';
-    const isFilterActive =
-        !!selectedTag ||
-        !!filterDate ||
-        !!filterDateTo ||
-        !!filterWallet ||
-        !!filterTransactionType ||
-        !!filterCategory ||
-        !!filterMinAmount ||
-        !!filterMaxAmount ||
-        !!searchQuery;
+    const activeFilterCount = [
+        selectedTag,
+        filterDate,
+        filterDateTo,
+        filterWallet,
+        filterTransactionType,
+        filterCategory,
+        filterMinAmount,
+        filterMaxAmount,
+        searchQuery,
+    ].filter(Boolean).length;
+    const isFilterActive = activeFilterCount > 0;
 
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -122,15 +124,19 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
             <button
                 onClick={() => setIsSearchExpanded(true)}
                 data-floating-search-trigger="content-anchored"
-                className={`pointer-events-auto relative w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
+                className={`pointer-events-auto relative flex h-10 items-center justify-center gap-2 rounded-xl border px-3 shadow-sm backdrop-blur-xl transition-colors active:scale-[0.97] ${
                     isFilterActive
-                        ? 'bg-indigo-500 text-white shadow-indigo-500/30'
-                        : 'bg-surface/80 backdrop-blur-md text-muted border border-border/50 hover:text-primary hover:bg-surface hover:scale-110 active:scale-95'
+                        ? 'border-indigo-500/30 bg-indigo-500 text-white'
+                        : 'border-border/80 bg-surface/92 text-muted hover:border-indigo-500/25 hover:text-primary'
                 }`}
+                aria-label={isFilterActive ? `Buka pencarian, ${activeFilterCount} filter aktif` : 'Buka pencarian dan filter'}
             >
-                <Search className="w-5 h-5" />
+                <Search className="h-4 w-4" />
+                <span className="hidden text-xs font-semibold sm:inline">Cari</span>
                 {isFilterActive && (
-                    <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface" />
+                    <span className="flex min-w-[18px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold leading-[18px] text-white">
+                        {activeFilterCount}
+                    </span>
                 )}
             </button>
         );
@@ -140,22 +146,23 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
         <div className="pointer-events-none w-full flex justify-start" data-floating-search-anchor="composer-content-frame">
             <div
                 ref={containerRef}
-                className="pointer-events-auto bg-surface/90 backdrop-blur-xl border border-white/20 rounded-[2.5rem] shadow-2xl p-6 relative w-full max-w-xl lg:max-w-2xl lg:mx-0 animate-in fade-in slide-in-from-bottom-4 duration-300 max-h-[85vh] overflow-y-auto scrollbar-hide"
+                className="pointer-events-auto relative max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-[28px] border border-border/80 bg-surface/96 p-5 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-4 duration-200 lg:mx-0 lg:max-w-2xl sm:p-6"
             >
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-wider">
-                            Search & Filter
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+                            Pencarian & filter
                         </p>
-                        <h3 className="text-sm font-semibold text-primary mt-1">
-                            Find items faster
+                        <h3 className="mt-1 text-base font-bold tracking-tight text-primary">
+                            Temukan data lebih cepat
                         </h3>
+                        {isFilterActive && <p className="mt-1 text-[11px] text-indigo-500">{activeFilterCount} filter aktif</p>}
                     </div>
 
                     <button
                         onClick={() => setIsSearchExpanded(false)}
-                        className="shrink-0 bg-background/60 border border-border rounded-full p-2 shadow-md text-muted hover:text-primary hover:bg-background hover:scale-105 active:scale-95 transition-all"
-                        aria-label="Close search panel"
+                        className="shrink-0 rounded-xl p-2 text-muted transition-colors hover:bg-black/[0.04] hover:text-primary active:scale-95 dark:hover:bg-white/[0.06]"
+                        aria-label="Tutup panel pencarian"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -172,8 +179,8 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search content, tags..."
-                                className="w-full bg-background/50 border border-border/50 rounded-2xl pl-10 pr-4 py-3 text-sm text-primary focus:outline-none focus:bg-background focus:border-indigo-500/50 transition-all"
+                                placeholder="Cari isi atau tag..."
+                                className="w-full rounded-xl border border-border/80 bg-background/65 py-3 pl-10 pr-4 text-sm text-primary outline-none transition focus:border-indigo-500/50 focus:bg-background focus:ring-4 focus:ring-indigo-500/10"
                             />
                         </div>
                     </div>
@@ -214,7 +221,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                 <select
                                     value={selectedTag || ''}
                                     onChange={(e) => setSelectedTag(e.target.value)}
-                                    className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-indigo-500 transition-colors"
+                                    className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 transition-colors"
                                 >
                                     <option value="">All Tags</option>
                                     {uniqueTags.map((tag) => (
@@ -235,14 +242,14 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         type="date"
                                         value={filterDate}
                                         onChange={(e) => setFilterDate(e.target.value)}
-                                        className="min-w-0 flex-1 bg-background/50 border border-border/50 rounded-xl p-2 text-[10px] text-primary focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
+                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-[10px] text-primary outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark]"
                                     />
                                     <span className="text-muted text-[10px]">to</span>
                                     <input
                                         type="date"
                                         value={filterDateTo}
                                         onChange={(e) => setFilterDateTo(e.target.value)}
-                                        className="min-w-0 flex-1 bg-background/50 border border-border/50 rounded-xl p-2 text-[10px] text-primary focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
+                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-[10px] text-primary outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark]"
                                         min={filterDate}
                                     />
                                 </div>
@@ -259,7 +266,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         <select
                                             value={filterWallet}
                                             onChange={(e) => setFilterWallet(e.target.value)}
-                                            className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
+                                            className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10 transition-colors"
                                         >
                                             <option value="">All Wallets</option>
                                             <option value="undefined">Undefined</option>
@@ -279,7 +286,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                     <select
                                         value={filterCategory}
                                         onChange={(e) => setFilterCategory(e.target.value)}
-                                        className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
+                                        className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10 transition-colors"
                                     >
                                         <option value="">All Categories</option>
                                         <option value="uncategorized">Uncategorized</option>
@@ -298,7 +305,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                     <select
                                         value={filterTransactionType}
                                         onChange={(e) => setFilterTransactionType(e.target.value)}
-                                        className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
+                                        className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10 transition-colors"
                                     >
                                         <option value="">All Types</option>
                                         <option value="expense">Expense</option>
@@ -323,7 +330,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         <select
                                             value={filterCategory}
                                             onChange={(e) => setFilterCategory(e.target.value)}
-                                            className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
+                                            className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10 transition-colors"
                                         >
                                             <option value="">All Goals</option>
                                             {savingGoals.map((g) => (
@@ -345,14 +352,14 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                             placeholder="Min"
                                             value={filterMinAmount}
                                             onChange={(e) => setFilterMinAmount(e.target.value)}
-                                            className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
+                                            className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10 transition-colors"
                                         />
                                         <input
                                             type="number"
                                             placeholder="Max"
                                             value={filterMaxAmount}
                                             onChange={(e) => setFilterMaxAmount(e.target.value)}
-                                            className="w-full bg-background/50 border border-border/50 rounded-xl p-2.5 text-xs text-primary focus:outline-none focus:border-emerald-500 transition-colors"
+                                            className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10 transition-colors"
                                         />
                                     </div>
                                 </div>
@@ -382,8 +389,8 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                     onClick={() => setSortOrder(option.id as SortOrder)}
                                     className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
                                         sortOrder === option.id
-                                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                            : 'bg-background/50 border border-border/50 text-muted hover:text-primary hover:bg-background'
+                                            ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                                            : 'border border-border/80 bg-background/65 text-muted hover:border-indigo-500/25 hover:text-primary'
                                     }`}
                                 >
                                     {option.label}

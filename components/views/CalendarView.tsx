@@ -202,7 +202,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
     const selectedItemDate = selectedItem?.meta.start || selectedItem?.meta.date || selectedItem?.meta.dateTime;
 
     return (
-        <div className="min-h-screen bg-background pt-safe pb-36 lg:pb-32">
+        <div className={contentSurface.pageShell}>
             <motion.div
                 layoutId="top-container"
                 data-swipe-tabs="calendar"
@@ -215,7 +215,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
             >
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 text-primary dark:bg-white/10">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
                             <CalendarIcon className="h-5 w-5" />
                         </div>
                         <div>
@@ -226,41 +226,41 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     </div>
                     <button
                         onClick={goToToday}
-                        className="rounded-full bg-black/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15"
+                        className="rounded-xl border border-border/70 bg-background/55 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:border-indigo-500/25"
                     >
                         Today
                     </button>
                 </div>
 
                 <div className="flex items-center justify-between mb-4">
-                    <button onClick={prevMonth} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 text-primary transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15">
+                    <button onClick={prevMonth} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
                         <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <div className="rounded-2xl bg-black/5 px-4 py-2 text-center min-w-[168px] dark:bg-white/10">
+                    <div className="min-w-[168px] rounded-xl border border-border/70 bg-background/55 px-4 py-2 text-center">
                         <div className="text-[11px] uppercase tracking-[0.22em] text-muted">Month</div>
                         <div className="text-sm font-semibold text-primary">
                             {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </div>
                     </div>
-                    <button onClick={nextMonth} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 text-primary transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15">
+                    <button onClick={nextMonth} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
                         <ChevronRight className="h-5 w-5" />
                     </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <div className="rounded-2xl bg-black/5 p-3 dark:bg-white/10">
+                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Scheduled</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{scheduledCount}</div>
                     </div>
-                    <div className="rounded-2xl bg-black/5 p-3 dark:bg-white/10">
+                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Done</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{doneCount}</div>
                     </div>
-                    <div className="rounded-2xl bg-black/5 p-3 dark:bg-white/10">
+                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Routine</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{routineCount}</div>
                     </div>
-                    <div className="rounded-2xl bg-black/5 p-3 dark:bg-white/10">
+                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Busiest</div>
                         <div className="mt-1 text-sm font-semibold text-primary">
                             {busiestDay.date ? `${busiestDay.date.getDate()} (${busiestDay.count})` : '—'}

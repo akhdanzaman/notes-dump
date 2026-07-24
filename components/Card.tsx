@@ -741,7 +741,7 @@ const Card: React.FC<CardProps> = ({
         transition={{ type: "tween", ease: "easeInOut", duration: 0.2 }}
         data-edit-comfort={editComfort === 'taskWorkspace' ? 'task-workspace' : undefined}
         data-card-expanded={!isCollapsed ? 'true' : 'false'}
-        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-lg' : ''} rounded-[16px] p-3 ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} shadow-sm transition-all hover:bg-surface/80 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} break-inside-avoid ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/15 shadow-md' : ''} break-inside-avoid rounded-2xl border border-border/75 p-3.5 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 hover:border-border hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
@@ -989,7 +989,7 @@ const Card: React.FC<CardProps> = ({
                           e.stopPropagation();
                           onEditPanelExpandedChange?.(item.id, !editPanelExpanded);
                       }}
-                      className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/15 text-xs font-bold transition-colors flex items-center gap-1"
+                      className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/[0.09] text-xs font-bold transition-colors flex items-center gap-1"
                   >
                       {editPanelExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       {editPanelExpanded ? 'Hide edit' : 'Edit details'}
@@ -1027,7 +1027,7 @@ const Card: React.FC<CardProps> = ({
                    className={`w-full text-primary focus:outline-none mb-3 resize-none overflow-hidden ${
                        isNote 
                            ? 'text-base bg-transparent border-none p-0 min-h-[120px] leading-relaxed' 
-                           : `text-sm bg-background border border-border rounded-2xl p-3 focus:border-primary min-h-[80px] ${isTaskWorkspaceEdit ? taskEditSurface.textarea : ''}`
+                           : `text-sm bg-background border border-border rounded-2xl p-3 focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 min-h-[80px] ${isTaskWorkspaceEdit ? taskEditSurface.textarea : ''}`
                    }`}
                    value={editContent}
                    onChange={(e) => setEditContent(e.target.value)}
@@ -1056,7 +1056,7 @@ const Card: React.FC<CardProps> = ({
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Merchant</label>
                            <input
                                type="text"
-                               className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                               className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                value={editMerchant}
                                onChange={(event) => setEditMerchant(event.target.value)}
                                placeholder="Nama merchant"
@@ -1072,7 +1072,7 @@ const Card: React.FC<CardProps> = ({
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
                                     type="number"
-                                    className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                    className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                     value={hasEditTransactionLineItems ? editTransactionTotal : editAmount}
                                     onChange={(e) => setEditAmount(e.target.value)}
                                     readOnly={hasEditTransactionLineItems}
@@ -1091,7 +1091,7 @@ const Card: React.FC<CardProps> = ({
                                 <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
                                     type="datetime-local"
-                                    className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                    className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                     value={editDate}
                                     onChange={(e) => setEditDate(e.target.value)}
                                 />
@@ -1108,7 +1108,7 @@ const Card: React.FC<CardProps> = ({
                                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                    <input
                                        type="datetime-local"
-                                       className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                       className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                        value={editStart}
                                        onChange={(e) => setEditStart(e.target.value)}
                                    />
@@ -1120,7 +1120,7 @@ const Card: React.FC<CardProps> = ({
                                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                    <input
                                        type="datetime-local"
-                                       className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                       className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                        value={editEnd}
                                        onChange={(e) => setEditEnd(e.target.value)}
                                    />
@@ -1289,7 +1289,7 @@ const Card: React.FC<CardProps> = ({
                                     <Hourglass className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                     <input
                                         type="number"
-                                        className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                        className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                         value={editDuration}
                                         onChange={(e) => setEditDuration(e.target.value)}
                                     />
@@ -1298,7 +1298,7 @@ const Card: React.FC<CardProps> = ({
                            <div>
                                 <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Skill</label>
                                 <select
-                                    className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                    className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                     value={editSkillId}
                                     onChange={(e) => setEditSkillId(e.target.value)}
                                 >
@@ -1318,7 +1318,7 @@ const Card: React.FC<CardProps> = ({
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Pihak terkait</label>
                                        <input
                                            type="text"
-                                           className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editLoanCounterparty}
                                            onChange={(e) => setEditLoanCounterparty(e.target.value)}
                                            placeholder={editFinanceType === 'loan_out' || editFinanceType === 'loan_repayment_in' ? 'Nama peminjam' : 'Nama pemberi pinjaman'}
@@ -1329,7 +1329,7 @@ const Card: React.FC<CardProps> = ({
                                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Jatuh tempo</label>
                                            <input
                                                type="date"
-                                               className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                               className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                                value={editLoanDueDate}
                                                onChange={(e) => setEditLoanDueDate(e.target.value)}
                                            />
@@ -1343,7 +1343,7 @@ const Card: React.FC<CardProps> = ({
                                        {editFinanceType === 'transfer' ? 'From' : editFinanceType === 'income' ? 'To' : (editFinanceType === 'loan_in' || editFinanceType === 'loan_repayment_in') ? 'Wallet penerima' : (editFinanceType === 'loan_out' || editFinanceType === 'loan_repayment_out') ? 'Wallet pembayaran' : 'Wallet'}
                                    </label>
                                    <select
-                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                       className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                        value={editPaymentMethod}
                                        onChange={(e) => setEditPaymentMethod(e.target.value)}
                                    >
@@ -1357,7 +1357,7 @@ const Card: React.FC<CardProps> = ({
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">To</label>
                                    <select
-                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                       className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                        value={editToWallet}
                                        onChange={(e) => setEditToWallet(e.target.value)}
                                    >
@@ -1370,7 +1370,7 @@ const Card: React.FC<CardProps> = ({
                                    <div>
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Saving Goal</label>
                                        <select
-                                           className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editSavingGoalId}
                                            onChange={(e) => syncSavingGoalWalletSelection(e.target.value)}
                                        >
@@ -1382,7 +1382,7 @@ const Card: React.FC<CardProps> = ({
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">From Wallet</label>
                                        {selectedEditSavingGoalIsInvestment ? (
                                            <select
-                                               className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                               className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                                value={editPaymentMethod === selectedEditSavingGoalWalletId ? '' : editPaymentMethod}
                                                onChange={(e) => setEditPaymentMethod(e.target.value)}
                                            >
@@ -1413,7 +1413,7 @@ const Card: React.FC<CardProps> = ({
                                    <div className="col-span-2">
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget Category</label>
                                        <select
-                                           className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editBudgetCategory}
                                            onChange={(e) => setEditBudgetCategory(e.target.value)}
                                        >
@@ -1427,7 +1427,7 @@ const Card: React.FC<CardProps> = ({
                                <div>
                                    <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{hasEditTransactionLineItems ? 'Kategori default' : 'Kategori budget'}</label>
                                    <select
-                                       className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                       className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                        value={editBudgetCategory}
                                        onChange={(e) => setEditBudgetCategory(e.target.value)}
                                    >
@@ -1443,7 +1443,7 @@ const Card: React.FC<CardProps> = ({
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Commodity</label>
                                        <input
                                            list={`commodity-options-${item.id}`}
-                                           className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editCommodity}
                                            onChange={(e) => setEditCommodity(e.target.value)}
                                            placeholder="Choose or type..."
@@ -1456,7 +1456,7 @@ const Card: React.FC<CardProps> = ({
                                        <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Sub Commodity</label>
                                        <input
                                            list={`subcommodity-options-${item.id}`}
-                                           className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-primary"
+                                           className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editSubcommodity}
                                            onChange={(e) => setEditSubcommodity(e.target.value)}
                                            placeholder={editCommodity ? 'Related or custom...' : 'Choose commodity first'}
@@ -1611,7 +1611,7 @@ const Card: React.FC<CardProps> = ({
                     <Tag className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                     <input
                         type="text"
-                        className="w-full bg-background border border-border rounded-2xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-primary placeholder-muted/50"
+                        className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 placeholder-muted/50"
                         value={editTags}
                         onChange={(e) => setEditTags(e.target.value)}
                         placeholder="Tags (comma separated)..."

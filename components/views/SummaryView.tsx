@@ -760,7 +760,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       return "px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1";
     if (active)
       return "px-3 py-2 rounded-xl bg-primary text-background text-xs font-bold hover:opacity-90 transition-colors flex items-center gap-1";
-    return "px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/15 text-xs font-bold transition-colors flex items-center gap-1";
+    return "px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/[0.09] text-xs font-bold transition-colors flex items-center gap-1";
   };
 
   const getTaskCardProps = (
@@ -875,7 +875,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 [item.id]: [...draft, ""],
               }))
             }
-            className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
+            className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/[0.09] transition-colors"
           >
             Add step
           </button>
@@ -1098,7 +1098,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         {hasDeepWorkDetails && (
           <button
             onClick={() => handleRetriggerDeepWorkTodo(item.id)}
-            className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1"
+            className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/[0.09] transition-colors flex items-center gap-1"
           >
             <RotateCcw className="w-3 h-3" /> Retrigger
           </button>
@@ -1521,15 +1521,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     "dark:border-0 dark:bg-transparent dark:text-zinc-50 dark:shadow-none",
   ].join(" ");
   const dashboardCardClass = [
-    "rounded-[1.5rem] border border-white/70 bg-white/90 shadow-[0_16px_40px_rgba(37,64,90,0.08)] backdrop-blur",
-    "dark:border-white/10 dark:bg-zinc-900/82 dark:shadow-black/25",
+    "rounded-[1.4rem] border border-border/75 bg-surface/88 shadow-sm backdrop-blur-xl",
+    "transition-[border-color,box-shadow] duration-200 hover:border-border hover:shadow-md",
   ].join(" ");
   const dashboardIconClass =
-    "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300";
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300";
   const dashboardSectionTitle =
     "text-sm font-black tracking-tight text-slate-950 dark:text-zinc-50";
   const dashboardKicker =
-    "text-[11px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300";
+    "text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-300";
   const dashboardMuted = "text-slate-500 dark:text-zinc-400";
   const dashboardScrollbarClass = [
     "[scrollbar-width:thin]",
@@ -1763,7 +1763,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="h-full w-full bg-[radial-gradient(circle_at_78%_35%,rgba(191,219,254,0.9),transparent_34%),linear-gradient(135deg,#dbeafe_0%,#f8fafc_52%,#e0f2fe_100%)] dark:bg-[radial-gradient(circle_at_78%_35%,rgba(37,99,235,0.28),transparent_34%),linear-gradient(135deg,#0f172a_0%,#111827_52%,#020617_100%)]" />
+        <div className="h-full w-full bg-[radial-gradient(circle_at_82%_28%,rgba(99,102,241,0.18),transparent_38%),linear-gradient(135deg,#ffffff_0%,#f5f7fb_58%,#eef0ff_100%)] dark:bg-[radial-gradient(circle_at_82%_28%,rgba(129,140,248,0.18),transparent_38%),linear-gradient(135deg,#181b22_0%,#11141a_58%,#0c0e13_100%)]" />
       )}
     </div>
   );
@@ -1790,20 +1790,20 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       }`}
     >
       {renderThemeImageSurface()}
-      <div className="absolute inset-0 bg-gradient-to-r from-white/94 via-white/74 to-white/14 dark:from-zinc-950/92 dark:via-zinc-950/62 dark:to-zinc-950/18" />
+      <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/74 to-white/20 dark:from-[#101218]/95 dark:via-[#101218]/72 dark:to-[#101218]/18" />
       {renderThemeImageCta()}
 
       <div
         className={`relative z-10 flex h-full min-h-[16rem] flex-col justify-center ${compact ? "p-6" : "p-7 xl:min-h-[18.75rem] xl:p-10"}`}
       >
         <h1
-          className={`${compact ? "text-4xl" : "text-5xl xl:text-6xl"} max-w-3xl font-black leading-[1.03] tracking-tight text-[#10233f] dark:text-white`}
+          className={`${compact ? "text-3xl sm:text-4xl" : "text-4xl xl:text-5xl"} max-w-3xl font-extrabold leading-[1.05] tracking-[-0.035em] text-slate-950 dark:text-white`}
         >
           {missionTitle}
         </h1>
 
-        <div className="mt-6 text-lg font-black text-blue-700 dark:text-blue-300">
-          Mission of the Day
+        <div className="mt-6 text-sm font-bold uppercase tracking-[0.14em] text-indigo-600 dark:text-indigo-300">
+          Fokus bulan ini
         </div>
         <p
           className={`mt-2 max-w-2xl text-sm font-medium leading-relaxed sm:text-base ${dashboardMuted}`}
@@ -1811,7 +1811,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           {missionSubtitle}
         </p>
 
-        <div className="mt-7 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-blue-700/80 opacity-100 transition-opacity dark:text-blue-300/80 xl:opacity-0 xl:group-hover:opacity-100">
+        <div className="mt-7 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-indigo-600/80 opacity-100 transition-opacity dark:text-indigo-300/80 xl:opacity-0 xl:group-hover:opacity-100">
           <Pencil className="h-3.5 w-3.5" />
           Add Theme
         </div>
@@ -1848,7 +1848,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <button
           type="button"
           onClick={() => changeThemeMonth(-1)}
-          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/15"
+          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.09]"
           aria-label="Previous theme month"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -1869,7 +1869,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <button
           type="button"
           onClick={() => changeThemeMonth(1)}
-          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/15"
+          className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.09]"
           aria-label="Next theme month"
         >
           <ChevronRight className="h-4 w-4" />
@@ -2274,7 +2274,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               <button
                 ref={reviewButtonRef}
                 onClick={handleOpenReview}
-                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/[0.09]"
                 aria-label="Open review center"
               >
                 <ClipboardCheck className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -2288,7 +2288,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               <button
                 ref={notificationButtonRef}
                 onClick={handleOpenNotification}
-                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/[0.09]"
                 aria-label="Open notifications"
               >
                 <AlertTriangle className="h-[18px] w-[18px]" />

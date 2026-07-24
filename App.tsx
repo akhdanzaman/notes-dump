@@ -831,13 +831,11 @@ const App: React.FC = () => {
 
   // --- Theme Effect ---
   useEffect(() => {
-    // Apply theme to HTML element
     const theme = appSettings.theme || "dark";
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.toggle("dark", theme === "dark");
+
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    themeColor?.setAttribute("content", theme === "dark" ? "#0c0e13" : "#f6f7f9");
   }, [appSettings.theme]);
 
   // --- Keyboard Detection Effect ---
@@ -1888,9 +1886,16 @@ const App: React.FC = () => {
           data-shell-variant={activeShellContentVariant}
         >
           {loading && items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-muted animate-pulse pt-24">
-              <div className="w-12 h-12 bg-surface rounded-full mb-4"></div>
-              <p>Syncing...</p>
+            <div className="flex min-h-[62vh] flex-col items-center justify-center px-6 text-center">
+              <div className="relative mb-5">
+                <div className="absolute -inset-3 animate-pulse rounded-[22px] bg-indigo-500/10" />
+                <img src="/icon.svg" alt="Arkaiv" className="relative h-14 w-14 rounded-2xl bg-zinc-950 shadow-sm ring-1 ring-white/10" />
+              </div>
+              <p className="text-sm font-bold text-primary">Menyiapkan workspace</p>
+              <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted">Memuat catatan, rencana, dan data keuangan terbaru.</p>
+              <div className="mt-5 h-1 w-36 overflow-hidden rounded-full bg-border/70">
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-indigo-500" />
+              </div>
             </div>
           ) : (
             <div className="w-full">

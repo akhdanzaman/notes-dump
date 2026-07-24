@@ -765,12 +765,12 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div data-library-subtabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
+                    <div data-library-subtabs="true" className="mb-6 flex rounded-xl border border-border/70 bg-background/55 p-1">
                         {libraryTabs.map(tab => (
                             <button
                                 key={tab.key}
                                 onClick={() => setLibrarySubTab(tab.key)}
-                                className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${librarySubTab === tab.key ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                                className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${librarySubTab === tab.key ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
                             >
                                 {tab.icon} {tab.label}
                             </button>
@@ -825,7 +825,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     if (librarySubTab === 'skills') handleOpenAddSkill();
                                     if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
                                 }}
-                                className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors"
+                                className="rounded-xl bg-indigo-600 p-2 text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
                             >
                                 <Plus className="w-5 h-5" />
                             </button>
@@ -835,13 +835,13 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     {librarySubTab === 'journal' && (
                         <div
                             data-swipe-date="library-journal-month"
-                            className="mt-4 bg-black/5 rounded-[24px] p-4 touch-pan-y"
+                            className="mt-4 rounded-2xl border border-border/70 bg-background/55 p-4 touch-pan-y"
                             onTouchStart={journalDateSwipeHandlers.onTouchStart}
                             onTouchMove={journalDateSwipeHandlers.onTouchMove}
                             onTouchEnd={journalDateSwipeHandlers.onTouchEnd}
                         >
                             <div className="flex items-center justify-between">
-                                <button onClick={() => changeJournalMonth(-1)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+                                <button onClick={() => changeJournalMonth(-1)} className="rounded-xl p-2 text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]">
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
                                 <AnimatePresence mode="wait">
@@ -860,7 +860,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         </div>
                                     </motion.div>
                                 </AnimatePresence>
-                                <button onClick={() => changeJournalMonth(1)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+                                <button onClick={() => changeJournalMonth(1)} className="rounded-xl p-2 text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]">
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>

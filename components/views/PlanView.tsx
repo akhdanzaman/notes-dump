@@ -819,7 +819,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         if (active && tone === 'subtasks') return 'px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors flex items-center gap-1';
         if (tone === 'subtasks') return 'px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1';
         if (active) return 'px-3 py-2 rounded-xl bg-primary text-background text-xs font-bold hover:opacity-90 transition-colors flex items-center gap-1';
-        return 'px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/15 text-xs font-bold transition-colors flex items-center gap-1';
+        return 'px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/[0.09] text-xs font-bold transition-colors flex items-center gap-1';
     };
 
     const getTaskCardProps = (item: BrainDumpItem, activePanel: TaskPanel, editPanelControls: React.ReactNode, extraExpandedContent?: React.ReactNode) => ({
@@ -894,7 +894,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </div>
                 ))}
                 <div className="flex flex-wrap gap-2 pt-1">
-                    <button onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: [...draft, ''] }))} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
+                    <button onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: [...draft, ''] }))} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/[0.09] transition-colors">
                         Add step
                     </button>
                     <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={draft.map(step => step.trim()).filter(Boolean).length === 0}>
@@ -1017,7 +1017,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </button>
                 )}
                 {hasDeepWorkDetails && (
-                    <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/15 transition-colors flex items-center gap-1">
+                    <button onClick={() => handleRetriggerDeepWorkTodo(item.id)} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/[0.09] transition-colors flex items-center gap-1">
                         <RotateCcw className="w-3 h-3" /> Retrigger
                     </button>
                 )}
@@ -1115,28 +1115,28 @@ const PlanView: React.FC<PlanViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div data-plan-subtabs="true" className="flex bg-black/5 dark:bg-white/20 rounded-2xl p-1 mb-6">
+                    <div data-plan-subtabs="true" className="mb-6 flex rounded-xl border border-border/70 bg-background/55 p-1">
                         <button
                             onClick={() => setPlanSubTab('tasks')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'tasks' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'tasks' ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
                         >
                             <CheckCircle2 className="w-4 h-4" /> Tasks
                         </button>
                         <button
                             onClick={() => setPlanSubTab('shopping')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'shopping' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'shopping' ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
                         >
                             <ShoppingCart className="w-4 h-4" /> Shopping
                         </button>
                         <button
                             onClick={() => setPlanSubTab('savings')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'savings' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'savings' ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
                         >
                             <PiggyBank className="w-4 h-4" /> Goals
                         </button>
                         <button
                             onClick={() => setPlanSubTab('loans')}
-                            className={`flex-1 py-2 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${planSubTab === 'loans' ? 'bg-surface text-primary' : 'text-primary/40 hover:text-primary'}`}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'loans' ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
                         >
                             <HandCoins className="w-4 h-4" /> <span className="hidden sm:inline">Loans</span>
                         </button>
@@ -1166,10 +1166,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             </p>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => changeMonth(-1)} className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors">
+                                            <button onClick={() => changeMonth(-1)} className="rounded-xl border border-border/70 bg-background/55 p-2 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
                                                 <ChevronLeft className="w-5 h-5" />
                                             </button>
-                                            <button onClick={() => changeMonth(1)} className="p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors">
+                                            <button onClick={() => changeMonth(1)} className="rounded-xl border border-border/70 bg-background/55 p-2 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
                                                 <ChevronRight className="w-5 h-5" />
                                             </button>
                                         </div>

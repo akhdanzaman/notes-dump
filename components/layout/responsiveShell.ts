@@ -70,16 +70,16 @@ export const responsiveShellClass = {
   root: [
     railWidthCssVar,
     "min-h-screen w-full min-w-0 max-w-none overflow-x-hidden",
-    "bg-background text-primary font-sans transition-colors duration-300 selection:bg-indigo-500/30",
+    "bg-transparent text-primary font-sans transition-colors duration-300 selection:bg-indigo-500/30",
     "lg:bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.08),transparent_34rem),var(--background)]",
   ].join(" "),
 
   main: [
     "relative min-h-screen w-full min-w-0 max-w-none overflow-x-hidden",
-    "pt-0 pb-48",
-    "px-4 sm:px-5 md:px-6",
-    "lg:ml-[var(--rail-width)] lg:w-[calc(100vw-var(--rail-width))] lg:px-6 lg:pb-56",
-    "xl:px-8 2xl:px-10",
+    "pb-48 [padding-top:env(safe-area-inset-top)] lg:[padding-top:0]",
+    "px-3 sm:px-4 md:px-5",
+    "lg:ml-[var(--rail-width)] lg:w-[calc(100vw-var(--rail-width))] lg:px-7 lg:pb-56",
+    "xl:px-9 2xl:px-12",
   ].join(" "),
 
   content: responsiveShellContentClass.standard,
