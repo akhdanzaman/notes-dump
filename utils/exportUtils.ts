@@ -7,6 +7,7 @@ import { getSavingTransactionDelta } from './savingTransactionUtils';
 import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils';
 import { encodeShoppingLineItemsForSheet } from './shoppingLineItems';
 import { encodeTransactionLineItemsForSheet, getTransactionBudgetAllocations } from './transactionLineItems';
+import { getWalletStats } from './selectors/moneySelectors';
 import {
   buildDailyMoneyDriverSummary,
   buildDataQualityIssues,
@@ -121,6 +122,7 @@ const buildDashboardSheet = (
   const dataQualityIssues = buildDataQualityIssues(items, wallets, budgetConfig);
   const healthSummary = buildSpreadsheetHealthSummary(items, wallets, budgetConfig, dataQualityIssues, now);
   const moneyDrivers = buildDailyMoneyDriverSummary(items, wallets, budgetConfig, now);
+  const walletSummary = getWalletStats(items, wallets);
   const todayStart = startOfDay(now);
   const yesterdayStart = new Date(todayStart);
   yesterdayStart.setDate(yesterdayStart.getDate() - 1);
@@ -148,7 +150,7 @@ const buildDashboardSheet = (
   const currentMonthExpenseItems = expenseLikeItems.filter(item => {
     if (!isInCurrentMonth(item)) return false;
     if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0;
-    return !item.meta.financeType || item.meta.financeType === 'expense';
+    return !item.meta.financeType || item.meta.financeType === 'expense' || item.meta.financeType === 'loan_out';
   });
 
   const currentMonthIncomeItems = items.filter(item =>
@@ -259,7 +261,7 @@ const buildDashboardSheet = (
         const ts = getItemTimestamp(item);
         if (ts < dayStart.getTime() || ts >= dayEnd.getTime()) return false;
         if (item.type === ItemType.SHOPPING) return (item.meta.amount || 0) > 0 && item.status === 'done' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment';
-        return item.status === 'done' && (!item.meta.financeType || item.meta.financeType === 'expense');
+        return item.status === 'done' && (!item.meta.financeType || item.meta.financeType === 'expense' || item.meta.financeType === 'loan_out');
       })
       .reduce((sum, item) => sum + (item.meta.amount || 0), 0)
   );
@@ -376,10 +378,10 @@ const buildDashboardSheet = (
     buildRow([healthSummary.guideLine], Object.fromEntries(incomeSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
     buildRow([healthSummary.syncHealthLine], Object.fromEntries(completedTaskSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
     buildRow(['FINANCE PULSE', '', '', 'LIFE TRACKER'], Object.fromEntries(captureSeries.values.map((value, index) => [DASHBOARD_HELPER_START_COLUMN_INDEX + index, value]))),
-    buildRow(['Net Cash Flow', netCashFlow, '', 'Open Todos', openTodos]),
-    buildRow(['Income MTD', totalIncome, '', 'Done This Month', doneThisMonth]),
-    buildRow(['Expense MTD', totalExpenses, '', 'Upcoming 7d', upcomingWeek]),
-    buildRow(['Savings Added', totalSavings, '', 'Journal Entries', journalEntries]),
+    buildRow(['Net Cash Flow', netCashFlow, '', 'Total Debt', walletSummary.totalDebt]),
+    buildRow(['Income MTD', totalIncome, '', 'Total Assets', walletSummary.totalAssets]),
+    buildRow(['Expense MTD', totalExpenses, '', 'Lent Outstanding', walletSummary.totalLent]),
+    buildRow(['Savings Added', totalSavings, '', 'Open Todos', openTodos]),
     buildRow(['Budget Used', budgetUsed, '', 'Goals / Skills / Wallets', `${activeSavingGoals} / ${activeSkills} / ${activeWallets}`]),
     buildRow(['SYNC HEALTH', healthSummary.dataHealthLine, '', 'GUIDE', healthSummary.itemCountLine]),
     buildRow(['TODAY VS YESTERDAY', '', '', 'BUDGET RADAR']),

@@ -15,6 +15,7 @@ export interface LoanAccount {
   openedAt: string;
   lastActivityAt: string;
   preferredWalletId?: string;
+  originWalletId?: string;
   status: LoanAccountStatus;
   transactions: BrainDumpItem[];
   legacyMatched: boolean;
@@ -84,6 +85,7 @@ const makeAccount = (
     openedAt: date,
     lastActivityAt: date,
     preferredWalletId: item.meta.paymentMethod,
+    originWalletId: item.meta.paymentMethod,
     transactions: [item],
     legacyMatched,
   };
@@ -124,6 +126,7 @@ export const getLoanAccounts = (items: BrainDumpItem[], now = new Date()): LoanA
         existing.counterparty = item.meta.loanCounterparty?.trim() || existing.counterparty;
         existing.dueDate = item.meta.loanDueDate || existing.dueDate;
         existing.preferredWalletId = item.meta.paymentMethod || existing.preferredWalletId;
+        existing.originWalletId = existing.originWalletId || item.meta.paymentMethod;
       } else {
         accounts.set(accountId, makeAccount(item, direction, accountId, !explicitId));
         accountOrder.push(accountId);
@@ -197,6 +200,7 @@ export const getLoanAccounts = (items: BrainDumpItem[], now = new Date()): LoanA
         openedAt: date,
         lastActivityAt: date,
         preferredWalletId: item.meta.paymentMethod,
+        originWalletId: item.meta.paymentMethod,
         transactions: [orphanItem],
         legacyMatched: true,
       });
@@ -216,6 +220,7 @@ export const getLoanAccounts = (items: BrainDumpItem[], now = new Date()): LoanA
       openedAt: date,
       lastActivityAt: date,
       preferredWalletId: item.meta.paymentMethod,
+      originWalletId: item.meta.paymentMethod,
       transactions: [item],
       legacyMatched: !explicitId,
     });

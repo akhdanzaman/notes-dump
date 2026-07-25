@@ -6,6 +6,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.136',
+    date: 'July 25, 2026',
+    items: [
+      'Outstanding borrowed loans now contribute to Total Debt together with credit-card balances, while repayments reduce the payable balance.',
+      'Money lent now contributes to Total Expense without reducing Total Assets; it is tracked as an outstanding receivable allocation on the originating wallet.',
+      'Wallet cards now show a Dipinjamkan badge for the remaining amount lent from each wallet.',
+      'Spreadsheet dashboard totals now expose Total Debt, Total Assets, and Lent Outstanding from the existing Transactions loan columns without duplicating the ledger.',
+    ],
+  },
+  {
     version: 'v0.3.135',
     date: 'May 30, 2026',
     items: [

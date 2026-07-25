@@ -71,8 +71,8 @@ const dateInputValue = (value?: string) => {
 const loanActionLabels: Record<LoanTransactionKind, { title: string; description: string }> = {
   loan_out: { title: 'Saya meminjamkan', description: 'Uang keluar dan menjadi piutang.' },
   loan_in: { title: 'Saya meminjam', description: 'Uang masuk dan menjadi utang.' },
-  loan_repayment_in: { title: 'Pengembalian diterima', description: 'Piutang berkurang.' },
-  loan_repayment_out: { title: 'Saya membayar kembali', description: 'Utang berkurang.' },
+  loan_repayment_in: { title: 'Terima kembali', description: 'Piutang berkurang.' },
+  loan_repayment_out: { title: 'Bayar kembali', description: 'Utang berkurang.' },
 };
 
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
@@ -348,24 +348,30 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   onClick={() => setTransactionType(type)}
                   className={`${addItemModal.tabButton(transactionType === type)} whitespace-nowrap`}
                 >
-                  {type === 'loan' ? 'pinjaman' : type}
+                  {type === 'loan' ? 'Pinjam' : type.charAt(0).toUpperCase() + type.slice(1)}
                 </button>
               ))}
             </div>
 
             {isLoanMode && (
               <div>
-                <label className={addItemModal.label}>Arah transaksi</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className={addItemModal.label}>Pinjam apa?</label>
+                <p className={`${addItemModal.helpText} mb-2`}>Pilih jenis transaksi pinjaman</p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {(Object.keys(loanActionLabels) as LoanTransactionKind[]).map((kind) => (
                     <button
                       key={kind}
                       type="button"
                       onClick={() => chooseLoanKind(kind)}
-                      className={`rounded-2xl border p-3 text-left transition-colors ${loanKind === kind ? 'border-amber-500 bg-amber-500/10' : 'border-border bg-background hover:border-amber-500/40'}`}
+                      className={`relative rounded-2xl border p-4 text-left transition-all ${loanKind === kind ? 'border-indigo-500/70 bg-indigo-500/10 shadow-[0_0_0_1px_rgba(99,102,241,0.12)]' : 'border-border bg-background hover:border-indigo-500/40 hover:bg-surface'}`}
                     >
-                      <div className="text-xs font-bold text-primary">{loanActionLabels[kind].title}</div>
-                      <div className="mt-1 text-[10px] leading-relaxed text-muted">{loanActionLabels[kind].description}</div>
+                      <div className="pr-8 text-sm font-bold text-primary">{loanActionLabels[kind].title}</div>
+                      <div className="mt-1 text-xs leading-relaxed text-muted">{loanActionLabels[kind].description}</div>
+                      {loanKind === kind && (
+                        <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-white">
+                          <Check className="w-3.5 h-3.5" />
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>

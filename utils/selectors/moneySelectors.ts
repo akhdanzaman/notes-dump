@@ -14,8 +14,6 @@ import {
 import {
   ACHIEVED_GOAL_FINANCE_TYPE,
   SAVING_WITHDRAWAL_FINANCE_TYPE,
-  isIncomingLoanFinanceType,
-  isOutgoingLoanFinanceType,
 } from "../financeTypeUtils";
 import { getSavingTransactionDelta } from "../savingTransactionUtils";
 import {
@@ -25,6 +23,7 @@ import {
 import { BudgetAnalyticsViewMode, getWeekBounds } from "../budgetAnalytics";
 import { getInvestmentMetrics } from "../investmentMetrics";
 import { getTransactionBudgetAllocations } from "../transactionLineItems";
+import { getLoanAccounts, getLoanSummary } from "../loanAccounts";
 
 const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
   const normalized = value?.toLowerCase().trim();
@@ -118,12 +117,14 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
       const isTransfer = isFinance && item.meta.financeType === "transfer";
       const isSaving = isFinance && item.meta.financeType === "saving";
       const isSavingWithdrawal = isFinance && item.meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE;
-      const isIncomingLoan = isFinance && isIncomingLoanFinanceType(item.meta.financeType);
-      const isOutgoingLoan = isFinance && isOutgoingLoanFinanceType(item.meta.financeType);
+      const isLoanBorrowed = isFinance && item.meta.financeType === "loan_in";
+      const isLoanLent = isFinance && item.meta.financeType === "loan_out";
+      const isLoanRepaymentReceived = isFinance && item.meta.financeType === "loan_repayment_in";
+      const isLoanRepaymentPaid = isFinance && item.meta.financeType === "loan_repayment_out";
       const isAchievedGoal =
         isFinance && item.meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE;
 
-      if (isIncome || isIncomingLoan) {
+      if (isIncome || isLoanBorrowed) {
         // Income adds to Asset. If CC, it reduces debt (by subtracting from the 'positive' debt balance).
         if (isCC) balanceMap.set(walletName, Math.max(0, current - amount));
         else balanceMap.set(walletName, current + amount);
@@ -174,7 +175,14 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         // while staying out of expense analytics.
         if (isCC) balanceMap.set(walletName, current + amount);
         else balanceMap.set(walletName, current - amount);
-      } else if (isOutgoingLoan) {
+      } else if (isLoanLent || isLoanRepaymentReceived) {
+        // Lending is treated like a regular saving allocation: the wallet keeps
+        // its asset balance, while the outstanding receivable is shown as a
+        // dedicated allocation on that wallet. Receiving repayment reduces the
+        // allocation without adding the amount a second time to assets.
+      } else if (isLoanRepaymentPaid) {
+        // Paying back borrowed money reduces the paying wallet and the open
+        // payable loan balance. Paying through a credit card increases CC debt.
         if (isCC) balanceMap.set(walletName, current + amount);
         else balanceMap.set(walletName, current - amount);
       } else {
@@ -228,18 +236,49 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
       }
     });
 
-  // Map back to wallet objects
+  const loanAccounts = getLoanAccounts(
+    items.filter((item) => item.status === "done"),
+  );
+  const loanSummary = getLoanSummary(loanAccounts);
+  const lentByWallet = new Map<string, number>();
+
+  loanAccounts
+    .filter(
+      (account) =>
+        account.direction === "receivable" && account.remainingAmount > 0,
+    )
+    .forEach((account) => {
+      const walletKey = resolveWalletBalanceKey(
+        wallets,
+        account.originWalletId || account.preferredWalletId,
+      );
+      if (!walletKey || !balanceMap.has(walletKey)) return;
+      lentByWallet.set(
+        walletKey,
+        (lentByWallet.get(walletKey) || 0) + account.remainingAmount,
+      );
+    });
+
+  // Map back to wallet objects. lentAmount is an allocation/receivable label;
+  // it does not reduce the wallet's asset balance.
   const walletStats = wallets.map((w) => ({
     ...w,
     currentBalance: balanceMap.get(w.name.toLowerCase()) ?? w.initialBalance,
+    lentAmount: lentByWallet.get(w.name.toLowerCase()) || 0,
   }));
 
-  // Calculate Total Net Worth: (Total Assets) - (Total CC Debt)
+  // Total debt combines credit-card balances and outstanding borrowed loans.
   const assets = walletStats.filter((w) => w.type !== "cc");
   const liabilities = walletStats.filter((w) => w.type === "cc");
 
   const totalAssets = assets.reduce((acc, w) => acc + w.currentBalance, 0);
-  const totalDebt = liabilities.reduce((acc, w) => acc + w.currentBalance, 0);
+  const totalCreditCardDebt = liabilities.reduce(
+    (acc, w) => acc + w.currentBalance,
+    0,
+  );
+  const totalLoanDebt = loanSummary.payable;
+  const totalDebt = totalCreditCardDebt + totalLoanDebt;
+  const totalLent = loanSummary.receivable;
 
   // Calculate total savings
 
@@ -273,6 +312,9 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
     totalNetWorth,
     totalAssets,
     totalDebt,
+    totalCreditCardDebt,
+    totalLoanDebt,
+    totalLent,
     totalSavings,
     unassignedExpenses,
   };
@@ -546,14 +588,16 @@ export const getFinanceItems = (
       return;
     }
 
-    if (type === "expense") {
+    if (type === "expense" || type === "loan_out") {
       if (isDone) {
         totalExpense += amount;
       } else {
         projectedExpense += amount;
       }
 
-      addBudgetUsage(item, amount, isDone, true);
+      // Money lent is included in total expense, but remains an asset
+      // allocation. It only appears in a budget category when one is set.
+      addBudgetUsage(item, amount, isDone, type === "expense");
     }
   });
 

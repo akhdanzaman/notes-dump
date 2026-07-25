@@ -902,6 +902,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                           }
                           return null;
                         })()}
+                        {wallet.lentAmount > 0 && (
+                          <div className="mt-1">
+                            <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              Dipinjamkan:{" "}
+                              {showBalance ? fmt(wallet.lentAmount) : "••••"}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="text-base font-bold shrink-0 mt-0.5 text-primary">
                         {showBalance ? fmt(wallet.currentBalance) : "••••••••"}

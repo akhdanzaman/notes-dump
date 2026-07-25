@@ -77,10 +77,7 @@ const hasKnownBudgetCategory = (categoryKey: string | undefined, budgetConfig: B
 };
 
 const isExpenseFinanceType = (financeType: string | undefined) => (
-  financeType !== 'income'
-  && financeType !== 'transfer'
-  && financeType !== 'saving'
-  && financeType !== ACHIEVED_GOAL_FINANCE_TYPE
+  !financeType || financeType === 'expense' || financeType === 'loan_out'
 );
 
 export const isSpreadsheetExpenseItem = (item: BrainDumpItem) => {
@@ -172,7 +169,7 @@ export const buildDataQualityIssues = (
       }
     }
 
-    if (isSpreadsheetExpenseItem(item)) {
+    if (isSpreadsheetExpenseItem(item) && item.meta.financeType !== 'loan_out') {
       const allocations = getTransactionBudgetAllocations(item);
       const missingCategory = allocations.some(allocation => !allocation.budgetCategory);
       const unknownCategory = allocations.find(allocation =>

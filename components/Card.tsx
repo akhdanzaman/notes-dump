@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle } from 'lucide-react';
+import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta, LoanTransactionKind } from '../types';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle, HandCoins } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, SAVING_WITHDRAWAL_FINANCE_TYPE, formatFinanceTypeLabel, isIncomingLoanFinanceType, isOutgoingLoanFinanceType, isLoanFinanceType } from '../utils/financeTypeUtils';
@@ -89,6 +89,26 @@ const calculateNextDate = (
 
     return today;
 };
+
+const editableFinanceTabs: Array<{ value: 'expense' | 'income' | 'transfer' | 'saving' | 'loan'; label: string }> = [
+  { value: 'expense', label: 'Expense' },
+  { value: 'income', label: 'Income' },
+  { value: 'transfer', label: 'Transfer' },
+  { value: 'saving', label: 'Saving' },
+  { value: 'loan', label: 'Pinjam' },
+];
+
+const loanEditOptions: Array<{
+  kind: LoanTransactionKind;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  { kind: 'loan_out', title: 'Saya meminjamkan', description: 'Uang keluar dan menjadi piutang', icon: HandCoins },
+  { kind: 'loan_in', title: 'Saya meminjam', description: 'Uang masuk dan menjadi utang', icon: ArrowRight },
+  { kind: 'loan_repayment_in', title: 'Terima kembali', description: 'Piutang berkurang', icon: RotateCcw },
+  { kind: 'loan_repayment_out', title: 'Bayar kembali', description: 'Utang berkurang', icon: WalletIcon },
+];
 
 interface CardProps {
   item: BrainDumpItem;
@@ -223,6 +243,7 @@ const Card: React.FC<CardProps> = ({
   // Specifics
   const normalizeEditableFinanceType = (financeType?: FinanceType): FinanceType => financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'saving' : (financeType || 'expense');
   const [editFinanceType, setEditFinanceType] = useState<FinanceType>(normalizeEditableFinanceType(meta.financeType));
+  const editFinanceMode: 'expense' | 'income' | 'transfer' | 'saving' | 'loan' = isLoanFinanceType(editFinanceType) ? 'loan' : (editFinanceType as 'expense' | 'income' | 'transfer' | 'saving');
   const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
   const [editToWallet, setEditToWallet] = useState(meta.toWallet || '');
   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
@@ -1038,17 +1059,67 @@ const Card: React.FC<CardProps> = ({
                <div className={editGridClass} data-edit-field-grid={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
-                       <div className="col-span-2 flex bg-background border border-border rounded-2xl p-1 overflow-x-auto no-scrollbar">
-                           {(['expense', 'income', 'transfer', 'saving', 'loan_out', 'loan_in', 'loan_repayment_in', 'loan_repayment_out'] as FinanceType[]).map(ft => (
-                               <button
-                                   key={ft}
-                                   onClick={() => setEditFinanceType(ft)}
-                                   className={`flex-none py-1 px-2 text-[10px] font-medium rounded-xl whitespace-nowrap ${editFinanceType === ft ? 'bg-[#6366F1] text-white' : 'text-muted hover:text-primary'}`}
-                               >
-                                   {ft === 'loan_out' ? 'Pinjamkan' : ft === 'loan_in' ? 'Pinjam' : ft === 'loan_repayment_in' ? 'Terima kembali' : ft === 'loan_repayment_out' ? 'Bayar kembali' : formatFinanceTypeLabel(ft)}
-                               </button>
-                           ))}
-                       </div>
+                       <>
+                           <div className="col-span-2 rounded-2xl border border-border bg-background/80 p-1">
+                               <div className="flex gap-1 overflow-x-auto no-scrollbar">
+                                   {editableFinanceTabs.map((tab) => (
+                                       <button
+                                           key={tab.value}
+                                           type="button"
+                                           onClick={() => {
+                                               if (tab.value === 'loan') {
+                                                   setEditFinanceType(current => isLoanFinanceType(current) ? current : 'loan_in');
+                                                   return;
+                                               }
+                                               setEditFinanceType(tab.value);
+                                           }}
+                                           className={`flex-none rounded-xl px-3 py-2 text-[11px] font-semibold transition-all whitespace-nowrap ${editFinanceMode === tab.value ? 'bg-[#6366F1] text-white shadow-sm' : 'text-muted hover:bg-surface hover:text-primary'}`}
+                                       >
+                                           {tab.label}
+                                       </button>
+                                   ))}
+                               </div>
+                           </div>
+
+                           {editFinanceMode === 'loan' && (
+                               <div className="col-span-2 rounded-2xl border border-border bg-surface/70 p-4 sm:p-5">
+                                   <div className="mb-3">
+                                       <h4 className="text-sm font-bold text-primary">Pinjam apa?</h4>
+                                       <p className="mt-1 text-xs text-muted">Pilih jenis transaksi pinjaman</p>
+                                   </div>
+
+                                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                       {loanEditOptions.map((option) => {
+                                           const Icon = option.icon;
+                                           const active = editFinanceType === option.kind;
+                                           return (
+                                               <button
+                                                   key={option.kind}
+                                                   type="button"
+                                                   onClick={() => setEditFinanceType(option.kind)}
+                                                   className={`group relative rounded-2xl border p-4 text-left transition-all ${active ? 'border-indigo-500/70 bg-indigo-500/10 shadow-[0_0_0_1px_rgba(99,102,241,0.12)]' : 'border-border bg-background hover:border-indigo-500/40 hover:bg-surface'}`}
+                                               >
+                                                   <div className="flex items-start gap-3">
+                                                       <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${active ? 'bg-indigo-500/15 text-indigo-400' : 'bg-surface text-indigo-400/90'}`}>
+                                                           <Icon className="h-4.5 w-4.5" />
+                                                       </div>
+                                                       <div className="min-w-0">
+                                                           <div className="text-sm font-bold text-primary">{option.title}</div>
+                                                           <div className="mt-1 text-xs leading-relaxed text-muted">{option.description}</div>
+                                                       </div>
+                                                   </div>
+                                                   {active && (
+                                                       <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-white">
+                                                           <CheckCircle2 className="h-3.5 w-3.5" />
+                                                       </div>
+                                                   )}
+                                               </button>
+                                           );
+                                       })}
+                                   </div>
+                               </div>
+                           )}
+                       </>
                    )}
 
                    {type === ItemType.FINANCE && editFinanceType === 'expense' && (

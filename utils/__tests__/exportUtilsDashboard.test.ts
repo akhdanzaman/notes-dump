@@ -56,3 +56,43 @@ test('dashboard helper chart series respects injected export date', () => {
   const expectedLastLabel = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   assert.equal(dashboard!.data[0][20], expectedLastLabel);
 });
+
+test('dashboard debt and expense totals include loan accounting policy', () => {
+  const sheets = generateExportData(
+    [
+      {
+        id: 'loan-out',
+        type: ItemType.FINANCE,
+        content: 'Money lent to Budi',
+        status: 'done',
+        created_at: '2026-05-02T08:00:00.000Z',
+        completed_at: '2026-05-02T08:00:00.000Z',
+        meta: { financeType: 'loan_out', amount: 300000, date: '2026-05-02T08:00:00.000Z', paymentMethod: 'bank', loanCounterparty: 'Budi' },
+      },
+      {
+        id: 'loan-in',
+        type: ItemType.FINANCE,
+        content: 'Money borrowed from Sari',
+        status: 'done',
+        created_at: '2026-05-03T08:00:00.000Z',
+        completed_at: '2026-05-03T08:00:00.000Z',
+        meta: { financeType: 'loan_in', amount: 500000, date: '2026-05-03T08:00:00.000Z', paymentMethod: 'bank', loanCounterparty: 'Sari' },
+      },
+    ],
+    [],
+    [{ id: 'bank', name: 'Bank', type: 'bank', initialBalance: 1000000, color: '#000' }],
+    { monthlyIncome: 0, rules: [] },
+    {},
+    { defaultCollapsed: false, hideMoney: false },
+    new Date('2026-05-15T12:00:00.000Z'),
+  );
+
+  const dashboard = sheets.find(sheet => sheet.name === DASHBOARD_SHEET_NAME);
+  assert.ok(dashboard);
+  const rows = new Map(dashboard!.data.map(row => [row[0], row]));
+  assert.equal(rows.get('Expense MTD')?.[1], 300000);
+  assert.equal(rows.get('Net Cash Flow')?.[3], 'Total Debt');
+  assert.equal(rows.get('Net Cash Flow')?.[4], 500000);
+  assert.equal(rows.get('Expense MTD')?.[3], 'Lent Outstanding');
+  assert.equal(rows.get('Expense MTD')?.[4], 300000);
+});

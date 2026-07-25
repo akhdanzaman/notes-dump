@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BrainDumpItem, ItemType, Wallet } from '../../types';
-import { getWalletStats } from '../selectors/moneySelectors';
+import { BrainDumpItem, BudgetConfig, ItemType, Wallet } from '../../types';
+import { getFinanceItems, getWalletStats } from '../selectors/moneySelectors';
 import { getShoppingItems } from '../selectors/shoppingSelectors';
 
 const wallets: Wallet[] = [
@@ -93,7 +93,7 @@ test('investment withdrawal reverses wallet movement into the receiving wallet',
   assert.equal(walletStats.find(wallet => wallet.id === 'bibit-wallet')?.currentBalance, 200_000);
 });
 
-test('loan cash movements affect wallet balance without becoming expense or income types', () => {
+test('loan accounting keeps lending as an asset allocation and borrowed balance inside total debt', () => {
   const loanItems: BrainDumpItem[] = [
     { id: 'loan-out', type: ItemType.FINANCE, content: 'Money lent to Budi', status: 'done', created_at: '2026-05-01T00:00:00.000Z', meta: { amount: 300_000, financeType: 'loan_out', paymentMethod: 'bca-wallet', loanCounterparty: 'Budi' } },
     { id: 'repay-in', type: ItemType.FINANCE, content: 'Loan repayment from Budi', status: 'done', created_at: '2026-05-02T00:00:00.000Z', meta: { amount: 100_000, financeType: 'loan_repayment_in', paymentMethod: 'bca-wallet', loanCounterparty: 'Budi' } },
@@ -101,6 +101,48 @@ test('loan cash movements affect wallet balance without becoming expense or inco
     { id: 'repay-out', type: ItemType.FINANCE, content: 'Loan repayment to Sari', status: 'done', created_at: '2026-05-04T00:00:00.000Z', meta: { amount: 200_000, financeType: 'loan_repayment_out', paymentMethod: 'bca-wallet', loanCounterparty: 'Sari' } },
   ];
 
-  const { walletStats } = getWalletStats(loanItems, wallets);
-  assert.equal(walletStats.find(wallet => wallet.id === 'bca-wallet')?.currentBalance, 1_100_000);
+  const { walletStats, totalAssets, totalDebt, totalLoanDebt, totalLent, totalNetWorth } = getWalletStats(loanItems, wallets);
+  const bca = walletStats.find(wallet => wallet.id === 'bca-wallet');
+  assert.equal(bca?.currentBalance, 1_300_000);
+  assert.equal(bca?.lentAmount, 200_000);
+  assert.equal(totalAssets, 1_300_000);
+  assert.equal(totalLoanDebt, 300_000);
+  assert.equal(totalDebt, 300_000);
+  assert.equal(totalLent, 200_000);
+  assert.equal(totalNetWorth, 1_000_000);
+});
+
+
+test('money lent is included in period total expense without reducing total assets', () => {
+  const budgetConfig: BudgetConfig = { monthlyIncome: 0, rules: [] };
+  const lent: BrainDumpItem = {
+    id: 'loan-expense',
+    type: ItemType.FINANCE,
+    content: 'Money lent to Budi',
+    status: 'done',
+    created_at: '2026-05-05T00:00:00.000Z',
+    completed_at: '2026-05-05T00:00:00.000Z',
+    meta: {
+      date: '2026-05-05T00:00:00.000Z',
+      amount: 300_000,
+      financeType: 'loan_out',
+      paymentMethod: 'bca-wallet',
+      loanCounterparty: 'Budi',
+    },
+  };
+
+  const finance = getFinanceItems(
+    [lent],
+    new Date('2026-05-15T00:00:00.000Z'),
+    budgetConfig,
+    '', '', '', '', '', '', '',
+    'newest',
+    'monthly',
+    wallets,
+  );
+  const wallet = getWalletStats([lent], wallets);
+
+  assert.equal(finance.totalExpense, 300_000);
+  assert.equal(wallet.totalAssets, 1_000_000);
+  assert.equal(wallet.walletStats.find(item => item.id === 'bca-wallet')?.lentAmount, 300_000);
 });
