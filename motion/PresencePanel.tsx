@@ -10,7 +10,6 @@ import {
   backdropVariants,
   formModalVariants,
   modalVariants,
-  reducedBackdropVariants,
   reducedModalVariants,
   sheetVariants,
 } from './variants';
@@ -150,7 +149,7 @@ const PresencePanel: React.FC<PresencePanelProps> = ({
         <motion.div
           {...overlayProps}
           className={overlayClassName}
-          variants={reduceMotion ? reducedBackdropVariants : backdropVariants}
+          variants={backdropVariants}
           initial="hidden"
           animate="visible"
           exit="exit"

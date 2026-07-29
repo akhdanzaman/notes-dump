@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  animate,
   motion,
   useMotionValue,
   useReducedMotion,
+  useSpring,
   useTransform,
 } from 'motion/react';
-import { motionTransition } from './transitions';
+import { motionSpring, motionTransition } from './transitions';
 
 interface AnimatedNumberProps {
   value: number;
@@ -37,17 +37,17 @@ const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
   formatterRef.current = formatter;
 
   const source = useMotionValue(value);
-  const display = useTransform(source, (latest) => formatterRef.current(latest));
+  const animated = useSpring(source, motionSpring.gentle);
+  const display = useTransform(animated, (latest) => formatterRef.current(latest));
 
   useEffect(() => {
     if (hidden || reduceMotion) {
       source.jump(value);
+      animated.jump(value);
       return;
     }
-
-    const controls = animate(source, value, motionTransition.standard);
-    return () => controls.stop();
-  }, [hidden, reduceMotion, source, value]);
+    source.set(value);
+  }, [animated, hidden, reduceMotion, source, value]);
 
   const accessibleLabel = hidden
     ? ariaLabel
@@ -70,7 +70,7 @@ const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
           className="col-start-1 row-start-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={reduceMotion ? motionTransition.instant : motionTransition.fast}
+          transition={motionTransition.fast}
         >
           {display}
         </motion.span>

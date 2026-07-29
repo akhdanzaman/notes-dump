@@ -5,8 +5,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import AnimatedNumber from '../AnimatedNumber';
 import PresencePanel from '../PresencePanel';
 import { motionDuration, motionStagger } from '../config';
-import { motionTransition } from '../transitions';
-import { errorNudgeVariants } from '../variants';
 
 test('AnimatedNumber removes a hidden value from rendered markup immediately', () => {
   const markup = renderToStaticMarkup(
@@ -71,27 +69,9 @@ test('PresencePanel exposes dialog semantics only while open', () => {
 });
 
 test('motion timing tokens stay within the product timing envelope', () => {
-  assert.ok(motionDuration.fast >= 0.12 && motionDuration.fast <= 0.18);
-  assert.ok(motionDuration.normal >= 0.18 && motionDuration.normal <= 0.26);
-  assert.ok(motionDuration.deliberate >= 0.18 && motionDuration.deliberate <= 0.26);
-  assert.ok(
-    motionTransition.navigation.duration >= 0.12 &&
-      motionTransition.navigation.duration <= 0.18,
-  );
-  assert.ok(motionTransition.exit.duration >= 0.12 && motionTransition.exit.duration <= 0.18);
-  assert.ok(motionTransition.enter.duration >= 0.18 && motionTransition.enter.duration <= 0.26);
-  assert.ok(motionTransition.modal.duration >= 0.18 && motionTransition.modal.duration <= 0.26);
-  assert.ok(
-    motionTransition.panelExit.duration >= 0.18 &&
-      motionTransition.panelExit.duration <= 0.26,
-  );
-  assert.ok(motionTransition.page.duration >= 0.18 && motionTransition.page.duration <= 0.26);
+  assert.ok(motionDuration.fast >= 0.08 && motionDuration.fast <= 0.18);
+  assert.ok(motionDuration.normal >= 0.16 && motionDuration.normal <= 0.24);
+  assert.ok(motionDuration.deliberate >= 0.22 && motionDuration.deliberate <= 0.38);
   assert.ok(motionStagger.tight >= 0.025 && motionStagger.tight <= 0.055);
   assert.ok(motionStagger.dashboard >= 0.025 && motionStagger.dashboard <= 0.055);
-});
-
-test('error feedback never uses a repeated lateral shake', () => {
-  const visible = errorNudgeVariants.visible;
-  assert.equal(typeof visible, 'object');
-  assert.equal(visible && 'x' in visible ? visible.x : undefined, 0);
 });

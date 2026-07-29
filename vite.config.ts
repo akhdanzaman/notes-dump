@@ -27,8 +27,8 @@ export default defineConfig(({ mode }) => {
             name: 'Arkaiv',
             short_name: 'Arkaiv',
             description: 'Ngarsip Harian',
-            theme_color: '#15221C',
-            background_color: '#F4F6F5',
+            theme_color: '#09090b',
+            background_color: '#09090b',
             display: 'standalone',
             icons: [
               {

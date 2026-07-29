@@ -24,55 +24,35 @@
 
 :root {
   color-scheme: light;
-  --background: #f4f6f5;
+  --background: #f6f7f9;
   --surface: #ffffff;
-  --surface-soft: #edf1ef;
+  --surface-soft: #f1f3f6;
   --surface-raised: #ffffff;
-  --border: #dfe5e1;
-  --border-strong: #c9d2cc;
-  --primary: #101713;
-  --muted: #66716b;
-  --accent: #5964df;
-  --accent-hover: #4854d4;
-  --accent-soft: rgba(89, 100, 223, 0.10);
-  --finance-positive: #087e5b;
-  --finance-positive-soft: #e7f5ef;
-  --finance-negative: #c94f3d;
-  --finance-negative-soft: #fff0ec;
-  --finance-warning: #a8650b;
-  --finance-warning-soft: #fff5df;
-  --finance-info: #5362d9;
-  --finance-info-soft: #eef0ff;
-  --radius-card: 24px;
-  --radius-control: 16px;
-  --shadow-soft: 0 1px 2px rgba(16, 23, 19, 0.035), 0 12px 32px rgba(16, 23, 19, 0.055);
-  --shadow-raised: 0 16px 42px rgba(16, 23, 19, 0.075);
-  --shadow-float: 0 22px 64px rgba(16, 23, 19, 0.16);
+  --border: #e2e5ea;
+  --border-strong: #cfd4dc;
+  --primary: #16191f;
+  --muted: #68707d;
+  --accent: #5968e8;
+  --accent-hover: #4d5bd5;
+  --accent-soft: rgba(89, 104, 232, 0.10);
+  --shadow-soft: 0 1px 2px rgba(18, 24, 40, 0.04), 0 12px 32px rgba(18, 24, 40, 0.05);
+  --shadow-float: 0 18px 55px rgba(18, 24, 40, 0.14);
 }
 
 .dark {
   color-scheme: dark;
-  --background: #0d1511;
-  --surface: #131d18;
-  --surface-soft: #19251f;
-  --surface-raised: #1d2923;
-  --border: #29372f;
-  --border-strong: #3b4b42;
-  --primary: #f0f5f1;
-  --muted: #9aa8a0;
-  --accent: #9aa2ff;
-  --accent-hover: #aeb4ff;
-  --accent-soft: rgba(154, 162, 255, 0.13);
-  --finance-positive: #55d6a8;
-  --finance-positive-soft: rgba(85, 214, 168, 0.10);
-  --finance-negative: #ff8a76;
-  --finance-negative-soft: rgba(255, 138, 118, 0.10);
-  --finance-warning: #f0b85b;
-  --finance-warning-soft: rgba(240, 184, 91, 0.11);
-  --finance-info: #a4acff;
-  --finance-info-soft: rgba(164, 172, 255, 0.11);
+  --background: #0c0e13;
+  --surface: #14171d;
+  --surface-soft: #191d25;
+  --surface-raised: #1b1f27;
+  --border: #272c36;
+  --border-strong: #353c48;
+  --primary: #f5f6f8;
+  --muted: #969eaa;
+  --accent: #8993ff;
+  --accent-hover: #9ca4ff;
+  --accent-soft: rgba(137, 147, 255, 0.12);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.22), 0 16px 40px rgba(0, 0, 0, 0.18);
-  --shadow-raised: 0 18px 48px rgba(0, 0, 0, 0.28);
   --shadow-float: 0 22px 70px rgba(0, 0, 0, 0.46);
 }
 
@@ -93,7 +73,8 @@ body {
   margin: 0;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 12% -12%, rgba(89, 100, 223, 0.085), transparent 34rem),
+    radial-gradient(circle at 8% -12%, rgba(89, 104, 232, 0.08), transparent 31rem),
+    radial-gradient(circle at 96% 5%, rgba(22, 166, 122, 0.045), transparent 28rem),
     var(--background);
   color: var(--primary);
   font-family: var(--font-sans);
@@ -111,70 +92,7 @@ select {
 
 button,
 [role="button"] {
-  min-inline-size: 44px;
-  min-block-size: 44px;
   touch-action: manipulation;
-}
-
-button,
-a,
-input,
-textarea,
-select {
-  min-height: 44px;
-}
-
-button:disabled,
-input:disabled,
-textarea:disabled,
-select:disabled {
-  cursor: not-allowed;
-}
-
-.tabular-nums,
-[data-financial-amount="true"],
-[data-private-amount="true"] {
-  font-variant-numeric: tabular-nums slashed-zero;
-  font-feature-settings: "tnum" 1, "zero" 1, "cv02", "cv03", "cv04", "cv11";
-  letter-spacing: -0.025em;
-}
-
-[data-finance-surface="hero"] {
-  box-shadow: var(--shadow-raised);
-}
-
-[data-finance-status="positive"] {
-  color: var(--finance-positive);
-}
-
-[data-finance-status="negative"] {
-  color: var(--finance-negative);
-}
-
-[data-finance-status="warning"] {
-  color: var(--finance-warning);
-}
-
-[data-planned-fill="true"] {
-  background-image: repeating-linear-gradient(
-    135deg,
-    currentColor 0,
-    currentColor 2px,
-    transparent 2px,
-    transparent 6px
-  );
-}
-
-.sr-finance-summary {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 button:focus-visible,
@@ -242,16 +160,12 @@ select {
 }
 
 [data-mobile-bottom-nav="true"] {
-  padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
 @media (max-width: 639px) {
   body {
     background: var(--background);
-  }
-
-  [data-global-composer="true"] {
-    padding-bottom: 0.375rem;
   }
 }
 

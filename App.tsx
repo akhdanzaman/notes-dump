@@ -334,17 +334,6 @@ const App: React.FC = () => {
     handleApproveReview,
     handleRejectReview,
   } = useBrainDumpData();
-  const isLocalOnlySync =
-    !!error && /spreadsheet is not connected/i.test(error);
-  const displaySyncError = error && !isLocalOnlySync
-    ? /failed to fetch|network|offline/i.test(error)
-        ? "Sinkronisasi belum tersambung. Perubahan tetap aman di perangkat dan dapat dicoba lagi."
-        : error
-    : null;
-  const displaySaveStatus =
-    !displaySyncError && saveStatus === "error" ? "local" : saveStatus;
-  const displayFetchStatus =
-    !displaySyncError && fetchStatus === "error" ? "local" : fetchStatus;
   const appItemsRef = useRef(items);
   useEffect(() => {
     appItemsRef.current = items;
@@ -489,34 +478,6 @@ const App: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [filterMinAmount, setFilterMinAmount] = useState<string>("");
   const [filterMaxAmount, setFilterMaxAmount] = useState<string>("");
-  const clearFinanceFilter = (
-    filter:
-      | "wallet"
-      | "type"
-      | "category"
-      | "amount"
-      | "tag"
-      | "search",
-  ) => {
-    if (filter === "wallet") setFilterWallet("");
-    if (filter === "type") setFilterTransactionType("");
-    if (filter === "category") setFilterCategory("");
-    if (filter === "amount") {
-      setFilterMinAmount("");
-      setFilterMaxAmount("");
-    }
-    if (filter === "tag") setSelectedTag("");
-    if (filter === "search") setSearchQuery("");
-  };
-  const clearAllFinanceFilters = () => {
-    setFilterWallet("");
-    setFilterTransactionType("");
-    setFilterCategory("");
-    setFilterMinAmount("");
-    setFilterMaxAmount("");
-    setSelectedTag("");
-    setSearchQuery("");
-  };
 
   // Finance Date Filter
   const [financeDate, setFinanceDate] = useState(new Date());
@@ -540,17 +501,11 @@ const App: React.FC = () => {
   const secureAppSettings = useMemo<AppSettings>(
     () => ({
       ...appSettings,
-      hideMoney:
-        appSettings.hideMoney ||
-        securitySettings.forceHideMoneyValue ||
-        !showBalance,
+      hideMoney: appSettings.hideMoney || securitySettings.forceHideMoneyValue,
     }),
-    [appSettings, securitySettings.forceHideMoneyValue, showBalance],
+    [appSettings, securitySettings.forceHideMoneyValue],
   );
-  const effectiveShowBalance =
-    showBalance &&
-    !appSettings.hideMoney &&
-    !securitySettings.forceHideMoneyValue;
+  const effectiveShowBalance = showBalance && !securitySettings.forceHideMoneyValue;
 
   const openLockedSecurityPopup = (target: keyof LocalSecuritySettings, message: string) => {
     setLockedSecurityPopup({ target, message });
@@ -558,7 +513,7 @@ const App: React.FC = () => {
 
   const handleSetActiveTab = (tab: Tab) => {
     if (tab === 'money' && securitySettings.lockTabTransaction) {
-      openLockedSecurityPopup('lockTabTransaction', 'Tab Money dikunci di perangkat ini.');
+      openLockedSecurityPopup('lockTabTransaction', 'Money tab is locked on this device.');
       return;
     }
     if (tab !== activeTab) {
@@ -579,16 +534,12 @@ const App: React.FC = () => {
       openLockedSecurityPopup('forceHideMoneyValue', 'Money values are locked and hidden on this device.');
       return;
     }
-    if (appSettings.hideMoney && value) {
-      openControlCenter();
-      return;
-    }
     setShowBalance(value);
   };
 
   const handleSetMoneyView = (view: MoneyView) => {
     if (securitySettings.lockTabTransaction) {
-      openLockedSecurityPopup('lockTabTransaction', 'Tab Money dikunci di perangkat ini.');
+      openLockedSecurityPopup('lockTabTransaction', 'Money tab is locked on this device.');
       return;
     }
     setMoneyView(view);
@@ -920,7 +871,7 @@ const App: React.FC = () => {
     document.documentElement.classList.toggle("dark", theme === "dark");
 
     const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    themeColor?.setAttribute("content", theme === "dark" ? "#15221C" : "#F4F6F5");
+    themeColor?.setAttribute("content", theme === "dark" ? "#0c0e13" : "#f6f7f9");
   }, [appSettings.theme]);
 
   // --- Keyboard Detection Effect ---
@@ -1146,7 +1097,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (activeTab === "money" && securitySettings.lockTabTransaction) {
       handleSetActiveTab("summary");
-      openLockedSecurityPopup('lockTabTransaction', 'Tab Money dikunci di perangkat ini.');
+      openLockedSecurityPopup('lockTabTransaction', 'Money tab is locked on this device.');
     }
   }, [activeTab, securitySettings.lockTabTransaction]);
   useEffect(() => {
@@ -1363,7 +1314,7 @@ const App: React.FC = () => {
           outcome: 'review',
           completedAt: Date.now(),
         });
-        showAppNotice('Nota selesai dibaca dan siap ditinjau di pusat tinjauan.', 'success');
+        showAppNotice('Nota selesai dibaca dan siap ditinjau di Review Center.', 'success');
         window.setTimeout(() => clearReceiptTask(taskId), 2500);
       } else {
         updateReceiptTask(taskId, { stage: 'saving' });
@@ -1378,7 +1329,7 @@ const App: React.FC = () => {
           transactionItemId: savedItem.id,
           completedAt: Date.now(),
         });
-        showAppNotice('Transaksi dari nota sudah disimpan. Proses lengkap tersedia di pusat tinjauan.', 'success');
+        showAppNotice('Transaksi dari nota sudah disimpan. Proses lengkap tersedia di Review Center.', 'success');
         receiptTaskFilesRef.current.delete(taskId);
         window.setTimeout(() => clearReceiptTask(taskId), 12000);
       }
@@ -1989,14 +1940,14 @@ const App: React.FC = () => {
         setLibrarySubTab={setLibrarySubTab}
         pendingCount={pendingCount}
         reviewQueueCount={reviewCenterBadgeCount}
-        saveStatus={displaySaveStatus}
+        saveStatus={saveStatus}
         saveProgress={saveProgress}
-        fetchStatus={displayFetchStatus}
+        fetchStatus={fetchStatus}
         onSyncClick={() => saveAndSync(items)}
         onRefreshClick={() => loadData()}
         onSettingsClick={openControlCenter}
         onOpenReviewCenter={openReviewCenterFromInput}
-        error={displaySyncError}
+        error={error}
       />
 
       {/* Main Content */}
@@ -2207,9 +2158,6 @@ const App: React.FC = () => {
                   selectedTag={selectedTag}
                   searchQuery={searchQuery}
                   sortOrder={sortOrder}
-                  syncError={displaySyncError}
-                  clearFinanceFilter={clearFinanceFilter}
-                  clearAllFinanceFilters={clearAllFinanceFilters}
                   savingGoals={savingGoals}
                   setActiveTab={handleSetActiveTab}
                   onAddItem={(type) => {
@@ -2254,7 +2202,7 @@ const App: React.FC = () => {
                   role="status"
                   className="pointer-events-auto absolute bottom-full left-3 right-3 mb-3 rounded-[26px] border border-border/80 bg-surface/96 p-5 text-sm font-semibold text-muted shadow-2xl sm:left-1/2 sm:right-auto sm:w-full sm:max-w-3xl sm:-translate-x-1/2"
                 >
-                  Menyiapkan Asisten Arkaiv…
+                  Menyiapkan Asisten Arkaivâ€¦
                 </div>
               ) : null
             }
@@ -2280,9 +2228,9 @@ const App: React.FC = () => {
             onFocus={() => {
               setIsSearchExpanded(false);
             }}
-            saveStatus={displaySaveStatus}
+            saveStatus={saveStatus}
             saveProgress={saveProgress}
-            fetchStatus={displayFetchStatus}
+            fetchStatus={fetchStatus}
             pendingCount={pendingCount}
             isChatOpen={isChatOpen}
             onOpenChat={() => setIsChatOpen(!isChatOpen)}
@@ -2290,7 +2238,7 @@ const App: React.FC = () => {
             reviewCenterActive={hasRunningProcess}
             reviewCenterCount={reviewCenterBadgeCount}
             onOpenReviewCenter={openReviewCenterFromInput}
-            error={displaySyncError}
+            error={error}
             startAction={
               activeTab === "library" || activeTab === "money" ? (
                 <FloatingSearch
@@ -2354,7 +2302,7 @@ const App: React.FC = () => {
               role="status"
               className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 text-sm font-semibold text-white backdrop-blur-sm"
             >
-              Menyiapkan Control Center…
+              Menyiapkan Control Centerâ€¦
             </div>
           ) : null
         }
@@ -2362,10 +2310,10 @@ const App: React.FC = () => {
       <LazyControlCenter
         isOpen={isControlCenterOpen}
         onClose={() => setIsControlCenterOpen(false)}
-        saveStatus={displaySaveStatus}
+        saveStatus={saveStatus}
         saveProgress={saveProgress}
         fetchProgress={fetchProgress}
-        fetchStatus={displayFetchStatus}
+        fetchStatus={fetchStatus}
         onSyncClick={(forceOverwrite) =>
           saveAndSync(
             items,
@@ -2386,7 +2334,7 @@ const App: React.FC = () => {
         onToggleCanonicalRuleDisabled={toggleCanonicalRuleDisabled}
         appSettings={appSettings}
         setAppSettings={setAppSettings}
-        error={displaySyncError}
+        error={error}
         pendingCount={pendingCount}
         parsingTasks={parsingTasks}
         enrichmentTasks={enrichmentTasks}
@@ -2426,12 +2374,12 @@ const App: React.FC = () => {
             overlayClassName="fixed inset-0 z-[94] flex items-end justify-center bg-black/40 px-4 pb-28 lg:pl-72 lg:pb-24"
             panelClassName="flex max-h-[70vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl lg:max-w-3xl"
             presentation="sheet"
-            ariaLabel="Pusat tinjauan"
+            ariaLabel="Review Center"
           >
                   <div className="flex items-center justify-between p-4 border-b border-border bg-surface shrink-0">
                     <h3 className="font-bold text-lg flex items-center gap-2">
                       <ClipboardCheck className="w-5 h-5 text-indigo-500" />
-                      Pusat tinjauan
+                      Review Center
                     </h3>
                     <div className="flex items-center gap-2">
                       {(receiptReviews.length + pendingReviews.length + unresolvedReceiptTaskCount) > 0 && (
@@ -2441,20 +2389,19 @@ const App: React.FC = () => {
                       )}
                       {hasRunningProcess && (
                         <span className="text-xs bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-full font-bold">
-                          Berjalan
+                          Running
                         </span>
                       )}
                       <button
                         onClick={closeReviewCenterFromInput}
                         className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors ml-1"
-                        aria-label="Tutup pusat tinjauan"
+                        aria-label="Close Review Center"
                       >
                         <ChevronDown className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
                   <ReviewCenterPanel
-                    hideMoney={secureAppSettings.hideMoney}
                     parsingTasks={parsingTasks}
                     enrichmentTasks={enrichmentTasks}
                     receiptTasks={receiptTasks}
@@ -2498,7 +2445,7 @@ const App: React.FC = () => {
                   </div>
                   <div>
                     <div className="text-xs font-bold uppercase tracking-wider text-indigo-500">
-                      Yang baru
+                      What's new
                     </div>
                     <h3 className="text-xl font-bold text-primary">
                       {LATEST_CHANGELOG.version}
@@ -2511,7 +2458,7 @@ const App: React.FC = () => {
                 <button
                   onClick={handleCloseChangelogPopup}
                   className="p-2 rounded-xl text-muted hover:text-primary hover:bg-muted/10 transition-colors"
-                  aria-label="Tutup catatan perubahan"
+                  aria-label="Close changelog"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2527,7 +2474,7 @@ const App: React.FC = () => {
                   onClick={handleCloseChangelogPopup}
                   className="w-full py-3 rounded-2xl bg-primary text-background font-bold hover:opacity-90 transition-opacity"
                 >
-                  Mengerti
+                  Got it
                 </button>
               </div>
       </PresencePanel>

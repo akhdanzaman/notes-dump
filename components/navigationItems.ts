@@ -16,9 +16,9 @@ export const getAppNavigationItems = (
   _planSubTab?: PlanSubTab,
   _librarySubTab?: LibrarySubTab,
 ): AppNavigationItem[] => [
-  { id: 'summary', icon: LayoutDashboard, label: 'Home', helper: 'Ringkasan dan langkah berikutnya' },
-  { id: 'plan', icon: ListTodo, label: 'Plan', helper: 'Fokus, belanja, dan tujuan' },
-  { id: 'library', icon: Library, label: 'Library', helper: 'Catatan, skill, dan jurnal' },
-  { id: 'money', icon: WalletIcon, label: 'Money', helper: 'Dompet, transaksi, dan anggaran' },
-  { id: 'calendar', icon: CalendarIcon, label: 'Calendar', helper: 'Agenda dan aktivitas terjadwal' },
+  { id: 'summary', icon: LayoutDashboard, label: 'Home', helper: 'Ringkasan dan aktivitas hari ini' },
+  { id: 'plan', icon: ListTodo, label: 'Plan', helper: 'Focus, shopping, dan goals' },
+  { id: 'library', icon: Library, label: 'Library', helper: 'Notes, skills, dan journal' },
+  { id: 'money', icon: WalletIcon, label: 'Money', helper: 'Transactions, budget, dan wallet' },
+  { id: 'calendar', icon: CalendarIcon, label: 'Calendar', helper: 'Agenda dan entry bertanggal' },
 ];

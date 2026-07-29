@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { collapseVariants, popVariants } from '../motion/variants';
 import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta, LoanTransactionKind } from '../types';
-import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle, HandCoins, EyeOff } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle, HandCoins } from 'lucide-react';
 
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, SAVING_WITHDRAWAL_FINANCE_TYPE, formatFinanceTypeLabel, isIncomingLoanFinanceType, isOutgoingLoanFinanceType, isLoanFinanceType } from '../utils/financeTypeUtils';
@@ -92,11 +92,11 @@ const calculateNextDate = (
 };
 
 const editableFinanceTabs: Array<{ value: 'expense' | 'income' | 'transfer' | 'saving' | 'loan'; label: string }> = [
-  { value: 'expense', label: 'Pengeluaran' },
-  { value: 'income', label: 'Pemasukan' },
+  { value: 'expense', label: 'Expense' },
+  { value: 'income', label: 'Income' },
   { value: 'transfer', label: 'Transfer' },
-  { value: 'saving', label: 'Tabungan' },
-  { value: 'loan', label: 'Utang & piutang' },
+  { value: 'saving', label: 'Saving' },
+  { value: 'loan', label: 'Pinjam' },
 ];
 
 const loanEditOptions: Array<{
@@ -105,10 +105,10 @@ const loanEditOptions: Array<{
   description: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { kind: 'loan_out', title: 'Pinjamkan uang', description: 'Uang keluar; orang lain berutang kepada Anda (piutang).', icon: HandCoins },
-  { kind: 'loan_in', title: 'Pinjam uang', description: 'Uang masuk; Anda berutang kepada orang lain (utang).', icon: ArrowRight },
-  { kind: 'loan_repayment_in', title: 'Terima pembayaran', description: 'Uang masuk dan sisa piutang Anda berkurang.', icon: RotateCcw },
-  { kind: 'loan_repayment_out', title: 'Bayar utang', description: 'Uang keluar dan sisa utang Anda berkurang.', icon: WalletIcon },
+  { kind: 'loan_out', title: 'Saya meminjamkan', description: 'Uang keluar dan menjadi piutang', icon: HandCoins },
+  { kind: 'loan_in', title: 'Saya meminjam', description: 'Uang masuk dan menjadi utang', icon: ArrowRight },
+  { kind: 'loan_repayment_in', title: 'Terima kembali', description: 'Piutang berkurang', icon: RotateCcw },
+  { kind: 'loan_repayment_out', title: 'Bayar kembali', description: 'Utang berkurang', icon: WalletIcon },
 ];
 
 interface CardProps {
@@ -601,7 +601,7 @@ const Card: React.FC<CardProps> = ({
      );
      
      isWaitingForNextCycle = true;
-     nextDueText = `Berikutnya: ${nextDate.toLocaleDateString('id-ID', { weekday: 'short', month: 'short', day: 'numeric' })}`;
+     nextDueText = `Next: ${nextDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
   }
 
   if (rawDate) {
@@ -616,9 +616,9 @@ const Card: React.FC<CardProps> = ({
       const hasTimeComponent = rawDate.includes('T') && !rawDate.endsWith('00:00:00.000Z');
       
       let datePart = '';
-      if (isToday) datePart = 'Hari ini';
-      else if (isTomorrow) datePart = 'Besok';
-      else datePart = dateObj.toLocaleDateString('id-ID', { 
+      if (isToday) datePart = 'Today';
+      else if (isTomorrow) datePart = 'Tomorrow';
+      else datePart = dateObj.toLocaleDateString(undefined, { 
         weekday: 'short', 
         month: 'short', 
         day: 'numeric' 
@@ -632,7 +632,7 @@ const Card: React.FC<CardProps> = ({
               displayDate = datePart;
           }
       } else if (hasTimeComponent || isCreatedDate) {
-        displayDate = `${datePart} • ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}`;
+        displayDate = `${datePart} • ${dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute:'2-digit' })}`;
       } else {
         displayDate = datePart;
       }
@@ -755,14 +755,12 @@ const Card: React.FC<CardProps> = ({
   const editGridClass = isTaskWorkspaceEdit ? taskEditSurface.fieldGrid : 'grid grid-cols-2 gap-3 mb-3';
   const actionRowClass = isTaskWorkspaceEdit ? taskEditSurface.actions : 'flex justify-end gap-2 pt-2 border-t border-border/30';
   const actionButtonComfort = isTaskWorkspaceEdit ? taskEditSurface.actionButton : '';
-  const financeFieldClass = 'min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3 py-2.5 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10';
-  const financeLabelClass = 'mb-1.5 block text-xs font-semibold text-primary';
 
   return (
     <div
         data-edit-comfort={editComfort === 'taskWorkspace' ? 'task-workspace' : undefined}
         data-card-expanded={!isCollapsed ? 'true' : 'false'}
-        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/15 shadow-md' : ''} break-inside-avoid rounded-[20px] border border-border/60 p-3.5 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 hover:border-border/90 hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/15 shadow-md' : ''} break-inside-avoid rounded-2xl border border-border/75 p-3.5 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 hover:border-border hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
@@ -771,14 +769,13 @@ const Card: React.FC<CardProps> = ({
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
               <button 
-                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (canToggleStatus) onToggleStatus(item.id);
                 }}
                 disabled={!canToggleStatus}
-                title={isRoutineDone ? 'Tandai belum selesai dan hapus riwayat rutin terbaru' : undefined}
-                className={`-ml-3 -mr-1 -my-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-[color,opacity,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${canToggleStatus ? 'hover:bg-black/[0.04] hover:opacity-80 active:scale-95 dark:hover:bg-white/[0.06]' : 'cursor-default'}`}
+                title={isRoutineDone ? 'Mark undone and remove the latest routine history' : undefined}
+                className={`shrink-0 transition-[color,opacity,transform] duration-150 ${canToggleStatus ? 'hover:opacity-80 active:scale-90' : 'cursor-default'}`}
                 aria-label={status === 'done' ? `Tandai ${content} belum selesai` : `Tandai ${content} selesai`}
                 aria-pressed={status === 'done'}
               >
@@ -857,7 +854,7 @@ const Card: React.FC<CardProps> = ({
                     return (
                         <span key={tag} className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 flex items-center gap-1 text-[10px]" title={meta.parsingError}>
                             <AlertCircle className="w-3 h-3" />
-                            Gagal diproses
+                            Parsing Failed
                         </span>
                     );
                 }
@@ -911,7 +908,7 @@ const Card: React.FC<CardProps> = ({
                                                 const goal = savingGoals.find(g => g.id === meta.savingGoalId);
                                                 const walletId = goal?.meta.dedicatedWalletId;
                                                 const wallet = wallets.find(w => w.id === walletId);
-                                                return wallet ? wallet.name : (getWalletName(meta.paymentMethod) || 'Terhubung ke target');
+                                                return wallet ? wallet.name : (getWalletName(meta.paymentMethod) || 'Linked to Goal');
                                             })() : getWalletName(meta.paymentMethod)}
                                             {(meta.financeType === 'transfer' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE) && meta.toWallet && (
                                                 <>
@@ -923,13 +920,7 @@ const Card: React.FC<CardProps> = ({
                                     )}
                                     {isLoanFinanceType(meta.financeType) && meta.loanCounterparty && (
                                         <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-bold text-amber-600">
-                                            {meta.financeType === 'loan_out'
-                                                ? `Dipinjamkan kepada ${meta.loanCounterparty}`
-                                                : meta.financeType === 'loan_in'
-                                                    ? `Dipinjam dari ${meta.loanCounterparty}`
-                                                    : meta.financeType === 'loan_repayment_in'
-                                                        ? `Dibayar oleh ${meta.loanCounterparty}`
-                                                        : `Dibayar kepada ${meta.loanCounterparty}`}
+                                            {meta.loanCounterparty}
                                         </span>
                                     )}
                                     {isLoanFinanceType(meta.financeType) && meta.loanDueDate && (meta.financeType === 'loan_out' || meta.financeType === 'loan_in') && (
@@ -963,10 +954,10 @@ const Card: React.FC<CardProps> = ({
 
                 {(displayAmount || meta.durationMinutes) && (
                     <div className="shrink-0 mt-0.5 text-right">
-                        <div className={`text-base font-semibold tabular-nums tracking-tight ${type === 'FINANCE' && (meta.financeType === 'income' || isIncomingLoanFinanceType(meta.financeType)) ? 'text-emerald-600 dark:text-emerald-400' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-500' : (type === 'FINANCE' && meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'text-amber-600 dark:text-amber-400' : (type === 'FINANCE' && isOutgoingLoanFinanceType(meta.financeType) ? 'text-orange-600 dark:text-orange-400' : 'text-primary')))}`}>
+                        <div className={`text-base font-bold ${type === 'FINANCE' && meta.financeType === 'income' ? 'text-emerald-500' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-400' : (type === 'FINANCE' && meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'text-amber-500' : 'text-primary'))}`}>
                             {displayAmount || `${meta.durationMinutes}m`}
                         </div>
-                        {!hideMoney && type === ItemType.FINANCE && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) && (meta.originalAmount ?? meta.receiptCapture?.originalTotal) !== undefined && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) !== 'IDR' && (
+                        {type === ItemType.FINANCE && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) && (meta.originalAmount ?? meta.receiptCapture?.originalTotal) !== undefined && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) !== 'IDR' && (
                             <div className="text-[9px] font-medium text-muted">
                                 {formatCurrency((meta.originalAmount ?? meta.receiptCapture?.originalTotal) || 0, (meta.originalCurrency || meta.receiptCapture?.originalCurrency) || 'IDR')}
                                 {(meta.exchangeRateToIdr || meta.receiptCapture?.exchangeRateToIdr) ? ` · kurs ${(meta.exchangeRateToIdr || meta.receiptCapture?.exchangeRateToIdr || 0).toLocaleString('id-ID')}` : ''}
@@ -977,7 +968,7 @@ const Card: React.FC<CardProps> = ({
             </div>
         ) : null}
 
-        {hasTransactionLineItems && !hideMoney && (
+        {hasTransactionLineItems && (
             <div className="mt-2" onClick={(event) => event.stopPropagation()}>
                 {transactionCategorySummary.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
@@ -1009,7 +1000,7 @@ const Card: React.FC<CardProps> = ({
             </div>
         )}
 
-        {!hideMoney && type === ItemType.FINANCE && meta.receiptCapture?.imageName && (isCollapsed || !enableCollapse || readonly) && (
+        {type === ItemType.FINANCE && meta.receiptCapture?.imageName && (isCollapsed || !enableCollapse || readonly) && (
             <div className="mt-2" onClick={(event) => event.stopPropagation()}>
                 <ReceiptAttachmentPanel
                     capture={meta.receiptCapture}
@@ -1026,15 +1017,14 @@ const Card: React.FC<CardProps> = ({
           <div className="mt-3 flex justify-end border-t border-border/30 pt-3" onClick={(e) => e.stopPropagation()}>
               {editPanelControls || (
                   <button
-                      type="button"
                       onClick={(e) => {
                           e.stopPropagation();
                           onEditPanelExpandedChange?.(item.id, !editPanelExpanded);
                       }}
-                      className="flex min-h-11 items-center gap-1.5 rounded-xl bg-black/5 px-3 py-2 text-xs font-semibold text-muted transition-colors hover:bg-black/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-white/10 dark:hover:bg-white/[0.09]"
+                      className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/[0.09] text-xs font-bold transition-colors flex items-center gap-1"
                   >
                       {editPanelExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      {editPanelExpanded ? 'Sembunyikan edit' : 'Edit detail'}
+                      {editPanelExpanded ? 'Hide edit' : 'Edit details'}
                   </button>
               )}
           </div>
@@ -1050,23 +1040,7 @@ const Card: React.FC<CardProps> = ({
               className={collapsibleEditPanel ? 'grid overflow-hidden' : undefined}
           >
           <div className={`${collapsibleEditPanel ? 'min-h-0 overflow-hidden' : ''} ${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
-               {hideMoney && type === ItemType.FINANCE ? (
-                   <div
-                       className="flex items-start gap-3 rounded-2xl bg-indigo-500/10 p-4 text-indigo-800 ring-1 ring-inset ring-indigo-500/20 dark:text-indigo-200"
-                       role="status"
-                   >
-                       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface/70">
-                           <EyeOff className="h-5 w-5" aria-hidden="true" />
-                       </span>
-                       <div>
-                           <div className="text-sm font-semibold">Detail finansial disembunyikan</div>
-                           <p className="mt-1 text-xs leading-relaxed opacity-80">
-                               Tampilkan nominal untuk melihat atau mengubah jumlah, rincian item, kurs, dan lampiran nota.
-                           </p>
-                       </div>
-                   </div>
-               ) : (
-               <>
+               
                {isNote && (
                    <div className="mb-3">
                        <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Title</label>
@@ -1080,11 +1054,8 @@ const Card: React.FC<CardProps> = ({
                )}
 
                {/* Content Edit */}
-               <label htmlFor={`card-content-${item.id}`} className={isNote ? 'mb-1 block text-xs font-semibold text-primary' : 'sr-only'}>
-                   {isNote ? 'Isi catatan' : type === ItemType.FINANCE ? 'Deskripsi transaksi' : 'Isi item'}
-               </label>
+               {isNote && <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Content</label>}
                <textarea
-                   id={`card-content-${item.id}`}
                    ref={textareaRef}
                    className={`w-full text-primary focus:outline-none mb-3 resize-none overflow-hidden ${
                        isNote 
@@ -1093,7 +1064,7 @@ const Card: React.FC<CardProps> = ({
                    }`}
                    value={editContent}
                    onChange={(e) => setEditContent(e.target.value)}
-                   placeholder={type === ItemType.FINANCE ? 'Deskripsi transaksi' : 'Tulis detail'}
+                   placeholder="Content..."
                />
 
                {/* Dynamic Fields Grid */}
@@ -1101,8 +1072,8 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
                        <>
-                           <div className="col-span-2 rounded-2xl bg-background/70 p-1 ring-1 ring-inset ring-border/60">
-                               <div className="flex gap-1 overflow-x-auto no-scrollbar" role="group" aria-label="Jenis transaksi">
+                           <div className="col-span-2 rounded-2xl border border-border bg-background/80 p-1">
+                               <div className="flex gap-1 overflow-x-auto no-scrollbar">
                                    {editableFinanceTabs.map((tab) => (
                                        <button
                                            key={tab.value}
@@ -1114,8 +1085,7 @@ const Card: React.FC<CardProps> = ({
                                                }
                                                setEditFinanceType(tab.value);
                                            }}
-                                           className={`min-h-11 flex-none whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${editFinanceMode === tab.value ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:bg-surface hover:text-primary'}`}
-                                           aria-pressed={editFinanceMode === tab.value}
+                                           className={`flex-none rounded-xl px-3 py-2 text-[11px] font-semibold transition-all whitespace-nowrap ${editFinanceMode === tab.value ? 'bg-[#6366F1] text-white shadow-sm' : 'text-muted hover:bg-surface hover:text-primary'}`}
                                        >
                                            {tab.label}
                                        </button>
@@ -1124,9 +1094,11 @@ const Card: React.FC<CardProps> = ({
                            </div>
 
                            {editFinanceMode === 'loan' && (
-                               <fieldset className="col-span-2 rounded-2xl bg-surface/70 p-4 ring-1 ring-inset ring-border/60 sm:p-5">
-                                   <legend className="px-1 text-sm font-semibold text-primary">Arah uang dan kewajiban</legend>
-                                   <p className="mb-3 mt-1 text-xs leading-relaxed text-muted">Pilih kejadian yang benar agar utang dan piutang tidak tertukar.</p>
+                               <div className="col-span-2 rounded-2xl border border-border bg-surface/70 p-4 sm:p-5">
+                                   <div className="mb-3">
+                                       <h4 className="text-sm font-bold text-primary">Pinjam apa?</h4>
+                                       <p className="mt-1 text-xs text-muted">Pilih jenis transaksi pinjaman</p>
+                                   </div>
 
                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                        {loanEditOptions.map((option) => {
@@ -1137,8 +1109,7 @@ const Card: React.FC<CardProps> = ({
                                                    key={option.kind}
                                                    type="button"
                                                    onClick={() => setEditFinanceType(option.kind)}
-                                                   className={`group relative min-h-[92px] rounded-2xl p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${active ? 'bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/55' : 'bg-background/70 ring-1 ring-inset ring-border/70 hover:bg-surface'}`}
-                                                   aria-pressed={active}
+                                                   className={`group relative rounded-2xl border p-4 text-left transition-all ${active ? 'border-indigo-500/70 bg-indigo-500/10 shadow-[0_0_0_1px_rgba(99,102,241,0.12)]' : 'border-border bg-background hover:border-indigo-500/40 hover:bg-surface'}`}
                                                >
                                                    <div className="flex items-start gap-3">
                                                        <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${active ? 'bg-indigo-500/15 text-indigo-400' : 'bg-surface text-indigo-400/90'}`}>
@@ -1158,18 +1129,17 @@ const Card: React.FC<CardProps> = ({
                                            );
                                        })}
                                    </div>
-                               </fieldset>
+                               </div>
                            )}
                        </>
                    )}
 
                    {type === ItemType.FINANCE && editFinanceType === 'expense' && (
                        <div className="col-span-2">
-                           <label htmlFor={`card-merchant-${item.id}`} className="mb-1.5 block text-xs font-semibold text-primary">Toko atau merchant</label>
+                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Merchant</label>
                            <input
-                               id={`card-merchant-${item.id}`}
                                type="text"
-                               className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3 py-2.5 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                               className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                value={editMerchant}
                                onChange={(event) => setEditMerchant(event.target.value)}
                                placeholder="Nama merchant"
@@ -1180,16 +1150,12 @@ const Card: React.FC<CardProps> = ({
                    {/* Amount */}
                    {showAmountField && (
                         <div className={type === ItemType.FINANCE && editFinanceType === 'transfer' ? "col-span-2" : ""}>
-                            <label htmlFor={`card-amount-${item.id}`} className="mb-1.5 block text-xs font-semibold text-primary">Jumlah transaksi</label>
+                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Jumlah transaksi</label>
                             <div className="relative">
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
-                                    id={`card-amount-${item.id}`}
                                     type="number"
-                                    inputMode="decimal"
-                                    min="0"
-                                    step="any"
-                                    className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums tracking-tight text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                                    className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                     value={hasEditTransactionLineItems ? editTransactionTotal : editAmount}
                                     onChange={(e) => setEditAmount(e.target.value)}
                                     readOnly={hasEditTransactionLineItems}
@@ -1203,15 +1169,12 @@ const Card: React.FC<CardProps> = ({
                    {/* Date */}
                    {showDateField && !meta.isRoutine && (
                         <div className={(!showAmountField && !showSkillExtras) ? "col-span-2" : ""}>
-                            <label htmlFor={`card-date-${item.id}`} className={type === ItemType.FINANCE ? financeLabelClass : 'mb-1 block text-[10px] font-bold uppercase text-muted'}>
-                                {type === ItemType.SHOPPING ? (shouldShoppingDateEditCompletion(item) ? 'Tanggal selesai' : 'Jatuh tempo') : type === ItemType.FINANCE ? 'Tanggal transaksi' : 'Tanggal'}
-                            </label>
+                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{type === ItemType.SHOPPING ? (shouldShoppingDateEditCompletion(item) ? 'Completed date' : 'Due date') : 'Date'}</label>
                             <div className="relative">
                                 <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                 <input
-                                    id={`card-date-${item.id}`}
                                     type="datetime-local"
-                                    className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 py-2.5 pl-8 pr-3 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 dark:[color-scheme:dark]"
+                                    className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                     value={editDate}
                                     onChange={(e) => setEditDate(e.target.value)}
                                 />
@@ -1435,11 +1398,10 @@ const Card: React.FC<CardProps> = ({
                            {type === ItemType.FINANCE && isLoanFinanceType(editFinanceType) && (
                                <>
                                    <div className={editFinanceType === 'loan_repayment_in' || editFinanceType === 'loan_repayment_out' ? 'col-span-2' : ''}>
-                                       <label htmlFor={`card-loan-counterparty-${item.id}`} className={financeLabelClass}>Pihak terkait</label>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Pihak terkait</label>
                                        <input
-                                           id={`card-loan-counterparty-${item.id}`}
                                            type="text"
-                                           className={financeFieldClass}
+                                           className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editLoanCounterparty}
                                            onChange={(e) => setEditLoanCounterparty(e.target.value)}
                                            placeholder={editFinanceType === 'loan_out' || editFinanceType === 'loan_repayment_in' ? 'Nama peminjam' : 'Nama pemberi pinjaman'}
@@ -1447,11 +1409,10 @@ const Card: React.FC<CardProps> = ({
                                    </div>
                                    {(editFinanceType === 'loan_out' || editFinanceType === 'loan_in') && (
                                        <div>
-                                           <label htmlFor={`card-loan-due-${item.id}`} className={financeLabelClass}>Jatuh tempo</label>
+                                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Jatuh tempo</label>
                                            <input
-                                               id={`card-loan-due-${item.id}`}
                                                type="date"
-                                               className={financeFieldClass}
+                                               className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                                value={editLoanDueDate}
                                                onChange={(e) => setEditLoanDueDate(e.target.value)}
                                            />
@@ -1461,16 +1422,15 @@ const Card: React.FC<CardProps> = ({
                            )}
                            {editFinanceType !== 'saving' && (
                                <div>
-                                   <label htmlFor={`card-wallet-${item.id}`} className={financeLabelClass}>
-                                       {editFinanceType === 'transfer' ? 'Wallet asal' : editFinanceType === 'income' ? 'Wallet penerima' : (editFinanceType === 'loan_in' || editFinanceType === 'loan_repayment_in') ? 'Wallet penerima' : (editFinanceType === 'loan_out' || editFinanceType === 'loan_repayment_out') ? 'Wallet pembayaran' : 'Wallet pembayaran'}
+                                   <label className="text-[10px] uppercase text-muted font-bold mb-1 block">
+                                       {editFinanceType === 'transfer' ? 'From' : editFinanceType === 'income' ? 'To' : (editFinanceType === 'loan_in' || editFinanceType === 'loan_repayment_in') ? 'Wallet penerima' : (editFinanceType === 'loan_out' || editFinanceType === 'loan_repayment_out') ? 'Wallet pembayaran' : 'Wallet'}
                                    </label>
                                    <select
-                                       id={`card-wallet-${item.id}`}
-                                       className={financeFieldClass}
+                                       className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                        value={editPaymentMethod}
                                        onChange={(e) => setEditPaymentMethod(e.target.value)}
                                    >
-                                       <option value="">Pilih wallet</option>
+                                       <option value="">Undefined</option>
                                        {getWalletNameOptions()}
                                    </select>
                                </div>
@@ -1478,70 +1438,65 @@ const Card: React.FC<CardProps> = ({
 
                            {editFinanceType === 'transfer' ? (
                                <div>
-                                   <label htmlFor={`card-wallet-destination-${item.id}`} className={financeLabelClass}>Wallet tujuan</label>
+                                   <label className="text-[10px] uppercase text-muted font-bold mb-1 block">To</label>
                                    <select
-                                       id={`card-wallet-destination-${item.id}`}
-                                       className={financeFieldClass}
+                                       className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                        value={editToWallet}
                                        onChange={(e) => setEditToWallet(e.target.value)}
                                    >
-                                       <option value="">Pilih wallet</option>
+                                       <option value="">Select...</option>
                                        {getWalletNameOptions()}
                                    </select>
                                </div>
                            ) : editFinanceType === 'saving' ? (
                                <>
                                    <div>
-                                       <label htmlFor={`card-saving-goal-${item.id}`} className={financeLabelClass}>Target tabungan atau investasi</label>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Saving Goal</label>
                                        <select
-                                           id={`card-saving-goal-${item.id}`}
-                                           className={financeFieldClass}
+                                           className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editSavingGoalId}
                                            onChange={(e) => syncSavingGoalWalletSelection(e.target.value)}
                                        >
-                                           <option value="">Pilih target</option>
-                                           {savingGoals.map(g => <option key={g.id} value={g.id}>{g.meta.shoppingCategory === 'investment' ? 'Investasi — ' : 'Tabungan — '}{g.content}</option>)}
+                                           <option value="">Select Goal / Investment...</option>
+                                           {savingGoals.map(g => <option key={g.id} value={g.id}>{g.meta.shoppingCategory === 'investment' ? '📈 ' : '🎯 '}{g.content}</option>)}
                                        </select>
                                    </div>
                                    <div>
-                                       <label htmlFor={`card-saving-wallet-${item.id}`} className={financeLabelClass}>Wallet sumber dana</label>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">From Wallet</label>
                                        {selectedEditSavingGoalIsInvestment ? (
                                            <select
-                                               id={`card-saving-wallet-${item.id}`}
-                                               className={financeFieldClass}
+                                               className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                                value={editPaymentMethod === selectedEditSavingGoalWalletId ? '' : editPaymentMethod}
                                                onChange={(e) => setEditPaymentMethod(e.target.value)}
                                            >
-                                               <option value="">Pilih wallet sumber</option>
+                                               <option value="">Select Source Wallet...</option>
                                                {selectableSavingSourceWallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                                            </select>
                                        ) : (
                                            <select
-                                               id={`card-saving-wallet-${item.id}`}
-                                               className={`${financeFieldClass} cursor-not-allowed text-muted opacity-75`}
+                                               className="w-full bg-background border border-border rounded-2xl px-2 py-2 text-xs text-muted opacity-75 cursor-not-allowed"
                                                value={selectedEditSavingGoalWalletId || ''}
                                                disabled
                                            >
-                                               <option value="">{selectedEditSavingGoal ? 'Belum ada wallet pada target' : 'Pilih target terlebih dahulu'}</option>
+                                               <option value="">{selectedEditSavingGoal ? 'No wallet set in Goals' : 'Select a goal first'}</option>
                                                {wallets.map(wallet => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                                            </select>
                                        )}
                                    </div>
                                    {selectedEditSavingGoalIsInvestment && (
                                        <div className="col-span-2">
-                                           <div className={financeLabelClass}>Wallet investasi tujuan</div>
-                                           <div className="flex min-h-11 w-full items-center gap-2 rounded-xl bg-background/70 px-3 py-2.5 text-sm text-muted ring-1 ring-inset ring-border/70">
+                                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">To Investment Wallet</label>
+                                           <div className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-xs text-muted flex items-center gap-2">
                                                <WalletIcon className="w-3 h-3" />
-                                               {getWalletName(selectedEditSavingGoalWalletId) || 'Belum ada wallet investasi terhubung'}
+                                               {getWalletName(selectedEditSavingGoalWalletId) || 'No linked investment wallet'}
                                            </div>
                                        </div>
                                    )}
                                    {editFinanceType === 'saving' && (
                                    <div className="col-span-2">
-                                       <label htmlFor={`card-saving-category-${item.id}`} className={financeLabelClass}>Kategori budget</label>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget Category</label>
                                        <select
-                                           id={`card-saving-category-${item.id}`}
-                                           className={financeFieldClass}
+                                           className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editBudgetCategory}
                                            onChange={(e) => setEditBudgetCategory(e.target.value)}
                                        >
@@ -1553,10 +1508,9 @@ const Card: React.FC<CardProps> = ({
                                </>
                            ) : !isLoanFinanceType(editFinanceType) && needsEditDefaultCategory ? (
                                <div>
-                                   <label htmlFor={`card-budget-category-${item.id}`} className={financeLabelClass}>{hasEditTransactionLineItems ? 'Kategori default' : 'Kategori budget'}</label>
+                                   <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{hasEditTransactionLineItems ? 'Kategori default' : 'Kategori budget'}</label>
                                    <select
-                                       id={`card-budget-category-${item.id}`}
-                                       className={financeFieldClass}
+                                       className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                        value={editBudgetCategory}
                                        onChange={(e) => setEditBudgetCategory(e.target.value)}
                                    >
@@ -1569,28 +1523,26 @@ const Card: React.FC<CardProps> = ({
                            {showCommodityFields && (
                                <>
                                    <div>
-                                       <label htmlFor={`card-commodity-${item.id}`} className={financeLabelClass}>Komoditas</label>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Commodity</label>
                                        <input
-                                           id={`card-commodity-${item.id}`}
                                            list={`commodity-options-${item.id}`}
-                                           className={financeFieldClass}
+                                           className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editCommodity}
                                            onChange={(e) => setEditCommodity(e.target.value)}
-                                           placeholder="Pilih atau ketik"
+                                           placeholder="Choose or type..."
                                        />
                                        <datalist id={`commodity-options-${item.id}`}>
                                            {sortedCommodityOptions.map(option => <option key={option.name} value={option.name} />)}
                                        </datalist>
                                    </div>
                                    <div>
-                                       <label htmlFor={`card-subcommodity-${item.id}`} className={financeLabelClass}>Subkomoditas</label>
+                                       <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Sub Commodity</label>
                                        <input
-                                           id={`card-subcommodity-${item.id}`}
                                            list={`subcommodity-options-${item.id}`}
-                                           className={financeFieldClass}
+                                           className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                                            value={editSubcommodity}
                                            onChange={(e) => setEditSubcommodity(e.target.value)}
-                                           placeholder={editCommodity ? 'Pilih terkait atau ketik' : 'Pilih komoditas terlebih dahulu'}
+                                           placeholder={editCommodity ? 'Related or custom...' : 'Choose commodity first'}
                                        />
                                        <datalist id={`subcommodity-options-${item.id}`}>
                                            {subcommodityOptions.map(option => <option key={option} value={option} />)}
@@ -1739,15 +1691,13 @@ const Card: React.FC<CardProps> = ({
 
                {/* Tags */}
                <div className="relative mb-3">
-                    <label htmlFor={`card-tags-${item.id}`} className="sr-only">Tag, pisahkan dengan koma</label>
                     <Tag className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                     <input
-                        id={`card-tags-${item.id}`}
                         type="text"
                         className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 placeholder-muted/50"
                         value={editTags}
                         onChange={(e) => setEditTags(e.target.value)}
-                        placeholder="Tag, pisahkan dengan koma"
+                        placeholder="Tags (comma separated)..."
                     />
                </div>
 
@@ -1755,26 +1705,22 @@ const Card: React.FC<CardProps> = ({
                <div className={actionRowClass} data-edit-actions={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
                    {onDelete && (
                     <button 
-                      type="button"
                       onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 
-                      className={`flex min-h-11 items-center gap-1.5 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 ${actionButtonComfort}`}
+                      className={`px-3 py-1.5 ${actionButtonComfort} bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-2xl text-xs font-medium flex items-center gap-1 transition-colors`}
                     >
-                       <Trash2 className="w-3.5 h-3.5" /> Hapus
+                       <Trash2 className="w-3.5 h-3.5" /> Delete
                     </button>
                    )}
                    
                    {!readonly && onUpdate && (
                        <button
-                           type="button"
                            onClick={(e) => { e.stopPropagation(); handleSave(); }}
-                           className={`flex min-h-11 items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 ${actionButtonComfort}`}
+                           className={`px-4 py-1.5 ${actionButtonComfort} bg-indigo-600 text-white hover:bg-indigo-500 rounded-2xl text-xs font-medium flex items-center gap-1 transition-colors shadow-sm`}
                        >
-                           <Save className="w-3.5 h-3.5" /> Simpan perubahan
+                           <Save className="w-3.5 h-3.5" /> Save Changes
                        </button>
                    )}
                </div>
-               </>
-               )}
           </div>
           </motion.div>
       )}

@@ -1,6 +1,6 @@
 import type { Variants } from 'motion/react';
 import { motionDistance, motionStagger } from './config';
-import { motionTransition } from './transitions';
+import { motionSpring, motionTransition } from './transitions';
 
 export const fadeVariants: Variants = {
   hidden: { opacity: 0 },
@@ -21,13 +21,13 @@ export const scaleVariants: Variants = {
 };
 
 export const popVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.94 },
+  hidden: { opacity: 0, scale: 0.82 },
   visible: {
     opacity: 1,
     scale: 1,
-    transition: motionTransition.fast,
+    transition: motionSpring.button,
   },
-  exit: { opacity: 0, scale: 0.96, transition: motionTransition.exit },
+  exit: { opacity: 0, scale: 0.9, transition: motionTransition.exit },
 };
 
 export const collapseVariants: Variants = {
@@ -64,20 +64,6 @@ export const backdropVariants: Variants = {
   },
 };
 
-export const reducedBackdropVariants: Variants = {
-  hidden: { opacity: 0, pointerEvents: 'none' },
-  visible: {
-    opacity: 1,
-    pointerEvents: 'auto',
-    transition: motionTransition.instant,
-  },
-  exit: {
-    opacity: 0,
-    pointerEvents: 'none',
-    transition: motionTransition.instant,
-  },
-};
-
 export const modalVariants: Variants = {
   hidden: { opacity: 0, scale: 0.975, y: motionDistance.component },
   visible: { opacity: 1, scale: 1, y: 0, transition: motionTransition.modal },
@@ -85,20 +71,20 @@ export const modalVariants: Variants = {
     opacity: 0,
     scale: 0.985,
     y: motionDistance.micro,
-    transition: motionTransition.panelExit,
+    transition: motionTransition.exit,
   },
 };
 
 export const formModalVariants: Variants = {
   hidden: { opacity: 0, scale: 0.985 },
   visible: { opacity: 1, scale: 1, transition: motionTransition.standard },
-  exit: { opacity: 0, scale: 0.99, transition: motionTransition.panelExit },
+  exit: { opacity: 0, scale: 0.99, transition: motionTransition.exit },
 };
 
 export const sheetVariants: Variants = {
   hidden: { opacity: 0, y: motionDistance.panel },
   visible: { opacity: 1, y: 0, transition: motionTransition.modal },
-  exit: { opacity: 0, y: motionDistance.panel, transition: motionTransition.panelExit },
+  exit: { opacity: 0, y: motionDistance.panel, transition: motionTransition.exit },
 };
 
 export const listItemVariants: Variants = {
@@ -119,10 +105,7 @@ export const highlightedListItemVariants: Variants = {
     backgroundColor: 'rgba(99, 102, 241, 0)',
     transition: {
       ...motionTransition.enter,
-      backgroundColor: {
-        duration: motionTransition.modal.duration,
-        ease: motionTransition.standard.ease,
-      },
+      backgroundColor: { duration: 0.9, ease: motionTransition.standard.ease },
     },
   },
   exit: { opacity: 0, y: -motionDistance.micro, transition: motionTransition.exit },
@@ -146,14 +129,11 @@ export const directionalLabelVariants: Variants = {
 };
 
 export const budgetThresholdVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.99 },
+  hidden: { opacity: 0, scale: 0.98 },
   visible: {
     opacity: [0, 0.75, 0],
-    scale: [0.99, 1.01, 1],
-    transition: {
-      duration: motionTransition.modal.duration,
-      ease: motionTransition.standard.ease,
-    },
+    scale: [0.98, 1.025, 1],
+    transition: { duration: 0.52, ease: motionTransition.standard.ease },
   },
 };
 
@@ -196,7 +176,7 @@ export const primaryPageVariants: Variants = {
   exit: (direction: number = 0) => ({
     opacity: 0,
     x: direction === 0 ? 0 : direction * -motionDistance.panel,
-    transition: motionTransition.panelExit,
+    transition: motionTransition.exit,
   }),
 };
 
@@ -216,8 +196,11 @@ export const errorNudgeVariants: Variants = {
   hidden: { opacity: 0, x: 0 },
   visible: {
     opacity: 1,
-    x: 0,
-    transition: motionTransition.fast,
+    x: [0, -3, 2, 0],
+    transition: {
+      opacity: motionTransition.fast,
+      x: { duration: 0.22, ease: motionTransition.standard.ease },
+    },
   },
   exit: { opacity: 0, transition: motionTransition.exit },
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { motionTransition } from './transitions';
+import { motionSpring } from './transitions';
 
 interface ActiveIndicatorProps {
   className: string;
@@ -15,8 +15,9 @@ const ActiveIndicator: React.FC<ActiveIndicatorProps> = ({
     aria-hidden="true"
     layoutId={layoutId}
     className={className}
-    transition={motionTransition.navigation}
+    transition={motionSpring.selection}
   />
 );
 
 export default ActiveIndicator;
+
