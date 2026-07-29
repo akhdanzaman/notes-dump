@@ -2,6 +2,8 @@ import { LibrarySubTab, MoneyView, PlanSubTab, Tab } from "../../types";
 
 export const RESPONSIVE_SHELL = {
   desktopBreakpoint: "lg",
+  tabletMinWidth: "48rem",
+  tabletMaxWidth: "63.9375rem",
   railWidth: "18rem",
 } as const;
 
@@ -60,6 +62,7 @@ export const responsiveShellComposerContentClass = {
 export const responsiveShellComposerClass = {
   wrap: [
     "fixed inset-x-0 bottom-0 z-40 w-full bg-transparent pointer-events-none",
+    "md:px-3",
     "lg:left-[var(--rail-width)] lg:right-0 lg:w-[calc(100vw-var(--rail-width))]",
     "lg:px-6 xl:px-8 2xl:px-10",
   ].join(" "),
@@ -71,14 +74,14 @@ export const responsiveShellClass = {
     railWidthCssVar,
     "min-h-screen w-full min-w-0 max-w-none overflow-x-hidden",
     "bg-transparent text-primary font-sans transition-colors duration-300 selection:bg-indigo-500/30",
-    "lg:bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.08),transparent_34rem),var(--background)]",
   ].join(" "),
 
   main: [
     "relative min-h-screen w-full min-w-0 max-w-none overflow-x-hidden",
-    "pb-48 [padding-top:env(safe-area-inset-top)] lg:[padding-top:0]",
-    "px-3 sm:px-4 md:px-5",
-    "lg:ml-[var(--rail-width)] lg:w-[calc(100vw-var(--rail-width))] lg:px-7 lg:pb-56",
+    "pb-[calc(12rem+env(safe-area-inset-bottom))] [scroll-padding-bottom:calc(12rem+env(safe-area-inset-bottom))]",
+    "[padding-top:env(safe-area-inset-top)] lg:[padding-top:0]",
+    "px-3 sm:px-5 md:px-8",
+    "lg:ml-72 lg:ml-[var(--rail-width)] lg:w-[calc(100vw-var(--rail-width))] lg:px-7 lg:pb-56 lg:[scroll-padding-bottom:14rem]",
     "xl:px-9 2xl:px-12",
   ].join(" "),
 
@@ -87,5 +90,5 @@ export const responsiveShellClass = {
   fixedBottom: responsiveShellComposerClass.wrap,
   fixedBottomContent: responsiveShellComposerClass.container,
 
-  bottomNavWrap: "pointer-events-auto lg:hidden",
+  bottomNavWrap: "pointer-events-auto shrink-0 lg:hidden",
 } as const;

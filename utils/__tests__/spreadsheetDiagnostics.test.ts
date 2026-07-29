@@ -61,7 +61,7 @@ test('data quality reports duplicate IDs, wallet/category gaps, transfer target 
   assert.match(reasons, /category 'missing-category' is not in Budget Rules/);
   assert.match(reasons, /Transfer is missing To_Wallet/);
   assert.match(reasons, /Deep-work parent points to missing child todo 'missing-child'/);
-  assert.match(reasons, /Expense is missing budgetCategory/);
+  assert.match(reasons, /Expense has an uncategorized transaction line/);
   assert.match(reasons, /no paymentMethod\/wallet/);
 });
 

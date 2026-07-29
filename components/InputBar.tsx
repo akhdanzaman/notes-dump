@@ -49,19 +49,19 @@ interface InputBarProps {
 }
 
 const SUGGESTIONS = [
-  { label: 'Expense', value: 'Expense:', icon: <TrendingDown className="w-3 h-3 text-red-400" /> },
-  { label: 'Income', value: 'Income:', icon: <TrendingUp className="w-3 h-3 text-emerald-400" /> },
-  { label: 'Saving', value: 'Saving:', icon: <PiggyBank className="w-3 h-3 text-indigo-400" /> },
-  { label: 'Focus', value: 'Focus:', icon: <Target className="w-3 h-3 text-blue-400" /> },
-  { label: 'Shopping', value: 'shopping:', icon: <ShoppingCart className="w-3 h-3 text-purple-400" /> },
-  { label: 'Notes', value: 'notes:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
-  { label: 'Journal', value: 'Journal:', icon: <BookText className="w-3 h-3 text-fuchsia-400" /> },
+  { label: 'Catat pengeluaran', value: 'Expense:', icon: <TrendingDown className="h-3.5 w-3.5 text-red-500" /> },
+  { label: 'Catat pemasukan', value: 'Income:', icon: <TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> },
+  { label: 'Tambah tabungan', value: 'Saving:', icon: <PiggyBank className="h-3.5 w-3.5 text-indigo-500" /> },
+  { label: 'Buat fokus', value: 'Focus:', icon: <Target className="h-3.5 w-3.5 text-blue-500" /> },
+  { label: 'Tambah belanja', value: 'shopping:', icon: <ShoppingCart className="h-3.5 w-3.5 text-purple-500" /> },
+  { label: 'Tulis catatan', value: 'notes:', icon: <StickyNote className="h-3.5 w-3.5 text-amber-500" /> },
+  { label: 'Tulis jurnal', value: 'Journal:', icon: <BookText className="h-3.5 w-3.5 text-fuchsia-500" /> },
 ];
 
 const RECEIPT_SUGGESTIONS = [
-  { label: 'Pilih wallet', value: 'wallet:', icon: <TrendingDown className="w-3 h-3 text-indigo-400" /> },
-  { label: 'Atur tanggal', value: 'tanggal:', icon: <ClipboardCheck className="w-3 h-3 text-emerald-400" /> },
-  { label: 'Tambah catatan', value: 'catatan:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
+  { label: 'Pilih wallet', value: 'wallet:', icon: <TrendingDown className="h-3.5 w-3.5 text-indigo-500" /> },
+  { label: 'Atur tanggal', value: 'tanggal:', icon: <ClipboardCheck className="h-3.5 w-3.5 text-emerald-500" /> },
+  { label: 'Tambah catatan', value: 'catatan:', icon: <StickyNote className="h-3.5 w-3.5 text-amber-500" /> },
 ];
 
 type ComposerSubmitState = 'idle' | 'submitting' | 'received' | 'error';
@@ -289,7 +289,7 @@ const InputBar: React.FC<InputBarProps> = ({
                           e.preventDefault();
                         }}
                         onClick={() => addTemplate(item.value)}
-                        className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border/80 bg-surface/92 px-3 py-1.5 text-[11px] font-semibold text-primary shadow-sm backdrop-blur-xl transition-colors hover:border-indigo-500/30 hover:bg-surface active:scale-95"
+                        className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full bg-surface/95 px-3.5 py-2 text-xs font-semibold text-primary shadow-sm ring-1 ring-inset ring-border/70 backdrop-blur-xl transition-colors hover:bg-surface hover:ring-indigo-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 active:scale-[0.98]"
                       >
                         {item.icon}
                         {item.label}
@@ -306,12 +306,13 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={onOpenReviewCenter}
-                    className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-indigo-500/25 bg-indigo-500/10 text-indigo-500 shadow-sm backdrop-blur-xl transition-colors hover:bg-indigo-500/15 active:scale-95"
-                    title="Open Review Center"
-                    aria-label="Open Review Center"
+                    className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 shadow-sm ring-1 ring-inset ring-indigo-500/25 backdrop-blur-xl transition-colors hover:bg-indigo-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 active:scale-[0.98]"
+                    title="Buka pusat tinjauan"
+                    aria-label={`Buka pusat tinjauan${reviewCenterCount ? `, ${reviewCenterCount} item` : ''}`}
+                    aria-busy={reviewCenterActive || undefined}
                   >
                     {reviewCenterActive && (
-                      <span className="absolute -inset-1 rounded-full border-2 border-transparent border-t-indigo-500 border-r-indigo-300 animate-spin" />
+                      <span className={`absolute -inset-1 rounded-full border-2 border-transparent border-r-indigo-300 border-t-indigo-500 ${reduceMotion ? '' : 'animate-spin'}`} />
                     )}
                     <ClipboardCheck className="w-5 h-5" />
                     <CountBadge
@@ -323,7 +324,9 @@ const InputBar: React.FC<InputBarProps> = ({
               ) : (saveStatus === 'saving' || fetchStatus === 'syncing') && (
                 <div className="shrink-0 z-20 pointer-events-none" title={saveStatus === 'saving' && saveProgress ? `${saveProgress.label}${saveProgress.detail ? ` — ${saveProgress.detail}` : ''}` : undefined}>
                   <div
-                    className={`min-w-10 h-10 rounded-full ${
+                    role="status"
+                    aria-live="polite"
+                    className={`min-h-11 min-w-11 rounded-full ${
                       saveStatus === 'saving'
                         ? 'bg-amber-500/20 border-amber-500/40'
                         : fetchStatus === 'syncing'
@@ -344,7 +347,7 @@ const InputBar: React.FC<InputBarProps> = ({
                           : fetchStatus === 'syncing'
                           ? 'text-blue-400'
                           : 'text-purple-400'
-                      } animate-spin`}
+                      } ${reduceMotion ? '' : 'animate-spin'}`}
                     />
                     {saveStatus === 'saving' && saveProgress && (
                       <span className="hidden sm:flex flex-col leading-none text-left max-w-[190px]">
@@ -363,10 +366,10 @@ const InputBar: React.FC<InputBarProps> = ({
           <div
             data-composer-surface="true"
             data-composer-state={buttonState}
-            className={`relative overflow-hidden rounded-[1.6rem] border bg-surface/92 backdrop-blur-2xl pointer-events-auto transition-[border-color,box-shadow,transform] duration-150 ${
+            className={`relative overflow-hidden rounded-[1.6rem] border bg-surface/94 backdrop-blur-2xl pointer-events-auto transition-[border-color,box-shadow,transform] duration-150 ${
               showSuggestions
-                ? 'scale-[1.003] border-indigo-500/45 shadow-[0_18px_58px_rgba(79,70,229,0.18)]'
-                : 'border-border/90 shadow-[0_16px_50px_rgba(0,0,0,0.14)]'
+                ? 'scale-[1.002] border-indigo-500/40 shadow-[0_16px_42px_rgba(79,70,229,0.14)]'
+                : 'border-border/80 shadow-[0_14px_38px_rgba(0,0,0,0.12)]'
             }`}
           >
             <AnimatePresence initial={false}>
@@ -394,7 +397,7 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onClick={removeImage}
                     disabled={isSubmitting}
-                    className="rounded-full p-2 text-muted hover:bg-black/5 hover:text-red-500 dark:hover:bg-white/10 disabled:opacity-50"
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-black/5 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-white/10 disabled:opacity-50"
                     title="Hapus gambar"
                     aria-label="Hapus gambar"
                   >
@@ -406,7 +409,8 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onClick={() => setImageMode('receipt')}
                     disabled={isSubmitting}
-                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors ${imageMode === 'receipt' ? 'bg-indigo-500 text-white' : 'text-muted hover:text-primary'}`}
+                    className={`min-h-11 rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${imageMode === 'receipt' ? 'bg-indigo-500 text-white' : 'text-muted hover:text-primary'}`}
+                    aria-pressed={imageMode === 'receipt'}
                   >
                     Scan nota
                   </button>
@@ -414,7 +418,8 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onClick={() => setImageMode('chat')}
                     disabled={isSubmitting}
-                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors ${imageMode === 'chat' ? 'bg-indigo-500 text-white' : 'text-muted hover:text-primary'}`}
+                    className={`min-h-11 rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${imageMode === 'chat' ? 'bg-indigo-500 text-white' : 'text-muted hover:text-primary'}`}
+                    aria-pressed={imageMode === 'chat'}
                   >
                     Tanya tentang gambar
                   </button>
@@ -427,11 +432,11 @@ const InputBar: React.FC<InputBarProps> = ({
               <button
                 type="button"
                 onClick={onOpenChat}
-                className={`m-2 mr-0 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                className={`m-1.5 mr-0 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${
                   isChatOpen ? 'bg-indigo-500/10 text-indigo-500' : 'text-muted hover:bg-black/[0.04] hover:text-indigo-500 dark:hover:bg-white/[0.06]'
                 }`}
-                title="Buka AI Chat"
-                aria-label="Buka AI Chat"
+                title="Buka copilot Arkaiv"
+                aria-label="Buka copilot Arkaiv"
               >
                 <MessageSquareText className="w-5 h-5" />
               </button>
@@ -448,7 +453,7 @@ const InputBar: React.FC<InputBarProps> = ({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => imageInputRef.current?.click()}
                 disabled={isSubmitting}
-                className={`my-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-50 ${image ? 'bg-indigo-500/10 text-indigo-500' : 'text-muted hover:bg-black/[0.04] hover:text-indigo-500 dark:hover:bg-white/[0.06]'}`}
+                className={`my-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 disabled:opacity-50 ${image ? 'bg-indigo-500/10 text-indigo-500' : 'text-muted hover:bg-black/[0.04] hover:text-indigo-500 dark:hover:bg-white/[0.06]'}`}
                 title="Tambahkan gambar nota atau invoice"
                 aria-label="Tambahkan gambar nota atau invoice"
               >
@@ -456,6 +461,7 @@ const InputBar: React.FC<InputBarProps> = ({
               </button>
 
               <textarea
+                id="global-composer-input"
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => {
@@ -464,7 +470,9 @@ const InputBar: React.FC<InputBarProps> = ({
                 }}
                 onKeyDown={handleKeyDown}
                 onFocus={handleFocus}
-                placeholder={image ? (imageMode === 'receipt' ? 'Tambahkan wallet, tanggal, atau catatan...' : 'Tanyakan sesuatu tentang gambar...') : (isChatOpen ? 'Tanyakan lanjutan...' : 'Tulis apa saja di sini...')}
+                placeholder={image ? (imageMode === 'receipt' ? 'Tambahkan wallet atau tanggal bila perlu' : 'Tanyakan apa pun tentang gambar ini') : (isChatOpen ? 'Berapa safe-to-spend sampai akhir bulan?' : 'Catat makan siang 45 ribu dari GoPay')}
+                aria-label="Tulis perintah atau pertanyaan untuk copilot Arkaiv"
+                enterKeyHint="send"
                 className="max-h-[120px] min-w-0 flex-1 resize-none bg-transparent px-3 py-[18px] text-[15px] font-medium leading-5 text-primary placeholder:text-muted/75 focus:outline-none no-scrollbar"
                 rows={1}
               />
@@ -473,7 +481,7 @@ const InputBar: React.FC<InputBarProps> = ({
                 type="button"
                 onClick={() => void handleSubmit()}
                 disabled={!isReady || isSubmitting}
-                className={`m-2 ml-1 flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl px-3 text-white shadow-sm transition-colors disabled:bg-muted/20 disabled:text-muted disabled:opacity-60 disabled:shadow-none ${
+                className={`m-1.5 ml-1 flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl px-3 text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:bg-muted/20 disabled:text-muted disabled:opacity-60 disabled:shadow-none ${
                   buttonState === 'received'
                     ? 'bg-emerald-600 shadow-emerald-500/20'
                     : buttonState === 'error'
@@ -501,7 +509,7 @@ const InputBar: React.FC<InputBarProps> = ({
                     className="flex items-center gap-1.5"
                   >
                     {buttonState === 'submitting' ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className={`h-5 w-5 ${reduceMotion ? '' : 'animate-spin'}`} />
                     ) : buttonState === 'received' ? (
                       <CheckCircle2 className="w-5 h-5" />
                     ) : buttonState === 'error' ? (
@@ -516,6 +524,15 @@ const InputBar: React.FC<InputBarProps> = ({
                 </AnimatePresence>
               </button>
             </div>
+          </div>
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {buttonState === 'submitting'
+              ? 'Input sedang diproses.'
+              : buttonState === 'received'
+                ? 'Input diterima.'
+                : buttonState === 'error'
+                  ? 'Input belum terkirim. Coba lagi.'
+                  : ''}
           </div>
         </div>
       </div>

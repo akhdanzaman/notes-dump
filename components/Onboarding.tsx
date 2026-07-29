@@ -27,13 +27,29 @@ interface OnboardingProps {
 }
 
 const STEPS = [
-  { id: 'welcome', title: 'Welcome' },
-  { id: 'theme', title: 'Appearance' },
-  { id: 'wallet', title: 'First Wallet' },
-  { id: 'budget', title: 'Monthly Budget' },
-  { id: 'sync', title: 'Data Sync' },
-  { id: 'test', title: 'Test AI' },
+  { id: 'welcome', title: 'Selamat datang' },
+  { id: 'theme', title: 'Tampilan' },
+  { id: 'wallet', title: 'Wallet pertama' },
+  { id: 'budget', title: 'Budget bulanan' },
+  { id: 'sync', title: 'Sinkronisasi data' },
+  { id: 'test', title: 'Coba AI' },
 ];
+
+const ITEM_TYPE_LABELS: Record<string, string> = {
+  TODO: 'Tugas',
+  skills: 'Keahlian',
+  SHOPPING: 'Belanja',
+  NOTE: 'Catatan',
+  EVENT: 'Agenda',
+  FINANCE: 'Keuangan',
+  JOURNAL: 'Jurnal',
+  SKILL_LOG: 'Latihan',
+};
+
+const ITEM_STATUS_LABELS: Record<string, string> = {
+  pending: 'Menunggu',
+  done: 'Selesai',
+};
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -92,7 +108,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
     } catch (error) {
       console.error(error);
       setTestResult([]);
-      setTestError(error instanceof Error ? error.message : 'Parsing preview failed');
+      setTestError(error instanceof Error ? error.message : 'Pratinjau belum berhasil diproses');
     } finally {
       setIsTesting(false);
     }
@@ -155,16 +171,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             <div className="mb-2 flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-500/10 ring-1 ring-indigo-500/15">
               <Sparkles className="h-9 w-9 text-indigo-500" />
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Welcome to Arkaiv</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Selamat datang di Arkaiv</h1>
             <p className="text-muted text-lg max-w-md">
-              Ngarsip Harian — your AI-powered second brain for tracking expenses, tasks, notes, shopping, habits, and calendar context. This setup covers the basics; detailed tips will appear only when you first open each tab or feature.
+              Ngarsip Harian — ruang kerja cerdas untuk mencatat pengeluaran, tugas, catatan, belanja, kebiasaan, dan agenda. Penyiapan singkat ini menyiapkan dasar; panduan detail hanya muncul saat Anda pertama kali membuka fitur.
             </p>
             <div className="grid grid-cols-2 gap-3 w-full max-w-md text-left">
               {[
-                ['Summary', 'Daily overview and review queue'],
-                ['Plan', 'Tasks, shopping, routines, savings goals'],
-                ['Library', 'Notes, skills, journal memory'],
-                ['Money', 'Wallet ledger, budget, transactions'],
+                ['Beranda', 'Ringkasan harian dan antrean pemeriksaan'],
+                ['Rencana', 'Tugas, belanja, rutinitas, dan target tabungan'],
+                ['Pustaka', 'Catatan, keahlian, dan jurnal'],
+                ['Keuangan', 'Wallet, budget, dan transaksi'],
               ].map(([title, body]) => (
                 <div key={title} className="rounded-2xl border border-border/75 bg-background/55 p-3.5">
                   <div className="text-sm font-bold text-primary">{title}</div>
@@ -183,12 +199,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             className="flex flex-col space-y-6 w-full max-w-md lg:max-w-2xl mx-auto"
           >
             <div className="text-center mb-4">
-              <h2 className="text-2xl font-bold text-primary">Choose your theme</h2>
-              <p className="text-muted">You can always change this later in settings.</p>
+              <h2 className="text-2xl font-bold text-primary">Pilih tampilan</h2>
+              <p className="text-muted">Pilihan ini dapat diubah kapan saja dari pengaturan.</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setTheme('light')}
+                aria-pressed={theme === 'light'}
                 className={`p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all ${
                   theme === 'light' 
                     ? 'border-indigo-500/40 bg-indigo-500/10 ring-4 ring-indigo-500/[0.06]' 
@@ -196,10 +213,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 }`}
               >
                 <Sun className={`w-8 h-8 ${theme === 'light' ? 'text-indigo-500' : 'text-muted'}`} />
-                <span className="font-medium text-primary">Light</span>
+                <span className="font-medium text-primary">Terang</span>
               </button>
               <button
                 onClick={() => setTheme('dark')}
+                aria-pressed={theme === 'dark'}
                 className={`p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all ${
                   theme === 'dark' 
                     ? 'border-indigo-500/40 bg-indigo-500/10 ring-4 ring-indigo-500/[0.06]' 
@@ -207,7 +225,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 }`}
               >
                 <Moon className={`w-8 h-8 ${theme === 'dark' ? 'text-indigo-500' : 'text-muted'}`} />
-                <span className="font-medium text-primary">Dark</span>
+                <span className="font-medium text-primary">Gelap</span>
               </button>
             </div>
           </motion.div>
@@ -224,26 +242,27 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <WalletIcon className="w-8 h-8 text-emerald-500" />
               </div>
-              <h2 className="text-2xl font-bold text-primary">Set up your first wallet</h2>
-              <p className="text-muted">Track your spending accurately by starting with your main account.</p>
+              <h2 className="text-2xl font-bold text-primary">Siapkan wallet pertama</h2>
+              <p className="text-muted">Mulai dari rekening utama agar pergerakan uang tercatat akurat.</p>
             </div>
             <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
               <div>
-                <label className="block text-sm font-medium text-muted mb-1">Wallet Name</label>
+                <label className="block text-sm font-medium text-muted mb-1">Nama wallet</label>
                 <input
                   type="text"
                   value={walletName}
                   onChange={(e) => setWalletName(e.target.value)}
-                  placeholder="e.g., Main Bank, Cash"
+                  placeholder="Contoh: Rekening utama, Tunai"
                   className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-muted mb-1">Current Balance</label>
+                <label className="block text-sm font-medium text-muted mb-1">Saldo saat ini</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted">Rp</span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     value={walletBalance}
                     onChange={(e) => setWalletBalance(e.target.value)}
                     placeholder="0"
@@ -266,24 +285,25 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <DollarSign className="w-8 h-8 text-blue-500" />
               </div>
-              <h2 className="text-2xl font-bold text-primary">Monthly Budget</h2>
-              <p className="text-muted">Set your monthly income to unlock budget tracking and insights.</p>
+              <h2 className="text-2xl font-bold text-primary">Budget bulanan</h2>
+              <p className="text-muted">Isi pendapatan bulanan untuk mengaktifkan pemantauan budget dan insight.</p>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-muted mb-1">Monthly Income</label>
+                <label className="block text-sm font-medium text-muted mb-1">Pendapatan bulanan</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted">Rp</span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     value={monthlyIncome}
                     onChange={(e) => setMonthlyIncome(e.target.value)}
-                    placeholder="e.g., 10000000"
+                    placeholder="Contoh: 10000000"
                     className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
                   />
                 </div>
                 <p className="text-xs text-muted mt-2">
-                  We'll automatically split this into 50% Needs, 30% Wants, and 20% Savings. You can adjust this later.
+                  Arkaiv membaginya menjadi 50% kebutuhan (Needs), 30% keinginan (Wants), dan 20% tabungan (Savings). Pembagian dapat disesuaikan nanti.
                 </p>
               </div>
             </div>
@@ -301,8 +321,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Cloud className="w-8 h-8 text-purple-500" />
               </div>
-              <h2 className="text-2xl font-bold text-primary">Spreadsheet-first database</h2>
-              <p className="text-muted">Arkaiv now uses Google Sheets as the source of truth.</p>
+              <h2 className="text-2xl font-bold text-primary">Database berbasis spreadsheet</h2>
+              <p className="text-muted">Arkaiv menggunakan Google Sheets sebagai sumber data utama.</p>
             </div>
             <div className="space-y-4">
               <div className="w-full p-4 rounded-xl border-2 border-indigo-500 bg-indigo-500/10 flex items-center gap-4 text-left">
@@ -310,8 +330,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                   <Cloud className="w-6 h-6 text-indigo-500" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-primary">Google Sheets DB</h3>
-                  <p className="text-sm text-muted">Connect from Control Center after onboarding. Google login is optional: you can share the sheet with the service account and paste the link.</p>
+                  <h3 className="font-medium text-primary">Database Google Sheets</h3>
+                  <p className="text-sm text-muted">Hubungkan dari Pusat Kontrol setelah penyiapan selesai. Login Google bersifat opsional: bagikan spreadsheet kepada akun layanan, lalu tempel tautannya.</p>
                 </div>
               </div>
             </div>
@@ -329,24 +349,29 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <div className="w-16 h-16 bg-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Bot className="w-8 h-8 text-pink-500" />
               </div>
-              <h2 className="text-2xl font-bold text-primary">Test the AI</h2>
-              <p className="text-muted">Type anything naturally. The AI will figure out if it's an expense, task, or note.</p>
+              <h2 className="text-2xl font-bold text-primary">Coba input cerdas</h2>
+              <p className="text-muted">Tulis dengan bahasa sehari-hari. AI akan mengenalinya sebagai pengeluaran, tugas, atau catatan.</p>
             </div>
             
             <div className="space-y-4">
+              <label htmlFor="onboarding-ai-input" className="block text-sm font-semibold text-primary">
+                Coba satu contoh
+              </label>
               <div className="relative">
                 <input
+                  id="onboarding-ai-input"
                   type="text"
                   value={testInput}
                   onChange={(e) => setTestInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleTestAI()}
-                  placeholder="e.g., Bought coffee for 35k"
+                  placeholder="Contoh: Catat kopi 35 ribu dari GoPay"
                   className="w-full bg-surface border border-border rounded-xl pl-4 pr-12 py-4 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
                 />
                 <button 
                   onClick={handleTestAI}
                   disabled={isTesting || !testInput.trim()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                  aria-label={isTesting ? 'Sedang memproses input' : 'Proses dengan AI'}
+                  className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl bg-accent text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   {isTesting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Play className="w-5 h-5" />}
                 </button>
@@ -360,16 +385,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="px-2 py-1 bg-indigo-500/20 text-indigo-500 text-xs font-bold rounded uppercase">
-                      {testResult.length} entr{testResult.length === 1 ? 'y' : 'ies'}
+                      {testResult.length} entri
                     </span>
-                    <span className="text-sm text-muted">Parsed successfully — this will be added as a real entry when you finish.</span>
+                    <span className="text-sm text-muted">Berhasil dikenali — entri akan ditambahkan setelah penyiapan selesai.</span>
                   </div>
                   <div className="space-y-2">
                     {testResult.map((item) => (
                       <div key={item.id} className="p-3 bg-surface rounded-lg border border-border/60">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded bg-black/5 dark:bg-white/10 text-[10px] font-bold text-muted uppercase">{item.type}</span>
-                          <span className="text-xs text-muted">{item.status}</span>
+                          <span className="px-2 py-0.5 rounded bg-black/5 dark:bg-white/10 text-[10px] font-bold text-muted">{ITEM_TYPE_LABELS[item.type] || item.type}</span>
+                          <span className="text-xs text-muted">{ITEM_STATUS_LABELS[item.status] || item.status}</span>
                         </div>
                         <div className="text-sm font-semibold text-primary">{item.content}</div>
                         <pre className="mt-2 text-[10px] text-muted overflow-x-auto">
@@ -387,7 +412,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                 </div>
               )}
 
-              <div className="pt-6 mt-6 border-t border-border flex items-center gap-3">
+              <label htmlFor="addSamples" className="mt-6 flex min-h-11 cursor-pointer items-center gap-3 border-t border-border pt-6">
                 <input 
                   type="checkbox" 
                   id="addSamples" 
@@ -395,10 +420,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                   onChange={(e) => setAddSamples(e.target.checked)}
                   className="w-5 h-5 rounded border-border text-indigo-500 focus:ring-indigo-500 bg-surface"
                 />
-                <label htmlFor="addSamples" className="text-sm text-primary cursor-pointer">
-                  Add sample data to help me explore the app
-                </label>
-              </div>
+                <span className="text-sm text-primary">
+                  Tambahkan data contoh untuk mengenal Arkaiv
+                </span>
+              </label>
             </div>
           </motion.div>
         );
@@ -414,20 +439,25 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
           <img src="/icon.svg" alt="Arkaiv" className="h-10 w-10 rounded-xl bg-zinc-950 ring-1 ring-white/10" />
           <div>
             <div className="text-sm font-extrabold tracking-tight text-primary">Arkaiv</div>
-            <div className="text-[11px] font-medium text-muted">Setup awal</div>
+            <div className="text-[11px] font-medium text-muted">Penyiapan awal</div>
           </div>
         </div>
         <button
           type="button"
           onClick={handleComplete}
-          className="rounded-xl px-3 py-2 text-xs font-semibold text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]"
+          className="min-h-11 rounded-xl px-3 py-2 text-xs font-semibold text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]"
         >
-          Lewati setup
+          Lewati penyiapan
         </button>
       </div>
 
       <div className="mx-auto mt-4 h-1 w-full max-w-7xl overflow-hidden rounded-full bg-border/70">
         <div
+          role="progressbar"
+          aria-label="Progres penyiapan"
+          aria-valuemin={1}
+          aria-valuemax={STEPS.length}
+          aria-valuenow={currentStep + 1}
           className="h-full rounded-full bg-indigo-500 transition-all duration-500 ease-out"
           style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
         />
@@ -435,7 +465,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-1 items-center justify-center py-6 lg:py-8">
       <div className="absolute left-0 top-1/2 hidden w-64 -translate-y-1/2 rounded-[28px] border border-border/80 bg-surface/75 p-3 shadow-sm backdrop-blur-xl lg:block">
-        <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Setup path</div>
+        <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Tahapan penyiapan</div>
         <div className="space-y-2">
           {STEPS.map((step, i) => (
             <div
@@ -447,7 +477,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               </span>
               <span>
                 <span className="block text-sm font-bold">{step.title}</span>
-                <span className={`block text-xs ${i === currentStep ? 'text-muted' : 'text-muted/80'}`}>{i < currentStep ? 'Done' : i === currentStep ? 'Now' : 'Next'}</span>
+                <span className={`block text-xs ${i === currentStep ? 'text-muted' : 'text-muted/80'}`}>{i < currentStep ? 'Selesai' : i === currentStep ? 'Sekarang' : 'Berikutnya'}</span>
               </span>
             </div>
           ))}
@@ -474,13 +504,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               : 'text-muted hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]'
           }`}
         >
-          Back
+          Kembali
         </button>
         
         <div className="flex gap-1.5">
           {STEPS.map((_, i) => (
             <div 
               key={i} 
+              aria-hidden="true"
               className={`w-2 h-2 rounded-full transition-all ${
                 i === currentStep ? 'bg-indigo-500 w-6' : 'bg-border'
               }`}
@@ -493,9 +524,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
           className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
         >
           {currentStep === STEPS.length - 1 ? (
-            <>Get Started <Check className="w-5 h-5" /></>
+            <>Mulai gunakan Arkaiv <Check className="w-5 h-5" /></>
           ) : (
-            <>Next <ArrowRight className="w-5 h-5" /></>
+            <>Lanjut <ArrowRight className="w-5 h-5" /></>
           )}
         </button>
         </div>

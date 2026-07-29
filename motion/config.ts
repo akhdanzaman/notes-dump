@@ -2,7 +2,7 @@ export const motionDuration = {
   instant: 0,
   fast: 0.14,
   normal: 0.22,
-  deliberate: 0.32,
+  deliberate: 0.26,
 } as const;
 
 export const motionEasing = {
@@ -24,4 +24,3 @@ export const motionStagger = {
   normal: 0.045,
   dashboard: 0.05,
 } as const;
-

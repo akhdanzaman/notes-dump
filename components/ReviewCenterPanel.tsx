@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, Eye, FileImage, RefreshCw, RotateCcw, Trash2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, FileImage, RefreshCw, RotateCcw, Trash2, X } from 'lucide-react';
 import PendingReviewList from './PendingReviewList';
 import ReceiptReviewCard from './ReceiptReviewCard';
 import {
@@ -42,6 +42,7 @@ interface ReviewCenterPanelProps {
   clearParsingTask?: (id: string) => void;
   undoParsingTask?: (id: string) => void;
   deleteParsingTaskEntries?: (id: string) => void;
+  hideMoney?: boolean;
 }
 
 const createsSavedEntry = (result: ParserResultV2) => (
@@ -67,9 +68,15 @@ const PARSER_STAGE_LABELS: Record<NonNullable<ParsingTask['stage']>, string> = {
   stage1: 'Membaca isi',
   stage2: 'Menyusun detail',
   legacy: 'Memproses input',
-  batch: 'Memproses beberapa entry',
+  batch: 'Memproses beberapa item',
   fast_extraction: 'Mengambil informasi utama',
   deep_parse: 'Memeriksa detail',
+};
+
+const CONFIDENCE_LABELS: Record<ParserResultV2['confidence'], string> = {
+  high: 'Keyakinan tinggi',
+  medium: 'Perlu dicek',
+  low: 'Keyakinan rendah',
 };
 
 const formatBatchSummary = (task: ParsingTask): string | undefined => {
@@ -77,7 +84,7 @@ const formatBatchSummary = (task: ParsingTask): string | undefined => {
   if (!batch) return undefined;
   const reviewText = batch.reviewItemCount ? ` · ${batch.reviewItemCount} perlu ditinjau` : '';
   const failedText = batch.failedItemCount ? ` · ${batch.failedItemCount} gagal` : '';
-  return `${batch.itemCount} entry diproses · ${batch.localItemCount} selesai cepat · ${batch.aiItemCount} diperiksa lebih lanjut${reviewText}${failedText}`;
+  return `${batch.itemCount} item diproses · ${batch.localItemCount} selesai cepat · ${batch.aiItemCount} diperiksa lebih lanjut${reviewText}${failedText}`;
 };
 
 const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }> = ({ result, index = 0 }) => {
@@ -89,7 +96,7 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
     'text-red-500 bg-red-500/10 border-red-500/20';
 
   return (
-    <div className="rounded-lg border border-border bg-background/70 p-2.5 space-y-2">
+    <div className="space-y-2 rounded-2xl bg-background/65 p-3 ring-1 ring-inset ring-border/60">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 font-bold uppercase tracking-wide">
           {result.batchItem ? `Item ${result.batchItem.index + 1}` : `${index + 1}.`} {parserActionDestination(result)}
@@ -101,19 +108,19 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
           {result.entityType}
         </span>
         <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${confidenceColor}`}>
-          {result.confidence}
+          {CONFIDENCE_LABELS[result.confidence]}
         </span>
       </div>
 
       {result.batchItem && (
         <div className="rounded-md bg-indigo-500/5 border border-indigo-500/15 px-2 py-1.5">
-          <div className="text-[9px] uppercase tracking-wide text-indigo-600 font-bold">Batch source</div>
+          <div className="text-[10px] font-semibold text-indigo-600">Sumber input</div>
           <div className="text-[11px] text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
         </div>
       )}
 
       <div className="rounded-md bg-emerald-500/5 border border-emerald-500/15 px-2 py-1.5">
-        <div className="text-[9px] uppercase tracking-wide text-emerald-600 font-bold">Result summary</div>
+        <div className="text-[10px] font-semibold text-emerald-600">Ringkasan hasil</div>
         <div className="text-[11px] text-primary font-medium leading-snug">{summary.title}</div>
       </div>
 
@@ -157,6 +164,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   clearParsingTask,
   undoParsingTask,
   deleteParsingTaskEntries,
+  hideMoney = false,
 }) => {
   const visibleEnrichmentTasks = enrichmentTasks.filter(task => task.status === 'running' || task.status === 'failed' || task.reviewCount || (task.appliedFields?.length || 0) > 0);
   const visibleParsingTasks = parsingTasks.filter(shouldShowParserTaskInReviewCenter);
@@ -167,32 +175,52 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
   const hasReceiptReviews = receiptReviews.length > 0;
 
   return (
-    <div className="overflow-y-auto px-4 py-4 bg-background">
+    <section className="overflow-y-auto bg-background px-4 py-4 sm:px-5" aria-label="Pusat tinjauan">
+      {hideMoney && (
+        <div
+          className="mb-5 flex items-start gap-3 rounded-2xl bg-indigo-500/10 p-3.5 text-indigo-800 ring-1 ring-inset ring-indigo-500/20 dark:text-indigo-200"
+          role="status"
+        >
+          <EyeOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <div>
+            <div className="text-xs font-semibold">Mode privasi aktif</div>
+            <p className="mt-0.5 text-xs leading-relaxed opacity-80">
+              Nominal, rincian nota, dan hasil parsing finansial disembunyikan. Tampilkan nominal untuk meninjau data lengkap.
+            </p>
+          </div>
+        </div>
+      )}
 
       {hasReceiptTasks && (
         <div className="mb-6 flex flex-col gap-2">
-          <span className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">Pemrosesan nota</span>
-          {receiptTasks.map((task) => (
-            <div key={task.id} className="rounded-xl border border-border bg-surface p-3 shadow-sm">
+          <h3 className="mb-1 text-sm font-semibold text-primary">Pemrosesan nota</h3>
+          {receiptTasks.map((task, index) => (
+            <article key={task.id} className="rounded-2xl bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
                     <FileImage className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-bold text-primary" title={task.imageName}>{task.imageName}</div>
-                    {task.context && <div className="mt-0.5 truncate text-[11px] text-muted" title={task.context}>{task.context}</div>}
-                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium">
+                    <div className="truncate text-sm font-bold text-primary" title={hideMoney ? undefined : task.imageName}>
+                      {hideMoney ? `Nota ${index + 1}` : task.imageName}
+                    </div>
+                    {task.context && (
+                      <div className="mt-0.5 truncate text-[11px] text-muted" title={hideMoney ? undefined : task.context}>
+                        {hideMoney ? 'Detail disembunyikan oleh mode privasi' : task.context}
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium" role="status" aria-live="polite">
                       {task.status === 'pending' && (
                         <span className="flex items-center gap-1.5 text-amber-500">
-                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" />
                           {RECEIPT_STAGE_LABELS[task.stage]}
                         </span>
                       )}
                       {task.status === 'success' && (
                         <span className="flex items-center gap-1.5 text-emerald-500">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          {task.outcome === 'review' ? 'Siap ditinjau' : 'Tersimpan di Transactions'}
+                          {task.outcome === 'review' ? 'Siap ditinjau' : 'Tersimpan di transaksi'}
                         </span>
                       )}
                       {task.status === 'failed' && (
@@ -202,8 +230,8 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                       )}
                     </div>
                     {task.error && (
-                      <div className="mt-2 rounded-lg border border-red-500/20 bg-red-500/5 p-2 text-xs leading-relaxed text-red-500">
-                        {task.error}
+                      <div className="mt-2 rounded-xl bg-red-500/10 p-2.5 text-xs leading-relaxed text-red-600 ring-1 ring-inset ring-red-500/20" role="alert">
+                        {hideMoney ? 'Nota belum dapat diproses. Tampilkan nominal untuk melihat detail kegagalan.' : task.error}
                       </div>
                     )}
                   </div>
@@ -213,7 +241,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onRetryReceiptTask(task.id)}
-                      className="rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20"
+                      className="min-h-11 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
                     >
                       Coba lagi
                     </button>
@@ -222,7 +250,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onViewReceiptTaskTransaction(task.transactionItemId!)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/10 px-2.5 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-500/20"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
                     >
                       <Eye className="h-3.5 w-3.5" /> Lihat
                     </button>
@@ -231,7 +259,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onClearReceiptTask(task.id)}
-                      className="rounded-lg p-1.5 text-muted hover:bg-red-500/10 hover:text-red-500"
+                      className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
                       aria-label="Tutup aktivitas nota"
                     >
                       <X className="h-4 w-4" />
@@ -239,14 +267,14 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                   )}
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
 
       {hasReceiptReviews && (
         <div className="mb-6 flex flex-col gap-3">
-          <span className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">Nota menunggu tinjauan</span>
+          <h3 className="mb-1 text-sm font-semibold text-primary">Nota menunggu tinjauan</h3>
           {receiptReviews.map((draft) => (
             <ReceiptReviewCard
               key={draft.id}
@@ -258,6 +286,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
               onApprove={(next) => onApproveReceiptReview?.(next)}
               onReject={(next) => onRejectReceiptReview?.(next)}
               onViewDuplicate={onViewDuplicateReceipt}
+              hideMoney={hideMoney}
             />
           ))}
         </div>
@@ -265,20 +294,22 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
 
       {hasParsingTasks && (
         <div className="mb-6 flex flex-col gap-2">
-          <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Aktivitas input</span>
+          <h3 className="mb-1 text-sm font-semibold text-primary">Aktivitas input</h3>
           {visibleParsingTasks.map(task => {
             const duplicateSummary = getParserTaskDuplicateSummary(task);
             const batchSummary = formatBatchSummary(task);
             const visibleResults = (task.results || []).filter(result => !getParserResultSummary(result).noop);
             return (
-            <div key={task.id} className="bg-surface border border-border rounded-xl p-3 shadow-sm space-y-3">
+            <article key={task.id} className="space-y-3 rounded-2xl bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col gap-1 overflow-hidden flex-1">
-                  <span className="text-sm font-medium text-primary truncate" title={task.text}>"{task.text}"</span>
-                  <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-primary truncate" title={hideMoney ? undefined : task.text}>
+                    {hideMoney ? 'Detail input disembunyikan' : `"${task.text}"`}
+                  </span>
+                  <div className="flex items-center gap-2" role="status" aria-live="polite">
                     {task.status === 'pending' && (
                       <span className="text-xs text-amber-500 flex items-center gap-1 font-medium">
-                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" />
                         {task.stage ? PARSER_STAGE_LABELS[task.stage] : 'Memproses input'}
                       </span>
                     )}
@@ -299,8 +330,9 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                 <div className="flex items-center shrink-0 gap-1.5">
                   {task.status === 'success' && !task.undoStatus && undoParsingTask && (
                     <button
+                      type="button"
                       onClick={() => undoParsingTask(task.id)}
-                      className="shrink-0 px-2.5 py-1.5 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 rounded-md text-xs font-bold transition-colors inline-flex items-center gap-1"
+                      className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 dark:text-amber-400"
                       title="Batalkan hasil parsing ini"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
@@ -309,27 +341,31 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                   )}
                   {task.status === 'success' && !task.undoStatus && deleteParsingTaskEntries && task.results?.some(createsSavedEntry) && (
                     <button
+                      type="button"
                       onClick={() => deleteParsingTaskEntries(task.id)}
-                      className="shrink-0 px-2.5 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500/20 rounded-md text-xs font-bold transition-colors inline-flex items-center gap-1"
-                      title="Hapus entry yang dibuat oleh parsing ini"
+                      className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+                      title="Hapus item yang dibuat dari input ini"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      Hapus entry
+                      Hapus item
                     </button>
                   )}
                   {task.status === 'failed' && retryParsing && (
                     <button
+                      type="button"
                       onClick={() => retryParsing(task.id)}
-                      className="shrink-0 px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md text-xs font-bold transition-colors"
+                      className="min-h-11 shrink-0 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
                     >
                       Coba lagi
                     </button>
                   )}
                   {task.status !== 'pending' && clearParsingTask && (
                     <button
+                      type="button"
                       onClick={() => clearParsingTask(task.id)}
-                      className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                      className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
                       title="Tutup"
+                      aria-label="Tutup aktivitas input"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -343,7 +379,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                 </div>
               )}
 
-              {task.status === 'success' && duplicateSummary && (
+              {task.status === 'success' && duplicateSummary && !hideMoney && (
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] text-amber-600">
                   {duplicateSummary}
                 </div>
@@ -351,37 +387,44 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
 
               {task.status === 'success' && visibleResults.length > 0 && (
                 <div className="space-y-2">
-                  {visibleResults.map((result, index) => (
-                    <ParsingResultDetails key={`${task.id}-${index}`} result={result} index={index} />
-                  ))}
+                  {hideMoney ? (
+                    <div className="flex items-center gap-2 rounded-2xl bg-background/65 p-3 text-xs text-muted ring-1 ring-inset ring-border/60">
+                      <EyeOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      Hasil parsing dan nilai finansial disembunyikan.
+                    </div>
+                  ) : (
+                    visibleResults.map((result, index) => (
+                      <ParsingResultDetails key={`${task.id}-${index}`} result={result} index={index} />
+                    ))
+                  )}
                 </div>
               )}
 
               {task.status === 'failed' && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-red-500 mb-1">Detail kegagalan</div>
+                <div className="rounded-xl bg-red-500/10 p-3 ring-1 ring-inset ring-red-500/20" role="alert">
+                  <div className="mb-1 text-xs font-semibold text-red-600">Detail kegagalan</div>
                   <p className="text-xs text-red-500 leading-relaxed whitespace-pre-wrap">
-                    {task.error || 'Unknown parser error'}
+                    {hideMoney ? 'Detail kegagalan disembunyikan oleh mode privasi.' : task.error || 'Detail error tidak tersedia.'}
                   </p>
                 </div>
               )}
-            </div>
+            </article>
           );})}
         </div>
       )}
 
       {hasEnrichmentTasks && (
         <div className="mb-6 flex flex-col gap-2">
-          <span className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Penyempurnaan data</span>
+          <h3 className="mb-1 text-sm font-semibold text-primary">Penyempurnaan data</h3>
           {visibleEnrichmentTasks.map(task => (
-            <div key={task.id} className="bg-surface border border-border rounded-xl p-3 shadow-sm space-y-2">
+            <article key={task.id} className="space-y-2 rounded-2xl bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-medium text-primary truncate" title={task.sourceText || task.itemId}>
-                  {task.sourceText || task.itemId}
+                <span className="text-sm font-medium text-primary truncate" title={hideMoney ? undefined : task.sourceText || task.itemId}>
+                  {hideMoney ? 'Sumber data disembunyikan' : task.sourceText || task.itemId}
                 </span>
                 {task.status === 'running' ? (
                   <span className="text-xs text-amber-500 flex items-center gap-1 font-medium">
-                    <RefreshCw className="w-3 h-3 animate-spin" /> Menyempurnakan...
+                    <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" /> Menyempurnakan…
                   </span>
                 ) : task.status === 'failed' ? (
                   <span className="text-xs text-red-500 flex items-center gap-1 font-medium">
@@ -397,15 +440,29 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                 <p className="text-[11px] text-muted">Diterapkan: {task.appliedFields.join(', ')}</p>
               )}
               {!!task.reviewCount && (
-                <p className="text-[11px] text-amber-600">{task.reviewCount} saran ambigu dipindahkan ke Review Center.</p>
+                <p className="text-[11px] text-amber-600">{task.reviewCount} saran yang perlu dicek dipindahkan ke pusat tinjauan.</p>
               )}
-              {task.error && <p className="text-[11px] text-red-500">{task.error}</p>}
-            </div>
+              {task.error && (
+                <p className="text-[11px] text-red-500" role="alert">
+                  {hideMoney ? 'Detail kegagalan disembunyikan oleh mode privasi.' : task.error}
+                </p>
+              )}
+            </article>
           ))}
         </div>
       )}
 
-      {hasPendingReviews ? (
+      {hasPendingReviews && hideMoney ? (
+        <div className="flex items-start gap-3 rounded-[24px] bg-surface p-5 text-muted ring-1 ring-inset ring-border/60">
+          <EyeOff className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true" />
+          <div>
+            <p className="text-sm font-semibold text-primary">Tinjauan input disembunyikan</p>
+            <p className="mt-1 text-xs leading-relaxed">
+              {pendingReviews.length} input tetap aman dalam antrean. Tampilkan nominal untuk memeriksa atau menyetujuinya.
+            </p>
+          </div>
+        </div>
+      ) : hasPendingReviews ? (
         <PendingReviewList
           reviews={pendingReviews}
           onApprove={(id, res) => onApproveReview?.(id, res)}
@@ -413,16 +470,16 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
         />
       ) : (
         !hasReceiptReviews && !hasReceiptTasks && !hasParsingTasks && !hasEnrichmentTasks && (
-          <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
-            <div className="w-12 h-12 rounded-full border border-current flex items-center justify-center mb-3">
+          <div className="flex flex-col items-center justify-center rounded-[24px] bg-surface/60 py-12 text-center text-muted ring-1 ring-inset ring-border/50">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <p className="text-sm font-bold">Semua sudah beres</p>
-            <p className="text-xs mt-1">Tidak ada entry yang menunggu proses atau tinjauan.</p>
+            <p className="text-sm font-semibold text-primary">Semua sudah beres</p>
+            <p className="mt-1 text-xs">Tidak ada item yang menunggu proses atau tinjauan.</p>
           </div>
         )
       )}
-    </div>
+    </section>
   );
 };
 

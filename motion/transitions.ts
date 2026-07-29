@@ -36,20 +36,28 @@ export const motionTransition = {
     duration: motionDuration.fast,
     ease: motionEasing.standard,
   },
+  navigation: {
+    duration: 0.16,
+    ease: motionEasing.standard,
+  },
   standard: {
     duration: motionDuration.normal,
     ease: motionEasing.standard,
   },
   enter: {
-    duration: 0.28,
+    duration: 0.22,
     ease: motionEasing.enter,
   },
   exit: {
     duration: 0.17,
     ease: motionEasing.exit,
   },
+  panelExit: {
+    duration: 0.2,
+    ease: motionEasing.exit,
+  },
   modal: {
-    duration: 0.26,
+    duration: 0.24,
     ease: motionEasing.emphasize,
   },
   page: {
@@ -57,4 +65,3 @@ export const motionTransition = {
     ease: motionEasing.emphasize,
   },
 } as const satisfies Record<string, Transition>;
-
