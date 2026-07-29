@@ -1,10 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { BrainDumpItem, ItemType, AppSettings, Tab } from '../../types';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Calendar as CalendarIcon, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { contentSurface, responsiveModal } from '../layout/contentSurface';
 import { getShoppingDueDate } from '../../utils/shoppingDateUtils';
+import PresencePanel from '../../motion/PresencePanel';
+import ActiveIndicator from '../../motion/ActiveIndicator';
+import {
+    highlightedListItemVariants,
+    staggerContainerVariants,
+} from '../../motion/variants';
 
 interface CalendarViewProps {
     items: BrainDumpItem[];
@@ -44,19 +50,31 @@ const getItemTypeLabel = (type: ItemType) => {
 
 const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, handleDelete, appSettings, setActiveTab }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [monthDirection, setMonthDirection] = useState(0);
+    const [selectedDateKey, setSelectedDateKey] = useState(() => getDateKey(new Date()));
     const [selectedItem, setSelectedItem] = useState<BrainDumpItem | null>(null);
     const swipeHandlers = useSwipeTabs('calendar', setActiveTab);
 
     const nextMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+        const nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+        setMonthDirection(1);
+        setSelectedDateKey(getDateKey(nextDate));
+        setCurrentDate(nextDate);
     };
 
     const prevMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+        const nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+        setMonthDirection(-1);
+        setSelectedDateKey(getDateKey(nextDate));
+        setCurrentDate(nextDate);
     };
 
     const goToToday = () => {
         const now = new Date();
+        const currentKey = currentDate.getFullYear() * 12 + currentDate.getMonth();
+        const nextKey = now.getFullYear() * 12 + now.getMonth();
+        setMonthDirection(Math.sign(nextKey - currentKey));
+        setSelectedDateKey(getDateKey(now));
         setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
     };
 
@@ -200,14 +218,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
     }, { date: null, count: 0 });
 
     const selectedItemDate = selectedItem?.meta.start || selectedItem?.meta.date || selectedItem?.meta.dateTime;
+    const selectedDay = calendarDays.find(day => getDateKey(day.date) === selectedDateKey);
+    const selectedAgendaItems = selectedDay?.items || [];
 
     return (
         <div className={contentSurface.pageShell}>
             <motion.div
-                layoutId="top-container"
                 data-swipe-tabs="calendar"
                 className={contentSurface.headerHero}
-                transition={{ type: 'tween', duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
                 onTouchEnd={swipeHandlers.onTouchEnd}
@@ -236,11 +254,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     <button onClick={prevMonth} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
                         <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <div className="min-w-[168px] rounded-xl border border-border/70 bg-background/55 px-4 py-2 text-center">
+                    <div className="min-w-[168px] overflow-hidden rounded-xl border border-border/70 bg-background/55 px-4 py-2 text-center">
                         <div className="text-[11px] uppercase tracking-[0.22em] text-muted">Month</div>
-                        <div className="text-sm font-semibold text-primary">
-                            {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                        </div>
+                        <AnimatePresence initial={false} mode="popLayout" custom={monthDirection}>
+                            <motion.div
+                                key={`${currentYear}-${currentMonth}`}
+                                custom={monthDirection}
+                                initial={{ opacity: 0, x: monthDirection * 8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: monthDirection * -8 }}
+                                className="text-sm font-semibold text-primary"
+                            >
+                                {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                            </motion.div>
+                        </AnimatePresence>
                     </div>
                     <button onClick={nextMonth} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
                         <ChevronRight className="h-5 w-5" />
@@ -279,11 +306,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                         ))}
                     </div>
 
-                    <div className="grid grid-cols-7 auto-rows-[minmax(132px,auto)] sm:auto-rows-[minmax(148px,auto)] lg:auto-rows-[minmax(168px,auto)]">
-                        {calendarDays.map((dayObj, idx) => {
+                    <LayoutGroup id="calendar-selected-date">
+                    <div className="relative overflow-hidden">
+                        <AnimatePresence initial={false} mode="popLayout" custom={monthDirection}>
+                            <motion.div
+                                key={`${currentYear}-${currentMonth}`}
+                                custom={monthDirection}
+                                initial={{ opacity: 0, x: monthDirection * 12 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: monthDirection * -12 }}
+                                className="grid grid-cols-7 auto-rows-[minmax(132px,auto)] sm:auto-rows-[minmax(148px,auto)] lg:auto-rows-[minmax(168px,auto)]"
+                            >
+                            {calendarDays.map((dayObj, idx) => {
                             const isToday = dayObj.date.getDate() === today.getDate() &&
                                 dayObj.date.getMonth() === today.getMonth() &&
                                 dayObj.date.getFullYear() === today.getFullYear();
+                            const isSelected = getDateKey(dayObj.date) === selectedDateKey;
 
                             const visibleItems = dayObj.items.slice(0, 4);
                             const hiddenCount = Math.max(0, dayObj.items.length - visibleItems.length);
@@ -298,15 +336,28 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                             ? 'bg-surface/70'
                                             : 'bg-background/30 text-muted/50',
                                         isToday ? 'bg-indigo-500/5' : '',
+                                        isSelected ? 'bg-indigo-500/[0.07] ring-2 ring-inset ring-indigo-500/35' : '',
                                     ].join(' ')}
                                 >
                                     <div className="flex items-center justify-between min-w-0">
-                                        <div className={[
-                                            'flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold leading-none',
-                                            isToday ? 'bg-primary text-background' : dayObj.isCurrentMonth ? 'text-primary' : 'text-muted/50',
-                                        ].join(' ')}>
-                                            {dayObj.date.getDate()}
-                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedDateKey(getDateKey(dayObj.date))}
+                                            aria-pressed={isSelected}
+                                            aria-label={`Select ${dayObj.date.toLocaleDateString()}`}
+                                            className={[
+                                                'relative flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[11px] font-bold leading-none transition-colors',
+                                                isSelected ? 'text-white' : isToday ? 'bg-primary text-background' : dayObj.isCurrentMonth ? 'text-primary hover:bg-indigo-500/10' : 'text-muted/50 hover:bg-indigo-500/10',
+                                            ].join(' ')}
+                                        >
+                                            {isSelected && (
+                                                <ActiveIndicator
+                                                    layoutId="calendar-date-highlight"
+                                                    className="absolute inset-0 rounded-full bg-indigo-600 shadow-sm"
+                                                />
+                                            )}
+                                            <span className="relative z-10">{dayObj.date.getDate()}</span>
+                                        </button>
                                         {hiddenCount > 0 && (
                                             <div className="text-[9px] font-semibold text-muted">
                                                 +{hiddenCount}
@@ -318,7 +369,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         {visibleItems.map(item => (
                                             <button
                                                 key={item.id}
-                                                onClick={() => setSelectedItem(item)}
+                                                onClick={() => {
+                                                    setSelectedDateKey(getDateKey(dayObj.date));
+                                                    setSelectedItem(item);
+                                                }}
                                                 className={[
                                                     'block w-full min-w-0 rounded-md px-1.5 py-1 lg:px-2 text-left text-[9px] lg:text-[10px] leading-[1.15] transition-colors',
                                                     item.status === 'done'
@@ -339,27 +393,86 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     </div>
                                 </div>
                             );
-                        })}
+                            })}
+                            </motion.div>
+                        </AnimatePresence>
                     </div>
+                    </LayoutGroup>
                 </div>
+
+                <section className="mt-4 rounded-[28px] border border-border bg-surface/80 p-4 shadow-sm sm:p-5" aria-label="Selected date agenda">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Selected agenda</div>
+                            <h2 className="mt-1 text-base font-semibold text-primary">
+                                {selectedDay?.date.toLocaleDateString(undefined, {
+                                    weekday: 'long',
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                }) || 'Choose a date'}
+                            </h2>
+                        </div>
+                        <span className="rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                            {selectedAgendaItems.length}
+                        </span>
+                    </div>
+
+                    <AnimatePresence initial={false} mode="wait">
+                        <motion.div
+                            key={selectedDateKey}
+                            variants={staggerContainerVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            className="space-y-2"
+                        >
+                            {selectedAgendaItems.length > 0 ? (
+                                selectedAgendaItems.map(item => (
+                                    <motion.button
+                                        key={item.id}
+                                        type="button"
+                                        variants={highlightedListItemVariants}
+                                        onClick={() => setSelectedItem(item)}
+                                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/55 p-3 text-left transition-colors hover:border-indigo-500/30"
+                                    >
+                                        <span className="min-w-0">
+                                            <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+                                                {getItemTypeLabel(item.type)}
+                                            </span>
+                                            <span className={`mt-1 block truncate text-sm font-semibold ${item.status === 'done' ? 'text-muted line-through' : 'text-primary'}`}>
+                                                {item.content}
+                                            </span>
+                                        </span>
+                                        {item.status === 'done' ? (
+                                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                                        ) : (
+                                            <Circle className="h-4 w-4 shrink-0 text-indigo-500" />
+                                        )}
+                                    </motion.button>
+                                ))
+                            ) : (
+                                <motion.div
+                                    variants={highlightedListItemVariants}
+                                    className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted"
+                                >
+                                    No scheduled items for this date.
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </section>
             </div>
 
-            <AnimatePresence>
+            <PresencePanel
+                isOpen={Boolean(selectedItem)}
+                onClose={() => setSelectedItem(null)}
+                overlayClassName={`${responsiveModal.overlay} z-50 flex items-center justify-center p-4`}
+                panelClassName={`${responsiveModal.panel} w-full max-w-md lg:max-w-xl overflow-hidden rounded-[28px] border bg-surface`}
+                ariaLabel="Calendar item detail"
+            >
                 {selectedItem && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className={`${responsiveModal.overlay} z-50 flex items-center justify-center p-4`}
-                        onClick={() => setSelectedItem(null)}
-                    >
-                        <motion.div
-                            initial={{ y: 12, opacity: 0, scale: 0.98 }}
-                            animate={{ y: 0, opacity: 1, scale: 1 }}
-                            exit={{ y: 12, opacity: 0, scale: 0.98 }}
-                            onClick={e => e.stopPropagation()}
-                            className={`${responsiveModal.panel} w-full max-w-md lg:max-w-xl overflow-hidden rounded-[28px] border bg-surface`}
-                        >
+                    <>
                             <div className="flex items-center justify-between border-b border-border px-4 py-4">
                                 <div>
                                     <div className="text-[11px] uppercase tracking-[0.22em] text-muted">Item Detail</div>
@@ -428,10 +541,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     </button>
                                 </div>
                             </div>
-                        </motion.div>
-                    </motion.div>
+                    </>
                 )}
-            </AnimatePresence>
+            </PresencePanel>
         </div>
     );
 };

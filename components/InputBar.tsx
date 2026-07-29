@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState, ReactNode } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   SendHorizonal,
   TrendingDown,
@@ -13,8 +14,20 @@ import {
   ClipboardCheck,
   ImagePlus,
   X,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { ImageAttachmentMode, SyncProgress, SyncStatus } from '../types';
+import {
+  errorNudgeVariants,
+  fadeVariants,
+  listItemVariants,
+  popVariants,
+  riseVariants,
+  scaleVariants,
+  staggerContainerVariants,
+} from '../motion/variants';
+import CountBadge from '../motion/CountBadge';
 
 interface InputBarProps {
   onSend: (text: string, image?: File, options?: { imageMode: ImageAttachmentMode }) => void | Promise<void>;
@@ -51,6 +64,8 @@ const RECEIPT_SUGGESTIONS = [
   { label: 'Tambah catatan', value: 'catatan:', icon: <StickyNote className="w-3 h-3 text-amber-400" /> },
 ];
 
+type ComposerSubmitState = 'idle' | 'submitting' | 'received' | 'error';
+
 const InputBar: React.FC<InputBarProps> = ({
   onSend,
   onFocus,
@@ -75,16 +90,24 @@ const InputBar: React.FC<InputBarProps> = ({
   const [imageMode, setImageMode] = useState<ImageAttachmentMode>('receipt');
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [imageError, setImageError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitState, setSubmitState] = useState<ComposerSubmitState>('idle');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const settleTimerRef = useRef<number | null>(null);
+  const reduceMotion = useReducedMotion();
+  const isSubmitting = submitState === 'submitting';
+  const isReady = !!input.trim() || !!image;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = '0px';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
     }
   }, [input]);
+
+  useEffect(() => () => {
+    if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!image) {
@@ -100,7 +123,8 @@ const InputBar: React.FC<InputBarProps> = ({
     if (e) e.preventDefault();
     if ((!input.trim() && !image) || isSubmitting) return;
 
-    setIsSubmitting(true);
+    if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+    setSubmitState('submitting');
     setImageError('');
     try {
       await onSend(input.trim(), image || undefined, image ? { imageMode } : undefined);
@@ -108,10 +132,18 @@ const InputBar: React.FC<InputBarProps> = ({
       setImage(null);
       if (imageInputRef.current) imageInputRef.current.value = '';
       textareaRef.current?.focus();
+      setSubmitState('received');
+      settleTimerRef.current = window.setTimeout(() => {
+        setSubmitState('idle');
+        settleTimerRef.current = null;
+      }, 900);
     } catch (submitError) {
       setImageError(submitError instanceof Error ? submitError.message : 'Gagal mengirim input.');
-    } finally {
-      setIsSubmitting(false);
+      setSubmitState('error');
+      settleTimerRef.current = window.setTimeout(() => {
+        setSubmitState('idle');
+        settleTimerRef.current = null;
+      }, 1800);
     }
   };
 
@@ -144,6 +176,7 @@ const InputBar: React.FC<InputBarProps> = ({
   };
 
   const handleImageChange = (file?: File) => {
+    setSubmitState('idle');
     setImageError('');
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -160,6 +193,7 @@ const InputBar: React.FC<InputBarProps> = ({
   };
 
   const removeImage = () => {
+    setSubmitState('idle');
     setImage(null);
     setImageMode('receipt');
     setImageError('');
@@ -174,18 +208,46 @@ const InputBar: React.FC<InputBarProps> = ({
     showReviewCenterButton ||
     (pendingCount !== undefined && pendingCount > 0);
   const visibleError = imageError || error;
+  const buttonState = isSubmitting
+    ? 'submitting'
+    : submitState === 'received'
+      ? 'received'
+      : submitState === 'error'
+        ? 'error'
+        : isReady
+          ? 'ready'
+          : 'idle';
 
   return (
     <div data-global-composer="true" className="z-[60] w-full px-3 pb-3 pt-2 pointer-events-none sm:px-5 lg:px-0 lg:pb-5">
       <div className="mx-auto w-full max-w-3xl pointer-events-none lg:max-w-4xl">
-        <div className="relative">
-          {visibleError && (
-            <div className="absolute bottom-full left-0 w-full mb-3 pointer-events-auto">
-              <div className="mx-4 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 text-xs font-medium animate-in slide-in-from-bottom-2">
-                ⚠️ {visibleError}
-              </div>
-            </div>
-          )}
+        <div
+          className="relative"
+          onBlurCapture={(event) => {
+            const nextTarget = event.relatedTarget;
+            if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+              handleBlur();
+            }
+          }}
+        >
+          <AnimatePresence initial={false}>
+            {visibleError && (
+              <motion.div
+                key={visibleError}
+                className="absolute bottom-full left-0 w-full mb-3 pointer-events-auto"
+                variants={reduceMotion ? fadeVariants : errorNudgeVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                role="alert"
+              >
+                <div className="mx-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-500">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {visibleError}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {topContent && (
             <div className="absolute bottom-full left-0 w-full mb-16 pointer-events-none">
@@ -193,13 +255,15 @@ const InputBar: React.FC<InputBarProps> = ({
             </div>
           )}
 
-          <div
-            className={`absolute bottom-full left-0 w-full mb-3 transition-all duration-300 ease-out origin-bottom ${
-              isPopupVisible
-                ? 'opacity-100 scale-100 translate-y-0'
-                : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
-            } pointer-events-none`}
-          >
+          <AnimatePresence initial={false}>
+            {isPopupVisible && (
+            <motion.div
+              className="pointer-events-none absolute bottom-full left-0 mb-3 w-full"
+              variants={reduceMotion ? fadeVariants : riseVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
             <div className="flex items-center justify-between gap-2 px-1 py-1 w-full pointer-events-none">
               <div className="flex items-center gap-2 flex-1 overflow-hidden pointer-events-none">
                 {startAction && (
@@ -208,23 +272,32 @@ const InputBar: React.FC<InputBarProps> = ({
                   </div>
                 )}
 
-                {showSuggestions && (
-                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1 pointer-events-auto">
+                <AnimatePresence initial={false}>
+                  {showSuggestions && (
+                  <motion.div
+                    className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1 pointer-events-auto"
+                    variants={staggerContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                  >
                     {(image && imageMode === 'receipt' ? RECEIPT_SUGGESTIONS : SUGGESTIONS).map((item) => (
-                      <button
+                      <motion.button
                         key={item.label}
+                        variants={listItemVariants}
                         onMouseDown={(e) => {
                           e.preventDefault();
-                          addTemplate(item.value);
                         }}
+                        onClick={() => addTemplate(item.value)}
                         className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border/80 bg-surface/92 px-3 py-1.5 text-[11px] font-semibold text-primary shadow-sm backdrop-blur-xl transition-colors hover:border-indigo-500/30 hover:bg-surface active:scale-95"
                       >
                         {item.icon}
                         {item.label}
-                      </button>
+                      </motion.button>
                     ))}
-                  </div>
-                )}
+                  </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {showReviewCenterButton ? (
@@ -241,11 +314,10 @@ const InputBar: React.FC<InputBarProps> = ({
                       <span className="absolute -inset-1 rounded-full border-2 border-transparent border-t-indigo-500 border-r-indigo-300 animate-spin" />
                     )}
                     <ClipboardCheck className="w-5 h-5" />
-                    {reviewCenterCount !== undefined && reviewCenterCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center border border-surface">
-                        {reviewCenterCount > 9 ? '9+' : reviewCenterCount}
-                      </span>
-                    )}
+                    <CountBadge
+                      count={reviewCenterCount || 0}
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center border border-surface"
+                    />
                   </button>
                 </div>
               ) : (saveStatus === 'saving' || fetchStatus === 'syncing') && (
@@ -263,7 +335,7 @@ const InputBar: React.FC<InputBarProps> = ({
                         : fetchStatus === 'syncing'
                         ? 'shadow-blue-500/20'
                         : 'shadow-purple-500/20'
-                    } animate-pulse`}
+                    }`}
                   >
                     <Loader2
                       className={`w-5 h-5 ${
@@ -284,11 +356,28 @@ const InputBar: React.FC<InputBarProps> = ({
                 </div>
               )}
             </div>
-          </div>
+            </motion.div>
+            )}
+          </AnimatePresence>
 
-          <div data-composer-surface="true" className="relative overflow-hidden rounded-[1.6rem] border border-border/90 bg-surface/92 shadow-[0_16px_50px_rgba(0,0,0,0.14)] backdrop-blur-2xl pointer-events-auto">
-            {image && (
-              <div className="space-y-2 px-4 pt-3">
+          <div
+            data-composer-surface="true"
+            data-composer-state={buttonState}
+            className={`relative overflow-hidden rounded-[1.6rem] border bg-surface/92 backdrop-blur-2xl pointer-events-auto transition-[border-color,box-shadow,transform] duration-150 ${
+              showSuggestions
+                ? 'scale-[1.003] border-indigo-500/45 shadow-[0_18px_58px_rgba(79,70,229,0.18)]'
+                : 'border-border/90 shadow-[0_16px_50px_rgba(0,0,0,0.14)]'
+            }`}
+          >
+            <AnimatePresence initial={false}>
+              {image && (
+              <motion.div
+                className="space-y-2 px-4 pt-3"
+                variants={reduceMotion ? fadeVariants : scaleVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
                 <div className="flex items-center gap-3">
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-background/60">
                     {imagePreviewUrl && <img src={imagePreviewUrl} alt="Lampiran gambar" className="h-full w-full object-cover" />}
@@ -330,8 +419,9 @@ const InputBar: React.FC<InputBarProps> = ({
                     Tanya tentang gambar
                   </button>
                 </div>
-              </div>
-            )}
+              </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="flex min-h-[56px] items-end">
               <button
@@ -368,10 +458,12 @@ const InputBar: React.FC<InputBarProps> = ({
               <textarea
                 ref={textareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  if (submitState !== 'submitting') setSubmitState('idle');
+                }}
                 onKeyDown={handleKeyDown}
                 onFocus={handleFocus}
-                onBlur={handleBlur}
                 placeholder={image ? (imageMode === 'receipt' ? 'Tambahkan wallet, tanggal, atau catatan...' : 'Tanyakan sesuatu tentang gambar...') : (isChatOpen ? 'Tanyakan lanjutan...' : 'Tulis apa saja di sini...')}
                 className="max-h-[120px] min-w-0 flex-1 resize-none bg-transparent px-3 py-[18px] text-[15px] font-medium leading-5 text-primary placeholder:text-muted/75 focus:outline-none no-scrollbar"
                 rows={1}
@@ -380,16 +472,48 @@ const InputBar: React.FC<InputBarProps> = ({
               <button
                 type="button"
                 onClick={() => void handleSubmit()}
-                disabled={(!input.trim() && !image) || isSubmitting}
-                className="m-2 ml-1 flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-3 text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500 disabled:bg-muted/20 disabled:text-muted disabled:opacity-60 disabled:shadow-none"
+                disabled={!isReady || isSubmitting}
+                className={`m-2 ml-1 flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl px-3 text-white shadow-sm transition-colors disabled:bg-muted/20 disabled:text-muted disabled:opacity-60 disabled:shadow-none ${
+                  buttonState === 'received'
+                    ? 'bg-emerald-600 shadow-emerald-500/20'
+                    : buttonState === 'error'
+                      ? 'bg-red-500 shadow-red-500/20 hover:bg-red-400'
+                      : 'bg-indigo-600 shadow-indigo-500/20 hover:bg-indigo-500'
+                }`}
                 title={image ? (imageMode === 'receipt' ? 'Proses nota di latar belakang' : 'Tanyakan tentang gambar') : 'Kirim'}
+                aria-label={
+                  buttonState === 'submitting'
+                    ? 'Menerima input'
+                    : buttonState === 'received'
+                      ? 'Input diterima'
+                      : buttonState === 'error'
+                        ? 'Coba kirim lagi'
+                        : 'Kirim'
+                }
               >
-                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                  <span className="flex items-center gap-1.5">
-                    {image && <span className="hidden text-[10px] font-bold sm:inline">{imageMode === 'receipt' ? 'Proses' : 'Tanya'}</span>}
-                    <SendHorizonal className="w-5 h-5" />
-                  </span>
-                )}
+                <AnimatePresence initial={false} mode="wait">
+                  <motion.span
+                    key={buttonState}
+                    variants={popVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="flex items-center gap-1.5"
+                  >
+                    {buttonState === 'submitting' ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : buttonState === 'received' ? (
+                      <CheckCircle2 className="w-5 h-5" />
+                    ) : buttonState === 'error' ? (
+                      <AlertCircle className="w-5 h-5" />
+                    ) : (
+                      <>
+                        {image && <span className="hidden text-[10px] font-bold sm:inline">{imageMode === 'receipt' ? 'Proses' : 'Tanya'}</span>}
+                        <SendHorizonal className="w-5 h-5" />
+                      </>
+                    )}
+                  </motion.span>
+                </AnimatePresence>
               </button>
             </div>
           </div>

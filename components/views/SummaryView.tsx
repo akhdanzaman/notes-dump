@@ -5,7 +5,7 @@ import React, {
   useRef,
   useLayoutEffect,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
 import { BackHandler } from "../../utils/backHandler";
 import {
@@ -71,6 +71,17 @@ import {
 } from "../../utils/selectors";
 import { generateAIInsights, Insight } from "../../services/insightService";
 import { useSwipeTabs } from "../../hooks/useSwipeTabs";
+import AnimatedNumber from "../../motion/AnimatedNumber";
+import AnimatedProgress from "../../motion/AnimatedProgress";
+import {
+  dashboardContainerVariants,
+  collapseVariants,
+  highlightedListItemVariants,
+  popVariants,
+  riseVariants,
+  staggerContainerVariants,
+} from "../../motion/variants";
+import { motionSpring } from "../../motion/transitions";
 import { useSwipeDate } from "../../hooks/useSwipeDate";
 import Card from "../Card";
 import ReviewCenterPanel from "../ReviewCenterPanel";
@@ -78,6 +89,7 @@ import { contentSurface } from "../layout/contentSurface";
 import { buildSummaryFocusDisplay } from "../../utils/summaryFocusUtils";
 import { getDeepWorkChildren, supportsNestedTodoSubtasks } from "../../utils/deepWorkTodoModel";
 import { getShoppingDueDate } from "../../utils/shoppingDateUtils";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 interface SummaryViewProps {
   items: BrainDumpItem[];
@@ -216,6 +228,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   undoParsingTask,
   deleteParsingTaskEntries,
 }) => {
+  const isDesktopDashboard = useMediaQuery("(min-width: 1024px)");
   const swipeHandlers = useSwipeTabs("summary", setActiveTab);
 
   const changeThemeMonth = (offset: number) => {
@@ -964,12 +977,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           <AnimatePresence initial={false}>
             {isEditSubtasksExpanded && (
               <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
+                variants={collapseVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="grid overflow-hidden"
               >
-                <div className="rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+                <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
                     Edit subtasks
                   </div>
@@ -1109,12 +1123,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       <AnimatePresence initial={false}>
         {(isSubtasksExpanded || isEditSubtasksExpanded) && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
+            variants={collapseVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="grid overflow-hidden"
           >
-            <div className="rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+            <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 {hasDeepWorkDetails && (
                   <div className="flex items-center gap-2 text-purple-500">
@@ -1135,11 +1150,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
               {totalSteps > 0 && (
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-purple-500/10">
-                  <div
-                    className="h-full rounded-full bg-purple-500 transition-all"
-                    style={{
-                      width: `${Math.max(progressPercent, doneCount > 0 ? 4 : 0)}%`,
-                    }}
+                  <AnimatedProgress
+                    value={Math.max(progressPercent, doneCount > 0 ? 4 : 0)}
+                    className="rounded-full bg-purple-500"
+                    label={`${item.content} subtask progress`}
                   />
                 </div>
               )}
@@ -1296,10 +1310,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           caption: isInvestment
             ? "Invested value"
             : numbers.targetAmount > 0
-              ? `${fmt(numbers.savedAmount)} / ${fmt(numbers.targetAmount)}`
+              ? showBalance
+                ? `${fmt(numbers.savedAmount)} / ${fmt(numbers.targetAmount)}`
+                : "â€¢â€¢â€¢â€¢ / â€¢â€¢â€¢â€¢"
               : "Saving target",
           valueLabel: isInvestment
-            ? fmt(numbers.investedAmount)
+            ? showBalance
+              ? fmt(numbers.investedAmount)
+              : "â€¢â€¢â€¢â€¢"
             : `${Math.round(numbers.progress)}%`,
           showProgress: !isInvestment,
           kind: item.meta.shoppingCategory,
@@ -1357,7 +1375,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       if (a.showProgress !== b.showProgress) return a.showProgress ? -1 : 1;
       return b.progress - a.progress;
     });
-  }, [items, skills, todayDate.getTime()]);
+  }, [items, skills, showBalance, todayDate.getTime()]);
 
   const visibleGoalDashboardItems = useMemo(
     () =>
@@ -1492,8 +1510,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         )
       : Math.max(0, Math.round(100 - budgetPercent));
 
-  const monthlySpendingLabel = showBalance ? fmt(totalExpense) : "••••••";
-  const netWorthLabel = showBalance ? fmt(totalNetWorth) : "••••••••";
   const hasThemeContent = themeContent.trim().length > 0;
   const hasThemeImage = themeHeroImage.trim().length > 0;
   const missionTitle = hasThemeContent
@@ -1627,8 +1643,32 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   <div
                     className={`space-y-3 overflow-y-auto p-4 lg:p-5 ${dashboardScrollbarClass}`}
                   >
-                    {displayInsights.length > 0 ? (
-                      displayInsights.map((insight, idx) => {
+                    {isLoadingInsights && displayInsights.length === 0 ? (
+                      <div
+                        className="space-y-3"
+                        role="status"
+                        aria-live="polite"
+                        aria-label="Generating AI insights"
+                      >
+                        {[0, 1, 2].map((index) => (
+                          <div
+                            key={index}
+                            className="animate-pulse rounded-2xl border border-border bg-background/60 p-4"
+                          >
+                            <div className="h-3 w-1/3 rounded-full bg-muted/20" />
+                            <div className="mt-3 h-2.5 w-full rounded-full bg-muted/15" />
+                            <div className="mt-2 h-2.5 w-2/3 rounded-full bg-muted/15" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : displayInsights.length > 0 ? (
+                      <motion.div
+                        className="space-y-3"
+                        variants={staggerContainerVariants}
+                        initial="hidden"
+                        animate="visible"
+                      >
+                      {displayInsights.map((insight, idx) => {
                         let bgColor = "bg-black/5 dark:bg-white/10";
                         let iconColor = "text-zinc-500";
                         let Icon = AlertTriangle;
@@ -1654,8 +1694,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         }
 
                         return (
-                          <div
+                          <motion.div
                             key={`${insight.title}-${idx}`}
+                            variants={riseVariants}
                             className={`flex items-start gap-3 rounded-2xl p-4 ${bgColor}`}
                           >
                             <Icon
@@ -1669,9 +1710,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                                 {insight.message}
                               </p>
                             </div>
-                          </div>
+                          </motion.div>
                         );
-                      })
+                      })}
+                      </motion.div>
                     ) : (
                       <div className="py-8 text-center opacity-50">
                         <p className="text-sm">No new notifications</p>
@@ -1900,27 +1942,53 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <div
           className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
         >
-          {taskDashboardItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => handleToggleStatus(item.id)}
-              className="group flex w-full items-center gap-4 rounded-2xl py-1 text-left"
-            >
-              <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                  item.done
-                    ? "border-emerald-500 bg-emerald-500 text-white"
-                    : "border-blue-200 text-blue-600 group-hover:border-blue-500 dark:border-blue-400/30 dark:text-blue-300"
-                }`}
+          <AnimatePresence initial={false} mode="popLayout">
+            {taskDashboardItems.map((item) => (
+              <motion.button
+                key={item.id}
+                type="button"
+                layout="position"
+                layoutDependency={`${item.done}-${item.label}`}
+                variants={highlightedListItemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={{ layout: motionSpring.layout }}
+                onClick={() => handleToggleStatus(item.id)}
+                className="group flex w-full items-center gap-4 rounded-2xl py-1 text-left active:scale-[0.99]"
+                aria-label={`${item.done ? "Mark as pending" : "Mark as complete"}: ${item.label}`}
+                aria-pressed={item.done}
               >
-                {item.done && <Check className="h-5 w-5" />}
-              </div>
-              <div className="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900 dark:text-zinc-100">
-                {item.label}
-              </div>
-            </button>
-          ))}
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-[border-color,background-color,color,transform] duration-150 group-active:scale-90 ${
+                    item.done
+                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      : "border-blue-200 text-blue-600 group-hover:border-blue-500 dark:border-blue-400/30 dark:text-blue-300"
+                  }`}
+                >
+                  <AnimatePresence initial={false}>
+                    {item.done && (
+                      <motion.span
+                        variants={popVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                      >
+                        <Check className="h-5 w-5" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div className={`min-w-0 flex-1 truncate text-lg font-semibold transition-[color,opacity,text-decoration-color] duration-150 ${
+                  item.done
+                    ? "text-slate-500 line-through decoration-current dark:text-zinc-400"
+                    : "text-slate-900 decoration-transparent dark:text-zinc-100"
+                }`}>
+                  {item.label}
+                </div>
+              </motion.button>
+            ))}
+          </AnimatePresence>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 items-center">
@@ -2014,9 +2082,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   </div>
                   {goal.showProgress && (
                     <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-blue-600 dark:bg-blue-400"
-                        style={{ width: `${goal.progress}%` }}
+                      <AnimatedProgress
+                        value={goal.progress}
+                        className="rounded-full bg-blue-600 dark:bg-blue-400"
+                        label={`${goal.label} progress`}
                       />
                     </div>
                   )}
@@ -2091,15 +2160,25 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           <div
             className={`min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1 ${dashboardScrollbarClass}`}
           >
+            <AnimatePresence initial={false} mode="popLayout">
             {routineDashboardItems.map((routine) => (
-              <button
+              <motion.button
                 key={routine.id}
                 type="button"
+                layout="position"
+                layoutDependency={`${routine.done}-${routine.label}`}
+                variants={highlightedListItemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={{ layout: motionSpring.layout }}
                 onClick={() => handleToggleStatus(routine.sourceId)}
-                className="flex w-full items-center gap-2.5 text-left"
+                className="flex w-full items-center gap-2.5 rounded-xl text-left active:scale-[0.99]"
+                aria-label={`${routine.done ? "Mark routine as pending" : "Complete routine"}: ${routine.label}`}
+                aria-pressed={routine.done}
               >
                 <div
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-[border-color,background-color,color,transform] duration-150 active:scale-90 ${
                     routine.done
                       ? "border-emerald-500 bg-emerald-500 text-white"
                       : "border-blue-300 text-transparent dark:border-blue-300/40"
@@ -2107,11 +2186,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 >
                   <Check className="h-3 w-3" />
                 </div>
-                <span className="truncate text-sm font-medium text-slate-700 dark:text-zinc-200">
+                <span className={`truncate text-sm font-medium transition-[color,opacity,text-decoration-color] duration-150 ${
+                  routine.done
+                    ? "text-slate-500 line-through decoration-current dark:text-zinc-400"
+                    : "text-slate-700 decoration-transparent dark:text-zinc-200"
+                }`}>
                   {routine.label}
                 </span>
-              </button>
+              </motion.button>
             ))}
+            </AnimatePresence>
           </div>
         </>
       ) : (
@@ -2167,7 +2251,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             Net Worth
           </p>
           <div className="truncate text-xl font-black text-blue-700 dark:text-blue-300">
-            {netWorthLabel}
+            <AnimatedNumber
+              value={totalNetWorth}
+              formatter={fmt}
+              hidden={!showBalance}
+              hiddenLabel="••••••••"
+              ariaLabel="Net worth"
+            />
           </div>
         </div>
 
@@ -2176,7 +2266,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             Monthly Spending
           </p>
           <div className="truncate text-xl font-black text-blue-700 dark:text-blue-300">
-            {monthlySpendingLabel}
+            <AnimatedNumber
+              value={totalExpense}
+              formatter={fmt}
+              hidden={!showBalance}
+              hiddenLabel="••••••"
+              ariaLabel="Monthly spending"
+            />
           </div>
         </div>
 
@@ -2225,22 +2321,25 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       onTouchMove={swipeHandlers.onTouchMove}
       onTouchEnd={swipeHandlers.onTouchEnd}
       style={{ x: swipeHandlers.dragOffset }}
+      variants={dashboardContainerVariants}
+      initial="hidden"
+      animate="visible"
     >
       <div className={dashboardShellClass}>
         <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-5">
-          <div className="h-full xl:col-span-4">{renderHeroCard()}</div>
-          <div className="h-full xl:col-span-1">{renderDateCard()}</div>
+          <motion.div variants={riseVariants} className="h-full xl:col-span-4">{renderHeroCard()}</motion.div>
+          <motion.div variants={riseVariants} className="h-full xl:col-span-1">{renderDateCard()}</motion.div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {renderTasksCard()}
-          {renderGoalsCard()}
-          {renderRoutineCard()}
+          <motion.div variants={riseVariants}>{renderTasksCard()}</motion.div>
+          <motion.div variants={riseVariants}>{renderGoalsCard()}</motion.div>
+          <motion.div variants={riseVariants}>{renderRoutineCard()}</motion.div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-5">
-          <div className="xl:col-span-2">{renderMoneyCard()}</div>
-          <div className="xl:col-span-3">{renderWeeklyWinCard()}</div>
+          <motion.div variants={riseVariants} className="xl:col-span-2">{renderMoneyCard()}</motion.div>
+          <motion.div variants={riseVariants} className="xl:col-span-3">{renderWeeklyWinCard()}</motion.div>
         </div>
       </div>
     </motion.div>
@@ -2249,10 +2348,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const renderMobileDashboard = () => (
     <div className="w-full min-w-0 max-w-full overflow-x-hidden lg:hidden">
       <motion.div
-        layoutId="top-container"
         data-swipe-tabs="summary"
         className={`${contentSurface.headerHero} mb-6`}
-        transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
         onTouchStart={swipeHandlers.onTouchStart}
         onTouchMove={swipeHandlers.onTouchMove}
         onTouchEnd={swipeHandlers.onTouchEnd}
@@ -2321,8 +2418,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
   return (
     <div className={contentSurface.summaryPageShell}>
-      {renderDesktopDashboard()}
-      {renderMobileDashboard()}
+      {isDesktopDashboard ? renderDesktopDashboard() : renderMobileDashboard()}
       {renderDashboardOverlays()}
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Check, X, AlertCircle, Edit2, Sparkles, Save } from 'lucide-react';
 import { CanonicalReviewSuggestion, ParserResultV2, ParserEntityType } from '../types';
 import { getParserResultDetails, getParserResultSummary } from '../utils/parserResultSummary';

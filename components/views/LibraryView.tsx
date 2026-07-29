@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority, SkillSessionLogInput } from '../../types';
 import { getJournalDayGroups, getNoteItems, getSkillItems, getSkillLogActualRange, getSkillLogDurationMinutes, getSkillLogForSession, SkillScheduleSession, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+import ActiveIndicator from '../../motion/ActiveIndicator';
+import AnimatedProgress from '../../motion/AnimatedProgress';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
 import { contentSurface } from '../layout/contentSurface';
 import { formatFinanceTypeLabel } from '../../utils/financeTypeUtils';
+import { directionalLabelVariants } from '../../motion/variants';
+import PresencePanel from '../../motion/PresencePanel';
 
 interface LibraryViewProps {
     items: BrainDumpItem[];
@@ -91,10 +95,12 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const journalDayGroups = getJournalDayGroups(items, selectedTag, filterDate, filterDateTo, searchQuery, sortOrder);
     const { stats: skillStats } = getSkillItems(items, skills);
     const [journalDate, setJournalDate] = useState(new Date());
+    const [journalDirection, setJournalDirection] = useState(0);
 
     const changeJournalMonth = (offset: number) => {
         const next = new Date(journalDate);
         next.setMonth(next.getMonth() + offset);
+        setJournalDirection(Math.sign(offset));
         setJournalDate(next);
     };
 
@@ -122,13 +128,13 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     );
 
     const visibleGeneralItems = useLazyItems(generalItems, {
-        resetKey: `library-general-${selectedTag}-${filterDate}-${filterDateTo}-${searchQuery}-${sortOrder}-${generalItems.length}`,
+        resetKey: `library-general-${selectedTag}-${filterDate}-${filterDateTo}-${searchQuery}-${sortOrder}`,
     });
     const visibleSkillItems = useLazyItems(skillStats, {
-        resetKey: `library-skills-${skillStats.length}`,
+        resetKey: 'library-skills',
     });
     const visibleJournalGroups = useLazyItems(filteredJournalDayGroups, {
-        resetKey: `library-journal-${journalDate.getFullYear()}-${journalDate.getMonth()}-${selectedTag}-${filterDate}-${filterDateTo}-${searchQuery}-${sortOrder}-${filteredJournalDayGroups.length}`,
+        resetKey: `library-journal-${journalDate.getFullYear()}-${journalDate.getMonth()}-${selectedTag}-${filterDate}-${filterDateTo}-${searchQuery}-${sortOrder}`,
     });
 
     const [editingSkillSession, setEditingSkillSession] = useState<SkillSessionEditorState | null>(null);
@@ -554,8 +560,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         return (
                             <motion.div
                                 key={skill.id}
-                                layout={!isDragging}
-                                transition={{ type: "tween", duration: 0.3 }}
+                                layout={isDragging ? false : "position"}
+                                layoutDependency={`${skill.weeklyMinutes || 0}-${skill.weeklyTargetMinutes || 0}`}
                                 className="group bg-surface border border-border rounded-[30px] p-1 shadow-sm hover:border-indigo-500/40 transition-colors overflow-hidden"
                             >
                                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_auto] gap-0 sm:gap-4 items-stretch">
@@ -604,9 +610,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
                                         <div className="mt-4">
                                             <div className="w-full h-2.5 bg-background border border-border rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-indigo-500 transition-all duration-1000 ease-out"
-                                                    style={{ width: `${Math.min(100, progress)}%` }}
+                                                <AnimatedProgress
+                                                    value={Math.min(100, progress)}
+                                                    className="bg-indigo-500"
+                                                    label={`${skill.name} weekly progress`}
                                                 />
                                             </div>
                                             <div className="flex justify-between items-center mt-2 gap-3">
@@ -718,7 +725,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                             </div>
                                             {showProgress && (
                                                 <div className="mt-2 h-1.5 bg-surface rounded-full overflow-hidden border border-border">
-                                                    <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${progressWidth}%` }} />
+                                                    <AnimatedProgress
+                                                        value={progressWidth}
+                                                        className="bg-indigo-500"
+                                                        label={`${skill.name} session progress`}
+                                                    />
                                                 </div>
                                             )}
                                         </div>
@@ -750,10 +761,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         <div className={contentSurface.pageShell}>
             {/* Top Container */}
             <motion.div
-                layoutId="top-container"
                 data-swipe-tabs="library"
                 className={contentSurface.headerHero}
-                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
                 onTouchEnd={swipeHandlers.onTouchEnd}
@@ -765,17 +774,26 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div data-library-subtabs="true" className="mb-6 flex rounded-xl border border-border/70 bg-background/55 p-1">
-                        {libraryTabs.map(tab => (
-                            <button
-                                key={tab.key}
-                                onClick={() => setLibrarySubTab(tab.key)}
-                                className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${librarySubTab === tab.key ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
-                            >
-                                {tab.icon} {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                    <LayoutGroup id="library-subtabs">
+                        <div data-library-subtabs="true" className="mb-6 flex rounded-xl border border-border/70 bg-background/55 p-1" role="tablist" aria-label="Library sections">
+                            {libraryTabs.map(tab => {
+                                const isActive = librarySubTab === tab.key;
+                                return (
+                                    <button
+                                        key={tab.key}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={isActive}
+                                        onClick={() => setLibrarySubTab(tab.key)}
+                                        className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${isActive ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                                    >
+                                        {isActive && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
+                                        <span className="relative z-10 flex items-center gap-2">{tab.icon} {tab.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </LayoutGroup>
 
                     <AnimatePresence mode="wait">
                         <motion.div
@@ -844,14 +862,15 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 <button onClick={() => changeJournalMonth(-1)} className="rounded-xl p-2 text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]">
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
-                                <AnimatePresence mode="wait">
+                                <AnimatePresence mode="wait" custom={journalDirection} initial={false}>
                                     <motion.div
                                         key={journalDate.toISOString()}
                                         data-library-journal-month-label="true"
-                                        initial={{ opacity: 0, x: 10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -10 }}
-                                        transition={{ duration: 0.2 }}
+                                        custom={journalDirection}
+                                        variants={directionalLabelVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                        exit="exit"
                                         className="text-center"
                                     >
                                         <div className="text-xs font-bold opacity-60 uppercase tracking-wider">Journal Month</div>
@@ -879,7 +898,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 onTouchEnd={onTouchEnd}
             >
                 <motion.div
-                    className="flex will-change-transform"
+                    className={`flex ${isDragging ? 'will-change-transform' : ''}`}
                     style={{
                         transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
                         transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
@@ -887,8 +906,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 >
                 {/* VIEW: General Notes */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={false}
                     className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
                 >
                     {renderContent(generalItems, 'general')}
@@ -896,8 +914,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
                 {/* VIEW: Skills */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={false}
                     className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
                 >
                     {renderSkills()}
@@ -905,8 +922,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
                 {/* VIEW: Journal */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={false}
                     className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
                 >
                     {renderContent(journalItems, 'journal')}
@@ -914,23 +930,16 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 </motion.div>
             </motion.div>
 
-            <AnimatePresence>
+            <PresencePanel
+                isOpen={Boolean(editingSkillSession)}
+                onClose={closeSkillSessionEditor}
+                overlayClassName="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+                panelClassName="w-full max-w-md rounded-[28px] border border-border bg-surface p-5 shadow-2xl"
+                presentation="form"
+                ariaLabel="Edit skill session"
+            >
                 {editingSkillSession && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4"
-                        onMouseDown={closeSkillSessionEditor}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, y: 28, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 28, scale: 0.98 }}
-                            transition={{ type: 'tween', duration: 0.18 }}
-                            className="w-full max-w-md rounded-[28px] bg-surface border border-border p-5 shadow-2xl"
-                            onMouseDown={(event) => event.stopPropagation()}
-                        >
+                    <>
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                     <h3 className="text-lg font-bold text-primary truncate">{editingSkillSession.skill.name}</h3>
@@ -991,10 +1000,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     Save actual time
                                 </button>
                             </div>
-                        </motion.div>
-                    </motion.div>
+                    </>
                 )}
-            </AnimatePresence>
+            </PresencePanel>
         </div>
     );
 };

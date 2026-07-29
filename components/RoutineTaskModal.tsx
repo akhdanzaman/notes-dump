@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'motion/react';
 import { X, Calendar, Clock, Check } from 'lucide-react';
 import { Priority } from '../types';
-import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
+import PresencePanel from '../motion/PresencePanel';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 
 interface RoutineTaskModalProps {
     isOpen: boolean;
@@ -211,18 +212,16 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
         updateDateFromSchedule(interval, daysOfWeek, daysOfMonth, newMonths);
     };
 
-    if (!isOpen) return null;
-
     return (
-        <AnimatePresence>
-            <div className={responsiveModal.sheetOverlay}>
-                <motion.div
-                    initial={addItemModalMotion.initial}
-                    animate={addItemModalMotion.animate}
-                    exit={addItemModalMotion.exit}
-                    transition={addItemModalMotion.transition}
-                    className={addItemModal.panel}
-                >
+        <PresencePanel
+            isOpen={isOpen}
+            onClose={onClose}
+            overlayClassName={responsiveModal.sheetOverlay}
+            panelClassName={addItemModal.panel}
+            presentation="form"
+            closeOnBackdrop={false}
+            ariaLabel="Create Routine Task"
+        >
                     <div className={addItemModal.header}>
                         <h3 className={addItemModal.title}>
                             <Clock className={addItemModal.icon} />
@@ -368,9 +367,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                             Create Routine
                         </button>
                     </div>
-                </motion.div>
-            </div>
-        </AnimatePresence>
+        </PresencePanel>
     );
 };
 

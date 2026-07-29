@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Calendar } from 'lucide-react';
 import { Priority } from '../types';
-import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
+import PresencePanel from '../motion/PresencePanel';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 
 interface AddTaskModalProps {
     isOpen: boolean;
@@ -35,20 +35,21 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <AnimatePresence>
-            <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="add-task">
-                <motion.div
-                    initial={addItemModalMotion.initial}
-                    animate={addItemModalMotion.animate}
-                    exit={addItemModalMotion.exit}
-                    transition={addItemModalMotion.transition}
-                    className={addItemModal.panel}
-                    data-tablet-modal-panel="add-task"
-                    data-ndz-tablet-baseline="modal"
-                >
+        <PresencePanel
+            isOpen={isOpen}
+            onClose={onClose}
+            overlayClassName={responsiveModal.sheetOverlay}
+            panelClassName={addItemModal.panel}
+            presentation="form"
+            closeOnBackdrop={false}
+            ariaLabel="Add New Task"
+            overlayProps={{ 'data-tablet-modal-overlay': 'add-task' }}
+            panelProps={{
+                'data-tablet-modal-panel': 'add-task',
+                'data-ndz-tablet-baseline': 'modal',
+            }}
+        >
                     <div className={addItemModal.header}>
                         <h3 className={addItemModal.title}>
                             <Calendar className={addItemModal.icon} />
@@ -146,9 +147,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                             Add Task
                         </button>
                     </div>
-                </motion.div>
-            </div>
-        </AnimatePresence>
+        </PresencePanel>
     );
 };
 

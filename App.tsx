@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { v4 as uuidv4 } from "uuid";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   BrainDumpItem,
   BudgetConfig,
@@ -45,7 +45,6 @@ import PasswordDialog from "./components/PasswordDialog";
 
 import BottomNav from "./components/BottomNav";
 import FloatingSearch from "./components/FloatingSearch";
-import ControlCenter from "./components/ControlCenter";
 
 import SummaryView from "./components/views/SummaryView";
 import PlanView from "./components/views/PlanView";
@@ -57,7 +56,6 @@ import AddTaskModal from "./components/AddTaskModal";
 import AddShoppingModal from "./components/AddShoppingModal";
 import AddExpenseModal, { TransactionComposerMode } from "./components/AddExpenseModal";
 import AddNoteModal from "./components/AddNoteModal";
-import FloatingChatBox from "./components/FloatingChatBox";
 import ReviewCenterPanel from "./components/ReviewCenterPanel";
 import Onboarding from "./components/Onboarding";
 import FeatureTutorialPopup from "./components/FeatureTutorialPopup";
@@ -106,6 +104,26 @@ import {
   UiNoticeDetail,
   requestUserConfirmation,
 } from "./utils/uiFeedback";
+import {
+  errorNudgeVariants,
+  fadeVariants,
+  popVariants,
+  primaryPageVariants,
+  reducedPageVariants,
+  riseVariants,
+} from "./motion/variants";
+import PresencePanel from "./motion/PresencePanel";
+
+const LazyControlCenter = React.lazy(() => import("./components/ControlCenter"));
+const LazyFloatingChatBox = React.lazy(() => import("./components/FloatingChatBox"));
+
+const PRIMARY_TAB_ORDER: Tab[] = [
+  "summary",
+  "plan",
+  "library",
+  "money",
+  "calendar",
+];
 
 const getThemeMonthKey = (date: Date) => {
   const year = date.getFullYear();
@@ -328,6 +346,8 @@ const App: React.FC = () => {
 
   // --- UI State ---
   const [activeTab, setActiveTab] = useState<Tab>("summary");
+  const [navigationDirection, setNavigationDirection] = useState(0);
+  const reduceMotion = useReducedMotion();
   const [planSubTab, setPlanSubTab] = useState<PlanSubTab>("tasks");
   const [librarySubTab, setLibrarySubTab] = useState<
     "general" | "skills" | "journal"
@@ -356,6 +376,7 @@ const App: React.FC = () => {
     resolve: (confirmed: boolean) => void;
   } | null>(null);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
+  const [hasLoadedControlCenter, setHasLoadedControlCenter] = useState(false);
   const [showChangelogPopup, setShowChangelogPopup] = useState(false);
   const [seenFeatureTutorials, setSeenFeatureTutorials] = useState<
     FeatureTutorialKey[]
@@ -495,7 +516,17 @@ const App: React.FC = () => {
       openLockedSecurityPopup('lockTabTransaction', 'Money tab is locked on this device.');
       return;
     }
+    if (tab !== activeTab) {
+      const currentIndex = PRIMARY_TAB_ORDER.indexOf(activeTab);
+      const nextIndex = PRIMARY_TAB_ORDER.indexOf(tab);
+      setNavigationDirection(Math.sign(nextIndex - currentIndex));
+    }
     setActiveTab(tab);
+  };
+
+  const openControlCenter = () => {
+    setHasLoadedControlCenter(true);
+    setIsControlCenterOpen(true);
   };
 
   const handleSetShowBalance = (value: boolean) => {
@@ -520,10 +551,15 @@ const App: React.FC = () => {
 
   // Chat State
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [hasLoadedChat, setHasLoadedChat] = useState(false);
   const [newChatMessage, setNewChatMessage] = useState<{
     text: string;
     id: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (isChatOpen) setHasLoadedChat(true);
+  }, [isChatOpen]);
 
   // Review Center nudge above the input bar
   const [isReviewCenterOpen, setIsReviewCenterOpen] = useState(false);
@@ -924,6 +960,35 @@ const App: React.FC = () => {
       });
   }, [deleteId]);
   useEffect(() => {
+    if (globalConfirmation)
+      return BackHandler.register(() => {
+        globalConfirmation.resolve(false);
+        setGlobalConfirmation(null);
+        return true;
+      });
+  }, [globalConfirmation]);
+  useEffect(() => {
+    if (securityPasswordDialog)
+      return BackHandler.register(() => {
+        closeSecurityPasswordDialog(null);
+        return true;
+      });
+  }, [securityPasswordDialog]);
+  useEffect(() => {
+    if (lockedSecurityPopup)
+      return BackHandler.register(() => {
+        setLockedSecurityPopup(null);
+        return true;
+      });
+  }, [lockedSecurityPopup]);
+  useEffect(() => {
+    if (isReviewCenterOpen)
+      return BackHandler.register(() => {
+        closeReviewCenterFromInput();
+        return true;
+      });
+  }, [isReviewCenterOpen]);
+  useEffect(() => {
     if (themeEditMode)
       return BackHandler.register(() => {
         setThemeEditMode(false);
@@ -1014,6 +1079,12 @@ const App: React.FC = () => {
         return true;
       });
   }, [isSearchExpanded]);
+  useEffect(() => {
+    const supportsFloatingSearch =
+      (activeTab === "library" || activeTab === "money") &&
+      !(activeTab === "library" && librarySubTab === "journal");
+    if (!supportsFloatingSearch && isSearchExpanded) setIsSearchExpanded(false);
+  }, [activeTab, isSearchExpanded, librarySubTab]);
 
   useEffect(() => {
     if (activeTab === "money" && moneyView !== "transactions")
@@ -1025,7 +1096,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === "money" && securitySettings.lockTabTransaction) {
-      setActiveTab("summary");
+      handleSetActiveTab("summary");
       openLockedSecurityPopup('lockTabTransaction', 'Money tab is locked on this device.');
     }
   }, [activeTab, securitySettings.lockTabTransaction]);
@@ -1046,7 +1117,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (activeTab !== "summary")
       return BackHandler.register(() => {
-        setActiveTab("summary");
+        handleSetActiveTab("summary");
         return true;
       });
   }, [activeTab]);
@@ -1082,7 +1153,7 @@ const App: React.FC = () => {
     setSelectedTag('');
     setSearchQuery('');
     setSortOrder('newest');
-    setActiveTab('money');
+    handleSetActiveTab('money');
     setMoneyView('transactions');
     setIsReviewCenterOpen(false);
   };
@@ -1162,7 +1233,7 @@ const App: React.FC = () => {
   };
 
   const handleViewDuplicateReceipt = (item: BrainDumpItem) => {
-    setActiveTab('money');
+    handleSetActiveTab('money');
     setMoneyView('transactions');
     setSearchQuery(item.meta.merchant || item.content);
     setIsReviewCenterOpen(false);
@@ -1874,13 +1945,17 @@ const App: React.FC = () => {
         fetchStatus={fetchStatus}
         onSyncClick={() => saveAndSync(items)}
         onRefreshClick={() => loadData()}
-        onSettingsClick={() => setIsControlCenterOpen(true)}
+        onSettingsClick={openControlCenter}
         onOpenReviewCenter={openReviewCenterFromInput}
         error={error}
       />
 
       {/* Main Content */}
-      <main className={responsiveShellClass.main}>
+      <main
+        className={responsiveShellClass.main}
+        data-app-main="true"
+        tabIndex={-1}
+      >
         <div
           className={responsiveShellContentClass[activeShellContentVariant]}
           data-shell-variant={activeShellContentVariant}
@@ -1899,8 +1974,19 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div className="w-full">
-              {activeTab === "summary" && (
-                <SummaryView
+              <AnimatePresence initial={false} mode="wait" custom={navigationDirection}>
+                <motion.div
+                  key={activeTab}
+                  custom={navigationDirection}
+                  variants={reduceMotion ? reducedPageVariants : primaryPageVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="w-full"
+                  data-primary-view={activeTab}
+                >
+                  {activeTab === "summary" && (
+                    <SummaryView
                   items={items}
                   skills={skills}
                   wallets={wallets}
@@ -1958,11 +2044,11 @@ const App: React.FC = () => {
                   handleRetriggerDeepWorkTodo={handleRetriggerDeepWorkTodo}
                   handleAcceptDeepWorkTodo={handleAcceptDeepWorkTodo}
                   handleResetRoutine={handleResetRoutine}
-                />
-              )}
+                    />
+                  )}
 
-              {activeTab === "plan" && (
-                <PlanView
+                  {activeTab === "plan" && (
+                    <PlanView
                   items={items}
                   skills={skills}
                   planSubTab={planSubTab}
@@ -2007,11 +2093,11 @@ const App: React.FC = () => {
                   }}
                   handleOpenAddLoan={(loanAccountId) => openAddTransactionModal('loan', loanAccountId)}
                   setActiveTab={handleSetActiveTab}
-                />
-              )}
+                    />
+                  )}
 
-              {activeTab === "library" && (
-                <LibraryView
+                  {activeTab === "library" && (
+                    <LibraryView
                   items={items}
                   skills={skills}
                   librarySubTab={librarySubTab}
@@ -2040,11 +2126,11 @@ const App: React.FC = () => {
                       setAddNoteModalOpen(true);
                     }
                   }}
-                />
-              )}
+                    />
+                  )}
 
-              {activeTab === "money" && !securitySettings.lockTabTransaction && (
-                <MoneyViewComponent
+                  {activeTab === "money" && !securitySettings.lockTabTransaction && (
+                    <MoneyViewComponent
                   items={items}
                   wallets={wallets}
                   budgetConfig={budgetConfig}
@@ -2077,18 +2163,20 @@ const App: React.FC = () => {
                   onAddItem={(type) => {
                     if (type === ItemType.FINANCE) openAddTransactionModal('expense');
                   }}
-                />
-              )}
+                    />
+                  )}
 
-              {activeTab === "calendar" && (
-                <CalendarView
+                  {activeTab === "calendar" && (
+                    <CalendarView
                   items={items}
                   handleToggleStatus={handleToggleStatus}
                   handleDelete={requestDeleteItem}
                   appSettings={secureAppSettings}
                   setActiveTab={handleSetActiveTab}
-                />
-              )}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
           )}
         </div>
@@ -2106,7 +2194,20 @@ const App: React.FC = () => {
           }
           data-shell-composer-variant={activeShellContentVariant}
         >
-          <FloatingChatBox
+          {hasLoadedChat && (
+          <React.Suspense
+            fallback={
+              isChatOpen ? (
+                <div
+                  role="status"
+                  className="pointer-events-auto absolute bottom-full left-3 right-3 mb-3 rounded-[26px] border border-border/80 bg-surface/96 p-5 text-sm font-semibold text-muted shadow-2xl sm:left-1/2 sm:right-auto sm:w-full sm:max-w-3xl sm:-translate-x-1/2"
+                >
+                  Menyiapkan Asisten Arkaivâ€¦
+                </div>
+              ) : null
+            }
+          >
+          <LazyFloatingChatBox
             isOpen={isChatOpen}
             onClose={() => setIsChatOpen(false)}
             items={items}
@@ -2120,6 +2221,8 @@ const App: React.FC = () => {
             onResetChat={handleResetChat}
             chatModel={appSettings.chatModel}
           />
+          </React.Suspense>
+          )}
           <InputBar
             onSend={handleAppSend}
             onFocus={() => {
@@ -2135,6 +2238,7 @@ const App: React.FC = () => {
             reviewCenterActive={hasRunningProcess}
             reviewCenterCount={reviewCenterBadgeCount}
             onOpenReviewCenter={openReviewCenterFromInput}
+            error={error}
             startAction={
               activeTab === "library" || activeTab === "money" ? (
                 <FloatingSearch
@@ -2184,13 +2288,26 @@ const App: React.FC = () => {
             setPlanSubTab={setPlanSubTab}
             librarySubTab={librarySubTab}
             setLibrarySubTab={setLibrarySubTab}
-            onMenuClick={() => setIsControlCenterOpen(true)}
+            onMenuClick={openControlCenter}
           />
         </div>
       </div>
 
       {/* Modals */}
-      <ControlCenter
+      {hasLoadedControlCenter && (
+      <React.Suspense
+        fallback={
+          isControlCenterOpen ? (
+            <div
+              role="status"
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 text-sm font-semibold text-white backdrop-blur-sm"
+            >
+              Menyiapkan Control Centerâ€¦
+            </div>
+          ) : null
+        }
+      >
+      <LazyControlCenter
         isOpen={isControlCenterOpen}
         onClose={() => setIsControlCenterOpen(false)}
         saveStatus={saveStatus}
@@ -2236,6 +2353,8 @@ const App: React.FC = () => {
         onSecuritySettingsChange={setSecuritySettings}
         authorizeSecurityPassword={authorizeSecurityPassword}
       />
+      </React.Suspense>
+      )}
 
       <FeatureTutorialPopup
         tutorial={
@@ -2249,23 +2368,14 @@ const App: React.FC = () => {
 
       {typeof document !== "undefined" &&
         createPortal(
-          <AnimatePresence>
-            {isReviewCenterOpen && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={closeReviewCenterFromInput}
-                  className="fixed inset-0 bg-black/40 z-[94]"
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.96, x: "-50%", y: 20 }}
-                  animate={{ opacity: 1, scale: 1, x: "-50%", y: 0 }}
-                  exit={{ opacity: 0, scale: 0.96, x: "-50%", y: 20 }}
-                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                  className="fixed left-1/2 bottom-28 z-[95] w-[calc(100vw-2rem)] max-w-2xl max-h-[70vh] bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col lg:left-[calc(18rem+((100vw-18rem)/2))] lg:bottom-24 lg:max-w-3xl"
-                >
+          <PresencePanel
+            isOpen={isReviewCenterOpen}
+            onClose={closeReviewCenterFromInput}
+            overlayClassName="fixed inset-0 z-[94] flex items-end justify-center bg-black/40 px-4 pb-28 lg:pl-72 lg:pb-24"
+            panelClassName="flex max-h-[70vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl lg:max-w-3xl"
+            presentation="sheet"
+            ariaLabel="Review Center"
+          >
                   <div className="flex items-center justify-between p-4 border-b border-border bg-surface shrink-0">
                     <h3 className="font-bold text-lg flex items-center gap-2">
                       <ClipboardCheck className="w-5 h-5 text-indigo-500" />
@@ -2316,27 +2426,18 @@ const App: React.FC = () => {
                       deleteSuccessfulParsingTaskEntries
                     }
                   />
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>,
+          </PresencePanel>,
           document.body,
         )}
 
-      <AnimatePresence>
-        {showChangelogPopup && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 20 }}
-              className="bg-surface border border-border rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
-            >
+      <PresencePanel
+        isOpen={showChangelogPopup}
+        onClose={handleCloseChangelogPopup}
+        overlayClassName="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+        panelClassName="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+        closeOnBackdrop={false}
+        ariaLabel="Perubahan terbaru Arkaiv"
+      >
               <div className="p-5 border-b border-border flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-indigo-500/10 text-indigo-500 rounded-2xl">
@@ -2376,14 +2477,17 @@ const App: React.FC = () => {
                   Got it
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </PresencePanel>
 
-      {themeEditMode && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-surface border border-border rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
+      <PresencePanel
+        isOpen={themeEditMode}
+        onClose={closeThemeEditor}
+        overlayClassName="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        panelClassName="w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+        presentation="form"
+        closeOnBackdrop={false}
+        ariaLabel="Edit tema bulanan"
+      >
             <div className="flex items-start justify-between gap-4 border-b border-border p-6">
               <div>
                 <h3 className="text-lg font-bold text-primary">Add Theme</h3>
@@ -2469,18 +2573,17 @@ const App: React.FC = () => {
                 Save Theme
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </PresencePanel>
 
       {/* Exit Warning Toast */}
       <AnimatePresence>
         {showExitToast && (
           <motion.div
-            initial={{ opacity: 0, y: 50, x: "-50%" }}
-            animate={{ opacity: 1, y: 0, x: "-50%" }}
-            exit={{ opacity: 0, y: 50, x: "-50%" }}
-            className="fixed bottom-24 left-1/2 z-[100] bg-zinc-800 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium whitespace-nowrap"
+            variants={reduceMotion ? fadeVariants : riseVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed bottom-24 left-4 right-4 z-[100] mx-auto w-fit whitespace-nowrap rounded-full bg-zinc-800 px-4 py-2 text-sm font-medium text-white shadow-lg"
           >
             Press back button once more to exit
           </motion.div>
@@ -2619,23 +2722,17 @@ const App: React.FC = () => {
         mode={addNoteModalType === ItemType.JOURNAL ? "journal" : "note"}
       />
 
-      <AnimatePresence>
-        {lockedSecurityPopup && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[98] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 16 }}
-              className="w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
-            >
+      <PresencePanel
+        isOpen={!!lockedSecurityPopup}
+        onClose={() => setLockedSecurityPopup(null)}
+        overlayClassName="fixed inset-0 z-[98] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        panelClassName="w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+        closeOnBackdrop={false}
+        ariaLabel="Akses terkunci"
+      >
               <div className="border-b border-border p-5">
                 <h3 className="text-xl font-bold text-primary">Akses terkunci</h3>
-                <p className="mt-2 text-sm text-muted">{lockedSecurityPopup.message}</p>
+                <p className="mt-2 text-sm text-muted">{lockedSecurityPopup?.message}</p>
               </div>
               <div className="grid grid-cols-2 gap-3 p-4">
                 <button
@@ -2651,10 +2748,7 @@ const App: React.FC = () => {
                   Masukkan password
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </PresencePanel>
 
       <PasswordDialog
         isOpen={!!securityPasswordDialog}
@@ -2669,10 +2763,19 @@ const App: React.FC = () => {
         {appNotice && (
           <motion.div
             key={appNotice.id}
-            initial={{ opacity: 0, y: 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.96 }}
-            className={`fixed bottom-28 left-1/2 z-[120] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 rounded-2xl border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur-xl lg:bottom-8 ${
+            variants={
+              reduceMotion
+                ? fadeVariants
+                : appNotice.tone === 'error'
+                  ? errorNudgeVariants
+                  : appNotice.tone === 'success'
+                    ? popVariants
+                    : riseVariants
+            }
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className={`fixed bottom-28 left-4 right-4 z-[120] mx-auto w-auto max-w-sm rounded-2xl border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur-xl lg:bottom-8 ${
               appNotice.tone === 'error'
                 ? 'border-red-500/30 bg-red-950/90 text-red-100'
                 : appNotice.tone === 'success'

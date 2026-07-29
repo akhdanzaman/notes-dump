@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { KeyRound, X } from 'lucide-react';
+import PresencePanel from '../motion/PresencePanel';
 
 interface PasswordDialogProps {
   isOpen: boolean;
@@ -29,8 +30,6 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
     setError('');
   }, [isOpen, mode]);
 
-  if (!isOpen) return null;
-
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!password.trim()) {
@@ -45,8 +44,16 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm dark:bg-black/65">
-      <form onSubmit={submit} className="w-full max-w-sm overflow-hidden rounded-[24px] border border-border/80 bg-surface shadow-2xl">
+    <PresencePanel
+      isOpen={isOpen}
+      onClose={onCancel}
+      overlayClassName="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm dark:bg-black/65"
+      panelClassName="w-full max-w-sm overflow-hidden rounded-[24px] border border-border/80 bg-surface shadow-2xl"
+      presentation="form"
+      closeOnBackdrop={false}
+      ariaLabel={title}
+    >
+      <form onSubmit={submit} className="contents">
         <div className="flex items-start justify-between gap-4 border-b border-border p-5">
           <div className="flex min-w-0 items-start gap-3">
             <div className="rounded-xl bg-indigo-500/10 p-2 text-indigo-500"><KeyRound className="h-5 w-5" /></div>
@@ -90,7 +97,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
           <button type="submit" className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500">{mode === 'create' ? 'Buat password' : 'Lanjutkan'}</button>
         </div>
       </form>
-    </div>
+    </PresencePanel>
   );
 };
 

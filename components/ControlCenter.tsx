@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
     Settings, RefreshCw, CloudCheck, CloudOff, Save, 
     Moon, Sun, X, AlertTriangle,
@@ -15,6 +15,7 @@ import { getDatabaseHistory } from '../services/syncFacade';
 import { SERVICE_ACCOUNT_EMAIL, SpreadsheetHistoryEntry } from '../services/spreadsheetService';
 import { CHANGELOG_ENTRIES, LATEST_CHANGELOG_VERSION } from '../utils/changelog';
 import { contentSurface, controlCenterSurface } from './layout/contentSurface';
+import PresencePanel from '../motion/PresencePanel';
 import { buildParserHealthSummary } from '../utils/parserHealth';
 import { LocalSecuritySettings, SecurityPasswordRequestOptions } from '../utils/securitySettings';
 import { notifyUser, requestUserConfirmation } from '../utils/uiFeedback';
@@ -253,7 +254,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                            : fetchStatus === 'syncing' ? 'syncing'
                            : saveStatus === 'error' ? 'error'
                            : fetchStatus === 'error' ? 'error'
-                           : saveStatus === 'local' ? 'local'
+                           : saveStatus === 'local' || fetchStatus === 'local' ? 'local'
                            : 'synced';
 
         switch(activeStatus) {
@@ -270,7 +271,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             case 'saving':
                 return (
                     <div className="flex items-center gap-2 text-amber-500">
-                        <Save className="w-5 h-5 animate-spin" />
+                        <RefreshCw className="w-5 h-5 animate-spin" />
                         <span className="font-medium">{saveProgress?.label || 'Saving...'}</span>
                         {saveProgress?.detail && <span className="text-xs text-muted truncate max-w-[260px]">— {saveProgress.detail}</span>}
                     </div>
@@ -301,30 +302,15 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     ];
 
     return (
-        <AnimatePresence>
-            {isOpen && (
-                <>
-                    {/* Backdrop */}
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
-                        onClick={onClose}
-                    />
-                    
-                    {/* Sheet */}
-                    <motion.div 
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={{ 
-                            duration: 0.4, 
-                            ease: [0.32, 0.72, 0, 1] 
-                        }}
-                        data-control-center-panel="true"
-                        className={controlCenterSurface.panel}
-                    >
+        <PresencePanel
+            isOpen={isOpen}
+            onClose={onClose}
+            overlayClassName="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+            panelClassName={controlCenterSurface.panel}
+            presentation="sheet"
+            ariaLabel="Control Center"
+            panelProps={{ 'data-control-center-panel': 'true' }}
+        >
                         
                         {/* Header */}
                         <div className={controlCenterSurface.header}>
@@ -334,6 +320,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                 <div className="flex items-center gap-3">
                                     {activeTab !== 'main' && (
                                         <button onClick={() => handleTabChange('main')} className="p-2 -ml-2 hover:bg-muted/10 rounded-full transition-colors lg:hidden">
+                                            <span className="sr-only">Back to settings overview</span>
                                             <ArrowLeft className="w-6 h-6 text-primary" />
                                         </button>
                                     )}
@@ -346,12 +333,13 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         <button 
                                             onClick={handleSave}
                                             disabled={settingsSaveStatus === 'saved'}
-                                            className={`p-2 rounded-full transition-all ${settingsSaveStatus === 'saved' ? 'bg-green-500 text-white' : 'hover:bg-muted/10 text-primary'}`}
+                                            className={`p-2 rounded-full transition-[color,background-color,opacity] ${settingsSaveStatus === 'saved' ? 'bg-green-500 text-white' : 'hover:bg-muted/10 text-primary'}`}
+                                            aria-label={settingsSaveStatus === 'saved' ? 'Settings saved' : 'Save settings'}
                                         >
                                             {settingsSaveStatus === 'saved' ? <CheckCircle2 className="w-6 h-6" /> : <Save className="w-6 h-6" />}
                                         </button>
                                     )}
-                                    <button onClick={onClose} className="p-2 hover:bg-muted/10 rounded-full transition-colors">
+                                    <button onClick={onClose} className="p-2 hover:bg-muted/10 rounded-full transition-colors" aria-label="Close Control Center">
                                         <X className="w-6 h-6 text-muted" />
                                     </button>
                                 </div>
@@ -365,7 +353,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     <div className={`${contentSurface.card} p-4 space-y-3`}>
                                         <div className="text-xs font-bold uppercase tracking-[0.22em] text-muted">Status</div>
                                         <div className="flex items-center justify-between gap-3">
-                                            {renderSyncStatus()}
+                                            <div aria-live="polite">{renderSyncStatus()}</div>
                                             <div className="flex flex-wrap justify-end gap-1.5">
                                                 {pendingCount > 0 && (
                                                     <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-500">{pendingCount} pending</span>
@@ -462,7 +450,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         )}
                                                         <div className="flex flex-col gap-1">
                                                             <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Status sistem</span>
-                                                            {renderSyncStatus()}
+                                                            <div aria-live="polite">{renderSyncStatus()}</div>
                                                         </div>
                                                     </div>
                                                     
@@ -1735,11 +1723,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                             </AnimatePresence>
                             </div>
                         </div>
-                    </motion.div>
-                    
-                </>
-            )}
-        </AnimatePresence>
+        </PresencePanel>
     );
 };
 

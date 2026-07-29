@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
 import {
   EyeOff,
   Eye,
@@ -35,6 +35,8 @@ import {
 import { getWalletStats, getFinanceItems } from "../../utils/selectors";
 import Card from "../Card";
 import { useSwipeTabs } from "../../hooks/useSwipeTabs";
+import ActiveIndicator from "../../motion/ActiveIndicator";
+import AnimatedNumber from "../../motion/AnimatedNumber";
 import { useSwipeDate } from "../../hooks/useSwipeDate";
 import { useLazyItems } from "../../hooks/useLazyItems";
 import LoadMoreButton from "../LoadMoreButton";
@@ -48,6 +50,12 @@ import {
 } from "../../utils/budgetAnalytics";
 import { getCanonicalOrRawItemValue } from "../../utils/canonicalization/accessors";
 import { getTransactionCategoryIds } from "../../utils/transactionLineItems";
+import {
+  budgetThresholdVariants,
+  directionalLabelVariants,
+  highlightedListItemVariants,
+} from "../../motion/variants";
+import { motionSpring, motionTransition } from "../../motion/transitions";
 
 interface MoneyViewProps {
   items: BrainDumpItem[];
@@ -144,9 +152,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 }) => {
   // Main Tab Swipe Logic
   const swipeHandlers = useSwipeTabs("money", setActiveTab);
+  const reduceMotion = useReducedMotion();
 
   const [budgetViewMode, setBudgetViewMode] =
     useState<BudgetAnalyticsViewMode>("monthly");
+  const [periodDirection, setPeriodDirection] = useState(0);
 
   // Date Swipe Logic
   const changePeriod = (offset: number) => {
@@ -158,6 +168,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     } else {
       newDate.setMonth(newDate.getMonth() + offset);
     }
+    setPeriodDirection(Math.sign(offset));
     setFinanceDate(newDate);
   };
 
@@ -224,10 +235,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
   );
 
   const visibleWallets = useLazyItems(walletStats, {
-    resetKey: `money-wallets-${walletStats.length}-${savingGoals.length}`,
+    resetKey: "money-wallets",
   });
   const visibleTransactions = useLazyItems(list, {
-    resetKey: `money-transactions-${budgetViewMode}-${financeDate.toISOString()}-${filterWallet}-${filterTransactionType}-${filterCategory}-${filterMinAmount}-${filterMaxAmount}-${selectedTag}-${searchQuery}-${sortOrder}-${list.length}`,
+    resetKey: `money-transactions-${budgetViewMode}-${financeDate.toISOString()}-${filterWallet}-${filterTransactionType}-${filterCategory}-${filterMinAmount}-${filterMaxAmount}-${selectedTag}-${searchQuery}-${sortOrder}`,
   });
 
   const fmt = (n: number) =>
@@ -255,6 +266,17 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
       : "Recorded Income";
   const monthUsagePercent =
     effectiveIncome > 0 ? (totalBudgetUsed / effectiveIncome) * 100 : 0;
+  const previousBudgetUsageRef = useRef<number | null>(null);
+  const [budgetAttentionSequence, setBudgetAttentionSequence] = useState(0);
+
+  useEffect(() => {
+    const previous = previousBudgetUsageRef.current;
+    if (previous !== null && previous < 100 && monthUsagePercent >= 100) {
+      setBudgetAttentionSequence((sequence) => sequence + 1);
+    }
+    previousBudgetUsageRef.current = monthUsagePercent;
+  }, [monthUsagePercent]);
+
   const monthUsageWithPlannedPercent =
     effectiveIncome > 0
       ? Math.min(
@@ -576,10 +598,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     <div className={contentSurface.pageShell}>
       {/* Top Container */}
       <motion.div
-        layoutId="top-container"
         data-swipe-tabs="money"
         className={contentSurface.headerHero}
-        transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
         onTouchStart={swipeHandlers.onTouchStart}
         onTouchMove={swipeHandlers.onTouchMove}
         onTouchEnd={swipeHandlers.onTouchEnd}
@@ -591,25 +611,38 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "linear" }}
         >
-          <div
-            data-money-tabs="true"
-            className="mb-5 flex w-full rounded-xl border border-border/70 bg-background/55 p-1"
-          >
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setMoneyView(tab)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${moneyView === tab ? "bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70" : "text-muted hover:text-primary"}`}
-              >
-                {tab === "wallets" && <WalletIcon className="w-4 h-4" />}
-                {tab === "transactions" && <List className="w-4 h-4" />}
-                {tab === "budget" && <PieChart className="w-4 h-4" />}
-                <span className="capitalize hidden sm:inline">
-                  {tab === "transactions" ? "Transactions" : tab}
-                </span>
-              </button>
-            ))}
-          </div>
+          <LayoutGroup id="money-subtabs">
+            <div
+              data-money-tabs="true"
+              className="mb-5 flex w-full rounded-xl border border-border/70 bg-background/55 p-1"
+              role="tablist"
+              aria-label="Money sections"
+            >
+              {tabs.map((tab) => {
+                const isActive = moneyView === tab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setMoneyView(tab)}
+                    className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${isActive ? "text-primary" : "text-muted hover:text-primary"}`}
+                  >
+                    {isActive && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
+                    <span className="relative z-10 flex items-center gap-2">
+                      {tab === "wallets" && <WalletIcon className="w-4 h-4" />}
+                      {tab === "transactions" && <List className="w-4 h-4" />}
+                      {tab === "budget" && <PieChart className="w-4 h-4" />}
+                      <span className="capitalize hidden sm:inline">
+                        {tab === "transactions" ? "Transactions" : tab}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </LayoutGroup>
 
           <div className="lg:space-y-6" data-money-header-grid="true">
             <div className="mb-6 flex items-start justify-between gap-4 pb-2 lg:mb-0 lg:grid lg:grid-cols-8 lg:items-start lg:gap-4 lg:pb-3 xl:gap-5">
@@ -622,7 +655,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 </div>
                 <div className="mt-2 flex min-w-0 items-center gap-3 lg:mt-3">
                   <div className="truncate text-3xl font-extrabold tracking-[-0.035em] sm:text-4xl lg:text-[2.75rem]">
-                    {showBalance ? fmt(totalNetWorth) : "••••••••"}
+                    <AnimatedNumber
+                      value={totalNetWorth}
+                      formatter={fmt}
+                      hidden={!showBalance}
+                      hiddenLabel="••••••••"
+                      ariaLabel="Total net worth"
+                    />
                   </div>
                   <button
                     onClick={() => setShowBalance(!showBalance)}
@@ -658,14 +697,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <AnimatePresence mode="wait">
+                  <AnimatePresence mode="wait" custom={periodDirection} initial={false}>
                     <motion.div
                       key={`${budgetViewMode}-${financeDate.toISOString()}`}
                       data-money-month-label="true"
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.2 }}
+                      custom={periodDirection}
+                      variants={directionalLabelVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
                       className="flex min-w-16 flex-col items-center sm:min-w-20 lg:min-w-24"
                     >
                       <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider leading-none mb-1 lg:text-xs">
@@ -701,7 +741,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     ).map(([mode, label]) => (
                       <button
                         key={mode}
-                        onClick={() => setBudgetViewMode(mode)}
+                        onClick={() => {
+                          setPeriodDirection(0);
+                          setBudgetViewMode(mode);
+                        }}
                         className={`${budgetViewMode === mode ? "bg-indigo-600 text-white shadow-sm" : "text-muted hover:text-primary"} rounded-md px-2 py-1 text-xs font-bold transition-colors`}
                       >
                         {label}
@@ -719,7 +762,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   Income
                 </div>
                 <div className="truncate text-lg font-bold text-emerald-600 dark:text-emerald-500 lg:text-2xl">
-                  {showBalance ? fmt(totalIncome) : "••••"}
+                  <AnimatedNumber
+                    value={totalIncome}
+                    formatter={fmt}
+                    hidden={!showBalance}
+                    hiddenLabel="••••"
+                    ariaLabel="Total income"
+                  />
                 </div>
               </div>
               <div className="col-span-3 min-w-0 rounded-2xl border border-border/70 bg-background/55 px-3 py-4 lg:px-5 lg:py-5">
@@ -728,10 +777,26 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   Expense
                 </div>
                 <div className="truncate text-lg font-bold text-[#FF5722] lg:text-2xl">
-                  {showBalance ? fmt(totalExpense) : "••••"}
+                  <AnimatedNumber
+                    value={totalExpense}
+                    formatter={fmt}
+                    hidden={!showBalance}
+                    hiddenLabel="••••"
+                    ariaLabel="Total expense"
+                  />
                 </div>
               </div>
-              <div className="col-span-2 min-w-0 rounded-2xl border border-border/70 bg-background/55 px-3 py-4 lg:px-5 lg:py-5">
+              <div className="relative col-span-2 min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background/55 px-3 py-4 lg:px-5 lg:py-5">
+                {budgetAttentionSequence > 0 && (
+                  <motion.span
+                    key={budgetAttentionSequence}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-amber-500/70"
+                    variants={budgetThresholdVariants}
+                    initial="hidden"
+                    animate="visible"
+                  />
+                )}
                 <div className="flex items-center justify-center gap-1 text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1 lg:mb-2 lg:justify-start lg:text-xs">
                   <AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-500 lg:block" />{" "}
                   Used
@@ -762,19 +827,19 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 <div className="text-sm font-medium opacity-80">
                   Assets:{" "}
                   <span className="text-emerald-600 dark:text-emerald-500 font-bold">
-                    {showBalance ? fmt(totalAssets) : "••"}
+                    <AnimatedNumber value={totalAssets} formatter={fmt} hidden={!showBalance} hiddenLabel="••" />
                   </span>
                 </div>
                 <div className="text-sm font-medium opacity-80">
                   Debt:{" "}
                   <span className="text-[#FF5722] font-bold">
-                    {showBalance ? fmt(totalDebt) : "••"}
+                    <AnimatedNumber value={totalDebt} formatter={fmt} hidden={!showBalance} hiddenLabel="••" />
                   </span>
                 </div>
                 <div className="text-sm font-medium opacity-80 flex items-center gap-1">
                   Savings:{" "}
                   <span className="text-[#6366F1] font-bold">
-                    {showBalance ? fmt(walletTotalSavings || 0) : "••"}
+                    <AnimatedNumber value={walletTotalSavings || 0} formatter={fmt} hidden={!showBalance} hiddenLabel="••" />
                   </span>
                 </div>
               </div>
@@ -805,7 +870,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         onTouchEnd={onTouchEnd}
       >
         <motion.div
-          className="flex w-full will-change-transform"
+          className={`flex w-full ${isDragging ? "will-change-transform" : ""}`}
           style={{
             transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
             transition: isDragging
@@ -815,8 +880,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         >
           {/* VIEW: Wallets */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={false}
             className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
           >
             <div className={contentSurface.cardGrid}>
@@ -937,9 +1001,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
           {/* VIEW: Transactions */}
           <motion.div
             key={"transactions-" + financeDate.toISOString()}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
+            initial={false}
             className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
           >
             <div
@@ -957,22 +1019,35 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   className={`${contentSurface.denseList} ${contentSurface.moneyPrimaryPanel}`}
                   data-money-primary-column="true"
                 >
-                  {visibleTransactions.visibleItems.map((item) => {
-                    const transactionCategoryIds = getTransactionCategoryIds(item);
-                    const categoryName = transactionCategoryIds.length > 1
-                      ? `${transactionCategoryIds.length} kategori`
-                      : budgetConfig.rules.find(
-                          (r) => r.id === (transactionCategoryIds[0] || item.meta.budgetCategory),
-                        )?.name || transactionCategoryIds[0] || item.meta.budgetCategory;
-                    return (
-                      <Card
-                        key={item.id}
-                        item={item}
-                        {...cardProps}
-                        categoryName={categoryName}
-                      />
-                    );
-                  })}
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {visibleTransactions.visibleItems.map((item) => {
+                      const transactionCategoryIds = getTransactionCategoryIds(item);
+                      const categoryName = transactionCategoryIds.length > 1
+                        ? `${transactionCategoryIds.length} kategori`
+                        : budgetConfig.rules.find(
+                            (r) => r.id === (transactionCategoryIds[0] || item.meta.budgetCategory),
+                          )?.name || transactionCategoryIds[0] || item.meta.budgetCategory;
+                      return (
+                        <motion.div
+                          key={item.id}
+                          layout="position"
+                          layoutDependency={`${item.status}-${item.content}-${item.meta.amount || 0}`}
+                          variants={highlightedListItemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          transition={{ layout: motionSpring.layout }}
+                          className="rounded-[24px]"
+                        >
+                          <Card
+                            item={item}
+                            {...cardProps}
+                            categoryName={categoryName}
+                          />
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
                   <LoadMoreButton
                     remainingCount={visibleTransactions.remainingCount}
                     onClick={visibleTransactions.loadMore}
@@ -1040,9 +1115,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
           {/* VIEW: Budget Dashboard */}
           <motion.div
             key={"budget-" + financeDate.toISOString()}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
+            initial={false}
             className={`w-full flex-shrink-0 ${contentSurface.contentPad} pb-8`}
           >
             {effectiveIncome === 0 ? (
@@ -1416,19 +1489,23 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                               )}
                             </div>
                             <div className="h-3 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden flex relative">
-                              <div
+                              <motion.div
                                 className={`h-full ${rule.color || "bg-gray-500"}`}
-                                style={{
+                                initial={false}
+                                animate={{
                                   width: `${Math.min(percentageOfTotalSpent, 100)}%`,
                                 }}
-                              ></div>
+                                transition={reduceMotion ? motionTransition.instant : motionTransition.standard}
+                              />
                               {planned > 0 && (
-                                <div
+                                <motion.div
                                   className={`h-full ${rule.color || "bg-gray-500"} opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]`}
-                                  style={{
+                                  initial={false}
+                                  animate={{
                                     width: `${Math.min(percentageOfTotalPlanned, 100 - Math.min(percentageOfTotalSpent, 100))}%`,
                                   }}
-                                ></div>
+                                  transition={reduceMotion ? motionTransition.instant : motionTransition.standard}
+                                />
                               )}
                               {/* Limit Marker at the rule's percentage of total */}
                               <div
@@ -1485,19 +1562,23 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             )}
                           </div>
                           <div className="h-3 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden flex">
-                            <div
+                            <motion.div
                               className="h-full bg-gray-400"
-                              style={{
+                              initial={false}
+                              animate={{
                                 width: `${Math.min((uncategorized / effectiveIncome) * 100, 100)}%`,
                               }}
-                            ></div>
+                              transition={reduceMotion ? motionTransition.instant : motionTransition.standard}
+                            />
                             {projectedUncategorized > 0 && (
-                              <div
+                              <motion.div
                                 className="h-full bg-gray-400 opacity-40 bg-[length:4px_4px] bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] dark:bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)]"
-                                style={{
+                                initial={false}
+                                animate={{
                                   width: `${Math.min((projectedUncategorized / effectiveIncome) * 100, 100 - Math.min((uncategorized / effectiveIncome) * 100, 100))}%`,
                                 }}
-                              ></div>
+                                transition={reduceMotion ? motionTransition.instant : motionTransition.standard}
+                              />
                             )}
                           </div>
                         </div>

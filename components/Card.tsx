@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
+import { collapseVariants, popVariants } from '../motion/variants';
 import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta, LoanTransactionKind } from '../types';
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle, HandCoins } from 'lucide-react';
 
@@ -756,10 +757,7 @@ const Card: React.FC<CardProps> = ({
   const actionButtonComfort = isTaskWorkspaceEdit ? taskEditSurface.actionButton : '';
 
   return (
-    <motion.div 
-        initial={{ scale: 1 }}
-        animate={{ scale: !isCollapsed ? 1.02 : 1 }}
-        transition={{ type: "tween", ease: "easeInOut", duration: 0.2 }}
+    <div
         data-edit-comfort={editComfort === 'taskWorkspace' ? 'task-workspace' : undefined}
         data-card-expanded={!isCollapsed ? 'true' : 'false'}
         className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/15 shadow-md' : ''} break-inside-avoid rounded-2xl border border-border/75 p-3.5 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 hover:border-border hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
@@ -777,13 +775,26 @@ const Card: React.FC<CardProps> = ({
                 }}
                 disabled={!canToggleStatus}
                 title={isRoutineDone ? 'Mark undone and remove the latest routine history' : undefined}
-                className={`transition-colors shrink-0 ${canToggleStatus ? 'hover:opacity-80' : 'cursor-default'}`}
+                className={`shrink-0 transition-[color,opacity,transform] duration-150 ${canToggleStatus ? 'hover:opacity-80 active:scale-90' : 'cursor-default'}`}
+                aria-label={status === 'done' ? `Tandai ${content} belum selesai` : `Tandai ${content} selesai`}
+                aria-pressed={status === 'done'}
               >
-                {status === 'done' ? (
-                    <CheckCircle2 className="w-4 h-4 text-muted" />
-                ) : (
-                    <Circle className={`w-4 h-4 ${style.textColor}`} />
-                )}
+                <AnimatePresence initial={false} mode="wait">
+                  <motion.span
+                    key={status === 'done' ? 'done' : 'pending'}
+                    variants={popVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="flex"
+                  >
+                    {status === 'done' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                        <Circle className={`w-4 h-4 ${style.textColor}`} />
+                    )}
+                  </motion.span>
+                </AnimatePresence>
               </button>
               <div className="flex items-center gap-1.5">
                   <span className={`text-[10px] font-bold uppercase tracking-wider ${shouldStrike ? 'text-muted' : style.textColor}`}>
@@ -1022,12 +1033,13 @@ const Card: React.FC<CardProps> = ({
       <AnimatePresence initial={false}>
       {showEditBody && (
           <motion.div
-              initial={collapsibleEditPanel ? { height: 0, opacity: 0 } : false}
-              animate={collapsibleEditPanel ? { height: 'auto', opacity: 1 } : undefined}
-              exit={collapsibleEditPanel ? { height: 0, opacity: 0 } : undefined}
-              className={collapsibleEditPanel ? 'overflow-hidden' : undefined}
+              variants={collapsibleEditPanel ? collapseVariants : undefined}
+              initial={collapsibleEditPanel ? 'hidden' : false}
+              animate={collapsibleEditPanel ? 'visible' : undefined}
+              exit={collapsibleEditPanel ? 'exit' : undefined}
+              className={collapsibleEditPanel ? 'grid overflow-hidden' : undefined}
           >
-          <div className={`${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
+          <div className={`${collapsibleEditPanel ? 'min-h-0 overflow-hidden' : ''} ${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
                
                {isNote && (
                    <div className="mb-3">
@@ -1719,7 +1731,7 @@ const Card: React.FC<CardProps> = ({
               {extraExpandedContent}
           </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 

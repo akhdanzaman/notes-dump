@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { X, Bot, User, Loader2, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, ChatMessage } from '../types';
 import { generateChatResponse } from '../services/chatService';
+import { reducedModalVariants, scaleVariants } from '../motion/variants';
 
 interface FloatingChatBoxProps {
     isOpen: boolean;
@@ -23,6 +24,7 @@ interface FloatingChatBoxProps {
 const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, items, budgetConfig, wallets, skills, monthlyThemes, newMessage, chatHistory, onUpdateHistory, onResetChat, chatModel }) => {
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const reduceMotion = useReducedMotion();
 
     const [lastProcessedId, setLastProcessedId] = useState<string | null>(null);
 
@@ -32,8 +34,8 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
 
     useEffect(() => {
         if (isOpen) {
-            // Use setTimeout to ensure the DOM has updated and the modal is visible before scrolling
-            setTimeout(scrollToBottom, 100);
+            const timer = window.setTimeout(scrollToBottom, 100);
+            return () => window.clearTimeout(timer);
         }
     }, [chatHistory, isLoading, isOpen]);
 
@@ -68,10 +70,16 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
         <AnimatePresence>
             {isOpen && (
                 <motion.div
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
+                    role="dialog"
+                    aria-label="Asisten Arkaiv"
+                    aria-modal="false"
+                    variants={reduceMotion ? reducedModalVariants : scaleVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    onKeyDown={(event) => {
+                        if (event.key === 'Escape') onClose();
+                    }}
                     className="pointer-events-auto absolute bottom-full left-0 right-0 z-50 mx-3 mb-3 flex h-[460px] max-h-[62vh] flex-col overflow-hidden rounded-[26px] border border-border/80 bg-surface/96 shadow-2xl backdrop-blur-2xl sm:mx-auto sm:max-w-3xl lg:max-w-4xl"
                 >
                     <div className="flex shrink-0 items-center justify-between border-b border-border/75 px-4 py-3.5 sm:px-5">

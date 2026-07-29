@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, StickyNote } from 'lucide-react';
-import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
+import PresencePanel from '../motion/PresencePanel';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 
 interface AddNoteModalProps {
     isOpen: boolean;
@@ -27,20 +27,21 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <AnimatePresence>
-            <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="add-note">
-                <motion.div 
-                    initial={addItemModalMotion.initial}
-                    animate={addItemModalMotion.animate}
-                    exit={addItemModalMotion.exit}
-                    transition={addItemModalMotion.transition}
-                    className={addItemModal.panel}
-                    data-tablet-modal-panel="add-note"
-                    data-ndz-tablet-baseline="modal"
-                >
+        <PresencePanel
+            isOpen={isOpen}
+            onClose={onClose}
+            overlayClassName={responsiveModal.sheetOverlay}
+            panelClassName={addItemModal.panel}
+            presentation="form"
+            closeOnBackdrop={false}
+            ariaLabel={isJournal ? 'Add Journal Entry' : 'Add Note'}
+            overlayProps={{ 'data-tablet-modal-overlay': 'add-note' }}
+            panelProps={{
+                'data-tablet-modal-panel': 'add-note',
+                'data-ndz-tablet-baseline': 'modal',
+            }}
+        >
                     <div className={addItemModal.header}>
                         <h3 className={addItemModal.title}>
                             <StickyNote className={addItemModal.icon} />
@@ -96,9 +97,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
                             {isJournal ? 'Append to Today Journal' : 'Save Note'}
                         </button>
                     </div>
-                </motion.div>
-            </div>
-        </AnimatePresence>
+        </PresencePanel>
     );
 };
 

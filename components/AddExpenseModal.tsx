@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Check,
@@ -17,7 +16,8 @@ import {
   FinanceType,
   LoanTransactionKind,
 } from '../types';
-import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
+import PresencePanel from '../motion/PresencePanel';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../utils/investmentFunding';
 import { sanitizeTransactionLineItems, sumTransactionLineItems } from '../utils/transactionLineItems';
 import { getLoanAccounts } from '../utils/loanAccounts';
@@ -315,18 +315,16 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           ? 'Tabungan'
           : 'Utang & Piutang';
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      <div className={responsiveModal.sheetOverlay}>
-        <motion.div
-          initial={addItemModalMotion.initial}
-          animate={addItemModalMotion.animate}
-          exit={addItemModalMotion.exit}
-          transition={addItemModalMotion.transition}
-          className={addItemModal.panel}
-        >
+    <PresencePanel
+      isOpen={isOpen}
+      onClose={onClose}
+      overlayClassName={responsiveModal.sheetOverlay}
+      panelClassName={addItemModal.panel}
+      presentation="form"
+      closeOnBackdrop={false}
+      ariaLabel={`Tambah ${modeLabel}`}
+    >
           <div className={addItemModal.header}>
             <h3 className={addItemModal.title}>
               {isLoanMode
@@ -624,9 +622,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               Simpan {modeLabel}
             </button>
           </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+    </PresencePanel>
   );
 };
 

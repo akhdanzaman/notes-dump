@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Target, Image as ImageIcon, CalendarClock, Clock } from 'lucide-react';
 import { Skill, SkillSchedule } from '../types';
-import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
+import PresencePanel from '../motion/PresencePanel';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 
 export type SkillModalPayload = {
   name: string;
@@ -106,20 +106,21 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      <div className={responsiveModal.sheetOverlay} data-tablet-modal-overlay="skill">
-        <motion.div
-          initial={addItemModalMotion.initial}
-          animate={addItemModalMotion.animate}
-          exit={addItemModalMotion.exit}
-          transition={addItemModalMotion.transition}
-          className={`${addItemModal.panel} max-w-3xl`}
-          data-tablet-modal-panel="skill"
-          data-ndz-tablet-baseline="modal"
-        >
+    <PresencePanel
+      isOpen={isOpen}
+      onClose={onClose}
+      overlayClassName={responsiveModal.sheetOverlay}
+      panelClassName={`${addItemModal.panel} max-w-3xl`}
+      presentation="form"
+      closeOnBackdrop={false}
+      ariaLabel={mode === 'add' ? 'Track New Skill' : 'Edit Skill'}
+      overlayProps={{ 'data-tablet-modal-overlay': 'skill' }}
+      panelProps={{
+        'data-tablet-modal-panel': 'skill',
+        'data-ndz-tablet-baseline': 'modal',
+      }}
+    >
           <div className={addItemModal.header}>
             <h3 className={addItemModal.title}>
               <Target className={addItemModal.icon} />
@@ -316,9 +317,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
               <Check className="w-5 h-5" /> Save Skill
             </button>
           </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+    </PresencePanel>
   );
 };
 

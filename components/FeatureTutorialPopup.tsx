@@ -1,7 +1,7 @@
 import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { BookOpen, Check, Keyboard, MousePointerClick, X } from 'lucide-react';
 import { FeatureTutorial } from '../utils/featureTutorials';
+import PresencePanel from '../motion/PresencePanel';
 
 interface FeatureTutorialPopupProps {
   tutorial: FeatureTutorial | null;
@@ -11,21 +11,16 @@ interface FeatureTutorialPopupProps {
 
 const FeatureTutorialPopup: React.FC<FeatureTutorialPopupProps> = ({ tutorial, onClose, onDisableAll }) => {
   return (
-    <AnimatePresence>
+    <PresencePanel
+      isOpen={Boolean(tutorial)}
+      onClose={onClose}
+      overlayClassName="fixed inset-0 z-[96] flex items-end justify-center bg-black/55 p-4 backdrop-blur-sm sm:items-center"
+      panelClassName="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl lg:max-w-2xl"
+      presentation="sheet"
+      ariaLabel={tutorial?.title || 'Feature tutorial'}
+    >
       {tutorial && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[96] flex items-end sm:items-center justify-center p-4 bg-black/55 backdrop-blur-sm"
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 24 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 24 }}
-            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-            className="bg-surface border border-border rounded-3xl w-full max-w-md lg:max-w-2xl shadow-2xl overflow-hidden"
-          >
+        <>
             <div className="p-5 lg:p-6 border-b border-border flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-indigo-500/10 text-indigo-500 rounded-2xl">
@@ -89,10 +84,9 @@ const FeatureTutorialPopup: React.FC<FeatureTutorialPopupProps> = ({ tutorial, o
                 </button>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+        </>
       )}
-    </AnimatePresence>
+    </PresencePanel>
   );
 };
 

@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
     Search,
     X,
@@ -16,6 +17,7 @@ import {
     BudgetConfig,
     BrainDumpItem
 } from '../types';
+import { fadeVariants, riseVariants } from '../motion/variants';
 
 interface FloatingSearchProps {
     activeTab: Tab;
@@ -83,9 +85,8 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
     budgetConfig,
     savingGoals = []
 }) => {
-    if (activeTab !== 'library' && activeTab !== 'money') return null;
-    if (activeTab === 'library' && librarySubTab === 'journal') return null;
-
+    const isAvailable = (activeTab === 'library' || activeTab === 'money')
+        && !(activeTab === 'library' && librarySubTab === 'journal');
     const isMoney = activeTab === 'money';
     const isTransactions = moneyView === 'transactions';
     const activeFilterCount = [
@@ -102,6 +103,12 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
     const isFilterActive = activeFilterCount > 0;
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const reduceMotion = useReducedMotion();
+
+    useEffect(() => {
+        if (!isAvailable && isSearchExpanded) setIsSearchExpanded(false);
+    }, [isAvailable, isSearchExpanded, setIsSearchExpanded]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -110,44 +117,72 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
             }
         };
 
-        if (isSearchExpanded) {
+        if (isAvailable && isSearchExpanded) {
             document.addEventListener('mousedown', handleClickOutside);
         }
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isSearchExpanded, setIsSearchExpanded]);
+    }, [isAvailable, isSearchExpanded, setIsSearchExpanded]);
 
-    if (!isSearchExpanded) {
-        return (
-            <button
-                onClick={() => setIsSearchExpanded(true)}
-                data-floating-search-trigger="content-anchored"
-                className={`pointer-events-auto relative flex h-10 items-center justify-center gap-2 rounded-xl border px-3 shadow-sm backdrop-blur-xl transition-colors active:scale-[0.97] ${
-                    isFilterActive
-                        ? 'border-indigo-500/30 bg-indigo-500 text-white'
-                        : 'border-border/80 bg-surface/92 text-muted hover:border-indigo-500/25 hover:text-primary'
-                }`}
-                aria-label={isFilterActive ? `Buka pencarian, ${activeFilterCount} filter aktif` : 'Buka pencarian dan filter'}
-            >
-                <Search className="h-4 w-4" />
-                <span className="hidden text-xs font-semibold sm:inline">Cari</span>
-                {isFilterActive && (
-                    <span className="flex min-w-[18px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold leading-[18px] text-white">
-                        {activeFilterCount}
-                    </span>
-                )}
-            </button>
-        );
-    }
+    if (!isAvailable) return null;
+
+    const trigger = (
+        <motion.button
+            ref={triggerRef}
+            key="search-trigger"
+            variants={fadeVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={() => setIsSearchExpanded(true)}
+            data-floating-search-trigger="content-anchored"
+            className={`pointer-events-auto relative flex h-10 items-center justify-center gap-2 rounded-xl border px-3 shadow-sm backdrop-blur-xl transition-colors active:scale-[0.97] ${
+                isFilterActive
+                    ? 'border-indigo-500/30 bg-indigo-500 text-white'
+                    : 'border-border/80 bg-surface/92 text-muted hover:border-indigo-500/25 hover:text-primary'
+            }`}
+            aria-label={isFilterActive ? `Buka pencarian, ${activeFilterCount} filter aktif` : 'Buka pencarian dan filter'}
+        >
+            <Search className="h-4 w-4" />
+            <span className="hidden text-xs font-semibold sm:inline">Cari</span>
+            {isFilterActive && (
+                <span className="flex min-w-[18px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold leading-[18px] text-white">
+                    {activeFilterCount}
+                </span>
+            )}
+        </motion.button>
+    );
 
     return (
-        <div className="pointer-events-none w-full flex justify-start" data-floating-search-anchor="composer-content-frame">
-            <div
-                ref={containerRef}
-                className="pointer-events-auto relative max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-[28px] border border-border/80 bg-surface/96 p-5 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-4 duration-200 lg:mx-0 lg:max-w-2xl sm:p-6"
+        <AnimatePresence
+          initial={false}
+          mode="wait"
+          onExitComplete={() => {
+            if (!isSearchExpanded && isAvailable) triggerRef.current?.focus();
+          }}
+        >
+          {!isSearchExpanded ? trigger : (
+            <motion.div
+                key="search-panel"
+                className="pointer-events-none w-full flex justify-start"
+                data-floating-search-anchor="composer-content-frame"
+                variants={reduceMotion ? fadeVariants : riseVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
             >
+              <div
+                ref={containerRef}
+                role="dialog"
+                aria-modal="false"
+                aria-label="Pencarian dan filter"
+                onKeyDown={(event) => {
+                    if (event.key === 'Escape') setIsSearchExpanded(false);
+                }}
+                className="pointer-events-auto relative max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-[28px] border border-border/80 bg-surface/96 p-5 shadow-2xl backdrop-blur-2xl lg:mx-0 lg:max-w-2xl sm:p-6"
+              >
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="min-w-0">
                         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
@@ -176,6 +211,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                         <div className="relative group">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-indigo-500 transition-colors" />
                             <input
+                                autoFocus
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -399,8 +435,10 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
     );
 };
 

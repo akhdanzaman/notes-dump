@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Wallet as WalletIcon, Save } from 'lucide-react';
 import { Wallet } from '../types';
+import PresencePanel from '../motion/PresencePanel';
 import { responsiveModal } from './layout/contentSurface';
 
 interface WalletModalProps {
@@ -39,8 +40,6 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
     }
   }, [isOpen, initialData, mode]);
 
-  if (!isOpen) return null;
-
   const handleSave = () => {
       const balance = parseFloat(initialBalance) || 0;
       onSave(name, type, balance, color);
@@ -48,8 +47,15 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
   };
 
   return (
-    <div className={`${responsiveModal.overlay} z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200`}>
-      <div className={`${responsiveModal.panel} rounded-3xl w-full max-w-sm lg:max-w-lg p-6 lg:p-7`}>
+    <PresencePanel
+      isOpen={isOpen}
+      onClose={onClose}
+      overlayClassName={`${responsiveModal.overlay} z-[70] flex items-center justify-center p-4`}
+      panelClassName={`${responsiveModal.panel} rounded-3xl w-full max-w-sm lg:max-w-lg p-6 lg:p-7`}
+      presentation="form"
+      closeOnBackdrop={false}
+      ariaLabel={mode === 'add' ? 'Add Wallet' : 'Edit Wallet'}
+    >
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-bold text-primary">{mode === 'add' ? 'Add Wallet' : 'Edit Wallet'}</h3>
           <button onClick={onClose} className="text-muted hover:text-primary">
@@ -127,8 +133,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                 <Save className="w-4 h-4" /> Save
             </button>
         </div>
-      </div>
-    </div>
+    </PresencePanel>
   );
 };
 

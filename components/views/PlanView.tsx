@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon, HandCoins, ArrowDownLeft, ArrowUpRight, Clock3, CheckCircle } from 'lucide-react';
 import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
@@ -7,13 +7,18 @@ import { getDeepWorkChildren, supportsNestedTodoSubtasks } from '../../utils/dee
 import Card from '../Card';
 import ShoppingItem from '../ShoppingItem';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+import ActiveIndicator from '../../motion/ActiveIndicator';
+import AnimatedProgress from '../../motion/AnimatedProgress';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
-import { contentSurface, responsiveModal, addItemModal, addItemModalMotion } from '../layout/contentSurface';
+import { contentSurface, responsiveModal, addItemModal } from '../layout/contentSurface';
 import { getInvestmentMetrics } from '../../utils/investmentMetrics';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../../utils/investmentFunding';
 import { getLoanAccounts, getLoanSummary, LoanAccount } from '../../utils/loanAccounts';
+import PresencePanel from '../../motion/PresencePanel';
+import { collapseVariants, highlightedListItemVariants } from '../../motion/variants';
+import { motionSpring } from '../../motion/transitions';
 
 interface PlanViewProps {
     items: BrainDumpItem[];
@@ -125,15 +130,15 @@ const PlanView: React.FC<PlanViewProps> = ({
     const taskResetKey = `plan-tasks-${focusDate.getFullYear()}-${focusDate.getMonth()}-${searchQuery}-${selectedTag}`;
     const shoppingResetKey = `plan-shopping-${searchQuery}-${selectedTag}`;
 
-    const visibleToday = useLazyItems(rootToday, { resetKey: `${taskResetKey}-today-${rootToday.length}` });
-    const visibleRoutines = useLazyItems(rootRoutines, { resetKey: `${taskResetKey}-routines-${rootRoutines.length}` });
-    const visibleTomorrow = useLazyItems(rootTomorrow, { resetKey: `${taskResetKey}-tomorrow-${rootTomorrow.length}` });
-    const visibleLater = useLazyItems(rootLater, { resetKey: `${taskResetKey}-later-${rootLater.length}` });
-    const visibleUrgent = useLazyItems(urgent, { resetKey: `${shoppingResetKey}-urgent-${urgent.length}` });
-    const visibleRoutineShopping = useLazyItems(routine, { resetKey: `${shoppingResetKey}-routine-${routine.length}` });
-    const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal-${normal.length}` });
-    const visibleSavings = useLazyItems(savings, { resetKey: `plan-savings-${savings.length}` });
-    const visibleInvestments = useLazyItems(investments, { resetKey: `plan-investments-${investments.length}` });
+    const visibleToday = useLazyItems(rootToday, { resetKey: `${taskResetKey}-today` });
+    const visibleRoutines = useLazyItems(rootRoutines, { resetKey: `${taskResetKey}-routines` });
+    const visibleTomorrow = useLazyItems(rootTomorrow, { resetKey: `${taskResetKey}-tomorrow` });
+    const visibleLater = useLazyItems(rootLater, { resetKey: `${taskResetKey}-later` });
+    const visibleUrgent = useLazyItems(urgent, { resetKey: `${shoppingResetKey}-urgent` });
+    const visibleRoutineShopping = useLazyItems(routine, { resetKey: `${shoppingResetKey}-routine` });
+    const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal` });
+    const visibleSavings = useLazyItems(savings, { resetKey: 'plan-savings' });
+    const visibleInvestments = useLazyItems(investments, { resetKey: 'plan-investments' });
     const loanAccounts = React.useMemo(() => getLoanAccounts(items), [items]);
     const loanSummary = React.useMemo(() => getLoanSummary(loanAccounts), [loanAccounts]);
     const activeLoanAccounts = loanAccounts.filter(account => account.remainingAmount > 0);
@@ -374,7 +379,11 @@ const PlanView: React.FC<PlanViewProps> = ({
                 </div>
 
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                    <div className={`h-full rounded-full transition-all ${isReceivable ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{ width: `${Math.max(account.repaidAmount > 0 ? 3 : 0, progress)}%` }} />
+                    <AnimatedProgress
+                        value={Math.max(account.repaidAmount > 0 ? 3 : 0, progress)}
+                        className={`rounded-full ${isReceivable ? 'bg-emerald-500' : 'bg-orange-500'}`}
+                        label={`${account.counterparty} repayment progress`}
+                    />
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted">
@@ -549,8 +558,8 @@ const PlanView: React.FC<PlanViewProps> = ({
 
         return (
             <motion.article
-                layout={!isDragging}
-                transition={{ type: "tween", duration: 0.3 }}
+                layout={isDragging ? false : "position"}
+                layoutDependency={`${goal.status}-${goal.meta.savedAmount || 0}`}
                 key={goal.id}
                 className={`overflow-hidden rounded-[28px] border border-border/70 bg-surface p-1 shadow-sm ${isDone ? 'opacity-70' : ''}`}
             >
@@ -563,9 +572,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </div>
 
                     <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                        <div
-                            className={`h-full transition-all duration-1000 ease-out ${progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                            style={{ width: `${progress}%` }}
+                        <AnimatedProgress
+                            value={progress}
+                            className={progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}
+                            label={`${goal.content} saving progress`}
                         />
                     </div>
 
@@ -668,8 +678,8 @@ const PlanView: React.FC<PlanViewProps> = ({
 
         return (
             <motion.article
-                layout={!isDragging}
-                transition={{ type: "tween", duration: 0.3 }}
+                layout={isDragging ? false : "position"}
+                layoutDependency={`${investment.status}-${currentValue}`}
                 key={investment.id}
                 className="overflow-hidden rounded-[28px] border border-emerald-500/10 bg-surface p-1 shadow-sm"
             >
@@ -953,12 +963,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                 <AnimatePresence initial={false}>
                     {isEditSubtasksExpanded && (
                         <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
+                            variants={collapseVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            className="grid overflow-hidden"
                         >
-                            <div className="rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+                            <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
                                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Edit subtasks</div>
                                 {renderSubtaskDraftEditor({ ...item, meta: { ...item.meta, subtasks: draft } }, children, 'Create subtasks')}
                             </div>
@@ -969,7 +980,19 @@ const PlanView: React.FC<PlanViewProps> = ({
             const taskCardProps = getTaskCardProps(item, activePanel, editPanelControls, manualSubtaskPanel);
 
             return (
-                <Card key={item.id} item={item} {...taskCardProps} editComfort="taskWorkspace" />
+                <motion.div
+                    key={item.id}
+                    layout="position"
+                    layoutDependency={`${item.status}-${item.content}-${children.length}-${activePanel}`}
+                    variants={highlightedListItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    transition={{ layout: motionSpring.layout }}
+                    className="rounded-[24px]"
+                >
+                    <Card item={item} {...taskCardProps} editComfort="taskWorkspace" />
+                </motion.div>
             );
         }
 
@@ -1027,12 +1050,13 @@ const PlanView: React.FC<PlanViewProps> = ({
             <AnimatePresence initial={false}>
                 {(isSubtasksExpanded || isEditSubtasksExpanded) && (
                     <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
+                        variants={collapseVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        className="grid overflow-hidden"
                     >
-                        <div className="rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+                        <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 {hasDeepWorkDetails && (
                                     <div className="flex items-center gap-2 text-purple-500">
@@ -1049,7 +1073,11 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                             {totalSteps > 0 && (
                                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-purple-500/10">
-                                    <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${Math.max(progressPercent, doneCount > 0 ? 4 : 0)}%` }} />
+                                    <AnimatedProgress
+                                        value={Math.max(progressPercent, doneCount > 0 ? 4 : 0)}
+                                        className="rounded-full bg-purple-500"
+                                        label={`${item.content} subtask progress`}
+                                    />
                                 </div>
                             )}
 
@@ -1092,18 +1120,62 @@ const PlanView: React.FC<PlanViewProps> = ({
         const taskCardProps = getTaskCardProps(item, activePanel, deepWorkPanelControls, deepWorkSubtaskPanel);
 
         return (
-            <Card key={item.id} item={item} {...taskCardProps} editComfort="taskWorkspace" />
+            <motion.div
+                key={item.id}
+                layout="position"
+                layoutDependency={`${item.status}-${item.content}-${children.length}-${activePanel}`}
+                variants={highlightedListItemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={{ layout: motionSpring.layout }}
+                className="rounded-[24px]"
+            >
+                <Card item={item} {...taskCardProps} editComfort="taskWorkspace" />
+            </motion.div>
         );
     };
+
+    const renderTaskItems = (taskItems: BrainDumpItem[]) => (
+        <AnimatePresence initial={false} mode="popLayout">
+            {taskItems.map(renderTaskCard)}
+        </AnimatePresence>
+    );
+
+    const renderShoppingItems = (shoppingItems: BrainDumpItem[], canReset = false) => (
+        <AnimatePresence initial={false} mode="popLayout">
+            {shoppingItems.map(item => (
+                <motion.div
+                    key={item.id}
+                    layout="position"
+                    layoutDependency={`${item.status}-${item.content}-${item.meta.amount || 0}`}
+                    variants={highlightedListItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    transition={{ layout: motionSpring.layout }}
+                    className="rounded-[24px]"
+                >
+                    <ShoppingItem
+                        item={item}
+                        onToggleStatus={handleToggleStatus}
+                        onUpdate={handleUpdateItem}
+                        onDelete={handleDelete}
+                        budgetRules={budgetRules}
+                        wallets={wallets}
+                        onResetRoutine={canReset ? handleResetRoutine : undefined}
+                    />
+                </motion.div>
+            ))}
+        </AnimatePresence>
+    );
 
     return (
         <div className={contentSurface.pageShell}>
             {/* Top Container */}
             <motion.div
-                layoutId="top-container"
                 data-swipe-tabs="plan"
                 className={contentSurface.headerHero}
-                transition={{ type: "tween", duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 onTouchStart={swipeHandlers.onTouchStart}
                 onTouchMove={swipeHandlers.onTouchMove}
                 onTouchEnd={swipeHandlers.onTouchEnd}
@@ -1115,32 +1187,50 @@ const PlanView: React.FC<PlanViewProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
-                    <div data-plan-subtabs="true" className="mb-6 flex rounded-xl border border-border/70 bg-background/55 p-1">
-                        <button
-                            onClick={() => setPlanSubTab('tasks')}
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'tasks' ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
-                        >
-                            <CheckCircle2 className="w-4 h-4" /> Tasks
-                        </button>
-                        <button
-                            onClick={() => setPlanSubTab('shopping')}
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'shopping' ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
-                        >
-                            <ShoppingCart className="w-4 h-4" /> Shopping
-                        </button>
-                        <button
-                            onClick={() => setPlanSubTab('savings')}
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'savings' ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
-                        >
-                            <PiggyBank className="w-4 h-4" /> Goals
-                        </button>
-                        <button
-                            onClick={() => setPlanSubTab('loans')}
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'loans' ? 'bg-surface text-primary shadow-sm ring-1 ring-inset ring-border/70' : 'text-muted hover:text-primary'}`}
-                        >
-                            <HandCoins className="w-4 h-4" /> <span className="hidden sm:inline">Loans</span>
-                        </button>
-                    </div>
+                    <LayoutGroup id="plan-subtabs">
+                        <div data-plan-subtabs="true" className="mb-6 flex rounded-xl border border-border/70 bg-background/55 p-1" role="tablist" aria-label="Plan sections">
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={planSubTab === 'tasks'}
+                                onClick={() => setPlanSubTab('tasks')}
+                                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'tasks' ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                            >
+                                {planSubTab === 'tasks' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
+                                <CheckCircle2 className="relative z-10 w-4 h-4" /> <span className="relative z-10">Tasks</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={planSubTab === 'shopping'}
+                                onClick={() => setPlanSubTab('shopping')}
+                                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'shopping' ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                            >
+                                {planSubTab === 'shopping' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
+                                <ShoppingCart className="relative z-10 w-4 h-4" /> <span className="relative z-10">Shopping</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={planSubTab === 'savings'}
+                                onClick={() => setPlanSubTab('savings')}
+                                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'savings' ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                            >
+                                {planSubTab === 'savings' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
+                                <PiggyBank className="relative z-10 w-4 h-4" /> <span className="relative z-10">Goals</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={planSubTab === 'loans'}
+                                onClick={() => setPlanSubTab('loans')}
+                                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'loans' ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                            >
+                                {planSubTab === 'loans' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
+                                <HandCoins className="relative z-10 w-4 h-4" /> <span className="relative z-10 hidden sm:inline">Loans</span>
+                            </button>
+                        </div>
+                    </LayoutGroup>
 
                     <AnimatePresence mode="wait">
                         <motion.div
@@ -1251,7 +1341,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 onTouchEnd={onTouchEnd}
             >
                 <motion.div
-                    className="flex w-full will-change-transform"
+                    className={`flex w-full ${isDragging ? 'will-change-transform' : ''}`}
                     style={{
                         transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
                         transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
@@ -1259,8 +1349,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 >
                 {/* VIEW: Tasks */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={false}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     <div className="space-y-8">
@@ -1281,7 +1370,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </div>
                                         {rootToday.length > 0 ? (
                                             <div className={contentSurface.denseList}>
-                                                {visibleToday.visibleItems.map(renderTaskCard)}
+                                                {renderTaskItems(visibleToday.visibleItems)}
                                                 <LoadMoreButton remainingCount={visibleToday.remainingCount} onClick={visibleToday.loadMore} />
                                             </div>
                                         ) : (
@@ -1301,7 +1390,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </div>
                                         {rootLater.length > 0 ? (
                                             <div className={contentSurface.denseList}>
-                                                {visibleLater.visibleItems.map(renderTaskCard)}
+                                                {renderTaskItems(visibleLater.visibleItems)}
                                                 <LoadMoreButton remainingCount={visibleLater.remainingCount} onClick={visibleLater.loadMore} />
                                             </div>
                                         ) : (
@@ -1325,7 +1414,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </div>
                                     {rootRoutines.length > 0 ? (
                                         <div className={contentSurface.denseList}>
-                                            {visibleRoutines.visibleItems.map(renderTaskCard)}
+                                            {renderTaskItems(visibleRoutines.visibleItems)}
                                             <LoadMoreButton remainingCount={visibleRoutines.remainingCount} onClick={visibleRoutines.loadMore} />
                                         </div>
                                     ) : (
@@ -1345,7 +1434,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </div>
                                     {rootTomorrow.length > 0 ? (
                                         <div className={contentSurface.denseList}>
-                                            {visibleTomorrow.visibleItems.map(renderTaskCard)}
+                                            {renderTaskItems(visibleTomorrow.visibleItems)}
                                             <LoadMoreButton remainingCount={visibleTomorrow.remainingCount} onClick={visibleTomorrow.loadMore} />
                                         </div>
                                     ) : (
@@ -1379,8 +1468,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                 {/* VIEW: Shopping */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={false}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     <div className={contentSurface.workflowGrid}>
@@ -1398,7 +1486,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
                             {urgent.length > 0 ? (
                                 <div className="space-y-3">
-                                    {visibleUrgent.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} budgetRules={budgetRules} wallets={wallets} />)}
+                                    {renderShoppingItems(visibleUrgent.visibleItems)}
                                     <LoadMoreButton remainingCount={visibleUrgent.remainingCount} onClick={visibleUrgent.loadMore} />
                                 </div>
                             ) : (
@@ -1420,7 +1508,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
                             {routine.length > 0 ? (
                                 <div className="space-y-3">
-                                    {visibleRoutineShopping.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} budgetRules={budgetRules} wallets={wallets} onResetRoutine={handleResetRoutine} />)}
+                                    {renderShoppingItems(visibleRoutineShopping.visibleItems, true)}
                                     <LoadMoreButton remainingCount={visibleRoutineShopping.remainingCount} onClick={visibleRoutineShopping.loadMore} />
                                 </div>
                             ) : (
@@ -1440,7 +1528,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
                             {normal.length > 0 ? (
                                 <div className="space-y-3">
-                                    {visibleNormalShopping.visibleItems.map(item => <ShoppingItem key={item.id} item={item} onToggleStatus={handleToggleStatus} onUpdate={handleUpdateItem} onDelete={handleDelete} budgetRules={budgetRules} wallets={wallets} />)}
+                                    {renderShoppingItems(visibleNormalShopping.visibleItems)}
                                     <LoadMoreButton remainingCount={visibleNormalShopping.remainingCount} onClick={visibleNormalShopping.loadMore} />
                                 </div>
                             ) : (
@@ -1464,8 +1552,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                 {/* VIEW: Savings */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={false}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_27rem] lg:items-start lg:gap-6 lg:space-y-0">
@@ -1542,8 +1629,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                 {/* VIEW: Loans */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={false}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
                 >
                     <div className="space-y-6">
@@ -1632,16 +1718,17 @@ const PlanView: React.FC<PlanViewProps> = ({
             </motion.div>
 
             {/* Saving / Investment Edit Modal */}
-            <AnimatePresence>
+            <PresencePanel
+                isOpen={Boolean(editingGoal)}
+                onClose={closeGoalEditModal}
+                overlayClassName={responsiveModal.sheetOverlay}
+                panelClassName={addItemModal.panel}
+                presentation="form"
+                closeOnBackdrop={false}
+                ariaLabel={editingGoal?.meta.shoppingCategory === 'investment' ? 'Edit investment' : 'Edit saving goal'}
+            >
                 {editingGoal && (
-                    <div className={responsiveModal.sheetOverlay}>
-                        <motion.div
-                            initial={addItemModalMotion.initial}
-                            animate={addItemModalMotion.animate}
-                            exit={addItemModalMotion.exit}
-                            transition={addItemModalMotion.transition}
-                            className={addItemModal.panel}
-                        >
+                    <>
                             <div className={addItemModal.header}>
                                 <h3 className={addItemModal.title}>
                                     {editingGoal.meta.shoppingCategory === 'investment' ? <TrendingUp className="h-5 w-5 text-emerald-500" /> : <PiggyBank className="h-5 w-5 text-indigo-500" />}
@@ -1771,21 +1858,22 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </button>
                                 </div>
                             </div>
-                        </motion.div>
-                    </div>
+                    </>
                 )}
-            </AnimatePresence>
+            </PresencePanel>
 
             {/* Add Funds Modal */}
-            <AnimatePresence>
+            <PresencePanel
+                isOpen={Boolean(addFundsModal?.isOpen)}
+                onClose={resetFundModalState}
+                overlayClassName={responsiveModal.sheetOverlay}
+                panelClassName={`${responsiveModal.sheetPanel} max-w-md lg:max-w-lg border border-border`}
+                presentation="form"
+                closeOnBackdrop={false}
+                ariaLabel={addFundsModal?.targetType === 'investment' ? 'Add investment capital' : 'Add funds'}
+            >
                 {addFundsModal?.isOpen && (
-                    <div className={responsiveModal.sheetOverlay}>
-                        <motion.div
-                            initial={{ opacity: 0, y: 100 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 100 }}
-                            className={`${responsiveModal.sheetPanel} max-w-md lg:max-w-lg border border-border`}
-                        >
+                    <>
                             <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                                 <h3 className="text-xl font-bold text-primary flex items-center gap-2">
                                     {addFundsModal.targetType === 'investment' ? <TrendingUp className="w-5 h-5 text-emerald-500" /> : <PiggyBank className="w-5 h-5 text-indigo-500" />}
@@ -1905,10 +1993,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     Add Funds
                                 </button>
                             </div>
-                        </motion.div>
-                    </div>
+                    </>
                 )}
-            </AnimatePresence>
+            </PresencePanel>
         </div>
     );
 };

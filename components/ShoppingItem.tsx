@@ -282,7 +282,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   return (
     <div 
-      className={`group flex flex-col rounded-[24px] p-4 shadow-sm transition-all overflow-hidden cursor-pointer
+      className={`group flex flex-col rounded-[24px] p-4 shadow-sm transition-[background-color,opacity,box-shadow] duration-150 overflow-hidden cursor-pointer
         ${(isDone || isRoutineUnavailable)
             ? 'bg-surface/50 opacity-75' 
             : `bg-surface hover:bg-surface/80`
@@ -301,7 +301,9 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                     }}
                     disabled={readonly || isRoutineUnavailable}
                     title={isRoutineUnavailable ? 'Routine is not scheduled for today' : (isRoutine && isDone ? 'Mark undone and remove the latest routine history' : undefined)}
-                    className={`transition-colors shrink-0 ${(readonly || isRoutineUnavailable) ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
+                    aria-label={isDone ? `Mark ${content} as not completed` : `Mark ${content} as completed`}
+                    aria-pressed={isDone}
+                    className={`shrink-0 transition-[color,opacity,transform] duration-150 active:scale-90 ${(readonly || isRoutineUnavailable) ? 'cursor-not-allowed opacity-70' : 'hover:opacity-80'}`}
                 >
                 {isDone ? (
                     <CheckCircle2 className="w-4 h-4 text-muted" />
@@ -348,7 +350,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
         {/* Bottom Row */}
         <div className="flex justify-between items-start gap-4 mt-1">
             <div className="flex flex-col min-w-0 flex-1">
-                <div className={`text-base font-medium text-primary line-clamp-2 ${isDone ? 'line-through text-muted' : ''}`}>
+                <div className={`text-base font-medium text-primary line-clamp-2 transition-[color,opacity,text-decoration-color] duration-180 ${isDone ? 'line-through text-muted decoration-current' : 'decoration-transparent'}`}>
                     {content}
                 </div>
                 

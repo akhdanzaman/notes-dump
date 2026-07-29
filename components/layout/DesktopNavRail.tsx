@@ -1,4 +1,5 @@
 import React from 'react';
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   AlertTriangle,
   ClipboardCheck,
@@ -10,6 +11,9 @@ import {
 } from 'lucide-react';
 import { LibrarySubTab, PlanSubTab, SyncProgress, SyncStatus, Tab } from '../../types';
 import { getAppNavigationItems } from '../navigationItems';
+import ActiveIndicator from '../../motion/ActiveIndicator';
+import { popVariants } from '../../motion/variants';
+import CountBadge from '../../motion/CountBadge';
 
 interface DesktopNavRailProps {
   activeTab: Tab;
@@ -53,7 +57,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
       ? 'syncing'
       : saveStatus === 'error' || fetchStatus === 'error'
         ? 'error'
-        : saveStatus === 'local'
+        : saveStatus === 'local' || fetchStatus === 'local'
           ? 'local'
           : 'synced';
 
@@ -117,46 +121,53 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
         Navigasi
       </div>
 
-      <nav className="mt-2 space-y-1" aria-label="Navigasi utama desktop">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
+      <LayoutGroup id="desktop-primary-navigation">
+        <nav className="mt-2 space-y-1" aria-label="Navigasi utama desktop">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
 
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveTab(item.id)}
-              className={[
-                'group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left',
-                'transition-colors duration-200',
-                isActive
-                  ? 'bg-indigo-500/10 text-primary ring-1 ring-inset ring-indigo-500/15'
-                  : 'text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]',
-              ].join(' ')}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              {isActive && <span className="absolute left-0 h-7 w-1 rounded-r-full bg-indigo-500" />}
-              <span
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
                 className={[
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors',
+                  'group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left',
+                  'transition-colors duration-200',
                   isActive
-                    ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/20'
-                    : 'bg-black/[0.035] text-muted group-hover:text-primary dark:bg-white/[0.055]',
+                    ? 'text-primary'
+                    : 'text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]',
                 ].join(' ')}
+                aria-current={isActive ? 'page' : undefined}
               >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={isActive ? 2.35 : 2} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold leading-tight">{item.label}</span>
-                <span className="mt-0.5 block truncate text-[11px] leading-tight text-muted">
-                  {item.helper}
+                {isActive && (
+                  <ActiveIndicator
+                    className="absolute inset-0 rounded-2xl bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/15 before:absolute before:left-0 before:top-1/2 before:h-7 before:w-1 before:-translate-y-1/2 before:rounded-r-full before:bg-indigo-500 before:content-['']"
+                  />
+                )}
+                <span
+                  data-nav-icon="true"
+                  className={[
+                    'relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-[color,background-color,transform] duration-150 group-active:scale-[0.94]',
+                    isActive
+                      ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/20'
+                      : 'bg-black/[0.035] text-muted group-hover:text-primary dark:bg-white/[0.055]',
+                  ].join(' ')}
+                >
+                  <Icon className="h-[18px] w-[18px]" strokeWidth={isActive ? 2.35 : 2} />
                 </span>
-              </span>
-            </button>
-          );
-        })}
-      </nav>
+                <span className="relative z-10 min-w-0 flex-1">
+                  <span className="block text-sm font-semibold leading-tight">{item.label}</span>
+                  <span className="mt-0.5 block truncate text-[11px] leading-tight text-muted">
+                    {item.helper}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      </LayoutGroup>
 
       <div className="mt-auto space-y-2.5">
         {error && (
@@ -172,7 +183,18 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
         <div className="rounded-2xl border border-border/80 bg-background/55 p-2.5">
           <div className="flex items-center gap-3 px-1 py-1">
             <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface ${statusConfig.className}`}>
-              <StatusIcon className={`h-[18px] w-[18px] ${activeStatus === 'syncing' ? 'animate-spin' : activeStatus === 'saving' ? 'animate-pulse' : ''}`} />
+              <AnimatePresence initial={false} mode="wait">
+                <motion.span
+                  key={activeStatus}
+                  variants={popVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="flex"
+                >
+                  <StatusIcon className={`h-[18px] w-[18px] ${activeStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                </motion.span>
+              </AnimatePresence>
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-bold text-primary">{statusConfig.label}</span>
@@ -189,11 +211,10 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
               aria-label="Buka review dan proses"
             >
               <ClipboardCheck className="h-4 w-4" />
-              {totalQueue > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-[17px] rounded-full bg-indigo-500 px-1 text-center text-[9px] font-bold leading-[17px] text-white">
-                  {totalQueue > 9 ? '9+' : totalQueue}
-                </span>
-              )}
+              <CountBadge
+                count={totalQueue}
+                className="absolute -right-1 -top-1 min-w-[17px] rounded-full bg-indigo-500 px-1 text-center text-[9px] font-bold leading-[17px] text-white"
+              />
             </button>
             <button
               type="button"

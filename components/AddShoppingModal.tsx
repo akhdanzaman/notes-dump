@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'motion/react';
 import { X, Check, ShoppingCart, Clock, TrendingUp, Image as ImageIcon, Plus } from 'lucide-react';
 import { ShoppingCategory, InvestmentAssetType, BudgetRule, Wallet, ShoppingLineItem } from '../types';
-import { addItemModal, addItemModalMotion, responsiveModal } from './layout/contentSurface';
+import PresencePanel from '../motion/PresencePanel';
+import { addItemModal, responsiveModal } from './layout/contentSurface';
 import { calculateFirstDueDate } from '../utils/selectors';
 import { createShoppingLineItemId, sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
 
@@ -251,18 +252,16 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         updateDateFromRoutineSchedule(interval, daysOfWeek, daysOfMonth, nextMonths);
     };
 
-    if (!isOpen) return null;
-
     return (
-        <AnimatePresence>
-            <div className={responsiveModal.sheetOverlay}>
-                <motion.div
-                    initial={addItemModalMotion.initial}
-                    animate={addItemModalMotion.animate}
-                    exit={addItemModalMotion.exit}
-                    transition={addItemModalMotion.transition}
-                    className={addItemModal.panel}
-                >
+        <PresencePanel
+            isOpen={isOpen}
+            onClose={onClose}
+            overlayClassName={responsiveModal.sheetOverlay}
+            panelClassName={addItemModal.panel}
+            presentation="form"
+            closeOnBackdrop={false}
+            ariaLabel={category === 'saving' ? 'Add Saving Goal' : (category === 'investment' ? 'Add Investment' : 'Add Shopping Item')}
+        >
                     <div className={addItemModal.header}>
                         <h3 className={addItemModal.title}>
                             <ShoppingCart className={addItemModal.icon} />
@@ -665,9 +664,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                             {category === 'saving' ? 'Create Goal' : (category === 'investment' ? 'Add Investment' : 'Add Item')}
                         </button>
                     </div>
-                </motion.div>
-            </div>
-        </AnimatePresence>
+        </PresencePanel>
     );
 };
 

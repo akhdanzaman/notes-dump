@@ -5,6 +5,7 @@ import App from './App';
 import CallbackPage from './components/CallbackPage';
 import { registerSW } from 'virtual:pwa-register';
 import { registerBackgroundRuntime } from './utils/backgroundRuntime';
+import MotionProvider from './motion/MotionProvider';
 
 const STALE_ASSET_RELOAD_KEY = 'arkaiv-stale-asset-reload-attempted';
 
@@ -124,7 +125,9 @@ const RootComponent = () => {
 root.render(
   <React.StrictMode>
     <RootErrorBoundary>
-      <RootComponent />
+      <MotionProvider>
+        <RootComponent />
+      </MotionProvider>
     </RootErrorBoundary>
   </React.StrictMode>
 );
