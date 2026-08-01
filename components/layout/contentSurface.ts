@@ -31,6 +31,11 @@ export const contentSurface = {
   workspaceCard: 'rounded-[28px] bg-surface p-4 shadow-sm ring-1 ring-inset ring-border/70 sm:p-5',
   workspaceCompactCard: 'rounded-[24px] bg-surface shadow-sm ring-1 ring-inset ring-border/65',
   workspaceListRow: 'bg-background/55 ring-1 ring-inset ring-border/55 transition-colors hover:bg-surface-soft/70',
+  workspaceDetailOverlay: 'fixed inset-0 z-[100] flex items-end justify-center bg-black/45 backdrop-blur-sm dark:bg-black/65 lg:items-stretch lg:justify-end',
+  workspaceDetailPanel: 'flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] bg-surface shadow-2xl ring-1 ring-inset ring-border/70 sm:max-w-2xl lg:h-full lg:max-h-none lg:max-w-xl lg:rounded-none',
+  workspaceDetailHeader: 'flex shrink-0 items-center justify-between gap-4 border-b border-border/70 px-5 py-4',
+  workspaceDetailEyebrow: 'text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-300',
+  workspaceDetailBody: 'min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5',
   // NDZ-007 #1: keep mobile gutters, but let desktop content align to the shared shell edge.
   contentPad: 'px-1 sm:px-2 lg:px-0',
   // NDZ-017: Summary owns the wider desktop dashboard rhythm; keep side context useful without starving the primary scan column.

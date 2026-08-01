@@ -3,6 +3,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import Card from '../Card';
+import ShoppingItem from '../ShoppingItem';
 import InputBar from '../InputBar';
 import AddExpenseModal from '../AddExpenseModal';
 import { BrainDumpItem, ItemType } from '../../types';
@@ -108,10 +109,10 @@ test('manual transaction modal exposes loan and repayment flows', () => {
     initialMode: 'loan',
   }));
 
-  assert.match(html, /Saya meminjamkan/);
-  assert.match(html, /Saya meminjam/);
-  assert.match(html, /Pengembalian diterima/);
-  assert.match(html, /Saya membayar kembali/);
+  assert.match(html, /Pinjamkan uang/);
+  assert.match(html, /Pinjam uang/);
+  assert.match(html, /Terima pembayaran/);
+  assert.match(html, /Bayar utang/);
   assert.match(html, /Pihak terkait/);
   assert.match(html, /Jatuh tempo/);
 });
@@ -144,11 +145,57 @@ test('transaction card edit mode exposes loan directions and obligation fields',
     onUpdate: () => undefined,
   }));
 
-  assert.match(html, /Pinjamkan/);
-  assert.match(html, /Pinjam/);
-  assert.match(html, /Terima kembali/);
-  assert.match(html, /Bayar kembali/);
+  assert.match(html, /Pinjamkan uang/);
+  assert.match(html, /Pinjam uang/);
+  assert.match(html, /Terima pembayaran/);
+  assert.match(html, /Bayar utang/);
   assert.match(html, /Pihak terkait/);
   assert.match(html, /Jatuh tempo/);
   assert.match(html, /value="Budi"/);
+});
+
+test('workspace cards expose a compact detail-panel trigger without rendering the editor inline', () => {
+  const note: BrainDumpItem = {
+    id: 'note-detail-1',
+    type: ItemType.NOTE,
+    content: 'Catatan strategi mingguan',
+    status: 'pending',
+    created_at: '2026-08-01T08:00:00.000Z',
+    meta: { title: 'Strategi' },
+  };
+
+  const html = renderToStaticMarkup(React.createElement(Card, {
+    item: note,
+    enableCollapse: true,
+    defaultCollapsed: true,
+    onOpen: () => undefined,
+    onUpdate: () => undefined,
+  }));
+
+  assert.match(html, /data-card-behavior="detail-panel"/);
+  assert.match(html, /aria-label="Buka detail Catatan strategi mingguan"/);
+  assert.doesNotMatch(html, /Simpan perubahan/);
+});
+
+test('shopping detail panel can render the existing editor expanded', () => {
+  const shopping: BrainDumpItem = {
+    id: 'shopping-detail-1',
+    type: ItemType.SHOPPING,
+    content: 'Belanja kebutuhan rumah',
+    status: 'pending',
+    created_at: '2026-08-01T08:00:00.000Z',
+    meta: { amount: 150_000, shoppingCategory: 'not_urgent' },
+  };
+
+  const html = renderToStaticMarkup(React.createElement(ShoppingItem, {
+    item: shopping,
+    onToggleStatus: () => undefined,
+    onDelete: () => undefined,
+    onUpdate: () => undefined,
+    defaultExpanded: true,
+  }));
+
+  assert.match(html, /data-card-behavior="inline"/);
+  assert.match(html, /Save/);
+  assert.match(html, /value="Belanja kebutuhan rumah"/);
 });

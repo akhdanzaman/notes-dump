@@ -184,6 +184,8 @@ interface CardProps {
   extraExpandedContent?: React.ReactNode;
   onEditPanelExpandedChange?: (id: string, expanded: boolean) => void;
   onCollapseChange?: (id: string, collapsed: boolean) => void;
+  onOpen?: (item: BrainDumpItem) => void;
+  onSaveComplete?: (id: string) => void;
   
   // Context Props
   skills?: Skill[];
@@ -218,6 +220,8 @@ const Card: React.FC<CardProps> = ({
     extraExpandedContent,
     onEditPanelExpandedChange,
     onCollapseChange,
+    onOpen,
+    onSaveComplete,
     skills = [],
     wallets = [],
     budgetRules = [],
@@ -479,11 +483,16 @@ const Card: React.FC<CardProps> = ({
       if (enableCollapse) {
           setIsCollapsed(true);
       }
+      onSaveComplete?.(item.id);
   };
 
   const shouldStrike = status === 'done' && !noStrikethrough && type !== ItemType.JOURNAL;
 
   const toggleCollapse = () => {
+      if (onOpen) {
+          onOpen(item);
+          return;
+      }
       if (!enableCollapse) return;
       const nextCollapsed = !isCollapsed;
       setIsCollapsed(nextCollapsed);
@@ -748,7 +757,7 @@ const Card: React.FC<CardProps> = ({
   
   const isDarkened = !noDarken && (isRoutineDone || isRecentlyDone || isParsingFailed || isRoutineUnavailable) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
-  const isTaskWorkspaceEdit = editComfort === 'taskWorkspace' && enableCollapse && !isCollapsed;
+  const isTaskWorkspaceEdit = editComfort === 'taskWorkspace' && !isCollapsed;
   const showInlineEditPanel = !enableCollapse || !isCollapsed;
   const showEditBody = showInlineEditPanel && (!collapsibleEditPanel || editPanelExpanded);
   const showPreviewContent = enableCollapse && (isCollapsed || (collapsibleEditPanel && !editPanelExpanded));
@@ -762,8 +771,17 @@ const Card: React.FC<CardProps> = ({
     <div
         data-edit-comfort={editComfort === 'taskWorkspace' ? 'task-workspace' : undefined}
         data-card-expanded={!isCollapsed ? 'true' : 'false'}
-        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-md' : 'ring-1 ring-inset ring-border/65'} break-inside-avoid rounded-[24px] p-4 shadow-sm transition-[box-shadow,background-color] duration-200 hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        data-card-behavior={onOpen ? 'detail-panel' : enableCollapse ? 'inline' : 'static'}
+        role={onOpen ? 'group' : undefined}
+        tabIndex={onOpen ? 0 : undefined}
+        aria-label={onOpen ? `Buka detail ${content}` : undefined}
+        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-md' : 'ring-1 ring-inset ring-border/65'} break-inside-avoid rounded-[24px] p-4 shadow-sm transition-[box-shadow,background-color] duration-200 hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse || onOpen ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
+        onKeyDown={(event) => {
+          if (!onOpen || event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+          event.preventDefault();
+          onOpen(item);
+        }}
     >
       <div className="flex flex-col gap-1">
         

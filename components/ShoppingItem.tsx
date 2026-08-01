@@ -56,10 +56,13 @@ interface ShoppingItemProps {
   budgetRules?: BudgetRule[];
   wallets?: Wallet[];
   onResetRoutine?: (id: string) => void;
+  onOpen?: (item: BrainDumpItem) => void;
+  defaultExpanded?: boolean;
+  onSaveComplete?: (id: string) => void;
 }
 
-const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], wallets = [], onResetRoutine }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], wallets = [], onResetRoutine, onOpen, defaultExpanded = false, onSaveComplete }) => {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [showAllLineItems, setShowAllLineItems] = useState(false);
   const { content, meta, status, completed_at } = item;
   
@@ -164,6 +167,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           undefined,
           hasEditLineItems ? sanitizedEditLineItems : undefined
       );
+      onSaveComplete?.(item.id);
   };
 
   const isDone = status === 'done';
@@ -277,17 +281,30 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   const toggleExpand = (e: React.MouseEvent) => {
       e.stopPropagation();
+      if (onOpen) {
+          onOpen(item);
+          return;
+      }
       setIsExpanded(!isExpanded);
   };
 
   return (
     <div 
+      data-card-behavior={onOpen ? 'detail-panel' : 'inline'}
+      role={onOpen ? 'group' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      aria-label={onOpen ? `Buka detail ${content}` : undefined}
       className={`group flex flex-col rounded-[24px] p-4 shadow-sm ring-1 ring-inset ring-border/65 transition-[background-color,opacity,box-shadow] duration-150 overflow-hidden cursor-pointer
         ${(isDone || isRoutineUnavailable)
             ? 'bg-surface/50 opacity-75' 
             : `bg-surface hover:bg-surface/80`
-        }`}
+      }`}
       onClick={toggleExpand}
+      onKeyDown={(event) => {
+          if (!onOpen || event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+          event.preventDefault();
+          onOpen(item);
+      }}
     >
       <div className="flex flex-col gap-1">
         

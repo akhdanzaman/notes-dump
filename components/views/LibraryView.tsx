@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
-import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight, Clock, X } from 'lucide-react';
 import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority, SkillSessionLogInput } from '../../types';
 import { getJournalDayGroups, getNoteItems, getSkillItems, getSkillLogActualRange, getSkillLogDurationMinutes, getSkillLogForSession, SkillScheduleSession, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
@@ -100,6 +100,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         statusDone: 'Done', statusPartial: 'Partial', statusMissed: 'Missed', statusToday: 'Today', statusInProgress: 'In progress', statusReady: 'Ready to log', statusUpcoming: 'Upcoming',
         editSession: 'Edit skill session', close: 'Close', actualStart: 'Actual start', actualEnd: 'Actual end', duration: 'Duration',
         invalidActual: 'Actual end must be after actual start.', cancel: 'Cancel', saveActual: 'Save actual time',
+        itemDetail: 'Library detail', editEntry: 'Edit entry', closeDetail: 'Close detail',
     } : {
         sections: 'Bagian Pustaka', notes: 'Catatan', allNotes: 'Semua catatan', skills: 'Skill', skillGrowth: 'Perkembangan skill', journal: 'Jurnal', journalEntries: 'Entri jurnal',
         tags: 'Tag', totalTime: 'Total waktu', across: 'Dalam', days: 'hari', addNote: 'Tambah catatan', addSkill: 'Tambah skill', writeJournal: 'Tulis jurnal',
@@ -115,6 +116,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         statusDone: 'Selesai', statusPartial: 'Sebagian', statusMissed: 'Terlewat', statusToday: 'Hari ini', statusInProgress: 'Berlangsung', statusReady: 'Siap dicatat', statusUpcoming: 'Mendatang',
         editSession: 'Ubah sesi skill', close: 'Tutup', actualStart: 'Mulai aktual', actualEnd: 'Selesai aktual', duration: 'Durasi',
         invalidActual: 'Waktu selesai harus setelah waktu mulai.', cancel: 'Batal', saveActual: 'Simpan waktu aktual',
+        itemDetail: 'Detail pustaka', editEntry: 'Ubah entri', closeDetail: 'Tutup detail',
     };
     const libraryTabs: { key: LibrarySubTab; label: string; title: string; icon: React.ReactNode }[] = [
         { key: 'general', label: libraryCopy.notes, title: libraryCopy.allNotes, icon: <Library className="w-4 h-4" /> },
@@ -205,6 +207,12 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const [editingSkillSession, setEditingSkillSession] = useState<SkillSessionEditorState | null>(null);
     const [actualStartInput, setActualStartInput] = useState('');
     const [actualEndInput, setActualEndInput] = useState('');
+    const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<string | null>(null);
+    const selectedLibraryItem = selectedLibraryItemId ? items.find(item => item.id === selectedLibraryItemId) || null : null;
+
+    React.useEffect(() => {
+        if (selectedLibraryItemId && !selectedLibraryItem) setSelectedLibraryItemId(null);
+    }, [selectedLibraryItem, selectedLibraryItemId]);
 
     const toDateTimeLocalInputValue = (value?: Date | string) => {
         if (!value) return '';
@@ -282,9 +290,21 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         icon: React.ReactNode,
         accentClass: string,
         children: React.ReactNode,
-        count?: number
+        count?: number,
+        onOpen?: () => void
     ) => (
-        <div className={`${contentSurface.workspaceCompactCard} p-4`}>
+        <div
+            className={`${contentSurface.workspaceCompactCard} p-4 ${onOpen ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
+            data-card-behavior={onOpen ? 'detail-panel' : 'summary'}
+            role={onOpen ? 'group' : undefined}
+            tabIndex={onOpen ? 0 : undefined}
+            onClick={onOpen}
+            onKeyDown={event => {
+                if (!onOpen || event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+                event.preventDefault();
+                onOpen();
+            }}
+        >
             <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${accentClass}`}>{icon}</div>
@@ -321,7 +341,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 </p>
                             )}
                         </div>,
-                        group.journalEntries.length
+                        group.journalEntries.length,
+                        () => setSelectedLibraryItemId(group.journalEntries[0].id)
                     )}
 
                     {group.todos.length > 0 && renderJournalSectionCard(
@@ -500,12 +521,13 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             onUpdate: handleUpdateItem,
             onDelete: handleDelete,
             enableCollapse: true,
-            defaultCollapsed: appSettings.defaultCollapsed,
+            defaultCollapsed: true,
             hideMoney: appSettings.hideMoney,
             skills,
             className: "mb-4 break-inside-avoid",
             noStrikethrough: type === 'journal',
-            noDarken: type === 'journal'
+            noDarken: type === 'journal',
+            onOpen: (item: BrainDumpItem) => setSelectedLibraryItemId(item.id),
         };
 
         if (type === 'journal') {
@@ -627,7 +649,17 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 key={skill.id}
                                 layout={isDragging ? false : "position"}
                                 layoutDependency={`${skill.weeklyMinutes || 0}-${skill.weeklyTargetMinutes || 0}`}
-                                className="group overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 transition-shadow hover:shadow-md"
+                                data-card-behavior="detail-panel"
+                                role="group"
+                                tabIndex={0}
+                                aria-label={`${libraryCopy.editSkill} ${skill.name}`}
+                                onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
+                                onKeyDown={event => {
+                                    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+                                    event.preventDefault();
+                                    handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes);
+                                }}
+                                className="group cursor-pointer overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 transition-shadow hover:shadow-md"
                             >
                                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_auto] gap-0 sm:gap-4 items-stretch">
                                     <div className="w-full aspect-[16/9] sm:aspect-auto sm:h-full sm:min-h-[184px] rounded-[26px] bg-background border border-border overflow-hidden flex items-center justify-center">
@@ -696,7 +728,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                             ★ {(progress / 20).toFixed(1)}
                                         </div>
                                         <button
-                                            onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
+                                            onClick={event => {
+                                                event.stopPropagation();
+                                                handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes);
+                                            }}
                                             className="p-2 bg-background hover:bg-muted/10 rounded-xl transition-colors"
                                             title={libraryCopy.editSkill}
                                             aria-label={`${libraryCopy.editSkill} ${skill.name}`}
@@ -704,7 +739,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                             <Pencil className="w-4 h-4 text-muted" />
                                         </button>
                                         <button
-                                            onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
+                                            onClick={event => {
+                                                event.stopPropagation();
+                                                setDeleteId(skill.id);
+                                                setDeleteType('skill');
+                                            }}
                                             className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors"
                                             title={libraryCopy.deleteSkill}
                                             aria-label={`${libraryCopy.deleteSkill} ${skill.name}`}
@@ -1006,6 +1045,53 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 </motion.div>
                 </motion.div>
             </motion.div>
+
+            <PresencePanel
+                isOpen={Boolean(selectedLibraryItem)}
+                onClose={() => setSelectedLibraryItemId(null)}
+                overlayClassName={contentSurface.workspaceDetailOverlay}
+                panelClassName={contentSurface.workspaceDetailPanel}
+                presentation="sheet"
+                ariaLabel={libraryCopy.itemDetail}
+            >
+                <div className={contentSurface.workspaceDetailHeader}>
+                    <div className="min-w-0">
+                        <div className={contentSurface.workspaceDetailEyebrow}>{libraryCopy.editEntry}</div>
+                        <h2 className="mt-1 truncate text-lg font-semibold text-primary">
+                            {selectedLibraryItem?.meta.title || selectedLibraryItem?.content || libraryCopy.itemDetail}
+                        </h2>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedLibraryItemId(null)}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-soft hover:text-primary"
+                        aria-label={libraryCopy.closeDetail}
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+                <div className={contentSurface.workspaceDetailBody}>
+                    {selectedLibraryItem && (
+                        <Card
+                            key={selectedLibraryItem.id}
+                            item={selectedLibraryItem}
+                            onUpdate={handleUpdateItem}
+                            onDelete={id => {
+                                handleDelete(id);
+                                setSelectedLibraryItemId(null);
+                            }}
+                            enableCollapse={false}
+                            defaultCollapsed={false}
+                            hideMoney={appSettings.hideMoney}
+                            skills={skills}
+                            noStrikethrough={selectedLibraryItem.type === ItemType.JOURNAL}
+                            noDarken={selectedLibraryItem.type === ItemType.JOURNAL}
+                            onSaveComplete={() => setSelectedLibraryItemId(null)}
+                            className="border-0 shadow-none ring-0 hover:shadow-none"
+                        />
+                    )}
+                </div>
+            </PresencePanel>
 
             <PresencePanel
                 isOpen={Boolean(editingSkillSession)}

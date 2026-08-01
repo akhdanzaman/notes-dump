@@ -2840,13 +2840,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         isOpen={!!selectedTransaction}
         onClose={() => setSelectedTransaction(null)}
         presentation="sheet"
-        overlayClassName="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 backdrop-blur-sm lg:items-stretch lg:justify-end"
-        panelClassName="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[28px] bg-surface shadow-2xl ring-1 ring-inset ring-border/70 sm:max-w-2xl lg:h-full lg:max-h-none lg:max-w-xl lg:rounded-none"
+        overlayClassName={contentSurface.workspaceDetailOverlay}
+        panelClassName={contentSurface.workspaceDetailPanel}
         ariaLabel="Detail transaksi"
       >
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border/70 px-5 py-4">
+        <div className={contentSurface.workspaceDetailHeader}>
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-300">
+            <div className={contentSurface.workspaceDetailEyebrow}>
               Detail transaksi
             </div>
             <h2 className="mt-1 text-lg font-semibold">
@@ -2864,7 +2864,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        <div className={contentSurface.workspaceDetailBody}>
           {selectedTransaction && (
             <Card
               item={selectedTransaction}

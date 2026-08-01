@@ -149,3 +149,13 @@ test('NDZ-024 keeps destructive confirms compact and visually separate from dens
   assert.match(responsiveModal.destructiveConfirmPanel, /border-red-500\/30/);
   assert.doesNotMatch(responsiveModal.destructiveConfirmPanel, /lg:max-w-2xl|lg:max-w-3xl/);
 });
+
+test('workspace detail panels clear the global composer and become a desktop side panel', () => {
+  assert.match(contentSurface.workspaceDetailOverlay, /z-\[100\]/);
+  assert.match(contentSurface.workspaceDetailOverlay, /lg:justify-end/);
+  assert.match(contentSurface.workspaceDetailPanel, /max-h-\[92dvh\]/);
+  assert.match(contentSurface.workspaceDetailPanel, /lg:h-full/);
+  assert.match(contentSurface.workspaceDetailPanel, /lg:max-w-xl/);
+  assert.match(contentSurface.workspaceDetailBody, /overflow-y-auto/);
+  assert.match(contentSurface.workspaceDetailBody, /safe-area-inset-bottom/);
+});

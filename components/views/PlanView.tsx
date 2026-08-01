@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon, HandCoins, ArrowDownLeft, ArrowUpRight, Clock3, CheckCircle } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta } from '../../types';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta, ItemType } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import { getDeepWorkChildren, supportsNestedTodoSubtasks } from '../../utils/deepWorkTodoModel';
 import Card from '../Card';
@@ -132,6 +132,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         overdue: 'overdue', dueSoon: 'due soon', record: 'Record',
         goalMilestones: 'Goal milestones', goalMilestonesHelper: 'Stay on track with your savings goals.', noMilestones: 'No milestones yet.',
         completed: 'Completed', target: 'Target', noDueDate: 'Not set', statusOverdue: 'Past due', statusDueSoon: 'Due soon', statusPaid: 'Paid', statusActive: 'Active',
+        itemDetail: 'Plan detail', closeDetail: 'Close detail', taskDetail: 'Task editor', shoppingDetail: 'Shopping editor',
     } : {
         sections: 'Bagian Rencana', tasks: 'Tugas', shopping: 'Belanja', goals: 'Target', loans: 'Pinjaman', tasksHeading: 'Tugas & rutinitas', focusMonth: 'Bulan fokus',
         pending: 'Belum selesai', done: 'Selesai', routines: 'Rutinitas', shoppingList: 'Daftar belanja', urgent: 'Mendesak', routine: 'Rutin', normal: 'Lainnya',
@@ -145,6 +146,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         overdue: 'terlambat', dueSoon: 'segera jatuh tempo', record: 'Catat',
         goalMilestones: 'Tahapan target', goalMilestonesHelper: 'Pantau kemajuan setiap target tabungan.', noMilestones: 'Belum ada tahapan target.',
         completed: 'Selesai', target: 'Target', noDueDate: 'Belum ditentukan', statusOverdue: 'Lewat jatuh tempo', statusDueSoon: 'Segera jatuh tempo', statusPaid: 'Lunas', statusActive: 'Aktif',
+        itemDetail: 'Detail rencana', closeDetail: 'Tutup detail', taskDetail: 'Editor tugas', shoppingDetail: 'Editor belanja',
     };
 
     // Data Preparation
@@ -184,6 +186,12 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [taskCardCollapsed, setTaskCardCollapsed] = useState<Record<string, boolean>>({});
     const [activeTaskPanels, setActiveTaskPanels] = useState<Record<string, TaskPanel | undefined>>({});
     const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>({});
+    const [selectedPlanItemId, setSelectedPlanItemId] = useState<string | null>(null);
+    const selectedPlanItem = selectedPlanItemId ? items.find(item => item.id === selectedPlanItemId) || null : null;
+
+    React.useEffect(() => {
+        if (selectedPlanItemId && !selectedPlanItem) setSelectedPlanItemId(null);
+    }, [selectedPlanItem, selectedPlanItemId]);
 
     // Main Tab Swipe Logic
     const swipeHandlers = useSwipeTabs('plan', setActiveTab);
@@ -647,7 +655,17 @@ const PlanView: React.FC<PlanViewProps> = ({
                 layout={isDragging ? false : "position"}
                 layoutDependency={`${goal.status}-${goal.meta.savedAmount || 0}`}
                 key={goal.id}
-                className={`overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 ${isDone ? 'opacity-70' : ''}`}
+                data-card-behavior="detail-panel"
+                role="group"
+                tabIndex={0}
+                aria-label={`${isEnglish ? 'Edit saving goal' : 'Ubah target tabungan'} ${goal.content}`}
+                onClick={() => openGoalEditModal(goal)}
+                onKeyDown={event => {
+                    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+                    event.preventDefault();
+                    openGoalEditModal(goal);
+                }}
+                className={`cursor-pointer overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 transition-shadow hover:shadow-md ${isDone ? 'opacity-70' : ''}`}
             >
                 {renderThumbnail(goal, 'saving', 'h-36 sm:h-40 lg:h-36 xl:h-40', actions)}
                 <div className="p-5 pt-4">
@@ -767,7 +785,17 @@ const PlanView: React.FC<PlanViewProps> = ({
                 layout={isDragging ? false : "position"}
                 layoutDependency={`${investment.status}-${currentValue}`}
                 key={investment.id}
-                className="overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-emerald-500/15"
+                data-card-behavior="detail-panel"
+                role="group"
+                tabIndex={0}
+                aria-label={`${isEnglish ? 'Edit investment' : 'Ubah investasi'} ${investment.content}`}
+                onClick={() => openGoalEditModal(investment)}
+                onKeyDown={event => {
+                    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+                    event.preventDefault();
+                    openGoalEditModal(investment);
+                }}
+                className="cursor-pointer overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-emerald-500/15 transition-shadow hover:shadow-md"
             >
                 <div className="flex flex-col gap-4 sm:flex-row">
                     {renderThumbnail(investment, 'investment', 'h-36 sm:h-auto sm:w-40 sm:shrink-0 lg:w-36 xl:w-40', actions)}
@@ -1014,11 +1042,11 @@ const PlanView: React.FC<PlanViewProps> = ({
         );
     };
 
-    const renderTaskCard = (item: BrainDumpItem) => {
+    const renderTaskCard = (item: BrainDumpItem, detailMode = false) => {
         const children = getDeepWorkChildren(items, item.id);
         const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
         const canUseManualSubtasks = supportsNestedTodoSubtasks(item) && !item.meta.parentTodoId;
-        const isCardExpanded = isTaskCardExpanded(item.id);
+        const isCardExpanded = detailMode || isTaskCardExpanded(item.id);
         const activePanel = getActiveTaskPanel(item, children, isDeepWork);
         const isSubtasksExpanded = activePanel === 'subtasks';
 
@@ -1065,6 +1093,25 @@ const PlanView: React.FC<PlanViewProps> = ({
             ) : undefined;
             const taskCardProps = getTaskCardProps(item, activePanel, editPanelControls, manualSubtaskPanel);
 
+            const taskCard = (
+                <Card
+                    item={item}
+                    {...taskCardProps}
+                    enableCollapse={!detailMode}
+                    defaultCollapsed={!detailMode}
+                    onOpen={detailMode ? undefined : () => setSelectedPlanItemId(item.id)}
+                    onDelete={detailMode ? id => {
+                        handleDelete(id);
+                        setSelectedPlanItemId(null);
+                    } : taskCardProps.onDelete}
+                    onSaveComplete={detailMode ? () => setSelectedPlanItemId(null) : undefined}
+                    editComfort="taskWorkspace"
+                    className={detailMode ? 'border-0 shadow-none ring-0 hover:shadow-none' : undefined}
+                />
+            );
+
+            if (detailMode) return taskCard;
+
             return (
                 <motion.div
                     key={item.id}
@@ -1077,7 +1124,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     transition={{ layout: motionSpring.layout }}
                     className="rounded-[24px]"
                 >
-                    <Card item={item} {...taskCardProps} editComfort="taskWorkspace" />
+                    {taskCard}
                 </motion.div>
             );
         }
@@ -1205,6 +1252,25 @@ const PlanView: React.FC<PlanViewProps> = ({
         ) : undefined;
         const taskCardProps = getTaskCardProps(item, activePanel, deepWorkPanelControls, deepWorkSubtaskPanel);
 
+        const taskCard = (
+            <Card
+                item={item}
+                {...taskCardProps}
+                enableCollapse={!detailMode}
+                defaultCollapsed={!detailMode}
+                onOpen={detailMode ? undefined : () => setSelectedPlanItemId(item.id)}
+                onDelete={detailMode ? id => {
+                    handleDelete(id);
+                    setSelectedPlanItemId(null);
+                } : taskCardProps.onDelete}
+                onSaveComplete={detailMode ? () => setSelectedPlanItemId(null) : undefined}
+                editComfort="taskWorkspace"
+                className={detailMode ? 'border-0 shadow-none ring-0 hover:shadow-none' : undefined}
+            />
+        );
+
+        if (detailMode) return taskCard;
+
         return (
             <motion.div
                 key={item.id}
@@ -1217,14 +1283,14 @@ const PlanView: React.FC<PlanViewProps> = ({
                 transition={{ layout: motionSpring.layout }}
                 className="rounded-[24px]"
             >
-                <Card item={item} {...taskCardProps} editComfort="taskWorkspace" />
+                {taskCard}
             </motion.div>
         );
     };
 
     const renderTaskItems = (taskItems: BrainDumpItem[]) => (
         <AnimatePresence initial={false} mode="popLayout">
-            {taskItems.map(renderTaskCard)}
+            {taskItems.map(item => renderTaskCard(item))}
         </AnimatePresence>
     );
 
@@ -1250,6 +1316,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         budgetRules={budgetRules}
                         wallets={wallets}
                         onResetRoutine={canReset ? handleResetRoutine : undefined}
+                        onOpen={() => setSelectedPlanItemId(item.id)}
                     />
                 </motion.div>
             ))}
@@ -1780,6 +1847,57 @@ const PlanView: React.FC<PlanViewProps> = ({
                 </motion.div>
                 </motion.div>
             </motion.div>
+
+            <PresencePanel
+                isOpen={Boolean(selectedPlanItem)}
+                onClose={() => setSelectedPlanItemId(null)}
+                presentation="sheet"
+                overlayClassName={contentSurface.workspaceDetailOverlay}
+                panelClassName={contentSurface.workspaceDetailPanel}
+                ariaLabel={planCopy.itemDetail}
+            >
+                <div className={contentSurface.workspaceDetailHeader}>
+                    <div className="min-w-0">
+                        <div className={contentSurface.workspaceDetailEyebrow}>
+                            {selectedPlanItem?.type === ItemType.SHOPPING ? planCopy.shoppingDetail : planCopy.taskDetail}
+                        </div>
+                        <h2 className="mt-1 truncate text-lg font-semibold text-primary">
+                            {selectedPlanItem?.content || planCopy.itemDetail}
+                        </h2>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedPlanItemId(null)}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-soft hover:text-primary"
+                        aria-label={planCopy.closeDetail}
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+                <div className={contentSurface.workspaceDetailBody}>
+                    {selectedPlanItem?.type === ItemType.SHOPPING ? (
+                        <ShoppingItem
+                            key={selectedPlanItem.id}
+                            item={selectedPlanItem}
+                            onToggleStatus={handleToggleStatus}
+                            onUpdate={handleUpdateItem}
+                            onDelete={id => {
+                                handleDelete(id);
+                                setSelectedPlanItemId(null);
+                            }}
+                            budgetRules={budgetRules}
+                            wallets={wallets}
+                            onResetRoutine={handleResetRoutine}
+                            defaultExpanded
+                            onSaveComplete={() => setSelectedPlanItemId(null)}
+                        />
+                    ) : selectedPlanItem ? (
+                        <React.Fragment key={selectedPlanItem.id}>
+                            {renderTaskCard(selectedPlanItem, true)}
+                        </React.Fragment>
+                    ) : null}
+                </div>
+            </PresencePanel>
 
             {/* Saving / Investment Edit Modal */}
             <PresencePanel
