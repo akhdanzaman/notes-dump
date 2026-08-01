@@ -19,6 +19,7 @@ import { getLoanAccounts, getLoanSummary, LoanAccount } from '../../utils/loanAc
 import PresencePanel from '../../motion/PresencePanel';
 import { collapseVariants, highlightedListItemVariants } from '../../motion/variants';
 import { motionSpring } from '../../motion/transitions';
+import { getAppLocale, normalizeAppLanguage } from '../../utils/i18n';
 
 interface PlanViewProps {
     items: BrainDumpItem[];
@@ -115,6 +116,24 @@ const PlanView: React.FC<PlanViewProps> = ({
     searchQuery, selectedTag,
     wallets, budgetRules, handleResetRoutine, onAddFunds, onCompleteGoal, handleOpenAddLoan, setActiveTab
 }) => {
+
+    const isEnglish = normalizeAppLanguage(appSettings.language) === 'en';
+    const locale = getAppLocale(appSettings.language);
+    const planCopy = isEnglish ? {
+        sections: 'Plan sections', tasks: 'Tasks', shopping: 'Shopping', goals: 'Goals', loans: 'Loans',
+        pending: 'Pending', done: 'Done', routines: 'Routines', shoppingList: 'Shopping list', urgent: 'Urgent', routine: 'Routine', normal: 'Other',
+        goalsHeading: 'Goals, savings & investments', investments: 'Investments', saved: 'Saved', today: 'Today', tomorrow: 'Tomorrow', later: 'Upcoming',
+        noItems: 'No items', noTasks: 'No pending tasks for this period.', addTask: 'Add task', addRoutine: 'Add routine',
+        emptyShopping: 'Your shopping list is empty.', addItem: 'Add item', savingGoals: 'Saving goals', addGoal: 'Add goal',
+        noGoals: 'No saving goals yet.', createGoal: 'Create goal', addInvestment: 'Add investment', noInvestments: 'No investments tracked yet.',
+    } : {
+        sections: 'Bagian Rencana', tasks: 'Tugas', shopping: 'Belanja', goals: 'Target', loans: 'Pinjaman',
+        pending: 'Belum selesai', done: 'Selesai', routines: 'Rutinitas', shoppingList: 'Daftar belanja', urgent: 'Mendesak', routine: 'Rutin', normal: 'Lainnya',
+        goalsHeading: 'Target, tabungan, dan investasi', investments: 'Investasi', saved: 'Terkumpul', today: 'Hari ini', tomorrow: 'Besok', later: 'Mendatang',
+        noItems: 'Belum ada item', noTasks: 'Tidak ada tugas tertunda pada periode ini.', addTask: 'Tambah tugas', addRoutine: 'Tambah rutinitas',
+        emptyShopping: 'Daftar belanja masih kosong.', addItem: 'Tambah item', savingGoals: 'Target tabungan', addGoal: 'Tambah target',
+        noGoals: 'Belum ada target tabungan.', createGoal: 'Buat target', addInvestment: 'Tambah investasi', noInvestments: 'Belum ada investasi yang dipantau.',
+    };
 
     // Data Preparation
     const { summary, pendingGroups } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
@@ -1188,46 +1207,46 @@ const PlanView: React.FC<PlanViewProps> = ({
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
                     <LayoutGroup id="plan-subtabs">
-                        <div data-plan-subtabs="true" className="mb-6 flex rounded-xl border border-border/70 bg-background/55 p-1" role="tablist" aria-label="Plan sections">
+                        <div data-plan-subtabs="true" className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border/70 bg-background/55 p-1 no-scrollbar" role="tablist" aria-label={planCopy.sections}>
                             <button
                                 type="button"
                                 role="tab"
                                 aria-selected={planSubTab === 'tasks'}
                                 onClick={() => setPlanSubTab('tasks')}
-                                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'tasks' ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${planSubTab === 'tasks' ? 'text-primary' : 'text-muted hover:text-primary'}`}
                             >
                                 {planSubTab === 'tasks' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                <CheckCircle2 className="relative z-10 w-4 h-4" /> <span className="relative z-10">Tasks</span>
+                                <CheckCircle2 className="relative z-10 w-4 h-4" /> <span className="relative z-10">{planCopy.tasks}</span>
                             </button>
                             <button
                                 type="button"
                                 role="tab"
                                 aria-selected={planSubTab === 'shopping'}
                                 onClick={() => setPlanSubTab('shopping')}
-                                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'shopping' ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${planSubTab === 'shopping' ? 'text-primary' : 'text-muted hover:text-primary'}`}
                             >
                                 {planSubTab === 'shopping' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                <ShoppingCart className="relative z-10 w-4 h-4" /> <span className="relative z-10">Shopping</span>
+                                <ShoppingCart className="relative z-10 w-4 h-4" /> <span className="relative z-10">{planCopy.shopping}</span>
                             </button>
                             <button
                                 type="button"
                                 role="tab"
                                 aria-selected={planSubTab === 'savings'}
                                 onClick={() => setPlanSubTab('savings')}
-                                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'savings' ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${planSubTab === 'savings' ? 'text-primary' : 'text-muted hover:text-primary'}`}
                             >
                                 {planSubTab === 'savings' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                <PiggyBank className="relative z-10 w-4 h-4" /> <span className="relative z-10">Goals</span>
+                                <PiggyBank className="relative z-10 w-4 h-4" /> <span className="relative z-10">{planCopy.goals}</span>
                             </button>
                             <button
                                 type="button"
                                 role="tab"
                                 aria-selected={planSubTab === 'loans'}
                                 onClick={() => setPlanSubTab('loans')}
-                                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${planSubTab === 'loans' ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${planSubTab === 'loans' ? 'text-primary' : 'text-muted hover:text-primary'}`}
                             >
                                 {planSubTab === 'loans' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                <HandCoins className="relative z-10 w-4 h-4" /> <span className="relative z-10 hidden sm:inline">Loans</span>
+                                <HandCoins className="relative z-10 w-4 h-4" /> <span className="relative z-10">{planCopy.loans}</span>
                             </button>
                         </div>
                     </LayoutGroup>
@@ -1245,14 +1264,14 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <div className="flex items-center justify-between mb-6">
                                         <div>
                                             <h2 className="text-2xl font-bold tracking-tight">
-                                                {focusDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                                {focusDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
                                             </h2>
                                             <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span>{summary.todo} Pending</span>
+                                                <span>{summary.todo} {planCopy.pending}</span>
                                                 <span>•</span>
-                                                <span className="text-emerald-500">{summary.done} Done</span>
+                                                <span className="text-emerald-500">{summary.done} {planCopy.done}</span>
                                                 <span>•</span>
-                                                <span className="text-indigo-500">{routines?.length || 0} Routines</span>
+                                                <span className="text-indigo-500">{routines?.length || 0} {planCopy.routines}</span>
                                             </p>
                                         </div>
                                         <div className="flex gap-2">
@@ -1272,13 +1291,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div>
                                     <div className="flex items-center justify-between mb-6">
                                         <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">Shopping List</h2>
+                                            <h2 className="text-2xl font-bold tracking-tight">{planCopy.shoppingList}</h2>
                                             <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span className="text-red-500">{urgent.length} Urgent</span>
+                                                <span className="text-red-500">{urgent.length} {planCopy.urgent}</span>
                                                 <span>•</span>
-                                                <span className="text-indigo-500">{routine.length} Routine</span>
+                                                <span className="text-indigo-500">{routine.length} {planCopy.routine}</span>
                                                 <span>•</span>
-                                                <span>{normal.length} Normal</span>
+                                                <span>{normal.length} {planCopy.normal}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -1288,14 +1307,14 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div>
                                     <div className="flex items-center justify-between mb-6">
                                         <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">Goals, Savings & Investments</h2>
+                                            <h2 className="text-2xl font-bold tracking-tight">{planCopy.goalsHeading}</h2>
                                             <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span>{savings.length} Goals</span>
+                                                <span>{savings.length} {planCopy.goals}</span>
                                                 <span>•</span>
-                                                <span>{investments.length} Investments</span>
+                                                <span>{investments.length} {planCopy.investments}</span>
                                                 <span>•</span>
                                                 <span className="text-emerald-500">
-                                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(savings.reduce((acc, curr) => acc + (curr.meta.savedAmount || 0), 0))} Saved
+                                                    {new Intl.NumberFormat(locale, { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(savings.reduce((acc, curr) => acc + (curr.meta.savedAmount || 0), 0))} {planCopy.saved}
                                                 </span>
                                             </p>
                                         </div>
@@ -1359,7 +1378,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <section className={contentSurface.workflowPanel}>
                                         <div className="flex items-center justify-between mb-3 pl-1">
                                             <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
-                                                <span className="bg-red-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Today
+                                                <span className="bg-red-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> {planCopy.today}
                                             </h3>
                                             <button
                                                 onClick={() => handleOpenAddTask(new Date().toISOString().split('T')[0])}
@@ -1374,13 +1393,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                                 <LoadMoreButton remainingCount={visibleToday.remainingCount} onClick={visibleToday.loadMore} />
                                             </div>
                                         ) : (
-                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                            <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                                         )}
                                     </section>
 
                                     <section className={contentSurface.workflowPanel}>
                                         <div className="flex items-center justify-between mb-3 pl-1">
-                                            <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Later</h3>
+                                        <h3 className="text-sm font-semibold text-muted">{planCopy.later}</h3>
                                             <button
                                                 onClick={() => handleOpenAddTask(new Date(Date.now() + 172800000).toISOString().split('T')[0])}
                                                 className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
@@ -1394,7 +1413,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                                 <LoadMoreButton remainingCount={visibleLater.remainingCount} onClick={visibleLater.loadMore} />
                                             </div>
                                         ) : (
-                                            <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                            <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                                         )}
                                     </section>
 
@@ -1403,7 +1422,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
                                         <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
-                                            <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> Routines
+                                            <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> {planCopy.routines}
                                         </h3>
                                         <button
                                             onClick={handleOpenAddRoutine}
@@ -1418,13 +1437,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             <LoadMoreButton remainingCount={visibleRoutines.remainingCount} onClick={visibleRoutines.loadMore} />
                                         </div>
                                     ) : (
-                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                        <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                                     )}
                                 </section>
 
                                 <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-acc-event uppercase tracking-wider">Tomorrow</h3>
+                                        <h3 className="text-sm font-semibold text-acc-event">{planCopy.tomorrow}</h3>
                                         <button
                                             onClick={() => handleOpenAddTask(new Date(Date.now() + 86400000).toISOString().split('T')[0])}
                                             className="p-1 hover:bg-acc-event/10 text-acc-event rounded-md transition-colors"
@@ -1438,26 +1457,26 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             <LoadMoreButton remainingCount={visibleTomorrow.remainingCount} onClick={visibleTomorrow.loadMore} />
                                         </div>
                                     ) : (
-                                        <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                        <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                                     )}
                                 </section>
                             </div>
                         ) : (
                             summary.todo === 0 && (
                                 <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
-                                    <p className="text-muted font-medium">No pending tasks for this month.</p>
+                                    <p className="text-muted font-medium">{planCopy.noTasks}</p>
                                     <div className="flex gap-3">
                                         <button
                                             onClick={() => handleOpenAddTask()}
                                             className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
                                         >
-                                            <Plus className="w-4 h-4" /> Add Task
+                                            <Plus className="w-4 h-4" /> {planCopy.addTask}
                                         </button>
                                         <button
                                             onClick={handleOpenAddRoutine}
                                             className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
                                         >
-                                            <Plus className="w-4 h-4" /> Add Routine
+                                            <Plus className="w-4 h-4" /> {planCopy.addRoutine}
                                         </button>
                                     </div>
                                 </div>
@@ -1475,7 +1494,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         <section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="bg-red-500/10 p-1 rounded-md"><ShoppingCart className="w-3 h-3" /></span> Urgent
+                                    <span className="bg-red-500/10 p-1 rounded-md"><ShoppingCart className="w-3 h-3" /></span> {planCopy.urgent}
                                 </h3>
                                 <button
                                     onClick={() => handleOpenAddShopping('urgent')}
@@ -1490,14 +1509,14 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <LoadMoreButton remainingCount={visibleUrgent.remainingCount} onClick={visibleUrgent.loadMore} />
                                 </div>
                             ) : (
-                                <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                             )}
                         </section>
 
                         <section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="bg-indigo-500/10 p-1 rounded-md"><History className="w-3 h-3" /></span> Routine
+                                    <span className="bg-indigo-500/10 p-1 rounded-md"><History className="w-3 h-3" /></span> {planCopy.routine}
                                 </h3>
                                 <button
                                     onClick={() => handleOpenAddShopping('routine')}
@@ -1512,13 +1531,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <LoadMoreButton remainingCount={visibleRoutineShopping.remainingCount} onClick={visibleRoutineShopping.loadMore} />
                                 </div>
                             ) : (
-                                <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                             )}
                         </section>
 
                         <section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
-                                <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Normal</h3>
+                                <h3 className="text-sm font-semibold text-muted">{planCopy.normal}</h3>
                                 <button
                                     onClick={() => handleOpenAddShopping('not_urgent')}
                                     className="p-1 hover:bg-muted/10 text-muted rounded-md transition-colors"
@@ -1532,18 +1551,18 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <LoadMoreButton remainingCount={visibleNormalShopping.remainingCount} onClick={visibleNormalShopping.loadMore} />
                                 </div>
                             ) : (
-                                <div className="text-sm text-muted italic pl-1 opacity-50">No items</div>
+                                <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                             )}
                         </section>
 
                         {isShoppingEmpty && (
                             <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
-                                <p className="text-muted font-medium">Your shopping list is empty.</p>
+                                <p className="text-muted font-medium">{planCopy.emptyShopping}</p>
                                 <button
                                     onClick={() => handleOpenAddShopping('not_urgent')}
                                     className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
                                 >
-                                    <Plus className="w-4 h-4" /> Add Item
+                                    <Plus className="w-4 h-4" /> {planCopy.addItem}
                                 </button>
                             </div>
                         )}
@@ -1560,13 +1579,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <section className="rounded-[28px] border border-border/60 bg-surface/40 p-4 shadow-sm lg:p-5">
                                 <div className="mb-4 flex items-center justify-between pl-1">
                                     <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-orange-500">
-                                        <span className="rounded-md bg-orange-500/10 p-1"><PiggyBank className="h-3 w-3" /></span> Saving Goals
+                                        <span className="rounded-md bg-orange-500/10 p-1"><PiggyBank className="h-3 w-3" /></span> {planCopy.savingGoals}
                                     </h3>
                                     <button
                                         onClick={() => handleOpenAddShopping('saving')}
                                         className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-orange-500 transition-colors hover:bg-orange-500/10"
                                     >
-                                        <Plus className="h-4 w-4" /> Add Goal
+                                        <Plus className="h-4 w-4" /> {planCopy.addGoal}
                                     </button>
                                 </div>
 
@@ -1577,12 +1596,12 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </div>
                                 ) : (
                                     <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
-                                        <p className="font-medium text-muted">No saving goals yet.</p>
+                                        <p className="font-medium text-muted">{planCopy.noGoals}</p>
                                         <button
                                             onClick={() => handleOpenAddShopping('saving')}
                                             className="flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-bold text-indigo-500 transition-colors hover:bg-indigo-500/20"
                                         >
-                                            <Plus className="h-4 w-4" /> Create Goal
+                                            <Plus className="h-4 w-4" /> {planCopy.createGoal}
                                         </button>
                                     </div>
                                 )}
@@ -1592,15 +1611,15 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div className="mb-4 flex items-center justify-between pl-1">
                                     <div>
                                         <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-emerald-500">
-                                            <span className="rounded-md bg-emerald-500/10 p-1"><TrendingUp className="h-3 w-3" /></span> Investments
+                                            <span className="rounded-md bg-emerald-500/10 p-1"><TrendingUp className="h-3 w-3" /></span> {planCopy.investments}
                                         </h3>
-                                        <p className="mt-1 text-xs text-muted">Gold, stocks, mutual funds, crypto, deposits, bonds, and other real positions.</p>
+                                        <p className="mt-1 text-xs text-muted">{isEnglish ? 'Gold, stocks, mutual funds, crypto, deposits, bonds, and other real positions.' : 'Emas, saham, reksa dana, kripto, deposito, obligasi, dan posisi investasi nyata lainnya.'}</p>
                                     </div>
                                     <button
                                         onClick={() => handleOpenAddShopping('investment')}
                                         className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-emerald-500 transition-colors hover:bg-emerald-500/10"
                                     >
-                                        <Plus className="h-4 w-4" /> Add Investment
+                                        <Plus className="h-4 w-4" /> {planCopy.addInvestment}
                                     </button>
                                 </div>
 
@@ -1611,12 +1630,12 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </div>
                                 ) : (
                                     <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
-                                        <p className="font-medium text-muted">No investments tracked yet.</p>
+                                        <p className="font-medium text-muted">{planCopy.noInvestments}</p>
                                         <button
                                             onClick={() => handleOpenAddShopping('investment')}
                                             className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-500 transition-colors hover:bg-emerald-500/20"
                                         >
-                                            <Plus className="h-4 w-4" /> Add Investment
+                                            <Plus className="h-4 w-4" /> {planCopy.addInvestment}
                                         </button>
                                     </div>
                                 )}

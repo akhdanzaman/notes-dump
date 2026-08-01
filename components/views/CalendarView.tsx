@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { BrainDumpItem, ItemType, AppSettings, Tab } from '../../types';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Calendar as CalendarIcon, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Calendar as CalendarIcon, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import { contentSurface, responsiveModal } from '../layout/contentSurface';
 import { getShoppingDueDate } from '../../utils/shoppingDateUtils';
 import PresencePanel from '../../motion/PresencePanel';
 import ActiveIndicator from '../../motion/ActiveIndicator';
+import { getAppLocale, normalizeAppLanguage } from '../../utils/i18n';
 import {
     highlightedListItemVariants,
     staggerContainerVariants,
@@ -18,6 +19,7 @@ interface CalendarViewProps {
     handleDelete: (id: string, type: 'item' | 'wallet' | 'skill') => void;
     appSettings: AppSettings;
     setActiveTab: (tab: Tab) => void;
+    handleOpenAddTask?: (date: string) => void;
 }
 
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -48,11 +50,27 @@ const getItemTypeLabel = (type: ItemType) => {
     }
 };
 
-const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, handleDelete, appSettings, setActiveTab }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, handleDelete, appSettings, setActiveTab, handleOpenAddTask }) => {
+    const isEnglish = normalizeAppLanguage(appSettings.language) === 'en';
+    const locale = getAppLocale(appSettings.language);
+    const calendarCopy = isEnglish ? {
+        title: 'Calendar', subtitle: 'Plans, routines, and upcoming commitments', today: 'Today', month: 'Month', agenda: 'Agenda',
+        scheduled: 'Scheduled', done: 'Done', routine: 'Routine', busiest: 'Busiest', selectedAgenda: 'Selected agenda', chooseDate: 'Choose a date',
+        noItems: 'No scheduled items for this date.', itemDetail: 'Item detail', type: 'Type', status: 'Status', schedule: 'Schedule', tags: 'Tags',
+        previousMonth: 'Previous month', nextMonth: 'Next month', add: 'Add for this date',
+    } : {
+        title: 'Kalender', subtitle: 'Agenda, rutinitas, dan komitmen mendatang', today: 'Hari ini', month: 'Bulan', agenda: 'Agenda',
+        scheduled: 'Terjadwal', done: 'Selesai', routine: 'Rutinitas', busiest: 'Terpadat', selectedAgenda: 'Agenda terpilih', chooseDate: 'Pilih tanggal',
+        noItems: 'Belum ada agenda untuk tanggal ini.', itemDetail: 'Detail agenda', type: 'Jenis', status: 'Status', schedule: 'Jadwal', tags: 'Tag',
+        previousMonth: 'Bulan sebelumnya', nextMonth: 'Bulan berikutnya', add: 'Tambah untuk tanggal ini',
+    };
     const [currentDate, setCurrentDate] = useState(new Date());
     const [monthDirection, setMonthDirection] = useState(0);
     const [selectedDateKey, setSelectedDateKey] = useState(() => getDateKey(new Date()));
     const [selectedItem, setSelectedItem] = useState<BrainDumpItem | null>(null);
+    const [viewMode, setViewMode] = useState<'month' | 'agenda'>(() =>
+        typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches ? 'agenda' : 'month'
+    );
     const swipeHandlers = useSwipeTabs('calendar', setActiveTab);
 
     const nextMonth = () => {
@@ -237,25 +255,40 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                             <CalendarIcon className="h-5 w-5" />
                         </div>
                         <div>
-                            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted">Timeline</div>
-                            <h1 className="text-xl font-semibold text-primary">Calendar</h1>
-                            <p className="text-xs text-muted">Swipe header to move between app tabs</p>
+                            <h1 className="text-xl font-semibold text-primary">{calendarCopy.title}</h1>
+                            <p className="text-xs text-muted">{calendarCopy.subtitle}</p>
                         </div>
                     </div>
                     <button
                         onClick={goToToday}
                         className="rounded-xl border border-border/70 bg-background/55 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:border-indigo-500/25"
                     >
-                        Today
+                        {calendarCopy.today}
                     </button>
                 </div>
 
+                <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-background/55 p-1 ring-1 ring-inset ring-border/70" role="tablist" aria-label={calendarCopy.title}>
+                    {(['month', 'agenda'] as const).map(mode => (
+                        <button
+                            key={mode}
+                            type="button"
+                            role="tab"
+                            aria-selected={viewMode === mode}
+                            onClick={() => setViewMode(mode)}
+                            className={`relative min-h-11 rounded-lg px-3 text-sm font-semibold transition-colors ${viewMode === mode ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                        >
+                            {viewMode === mode && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
+                            <span className="relative z-10">{mode === 'month' ? calendarCopy.month : calendarCopy.agenda}</span>
+                        </button>
+                    ))}
+                </div>
+
                 <div className="flex items-center justify-between mb-4">
-                    <button onClick={prevMonth} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
+                    <button onClick={prevMonth} aria-label={calendarCopy.previousMonth} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
                         <ChevronLeft className="h-5 w-5" />
                     </button>
                     <div className="min-w-[168px] overflow-hidden rounded-xl border border-border/70 bg-background/55 px-4 py-2 text-center">
-                        <div className="text-[11px] uppercase tracking-[0.22em] text-muted">Month</div>
+                        <div className="text-xs font-semibold text-muted">{calendarCopy.month}</div>
                         <AnimatePresence initial={false} mode="popLayout" custom={monthDirection}>
                             <motion.div
                                 key={`${currentYear}-${currentMonth}`}
@@ -265,30 +298,30 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 exit={{ opacity: 0, x: monthDirection * -8 }}
                                 className="text-sm font-semibold text-primary"
                             >
-                                {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                {currentDate.toLocaleString(locale, { month: 'long', year: 'numeric' })}
                             </motion.div>
                         </AnimatePresence>
                     </div>
-                    <button onClick={nextMonth} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
+                    <button onClick={nextMonth} aria-label={calendarCopy.nextMonth} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
                         <ChevronRight className="h-5 w-5" />
                     </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Scheduled</div>
+                        <div className="text-xs font-medium text-muted">{calendarCopy.scheduled}</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{scheduledCount}</div>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Done</div>
+                        <div className="text-xs font-medium text-muted">{calendarCopy.done}</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{doneCount}</div>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Routine</div>
+                        <div className="text-xs font-medium text-muted">{calendarCopy.routine}</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{routineCount}</div>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Busiest</div>
+                        <div className="text-xs font-medium text-muted">{calendarCopy.busiest}</div>
                         <div className="mt-1 text-sm font-semibold text-primary">
                             {busiestDay.date ? `${busiestDay.date.getDate()} (${busiestDay.count})` : '—'}
                         </div>
@@ -297,6 +330,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
             </motion.div>
 
             <div className={`${contentSurface.contentPad} pb-2 pt-3`} data-ndz-calendar-width-policy="validated-standard-cap">
+                {viewMode === 'month' && (
                 <div className={contentSurface.calendarFrame}>
                     <div className="grid grid-cols-7 border-b border-border bg-background/40">
                         {WEEK_DAYS.map(day => (
@@ -399,23 +433,36 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     </div>
                     </LayoutGroup>
                 </div>
+                )}
 
-                <section className="mt-4 rounded-[28px] border border-border bg-surface/80 p-4 shadow-sm sm:p-5" aria-label="Selected date agenda">
+                <section className={`${viewMode === 'month' ? 'mt-4' : ''} rounded-[28px] border border-border bg-surface/80 p-4 shadow-sm sm:p-5`} aria-label={calendarCopy.selectedAgenda}>
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
-                            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Selected agenda</div>
+                            <div className="text-xs font-semibold text-muted">{calendarCopy.selectedAgenda}</div>
                             <h2 className="mt-1 text-base font-semibold text-primary">
                                 {selectedDay?.date.toLocaleDateString(undefined, {
                                     weekday: 'long',
                                     day: 'numeric',
                                     month: 'long',
                                     year: 'numeric',
-                                }) || 'Choose a date'}
+                                }) || calendarCopy.chooseDate}
                             </h2>
                         </div>
-                        <span className="rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-bold text-indigo-600">
-                            {selectedAgendaItems.length}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                                {selectedAgendaItems.length}
+                            </span>
+                            {handleOpenAddTask && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleOpenAddTask(selectedDateKey)}
+                                    className="flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span className="hidden sm:inline">{calendarCopy.add}</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <AnimatePresence initial={false} mode="wait">
@@ -456,7 +503,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     variants={highlightedListItemVariants}
                                     className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted"
                                 >
-                                    No scheduled items for this date.
+                                    {calendarCopy.noItems}
                                 </motion.div>
                             )}
                         </motion.div>

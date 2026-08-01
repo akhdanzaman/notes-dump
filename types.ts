@@ -113,9 +113,12 @@ export interface ParsingTask {
   completedAt?: number;
 }
 
+export type AppLanguage = 'id' | 'en';
+
 export interface AppSettings {
   defaultCollapsed: boolean;
   hideMoney: boolean;
+  language?: AppLanguage;
   theme?: 'light' | 'dark';
   enableDailyInsight?: boolean;
   enableDraftReview?: boolean;

@@ -14,6 +14,7 @@ import { contentSurface } from '../layout/contentSurface';
 import { formatFinanceTypeLabel } from '../../utils/financeTypeUtils';
 import { directionalLabelVariants } from '../../motion/variants';
 import PresencePanel from '../../motion/PresencePanel';
+import { getAppLocale, normalizeAppLanguage } from '../../utils/i18n';
 
 interface LibraryViewProps {
     items: BrainDumpItem[];
@@ -82,10 +83,25 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     handleDelete, handleUpdateItem, handleOpenEditSkill, handleOpenAddSkill, handleUpsertSkillSessionLog, setDeleteId, setDeleteType,
     selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab, onAddItem
 }) => {
+    const isEnglish = normalizeAppLanguage(appSettings.language) === 'en';
+    const locale = getAppLocale(appSettings.language);
+    const libraryCopy = isEnglish ? {
+        notes: 'Notes', allNotes: 'All notes', skills: 'Skills', skillGrowth: 'Skill growth', journal: 'Journal', journalEntries: 'Journal entries',
+        tags: 'Tags', totalTime: 'Total time', across: 'Across', days: 'days', addNote: 'Add note', addSkill: 'Add skill', writeJournal: 'Write journal',
+        noMatch: 'No matching notes', startJournal: "Start this month's journal", noNotes: 'No notes yet', journalMonth: 'Journal month',
+        emptySearch: 'Try another search or capture the thought now.', emptyJournal: 'Journal entries are grouped by day with completed activity beside your reflection.',
+        emptyNotes: 'Capture a thought to start building your personal library.',
+    } : {
+        notes: 'Catatan', allNotes: 'Semua catatan', skills: 'Skill', skillGrowth: 'Perkembangan skill', journal: 'Jurnal', journalEntries: 'Entri jurnal',
+        tags: 'Tag', totalTime: 'Total waktu', across: 'Dalam', days: 'hari', addNote: 'Tambah catatan', addSkill: 'Tambah skill', writeJournal: 'Tulis jurnal',
+        noMatch: 'Tidak ada catatan yang cocok', startJournal: 'Mulai jurnal bulan ini', noNotes: 'Belum ada catatan', journalMonth: 'Bulan jurnal',
+        emptySearch: 'Coba pencarian lain atau catat pemikiran baru sekarang.', emptyJournal: 'Entri jurnal dikelompokkan per hari bersama aktivitas yang sudah selesai.',
+        emptyNotes: 'Catat satu pemikiran untuk mulai membangun pustaka personal Anda.',
+    };
     const libraryTabs: { key: LibrarySubTab; label: string; title: string; icon: React.ReactNode }[] = [
-        { key: 'general', label: 'Notes', title: 'All Notes', icon: <Library className="w-4 h-4" /> },
-        { key: 'skills', label: 'Skills', title: 'Skill Growth', icon: <Target className="w-4 h-4" /> },
-        { key: 'journal', label: 'Journal', title: 'Journal Entries', icon: <BookText className="w-4 h-4" /> },
+        { key: 'general', label: libraryCopy.notes, title: libraryCopy.allNotes, icon: <Library className="w-4 h-4" /> },
+        { key: 'skills', label: libraryCopy.skills, title: libraryCopy.skillGrowth, icon: <Target className="w-4 h-4" /> },
+        { key: 'journal', label: libraryCopy.journal, title: libraryCopy.journalEntries, icon: <BookText className="w-4 h-4" /> },
     ];
 
 
@@ -405,25 +421,25 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         {isJournal ? <BookText className="w-6 h-6" /> : <Library className="w-6 h-6" />}
                     </div>
                     <h3 className="mt-4 text-lg font-bold text-primary">
-                        {searchQuery ? 'No matching notes' : (isJournal ? "Start this month's journal" : 'No notes yet')}
+                        {searchQuery ? libraryCopy.noMatch : (isJournal ? libraryCopy.startJournal : libraryCopy.noNotes)}
                     </h3>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted lg:mx-0">
                         {searchQuery
-                            ? 'Try another search or capture the thought now so this space has something useful to scan.'
+                            ? libraryCopy.emptySearch
                             : (isJournal
-                                ? 'Journal entries will group by day with completed tasks, shopping, events, and transactions alongside the reflection.'
-                                : 'Notes will use the wider desktop masonry grid once captured, instead of leaving the library as a blank field.')}
+                                ? libraryCopy.emptyJournal
+                                : libraryCopy.emptyNotes)}
                     </p>
                     <div className={contentSurface.libraryEmptyActions}>
                         <button
                             onClick={() => onAddItem(isJournal ? ItemType.JOURNAL : ItemType.NOTE)}
                             className="inline-flex items-center gap-2 rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-600"
                         >
-                            <Plus className="w-4 h-4" /> {isJournal ? 'Write journal' : 'Add note'}
+                            <Plus className="w-4 h-4" /> {isJournal ? libraryCopy.writeJournal : libraryCopy.addNote}
                         </button>
                         {!isJournal && (
                             <span className="rounded-full border border-border bg-background/60 px-3 py-2 text-xs font-medium text-muted">
-                                Search stays anchored to this content frame from the composer edge.
+                                {isEnglish ? 'Search stays available from the composer.' : 'Pencarian tetap tersedia dari composer.'}
                             </span>
                         )}
                     </div>
@@ -806,32 +822,32 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         >
                             <div>
                                 <h2 className="text-2xl font-bold tracking-tight">
-                                    {libraryTabs.find(tab => tab.key === librarySubTab)?.title || 'Library'}
+                                    {libraryTabs.find(tab => tab.key === librarySubTab)?.title || (isEnglish ? 'Library' : 'Pustaka')}
                                 </h2>
                                 <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
                                     {librarySubTab === 'general' && (
                                         <>
-                                            <span>{generalItems.length} Notes</span>
+                                            <span>{generalItems.length} {libraryCopy.notes}</span>
                                             {new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size > 0 && (
                                                 <>
                                                     <span>•</span>
-                                                    <span>{new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size} Tags</span>
+                                                    <span>{new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size} {libraryCopy.tags}</span>
                                                 </>
                                             )}
                                         </>
                                     )}
                                     {librarySubTab === 'skills' && (
                                         <>
-                                            <span>{skillStats.length} Skills</span>
+                                            <span>{skillStats.length} {libraryCopy.skills}</span>
                                             <span>•</span>
-                                            <span className="text-indigo-500">{skillStats.reduce((acc, curr) => acc + curr.totalHours, 0).toFixed(1)}h Total Time</span>
+                                            <span className="text-indigo-500">{skillStats.reduce((acc, curr) => acc + curr.totalHours, 0).toFixed(1)}j {libraryCopy.totalTime}</span>
                                         </>
                                     )}
                                     {librarySubTab === 'journal' && (
                                         <>
-                                            <span>{filteredJournalItems.length} Journal Entries</span>
+                                            <span>{filteredJournalItems.length} {libraryCopy.journalEntries}</span>
                                             <span>•</span>
-                                            <span>Across {filteredJournalDayGroups.length} Days</span>
+                                            <span>{libraryCopy.across} {filteredJournalDayGroups.length} {libraryCopy.days}</span>
                                         </>
                                     )}
                                 </p>
@@ -843,9 +859,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     if (librarySubTab === 'skills') handleOpenAddSkill();
                                     if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
                                 }}
-                                className="rounded-xl bg-indigo-600 p-2 text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
+                                className="flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
                             >
                                 <Plus className="w-5 h-5" />
+                                <span>{librarySubTab === 'general' ? libraryCopy.addNote : librarySubTab === 'skills' ? libraryCopy.addSkill : libraryCopy.writeJournal}</span>
                             </button>
                         </motion.div>
                     </AnimatePresence>
@@ -873,9 +890,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         exit="exit"
                                         className="text-center"
                                     >
-                                        <div className="text-xs font-bold opacity-60 uppercase tracking-wider">Journal Month</div>
+                                        <div className="text-xs font-semibold opacity-60">{libraryCopy.journalMonth}</div>
                                         <div className="text-xl font-bold leading-none mt-1">
-                                            {journalDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                            {journalDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
                                         </div>
                                     </motion.div>
                                 </AnimatePresence>

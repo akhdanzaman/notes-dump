@@ -45,6 +45,16 @@ import {
   Home,
   FileText,
   Settings,
+  ArrowUpRight,
+  ArrowDownRight,
+  Landmark,
+  Banknote,
+  ReceiptText,
+  CircleDollarSign,
+  PiggyBank,
+  CreditCard,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import {
   BrainDumpItem,
@@ -90,6 +100,10 @@ import { buildSummaryFocusDisplay } from "../../utils/summaryFocusUtils";
 import { getDeepWorkChildren, supportsNestedTodoSubtasks } from "../../utils/deepWorkTodoModel";
 import { getShoppingDueDate } from "../../utils/shoppingDateUtils";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { getSavedAmountForGoal } from "../../utils/savingTransactionUtils";
+import { getInvestmentMetrics } from "../../utils/investmentMetrics";
+import { getLoanAccounts } from "../../utils/loanAccounts";
+import { getAppLocale, normalizeAppLanguage } from "../../utils/i18n";
 
 interface SummaryViewProps {
   items: BrainDumpItem[];
@@ -228,6 +242,19 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   undoParsingTask,
   deleteParsingTaskEntries,
 }) => {
+  const isEnglish = normalizeAppLanguage(appSettings.language) === "en";
+  const locale = getAppLocale(appSettings.language);
+  const homeCopy = isEnglish ? {
+    headline: 'Your money, plans, and everyday life—at a glance.', netWorth: 'Current net worth', assets: 'Total assets', debt: 'Total debt',
+    safeToSpend: 'Estimated safe to spend', income: 'Income', expense: 'Expenses', savings: 'Savings', cashFlow: 'Net cash flow', cashFlowPulse: 'Cash-flow pulse',
+    previous: 'Previous period', next: 'Next period', show: 'Show all amounts', hide: 'Hide all amounts', actual: 'Actual', planned: 'Planned', remaining: 'Remaining',
+    noComparison: 'No comparison yet', source: 'Based on Arkaiv wallets, transactions, and budget', record: 'Record transaction',
+  } : {
+    headline: 'Uang, rencana, dan kehidupan harian dalam satu ruang personal.', netWorth: 'Kekayaan bersih saat ini', assets: 'Total aset', debt: 'Total utang',
+    safeToSpend: 'Perkiraan aman dibelanjakan', income: 'Pemasukan', expense: 'Pengeluaran', savings: 'Tabungan', cashFlow: 'Arus kas bersih', cashFlowPulse: 'Denyut arus kas',
+    previous: 'Periode sebelumnya', next: 'Periode berikutnya', show: 'Tampilkan seluruh nominal', hide: 'Sembunyikan seluruh nominal', actual: 'Aktual', planned: 'Rencana', remaining: 'Sisa',
+    noComparison: 'Belum ada pembanding', source: 'Bersumber dari wallet, transaksi, dan budget Arkaiv', record: 'Catat transaksi',
+  };
   const isDesktopDashboard = useMediaQuery("(min-width: 1024px)");
   const swipeHandlers = useSwipeTabs("summary", setActiveTab);
 
@@ -354,9 +381,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       );
     }, [summaryFocusItems, summaryFocusGroups, summaryUrgentShopping, todayCalendarKey]);
 
-  const { totalExpense } = getFinanceItems(
+  const {
+    list: periodTransactions,
+    totalIncome,
+    totalExpense,
+    projectedExpense,
+    totalSavings: periodSavings,
+  } = getFinanceItems(
     items,
-    todayDate,
+    themeNavDate,
     budgetConfig,
     "",
     "",
@@ -366,13 +399,62 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     "",
     "",
     "newest",
+    "monthly",
+    wallets,
   );
-  const { totalNetWorth } = getWalletStats(items, wallets);
+  const previousPeriodDate = new Date(
+    themeNavDate.getFullYear(),
+    themeNavDate.getMonth() - 1,
+    1,
+  );
+  const { totalExpense: previousPeriodExpense } = getFinanceItems(
+    items,
+    previousPeriodDate,
+    budgetConfig,
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "newest",
+    "monthly",
+    wallets,
+  );
+  const {
+    totalNetWorth,
+    totalAssets,
+    totalDebt,
+    totalSavings: walletTotalSavings,
+  } = getWalletStats(items, wallets);
 
   const totalLimits = budgetConfig.rules.reduce(
     (acc, rule) => acc + (rule.percentage / 100) * budgetConfig.monthlyIncome,
     0,
   );
+  const budgetBasis = budgetConfig.monthlyIncome || totalIncome;
+  const budgetRemaining =
+    budgetBasis - totalExpense - projectedExpense;
+  const safeToSpend = Math.max(0, budgetRemaining);
+  const cashFlow = totalIncome - totalExpense;
+  const expenseChangePercent =
+    previousPeriodExpense > 0
+      ? ((totalExpense - previousPeriodExpense) / previousPeriodExpense) * 100
+      : null;
+  const recentTransactions = periodTransactions
+    .filter((item) => item.status === "done")
+    .slice(0, 4);
+  const plannedTransactions = periodTransactions
+    .filter((item) => item.status === "pending")
+    .slice(0, 2);
+  const loanAccounts = useMemo(
+    () => getLoanAccounts(items, todayDate),
+    [items, todayCalendarKey],
+  );
+  const upcomingLoanAccounts = loanAccounts
+    .filter((account) => account.remainingAmount > 0 && account.dueDate)
+    .slice(0, 3);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("id-ID", {
@@ -443,6 +525,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   });
 
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [isFinanceInsightDismissed, setIsFinanceInsightDismissed] =
+    useState(false);
+  useEffect(() => {
+    setIsFinanceInsightDismissed(false);
+  }, [themeKey]);
   const [taskCardCollapsed, setTaskCardCollapsed] = useState<
     Record<string, boolean>
   >({});
@@ -706,6 +793,112 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   ]);
 
   const displayInsights = aiInsights.length > 0 ? aiInsights : localInsights;
+  const hideSensitiveMoney = !showBalance || appSettings.hideMoney;
+  const localizedDisplayInsights = displayInsights.map((insight) => {
+    const titleMap: Record<string, string> = {
+      "API Key Missing": "Kunci API belum diatur",
+      "Daily Review": "Tinjauan harian",
+      "Weekly Review": "Tinjauan mingguan",
+      "Month over Month Review": "Perbandingan bulanan",
+      "General Review": "Tinjauan umum",
+      "Budget Critical": "Budget perlu ditangani",
+      "Budget Warning": "Budget perlu dipantau",
+      "Higher Spending": "Pengeluaran meningkat",
+      "Great Savings": "Pengeluaran lebih hemat",
+      "Category Spike": "Lonjakan kategori",
+      "Tag Spending Spike": "Lonjakan tag pengeluaran",
+      "Low Balance": "Saldo menipis",
+      "Empty Wallet": "Saldo wallet kosong",
+      "Overdue Tasks": "Tugas melewati tenggat",
+      "Unfinished Business": "Item lama belum selesai",
+      "Productivity Boost": "Produktivitas meningkat",
+      "Productivity Dip": "Produktivitas menurun",
+      "Heavy Workload": "Beban tugas tinggi",
+      "Clear Schedule": "Jadwal hari ini kosong",
+      "Urgent Purchases": "Belanja mendesak",
+      "Skill Practice": "Latihan keterampilan",
+      "Food Spend Drift": "Perubahan belanja makanan",
+      "Wants Reactivated": "Belanja keinginan kembali aktif",
+      "Task Throughput Drift": "Perubahan ritme tugas",
+      "Skill Stagnation": "Keterampilan belum dilatih",
+    };
+    const percentMatch = insight.message.match(/(\d+(?:[.,]\d+)?)%/);
+    const countMatch = insight.message.match(/\b(\d+)\b/);
+    let message = insight.message;
+
+    switch (insight.title) {
+      case "API Key Missing":
+        message =
+          "Atur kunci API Gemini untuk mendapatkan insight berbasis AI.";
+        break;
+      case "Budget Critical":
+        message = percentMatch
+          ? `${percentMatch[1]}% budget bulanan sudah terpakai. Tinjau pengeluaran terdekat.`
+          : "Budget bulanan hampir habis. Tinjau pengeluaran terdekat.";
+        break;
+      case "Budget Warning":
+        message = percentMatch
+          ? `${percentMatch[1]}% budget bulanan sudah terpakai. Pantau transaksi berikutnya.`
+          : "Budget bulanan perlu dipantau.";
+        break;
+      case "Higher Spending":
+        message = percentMatch
+          ? `Pengeluaran bulan ini ${percentMatch[1]}% lebih tinggi dari bulan lalu.`
+          : "Pengeluaran bulan ini lebih tinggi dari bulan lalu.";
+        break;
+      case "Great Savings":
+        message =
+          "Pengeluaran lebih rendah dari bulan lalu. Pertahankan ritme yang sesuai.";
+        break;
+      case "Overdue Tasks":
+        message = countMatch
+          ? `${countMatch[1]} tugas melewati tenggat. Jadwalkan ulang atau hapus jika tidak lagi relevan.`
+          : "Ada tugas yang melewati tenggat. Tinjau jadwalnya.";
+        break;
+      case "Heavy Workload":
+        message = countMatch
+          ? `${countMatch[1]} tugas dijadwalkan hari ini. Tentukan prioritas utama.`
+          : "Tugas hari ini cukup padat. Tentukan prioritas utama.";
+        break;
+      case "Clear Schedule":
+        message =
+          "Tidak ada tugas terjadwal hari ini. Gunakan ruang ini untuk istirahat atau membuat rencana.";
+        break;
+      case "Urgent Purchases":
+        message = countMatch
+          ? `${countMatch[1]} item belanja mendesak perlu ditinjau.`
+          : "Ada item belanja mendesak yang perlu ditinjau.";
+        break;
+      default:
+        if (
+          /\b(the|your|you|this|last|month|week|day|spending|task|budget|review|wallet|please|configure|higher|lower|completed|practice|pending)\b/i.test(
+            message,
+          )
+        ) {
+          message =
+            insight.type === "warning"
+              ? "Ada perubahan yang perlu ditinjau. Buka area terkait untuk melihat sumber datanya."
+              : insight.type === "success"
+                ? "Data periode ini menunjukkan perkembangan yang positif."
+                : "Tinjau perkembangan terbaru berdasarkan data Arkaiv.";
+        }
+    }
+
+    const translatedTitle = titleMap[insight.title];
+    const title =
+      translatedTitle ||
+      (/\b(review|budget|spending|task|wallet|skill|warning|success|missing|higher|lower)\b/i.test(
+        insight.title,
+      )
+        ? insight.type === "warning"
+          ? "Perlu ditinjau"
+          : insight.type === "success"
+            ? "Perkembangan positif"
+            : "Insight terbaru"
+        : insight.title);
+
+    return { ...insight, title, message };
+  });
 
   const cardProps = {
     onToggleStatus: handleToggleStatus,
@@ -714,7 +907,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     onDelete: handleDelete,
     enableCollapse: true,
     defaultCollapsed: true,
-    hideMoney: appSettings.hideMoney,
+    hideMoney: hideSensitiveMoney,
     skills,
     wallets,
     budgetRules: budgetConfig.rules,
@@ -1250,43 +1443,55 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     [displayItems],
   );
 
-  const taskDashboardTitle = isDoneState ? "All done" : displayTitle || "Tasks";
+  const taskDashboardTitle = isDoneState
+    ? "Selesai semua"
+    : {
+        "Today's Focus": "Fokus hari ini",
+        Tomorrow: "Besok",
+        "Daily Rituals": "Rutinitas harian",
+        Upcoming: "Akan datang",
+        "All Clear": "Semua beres",
+      }[displayTitle] ||
+      displayTitle ||
+      "Tugas";
+  const normalizedDisplaySubtitle = displaySubtitle?.replace(
+    /\u00e2\u20ac\u201d/g,
+    "—",
+  );
+  const taskDashboardSubtitle = normalizedDisplaySubtitle
+    ? {
+        "Get a head start on tomorrow's tasks.":
+          "Mulai lebih awal untuk tugas besok.",
+        "Keep your momentum going.": "Jaga ritmemu tetap berjalan.",
+        "Tasks waiting for your attention.":
+          "Tugas yang menunggu perhatianmu.",
+        "No active tasks left — showing completed focus items.":
+          "Tidak ada tugas aktif. Berikut fokus yang sudah selesai.",
+        "Take a break or plan ahead.": "Istirahat sejenak atau susun rencana.",
+      }[normalizedDisplaySubtitle] || normalizedDisplaySubtitle
+    : null;
 
   const getGoalNumbers = (item: BrainDumpItem) => {
-    const meta = item.meta as any;
-    const linkedGoalAmount = items
-      .filter(
-        (candidate) =>
-          candidate.type === ItemType.FINANCE &&
-          candidate.meta.savingGoalId === item.id &&
-          (candidate.status === "done" || candidate.status === "pending"),
-      )
-      .reduce((sum, candidate) => sum + (candidate.meta.amount || 0), 0);
-
-    const investedAmount = Number(
-      meta.investedAmount ||
-        meta.currentValue ||
-        meta.savedAmount ||
-        linkedGoalAmount ||
-        (meta.shoppingCategory === "investment"
-          ? meta.amount || meta.targetAmount || meta.goalAmount || 0
-          : 0),
-    );
-
-    const savedAmount = Number(meta.savedAmount || linkedGoalAmount || 0);
-    const targetAmount = Number(
-      meta.targetAmount || meta.goalAmount || meta.amount || meta.target || 0,
-    );
+    const savedAmount = getSavedAmountForGoal(items, item.id);
+    const targetAmount = Number(item.meta.amount || 0);
+    const investmentMetrics = getInvestmentMetrics({
+      ...item,
+      meta: {
+        ...item.meta,
+        savedAmount,
+      },
+    });
     const derivedProgress =
       targetAmount > 0 ? (savedAmount / targetAmount) * 100 : 0;
 
     return {
       savedAmount,
-      investedAmount,
+      investedAmount: investmentMetrics.displayValue,
+      hasMarketValue: investmentMetrics.ownedValue > 0,
       targetAmount,
       progress: Math.max(
         0,
-        Math.min(100, Number(meta.progress ?? derivedProgress)),
+        Math.min(100, Number(derivedProgress || item.meta.progress || 0)),
       ),
     };
   };
@@ -1308,16 +1513,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           label: item.content,
           progress: numbers.progress,
           caption: isInvestment
-            ? "Invested value"
+            ? numbers.hasMarketValue
+              ? "Nilai saat ini"
+              : "Total kontribusi"
             : numbers.targetAmount > 0
-              ? showBalance
+              ? !hideSensitiveMoney
                 ? `${fmt(numbers.savedAmount)} / ${fmt(numbers.targetAmount)}`
-                : "â€¢â€¢â€¢â€¢ / â€¢â€¢â€¢â€¢"
-              : "Saving target",
+                : "•••• / ••••"
+              : "Target tabungan",
           valueLabel: isInvestment
-            ? showBalance
+            ? !hideSensitiveMoney
               ? fmt(numbers.investedAmount)
-              : "â€¢â€¢â€¢â€¢"
+              : "••••"
             : `${Math.round(numbers.progress)}%`,
           showProgress: !isInvestment,
           kind: item.meta.shoppingCategory,
@@ -1364,7 +1571,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           id: skill.id,
           label: skill.name,
           progress,
-          caption: `${loggedMinutes}/${targetMinutes} min this week`,
+          caption: `${loggedMinutes}/${targetMinutes} menit minggu ini`,
           valueLabel: `${Math.round(progress)}%`,
           showProgress: true,
           kind: "skill" as const,
@@ -1375,7 +1582,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       if (a.showProgress !== b.showProgress) return a.showProgress ? -1 : 1;
       return b.progress - a.progress;
     });
-  }, [items, skills, showBalance, todayDate.getTime()]);
+  }, [items, skills, hideSensitiveMoney, todayDate.getTime()]);
 
   const visibleGoalDashboardItems = useMemo(
     () =>
@@ -1432,16 +1639,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         const isAllDay = date?.getHours() === 0 && date?.getMinutes() === 0;
         const time = date
           ? isAllDay
-            ? date.toLocaleDateString(undefined, {
+            ? date.toLocaleDateString("id-ID", {
                 day: "2-digit",
                 month: "short",
               })
-            : date.toLocaleTimeString(undefined, {
+            : date.toLocaleTimeString("id-ID", {
                 hour: "2-digit",
                 minute: "2-digit",
                 hour12: false,
               })
-          : "Today";
+          : "Hari ini";
         return { id: item.id, time, label: item.content };
       });
   }, [items, todayDate.getTime()]);
@@ -1473,28 +1680,28 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     if (routineCompletions.length > 0) {
       return {
-        title: `${routineCompletions.length} routine done`,
-        subtitle: "Routine progress this week.",
+        title: `${routineCompletions.length} rutinitas selesai`,
+        subtitle: "Progres rutinitas minggu ini.",
       };
     }
 
     if (skillMinutes > 0) {
       return {
-        title: `${skillMinutes} skill minutes`,
-        subtitle: "Learning momentum this week.",
+        title: `${skillMinutes} menit belajar`,
+        subtitle: "Momentum belajar minggu ini.",
       };
     }
 
     if (completedThisWeek.length > 0) {
       return {
-        title: `${completedThisWeek.length} item completed`,
-        subtitle: "A real weekly win from your data.",
+        title: `${completedThisWeek.length} item selesai`,
+        subtitle: "Pencapaian nyata dari aktivitasmu minggu ini.",
       };
     }
 
     return {
-      title: "No weekly win yet",
-      subtitle: "Complete one item to make this card yours.",
+      title: "Belum ada pencapaian minggu ini",
+      subtitle: "Selesaikan satu item untuk memulai.",
     };
   }, [completedThisWeek]);
 
@@ -1514,23 +1721,107 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const hasThemeImage = themeHeroImage.trim().length > 0;
   const missionTitle = hasThemeContent
     ? themeContent
-    : "Add this month mission";
+    : "Tambahkan misi bulan ini";
   const missionSubtitle = hasThemeContent
-    ? "Focus on what matters. Protect your time. Move with intention."
-    : "Open Add Theme to set the mission and image URL for this month.";
+    ? "Fokus pada yang penting, jaga waktumu, dan bergerak dengan tujuan."
+    : "Buka Tambah Tema untuk mengatur misi dan gambar bulan ini.";
   const systemTimeLabel = systemNow.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
-  const todayMonthYearLabel = todayDate.toLocaleDateString(undefined, {
+  const todayMonthYearLabel = todayDate.toLocaleDateString(locale, {
     month: "long",
     year: "numeric",
   });
-  const themeMonthYearLabel = themeNavDate.toLocaleDateString(undefined, {
+  const themeMonthYearLabel = themeNavDate.toLocaleDateString(locale, {
     month: "long",
     year: "numeric",
   });
+  const activePeriodLabel = themeNavDate.toLocaleDateString(locale, {
+    month: "long",
+    year: "numeric",
+  });
+  const greeting = isEnglish
+    ? systemNow.getHours() < 12 ? "Good morning" : systemNow.getHours() < 18 ? "Good afternoon" : "Good evening"
+    : systemNow.getHours() < 11
+      ? "Selamat pagi"
+      : systemNow.getHours() < 15
+        ? "Selamat siang"
+        : systemNow.getHours() < 19
+          ? "Selamat sore"
+          : "Selamat malam";
+  const budgetUsageWithPlan =
+    budgetBasis > 0
+      ? ((totalExpense + projectedExpense) / budgetBasis) * 100
+      : 0;
+  const budgetHealth =
+    budgetBasis <= 0
+      ? {
+          label: "Butuh dasar budget",
+          detail: "Atur pemasukan atau kategori budget",
+          tone: "info" as const,
+        }
+      : budgetRemaining < 0
+        ? {
+            label: "Berpotensi melewati budget",
+            detail: `${Math.abs(budgetRemaining / budgetBasis * 100).toFixed(0)}% di atas rencana`,
+            tone: "warning" as const,
+          }
+        : budgetUsageWithPlan >= 85
+          ? {
+              label: "Perlu dipantau",
+              detail: `${budgetUsageWithPlan.toFixed(0)}% terpakai termasuk rencana`,
+              tone: "warning" as const,
+            }
+          : {
+              label: "Masih sesuai rencana",
+              detail: `${budgetUsageWithPlan.toFixed(0)}% terpakai termasuk rencana`,
+              tone: "positive" as const,
+            };
+  const primaryFinanceInsight = budgetBasis <= 0
+    ? {
+        label: "Dasar perhitungan belum lengkap",
+        reason:
+          "Arkaiv membutuhkan pemasukan bulanan atau transaksi pemasukan untuk menghitung ruang belanja.",
+        action: "Lengkapi di Money",
+        tone: "info" as const,
+      }
+    : budgetRemaining < 0
+      ? {
+          label: "Rencana pengeluaran melewati budget",
+          reason: !hideSensitiveMoney
+            ? `${fmt(totalExpense)} sudah terpakai dan ${fmt(projectedExpense)} masih direncanakan.`
+            : "Nominal disembunyikan. Rencana periode ini berada di atas budget.",
+          action: "Tinjau budget",
+          tone: "warning" as const,
+        }
+      : expenseChangePercent !== null && expenseChangePercent > 10
+        ? {
+            label: `Pengeluaran naik ${expenseChangePercent.toFixed(0)}%`,
+            reason: !hideSensitiveMoney
+              ? `Dibanding periode sebelumnya, pengeluaran bertambah ${fmt(totalExpense - previousPeriodExpense)}.`
+              : "Nominal disembunyikan. Perbandingan menggunakan periode sebelumnya.",
+            action: "Lihat pendorongnya",
+            tone: "warning" as const,
+          }
+        : {
+            label: "Ruang belanja masih terkendali",
+            reason: !hideSensitiveMoney
+              ? `Perkiraan aman dibelanjakan ${fmt(safeToSpend)} sampai akhir periode.`
+              : "Nominal disembunyikan. Budget aktual dan rencana masih berada dalam batas.",
+            action: "Buka ringkasan Money",
+            tone: "positive" as const,
+          };
+  const visiblePrimaryFinanceInsight = hideSensitiveMoney
+    ? {
+        label: "Insight finansial disembunyikan",
+        reason:
+          "Tampilkan nominal untuk melihat observasi, alasan, dan saran berdasarkan periode ini.",
+        action: "Buka Money",
+        tone: "info" as const,
+      }
+    : primaryFinanceInsight;
 
   const dashboardShellClass = [
     "overflow-x-hidden overflow-y-visible rounded-none border-0 bg-transparent p-0 text-slate-950 shadow-none",
@@ -1612,16 +1903,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 >
                   <div className="flex items-center justify-between border-b border-border p-4">
                     <h3 className="flex items-center gap-2 text-lg font-bold">
-                      <AlertTriangle className="h-5 w-5 text-blue-500" />
-                      Notifications
+                      <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
+                      Insight dan notifikasi
                     </h3>
 
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => fetchAIInsights(true)}
                         disabled={isLoadingInsights}
-                        className="rounded-full p-2 transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
-                        aria-label="Refresh insights"
+                        className="flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+                        aria-label="Perbarui insight"
                       >
                         <RefreshCw
                           className={`h-4 w-4 ${
@@ -1632,8 +1923,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
                       <button
                         onClick={handleCloseNotification}
-                        className="rounded-full p-2 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                        aria-label="Close notifications"
+                        className="flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                        aria-label="Tutup insight dan notifikasi"
                       >
                         <ChevronDown className="h-5 w-5" />
                       </button>
@@ -1643,12 +1934,31 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   <div
                     className={`space-y-3 overflow-y-auto p-4 lg:p-5 ${dashboardScrollbarClass}`}
                   >
-                    {isLoadingInsights && displayInsights.length === 0 ? (
+                    {hideSensitiveMoney ? (
+                      <div
+                        className="rounded-2xl bg-surface-soft p-4"
+                        role="status"
+                      >
+                        <div className="flex items-start gap-3">
+                          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" />
+                          <div>
+                            <p className="text-sm font-semibold">
+                              Insight finansial disembunyikan
+                            </p>
+                            <p className="mt-1 text-xs leading-relaxed text-muted">
+                              Tampilkan nominal untuk membaca insight yang
+                              memakai data keuangan periode ini.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : isLoadingInsights &&
+                      localizedDisplayInsights.length === 0 ? (
                       <div
                         className="space-y-3"
                         role="status"
                         aria-live="polite"
-                        aria-label="Generating AI insights"
+                        aria-label="Sedang membuat insight AI"
                       >
                         {[0, 1, 2].map((index) => (
                           <div
@@ -1661,21 +1971,22 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                           </div>
                         ))}
                       </div>
-                    ) : displayInsights.length > 0 ? (
+                    ) : localizedDisplayInsights.length > 0 ? (
                       <motion.div
                         className="space-y-3"
                         variants={staggerContainerVariants}
                         initial="hidden"
                         animate="visible"
                       >
-                      {displayInsights.map((insight, idx) => {
+                      {localizedDisplayInsights.map((insight, idx) => {
                         let bgColor = "bg-black/5 dark:bg-white/10";
                         let iconColor = "text-zinc-500";
                         let Icon = AlertTriangle;
 
                         if (insight.type === "warning") {
-                          bgColor = "border border-red-500/20 bg-red-500/10";
-                          iconColor = "text-red-500";
+                          bgColor =
+                            "border border-[#c94f3d]/25 bg-[#c94f3d]/10";
+                          iconColor = "text-[#b74434] dark:text-[#ef8b79]";
                           Icon = AlertTriangle;
                         } else if (insight.type === "success") {
                           bgColor =
@@ -1706,7 +2017,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                               <h3 className="mb-0.5 text-sm font-bold">
                                 {insight.title}
                               </h3>
-                              <p className="text-xs leading-relaxed opacity-70">
+                              <p className="text-xs leading-relaxed text-muted">
                                 {insight.message}
                               </p>
                             </div>
@@ -1715,8 +2026,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                       })}
                       </motion.div>
                     ) : (
-                      <div className="py-8 text-center opacity-50">
-                        <p className="text-sm">No new notifications</p>
+                      <div className="py-8 text-center text-muted">
+                        <p className="text-sm">Belum ada notifikasi baru</p>
                       </div>
                     )}
                   </div>
@@ -1751,19 +2062,19 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   <div className="z-10 flex shrink-0 items-center justify-between border-b border-border bg-surface p-4">
                     <h3 className="flex items-center gap-2 text-lg font-bold">
                       <ClipboardCheck className="h-5 w-5 text-indigo-500" />
-                      Review Center
+                      Pusat pemeriksaan
                     </h3>
 
                     <div className="flex items-center gap-2">
                       {(pendingReviews.length + receiptReviews.length) > 0 && (
-                        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-bold text-indigo-600">
-                          {pendingReviews.length + receiptReviews.length} Pending
+                        <span className="rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                          {pendingReviews.length + receiptReviews.length} menunggu
                         </span>
                       )}
                       <button
                         onClick={handleCloseReview}
-                        className="ml-2 rounded-full p-2 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                        aria-label="Close review center"
+                        className="ml-2 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                        aria-label="Tutup pusat pemeriksaan"
                       >
                         <ChevronDown className="h-5 w-5" />
                       </button>
@@ -1787,6 +2098,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     clearParsingTask={clearParsingTask}
                     undoParsingTask={undoParsingTask}
                     deleteParsingTaskEntries={deleteParsingTaskEntries}
+                    hideMoney={hideSensitiveMoney}
                   />
                 </motion.div>
               </>
@@ -1805,7 +2117,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="h-full w-full bg-[radial-gradient(circle_at_82%_28%,rgba(99,102,241,0.18),transparent_38%),linear-gradient(135deg,#ffffff_0%,#f5f7fb_58%,#eef0ff_100%)] dark:bg-[radial-gradient(circle_at_82%_28%,rgba(129,140,248,0.18),transparent_38%),linear-gradient(135deg,#181b22_0%,#11141a_58%,#0c0e13_100%)]" />
+        <div className="h-full w-full bg-indigo-50 dark:bg-indigo-400/[0.07]" />
       )}
     </div>
   );
@@ -1815,13 +2127,575 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       <div className="pointer-events-none absolute bottom-6 right-6 hidden max-w-xs rounded-[2rem] border border-blue-200/70 bg-white/40 p-5 text-blue-700/80 backdrop-blur-md dark:border-blue-300/20 dark:bg-white/5 dark:text-blue-200/80 xl:block">
         <ImageIcon className="mb-3 h-9 w-9" />
         <div className="text-xs font-black uppercase tracking-[0.22em]">
-          Add theme image
+          Tambahkan gambar tema
         </div>
         <div className="mt-1 text-xs font-semibold opacity-75">
-          The image URL lives in Add Theme.
+          URL gambar dapat diatur lewat Tambah Tema.
         </div>
       </div>
     ) : null;
+
+  const renderFinanceCommandHero = () => {
+    const actualPercent =
+      budgetBasis > 0 ? Math.min(100, (totalExpense / budgetBasis) * 100) : 0;
+    const plannedPercent =
+      budgetBasis > 0 ? Math.min(100, (projectedExpense / budgetBasis) * 100) : 0;
+    const visiblePlannedPercent = Math.min(
+      plannedPercent,
+      Math.max(0, 100 - actualPercent),
+    );
+    const reviewCount =
+      pendingReviews.length + receiptReviews.length + parsingTasks.length;
+    const metrics = [
+      {
+        label: homeCopy.income,
+        value: totalIncome,
+        icon: TrendingUp,
+        tone: "positive",
+      },
+      {
+        label: homeCopy.expense,
+        value: totalExpense,
+        icon: TrendingDown,
+        tone: "negative",
+      },
+      {
+        label: homeCopy.savings,
+        value: periodSavings,
+        icon: PiggyBank,
+        tone: "info",
+      },
+      {
+        label: homeCopy.cashFlow,
+        value: cashFlow,
+        icon: cashFlow >= 0 ? ArrowUpRight : ArrowDownRight,
+        tone: cashFlow >= 0 ? "positive" : "negative",
+      },
+    ] as const;
+
+    return (
+      <section
+        data-finance-surface="hero"
+        className="overflow-hidden rounded-[28px] bg-surface p-5 text-primary ring-1 ring-inset ring-border/55 sm:p-6 lg:p-8"
+        aria-labelledby="home-financial-snapshot"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-muted">{greeting}</div>
+            <h1
+              id="home-financial-snapshot"
+              className="mt-1 text-[clamp(1.65rem,4vw,2.4rem)] font-semibold leading-tight tracking-[-0.035em]"
+            >
+              {homeCopy.headline}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div
+              data-swipe-date="summary-finance-month"
+              className="flex min-h-11 items-center rounded-2xl bg-surface-soft p-1"
+              onTouchStart={dateSwipeHandlers.onTouchStart}
+              onTouchMove={dateSwipeHandlers.onTouchMove}
+              onTouchEnd={dateSwipeHandlers.onTouchEnd}
+            >
+              <button
+                type="button"
+                onClick={() => changeThemeMonth(-1)}
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-primary"
+                aria-label={homeCopy.previous}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="min-w-[6.25rem] px-1 text-center text-[11px] font-semibold capitalize text-primary sm:min-w-[9.5rem] sm:px-2 sm:text-sm">
+                {activePeriodLabel}
+              </span>
+              <button
+                type="button"
+                onClick={() => changeThemeMonth(1)}
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-primary"
+                aria-label={homeCopy.next}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <button
+              ref={reviewButtonRef}
+              type="button"
+              onClick={handleOpenReview}
+              className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-soft text-muted transition-colors hover:text-primary max-[420px]:hidden lg:hidden"
+              aria-label={`${reviewCount} item perlu diperiksa`}
+            >
+              <ClipboardCheck className="h-[18px] w-[18px]" />
+              {reviewCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[9px] font-bold text-white">
+                  {Math.min(reviewCount, 9)}
+                </span>
+              )}
+            </button>
+            <button
+              ref={notificationButtonRef}
+              type="button"
+              onClick={handleOpenNotification}
+              className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-soft text-muted transition-colors hover:text-primary lg:hidden"
+              aria-label="Buka insight dan notifikasi"
+            >
+              <AlertTriangle className="h-[18px] w-[18px]" />
+              {hasNewNotification && (
+                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-surface-soft bg-[#c94f3d]" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-7 grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] lg:items-stretch">
+          <div className="flex min-w-0 flex-col justify-between rounded-[24px] bg-[#121a16] p-5 text-white dark:bg-[#e9f2ed] dark:text-[#101713] sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs font-semibold text-white/60 dark:text-[#506058]">
+                  {homeCopy.netWorth}
+                </div>
+                <div
+                  data-financial-amount="true"
+                  className="mt-2 break-words text-[clamp(2rem,7vw,3.5rem)] font-semibold leading-none tracking-[-0.055em]"
+                >
+                  <AnimatedNumber
+                    value={totalNetWorth}
+                    formatter={fmt}
+                    hidden={hideSensitiveMoney}
+                    hiddenLabel="••••••••"
+                    ariaLabel="Kekayaan bersih"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBalance(!showBalance)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white transition-colors hover:bg-white/15 dark:bg-black/[0.07] dark:text-[#101713] dark:hover:bg-black/10"
+                aria-label={hideSensitiveMoney ? homeCopy.show : homeCopy.hide}
+                aria-pressed={hideSensitiveMoney}
+              >
+                {!hideSensitiveMoney ? (
+                  <EyeOff className="h-[18px] w-[18px]" />
+                ) : (
+                  <Eye className="h-[18px] w-[18px]" />
+                )}
+              </button>
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-white/[0.07] p-3 dark:bg-black/[0.055]">
+                <div className="flex items-center gap-2 text-[11px] font-semibold text-white/60 dark:text-[#506058]">
+                  <Landmark className="h-3.5 w-3.5" />
+                  {homeCopy.assets}
+                </div>
+                <div data-financial-amount="true" className="mt-1 truncate text-base font-semibold">
+                  <AnimatedNumber
+                    value={totalAssets}
+                    formatter={fmt}
+                    hidden={hideSensitiveMoney}
+                    hiddenLabel="••••"
+                    ariaLabel="Total aset"
+                  />
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white/[0.07] p-3 dark:bg-black/[0.055]">
+                <div className="flex items-center gap-2 text-[11px] font-semibold text-white/60 dark:text-[#506058]">
+                  <CreditCard className="h-3.5 w-3.5" />
+                  {homeCopy.debt}
+                </div>
+                <div data-financial-amount="true" className="mt-1 truncate text-base font-semibold">
+                  <AnimatedNumber
+                    value={totalDebt}
+                    formatter={fmt}
+                    hidden={hideSensitiveMoney}
+                    hiddenLabel="••••"
+                    ariaLabel="Total utang"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-between rounded-[24px] bg-surface-soft p-5 sm:p-6">
+            <div>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-semibold text-muted">
+                    {homeCopy.safeToSpend}
+                  </div>
+                  <div
+                    data-financial-amount="true"
+                    className="mt-2 text-3xl font-semibold tracking-[-0.04em]"
+                  >
+                    <AnimatedNumber
+                      value={safeToSpend}
+                      formatter={fmt}
+                      hidden={hideSensitiveMoney}
+                      hiddenLabel="••••••"
+                      ariaLabel="Perkiraan aman dibelanjakan"
+                    />
+                  </div>
+                </div>
+                <span
+                  data-finance-status={budgetHealth.tone}
+                  className="rounded-full bg-surface px-3 py-1.5 text-[11px] font-semibold shadow-sm"
+                >
+                  {budgetHealth.label}
+                </span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                {budgetHealth.detail}. Perkiraan memakai budget aktual dan transaksi terencana.
+              </p>
+            </div>
+
+            <div className="mt-7">
+              <div
+                className="relative flex h-3 overflow-hidden rounded-full bg-border/70"
+                role="img"
+                aria-label={`Budget terpakai ${actualPercent.toFixed(0)} persen, rencana ${plannedPercent.toFixed(0)} persen`}
+              >
+                <motion.div
+                  initial={false}
+                  animate={{ width: `${actualPercent}%` }}
+                  className="h-full bg-indigo-600"
+                />
+                <motion.div
+                  initial={false}
+                  animate={{ width: `${visiblePlannedPercent}%` }}
+                  data-planned-fill="true"
+                  className="h-full bg-amber-600 text-amber-700 dark:bg-amber-400 dark:text-amber-200"
+                />
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] font-semibold text-muted">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-indigo-600" />
+                  {homeCopy.actual}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-sm border border-amber-700 bg-amber-200" />
+                  {homeCopy.planned}
+                </span>
+                <span className="text-right">{homeCopy.remaining}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 border-t border-border/70 pt-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold">{homeCopy.cashFlowPulse}</h2>
+            <span className="text-[11px] text-muted">
+              {expenseChangePercent === null
+                ? homeCopy.noComparison
+                : `${expenseChangePercent >= 0 ? "Naik" : "Turun"} ${Math.abs(expenseChangePercent).toFixed(0)}% vs periode lalu`}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {metrics.map((metric) => {
+              const Icon = metric.icon;
+              return (
+                <div key={metric.label} className="min-w-0 rounded-2xl bg-surface-soft/75 p-3.5">
+                  <div className="flex items-center gap-2 text-[11px] font-semibold text-muted">
+                    <Icon className="h-3.5 w-3.5" data-finance-status={metric.tone} />
+                    {metric.label}
+                  </div>
+                  <div
+                    data-financial-amount="true"
+                    data-finance-status={metric.tone}
+                    className="mt-1.5 truncate text-base font-semibold"
+                  >
+                    <AnimatedNumber
+                      value={metric.value}
+                      formatter={fmt}
+                      hidden={hideSensitiveMoney}
+                      hiddenLabel="••••"
+                      ariaLabel={metric.label}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[11px] leading-relaxed text-muted">
+            {homeCopy.source} · {activePeriodLabel}
+          </p>
+          <button
+            type="button"
+            onClick={handleOpenAddExpense}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500"
+          >
+            <Plus className="h-4 w-4" />
+            {homeCopy.record}
+          </button>
+        </div>
+      </section>
+    );
+  };
+
+  const renderPrimaryFinanceInsight = () =>
+    isFinanceInsightDismissed ? null : (
+      <section
+        className="relative overflow-hidden rounded-[24px] bg-indigo-50 p-5 ring-1 ring-inset ring-indigo-200/65 dark:bg-indigo-400/[0.08] dark:ring-indigo-300/15 sm:p-6"
+        aria-labelledby="home-copilot-title"
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-700 dark:text-indigo-300">
+                  Arkaiv Copilot · insight utama
+                </div>
+                <h2 id="home-copilot-title" className="mt-1 text-lg font-semibold tracking-tight">
+                  {visiblePrimaryFinanceInsight.label}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFinanceInsightDismissed(true)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-white/70 hover:text-primary dark:hover:bg-white/[0.07]"
+                aria-label="Abaikan insight ini"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+              {visiblePrimaryFinanceInsight.reason}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-[10px] font-medium text-muted">
+                Sumber: dompet, transaksi, dan budget · {activePeriodLabel}
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveTab("money")}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-surface px-3.5 py-2 text-xs font-semibold text-indigo-700 shadow-sm ring-1 ring-inset ring-indigo-200 transition-colors hover:bg-white dark:text-indigo-300 dark:ring-indigo-300/20 dark:hover:bg-white/[0.06]"
+              >
+                {visiblePrimaryFinanceInsight.action}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+
+  const renderUpcomingFinance = () => {
+    const hasUpcoming =
+      upcomingLoanAccounts.length > 0 ||
+      plannedTransactions.length > 0 ||
+      nextUpItems.length > 0;
+    return (
+      <section className={`${dashboardCardClass} p-5 sm:p-6`}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className={dashboardSectionTitle}>Berikutnya</h2>
+            <p className={`mt-1 text-xs ${dashboardMuted}`}>
+              Jatuh tempo, rencana, dan agenda terdekat
+            </p>
+          </div>
+          <div className={dashboardIconClass}>
+            <CalendarDays className="h-5 w-5" />
+          </div>
+        </div>
+
+        {hasUpcoming ? (
+          <div className="space-y-2.5">
+            {upcomingLoanAccounts.slice(0, 2).map((account) => (
+              <button
+                key={account.id}
+                type="button"
+                onClick={() => {
+                  setPlanSubTab("loans");
+                  setActiveTab("plan");
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl bg-surface-soft p-3 text-left transition-colors hover:bg-border/55"
+              >
+                <span
+                  data-finance-status={account.status === "overdue" ? "warning" : "info"}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface"
+                >
+                  <Banknote className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">
+                    {account.counterparty}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-muted">
+                    {account.direction === "payable"
+                      ? "Uang yang kamu pinjam"
+                      : "Uang yang kamu pinjamkan"}
+                    {account.dueDate
+                      ? ` · ${new Date(account.dueDate).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}`
+                      : ""}
+                  </span>
+                </span>
+                <span data-financial-amount="true" className="shrink-0 text-right text-xs font-semibold">
+                  {!hideSensitiveMoney ? fmt(account.remainingAmount) : "••••"}
+                </span>
+              </button>
+            ))}
+
+            {plannedTransactions.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab("money")}
+                className="flex w-full items-center gap-3 rounded-2xl bg-surface-soft p-3 text-left transition-colors hover:bg-border/55"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface text-amber-700 dark:text-amber-300">
+                  <ReceiptText className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{item.content}</span>
+                  <span className="mt-0.5 block text-[11px] text-muted">Pengeluaran terencana</span>
+                </span>
+                <span data-financial-amount="true" className="shrink-0 text-xs font-semibold">
+                  {!hideSensitiveMoney ? fmt(item.meta.amount || 0) : "••••"}
+                </span>
+              </button>
+            ))}
+
+            {upcomingLoanAccounts.length === 0 &&
+              plannedTransactions.length === 0 &&
+              nextUpItems.slice(0, 3).map((item) => (
+                <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-surface-soft p-3">
+                  <span className="w-12 shrink-0 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                    {item.time}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.label}</span>
+                </div>
+              ))}
+          </div>
+        ) : (
+          renderDashboardEmptyState(
+            "Tidak ada yang mendesak",
+            "Jatuh tempo pinjaman, transaksi terencana, dan agenda terdekat akan tampil di sini.",
+          )
+        )}
+      </section>
+    );
+  };
+
+  const renderRecentTransactions = () => (
+    <section className={`${dashboardCardClass} p-5 sm:p-6`}>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className={dashboardSectionTitle}>Transaksi terbaru</h2>
+          <p className={`mt-1 text-xs ${dashboardMuted}`}>{activePeriodLabel}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab("money")}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/10 dark:text-indigo-300"
+        >
+          Lihat semua
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {recentTransactions.length > 0 ? (
+        <div className="divide-y divide-border/70">
+          {recentTransactions.map((item) => {
+            const financeType = item.meta.financeType || "expense";
+            const isIncome =
+              financeType === "income" ||
+              financeType === "loan_in" ||
+              financeType === "loan_repayment_in";
+            const isTransfer =
+              financeType === "transfer" ||
+              financeType === "saving" ||
+              financeType === "saving_withdrawal";
+            const typeLabel =
+              financeType === "income"
+                ? "Pemasukan"
+                : financeType === "transfer"
+                  ? "Transfer"
+                  : financeType === "saving"
+                    ? "Tabungan"
+                    : financeType === "saving_withdrawal"
+                      ? "Penarikan tabungan"
+                      : financeType === "loan_out"
+                        ? "Dipinjamkan"
+                        : financeType === "loan_in"
+                          ? "Pinjaman masuk"
+                          : financeType === "loan_repayment_in"
+                            ? "Pelunasan masuk"
+                            : financeType === "loan_repayment_out"
+                              ? "Pelunasan keluar"
+                              : "Pengeluaran";
+            const Icon = isIncome
+              ? ArrowDownRight
+              : isTransfer
+                ? ArrowRight
+                : ArrowUpRight;
+            const transactionDate = new Date(
+              item.meta.date || item.completed_at || item.created_at,
+            );
+            const category =
+              budgetConfig.rules.find((rule) => rule.id === item.meta.budgetCategory)?.name ||
+              item.meta.budgetCategory ||
+              item.meta.paymentMethod ||
+              "Belum berkategori";
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab("money")}
+                className="flex w-full items-center gap-3 py-3 text-left"
+              >
+                <span
+                  data-finance-status={isIncome ? "positive" : isTransfer ? "info" : "negative"}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-soft"
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">
+                    {item.meta.merchant || item.content}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-muted">
+                    {typeLabel} · {category}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span
+                    data-financial-amount="true"
+                    data-finance-status={isIncome ? "positive" : isTransfer ? "info" : "negative"}
+                    className="block text-sm font-semibold"
+                  >
+                    {!hideSensitiveMoney
+                      ? `${isIncome ? "+" : isTransfer ? "" : "−"}${fmt(item.meta.amount || 0)}`
+                      : "••••"}
+                  </span>
+                  <span className="mt-0.5 block text-[10px] text-muted">
+                    {Number.isNaN(transactionDate.getTime())
+                      ? ""
+                      : transactionDate.toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        renderDashboardEmptyState(
+          "Belum ada transaksi",
+          "Catat transaksi pertama periode ini lewat composer atau tombol Catat transaksi.",
+          { label: "Catat transaksi", onClick: handleOpenAddExpense },
+        )
+      )}
+    </section>
+  );
 
   const renderHeroCard = (compact = false) => (
     <button
@@ -1832,7 +2706,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       }`}
     >
       {renderThemeImageSurface()}
-      <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/74 to-white/20 dark:from-[#101218]/95 dark:via-[#101218]/72 dark:to-[#101218]/18" />
+      <div className="absolute inset-0 bg-white/82 dark:bg-[#101713]/82" />
       {renderThemeImageCta()}
 
       <div
@@ -1855,7 +2729,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
         <div className="mt-7 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-indigo-600/80 opacity-100 transition-opacity dark:text-indigo-300/80 xl:opacity-0 xl:group-hover:opacity-100">
           <Pencil className="h-3.5 w-3.5" />
-          Add Theme
+          Tambah tema
         </div>
       </div>
     </button>
@@ -1874,7 +2748,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       </div>
 
       <div className="text-base font-semibold text-slate-700 dark:text-zinc-300">
-        {todayDate.toLocaleDateString(undefined, { weekday: "long" })}
+        {todayDate.toLocaleDateString("id-ID", { weekday: "long" })}
       </div>
       <div className="mt-1 text-6xl font-black leading-none text-blue-700 dark:text-blue-300">
         {String(todayDate.getDate()).padStart(2, "0")}
@@ -1891,7 +2765,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           type="button"
           onClick={() => changeThemeMonth(-1)}
           className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.09]"
-          aria-label="Previous theme month"
+          aria-label="Bulan tema sebelumnya"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -1899,10 +2773,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           type="button"
           onClick={openThemeEditor}
           className="rounded-full bg-blue-50 px-3 py-2 text-center text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
-          aria-label={`Edit ${themeMonthYearLabel} theme`}
+          aria-label={`Edit tema ${themeMonthYearLabel}`}
         >
           <span className="block text-[10px] font-black uppercase tracking-[0.16em]">
-            Theme
+            Tema
           </span>
           <span className="mt-0.5 block text-[10px] font-bold normal-case tracking-normal">
             {themeMonthYearLabel}
@@ -1912,7 +2786,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           type="button"
           onClick={() => changeThemeMonth(1)}
           className="rounded-full bg-slate-100 p-2 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.09]"
-          aria-label="Next theme month"
+          aria-label="Bulan tema berikutnya"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -1927,9 +2801,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       <div className="mb-5 flex shrink-0 items-center justify-between">
         <div>
           <h2 className={dashboardSectionTitle}>{taskDashboardTitle}</h2>
-          {displaySubtitle && !isDoneState && (
+          {taskDashboardSubtitle && !isDoneState && (
             <p className={`mt-1 text-xs font-semibold ${dashboardMuted}`}>
-              {displaySubtitle}
+              {taskDashboardSubtitle}
             </p>
           )}
         </div>
@@ -1956,7 +2830,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 transition={{ layout: motionSpring.layout }}
                 onClick={() => handleToggleStatus(item.id)}
                 className="group flex w-full items-center gap-4 rounded-2xl py-1 text-left active:scale-[0.99]"
-                aria-label={`${item.done ? "Mark as pending" : "Mark as complete"}: ${item.label}`}
+                aria-label={`${item.done ? "Tandai belum selesai" : "Tandai selesai"}: ${item.label}`}
                 aria-pressed={item.done}
               >
                 <div
@@ -1993,10 +2867,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       ) : (
         <div className="flex min-h-0 flex-1 items-center">
           {renderDashboardEmptyState(
-            "All done",
-            "No task for today, tomorrow, or later. Take a break or add a new task.",
+            "Selesai semua",
+            "Tidak ada tugas untuk hari ini, besok, atau nanti. Istirahat sejenak atau tambahkan tugas.",
             {
-              label: "Add task",
+              label: "Tambah tugas",
               onClick: () =>
                 handleOpenAddTask(new Date().toISOString().split("T")[0]),
             },
@@ -2010,8 +2884,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     const goalToggleClass = (active: boolean) =>
       `rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${
         active
-          ? "bg-blue-700 text-white shadow-sm dark:bg-blue-300 dark:text-zinc-950"
-          : "bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
+          ? "bg-indigo-600 text-white shadow-sm dark:bg-indigo-300 dark:text-[#101713]"
+          : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-400/10 dark:text-indigo-300 dark:hover:bg-indigo-400/15"
       }`;
 
     return (
@@ -2019,7 +2893,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
       >
         <div className="mb-5 flex shrink-0 items-center justify-between gap-3">
-          <h2 className={dashboardSectionTitle}>Goals Progress</h2>
+          <h2 className={dashboardSectionTitle}>Progres tujuan</h2>
           <div className="flex shrink-0 items-center gap-2">
             <div className="flex flex-wrap justify-end gap-2">
               <button
@@ -2033,7 +2907,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 className={goalToggleClass(goalDashboardVisibility.savings)}
                 aria-pressed={goalDashboardVisibility.savings}
               >
-                Savings
+                Tabungan
               </button>
               <button
                 type="button"
@@ -2046,7 +2920,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 className={goalToggleClass(goalDashboardVisibility.skills)}
                 aria-pressed={goalDashboardVisibility.skills}
               >
-                Skills
+                Keterampilan
               </button>
             </div>
             <div className={dashboardIconClass}>
@@ -2064,7 +2938,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 key={goal.id}
                 className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-300">
                   {goal.kind === "investment" ? (
                     <BarChart3 className="h-4 w-4" />
                   ) : goal.kind === "skill" ? (
@@ -2084,8 +2958,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
                       <AnimatedProgress
                         value={goal.progress}
-                        className="rounded-full bg-blue-600 dark:bg-blue-400"
-                        label={`${goal.label} progress`}
+                        className="rounded-full bg-indigo-600 dark:bg-indigo-400"
+                        label={`Progres ${goal.label}`}
                       />
                     </div>
                   )}
@@ -2112,14 +2986,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           <div className="flex min-h-0 flex-1 items-center">
             {goalDashboardItems.length > 0
               ? renderDashboardEmptyState(
-                  "Goals hidden",
-                  "Turn on Savings or Skills to show that goal group here.",
+                  "Tujuan disembunyikan",
+                  "Aktifkan Tabungan atau Keterampilan untuk menampilkan kelompok tujuan.",
                 )
               : renderDashboardEmptyState(
-                  "No goal tracked",
-                  "Saving, investment, and skill targets will appear here once you add them.",
+                  "Belum ada tujuan",
+                  "Target tabungan, investasi, dan keterampilan akan tampil setelah ditambahkan.",
                   {
-                    label: "Open plan",
+                    label: "Buka Plan",
                     onClick: () => {
                       setPlanSubTab("savings");
                       setActiveTab("plan");
@@ -2137,7 +3011,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
     >
       <div className="mb-4 flex shrink-0 items-center justify-between">
-        <h2 className={dashboardSectionTitle}>Routine</h2>
+        <h2 className={dashboardSectionTitle}>Rutinitas</h2>
         <div className={dashboardIconClass}>
           <CheckCircle2 className="h-5 w-5" />
         </div>
@@ -2146,14 +3020,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       {routineDashboardItems.length > 0 ? (
         <>
           <div className="mb-4 flex shrink-0 items-end gap-2">
-            <span className="text-4xl font-black text-blue-700 dark:text-blue-300">
+            <span className="text-4xl font-black text-indigo-700 dark:text-indigo-300">
               {routineDoneCount}
             </span>
             <span className="pb-1 text-2xl font-bold text-slate-500 dark:text-zinc-400">
               / {routineDashboardItems.length}
             </span>
             <span className={`pb-1 text-sm font-semibold ${dashboardMuted}`}>
-              done today
+              selesai hari ini
             </span>
           </div>
 
@@ -2174,7 +3048,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 transition={{ layout: motionSpring.layout }}
                 onClick={() => handleToggleStatus(routine.sourceId)}
                 className="flex w-full items-center gap-2.5 rounded-xl text-left active:scale-[0.99]"
-                aria-label={`${routine.done ? "Mark routine as pending" : "Complete routine"}: ${routine.label}`}
+                aria-label={`${routine.done ? "Tandai rutinitas belum selesai" : "Selesaikan rutinitas"}: ${routine.label}`}
                 aria-pressed={routine.done}
               >
                 <div
@@ -2201,10 +3075,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       ) : (
         <div className="flex min-h-0 flex-1 items-center">
           {renderDashboardEmptyState(
-            "No routine for today",
-            "Daily, weekly, monthly, or yearly routine items will be shown here.",
+            "Belum ada rutinitas hari ini",
+            "Rutinitas harian, mingguan, bulanan, atau tahunan akan tampil di sini.",
             {
-              label: "Open plan",
+              label: "Buka Plan",
               onClick: () => {
                 setPlanSubTab("tasks");
                 setActiveTab("plan");
@@ -2222,7 +3096,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       className={`${dashboardCardClass} cursor-pointer p-5 transition-transform active:scale-[0.995] xl:p-6`}
     >
       <div className="mb-5 flex items-center justify-between">
-        <h2 className={dashboardSectionTitle}>Money Snapshot</h2>
+        <h2 className={dashboardSectionTitle}>Ringkasan uang</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -2231,9 +3105,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               setShowBalance(!showBalance);
             }}
             className="rounded-full bg-blue-50 p-2 text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
-            aria-label={showBalance ? "Hide balance" : "Show balance"}
+            aria-label={hideSensitiveMoney ? "Tampilkan saldo" : "Sembunyikan saldo"}
           >
-            {showBalance ? (
+            {!hideSensitiveMoney ? (
               <EyeOff className="h-4 w-4" />
             ) : (
               <Eye className="h-4 w-4" />
@@ -2248,37 +3122,37 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:divide-x sm:divide-slate-100 dark:sm:divide-white/10">
         <div className="sm:pr-4">
           <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
-            Net Worth
+            Kekayaan bersih
           </p>
           <div className="truncate text-xl font-black text-blue-700 dark:text-blue-300">
             <AnimatedNumber
               value={totalNetWorth}
               formatter={fmt}
-              hidden={!showBalance}
+              hidden={hideSensitiveMoney}
               hiddenLabel="••••••••"
-              ariaLabel="Net worth"
+              ariaLabel="Kekayaan bersih"
             />
           </div>
         </div>
 
         <div className="sm:px-4">
           <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
-            Monthly Spending
+            Pengeluaran bulanan
           </p>
           <div className="truncate text-xl font-black text-blue-700 dark:text-blue-300">
             <AnimatedNumber
               value={totalExpense}
               formatter={fmt}
-              hidden={!showBalance}
+              hidden={hideSensitiveMoney}
               hiddenLabel="••••••"
-              ariaLabel="Monthly spending"
+              ariaLabel="Pengeluaran bulanan"
             />
           </div>
         </div>
 
         <div className="sm:pl-4">
           <p className={`mb-2 text-xs font-semibold ${dashboardMuted}`}>
-            Savings Rate
+            Tingkat tabungan
           </p>
           <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
             {savingsRate}%
@@ -2297,7 +3171,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           <Trophy className="h-7 w-7" />
         </div>
         <div>
-          <div className={dashboardKicker}>Weekly Win</div>
+          <div className={dashboardKicker}>Pencapaian mingguan</div>
           <div className="mt-2 text-2xl font-black text-slate-900 dark:text-zinc-50">
             {weeklyWin.title}
           </div>
@@ -2321,99 +3195,76 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       onTouchMove={swipeHandlers.onTouchMove}
       onTouchEnd={swipeHandlers.onTouchEnd}
       style={{ x: swipeHandlers.dragOffset }}
-      variants={dashboardContainerVariants}
-      initial="hidden"
-      animate="visible"
+      initial={false}
     >
       <div className={dashboardShellClass}>
-        <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-5">
-          <motion.div variants={riseVariants} className="h-full xl:col-span-4">{renderHeroCard()}</motion.div>
-          <motion.div variants={riseVariants} className="h-full xl:col-span-1">{renderDateCard()}</motion.div>
+        {renderFinanceCommandHero()}
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(19rem,0.75fr)] xl:items-start">
+          <div className="min-w-0 space-y-4">
+            {renderPrimaryFinanceInsight()}
+            <div className="grid gap-4 2xl:grid-cols-2">
+              {renderRecentTransactions()}
+              {renderTasksCard()}
+            </div>
+          </div>
+          <aside className="space-y-4 xl:sticky xl:top-6" aria-label="Konteks keuangan dan tujuan">
+            {renderUpcomingFinance()}
+            {renderGoalsCard()}
+          </aside>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <motion.div variants={riseVariants}>{renderTasksCard()}</motion.div>
-          <motion.div variants={riseVariants}>{renderGoalsCard()}</motion.div>
-          <motion.div variants={riseVariants}>{renderRoutineCard()}</motion.div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-5">
-          <motion.div variants={riseVariants} className="xl:col-span-2">{renderMoneyCard()}</motion.div>
-          <motion.div variants={riseVariants} className="xl:col-span-3">{renderWeeklyWinCard()}</motion.div>
-        </div>
+        <details className="group mt-4 rounded-[24px] bg-surface/70 ring-1 ring-inset ring-border/65">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 text-sm font-semibold marker:content-none">
+            <span>
+              Ruang personal
+              <span className="ml-2 text-xs font-normal text-muted">
+                Misi bulanan, rutinitas, dan progres mingguan
+              </span>
+            </span>
+            <ChevronDown className="h-4 w-4 text-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="grid gap-4 border-t border-border/65 p-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.7fr)]">
+            {renderHeroCard(true)}
+            <div className="space-y-4">
+              {renderRoutineCard()}
+              {renderWeeklyWinCard()}
+            </div>
+          </div>
+        </details>
       </div>
     </motion.div>
   );
 
   const renderMobileDashboard = () => (
-    <div className="w-full min-w-0 max-w-full overflow-x-hidden lg:hidden">
-      <motion.div
-        data-swipe-tabs="summary"
-        className={`${contentSurface.headerHero} mb-6`}
-        onTouchStart={swipeHandlers.onTouchStart}
-        onTouchMove={swipeHandlers.onTouchMove}
-        onTouchEnd={swipeHandlers.onTouchEnd}
-        style={{ x: swipeHandlers.dragOffset }}
-      >
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: "linear" }}
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider opacity-60">
-              <div className="h-2 w-2 rounded-full bg-black dark:bg-white"></div>
-              Dashboard
-            </div>
+    <motion.div
+      data-swipe-tabs="summary"
+      className="mt-3 w-full min-w-0 max-w-full space-y-4 overflow-x-hidden lg:hidden"
+      onTouchStart={swipeHandlers.onTouchStart}
+      onTouchMove={swipeHandlers.onTouchMove}
+      onTouchEnd={swipeHandlers.onTouchEnd}
+      style={{ x: swipeHandlers.dragOffset }}
+      initial={false}
+    >
+      {renderFinanceCommandHero()}
+      {renderPrimaryFinanceInsight()}
+      {renderUpcomingFinance()}
+      {renderGoalsCard()}
+      {renderTasksCard()}
+      {renderRecentTransactions()}
 
-            <div className="flex items-center gap-2">
-              <button
-                ref={reviewButtonRef}
-                onClick={handleOpenReview}
-                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/[0.09]"
-                aria-label="Open review center"
-              >
-                <ClipboardCheck className="h-[18px] w-[18px]" strokeWidth={2} />
-                {((pendingReviews && pendingReviews.length > 0) ||
-                  receiptReviews.length > 0 ||
-                  (parsingTasks && parsingTasks.length > 0)) && (
-                  <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full border border-surface bg-indigo-500"></span>
-                )}
-              </button>
-
-              <button
-                ref={notificationButtonRef}
-                onClick={handleOpenNotification}
-                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/[0.09]"
-                aria-label="Open notifications"
-              >
-                <AlertTriangle className="h-[18px] w-[18px]" />
-                {hasNewNotification && (
-                  <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full border border-surface bg-red-500"></span>
-                )}
-              </button>
-            </div>
-          </div>
-
+      <details className="group rounded-[24px] bg-surface/70 ring-1 ring-inset ring-border/65">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-sm font-semibold marker:content-none">
+          <span>Ruang personal</span>
+          <ChevronDown className="h-4 w-4 text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="space-y-4 border-t border-border/65 p-3">
           {renderHeroCard(true)}
-        </motion.div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className="w-full min-w-0 max-w-full space-y-4 px-4"
-      >
-        {renderTasksCard()}
-        {renderGoalsCard()}
-        {renderRoutineCard()}
-        {renderMoneyCard()}
-
-        {renderWeeklyWinCard()}
-      </motion.div>
-    </div>
+          {renderRoutineCard()}
+          {renderWeeklyWinCard()}
+        </div>
+      </details>
+    </motion.div>
   );
 
   return (

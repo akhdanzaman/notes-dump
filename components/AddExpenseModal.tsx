@@ -69,10 +69,18 @@ const dateInputValue = (value?: string) => {
 };
 
 const loanActionLabels: Record<LoanTransactionKind, { title: string; description: string }> = {
-  loan_out: { title: 'Saya meminjamkan', description: 'Uang keluar dan menjadi piutang.' },
-  loan_in: { title: 'Saya meminjam', description: 'Uang masuk dan menjadi utang.' },
-  loan_repayment_in: { title: 'Terima kembali', description: 'Piutang berkurang.' },
-  loan_repayment_out: { title: 'Bayar kembali', description: 'Utang berkurang.' },
+  loan_out: { title: 'Pinjamkan uang', description: 'Uang keluar; orang lain berutang kepada Anda (piutang).' },
+  loan_in: { title: 'Pinjam uang', description: 'Uang masuk; Anda berutang kepada orang lain (utang).' },
+  loan_repayment_in: { title: 'Terima pembayaran', description: 'Uang masuk dan sisa piutang Anda berkurang.' },
+  loan_repayment_out: { title: 'Bayar utang', description: 'Uang keluar dan sisa utang Anda berkurang.' },
+};
+
+const transactionModeLabels: Record<TransactionComposerMode, string> = {
+  expense: 'Pengeluaran',
+  income: 'Pemasukan',
+  transfer: 'Transfer',
+  saving: 'Tabungan',
+  loan: 'Utang & piutang',
 };
 
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
@@ -111,6 +119,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   );
   const isLoanMode = transactionType === 'loan';
   const isLoanRepayment = loanKind === 'loan_repayment_in' || loanKind === 'loan_repayment_out';
+  const repaymentAccountLabel = loanKind === 'loan_repayment_in' ? 'Piutang yang dibayar' : 'Utang yang dibayar';
+  const repaymentBalanceLabel = loanKind === 'loan_repayment_in' ? 'Sisa piutang' : 'Sisa utang';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -305,15 +315,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     && (!isLoanMode || !isLoanRepayment || !!loanAccountId)
     && !exceedsLoanBalance;
 
-  const modeLabel = transactionType === 'expense'
-    ? 'Pengeluaran'
-    : transactionType === 'income'
-      ? 'Pemasukan'
-      : transactionType === 'transfer'
-        ? 'Transfer'
-        : transactionType === 'saving'
-          ? 'Tabungan'
-          : 'Utang & Piutang';
+  const modeLabel = transactionModeLabels[transactionType];
 
   return (
     <PresencePanel
@@ -332,7 +334,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 : <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-indigo-500'}`} />}
               {modeLabel}
             </h3>
-            <button onClick={handleClose} className={addItemModal.closeButton}>
+            <button type="button" onClick={handleClose} className={addItemModal.closeButton} aria-label={`Tutup form ${modeLabel.toLowerCase()}`}>
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -345,23 +347,25 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   type="button"
                   onClick={() => setTransactionType(type)}
                   className={`${addItemModal.tabButton(transactionType === type)} whitespace-nowrap`}
+                  aria-pressed={transactionType === type}
                 >
-                  {type === 'loan' ? 'Pinjam' : type.charAt(0).toUpperCase() + type.slice(1)}
+                  {transactionModeLabels[type]}
                 </button>
               ))}
             </div>
 
             {isLoanMode && (
-              <div>
-                <label className={addItemModal.label}>Pinjam apa?</label>
-                <p className={`${addItemModal.helpText} mb-2`}>Pilih jenis transaksi pinjaman</p>
+              <fieldset>
+                <legend className={addItemModal.label}>Arah uang dan kewajiban</legend>
+                <p className={`${addItemModal.helpText} mb-3`}>Pilih kejadian yang benar agar utang dan piutang tidak tertukar.</p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {(Object.keys(loanActionLabels) as LoanTransactionKind[]).map((kind) => (
                     <button
                       key={kind}
                       type="button"
                       onClick={() => chooseLoanKind(kind)}
-                      className={`relative rounded-2xl border p-4 text-left transition-all ${loanKind === kind ? 'border-indigo-500/70 bg-indigo-500/10 shadow-[0_0_0_1px_rgba(99,102,241,0.12)]' : 'border-border bg-background hover:border-indigo-500/40 hover:bg-surface'}`}
+                      className={`relative min-h-[88px] rounded-2xl p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${loanKind === kind ? 'bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/55' : 'bg-background/70 ring-1 ring-inset ring-border/70 hover:bg-surface'}`}
+                      aria-pressed={loanKind === kind}
                     >
                       <div className="pr-8 text-sm font-bold text-primary">{loanActionLabels[kind].title}</div>
                       <div className="mt-1 text-xs leading-relaxed text-muted">{loanActionLabels[kind].description}</div>
@@ -373,44 +377,52 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
             )}
 
             {isLoanMode && isLoanRepayment && (
               <div>
-                <label className={addItemModal.label}>Pinjaman yang dibayar</label>
-                <select value={loanAccountId} onChange={(event) => chooseLoanAccount(event.target.value)} className={addItemModal.select}>
-                  <option value="">Pilih tanggungan aktif</option>
+                <label htmlFor="loan-account" className={addItemModal.label}>{repaymentAccountLabel}</label>
+                <select id="loan-account" value={loanAccountId} onChange={(event) => chooseLoanAccount(event.target.value)} className={addItemModal.select}>
+                  <option value="">{loanKind === 'loan_repayment_in' ? 'Pilih piutang aktif' : 'Pilih utang aktif'}</option>
                   {repaymentAccounts.map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.counterparty} · sisa Rp {account.remainingAmount.toLocaleString('id-ID')}
+                      {account.counterparty} — {repaymentBalanceLabel.toLowerCase()} Rp {account.remainingAmount.toLocaleString('id-ID')}
                     </option>
                   ))}
                 </select>
                 {repaymentAccounts.length === 0 && (
-                  <p className={addItemModal.helpText}>Belum ada tanggungan aktif yang sesuai dengan arah pengembalian ini.</p>
+                  <p className={addItemModal.helpText}>
+                    {loanKind === 'loan_repayment_in' ? 'Belum ada piutang aktif yang dapat dibayar.' : 'Belum ada utang aktif yang dapat dibayar.'}
+                  </p>
                 )}
               </div>
             )}
 
             <div>
-              <label className={addItemModal.label}>{isInvestmentTarget ? 'Modal investasi' : isLoanRepayment ? 'Jumlah pembayaran' : 'Jumlah'}</label>
+              <label htmlFor="transaction-amount" className={addItemModal.label}>{isInvestmentTarget ? 'Kontribusi investasi' : isLoanRepayment ? 'Jumlah pembayaran' : 'Jumlah transaksi'}</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-bold">Rp</span>
                 <input
+                  id="transaction-amount"
                   type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
                   value={hasLineItems ? String(lineItemsTotal) : amount}
                   onChange={(event) => handleAmountChange(event.target.value)}
                   readOnly={hasLineItems}
                   max={selectedLoanAccount?.remainingAmount}
+                  aria-describedby={isLoanRepayment && selectedLoanAccount ? 'loan-balance-help' : hasLineItems ? 'line-items-total-help' : undefined}
+                  aria-invalid={exceedsLoanBalance || undefined}
                   placeholder="0"
                   className={`${addItemModal.titleInput} pl-12 ${hasLineItems ? 'opacity-70' : ''}`}
                 />
               </div>
-              {hasLineItems && <p className={addItemModal.helpText}>Total dihitung otomatis dari seluruh rincian item.</p>}
+              {hasLineItems && <p id="line-items-total-help" className={addItemModal.helpText}>Total dihitung otomatis dari seluruh rincian item.</p>}
               {isLoanRepayment && selectedLoanAccount && (
-                <p className={`${addItemModal.helpText} ${exceedsLoanBalance ? 'text-red-500' : ''}`}>
-                  Sisa tanggungan: Rp {selectedLoanAccount.remainingAmount.toLocaleString('id-ID')}. Pembayaran boleh parsial, tetapi tidak melebihi sisa.
+                <p id="loan-balance-help" className={`${addItemModal.helpText} ${exceedsLoanBalance ? 'font-medium text-red-500' : ''}`} aria-live="polite">
+                  {repaymentBalanceLabel}: Rp {selectedLoanAccount.remainingAmount.toLocaleString('id-ID')}. Pembayaran boleh sebagian, tetapi tidak boleh melebihi sisa.
                 </p>
               )}
             </div>
@@ -418,8 +430,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             {isLoanMode ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={addItemModal.label}>Pihak terkait</label>
+                  <label htmlFor="loan-counterparty" className={addItemModal.label}>Pihak terkait</label>
                   <input
+                    id="loan-counterparty"
                     type="text"
                     value={loanCounterparty}
                     onChange={(event) => setLoanCounterparty(event.target.value)}
@@ -429,8 +442,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className={addItemModal.label}>Catatan</label>
+                  <label htmlFor="loan-note" className={addItemModal.label}>Catatan transaksi</label>
                   <input
+                    id="loan-note"
                     type="text"
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
@@ -442,8 +456,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             ) : transactionType !== 'saving' && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className={transactionType === 'transfer' ? 'sm:col-span-2' : ''}>
-                  <label className={addItemModal.label}>Deskripsi</label>
+                  <label htmlFor="transaction-description" className={addItemModal.label}>Deskripsi</label>
                   <input
+                    id="transaction-description"
                     type="text"
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
@@ -453,8 +468,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 </div>
                 {transactionType === 'expense' && (
                   <div>
-                    <label className={addItemModal.label}>Merchant</label>
+                    <label htmlFor="transaction-merchant" className={addItemModal.label}>Toko atau merchant</label>
                     <input
+                      id="transaction-merchant"
                       type="text"
                       value={merchant}
                       onChange={(event) => setMerchant(event.target.value)}
@@ -482,8 +498,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               {transactionType === 'saving' ? (
                 <>
                   <div className="col-span-2">
-                    <label className={addItemModal.label}>Saving Goal</label>
+                    <label htmlFor="saving-goal" className={addItemModal.label}>Target tabungan atau investasi</label>
                     <select
+                      id="saving-goal"
                       value={savingGoalId}
                       onChange={(event) => {
                         const nextGoalId = event.target.value;
@@ -507,21 +524,21 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       }}
                       className={addItemModal.select}
                     >
-                      <option value="">Select Goal / Investment</option>
+                      <option value="">Pilih target</option>
                       {savingGoals.map((goal) => (
-                        <option key={goal.id} value={goal.id}>{goal.meta.shoppingCategory === 'investment' ? '📈 ' : '🎯 '}{goal.content}</option>
+                        <option key={goal.id} value={goal.id}>{goal.meta.shoppingCategory === 'investment' ? 'Investasi — ' : 'Tabungan — '}{goal.content}</option>
                       ))}
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className={addItemModal.label}>{isInvestmentTarget ? 'From Wallet' : 'Wallet'}</label>
+                    <div id="saving-source-wallet-label" className={addItemModal.label}>{isInvestmentTarget ? 'Wallet sumber dana' : 'Wallet target'}</div>
                     {selectedSavingGoal?.meta.dedicatedWalletId && !isInvestmentTarget ? (
-                      <div className={addItemModal.readonlyField}>
+                      <div className={addItemModal.readonlyField} aria-labelledby="saving-source-wallet-label">
                         <Wallet className="w-4 h-4" />
-                        {wallets.find((wallet) => wallet.id === selectedSavingGoal.meta.dedicatedWalletId)?.name || 'Linked to Goal'}
+                        {wallets.find((wallet) => wallet.id === selectedSavingGoal.meta.dedicatedWalletId)?.name || 'Terhubung ke target'}
                       </div>
                     ) : (
-                      <select value={walletId} onChange={(event) => setWalletId(event.target.value)} className={addItemModal.select}>
+                      <select id="saving-source-wallet" aria-labelledby="saving-source-wallet-label" value={walletId} onChange={(event) => setWalletId(event.target.value)} className={addItemModal.select}>
                         <option value="">Pilih wallet</option>
                         {wallets.filter((wallet) => wallet.id !== selectedSavingGoal?.meta.dedicatedWalletId).map((wallet) => (
                           <option key={wallet.id} value={wallet.id}>{wallet.name}</option>
@@ -532,30 +549,30 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   {isInvestmentTarget && (
                     <>
                       <div className="col-span-2">
-                        <label className={addItemModal.label}>To Investment Wallet</label>
+                        <div className={addItemModal.label}>Wallet investasi tujuan</div>
                         <div className={addItemModal.readonlyField}>
                           <Wallet className="w-4 h-4" />
-                          {wallets.find((wallet) => wallet.id === toWalletId)?.name || 'No linked investment wallet'}
+                          {wallets.find((wallet) => wallet.id === toWalletId)?.name || 'Belum ada wallet investasi terhubung'}
                         </div>
                       </div>
                       <div className={`col-span-2 ${addItemModal.accentPanel}`}>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className={addItemModal.label}>Units bought</label>
-                            <input type="number" step="any" value={investmentUnits} onChange={(event) => handleInvestmentUnitsChange(event.target.value)} className={addItemModal.smallInput} />
+                            <label htmlFor="investment-units" className={addItemModal.label}>Unit dibeli</label>
+                            <input id="investment-units" type="number" inputMode="decimal" min="0" step="any" value={investmentUnits} onChange={(event) => handleInvestmentUnitsChange(event.target.value)} className={addItemModal.smallInput} />
                           </div>
                           <div>
-                            <label className={addItemModal.label}>Buy price / unit</label>
-                            <input type="number" step="any" value={investmentUnitPrice} onChange={(event) => handleInvestmentUnitPriceChange(event.target.value)} className={addItemModal.smallInput} />
+                            <label htmlFor="investment-unit-price" className={addItemModal.label}>Harga beli per unit</label>
+                            <input id="investment-unit-price" type="number" inputMode="decimal" min="0" step="any" value={investmentUnitPrice} onChange={(event) => handleInvestmentUnitPriceChange(event.target.value)} className={addItemModal.smallInput} />
                           </div>
                         </div>
                       </div>
                     </>
                   )}
                   <div className="col-span-2">
-                    <label className={addItemModal.label}>Category</label>
-                    <select value={category} onChange={(event) => setCategory(event.target.value)} className={addItemModal.select}>
-                      <option value="">Uncategorized</option>
+                    <label htmlFor="saving-category" className={addItemModal.label}>Kategori budget</label>
+                    <select id="saving-category" value={category} onChange={(event) => setCategory(event.target.value)} className={addItemModal.select}>
+                      <option value="">Tanpa kategori</option>
                       {budgetConfig.rules?.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}
                     </select>
                   </div>
@@ -563,32 +580,32 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               ) : (
                 <>
                   <div className={isLoanMode ? 'col-span-2' : ''}>
-                    <label className={addItemModal.label}>
+                    <label htmlFor="source-wallet" className={addItemModal.label}>
                       {transactionType === 'transfer'
-                        ? 'From'
+                        ? 'Wallet asal'
                         : isLoanMode && (loanKind === 'loan_in' || loanKind === 'loan_repayment_in')
                           ? 'Wallet penerima'
                           : isLoanMode
                             ? 'Wallet pembayaran'
                             : 'Wallet'}
                     </label>
-                    <select value={walletId} onChange={(event) => setWalletId(event.target.value)} className={addItemModal.select}>
+                    <select id="source-wallet" value={walletId} onChange={(event) => setWalletId(event.target.value)} className={addItemModal.select}>
                       <option value="">Pilih wallet</option>
                       {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                     </select>
                   </div>
                   {transactionType === 'transfer' ? (
                     <div>
-                      <label className={addItemModal.label}>To</label>
-                      <select value={toWalletId} onChange={(event) => setToWalletId(event.target.value)} className={addItemModal.select}>
+                      <label htmlFor="destination-wallet" className={addItemModal.label}>Wallet tujuan</label>
+                      <select id="destination-wallet" value={toWalletId} onChange={(event) => setToWalletId(event.target.value)} className={addItemModal.select}>
                         <option value="">Pilih wallet</option>
                         {wallets.filter((wallet) => wallet.id !== walletId).map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                       </select>
                     </div>
                   ) : !isLoanMode && needsDefaultCategory ? (
                     <div>
-                      <label className={addItemModal.label}>{transactionType === 'expense' ? 'Kategori default' : 'Kategori'}</label>
-                      <select value={category} onChange={(event) => setCategory(event.target.value)} className={addItemModal.select}>
+                      <label htmlFor="transaction-category" className={addItemModal.label}>{transactionType === 'expense' ? 'Kategori default' : 'Kategori budget'}</label>
+                      <select id="transaction-category" value={category} onChange={(event) => setCategory(event.target.value)} className={addItemModal.select}>
                         <option value="">Tanpa kategori</option>
                         {budgetConfig.rules?.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}
                       </select>
@@ -601,23 +618,23 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
             {isLoanMode && !isLoanRepayment && (
               <div>
-                <label className={addItemModal.label}>Jatuh tempo</label>
+                <label htmlFor="loan-due-date" className={addItemModal.label}>Jatuh tempo</label>
                 <div className="relative">
                   <CalendarClock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-                  <input type="date" value={loanDueDate} onChange={(event) => setLoanDueDate(event.target.value)} className={`${addItemModal.input} pl-10`} />
+                  <input id="loan-due-date" type="date" value={loanDueDate} onChange={(event) => setLoanDueDate(event.target.value)} className={`${addItemModal.input} pl-10`} />
                 </div>
-                <p className={addItemModal.helpText}>Opsional, tetapi disarankan agar pengingat tanggungan lebih berguna.</p>
+                <p className={addItemModal.helpText}>Opsional. Tanggal ini membantu Anda memantau pembayaran tanpa mengubah perhitungan utang atau piutang.</p>
               </div>
             )}
 
             <div>
-              <label className={addItemModal.label}>Tanggal transaksi</label>
-              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className={addItemModal.input} />
+              <label htmlFor="transaction-date" className={addItemModal.label}>Tanggal transaksi</label>
+              <input id="transaction-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} className={addItemModal.input} />
             </div>
           </div>
 
           <div className={addItemModal.footer}>
-            <button onClick={handleSave} disabled={!canSave} className={addItemModal.primaryButton}>
+            <button type="button" onClick={handleSave} disabled={!canSave} className={addItemModal.primaryButton}>
               <Check className="w-5 h-5" />
               Simpan {modeLabel}
             </button>

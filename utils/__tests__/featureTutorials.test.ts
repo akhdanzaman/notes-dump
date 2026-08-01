@@ -54,6 +54,6 @@ test('parseSeenFeatureTutorials tolerates corrupt storage and drops unknown keys
 test('every feature tutorial includes manual and input-bar examples', () => {
   for (const tutorial of Object.values(FEATURE_TUTORIALS)) {
     assert.match(tutorial.manualExample, /^Manual:/);
-    assert.match(tutorial.inputBarExample, /^Input bar:/);
+    assert.match(tutorial.inputBarExample, /^Input cepat:/);
   }
 });

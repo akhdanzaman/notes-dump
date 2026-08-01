@@ -1,5 +1,6 @@
 import { Calendar as CalendarIcon, LayoutDashboard, Library, ListTodo, LucideIcon, Wallet as WalletIcon } from 'lucide-react';
-import { LibrarySubTab, PlanSubTab, Tab } from '../types';
+import { AppLanguage, LibrarySubTab, PlanSubTab, Tab } from '../types';
+import { normalizeAppLanguage } from '../utils/i18n';
 
 export interface AppNavigationItem {
   id: Tab;
@@ -15,10 +16,23 @@ export interface AppNavigationItem {
 export const getAppNavigationItems = (
   _planSubTab?: PlanSubTab,
   _librarySubTab?: LibrarySubTab,
-): AppNavigationItem[] => [
-  { id: 'summary', icon: LayoutDashboard, label: 'Home', helper: 'Ringkasan dan aktivitas hari ini' },
-  { id: 'plan', icon: ListTodo, label: 'Plan', helper: 'Focus, shopping, dan goals' },
-  { id: 'library', icon: Library, label: 'Library', helper: 'Notes, skills, dan journal' },
-  { id: 'money', icon: WalletIcon, label: 'Money', helper: 'Transactions, budget, dan wallet' },
-  { id: 'calendar', icon: CalendarIcon, label: 'Calendar', helper: 'Agenda dan entry bertanggal' },
-];
+  language?: AppLanguage,
+): AppNavigationItem[] => {
+  if (normalizeAppLanguage(language) === 'en') {
+    return [
+      { id: 'summary', icon: LayoutDashboard, label: 'Home', helper: 'Overview and next steps' },
+      { id: 'plan', icon: ListTodo, label: 'Plan', helper: 'Tasks, shopping, goals, and loans' },
+      { id: 'library', icon: Library, label: 'Library', helper: 'Notes, skills, and journal' },
+      { id: 'money', icon: WalletIcon, label: 'Money', helper: 'Wallets, transactions, and budget' },
+      { id: 'calendar', icon: CalendarIcon, label: 'Calendar', helper: 'Agenda and scheduled activity' },
+    ];
+  }
+
+  return [
+    { id: 'summary', icon: LayoutDashboard, label: 'Beranda', helper: 'Ringkasan dan langkah berikutnya' },
+    { id: 'plan', icon: ListTodo, label: 'Rencana', helper: 'Tugas, belanja, target, dan pinjaman' },
+    { id: 'library', icon: Library, label: 'Pustaka', helper: 'Catatan, skill, dan jurnal' },
+    { id: 'money', icon: WalletIcon, label: 'Uang', helper: 'Wallet, transaksi, dan budget' },
+    { id: 'calendar', icon: CalendarIcon, label: 'Kalender', helper: 'Agenda dan aktivitas terjadwal' },
+  ];
+};

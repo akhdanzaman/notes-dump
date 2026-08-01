@@ -730,7 +730,7 @@ export const useBrainDumpData = () => {
     const [customPrompt, setCustomPrompt] = useState<string>(DEFAULT_PROMPT);
     const [monthlyThemes, setMonthlyThemes] = useState<Record<string, string>>({});
     const [monthlyThemeImages, setMonthlyThemeImages] = useState<Record<string, string>>(() => readMonthlyThemeImages());
-    const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: true, hideMoney: false, enableDraftReview: false, theme: 'dark' });
+    const [appSettings, setAppSettings] = useState<AppSettings>({ defaultCollapsed: true, hideMoney: false, enableDraftReview: false, theme: 'dark', language: 'id' });
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
         const local = localStorage.getItem('braindump_chat_history');
         return local ? JSON.parse(local) : [];

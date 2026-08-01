@@ -81,6 +81,21 @@ test('image attachment control belongs to the global input bar, not Add Expense 
   assert.doesNotMatch(modalHtml, /Ekstrak transaksi/);
 });
 
+test('global composer keeps three contextual modes and localized compact placeholder', () => {
+  const indonesiaHtml = renderToStaticMarkup(React.createElement(InputBar, {
+    onSend: () => undefined,
+    language: 'id',
+  }));
+  assert.match(indonesiaHtml, /Catat sesuatu/);
+
+  const englishHtml = renderToStaticMarkup(React.createElement(InputBar, {
+    onSend: () => undefined,
+    language: 'en',
+  }));
+  assert.match(englishHtml, /Capture something/);
+  assert.match(englishHtml, /Quick input mode/);
+});
+
 test('manual transaction modal exposes loan and repayment flows', () => {
   const html = renderToStaticMarkup(React.createElement(AddExpenseModal, {
     isOpen: true,
