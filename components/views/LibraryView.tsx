@@ -10,7 +10,7 @@ import AnimatedProgress from '../../motion/AnimatedProgress';
 import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import LoadMoreButton from '../LoadMoreButton';
-import { contentSurface } from '../layout/contentSurface';
+import { contentSurface, responsiveModal } from '../layout/contentSurface';
 import { formatFinanceTypeLabel } from '../../utils/financeTypeUtils';
 import { directionalLabelVariants } from '../../motion/variants';
 import PresencePanel from '../../motion/PresencePanel';
@@ -284,7 +284,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         children: React.ReactNode,
         count?: number
     ) => (
-        <div className="rounded-3xl border border-border bg-surface p-4 shadow-sm">
+        <div className={`${contentSurface.workspaceCompactCard} p-4`}>
             <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${accentClass}`}>{icon}</div>
@@ -627,7 +627,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 key={skill.id}
                                 layout={isDragging ? false : "position"}
                                 layoutDependency={`${skill.weeklyMinutes || 0}-${skill.weeklyTargetMinutes || 0}`}
-                                className="group bg-surface border border-border rounded-[30px] p-1 shadow-sm hover:border-indigo-500/40 transition-colors overflow-hidden"
+                                className="group overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 transition-shadow hover:shadow-md"
                             >
                                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_auto] gap-0 sm:gap-4 items-stretch">
                                     <div className="w-full aspect-[16/9] sm:aspect-auto sm:h-full sm:min-h-[184px] rounded-[26px] bg-background border border-border overflow-hidden flex items-center justify-center">
@@ -719,7 +719,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     <LoadMoreButton remainingCount={visibleSkillItems.remainingCount} onClick={visibleSkillItems.loadMore} />
                 </div>
 
-                <aside className="xl:sticky xl:top-4 bg-surface border border-border rounded-[30px] p-4 sm:p-5 shadow-sm overflow-hidden">
+                <aside className={`${contentSurface.workspaceCard} overflow-hidden xl:sticky xl:top-4`}>
                     <div className="flex items-center justify-between mb-5">
                         <div>
                             <h3 className="text-lg font-semibold text-primary">{libraryCopy.schedule}</h3>
@@ -770,7 +770,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         key={`${skill.id}-${session.start.toISOString()}`}
                                         type="button"
                                         onClick={() => openSkillSessionEditor(skill, session, log)}
-                                        className="w-full text-left grid grid-cols-[40px_minmax(0,1fr)] sm:grid-cols-[44px_minmax(0,1fr)_auto] gap-3 items-center rounded-2xl bg-background border border-border p-3 min-w-0 hover:border-indigo-500/40 transition-colors"
+                                        className={`grid w-full min-w-0 grid-cols-[40px_minmax(0,1fr)] items-center gap-3 rounded-2xl p-3 text-left sm:grid-cols-[44px_minmax(0,1fr)_auto] ${contentSurface.workspaceListRow}`}
                                     >
                                         <div className="text-center border-r border-border pr-3">
                                             <div className="text-sm font-bold text-primary">{session.start.getDate().toString().padStart(2, '0')}</div>
@@ -884,70 +884,69 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -10 }}
                             transition={{ duration: 0.2 }}
-                            className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                            className={contentSurface.workspaceHeaderGrid}
                         >
                             <div className="min-w-0 flex-1">
                                 <h2 className={contentSurface.workspaceHeaderTitle}>{activeLibraryHeader.title}</h2>
                                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">{activeLibraryHeader.description}</p>
-                                <div className="mt-4 flex flex-wrap gap-2" aria-label={activeLibraryHeader.title}>
+                                <div className="mt-5 grid grid-cols-2 gap-2" aria-label={activeLibraryHeader.title}>
                                     {activeLibraryHeader.metrics.map(metric => (
-                                        <div key={metric.label} className="min-w-[7rem] rounded-2xl bg-surface-soft/75 px-3.5 py-2.5 ring-1 ring-inset ring-border/45">
+                                        <div key={metric.label} className={contentSurface.workspaceMetric}>
                                             <div className="text-[11px] font-medium text-muted">{metric.label}</div>
                                             <div className="mt-0.5 text-lg font-semibold tabular-nums text-primary">{metric.value}</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            <button
-                                data-library-add-button="true"
-                                onClick={() => {
-                                    if (librarySubTab === 'general') onAddItem(ItemType.NOTE);
-                                    if (librarySubTab === 'skills') handleOpenAddSkill();
-                                    if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
-                                }}
-                                className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
-                            >
-                                <Plus className="w-5 h-5" />
-                                <span>{librarySubTab === 'general' ? libraryCopy.addNote : librarySubTab === 'skills' ? libraryCopy.addSkill : libraryCopy.writeJournal}</span>
-                            </button>
-                        </motion.div>
-                    </AnimatePresence>
-
-                    {librarySubTab === 'journal' && (
-                        <div
-                            data-swipe-date="library-journal-month"
-                            className="mt-4 rounded-2xl border border-border/70 bg-background/55 p-4 touch-pan-y"
-                            onTouchStart={journalDateSwipeHandlers.onTouchStart}
-                            onTouchMove={journalDateSwipeHandlers.onTouchMove}
-                            onTouchEnd={journalDateSwipeHandlers.onTouchEnd}
-                        >
-                            <div className="flex items-center justify-between">
-                                <button onClick={() => changeJournalMonth(-1)} className="rounded-xl p-2 text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]">
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                                <AnimatePresence mode="wait" custom={journalDirection} initial={false}>
-                                    <motion.div
-                                        key={journalDate.toISOString()}
-                                        data-library-journal-month-label="true"
-                                        custom={journalDirection}
-                                        variants={directionalLabelVariants}
-                                        initial="hidden"
-                                        animate="visible"
-                                        exit="exit"
-                                        className="text-center"
+                            <div className="flex min-w-0 flex-col gap-2 sm:min-w-60">
+                                {librarySubTab === 'journal' && (
+                                    <div
+                                        data-swipe-date="library-journal-month"
+                                        className={contentSurface.workspacePeriodControl}
+                                        onTouchStart={journalDateSwipeHandlers.onTouchStart}
+                                        onTouchMove={journalDateSwipeHandlers.onTouchMove}
+                                        onTouchEnd={journalDateSwipeHandlers.onTouchEnd}
                                     >
-                                        <div className="text-xs font-semibold opacity-60">{libraryCopy.journalMonth}</div>
-                                        <div className="text-xl font-bold leading-none mt-1">
-                                            {journalDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
+                                        <div className="flex items-center justify-between gap-1">
+                                            <button onClick={() => changeJournalMonth(-1)} aria-label={isEnglish ? 'Previous month' : 'Bulan sebelumnya'} className={contentSurface.workspacePeriodButton}>
+                                                <ChevronLeft className="h-4 w-4" />
+                                            </button>
+                                            <AnimatePresence mode="wait" custom={journalDirection} initial={false}>
+                                                <motion.div
+                                                    key={`${journalDate.getFullYear()}-${journalDate.getMonth()}`}
+                                                    data-library-journal-month-label="true"
+                                                    custom={journalDirection}
+                                                    variants={directionalLabelVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    exit="exit"
+                                                    className={contentSurface.workspacePeriodLabel}
+                                                >
+                                                    <span className={contentSurface.workspacePeriodKicker}>{libraryCopy.journalMonth}</span>
+                                                    <span className={contentSurface.workspacePeriodTitle}>{journalDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}</span>
+                                                </motion.div>
+                                            </AnimatePresence>
+                                            <button onClick={() => changeJournalMonth(1)} aria-label={isEnglish ? 'Next month' : 'Bulan berikutnya'} className={contentSurface.workspacePeriodButton}>
+                                                <ChevronRight className="h-4 w-4" />
+                                            </button>
                                         </div>
-                                    </motion.div>
-                                </AnimatePresence>
-                                <button onClick={() => changeJournalMonth(1)} className="rounded-xl p-2 text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]">
-                                    <ChevronRight className="w-4 h-4" />
+                                    </div>
+                                )}
+                                <button
+                                    data-library-add-button="true"
+                                    onClick={() => {
+                                        if (librarySubTab === 'general') onAddItem(ItemType.NOTE);
+                                        if (librarySubTab === 'skills') handleOpenAddSkill();
+                                        if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
+                                    }}
+                                    className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    <span>{librarySubTab === 'general' ? libraryCopy.addNote : librarySubTab === 'skills' ? libraryCopy.addSkill : libraryCopy.writeJournal}</span>
                                 </button>
                             </div>
-                        </div>
-                    )}
+                        </motion.div>
+                    </AnimatePresence>
                 </motion.div>
             </motion.div>
 
@@ -1011,8 +1010,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             <PresencePanel
                 isOpen={Boolean(editingSkillSession)}
                 onClose={closeSkillSessionEditor}
-                overlayClassName="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
-                panelClassName="w-full max-w-md rounded-[28px] border border-border bg-surface p-5 shadow-2xl"
+                overlayClassName={responsiveModal.sheetOverlay}
+                panelClassName={`${responsiveModal.formPanel} max-w-md p-5`}
                 presentation="form"
                 ariaLabel={libraryCopy.editSession}
             >

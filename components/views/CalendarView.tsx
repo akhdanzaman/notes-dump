@@ -3,6 +3,7 @@ import { BrainDumpItem, ItemType, AppSettings, Tab } from '../../types';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Calendar as CalendarIcon, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
+import { useSwipeDate } from '../../hooks/useSwipeDate';
 import { contentSurface, responsiveModal } from '../layout/contentSurface';
 import { getShoppingDueDate } from '../../utils/shoppingDateUtils';
 import PresencePanel from '../../motion/PresencePanel';
@@ -101,6 +102,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
         setSelectedDateKey(getDateKey(now));
         setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
     };
+
+    const calendarDateSwipeHandlers = useSwipeDate(prevMonth, nextMonth);
 
     const today = new Date();
     const currentMonth = currentDate.getMonth();
@@ -267,7 +270,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     </div>
                     <button
                         onClick={goToToday}
-                        className="rounded-xl border border-border/70 bg-background/55 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:border-indigo-500/25"
+                        className="shrink-0 whitespace-nowrap rounded-xl border border-border/70 bg-background/55 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:border-indigo-500/25"
                     >
                         {calendarCopy.today}
                     </button>
@@ -290,28 +293,34 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     ))}
                 </div>
 
-                <div className="flex items-center justify-between mb-4">
-                    <button onClick={prevMonth} aria-label={calendarCopy.previousMonth} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
-                        <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <div className="min-w-[168px] overflow-hidden rounded-xl border border-border/70 bg-background/55 px-4 py-2 text-center">
-                        <div className="text-xs font-semibold text-muted">{calendarCopy.month}</div>
-                        <AnimatePresence initial={false} mode="popLayout" custom={monthDirection}>
+                <div
+                    data-swipe-date="calendar-month"
+                    className={`${contentSurface.workspacePeriodControl} mb-4 sm:w-full`}
+                    onTouchStart={calendarDateSwipeHandlers.onTouchStart}
+                    onTouchMove={calendarDateSwipeHandlers.onTouchMove}
+                    onTouchEnd={calendarDateSwipeHandlers.onTouchEnd}
+                >
+                    <div className="flex items-center justify-between gap-1">
+                        <button onClick={prevMonth} aria-label={calendarCopy.previousMonth} className={contentSurface.workspacePeriodButton}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <AnimatePresence initial={false} mode="wait" custom={monthDirection}>
                             <motion.div
                                 key={`${currentYear}-${currentMonth}`}
                                 custom={monthDirection}
                                 initial={{ opacity: 0, x: monthDirection * 8 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: monthDirection * -8 }}
-                                className="text-sm font-semibold text-primary"
+                                className={contentSurface.workspacePeriodLabel}
                             >
-                                {currentDate.toLocaleString(locale, { month: 'long', year: 'numeric' })}
+                                <span className={contentSurface.workspacePeriodKicker}>{calendarCopy.month}</span>
+                                <span className={contentSurface.workspacePeriodTitle}>{currentDate.toLocaleString(locale, { month: 'long', year: 'numeric' })}</span>
                             </motion.div>
                         </AnimatePresence>
+                        <button onClick={nextMonth} aria-label={calendarCopy.nextMonth} className={contentSurface.workspacePeriodButton}>
+                            <ChevronRight className="h-4 w-4" />
+                        </button>
                     </div>
-                    <button onClick={nextMonth} aria-label={calendarCopy.nextMonth} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
-                        <ChevronRight className="h-5 w-5" />
-                    </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -443,7 +452,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 </div>
                 )}
 
-                <section className={`${viewMode === 'month' ? 'mt-4' : ''} rounded-[28px] border border-border bg-surface/80 p-4 shadow-sm sm:p-5`} aria-label={calendarCopy.selectedAgenda}>
+                <section className={`${viewMode === 'month' ? 'mt-4' : ''} ${contentSurface.workspaceCard}`} aria-label={calendarCopy.selectedAgenda}>
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
                             <div className="text-xs font-semibold text-muted">{calendarCopy.selectedAgenda}</div>
@@ -489,7 +498,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         type="button"
                                         variants={highlightedListItemVariants}
                                         onClick={() => setSelectedItem(item)}
-                                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/55 p-3 text-left transition-colors hover:border-indigo-500/30"
+                                        className={`flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left ${contentSurface.workspaceListRow}`}
                                     >
                                         <span className="min-w-0">
                                             <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
@@ -522,8 +531,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
             <PresencePanel
                 isOpen={Boolean(selectedItem)}
                 onClose={() => setSelectedItem(null)}
-                overlayClassName={`${responsiveModal.overlay} z-50 flex items-center justify-center p-4`}
-                panelClassName={`${responsiveModal.panel} w-full max-w-md lg:max-w-xl overflow-hidden rounded-[28px] border bg-surface`}
+                overlayClassName={responsiveModal.sheetOverlay}
+                panelClassName={`${responsiveModal.formPanel} lg:max-w-xl`}
                 ariaLabel={calendarCopy.itemDetail}
             >
                 {selectedItem && (

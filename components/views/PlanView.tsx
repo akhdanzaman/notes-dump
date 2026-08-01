@@ -17,7 +17,7 @@ import { getInvestmentMetrics } from '../../utils/investmentMetrics';
 import { getDefaultInvestmentUnitPrice, resolveInvestmentFundingInput } from '../../utils/investmentFunding';
 import { getLoanAccounts, getLoanSummary, LoanAccount } from '../../utils/loanAccounts';
 import PresencePanel from '../../motion/PresencePanel';
-import { collapseVariants, highlightedListItemVariants } from '../../motion/variants';
+import { collapseVariants, directionalLabelVariants, highlightedListItemVariants } from '../../motion/variants';
 import { motionSpring } from '../../motion/transitions';
 import { getAppLocale, normalizeAppLanguage } from '../../utils/i18n';
 
@@ -120,7 +120,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const isEnglish = normalizeAppLanguage(appSettings.language) === 'en';
     const locale = getAppLocale(appSettings.language);
     const planCopy = isEnglish ? {
-        sections: 'Plan sections', tasks: 'Tasks', shopping: 'Shopping', goals: 'Goals', loans: 'Loans',
+        sections: 'Plan sections', tasks: 'Tasks', shopping: 'Shopping', goals: 'Goals', loans: 'Loans', tasksHeading: 'Tasks & routines', focusMonth: 'Focus month',
         pending: 'Pending', done: 'Done', routines: 'Routines', shoppingList: 'Shopping list', urgent: 'Urgent', routine: 'Routine', normal: 'Other',
         goalsHeading: 'Goals, savings & investments', investments: 'Investments', saved: 'Saved', today: 'Today', tomorrow: 'Tomorrow', later: 'Upcoming',
         noItems: 'No items', noTasks: 'No pending tasks for this period.', addTask: 'Add task', addRoutine: 'Add routine',
@@ -133,7 +133,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         goalMilestones: 'Goal milestones', goalMilestonesHelper: 'Stay on track with your savings goals.', noMilestones: 'No milestones yet.',
         completed: 'Completed', target: 'Target', noDueDate: 'Not set', statusOverdue: 'Past due', statusDueSoon: 'Due soon', statusPaid: 'Paid', statusActive: 'Active',
     } : {
-        sections: 'Bagian Rencana', tasks: 'Tugas', shopping: 'Belanja', goals: 'Target', loans: 'Pinjaman',
+        sections: 'Bagian Rencana', tasks: 'Tugas', shopping: 'Belanja', goals: 'Target', loans: 'Pinjaman', tasksHeading: 'Tugas & rutinitas', focusMonth: 'Bulan fokus',
         pending: 'Belum selesai', done: 'Selesai', routines: 'Rutinitas', shoppingList: 'Daftar belanja', urgent: 'Mendesak', routine: 'Rutin', normal: 'Lainnya',
         goalsHeading: 'Target, tabungan, dan investasi', investments: 'Investasi', saved: 'Terkumpul', today: 'Hari ini', tomorrow: 'Besok', later: 'Mendatang',
         noItems: 'Belum ada item', noTasks: 'Tidak ada tugas tertunda pada periode ini.', addTask: 'Tambah tugas', addRoutine: 'Tambah rutinitas',
@@ -189,9 +189,11 @@ const PlanView: React.FC<PlanViewProps> = ({
     const swipeHandlers = useSwipeTabs('plan', setActiveTab);
 
     // Date Swipe Logic
+    const [focusDirection, setFocusDirection] = useState(0);
     const changeMonth = (offset: number) => {
         const newDate = new Date(focusDate);
         newDate.setMonth(newDate.getMonth() + offset);
+        setFocusDirection(Math.sign(offset));
         setFocusDate(newDate);
     };
 
@@ -364,7 +366,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const savedTotal = savings.reduce((total, goal) => total + (goal.meta.savedAmount || 0), 0);
     const activePlanHeader = {
         tasks: {
-            title: focusDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' }),
+            title: planCopy.tasksHeading,
             description: planCopy.tasksSubtitle,
             metrics: [
                 { label: planCopy.pending, value: summary.todo, tone: 'text-primary' },
@@ -430,7 +432,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     : 'bg-indigo-500/10 text-indigo-500';
 
         return (
-            <article key={account.id} className="rounded-[24px] border border-border/60 bg-surface p-4 shadow-sm">
+            <article key={account.id} className={`${contentSurface.workspaceCompactCard} p-4`}>
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                         <div className={`mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider ${isReceivable ? 'text-emerald-500' : 'text-orange-500'}`}>
@@ -645,7 +647,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 layout={isDragging ? false : "position"}
                 layoutDependency={`${goal.status}-${goal.meta.savedAmount || 0}`}
                 key={goal.id}
-                className={`overflow-hidden rounded-[28px] border border-border/70 bg-surface p-1 shadow-sm ${isDone ? 'opacity-70' : ''}`}
+                className={`overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 ${isDone ? 'opacity-70' : ''}`}
             >
                 {renderThumbnail(goal, 'saving', 'h-36 sm:h-40 lg:h-36 xl:h-40', actions)}
                 <div className="p-5 pt-4">
@@ -765,7 +767,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 layout={isDragging ? false : "position"}
                 layoutDependency={`${investment.status}-${currentValue}`}
                 key={investment.id}
-                className="overflow-hidden rounded-[28px] border border-emerald-500/10 bg-surface p-1 shadow-sm"
+                className="overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-emerald-500/15"
             >
                 <div className="flex flex-col gap-4 sm:flex-row">
                     {renderThumbnail(investment, 'investment', 'h-36 sm:h-auto sm:w-40 sm:shrink-0 lg:w-36 xl:w-40', actions)}
@@ -819,7 +821,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         });
 
         return (
-            <aside className="rounded-[28px] border border-border/70 bg-surface p-5 shadow-sm lg:sticky lg:top-6">
+            <aside className={`${contentSurface.workspaceCard} lg:sticky lg:top-6`}>
                 <div className="mb-5 flex items-start gap-3">
                     <span className="grid h-8 w-8 place-items-center rounded-2xl bg-amber-500/10 text-amber-500">
                         <Sparkles className="h-4 w-4" />
@@ -1295,11 +1297,11 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             setPlanSubTab(nextTab);
                                             window.requestAnimationFrame(() => document.getElementById(`plan-tab-${nextTab}`)?.focus());
                                         }}
-                                        className={`${contentSurface.workspaceTabButton} shrink-0 sm:flex-1 ${isActive ? 'text-primary' : 'text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]'}`}
+                                        className={`${contentSurface.workspaceTabButton} flex-1 ${isActive ? 'text-primary' : 'text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]'}`}
                                     >
                                         {isActive && <ActiveIndicator className={contentSurface.workspaceTabIndicator} />}
                                         <span className="relative z-10 flex min-w-0 items-center gap-1 sm:gap-2">
-                                            <Icon className="h-4 w-4 shrink-0" />
+                                            <Icon className="hidden h-4 w-4 shrink-0 sm:block" />
                                             <span className="truncate">{tab.label}</span>
                                         </span>
                                     </button>
@@ -1316,19 +1318,41 @@ const PlanView: React.FC<PlanViewProps> = ({
                             exit={{ opacity: 0, x: -10 }}
                             transition={{ duration: 0.2 }}
                         >
-                            <div className="flex items-start justify-between gap-4">
+                            <div className={contentSurface.workspaceHeaderGrid}>
                                 <div className="min-w-0">
                                     <h2 className={contentSurface.workspaceHeaderTitle}>{activePlanHeader.title}</h2>
                                     <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">{activePlanHeader.description}</p>
                                 </div>
                                 {planSubTab === 'tasks' && (
-                                    <div className="flex shrink-0 gap-2">
-                                        <button onClick={() => changeMonth(-1)} aria-label={isEnglish ? 'Previous month' : 'Bulan sebelumnya'} className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-soft text-muted ring-1 ring-inset ring-border/60 transition-colors hover:text-primary">
-                                            <ChevronLeft className="h-5 w-5" />
-                                        </button>
-                                        <button onClick={() => changeMonth(1)} aria-label={isEnglish ? 'Next month' : 'Bulan berikutnya'} className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-soft text-muted ring-1 ring-inset ring-border/60 transition-colors hover:text-primary">
-                                            <ChevronRight className="h-5 w-5" />
-                                        </button>
+                                    <div
+                                        data-swipe-date="plan-month"
+                                        className={contentSurface.workspacePeriodControl}
+                                        onTouchStart={dateSwipeHandlers.onTouchStart}
+                                        onTouchMove={dateSwipeHandlers.onTouchMove}
+                                        onTouchEnd={dateSwipeHandlers.onTouchEnd}
+                                    >
+                                        <div className="flex items-center justify-between gap-1">
+                                            <button onClick={() => changeMonth(-1)} aria-label={isEnglish ? 'Previous month' : 'Bulan sebelumnya'} className={contentSurface.workspacePeriodButton}>
+                                                <ChevronLeft className="h-4 w-4" />
+                                            </button>
+                                            <AnimatePresence mode="wait" custom={focusDirection} initial={false}>
+                                                <motion.div
+                                                    key={`${focusDate.getFullYear()}-${focusDate.getMonth()}`}
+                                                    custom={focusDirection}
+                                                    variants={directionalLabelVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    exit="exit"
+                                                    className={contentSurface.workspacePeriodLabel}
+                                                >
+                                                    <span className={contentSurface.workspacePeriodKicker}>{planCopy.focusMonth}</span>
+                                                    <span className={contentSurface.workspacePeriodTitle}>{focusDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}</span>
+                                                </motion.div>
+                                            </AnimatePresence>
+                                            <button onClick={() => changeMonth(1)} aria-label={isEnglish ? 'Next month' : 'Bulan berikutnya'} className={contentSurface.workspacePeriodButton}>
+                                                <ChevronRight className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                                 {planSubTab === 'loans' && (
@@ -1592,7 +1616,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 >
                     <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_27rem] lg:items-start lg:gap-6 lg:space-y-0">
                         <div className="space-y-8">
-                            <section className="rounded-[28px] border border-border/60 bg-surface/40 p-4 shadow-sm lg:p-5">
+                            <section className={contentSurface.workspaceCard}>
                                 <div className="mb-4 flex items-center justify-between pl-1">
                                     <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-orange-500">
                                         <span className="rounded-md bg-orange-500/10 p-1"><PiggyBank className="h-3 w-3" /></span> {planCopy.savingGoals}
@@ -1623,7 +1647,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 )}
                             </section>
 
-                            <section className="rounded-[28px] border border-border/60 bg-surface/40 p-4 shadow-sm lg:p-5">
+                            <section className={contentSurface.workspaceCard}>
                                 <div className="mb-4 flex items-center justify-between pl-1">
                                     <div>
                                         <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-emerald-500">
@@ -1688,7 +1712,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <div className="mt-2 text-xl font-bold text-primary">{formatIdr(loanSummary.payable)}</div>
                                 <p className="mt-1 text-xs text-muted">Total kewajiban yang masih harus Anda lunasi.</p>
                             </div>
-                            <div className="rounded-[24px] border border-border/60 bg-surface/60 p-4">
+                            <div className={`${contentSurface.workspaceCompactCard} p-4`}>
                                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted">
                                     <Clock3 className="h-4 w-4" /> Pengingat
                                 </div>
@@ -1703,7 +1727,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </div>
                         </div>
 
-                        <section className="rounded-[28px] border border-border/60 bg-surface/40 p-4 shadow-sm lg:p-5">
+                        <section className={contentSurface.workspaceCard}>
                             <div className="mb-4 flex items-center justify-between gap-3">
                                 <div>
                                     <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-primary">
@@ -1743,7 +1767,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </section>
 
                         {settledLoanAccounts.length > 0 && (
-                            <details className="rounded-[28px] border border-border/60 bg-surface/30 p-4 lg:p-5">
+                            <details className={`${contentSurface.workspaceCard} bg-surface/70`}>
                                 <summary className="cursor-pointer text-sm font-bold uppercase tracking-wider text-muted">
                                     Riwayat lunas · {settledLoanAccounts.length}
                                 </summary>

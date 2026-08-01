@@ -282,7 +282,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   return (
     <div 
-      className={`group flex flex-col rounded-[24px] p-4 shadow-sm transition-[background-color,opacity,box-shadow] duration-150 overflow-hidden cursor-pointer
+      className={`group flex flex-col rounded-[24px] p-4 shadow-sm ring-1 ring-inset ring-border/65 transition-[background-color,opacity,box-shadow] duration-150 overflow-hidden cursor-pointer
         ${(isDone || isRoutineUnavailable)
             ? 'bg-surface/50 opacity-75' 
             : `bg-surface hover:bg-surface/80`

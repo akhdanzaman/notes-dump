@@ -1201,7 +1201,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               </div>
               <div
                 data-swipe-date="money-month"
-                className="w-full shrink-0 rounded-2xl border border-border/70 bg-background/55 px-2 py-2 touch-pan-y sm:w-auto sm:px-3 lg:col-span-2 lg:w-full lg:px-4 lg:py-3"
+                className={`${contentSurface.workspacePeriodControl} lg:col-span-2 lg:w-full`}
                 onTouchStart={dateSwipeHandlers.onTouchStart}
                 onTouchMove={dateSwipeHandlers.onTouchMove}
                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
@@ -1209,7 +1209,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 <div className="flex items-center justify-between gap-1 lg:gap-2">
                   <button
                     onClick={() => changePeriod(-1)}
-                    className="flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-surface"
+                    className={contentSurface.workspacePeriodButton}
                     aria-label={
                       budgetViewMode === "yearly"
                         ? moneyCopy.previousYear
@@ -1229,19 +1229,19 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                       initial="hidden"
                       animate="visible"
                       exit="exit"
-                      className="flex min-w-16 flex-col items-center sm:min-w-20 lg:min-w-24"
+                      className={contentSurface.workspacePeriodLabel}
                     >
-                      <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider leading-none mb-1 lg:text-xs">
+                      <span className={contentSurface.workspacePeriodKicker}>
                         {periodKicker}
                       </span>
-                      <span className="text-sm font-bold leading-none sm:text-base lg:text-lg">
+                      <span className={contentSurface.workspacePeriodTitle}>
                         {periodTitle}
                       </span>
                     </motion.div>
                   </AnimatePresence>
                   <button
                     onClick={() => changePeriod(1)}
-                    className="flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-surface"
+                    className={contentSurface.workspacePeriodButton}
                     aria-label={
                       budgetViewMode === "yearly"
                         ? moneyCopy.nextYear

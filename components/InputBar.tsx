@@ -292,33 +292,6 @@ const InputBar: React.FC<InputBarProps> = ({
               animate="visible"
               exit="exit"
             >
-            <div
-              className="mb-2 grid grid-cols-3 gap-1 rounded-2xl bg-surface/96 p-1 shadow-sm ring-1 ring-inset ring-border/70 backdrop-blur-xl pointer-events-auto"
-              role="tablist"
-              aria-label={copy.modesLabel}
-            >
-              {([
-                ['capture', copy.capture, StickyNote],
-                ['ask', copy.ask, MessageSquareText],
-                ['scan', copy.scan, ImagePlus],
-              ] as const).map(([mode, label, Icon]) => {
-                const isActive = composerMode === mode;
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => selectComposerMode(mode)}
-                    className={`relative flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:bg-background/70 hover:text-primary'}`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
             <div className="flex items-center justify-between gap-2 px-1 py-1 w-full pointer-events-none">
               <div className="flex items-center gap-2 flex-1 overflow-hidden pointer-events-none">
                 {startAction && (
@@ -495,26 +468,34 @@ const InputBar: React.FC<InputBarProps> = ({
                 aria-label={copy.attachmentLabel}
                 onChange={(event) => handleImageChange(event.target.files?.[0])}
               />
-              <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  setShowSuggestions(true);
-                  textareaRef.current?.focus();
-                }}
-                disabled={isSubmitting}
-                className="m-1.5 mr-0 flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-xl bg-indigo-500/10 px-2 text-indigo-600 transition-colors hover:bg-indigo-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 disabled:opacity-50 dark:text-indigo-300"
-                title={copy.modesLabel}
-                aria-label={`${copy.modesLabel}: ${composerMode === 'capture' ? copy.capture : composerMode === 'ask' ? copy.ask : copy.scan}`}
+              <div
+                className="m-1.5 mr-0 flex shrink-0 items-center gap-0.5 rounded-xl bg-surface-soft/80 p-0.5"
+                role="group"
+                aria-label={copy.modesLabel}
               >
-                {composerMode === 'capture' ? (
-                  <StickyNote className="h-5 w-5" />
-                ) : composerMode === 'ask' ? (
-                  <MessageSquareText className="h-5 w-5" />
-                ) : (
-                  <ImagePlus className="h-5 w-5" />
-                )}
-              </button>
+                {([
+                  ['capture', copy.capture, StickyNote],
+                  ['ask', copy.ask, MessageSquareText],
+                  ['scan', copy.scan, ImagePlus],
+                ] as const).map(([mode, label, Icon]) => {
+                  const isActive = composerMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectComposerMode(mode)}
+                      disabled={isSubmitting}
+                      aria-label={label}
+                      aria-pressed={isActive}
+                      title={label}
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 disabled:opacity-50 ${isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:bg-surface hover:text-primary'}`}
+                    >
+                      <Icon className="h-[18px] w-[18px]" />
+                    </button>
+                  );
+                })}
+              </div>
 
               <textarea
                 id="global-composer-input"

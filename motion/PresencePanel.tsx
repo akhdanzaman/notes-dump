@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AnimatePresence,
   motion,
@@ -144,11 +145,12 @@ const PresencePanel: React.FC<PresencePanelProps> = ({
         ? formModalVariants
         : modalVariants;
 
-  return (
+  const panel = (
     <AnimatePresence initial={false}>
       {isOpen && (
         <motion.div
           {...overlayProps}
+          data-presence-panel-layer="true"
           className={overlayClassName}
           variants={reduceMotion ? reducedBackdropVariants : backdropVariants}
           initial="hidden"
@@ -183,6 +185,8 @@ const PresencePanel: React.FC<PresencePanelProps> = ({
       )}
     </AnimatePresence>
   );
+
+  return typeof document === 'undefined' ? panel : createPortal(panel, document.body);
 };
 
 export default PresencePanel;

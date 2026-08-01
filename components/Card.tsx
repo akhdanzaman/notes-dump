@@ -762,7 +762,7 @@ const Card: React.FC<CardProps> = ({
     <div
         data-edit-comfort={editComfort === 'taskWorkspace' ? 'task-workspace' : undefined}
         data-card-expanded={!isCollapsed ? 'true' : 'false'}
-        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/15 shadow-md' : ''} break-inside-avoid rounded-[20px] border border-border/60 p-3.5 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 hover:border-border/90 hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
+        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-md' : 'ring-1 ring-inset ring-border/65'} break-inside-avoid rounded-[24px] p-4 shadow-sm transition-[box-shadow,background-color] duration-200 hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
     >
       <div className="flex flex-col gap-1">
