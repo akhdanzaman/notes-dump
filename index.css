@@ -241,6 +241,17 @@ select {
   background: color-mix(in srgb, var(--surface) 90%, transparent);
 }
 
+[data-quick-input-strip="true"] {
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-inline: 0.25rem;
+}
+
+[data-quick-input-icon="true"],
+[data-quick-input-icon="true"] svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
 [data-mobile-bottom-nav="true"] {
   padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
 }

@@ -86,17 +86,35 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const isEnglish = normalizeAppLanguage(appSettings.language) === 'en';
     const locale = getAppLocale(appSettings.language);
     const libraryCopy = isEnglish ? {
-        notes: 'Notes', allNotes: 'All notes', skills: 'Skills', skillGrowth: 'Skill growth', journal: 'Journal', journalEntries: 'Journal entries',
+        sections: 'Library sections', notes: 'Notes', allNotes: 'All notes', skills: 'Skills', skillGrowth: 'Skill growth', journal: 'Journal', journalEntries: 'Journal entries',
         tags: 'Tags', totalTime: 'Total time', across: 'Across', days: 'days', addNote: 'Add note', addSkill: 'Add skill', writeJournal: 'Write journal',
         noMatch: 'No matching notes', startJournal: "Start this month's journal", noNotes: 'No notes yet', journalMonth: 'Journal month',
         emptySearch: 'Try another search or capture the thought now.', emptyJournal: 'Journal entries are grouped by day with completed activity beside your reflection.',
         emptyNotes: 'Capture a thought to start building your personal library.',
+        notesSubtitle: 'Keep useful thoughts easy to find without turning them into tasks.',
+        skillsSubtitle: 'See practice time, routines, and progress in one calm view.',
+        journalSubtitle: 'Reflect by day while keeping related activity close at hand.',
+        noSkills: 'No skills tracked yet.', trackSkill: 'Track skill', noImage: 'No image', noDescription: 'No description yet. Add one when editing the skill.',
+        thisWeek: 'this week', weeklyProgress: 'Weekly progress', target: 'Target', perWeek: 'week', editSkill: 'Edit skill', deleteSkill: 'Delete skill',
+        schedule: 'Schedule', scheduleSubtitle: 'Skill routines this week', noSchedule: 'No skill schedule yet. Edit a skill and enable its routine.', session: 'session',
+        statusDone: 'Done', statusPartial: 'Partial', statusMissed: 'Missed', statusToday: 'Today', statusInProgress: 'In progress', statusReady: 'Ready to log', statusUpcoming: 'Upcoming',
+        editSession: 'Edit skill session', close: 'Close', actualStart: 'Actual start', actualEnd: 'Actual end', duration: 'Duration',
+        invalidActual: 'Actual end must be after actual start.', cancel: 'Cancel', saveActual: 'Save actual time',
     } : {
-        notes: 'Catatan', allNotes: 'Semua catatan', skills: 'Skill', skillGrowth: 'Perkembangan skill', journal: 'Jurnal', journalEntries: 'Entri jurnal',
+        sections: 'Bagian Pustaka', notes: 'Catatan', allNotes: 'Semua catatan', skills: 'Skill', skillGrowth: 'Perkembangan skill', journal: 'Jurnal', journalEntries: 'Entri jurnal',
         tags: 'Tag', totalTime: 'Total waktu', across: 'Dalam', days: 'hari', addNote: 'Tambah catatan', addSkill: 'Tambah skill', writeJournal: 'Tulis jurnal',
         noMatch: 'Tidak ada catatan yang cocok', startJournal: 'Mulai jurnal bulan ini', noNotes: 'Belum ada catatan', journalMonth: 'Bulan jurnal',
         emptySearch: 'Coba pencarian lain atau catat pemikiran baru sekarang.', emptyJournal: 'Entri jurnal dikelompokkan per hari bersama aktivitas yang sudah selesai.',
         emptyNotes: 'Catat satu pemikiran untuk mulai membangun pustaka personal Anda.',
+        notesSubtitle: 'Simpan pemikiran berguna agar mudah ditemukan tanpa menjadikannya tugas.',
+        skillsSubtitle: 'Lihat waktu latihan, rutinitas, dan progres dalam satu tampilan tenang.',
+        journalSubtitle: 'Refleksi per hari dengan aktivitas terkait tetap dekat dan mudah dipahami.',
+        noSkills: 'Belum ada skill yang dipantau.', trackSkill: 'Tambah skill', noImage: 'Belum ada gambar', noDescription: 'Belum ada deskripsi. Tambahkan saat mengubah skill.',
+        thisWeek: 'minggu ini', weeklyProgress: 'Progres mingguan', target: 'Target', perWeek: 'minggu', editSkill: 'Ubah skill', deleteSkill: 'Hapus skill',
+        schedule: 'Jadwal', scheduleSubtitle: 'Rutinitas skill minggu ini', noSchedule: 'Belum ada jadwal skill. Ubah skill lalu aktifkan rutinitasnya.', session: 'sesi',
+        statusDone: 'Selesai', statusPartial: 'Sebagian', statusMissed: 'Terlewat', statusToday: 'Hari ini', statusInProgress: 'Berlangsung', statusReady: 'Siap dicatat', statusUpcoming: 'Mendatang',
+        editSession: 'Ubah sesi skill', close: 'Tutup', actualStart: 'Mulai aktual', actualEnd: 'Selesai aktual', duration: 'Durasi',
+        invalidActual: 'Waktu selesai harus setelah waktu mulai.', cancel: 'Batal', saveActual: 'Simpan waktu aktual',
     };
     const libraryTabs: { key: LibrarySubTab; label: string; title: string; icon: React.ReactNode }[] = [
         { key: 'general', label: libraryCopy.notes, title: libraryCopy.allNotes, icon: <Library className="w-4 h-4" /> },
@@ -143,6 +161,37 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         [journalItems, journalDate]
     );
 
+    const libraryTabOrder = libraryTabs.map(tab => tab.key);
+    const libraryTagCount = new Set(
+        generalItems.flatMap(item => item.meta.tags || []).filter(tag => tag && tag !== 'null' && tag !== 'undefined')
+    ).size;
+    const activeLibraryHeader = {
+        general: {
+            title: libraryCopy.allNotes,
+            description: libraryCopy.notesSubtitle,
+            metrics: [
+                { label: libraryCopy.notes, value: generalItems.length },
+                { label: libraryCopy.tags, value: libraryTagCount },
+            ],
+        },
+        skills: {
+            title: libraryCopy.skillGrowth,
+            description: libraryCopy.skillsSubtitle,
+            metrics: [
+                { label: libraryCopy.skills, value: skillStats.length },
+                { label: libraryCopy.totalTime, value: `${skillStats.reduce((total, skill) => total + skill.totalHours, 0).toFixed(1)}${isEnglish ? 'h' : 'j'}` },
+            ],
+        },
+        journal: {
+            title: libraryCopy.journalEntries,
+            description: libraryCopy.journalSubtitle,
+            metrics: [
+                { label: libraryCopy.journalEntries, value: filteredJournalItems.length },
+                { label: libraryCopy.days, value: filteredJournalDayGroups.length },
+            ],
+        },
+    }[librarySubTab];
+
     const visibleGeneralItems = useLazyItems(generalItems, {
         resetKey: `library-general-${selectedTag}-${filterDate}-${filterDateTo}-${searchQuery}-${sortOrder}`,
     });
@@ -176,7 +225,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         return deltaMinutes > 0 ? `+${abs}m bonus` : `-${abs}m`;
     };
 
-    const formatSessionDateTime = (date: Date) => date.toLocaleString(undefined, {
+    const formatSessionDateTime = (date: Date) => date.toLocaleString(locale, {
         weekday: 'short',
         day: '2-digit',
         month: 'short',
@@ -545,18 +594,18 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (skillStats.length === 0) {
             return (
                 <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
-                    <p className="text-muted font-medium">No skills tracked yet.</p>
+                    <p className="text-muted font-medium">{libraryCopy.noSkills}</p>
                     <button
                         onClick={handleOpenAddSkill}
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
                     >
-                        <Plus className="w-4 h-4" /> Track Skill
+                        <Plus className="w-4 h-4" /> {libraryCopy.trackSkill}
                     </button>
                 </div>
             );
         }
 
-        const formatTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        const formatTime = (date: Date) => date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
         const dayVisibilityClass = (index: number) => {
             if (index < 3) return '';
             if (index === 3) return 'hidden min-[420px]:block md:block';
@@ -587,7 +636,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         ) : (
                                             <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-muted bg-indigo-500/5">
                                                 <Target className="w-9 h-9 text-indigo-500" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">No image</span>
+                                                <span className="text-[10px] font-semibold text-muted">{libraryCopy.noImage}</span>
                                             </div>
                                         )}
                                     </div>
@@ -597,7 +646,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                             <div className="min-w-0">
                                                 <h4 className="font-bold text-xl text-primary truncate">{skill.name}</h4>
                                                 <p className="text-xs text-muted mt-1 line-clamp-2 leading-5">
-                                                    {skill.description || 'No description yet. Add one from edit skill.'}
+                                                    {skill.description || libraryCopy.noDescription}
                                                 </p>
                                             </div>
                                             <div className="flex sm:hidden items-center gap-2 text-xs font-bold text-amber-500 shrink-0">
@@ -606,7 +655,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         </div>
 
                                         <div className="flex flex-wrap gap-2 mt-3">
-                                            <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-bold text-muted">Skills</span>
+                                            <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-bold text-muted">{libraryCopy.skills}</span>
                                             {skill.schedule?.enabled && (
                                                 <span className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-500 capitalize">
                                                     {skill.schedule.interval}
@@ -615,7 +664,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-3 mt-4 text-xs text-muted">
-                                            <span>{skill.weeklyMinutes || 0}m this week</span>
+                                            <span>{skill.weeklyMinutes || 0}m {libraryCopy.thisWeek}</span>
                                             {nextSession && (
                                                 <span className="flex items-center gap-1">
                                                     <Clock className="w-3.5 h-3.5" />
@@ -633,10 +682,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                                 />
                                             </div>
                                             <div className="flex justify-between items-center mt-2 gap-3">
-                                                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{progress.toFixed(0)}% Weekly Progress</span>
+                                                <span className="text-[10px] font-semibold text-muted">{progress.toFixed(0)}% {libraryCopy.weeklyProgress}</span>
                                                 <span className="text-[10px] font-medium text-muted flex items-center gap-1 whitespace-nowrap">
                                                     <Target className="w-3 h-3" />
-                                                    Target: {target || 0}m/wk
+                                                    {libraryCopy.target}: {target || 0}m/{libraryCopy.perWeek}
                                                 </span>
                                             </div>
                                         </div>
@@ -649,14 +698,16 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         <button
                                             onClick={() => handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes)}
                                             className="p-2 bg-background hover:bg-muted/10 rounded-xl transition-colors"
-                                            title="Edit Skill"
+                                            title={libraryCopy.editSkill}
+                                            aria-label={`${libraryCopy.editSkill} ${skill.name}`}
                                         >
                                             <Pencil className="w-4 h-4 text-muted" />
                                         </button>
                                         <button
                                             onClick={() => { setDeleteId(skill.id); setDeleteType('skill'); }}
                                             className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors"
-                                            title="Delete Skill"
+                                            title={libraryCopy.deleteSkill}
+                                            aria-label={`${libraryCopy.deleteSkill} ${skill.name}`}
                                         >
                                             <Trash2 className="w-4 h-4 text-red-500" />
                                         </button>
@@ -671,8 +722,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 <aside className="xl:sticky xl:top-4 bg-surface border border-border rounded-[30px] p-4 sm:p-5 shadow-sm overflow-hidden">
                     <div className="flex items-center justify-between mb-5">
                         <div>
-                            <h3 className="text-lg font-bold text-primary">Schedule</h3>
-                            <p className="text-xs text-muted">Skill routines this week</p>
+                            <h3 className="text-lg font-semibold text-primary">{libraryCopy.schedule}</h3>
+                            <p className="text-xs text-muted">{libraryCopy.scheduleSubtitle}</p>
                         </div>
                         <button onClick={handleOpenAddSkill} className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
                             <Plus className="w-4 h-4" />
@@ -685,7 +736,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             const isToday = day.toDateString() === new Date().toDateString();
                             return (
                                 <div key={day.toISOString()} className={`${dayVisibilityClass(index)} rounded-2xl p-2 text-center border min-w-0 ${isToday ? 'border-indigo-500 bg-indigo-500/10' : 'border-border bg-background'}`}>
-                                    <div className="text-[10px] text-muted font-bold truncate">{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
+                                    <div className="text-[10px] text-muted font-bold truncate">{day.toLocaleDateString(locale, { weekday: 'short' })}</div>
                                     <div className="text-sm font-bold text-primary">{day.getDate()}</div>
                                     {hasSchedule && <div className="mx-auto mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
                                 </div>
@@ -695,19 +746,19 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
                     {scheduleRows.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">
-                            No skill schedule yet. Edit a skill and enable Schedule Skill Routine.
+                            {libraryCopy.noSchedule}
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {scheduleRows.map(({ skill, session, log, actualRange, actualMinutes, plannedMinutes, deltaMinutes, sessionProgress, status }) => {
                                 const statusMeta = {
-                                    done: { label: 'Done', className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-                                    partial: { label: 'Partial', className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-                                    missed: { label: 'Missed', className: 'bg-red-500/10 text-red-500 border-red-500/20' },
-                                    today: { label: 'Today', className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
-                                    in_progress: { label: 'In progress', className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
-                                    ready_to_log: { label: 'Ready to log', className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-                                    upcoming: { label: 'Upcoming', className: 'bg-surface text-muted border-border' },
+                                    done: { label: libraryCopy.statusDone, className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+                                    partial: { label: libraryCopy.statusPartial, className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+                                    missed: { label: libraryCopy.statusMissed, className: 'bg-red-500/10 text-red-500 border-red-500/20' },
+                                    today: { label: libraryCopy.statusToday, className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
+                                    in_progress: { label: libraryCopy.statusInProgress, className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
+                                    ready_to_log: { label: libraryCopy.statusReady, className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+                                    upcoming: { label: libraryCopy.statusUpcoming, className: 'bg-surface text-muted border-border' },
                                 }[status];
                                 const varianceText = log ? formatDurationDelta(deltaMinutes) : '';
                                 const showProgress = status !== 'upcoming' && status !== 'today' && (sessionProgress !== undefined || status === 'missed' || status === 'ready_to_log');
@@ -732,7 +783,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                                 </span>
                                             </div>
                                             <div className="mt-1 flex items-center justify-between gap-2 text-xs">
-                                                <span className="text-muted">{actualMinutes || plannedMinutes}m session</span>
+                                                <span className="text-muted">{actualMinutes || plannedMinutes}m {libraryCopy.session}</span>
                                                 {varianceText && (
                                                     <span className={deltaMinutes > 0 ? 'font-semibold text-emerald-500' : 'font-semibold text-amber-500'}>
                                                         {varianceText}
@@ -791,20 +842,35 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
                     <LayoutGroup id="library-subtabs">
-                        <div data-library-subtabs="true" className="mb-6 flex rounded-xl border border-border/70 bg-background/55 p-1" role="tablist" aria-label="Library sections">
+                        <div data-library-subtabs="true" className={contentSurface.workspaceTabList} role="tablist" aria-label={libraryCopy.sections}>
                             {libraryTabs.map(tab => {
                                 const isActive = librarySubTab === tab.key;
                                 return (
                                     <button
                                         key={tab.key}
+                                        id={`library-tab-${tab.key}`}
                                         type="button"
                                         role="tab"
                                         aria-selected={isActive}
+                                        aria-controls={`library-panel-${tab.key}`}
+                                        tabIndex={isActive ? 0 : -1}
                                         onClick={() => setLibrarySubTab(tab.key)}
-                                        className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-colors ${isActive ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                                        onKeyDown={event => {
+                                            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                                            event.preventDefault();
+                                            const direction = event.key === 'ArrowRight' ? 1 : -1;
+                                            const currentIndex = libraryTabOrder.indexOf(tab.key);
+                                            const nextTab = libraryTabOrder[(currentIndex + direction + libraryTabOrder.length) % libraryTabOrder.length];
+                                            setLibrarySubTab(nextTab);
+                                            window.requestAnimationFrame(() => document.getElementById(`library-tab-${nextTab}`)?.focus());
+                                        }}
+                                        className={`${contentSurface.workspaceTabButton} flex-1 ${isActive ? 'text-primary' : 'text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]'}`}
                                     >
-                                        {isActive && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                        <span className="relative z-10 flex items-center gap-2">{tab.icon} {tab.label}</span>
+                                        {isActive && <ActiveIndicator className={contentSurface.workspaceTabIndicator} />}
+                                        <span className="relative z-10 flex min-w-0 items-center gap-1 sm:gap-2">
+                                            <span className="shrink-0">{tab.icon}</span>
+                                            <span className="truncate">{tab.label}</span>
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -818,39 +884,19 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -10 }}
                             transition={{ duration: 0.2 }}
-                            className="flex items-center justify-between"
+                            className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
                         >
-                            <div>
-                                <h2 className="text-2xl font-bold tracking-tight">
-                                    {libraryTabs.find(tab => tab.key === librarySubTab)?.title || (isEnglish ? 'Library' : 'Pustaka')}
-                                </h2>
-                                <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                    {librarySubTab === 'general' && (
-                                        <>
-                                            <span>{generalItems.length} {libraryCopy.notes}</span>
-                                            {new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size > 0 && (
-                                                <>
-                                                    <span>•</span>
-                                                    <span>{new Set(generalItems.flatMap(i => i.meta.tags || []).filter(t => t && t !== 'null' && t !== 'undefined')).size} {libraryCopy.tags}</span>
-                                                </>
-                                            )}
-                                        </>
-                                    )}
-                                    {librarySubTab === 'skills' && (
-                                        <>
-                                            <span>{skillStats.length} {libraryCopy.skills}</span>
-                                            <span>•</span>
-                                            <span className="text-indigo-500">{skillStats.reduce((acc, curr) => acc + curr.totalHours, 0).toFixed(1)}j {libraryCopy.totalTime}</span>
-                                        </>
-                                    )}
-                                    {librarySubTab === 'journal' && (
-                                        <>
-                                            <span>{filteredJournalItems.length} {libraryCopy.journalEntries}</span>
-                                            <span>•</span>
-                                            <span>{libraryCopy.across} {filteredJournalDayGroups.length} {libraryCopy.days}</span>
-                                        </>
-                                    )}
-                                </p>
+                            <div className="min-w-0 flex-1">
+                                <h2 className={contentSurface.workspaceHeaderTitle}>{activeLibraryHeader.title}</h2>
+                                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">{activeLibraryHeader.description}</p>
+                                <div className="mt-4 flex flex-wrap gap-2" aria-label={activeLibraryHeader.title}>
+                                    {activeLibraryHeader.metrics.map(metric => (
+                                        <div key={metric.label} className="min-w-[7rem] rounded-2xl bg-surface-soft/75 px-3.5 py-2.5 ring-1 ring-inset ring-border/45">
+                                            <div className="text-[11px] font-medium text-muted">{metric.label}</div>
+                                            <div className="mt-0.5 text-lg font-semibold tabular-nums text-primary">{metric.value}</div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                             <button
                                 data-library-add-button="true"
@@ -859,7 +905,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     if (librarySubTab === 'skills') handleOpenAddSkill();
                                     if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
                                 }}
-                                className="flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
+                                className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
                             >
                                 <Plus className="w-5 h-5" />
                                 <span>{librarySubTab === 'general' ? libraryCopy.addNote : librarySubTab === 'skills' ? libraryCopy.addSkill : libraryCopy.writeJournal}</span>
@@ -923,24 +969,39 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 >
                 {/* VIEW: General Notes */}
                 <motion.div
+                    id="library-panel-general"
+                    role="tabpanel"
+                    aria-labelledby="library-tab-general"
+                    aria-hidden={librarySubTab !== 'general'}
+                    inert={librarySubTab !== 'general'}
                     initial={false}
-                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
+                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad} ${librarySubTab !== 'general' ? 'pointer-events-none' : ''}`}
                 >
                     {renderContent(generalItems, 'general')}
                 </motion.div>
 
                 {/* VIEW: Skills */}
                 <motion.div
+                    id="library-panel-skills"
+                    role="tabpanel"
+                    aria-labelledby="library-tab-skills"
+                    aria-hidden={librarySubTab !== 'skills'}
+                    inert={librarySubTab !== 'skills'}
                     initial={false}
-                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
+                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad} ${librarySubTab !== 'skills' ? 'pointer-events-none' : ''}`}
                 >
                     {renderSkills()}
                 </motion.div>
 
                 {/* VIEW: Journal */}
                 <motion.div
+                    id="library-panel-journal"
+                    role="tabpanel"
+                    aria-labelledby="library-tab-journal"
+                    aria-hidden={librarySubTab !== 'journal'}
+                    inert={librarySubTab !== 'journal'}
                     initial={false}
-                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad}`}
+                    className={`w-full flex-shrink-0 overflow-hidden ${contentSurface.contentPad} ${librarySubTab !== 'journal' ? 'pointer-events-none' : ''}`}
                 >
                     {renderContent(journalItems, 'journal')}
                 </motion.div>
@@ -953,27 +1014,27 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 overlayClassName="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
                 panelClassName="w-full max-w-md rounded-[28px] border border-border bg-surface p-5 shadow-2xl"
                 presentation="form"
-                ariaLabel="Edit skill session"
+                ariaLabel={libraryCopy.editSession}
             >
                 {editingSkillSession && (
                     <>
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                     <h3 className="text-lg font-bold text-primary truncate">{editingSkillSession.skill.name}</h3>
-                                    <p className="mt-1 text-xs text-muted">{formatSessionDateTime(editingSkillSession.session.start)} - {editingSkillSession.session.end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
+                                     <p className="mt-1 text-xs text-muted">{formatSessionDateTime(editingSkillSession.session.start)} - {editingSkillSession.session.end.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={closeSkillSessionEditor}
                                     className="rounded-xl bg-background border border-border px-3 py-2 text-xs font-bold text-muted hover:text-primary transition-colors"
                                 >
-                                    Close
+                                    {libraryCopy.close}
                                 </button>
                             </div>
 
                             <div className="mt-5 space-y-4">
                                 <div>
-                                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted">Actual start</label>
+                                    <label className="text-xs font-semibold text-muted">{libraryCopy.actualStart}</label>
                                     <input
                                         type="datetime-local"
                                         value={actualStartInput}
@@ -982,7 +1043,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted">Actual end</label>
+                                    <label className="text-xs font-semibold text-muted">{libraryCopy.actualEnd}</label>
                                     <input
                                         type="datetime-local"
                                         value={actualEndInput}
@@ -992,11 +1053,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 </div>
                                 {modalActualStart && modalActualEnd && modalActualEnd > modalActualStart && (
                                     <div className="rounded-2xl bg-background border border-border p-3 text-xs text-muted">
-                                        Duration: <span className="font-bold text-primary">{Math.round((modalActualEnd.getTime() - modalActualStart.getTime()) / 60000)}m session</span>
+                                        {libraryCopy.duration}: <span className="font-bold text-primary">{Math.round((modalActualEnd.getTime() - modalActualStart.getTime()) / 60000)}m {libraryCopy.session}</span>
                                     </div>
                                 )}
                                 {isSkillSessionSaveDisabled && (
-                                    <p className="text-xs font-medium text-red-500">Actual end must be after actual start.</p>
+                                    <p className="text-xs font-medium text-red-500">{libraryCopy.invalidActual}</p>
                                 )}
                             </div>
 
@@ -1006,7 +1067,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     onClick={closeSkillSessionEditor}
                                     className="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-bold text-muted hover:text-primary transition-colors"
                                 >
-                                    Cancel
+                                    {libraryCopy.cancel}
                                 </button>
                                 <button
                                     type="button"
@@ -1014,7 +1075,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     disabled={isSkillSessionSaveDisabled}
                                     className="rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                                 >
-                                    Save actual time
+                                    {libraryCopy.saveActual}
                                 </button>
                             </div>
                     </>

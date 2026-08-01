@@ -66,7 +66,7 @@ import {
 import { motionTransition } from "../../motion/transitions";
 import PresencePanel from "../../motion/PresencePanel";
 import { getSavedAmountForGoal } from "../../utils/savingTransactionUtils";
-import { normalizeAppLanguage } from "../../utils/i18n";
+import { getAppLocale, normalizeAppLanguage } from "../../utils/i18n";
 
 interface MoneyViewProps {
   items: BrainDumpItem[];
@@ -176,6 +176,28 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
   onAddItem,
 }) => {
   const isEnglish = normalizeAppLanguage(appSettings.language) === "en";
+  const moneyCopy = isEnglish ? {
+    sections: "Money sections", wallets: "Wallets", transactions: "Transactions", budget: "Budget",
+    netWorth: "Current net worth", netWorthHelper: "Assets minus debt and active savings allocations",
+    showAmounts: "Show all amounts", hideAmounts: "Hide all amounts", income: "Income", expense: "Expense", used: "Used",
+    assets: "Assets", debt: "Debt", savings: "Savings", recordTransaction: "Record transaction",
+    previousMonth: "Previous month", nextMonth: "Next month", previousWeek: "Previous week", nextWeek: "Next week",
+    previousYear: "Previous year", nextYear: "Next year", monthly: "Month", weekly: "Week", yearly: "Year",
+    offline: "Offline mode", offlineHelper: "Showing data saved on this device. Changes will sync when the connection returns.",
+    syncCheck: "Sync needs attention", totalNetWorth: "Total net worth", totalIncome: "Total income", totalExpense: "Total expense",
+    totalAssets: "Total assets", totalDebt: "Total debt", totalSavings: "Total savings",
+  } : {
+    sections: "Bagian Uang", wallets: "Wallet", transactions: "Transaksi", budget: "Budget",
+    netWorth: "Kekayaan bersih saat ini", netWorthHelper: "Aset dikurangi utang dan alokasi tabungan aktif",
+    showAmounts: "Tampilkan seluruh nominal", hideAmounts: "Sembunyikan seluruh nominal", income: "Pemasukan", expense: "Pengeluaran", used: "Terpakai",
+    assets: "Aset", debt: "Utang", savings: "Tabungan", recordTransaction: "Catat transaksi",
+    previousMonth: "Bulan sebelumnya", nextMonth: "Bulan berikutnya", previousWeek: "Minggu sebelumnya", nextWeek: "Minggu berikutnya",
+    previousYear: "Tahun sebelumnya", nextYear: "Tahun berikutnya", monthly: "Bulan", weekly: "Minggu", yearly: "Tahun",
+    offline: "Mode offline", offlineHelper: "Menampilkan data yang tersimpan di perangkat. Perubahan akan disinkronkan saat koneksi kembali.",
+    syncCheck: "Sinkronisasi perlu diperiksa", totalNetWorth: "Total kekayaan bersih", totalIncome: "Total pemasukan", totalExpense: "Total pengeluaran",
+    totalAssets: "Total aset", totalDebt: "Total utang", totalSavings: "Total tabungan",
+  };
+  const locale = getAppLocale(appSettings.language);
   // Main Tab Swipe Logic
   const swipeHandlers = useSwipeTabs("money", setActiveTab);
   const reduceMotion = useReducedMotion();
@@ -346,30 +368,30 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
   });
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat("id-ID", {
+    new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "IDR",
       maximumFractionDigits: 0,
     }).format(n);
   const canShowAmounts = showBalance && !appSettings.hideMoney;
   const walletTypeLabel: Record<Wallet["type"], string> = {
-    cash: "Tunai",
-    bank: "Rekening bank",
-    ewallet: "Dompet digital",
-    cc: "Kartu kredit",
-    investment: "Investasi",
+    cash: isEnglish ? "Cash" : "Tunai",
+    bank: isEnglish ? "Bank account" : "Rekening bank",
+    ewallet: isEnglish ? "Digital wallet" : "Dompet digital",
+    cc: isEnglish ? "Credit card" : "Kartu kredit",
+    investment: isEnglish ? "Investment" : "Investasi",
   };
   const financeTypeLabel: Record<FinanceType, string> = {
-    expense: "Pengeluaran",
-    income: "Pemasukan",
+    expense: moneyCopy.expense,
+    income: moneyCopy.income,
     transfer: "Transfer",
-    saving: "Tabungan",
-    saving_withdrawal: "Penarikan tabungan",
-    loan_out: "Dana dipinjamkan",
-    loan_in: "Pinjaman diterima",
-    loan_repayment_in: "Pelunasan diterima",
-    loan_repayment_out: "Pelunasan dibayar",
-    achieved_goal: "Target tercapai",
+    saving: moneyCopy.savings,
+    saving_withdrawal: isEnglish ? "Savings withdrawal" : "Penarikan tabungan",
+    loan_out: isEnglish ? "Money lent" : "Dana dipinjamkan",
+    loan_in: isEnglish ? "Loan received" : "Pinjaman diterima",
+    loan_repayment_in: isEnglish ? "Repayment received" : "Pelunasan diterima",
+    loan_repayment_out: isEnglish ? "Repayment paid" : "Pelunasan dibayar",
+    achieved_goal: isEnglish ? "Goal achieved" : "Target tercapai",
   };
 
   const effectiveIncome =
@@ -383,11 +405,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
   const incomeLabel =
     budgetConfig.monthlyIncome > 0
       ? budgetViewMode === "yearly"
-        ? "Pemasukan tetap tahunan"
+        ? (isEnglish ? "Fixed yearly income" : "Pemasukan tetap tahunan")
         : budgetViewMode === "weekly"
-          ? "Pemasukan tetap mingguan"
-          : "Pemasukan tetap"
-      : "Pemasukan tercatat";
+          ? (isEnglish ? "Fixed weekly income" : "Pemasukan tetap mingguan")
+          : (isEnglish ? "Fixed income" : "Pemasukan tetap")
+      : (isEnglish ? "Recorded income" : "Pemasukan tercatat");
   const activeFilters = [
     filterWallet
       ? { key: "wallet" as const, label: `Wallet: ${filterWallet}` }
@@ -630,11 +652,11 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     budgetViewMode === "yearly"
       ? String(financeDate.getFullYear())
       : budgetViewMode === "weekly"
-        ? `${weekBounds.start.toLocaleDateString("id-ID", { month: "short", day: "numeric" })}–${new Date(weekBounds.end.getTime() - 86400000).toLocaleDateString("id-ID", { month: "short", day: "numeric" })}`
-        : financeDate.toLocaleDateString("id-ID", { month: "short" });
+        ? `${weekBounds.start.toLocaleDateString(locale, { month: "short", day: "numeric" })}–${new Date(weekBounds.end.getTime() - 86400000).toLocaleDateString(locale, { month: "short", day: "numeric" })}`
+        : financeDate.toLocaleDateString(locale, { month: "short" });
   const periodKicker =
     budgetViewMode === "yearly"
-      ? "Tahun"
+      ? moneyCopy.yearly
       : budgetViewMode === "weekly"
         ? financeDate.getFullYear().toString()
         : financeDate.getFullYear().toString();
@@ -642,8 +664,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     ? budgetViewMode === "yearly"
       ? `${hoveredTrendPoint.label} ${financeDate.getFullYear()}`
       : budgetViewMode === "weekly"
-        ? `${hoveredTrendPoint.label}, ${new Date(weekBounds.start.getFullYear(), weekBounds.start.getMonth(), weekBounds.start.getDate() + (hoveredTrendIndex || 0)).toLocaleDateString("id-ID", { month: "short", day: "numeric" })}`
-        : `${hoveredTrendPoint.label} ${financeDate.toLocaleDateString("id-ID", { month: "short", year: "numeric" })}`
+        ? `${hoveredTrendPoint.label}, ${new Date(weekBounds.start.getFullYear(), weekBounds.start.getMonth(), weekBounds.start.getDate() + (hoveredTrendIndex || 0)).toLocaleDateString(locale, { month: "short", day: "numeric" })}`
+        : `${hoveredTrendPoint.label} ${financeDate.toLocaleDateString(locale, { month: "short", year: "numeric" })}`
     : undefined;
   const hoveredTrendTooltipLeft =
     hoveredTrendIndex !== null && budgetTrendAnalytics.length > 0
@@ -904,66 +926,64 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
       label: string;
       icon: React.ComponentType<{ className?: string }>;
     }> = [
-      { id: "wallets", label: isEnglish ? "Wallets" : "Wallet", icon: WalletIcon },
-      { id: "transactions", label: isEnglish ? "Transactions" : "Transaksi", icon: List },
-      { id: "budget", label: "Budget", icon: PieChart },
+      { id: "wallets", label: moneyCopy.wallets, icon: WalletIcon },
+      { id: "transactions", label: moneyCopy.transactions, icon: List },
+      { id: "budget", label: moneyCopy.budget, icon: PieChart },
     ];
     return (
-      <div className="sticky top-2 z-30 mb-3 pt-2 lg:top-4 lg:mb-4">
-        <LayoutGroup id="money-subtabs">
-          <div
-            data-money-tabs="true"
-            className="mx-auto flex w-full max-w-xl rounded-2xl border border-border/70 bg-surface/88 p-1.5 shadow-sm backdrop-blur-2xl lg:mx-0"
-            role="tablist"
-            aria-label={isEnglish ? "Money sections" : "Bagian Uang"}
-          >
-            {tabConfig.map((tab) => {
-              const isActive = moneyView === tab.id;
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  id={`money-tab-${tab.id}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`money-panel-${tab.id}`}
-                  tabIndex={isActive ? 0 : -1}
-                  onClick={() => setMoneyView(tab.id)}
-                  onKeyDown={(event) => {
-                    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
-                      return;
-                    event.preventDefault();
-                    const direction = event.key === "ArrowRight" ? 1 : -1;
-                    const nextIndex =
-                      (tabs.indexOf(tab.id) + direction + tabs.length) %
-                      tabs.length;
-                    setMoneyView(tabs[nextIndex]);
-                    window.requestAnimationFrame(() =>
-                      document
-                        .getElementById(`money-tab-${tabs[nextIndex]}`)
-                        ?.focus(),
-                    );
-                  }}
-                  className={`relative flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                    isActive
-                      ? "text-primary"
-                      : "text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]"
-                  }`}
-                >
-                  {isActive && (
-                    <ActiveIndicator className="absolute inset-0 rounded-xl bg-surface shadow-sm ring-1 ring-inset ring-border/70" />
-                  )}
-                  <span className="relative z-10 flex items-center gap-2">
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </LayoutGroup>
-      </div>
+      <LayoutGroup id="money-subtabs">
+        <div
+          data-money-tabs="true"
+          className={contentSurface.workspaceTabList}
+          role="tablist"
+          aria-label={moneyCopy.sections}
+        >
+          {tabConfig.map((tab) => {
+            const isActive = moneyView === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                id={`money-tab-${tab.id}`}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`money-panel-${tab.id}`}
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => setMoneyView(tab.id)}
+                onKeyDown={(event) => {
+                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
+                    return;
+                  event.preventDefault();
+                  const direction = event.key === "ArrowRight" ? 1 : -1;
+                  const nextIndex =
+                    (tabs.indexOf(tab.id) + direction + tabs.length) %
+                    tabs.length;
+                  setMoneyView(tabs[nextIndex]);
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById(`money-tab-${tabs[nextIndex]}`)
+                      ?.focus(),
+                  );
+                }}
+                className={`${contentSurface.workspaceTabButton} flex-1 ${
+                  isActive
+                    ? "text-primary"
+                    : "text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]"
+                }`}
+              >
+                {isActive && (
+                  <ActiveIndicator className={contentSurface.workspaceTabIndicator} />
+                )}
+                <span className="relative z-10 flex min-w-0 items-center gap-1 sm:gap-2">
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </LayoutGroup>
     );
   };
 
@@ -1104,7 +1124,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
   return (
     <div className={contentSurface.pageShell}>
-      {renderMoneyTabs()}
       {!isOnline && (
         <div
           role="status"
@@ -1113,9 +1132,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         >
           <WifiOff className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <div className="font-semibold">Mode offline</div>
+            <div className="font-semibold">{moneyCopy.offline}</div>
             <div className="mt-0.5 text-xs opacity-80">
-              Menampilkan data yang tersimpan di perangkat. Perubahan akan disinkronkan saat koneksi kembali.
+              {moneyCopy.offlineHelper}
             </div>
           </div>
         </div>
@@ -1127,7 +1146,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <div className="font-semibold">Sinkronisasi perlu diperiksa</div>
+            <div className="font-semibold">{moneyCopy.syncCheck}</div>
             <div className="mt-0.5 line-clamp-2 text-xs opacity-80">{syncError}</div>
           </div>
         </div>
@@ -1135,7 +1154,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
       {/* Top Container */}
       <motion.div
         data-swipe-tabs="money"
-        className={`${contentSurface.headerHero} !mt-0 bg-surface`}
+        className={`${contentSurface.headerHero} bg-surface`}
         onTouchStart={swipeHandlers.onTouchStart}
         onTouchMove={swipeHandlers.onTouchMove}
         onTouchEnd={swipeHandlers.onTouchEnd}
@@ -1147,14 +1166,13 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "linear" }}
         >
+          {renderMoneyTabs()}
           <div className="lg:space-y-6" data-money-header-grid="true">
             <div className="mb-6 grid grid-cols-1 gap-4 pb-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start lg:mb-0 lg:grid-cols-8 lg:gap-4 lg:pb-3 xl:gap-5">
               <div className="min-w-0 lg:col-span-6 lg:pt-1">
-                <div className="text-xs font-semibold text-muted">
-                  Kekayaan bersih saat ini
-                </div>
+                <div className="text-xs font-semibold text-muted">{moneyCopy.netWorth}</div>
                 <div className="mt-1 text-xs text-muted">
-                  Aset dikurangi utang dan alokasi tabungan aktif
+                  {moneyCopy.netWorthHelper}
                 </div>
                 <div className="mt-2 flex min-w-0 items-center gap-3 lg:mt-3">
                   <div data-financial-amount="true" className="truncate text-3xl font-semibold tracking-[-0.045em] sm:text-4xl lg:text-[2.75rem]">
@@ -1163,14 +1181,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                       formatter={fmt}
                       hidden={!canShowAmounts}
                       hiddenLabel="••••••••"
-                      ariaLabel="Total kekayaan bersih"
+                      ariaLabel={moneyCopy.totalNetWorth}
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowBalance(!canShowAmounts)}
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-soft text-muted transition-colors hover:text-primary"
-                    aria-label={canShowAmounts ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}
+                    aria-label={canShowAmounts ? moneyCopy.hideAmounts : moneyCopy.showAmounts}
                     aria-pressed={!canShowAmounts}
                   >
                     {canShowAmounts ? (
@@ -1194,10 +1212,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     className="flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-surface"
                     aria-label={
                       budgetViewMode === "yearly"
-                        ? "Tahun sebelumnya"
+                        ? moneyCopy.previousYear
                         : budgetViewMode === "weekly"
-                          ? "Minggu sebelumnya"
-                          : "Bulan sebelumnya"
+                          ? moneyCopy.previousWeek
+                          : moneyCopy.previousMonth
                     }
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -1226,10 +1244,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     className="flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-surface"
                     aria-label={
                       budgetViewMode === "yearly"
-                        ? "Tahun berikutnya"
+                        ? moneyCopy.nextYear
                         : budgetViewMode === "weekly"
-                          ? "Minggu berikutnya"
-                          : "Bulan berikutnya"
+                          ? moneyCopy.nextWeek
+                          : moneyCopy.nextMonth
                     }
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -1239,9 +1257,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   <div className="mt-2 grid cursor-pointer grid-cols-3 gap-1 rounded-lg bg-surface-soft/80 p-1">
                     {(
                       [
-                        ["monthly", "Bulan"],
-                        ["weekly", "Minggu"],
-                        ["yearly", "Tahun"],
+                        ["monthly", moneyCopy.monthly],
+                        ["weekly", moneyCopy.weekly],
+                        ["yearly", moneyCopy.yearly],
                       ] as [BudgetAnalyticsViewMode, string][]
                     ).map(([mode, label]) => (
                       <button
@@ -1265,7 +1283,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               <div className="col-span-3 min-w-0 rounded-2xl border border-border/70 bg-background/55 px-3 py-4 lg:px-5 lg:py-5">
                 <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-muted lg:mb-2">
                   <TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" />{" "}
-                  Pemasukan
+                  {moneyCopy.income}
                 </div>
                 <div data-financial-amount="true" data-finance-status="positive" className="truncate text-lg font-semibold lg:text-2xl">
                   <AnimatedNumber
@@ -1273,14 +1291,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     formatter={fmt}
                     hidden={!canShowAmounts}
                     hiddenLabel="••••"
-                    ariaLabel="Total pemasukan"
+                    ariaLabel={moneyCopy.totalIncome}
                   />
                 </div>
               </div>
               <div className="col-span-3 min-w-0 rounded-2xl border border-border/70 bg-background/55 px-3 py-4 lg:px-5 lg:py-5">
                 <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-muted lg:mb-2">
                   <TrendingDown className="w-4 h-4 shrink-0" data-finance-status="negative" />{" "}
-                  Pengeluaran
+                  {moneyCopy.expense}
                 </div>
                 <div data-financial-amount="true" data-finance-status="negative" className="truncate text-lg font-semibold lg:text-2xl">
                   <AnimatedNumber
@@ -1288,7 +1306,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     formatter={fmt}
                     hidden={!canShowAmounts}
                     hiddenLabel="••••"
-                    ariaLabel="Total pengeluaran"
+                    ariaLabel={moneyCopy.totalExpense}
                   />
                 </div>
               </div>
@@ -1305,7 +1323,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 )}
                 <div className="mb-1 flex items-center justify-center gap-1 text-[10px] font-semibold text-muted lg:mb-2 lg:justify-start lg:text-xs">
                   <AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-700 dark:text-amber-300 lg:block" />{" "}
-                  Terpakai
+                  {moneyCopy.used}
                 </div>
                 <div className="flex items-baseline justify-center gap-1 truncate lg:justify-start">
                   <span className="truncate text-lg font-bold text-primary lg:text-2xl">
@@ -1331,29 +1349,29 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             >
               <div className="flex gap-4">
                 <div className="text-sm font-medium opacity-80">
-                  Aset:{" "}
+                  {moneyCopy.assets}:{" "}
                   <span className="text-emerald-600 dark:text-emerald-500 font-bold">
-                    <AnimatedNumber value={totalAssets} formatter={fmt} hidden={!canShowAmounts} hiddenLabel="••" ariaLabel="Total aset" />
+                    <AnimatedNumber value={totalAssets} formatter={fmt} hidden={!canShowAmounts} hiddenLabel="••" ariaLabel={moneyCopy.totalAssets} />
                   </span>
                 </div>
                 <div className="text-sm font-medium opacity-80">
-                  Utang:{" "}
+                  {moneyCopy.debt}:{" "}
                   <span className="font-bold text-red-700 dark:text-red-300">
-                    <AnimatedNumber value={totalDebt} formatter={fmt} hidden={!canShowAmounts} hiddenLabel="••" ariaLabel="Total utang" />
+                    <AnimatedNumber value={totalDebt} formatter={fmt} hidden={!canShowAmounts} hiddenLabel="••" ariaLabel={moneyCopy.totalDebt} />
                   </span>
                 </div>
                 <div className="text-sm font-medium opacity-80 flex items-center gap-1">
-                  Tabungan:{" "}
+                  {moneyCopy.savings}:{" "}
                   <span className="font-bold text-indigo-700 dark:text-indigo-300">
-                    <AnimatedNumber value={walletTotalSavings || 0} formatter={fmt} hidden={!canShowAmounts} hiddenLabel="••" ariaLabel="Total tabungan" />
+                    <AnimatedNumber value={walletTotalSavings || 0} formatter={fmt} hidden={!canShowAmounts} hiddenLabel="••" ariaLabel={moneyCopy.totalSavings} />
                   </span>
                 </div>
               </div>
               <button
                 onClick={() => onAddItem(ItemType.FINANCE)}
                 className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-sm transition-colors hover:bg-indigo-500"
-                aria-label="Catat transaksi"
-                title="Catat transaksi"
+                aria-label={moneyCopy.recordTransaction}
+                title={moneyCopy.recordTransaction}
               >
                 <Plus className="w-6 h-6" />
               </button>

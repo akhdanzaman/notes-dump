@@ -268,6 +268,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         theme: 'Theme', language: 'Interface language', languageDescription: 'Choose the language used in navigation and primary controls.',
         indonesian: 'Bahasa Indonesia', english: 'English', light: 'Light', dark: 'Dark', system: 'System', display: 'App display',
         darkMode: 'Dark mode', lightMode: 'Light mode',
+        merge: 'Merge', overwrite: 'Replace data', mergeTitle: 'Merge with cloud data', overwriteTitle: 'Replace cloud data',
     } : {
         settings: 'Pengaturan', close: 'Tutup pusat pengaturan', back: 'Kembali ke ringkasan pengaturan',
         save: 'Simpan pengaturan', saved: 'Pengaturan tersimpan', overview: 'Ringkasan',
@@ -284,6 +285,15 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         theme: 'Tema', language: 'Bahasa antarmuka', languageDescription: 'Pilih bahasa untuk navigasi dan kontrol utama.',
         indonesian: 'Bahasa Indonesia', english: 'English', light: 'Terang', dark: 'Gelap', system: 'Sistem', display: 'Tampilan aplikasi',
         darkMode: 'Mode gelap', lightMode: 'Mode terang',
+        merge: 'Gabungkan', overwrite: 'Ganti data', mergeTitle: 'Gabungkan dengan data cloud', overwriteTitle: 'Ganti data cloud',
+    };
+
+    const applyLanguage = (language: NonNullable<AppSettings['language']>) => {
+        if (normalizeAppLanguage(localAppSettings.language) === language) return;
+        const settings = { ...localAppSettings, language };
+        setLocalAppSettings(settings);
+        setAppSettings(settings);
+        onSave(undefined, undefined, settings);
     };
 
     useEffect(() => {
@@ -519,8 +529,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <button 
                                                                 onClick={() => onSyncClick(syncMode === 'overwrite')} 
                                                                 className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors"
-                                                                title={syncMode === 'overwrite' ? 'Ganti data cloud' : 'Gabungkan dengan data cloud'}
-                                                                aria-label={syncMode === 'overwrite' ? 'Ganti data cloud' : 'Gabungkan dengan data cloud'}
+                                                                title={syncMode === 'overwrite' ? controlCopy.overwriteTitle : controlCopy.mergeTitle}
+                                                                aria-label={syncMode === 'overwrite' ? controlCopy.overwriteTitle : controlCopy.mergeTitle}
                                                             >
                                                                 <RefreshCw className="w-5 h-5" />
                                                             </button>
@@ -540,14 +550,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             onClick={() => setSyncMode('merge')}
                                                             className={`px-3 py-1.5 text-xs font-medium transition-colors ${syncMode === 'merge' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-primary'}`}
                                                         >
-                                                            Gabungkan
+                                                            {controlCopy.merge}
                                                         </button>
                                                         <div className="w-px h-4 bg-border"></div>
                                                         <button 
                                                             onClick={() => setSyncMode('overwrite')}
                                                             className={`px-3 py-1.5 text-xs font-medium transition-colors ${syncMode === 'overwrite' ? 'bg-[var(--finance-negative-soft)] text-[var(--finance-negative)]' : 'text-muted hover:text-[var(--finance-negative)]'}`}
                                                         >
-                                                            Ganti data
+                                                            {controlCopy.overwrite}
                                                         </button>
                                                     </div>
                                                 )}
@@ -581,6 +591,36 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     <ClockDisplay language={localAppSettings.language} />
                                                 </div>
                                             </div>
+
+                                            <section className="rounded-2xl bg-background p-4 shadow-sm ring-1 ring-inset ring-border/70" aria-labelledby="quick-language-title">
+                                                <div className="mb-3 flex items-start gap-3">
+                                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
+                                                        <Languages className="h-4 w-4" />
+                                                    </span>
+                                                    <div>
+                                                        <h3 id="quick-language-title" className="text-sm font-semibold text-primary">{controlCopy.language}</h3>
+                                                        <p className="mt-0.5 text-xs leading-relaxed text-muted">{controlCopy.languageDescription}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={controlCopy.language}>
+                                                    {([['id', controlCopy.indonesian], ['en', controlCopy.english]] as const).map(([value, label]) => {
+                                                        const selected = normalizeAppLanguage(localAppSettings.language) === value;
+                                                        return (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                role="radio"
+                                                                aria-checked={selected}
+                                                                onClick={() => applyLanguage(value)}
+                                                                className={`flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${selected ? 'bg-indigo-600 text-white shadow-sm' : 'bg-surface-soft text-primary ring-1 ring-inset ring-border/60 hover:ring-indigo-500/30'}`}
+                                                            >
+                                                                <span className="leading-tight">{label}</span>
+                                                                {selected && <Check className="h-4 w-4 shrink-0" />}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </section>
 
                                             {/* Menu List */}
                                             <div className="space-y-2 lg:hidden">
@@ -639,9 +679,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 role="radio"
                                                                 aria-checked={selected}
                                                                 onClick={() => {
-                                                                    const settings = { ...localAppSettings, language: value };
-                                                                    setLocalAppSettings(settings);
-                                                                    setAppSettings(settings);
+                                                                    applyLanguage(value);
                                                                 }}
                                                                 className={`flex min-h-12 items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${selected ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' : 'border-border bg-background text-primary hover:border-indigo-500/35'}`}
                                                             >

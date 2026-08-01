@@ -16,6 +16,12 @@ export const contentSurface = {
   summaryPageShell: 'min-h-0 w-full min-w-0 max-w-full overflow-x-hidden overflow-y-visible pb-0',
   headerHero: 'mx-0 mt-3 mb-5 rounded-[28px] border border-border/80 bg-surface/88 p-5 pt-6 text-primary shadow-sm backdrop-blur-xl touch-pan-y sm:p-6 lg:mt-6 lg:rounded-[30px] lg:p-7',
   invertedHeaderHero: 'mx-0 mt-3 mb-5 rounded-[28px] border border-black/5 bg-white p-5 pt-6 text-black shadow-sm touch-pan-y sm:p-6 dark:bg-zinc-100 lg:mt-6 lg:rounded-[30px] lg:p-7',
+  workspaceTabList: 'mb-6 flex gap-1 overflow-x-auto rounded-2xl bg-surface-soft/75 p-1.5 ring-1 ring-inset ring-border/70 no-scrollbar',
+  workspaceTabButton: 'relative flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 sm:gap-2 sm:px-3 sm:text-sm',
+  workspaceTabIndicator: 'absolute inset-0 rounded-xl bg-surface shadow-sm ring-1 ring-inset ring-border/70',
+  workspaceHeaderTitle: 'text-xl font-semibold tracking-[-0.025em] text-primary sm:text-2xl',
+  workspaceMetricGrid: 'mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4',
+  workspaceMetric: 'min-w-0 rounded-2xl bg-surface-soft/75 px-3.5 py-3 ring-1 ring-inset ring-border/45 sm:px-4',
   // NDZ-007 #1: keep mobile gutters, but let desktop content align to the shared shell edge.
   contentPad: 'px-1 sm:px-2 lg:px-0',
   // NDZ-017: Summary owns the wider desktop dashboard rhythm; keep side context useful without starving the primary scan column.

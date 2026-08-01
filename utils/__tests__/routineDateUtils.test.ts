@@ -32,15 +32,16 @@ test('routine due dates catch up to the next scheduled day instead of staying in
 });
 
 test('routine catch-up keeps today active even when the scheduled time has already passed', () => {
+  const dueToday = new Date(2026, 4, 14, 9, 0, 0, 0);
   const today = advanceRoutineDueDateToTodayOrFuture(
-    new Date('2026-05-14T09:00:00.000Z'),
+    dueToday,
     'weekly',
     [1, 4],
     [],
     [],
-    new Date('2026-05-14T22:00:00.000Z'),
+    new Date(2026, 4, 14, 22, 0, 0, 0),
   );
-  assert.equal(today.toISOString(), '2026-05-14T09:00:00.000Z');
+  assert.equal(today.getTime(), dueToday.getTime());
 });
 
 test('legacy recurrence-day shopping routines also skip missed past dates', () => {

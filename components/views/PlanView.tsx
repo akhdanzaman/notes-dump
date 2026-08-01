@@ -126,6 +126,12 @@ const PlanView: React.FC<PlanViewProps> = ({
         noItems: 'No items', noTasks: 'No pending tasks for this period.', addTask: 'Add task', addRoutine: 'Add routine',
         emptyShopping: 'Your shopping list is empty.', addItem: 'Add item', savingGoals: 'Saving goals', addGoal: 'Add goal',
         noGoals: 'No saving goals yet.', createGoal: 'Create goal', addInvestment: 'Add investment', noInvestments: 'No investments tracked yet.',
+        tasksSubtitle: 'See what needs attention now and what can wait.', shoppingSubtitle: 'Keep planned purchases clear before they become expenses.',
+        goalsSubtitle: 'Track contributions and whether each goal is still on course.', loansSubtitle: 'Separate money owed to you from money you need to repay.',
+        loansHeading: 'Loans & receivables', receivable: 'To receive', payable: 'To repay', reminders: 'Reminders',
+        overdue: 'overdue', dueSoon: 'due soon', record: 'Record',
+        goalMilestones: 'Goal milestones', goalMilestonesHelper: 'Stay on track with your savings goals.', noMilestones: 'No milestones yet.',
+        completed: 'Completed', target: 'Target', noDueDate: 'Not set', statusOverdue: 'Past due', statusDueSoon: 'Due soon', statusPaid: 'Paid', statusActive: 'Active',
     } : {
         sections: 'Bagian Rencana', tasks: 'Tugas', shopping: 'Belanja', goals: 'Target', loans: 'Pinjaman',
         pending: 'Belum selesai', done: 'Selesai', routines: 'Rutinitas', shoppingList: 'Daftar belanja', urgent: 'Mendesak', routine: 'Rutin', normal: 'Lainnya',
@@ -133,6 +139,12 @@ const PlanView: React.FC<PlanViewProps> = ({
         noItems: 'Belum ada item', noTasks: 'Tidak ada tugas tertunda pada periode ini.', addTask: 'Tambah tugas', addRoutine: 'Tambah rutinitas',
         emptyShopping: 'Daftar belanja masih kosong.', addItem: 'Tambah item', savingGoals: 'Target tabungan', addGoal: 'Tambah target',
         noGoals: 'Belum ada target tabungan.', createGoal: 'Buat target', addInvestment: 'Tambah investasi', noInvestments: 'Belum ada investasi yang dipantau.',
+        tasksSubtitle: 'Lihat apa yang perlu ditangani sekarang dan apa yang bisa menunggu.', shoppingSubtitle: 'Jaga rencana belanja tetap jelas sebelum menjadi pengeluaran.',
+        goalsSubtitle: 'Pantau kontribusi dan apakah setiap target masih sesuai jalur.', loansSubtitle: 'Pisahkan uang yang akan diterima dari kewajiban yang perlu dibayar.',
+        loansHeading: 'Utang & piutang', receivable: 'Akan diterima', payable: 'Harus dibayar', reminders: 'Pengingat',
+        overdue: 'terlambat', dueSoon: 'segera jatuh tempo', record: 'Catat',
+        goalMilestones: 'Tahapan target', goalMilestonesHelper: 'Pantau kemajuan setiap target tabungan.', noMilestones: 'Belum ada tahapan target.',
+        completed: 'Selesai', target: 'Target', noDueDate: 'Belum ditentukan', statusOverdue: 'Lewat jatuh tempo', statusDueSoon: 'Segera jatuh tempo', statusPaid: 'Lunas', statusActive: 'Aktif',
     };
 
     // Data Preparation
@@ -334,14 +346,67 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [editInvestmentCurrentPrice, setEditInvestmentCurrentPrice] = useState('');
     const [editInvestmentPlatform, setEditInvestmentPlatform] = useState('');
 
-    const formatIdr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n || 0);
+    const formatIdr = (n: number) => appSettings.hideMoney
+        ? '••••'
+        : new Intl.NumberFormat(locale, { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n || 0);
+
+    const planTabs: Array<{
+        id: PlanSubTab;
+        label: string;
+        icon: React.ComponentType<{ className?: string }>;
+    }> = [
+        { id: 'tasks', label: planCopy.tasks, icon: CheckCircle2 },
+        { id: 'shopping', label: planCopy.shopping, icon: ShoppingCart },
+        { id: 'savings', label: planCopy.goals, icon: PiggyBank },
+        { id: 'loans', label: planCopy.loans, icon: HandCoins },
+    ];
+    const planTabOrder = planTabs.map(tab => tab.id);
+    const savedTotal = savings.reduce((total, goal) => total + (goal.meta.savedAmount || 0), 0);
+    const activePlanHeader = {
+        tasks: {
+            title: focusDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' }),
+            description: planCopy.tasksSubtitle,
+            metrics: [
+                { label: planCopy.pending, value: summary.todo, tone: 'text-primary' },
+                { label: planCopy.done, value: summary.done, tone: 'text-emerald-600 dark:text-emerald-300' },
+                { label: planCopy.routines, value: routines?.length || 0, tone: 'text-indigo-600 dark:text-indigo-300' },
+            ],
+        },
+        shopping: {
+            title: planCopy.shoppingList,
+            description: planCopy.shoppingSubtitle,
+            metrics: [
+                { label: planCopy.urgent, value: urgent.length, tone: 'text-[var(--finance-negative)]' },
+                { label: planCopy.routine, value: routine.length, tone: 'text-indigo-600 dark:text-indigo-300' },
+                { label: planCopy.normal, value: normal.length, tone: 'text-primary' },
+            ],
+        },
+        savings: {
+            title: planCopy.goalsHeading,
+            description: planCopy.goalsSubtitle,
+            metrics: [
+                { label: planCopy.goals, value: savings.length, tone: 'text-primary' },
+                { label: planCopy.investments, value: investments.length, tone: 'text-indigo-600 dark:text-indigo-300' },
+                { label: planCopy.saved, value: formatIdr(savedTotal), tone: 'text-emerald-600 dark:text-emerald-300' },
+            ],
+        },
+        loans: {
+            title: planCopy.loansHeading,
+            description: planCopy.loansSubtitle,
+            metrics: [
+                { label: planCopy.receivable, value: formatIdr(loanSummary.receivable), tone: 'text-emerald-600 dark:text-emerald-300' },
+                { label: planCopy.payable, value: formatIdr(loanSummary.payable), tone: 'text-[var(--finance-negative)]' },
+                { label: planCopy.reminders, value: loanSummary.overdueCount + loanSummary.dueSoonCount, tone: 'text-[var(--finance-warning)]' },
+            ],
+        },
+    }[planSubTab];
 
 
     const formatLoanDate = (value?: string) => {
-        if (!value) return 'Belum ditentukan';
+        if (!value) return planCopy.noDueDate;
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return 'Belum ditentukan';
-        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        if (Number.isNaN(date.getTime())) return planCopy.noDueDate;
+        return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
     const renderLoanAccountCard = (account: LoanAccount) => {
@@ -350,12 +415,12 @@ const PlanView: React.FC<PlanViewProps> = ({
             ? Math.min(100, (account.repaidAmount / account.originalAmount) * 100)
             : 100;
         const statusLabel = account.status === 'overdue'
-            ? 'Lewat jatuh tempo'
+            ? planCopy.statusOverdue
             : account.status === 'due_soon'
-                ? 'Segera jatuh tempo'
+                ? planCopy.statusDueSoon
                 : account.status === 'paid'
-                    ? 'Lunas'
-                    : 'Aktif';
+                    ? planCopy.statusPaid
+                    : planCopy.statusActive;
         const statusClass = account.status === 'overdue'
             ? 'bg-red-500/10 text-red-500'
             : account.status === 'due_soon'
@@ -760,8 +825,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                         <Sparkles className="h-4 w-4" />
                     </span>
                     <div>
-                        <h3 className="font-bold text-primary">Goal Milestones</h3>
-                        <p className="mt-1 text-xs text-muted">Stay on track with your savings goals.</p>
+                        <h3 className="font-semibold text-primary">{planCopy.goalMilestones}</h3>
+                        <p className="mt-1 text-xs text-muted">{planCopy.goalMilestonesHelper}</p>
                     </div>
                 </div>
 
@@ -781,21 +846,21 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         <div className="flex items-center gap-2">
                                             <h4 className="truncate text-sm font-bold text-primary">{goal.content}</h4>
                                             <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${completed ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                                                {completed ? 'Completed' : `${progress.toFixed(0)}%`}
+                                                {completed ? planCopy.completed : `${progress.toFixed(0)}%`}
                                             </span>
                                         </div>
                                         <div className="mt-2 text-sm font-bold text-primary">
                                             <span className={completed ? 'text-emerald-500' : 'text-indigo-500'}>{formatIdr(saved)}</span>
                                             <span className="text-muted"> / {formatIdr(target)}</span>
                                         </div>
-                                        <div className="mt-1 text-xs text-muted">Target: {goal.meta.date ? new Date(goal.meta.date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : '-'}</div>
+                                        <div className="mt-1 text-xs text-muted">{planCopy.target}: {goal.meta.date ? new Date(goal.meta.date).toLocaleDateString(locale, { month: 'short', year: 'numeric' }) : '-'}</div>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
                 ) : (
-                    <div className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">No milestones yet.</div>
+                    <div className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">{planCopy.noMilestones}</div>
                 )}
             </aside>
         );
@@ -1207,47 +1272,39 @@ const PlanView: React.FC<PlanViewProps> = ({
                     transition={{ duration: 0.2, ease: "linear" }}
                 >
                     <LayoutGroup id="plan-subtabs">
-                        <div data-plan-subtabs="true" className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border/70 bg-background/55 p-1 no-scrollbar" role="tablist" aria-label={planCopy.sections}>
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={planSubTab === 'tasks'}
-                                onClick={() => setPlanSubTab('tasks')}
-                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${planSubTab === 'tasks' ? 'text-primary' : 'text-muted hover:text-primary'}`}
-                            >
-                                {planSubTab === 'tasks' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                <CheckCircle2 className="relative z-10 w-4 h-4" /> <span className="relative z-10">{planCopy.tasks}</span>
-                            </button>
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={planSubTab === 'shopping'}
-                                onClick={() => setPlanSubTab('shopping')}
-                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${planSubTab === 'shopping' ? 'text-primary' : 'text-muted hover:text-primary'}`}
-                            >
-                                {planSubTab === 'shopping' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                <ShoppingCart className="relative z-10 w-4 h-4" /> <span className="relative z-10">{planCopy.shopping}</span>
-                            </button>
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={planSubTab === 'savings'}
-                                onClick={() => setPlanSubTab('savings')}
-                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${planSubTab === 'savings' ? 'text-primary' : 'text-muted hover:text-primary'}`}
-                            >
-                                {planSubTab === 'savings' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                <PiggyBank className="relative z-10 w-4 h-4" /> <span className="relative z-10">{planCopy.goals}</span>
-                            </button>
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={planSubTab === 'loans'}
-                                onClick={() => setPlanSubTab('loans')}
-                                className={`relative flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${planSubTab === 'loans' ? 'text-primary' : 'text-muted hover:text-primary'}`}
-                            >
-                                {planSubTab === 'loans' && <ActiveIndicator className="absolute inset-0 rounded-lg bg-surface shadow-sm ring-1 ring-inset ring-border/70" />}
-                                <HandCoins className="relative z-10 w-4 h-4" /> <span className="relative z-10">{planCopy.loans}</span>
-                            </button>
+                        <div data-plan-subtabs="true" className={contentSurface.workspaceTabList} role="tablist" aria-label={planCopy.sections}>
+                            {planTabs.map(tab => {
+                                const isActive = planSubTab === tab.id;
+                                const Icon = tab.icon;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        id={`plan-tab-${tab.id}`}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={isActive}
+                                        aria-controls={`plan-panel-${tab.id}`}
+                                        tabIndex={isActive ? 0 : -1}
+                                        onClick={() => setPlanSubTab(tab.id)}
+                                        onKeyDown={event => {
+                                            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                                            event.preventDefault();
+                                            const direction = event.key === 'ArrowRight' ? 1 : -1;
+                                            const currentIndex = planTabOrder.indexOf(tab.id);
+                                            const nextTab = planTabOrder[(currentIndex + direction + planTabOrder.length) % planTabOrder.length];
+                                            setPlanSubTab(nextTab);
+                                            window.requestAnimationFrame(() => document.getElementById(`plan-tab-${nextTab}`)?.focus());
+                                        }}
+                                        className={`${contentSurface.workspaceTabButton} shrink-0 sm:flex-1 ${isActive ? 'text-primary' : 'text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]'}`}
+                                    >
+                                        {isActive && <ActiveIndicator className={contentSurface.workspaceTabIndicator} />}
+                                        <span className="relative z-10 flex min-w-0 items-center gap-1 sm:gap-2">
+                                            <Icon className="h-4 w-4 shrink-0" />
+                                            <span className="truncate">{tab.label}</span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </LayoutGroup>
 
@@ -1259,92 +1316,36 @@ const PlanView: React.FC<PlanViewProps> = ({
                             exit={{ opacity: 0, x: -10 }}
                             transition={{ duration: 0.2 }}
                         >
-                            {planSubTab === 'tasks' && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">
-                                                {focusDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
-                                            </h2>
-                                            <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span>{summary.todo} {planCopy.pending}</span>
-                                                <span>•</span>
-                                                <span className="text-emerald-500">{summary.done} {planCopy.done}</span>
-                                                <span>•</span>
-                                                <span className="text-indigo-500">{routines?.length || 0} {planCopy.routines}</span>
-                                            </p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => changeMonth(-1)} className="rounded-xl border border-border/70 bg-background/55 p-2 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
-                                                <ChevronLeft className="w-5 h-5" />
-                                            </button>
-                                            <button onClick={() => changeMonth(1)} className="rounded-xl border border-border/70 bg-background/55 p-2 text-muted transition-colors hover:border-indigo-500/25 hover:text-primary">
-                                                <ChevronRight className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <h2 className={contentSurface.workspaceHeaderTitle}>{activePlanHeader.title}</h2>
+                                    <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">{activePlanHeader.description}</p>
                                 </div>
-                            )}
-                            {planSubTab === 'shopping' && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">{planCopy.shoppingList}</h2>
-                                            <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span className="text-red-500">{urgent.length} {planCopy.urgent}</span>
-                                                <span>•</span>
-                                                <span className="text-indigo-500">{routine.length} {planCopy.routine}</span>
-                                                <span>•</span>
-                                                <span>{normal.length} {planCopy.normal}</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {planSubTab === 'savings' && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">{planCopy.goalsHeading}</h2>
-                                            <p className="text-sm text-muted font-medium flex items-center gap-2 mt-1">
-                                                <span>{savings.length} {planCopy.goals}</span>
-                                                <span>•</span>
-                                                <span>{investments.length} {planCopy.investments}</span>
-                                                <span>•</span>
-                                                <span className="text-emerald-500">
-                                                    {new Intl.NumberFormat(locale, { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(savings.reduce((acc, curr) => acc + (curr.meta.savedAmount || 0), 0))} {planCopy.saved}
-                                                </span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {planSubTab === 'loans' && (
-                                <div>
-                                    <div className="flex items-start justify-between gap-4 mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold tracking-tight">Utang & Piutang</h2>
-                                            <p className="text-sm text-muted font-medium flex flex-wrap items-center gap-2 mt-1">
-                                                <span className="text-emerald-500">Piutang {formatIdr(loanSummary.receivable)}</span>
-                                                <span>•</span>
-                                                <span className="text-orange-500">Utang {formatIdr(loanSummary.payable)}</span>
-                                                {(loanSummary.overdueCount > 0 || loanSummary.dueSoonCount > 0) && <span>•</span>}
-                                                {loanSummary.overdueCount > 0 && <span className="text-red-500">{loanSummary.overdueCount} terlambat</span>}
-                                                {loanSummary.dueSoonCount > 0 && <span className="text-amber-500">{loanSummary.dueSoonCount} segera jatuh tempo</span>}
-                                            </p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleOpenAddLoan()}
-                                            className="flex shrink-0 items-center gap-2 rounded-2xl bg-amber-500/10 px-4 py-2.5 text-xs font-bold text-amber-600 transition-colors hover:bg-amber-500/20"
-                                        >
-                                            <Plus className="h-4 w-4" /> Catat
+                                {planSubTab === 'tasks' && (
+                                    <div className="flex shrink-0 gap-2">
+                                        <button onClick={() => changeMonth(-1)} aria-label={isEnglish ? 'Previous month' : 'Bulan sebelumnya'} className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-soft text-muted ring-1 ring-inset ring-border/60 transition-colors hover:text-primary">
+                                            <ChevronLeft className="h-5 w-5" />
+                                        </button>
+                                        <button onClick={() => changeMonth(1)} aria-label={isEnglish ? 'Next month' : 'Bulan berikutnya'} className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-soft text-muted ring-1 ring-inset ring-border/60 transition-colors hover:text-primary">
+                                            <ChevronRight className="h-5 w-5" />
                                         </button>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                                {planSubTab === 'loans' && (
+                                    <button type="button" onClick={() => handleOpenAddLoan()} className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500">
+                                        <Plus className="h-4 w-4" /> <span className="hidden sm:inline">{planCopy.record}</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="mt-5 grid grid-cols-3 gap-2" aria-label={activePlanHeader.title}>
+                                {activePlanHeader.metrics.map(metric => (
+                                    <div key={metric.label} className={contentSurface.workspaceMetric}>
+                                        <div className="min-h-8 text-[11px] font-medium leading-tight text-muted sm:min-h-0">{metric.label}</div>
+                                        <div className={`mt-1 truncate text-lg font-semibold tabular-nums sm:text-xl ${metric.tone}`}>{metric.value}</div>
+                                    </div>
+                                ))}
+                            </div>
                         </motion.div>
                     </AnimatePresence>
                 </motion.div>
@@ -1368,8 +1369,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                 >
                 {/* VIEW: Tasks */}
                 <motion.div
+                    id="plan-panel-tasks"
+                    role="tabpanel"
+                    aria-labelledby="plan-tab-tasks"
+                    aria-hidden={planSubTab !== 'tasks'}
+                    inert={planSubTab !== 'tasks'}
                     initial={false}
-                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad} ${planSubTab !== 'tasks' ? 'pointer-events-none' : ''}`}
                 >
                     <div className="space-y-8">
                         {summary.todo > 0 || rootRoutines.length > 0 ? (
@@ -1487,8 +1493,13 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                 {/* VIEW: Shopping */}
                 <motion.div
+                    id="plan-panel-shopping"
+                    role="tabpanel"
+                    aria-labelledby="plan-tab-shopping"
+                    aria-hidden={planSubTab !== 'shopping'}
+                    inert={planSubTab !== 'shopping'}
                     initial={false}
-                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad} ${planSubTab !== 'shopping' ? 'pointer-events-none' : ''}`}
                 >
                     <div className={contentSurface.workflowGrid}>
                         <section className={contentSurface.workflowPanel}>
@@ -1571,8 +1582,13 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                 {/* VIEW: Savings */}
                 <motion.div
+                    id="plan-panel-savings"
+                    role="tabpanel"
+                    aria-labelledby="plan-tab-savings"
+                    aria-hidden={planSubTab !== 'savings'}
+                    inert={planSubTab !== 'savings'}
                     initial={false}
-                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad} ${planSubTab !== 'savings' ? 'pointer-events-none' : ''}`}
                 >
                     <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_27rem] lg:items-start lg:gap-6 lg:space-y-0">
                         <div className="space-y-8">
@@ -1648,8 +1664,13 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                 {/* VIEW: Loans */}
                 <motion.div
+                    id="plan-panel-loans"
+                    role="tabpanel"
+                    aria-labelledby="plan-tab-loans"
+                    aria-hidden={planSubTab !== 'loans'}
+                    inert={planSubTab !== 'loans'}
                     initial={false}
-                    className={`w-full flex-shrink-0 ${contentSurface.contentPad}`}
+                    className={`w-full flex-shrink-0 ${contentSurface.contentPad} ${planSubTab !== 'loans' ? 'pointer-events-none' : ''}`}
                 >
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

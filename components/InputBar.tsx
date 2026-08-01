@@ -330,7 +330,8 @@ const InputBar: React.FC<InputBarProps> = ({
                 <AnimatePresence initial={false}>
                   {showSuggestions && (
                   <motion.div
-                    className="flex min-w-0 flex-1 snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-1 pb-1 pr-1 no-scrollbar pointer-events-auto"
+                    data-quick-input-strip="true"
+                    className="flex min-w-0 flex-1 snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain scroll-px-1 pb-1 pr-1 no-scrollbar pointer-events-auto"
                     variants={staggerContainerVariants}
                     initial="hidden"
                     animate="visible"
@@ -344,10 +345,12 @@ const InputBar: React.FC<InputBarProps> = ({
                           e.preventDefault();
                         }}
                         onClick={() => addTemplate(item.value)}
-                        className="flex min-h-11 max-w-[10.5rem] shrink-0 snap-start items-center gap-2 rounded-full bg-surface/96 px-3.5 py-2 text-xs font-semibold text-primary shadow-sm ring-1 ring-inset ring-border/70 backdrop-blur-xl transition-colors hover:bg-surface hover:ring-indigo-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 active:scale-[0.98]"
+                        aria-label={item.label}
+                        title={item.label}
+                        className="flex min-h-12 w-[10.5rem] max-w-[calc(100vw-4.5rem)] shrink-0 snap-start items-center justify-start gap-2 overflow-hidden rounded-2xl bg-surface/96 px-3 py-2 text-xs font-semibold text-primary shadow-sm ring-1 ring-inset ring-border/70 backdrop-blur-xl transition-colors hover:bg-surface hover:ring-indigo-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 active:scale-[0.98] sm:w-auto sm:max-w-none sm:rounded-full sm:px-3.5"
                       >
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center">{item.icon}</span>
-                        <span className="min-w-0 truncate">{item.label}</span>
+                        <span data-quick-input-icon="true" aria-hidden="true" className="flex h-5 w-5 shrink-0 items-center justify-center">{item.icon}</span>
+                        <span className="min-w-0 flex-1 text-left leading-tight sm:whitespace-nowrap">{item.label}</span>
                       </motion.button>
                     ))}
                   </motion.div>
