@@ -121,3 +121,71 @@ test('daily money drivers use structured categories before names and exclude tra
   assert.match(summary.walletMovementLine, /BCA/);
   assert.match(summary.walletMovementLine, /GoPay/);
 });
+
+test('data quality catches audit amount, To_Wallet, casing, and model-prose contamination examples', () => {
+  const items: BrainDumpItem[] = [
+    makeFinance('zero-expense', {
+      content: 'jajan opak',
+      meta: { financeType: 'expense', amount: 0, paymentMethod: 'bCa', budgetCategory: 'fOoD', toWallet: 'gopay' },
+    }),
+    makeFinance('leaked-transfer', {
+      content: 'transfer from bca to bni',
+      meta: {
+        financeType: 'transfer',
+        amount: 1_000_000,
+        paymentMethod: 'bca',
+        toWallet: 'bni shrewdness amount will be 1000000.0 with tags transfer, bank.',
+        merchant: '{"merchant":"not a production value"}',
+      },
+    }),
+  ];
+
+  const reasons = buildDataQualityIssues(items, wallets, budgetConfig).map(issue => issue.reason).join('\n');
+
+  assert.match(reasons, /Amount must be greater than zero/);
+  assert.match(reasons, /To_Wallet is populated for non-transfer/);
+  assert.match(reasons, /Wallet 'bCa'.*case normalization/);
+  assert.match(reasons, /Category 'fOoD'.*case normalization/);
+  assert.match(reasons, /To_Wallet contains overlong\/model\/prompt prose/);
+  assert.match(reasons, /Merchant contains overlong\/model\/prompt prose/);
+});
+
+test('data quality keeps different-ID semantic duplicates as manual review issues', () => {
+  const first = makeFinance('tx-a', {
+    content: 'Send laundry',
+    created_at: '2026-05-04T03:00:00.100Z',
+    completed_at: '2026-05-04T03:00:00.100Z',
+    meta: { date: '2026-05-04T03:00:00.100Z', amount: 25_000, paymentMethod: 'bca', budgetCategory: 'food' },
+  });
+  const second = makeFinance('tx-b', {
+    content: ' send  laundry ',
+    created_at: '2026-05-04T03:00:00.900Z',
+    completed_at: '2026-05-04T03:00:00.900Z',
+    meta: { date: '2026-05-04T03:00:00.900Z', amount: 25_000, paymentMethod: 'bca', budgetCategory: 'food' },
+  });
+
+  const issues = buildDataQualityIssues([first, second], wallets, budgetConfig);
+  const duplicateIssue = issues.find(issue => /Possible duplicate content has different IDs/.test(issue.reason));
+
+  assert.ok(duplicateIssue);
+  assert.match(duplicateIssue.reason, /rows were retained for manual review/);
+});
+
+test('data quality surfaces bounded raw values retained by persistence quarantine', () => {
+  const quarantined = makeFinance('quarantined-row', {
+    meta: {
+      amount: 50_000,
+      paymentMethod: 'bca',
+      budgetCategory: 'food',
+      dataQualityQuarantine: [{
+        field: 'meta.toWallet',
+        rawValue: 'Cash立場: I am ready to output the JSON.',
+        reason: 'model_or_prompt_leakage',
+      }],
+    },
+  });
+
+  const reasons = buildDataQualityIssues([quarantined], wallets, budgetConfig).map(issue => issue.reason).join('\n');
+  assert.match(reasons, /meta\.toWallet is quarantined/);
+  assert.match(reasons, /I am ready to output the JSON/);
+});

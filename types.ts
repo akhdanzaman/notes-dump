@@ -13,6 +13,20 @@ export type ShoppingCategory = 'urgent' | 'not_urgent' | 'routine' | 'saving' | 
 export type InvestmentAssetType = 'gold' | 'stock' | 'mutual_fund' | 'crypto' | 'bond' | 'deposit' | 'other';
 export type LoanTransactionKind = 'loan_out' | 'loan_in' | 'loan_repayment_in' | 'loan_repayment_out';
 export type FinanceType = 'expense' | 'income' | 'transfer' | 'saving' | 'saving_withdrawal' | LoanTransactionKind | 'achieved_goal';
+export type ParserQuarantineReason =
+  | 'invalid_reference'
+  | 'invalid_type'
+  | 'model_or_prompt_leakage'
+  | 'non_positive_amount'
+  | 'not_allowed_for_transaction_type'
+  | 'too_long';
+
+export interface ParserQuarantinedField {
+  field: string;
+  rawValue: string | number | boolean | null;
+  reason: ParserQuarantineReason;
+  truncated?: boolean;
+}
 export type Priority = 'low' | 'normal' | 'high';
 export type DeepWorkCompletionMode = 'manual' | 'all_subtasks' | 'final_output_check';
 export type DeepWorkStatus = 'suggested' | 'accepted' | 'active' | 'dismissed' | 'done';
@@ -356,6 +370,7 @@ export interface ItemMeta {
   parserNeedsReview?: boolean;
   parserReviewReason?: string;
   parserTaskId?: string;
+  dataQualityQuarantine?: ParserQuarantinedField[];
 }
 
 export interface BrainDumpItem {
@@ -941,4 +956,5 @@ export interface ParserResultV2 {
   entityRefs?: ParserEntityRefs;
   payload?: ParserPayloadV2;
   canonicalReview?: CanonicalReviewSuggestion[];
+  quarantinedFields?: ParserQuarantinedField[];
 }

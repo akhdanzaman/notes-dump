@@ -228,6 +228,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,
+        isExportingExcel,
         handleExportExcel,
         handleExportJSON,
         handleAddRule,
@@ -1342,11 +1343,16 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Ekspor & impor</h3>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <button 
-                                                        onClick={handleExportExcel}
-                                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-background border border-border rounded-2xl hover:bg-muted/5 hover:border-primary/30 transition-all"
+                                                        onClick={async () => { await handleExportExcel(); }}
+                                                        disabled={isExportingExcel}
+                                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-background border border-border rounded-2xl hover:bg-muted/5 hover:border-primary/30 transition-all disabled:cursor-wait disabled:opacity-60"
                                                     >
-                                                        <Download className="w-6 h-6 text-emerald-500" />
-                                                        <span className="text-xs font-medium text-primary">Ekspor Excel</span>
+                                                        {isExportingExcel
+                                                            ? <RefreshCw className="w-6 h-6 text-emerald-500 animate-spin" />
+                                                            : <Download className="w-6 h-6 text-emerald-500" />}
+                                                        <span className="text-xs font-medium text-primary">
+                                                            {isExportingExcel ? 'Membuat Excel…' : 'Ekspor Excel'}
+                                                        </span>
                                                     </button>
                                                     <button 
                                                         onClick={handleExportJSON}

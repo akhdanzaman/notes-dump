@@ -14,6 +14,7 @@ import {
   Wallet,
 } from '../types';
 import { enrichFinanceMetaFromText } from './parserSignalService';
+import { sanitizeParserResultsBeforeResolve } from './parserFieldValidator';
 
 export type LocalFinanceFastPathKind = 'expense' | 'income' | 'transfer' | 'saving' | 'saving_withdrawal' | LoanTransactionKind;
 
@@ -528,13 +529,6 @@ export const parseLocalFinanceCommand = (text: string, options: LocalFinancePars
 
   if ((trigger.kind === 'expense' || trigger.kind === 'income') && !amount && !roles.fromWallet) return null;
 
-  // Ensure paymentMethod is never empty for expense/income by defaulting to first available wallet
-  if ((trigger.kind === 'expense' || trigger.kind === 'income') && !roles.fromWallet && (options.availableWallets || []).length > 0) {
-    const defaultWallet = options.availableWallets![0];
-    roles.fromWallet = { wallet: defaultWallet, alias: defaultWallet.name, raw: defaultWallet.name, index: 0, end: 0 };
-    missingFields.splice(missingFields.indexOf('paymentMethod'), 1);
-  }
-
   let result: ParserResultV2;
   if (trigger.kind === 'transfer') {
     const confidence = confidenceFromMissing(missingFields);
@@ -588,5 +582,10 @@ export const parseLocalFinanceCommand = (text: string, options: LocalFinancePars
 
 export const parseLocalFinanceResults = (text: string, options: LocalFinanceParseOptions = {}): ParserResultV2[] | null => {
   const parsed = parseLocalFinanceCommand(text, options);
-  return parsed ? [parsed.result] : null;
+  return parsed
+    ? sanitizeParserResultsBeforeResolve([parsed.result], {
+        availableWallets: options.availableWallets || [],
+        availableBudgetRules: options.availableBudgetRules || [],
+      })
+    : null;
 };

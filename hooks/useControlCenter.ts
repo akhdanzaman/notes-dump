@@ -43,6 +43,7 @@ export const useControlCenter = ({
     const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect' | 'notifications' | 'security' | 'advanced' | 'changelog'>('main');
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
     const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saved'>('idle');
+    const [isExportingExcel, setIsExportingExcel] = useState(false);
 
     useEffect(() => {
         if (isOpen && activeTab !== 'main') {
@@ -481,16 +482,26 @@ export const useControlCenter = ({
         }
     };
 
-    const handleExportExcel = () => {
-        exportToExcel(
-            allItems, 
-            allSkills, 
-            allWallets, 
-            { monthlyIncome, rules: budgetRules }, 
-            monthlyThemes, 
-            localAppSettings,
-            monthlyThemeImages
-        );
+    const handleExportExcel = async () => {
+        if (isExportingExcel) return;
+        setIsExportingExcel(true);
+        try {
+            await exportToExcel(
+                allItems,
+                allSkills,
+                allWallets,
+                { monthlyIncome, rules: budgetRules },
+                monthlyThemes,
+                localAppSettings,
+                monthlyThemeImages
+            );
+            notifyUser('Ekspor Excel siap diunduh.', 'success');
+        } catch (error) {
+            console.error('Failed to export Excel workbook', error);
+            notifyUser('Ekspor Excel gagal. Silakan coba lagi.', 'error');
+        } finally {
+            setIsExportingExcel(false);
+        }
     };
 
     const handleExportJSON = () => {
@@ -572,6 +583,7 @@ export const useControlCenter = ({
         handleConnectSpreadsheet,
         handleDisconnectSpreadsheet,
         handleSave,
+        isExportingExcel,
         handleExportExcel,
         handleExportJSON,
         handleAddRule,

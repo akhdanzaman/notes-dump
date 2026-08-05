@@ -4,6 +4,7 @@ import { ItemType, BrainDumpItem } from '../types';
 import { getLocalISOString } from '../utils/selectors/dateUtils';
 import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
+import { sanitizeLegacyParsedItems } from './parserFieldValidator';
 
 export { getGeminiKey, saveGeminiKey, DEFAULT_FLASH_MODEL } from './aiService';
 
@@ -223,7 +224,7 @@ export const classifyText = async (
     const parsed = parseJsonResponse<any[]>(response.text, []);
     const resultsArray = Array.isArray(parsed) ? parsed : [parsed];
 
-    return resultsArray.map((result: any) => {
+    const classified = resultsArray.map((result: any) => {
       let matchedType = ItemType.NOTE;
       const typeStr = result?.type?.toUpperCase();
       if (Object.values(ItemType).includes(typeStr as ItemType)) {
@@ -255,6 +256,11 @@ export const classifyText = async (
         content,
         meta
       };
+    });
+
+    return sanitizeLegacyParsedItems(classified, {
+      availableWallets,
+      availableBudgetRules,
     });
 
   } catch (error: any) {

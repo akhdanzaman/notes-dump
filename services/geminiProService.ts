@@ -33,6 +33,7 @@ import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAU
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
 import { sanitizeShoppingLineItems } from '../utils/shoppingLineItems';
 import { parseLocalFinanceResults } from './localFinanceParser';
+import { sanitizeParserResultsBeforeResolve } from './parserFieldValidator';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -1019,13 +1020,6 @@ export function resolveAndValidateResults(stage2Results: ParserResultV2[], ctx: 
       if (meta.paymentMethod) {
         const walletId = findClosestMatch(meta.paymentMethod, ctx.availableWallets);
         if (walletId) meta.paymentMethod = walletId;
-      } else if (
-        ctx.availableWallets.length > 0 &&
-        (itemType === 'FINANCE' || itemType === 'SHOPPING') &&
-        (meta.amount || 0) > 0
-      ) {
-        // Always assign a wallet for money items; default to first available
-        meta.paymentMethod = ctx.availableWallets[0].id;
       }
       if (meta.toWallet) {
         const walletId = findClosestMatch(meta.toWallet, ctx.availableWallets);
@@ -1533,8 +1527,9 @@ export const parsePro = async (
     const stage1 = await parseStage1(ai, activeModel, text, ctx);
     onProgress?.('stage2');
     const stage2 = await parseStage2(ai, activeModel, text, stage1, ctx, customPrompt);
-    const resolved = resolveAndValidateResults(stage2, ctx, text);
-    return resolved;
+    const sanitizedStage2 = sanitizeParserResultsBeforeResolve(stage2, ctx);
+    const resolved = resolveAndValidateResults(sanitizedStage2, ctx, text);
+    return sanitizeParserResultsBeforeResolve(resolved, ctx);
   } catch (error: any) {
     const status = error?.status || error?.response?.status;
 

@@ -1,6 +1,8 @@
 import { BrainDumpItem, BudgetConfig, ItemType, Wallet } from '../types';
 import { getCanonicalMetaValue, getCanonicalOrRawItemValue } from './canonicalization/accessors';
 import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
+import { findSemanticDuplicateReviewCandidates } from './itemDedupe';
+import { inspectStructuredFinanceField, normalizeReferenceKey, referenceMatch, StructuredFinanceField } from './structuredFieldValidation';
 import { getTransactionBudgetAllocations } from './transactionLineItems';
 
 export type DataQualitySeverity = 'critical' | 'warning' | 'info';
@@ -58,23 +60,47 @@ const getWalletKey = (item: BrainDumpItem) => getCanonicalOrRawItemValue(item, '
 
 const getWalletLabel = (walletKey: string, wallets: Wallet[]) => {
   if (!walletKey) return 'Unknown wallet';
-  return wallets.find(wallet => wallet.id === walletKey || wallet.name === walletKey)?.name || walletKey;
+  return referenceMatch(walletKey, wallets)?.name || walletKey;
 };
 
 const getCategoryLabel = (categoryKey: string | undefined, budgetConfig: BudgetConfig) => {
   if (!categoryKey) return '';
-  return budgetConfig.rules.find(rule => rule.id === categoryKey || rule.name === categoryKey)?.name || categoryKey;
+  return referenceMatch(categoryKey, budgetConfig.rules)?.name || categoryKey;
 };
 
 const hasKnownWallet = (walletKey: string | undefined, wallets: Wallet[]) => {
   if (!walletKey) return false;
-  return wallets.some(wallet => wallet.id === walletKey || wallet.name === walletKey);
+  return Boolean(referenceMatch(walletKey, wallets));
 };
 
 const hasKnownBudgetCategory = (categoryKey: string | undefined, budgetConfig: BudgetConfig) => {
   if (!categoryKey) return false;
-  return budgetConfig.rules.some(rule => rule.id === categoryKey || rule.name === categoryKey);
+  return Boolean(referenceMatch(categoryKey, budgetConfig.rules));
 };
+
+const hasReferenceCasingMismatch = (
+  value: string | undefined,
+  reference: { id: string; name: string } | undefined,
+) => {
+  if (!value || !reference) return false;
+  const normalized = normalizeReferenceKey(value);
+  const matches = normalized === normalizeReferenceKey(reference.id)
+    || normalized === normalizeReferenceKey(reference.name);
+  return matches && value !== reference.id && value !== reference.name;
+};
+
+const auditValuePreview = (value: unknown) => {
+  const normalized = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : String(value ?? '');
+  return normalized.length > 100 ? `${normalized.slice(0, 100)}…` : normalized;
+};
+
+const normalFinanceType = (financeType: string | undefined) => (
+  !financeType || financeType === 'expense' || financeType === 'income' || financeType === 'transfer'
+);
+
+const walletTransferFinanceType = (financeType: string | undefined) => (
+  financeType === 'transfer' || financeType === 'saving' || financeType === 'saving_withdrawal'
+);
 
 const isExpenseFinanceType = (financeType: string | undefined) => (
   !financeType || financeType === 'expense' || financeType === 'loan_out'
@@ -110,26 +136,75 @@ export const buildDataQualityIssues = (
   budgetConfig: BudgetConfig
 ): DataQualityIssue[] => {
   const issues: DataQualityIssue[] = [];
-  const idCounts = items.reduce<Record<string, number>>((acc, item) => {
-    acc[item.id] = (acc[item.id] || 0) + 1;
-    return acc;
-  }, {});
+  const idGroups = items.reduce<Map<string, BrainDumpItem[]>>((groups, item) => {
+    const normalizedId = normalizeReferenceKey(item.id);
+    if (!normalizedId) return groups;
+    const group = groups.get(normalizedId) || [];
+    group.push(item);
+    groups.set(normalizedId, group);
+    return groups;
+  }, new Map());
 
-  Object.entries(idCounts)
-    .filter(([, count]) => count > 1)
-    .forEach(([id, count]) => {
+  items.filter(item => !normalizeReferenceKey(item.id)).forEach(item => {
+    issues.push({
+      severity: 'critical',
+      itemId: '',
+      sheet: 'All editable tabs',
+      reason: `Item '${auditValuePreview(item.content)}' has no ID, so it cannot be updated or deduplicated safely.`,
+      suggestedFix: 'Assign a stable unique ID before the next spreadsheet sync.',
+    });
+  });
+
+  Array.from(idGroups.values())
+    .filter(group => group.length > 1)
+    .forEach(group => {
       issues.push({
         severity: 'critical',
-        itemId: id,
+        itemId: group[0].id,
         sheet: 'All editable tabs',
-        reason: `Duplicate item ID appears ${count} times; spreadsheet edits may update the wrong item.`,
+        reason: `Duplicate item ID appears ${group.length} times; spreadsheet edits may update the wrong item.`,
         suggestedFix: 'Keep the real row, delete/recreate accidental duplicates in the editable source tab, then sync again.',
       });
     });
 
+  findSemanticDuplicateReviewCandidates(items).forEach(candidate => {
+    issues.push({
+      severity: 'warning',
+      itemId: candidate.itemIds.join(', '),
+      sheet: candidate.itemType === ItemType.FINANCE ? 'Transactions' : 'All editable tabs',
+      reason: `Possible duplicate content has different IDs (${candidate.itemIds.join(', ')}); rows were retained for manual review.`,
+      suggestedFix: 'Review the rows together. Delete one only after confirming they represent the same real-world item.',
+    });
+  });
+
   items.filter(isEditableTransactionRow).forEach(item => {
     const walletKey = getWalletKey(item);
     const sheet = item.type === ItemType.SHOPPING ? 'Shopping / Transactions' : 'Transactions';
+    const financeType = item.meta.financeType;
+
+    if (item.type === ItemType.FINANCE && normalFinanceType(financeType)) {
+      const amount = Number(item.meta.amount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        issues.push({
+          severity: 'critical',
+          itemId: item.id,
+          sheet,
+          reason: `${financeType || 'expense'} transaction Amount must be greater than zero; found '${auditValuePreview(item.meta.amount)}'.`,
+          suggestedFix: 'Enter the real positive transaction amount, or move the row to review if the amount is unknown.',
+        });
+      }
+    }
+
+    const walletInspection = inspectStructuredFinanceField('paymentMethod', walletKey);
+    if (walletKey && walletInspection.rejectionReason) {
+      issues.push({
+        severity: 'critical',
+        itemId: item.id,
+        sheet,
+        reason: `Wallet contains overlong/model/prompt prose: '${auditValuePreview(walletKey)}'.`,
+        suggestedFix: 'Move the raw value to quarantine and use only a registered wallet ID/name in Wallet.',
+      });
+    }
 
     if (!walletKey) {
       issues.push({
@@ -139,7 +214,7 @@ export const buildDataQualityIssues = (
         reason: 'Transaction has no paymentMethod/wallet, so wallet movement cannot be trusted.',
         suggestedFix: 'Set the Wallet column to one of the registered Wallets Config names/IDs.',
       });
-    } else if (wallets.length > 0 && !hasKnownWallet(walletKey, wallets)) {
+    } else if (!walletInspection.rejectionReason && wallets.length > 0 && !hasKnownWallet(walletKey, wallets)) {
       issues.push({
         severity: 'warning',
         itemId: item.id,
@@ -147,9 +222,30 @@ export const buildDataQualityIssues = (
         reason: `Transaction wallet '${walletKey}' is not in Wallets Config.`,
         suggestedFix: 'Use an existing Wallets Config ID/name, or add the missing wallet in Wallets Config.',
       });
+    } else if (!walletInspection.rejectionReason) {
+      const wallet = referenceMatch(walletKey, wallets);
+      if (hasReferenceCasingMismatch(walletKey, wallet)) {
+        issues.push({
+          severity: 'info',
+          itemId: item.id,
+          sheet,
+          reason: `Wallet '${walletKey}' matches '${wallet?.name}' only after case normalization.`,
+          suggestedFix: `Replace it with the canonical wallet ID '${wallet?.id}'.`,
+        });
+      }
     }
 
-    if (item.type === ItemType.FINANCE && item.meta.financeType === 'transfer') {
+    if (item.meta.toWallet && !walletTransferFinanceType(financeType)) {
+      issues.push({
+        severity: 'critical',
+        itemId: item.id,
+        sheet,
+        reason: `To_Wallet is populated for non-transfer financeType '${financeType || 'expense'}'.`,
+        suggestedFix: 'Clear To_Wallet; destination wallets belong only to wallet-transfer flows.',
+      });
+    }
+
+    if (item.type === ItemType.FINANCE && financeType === 'transfer') {
       if (!item.meta.toWallet) {
         issues.push({
           severity: 'critical',
@@ -158,6 +254,19 @@ export const buildDataQualityIssues = (
           reason: 'Transfer is missing To_Wallet, so only the outgoing side can be reconciled.',
           suggestedFix: 'Fill To_Wallet with the destination wallet ID/name from Wallets Config.',
         });
+      }
+    }
+
+    if (item.meta.toWallet) {
+      const toWalletInspection = inspectStructuredFinanceField('toWallet', item.meta.toWallet);
+      if (toWalletInspection.rejectionReason) {
+        issues.push({
+          severity: 'critical',
+          itemId: item.id,
+          sheet: 'Transactions',
+          reason: `To_Wallet contains overlong/model/prompt prose: '${auditValuePreview(item.meta.toWallet)}'.`,
+          suggestedFix: 'Move the raw value to quarantine and use only a registered destination wallet ID/name.',
+        });
       } else if (wallets.length > 0 && !hasKnownWallet(item.meta.toWallet, wallets)) {
         issues.push({
           severity: 'warning',
@@ -165,6 +274,51 @@ export const buildDataQualityIssues = (
           sheet: 'Transactions',
           reason: `Transfer destination wallet '${item.meta.toWallet}' is not in Wallets Config.`,
           suggestedFix: 'Use an existing destination wallet ID/name, or add it in Wallets Config before syncing.',
+        });
+      } else {
+        const destination = referenceMatch(item.meta.toWallet, wallets);
+        if (hasReferenceCasingMismatch(item.meta.toWallet, destination)) {
+          issues.push({
+            severity: 'info',
+            itemId: item.id,
+            sheet: 'Transactions',
+            reason: `To_Wallet '${item.meta.toWallet}' matches '${destination?.name}' only after case normalization.`,
+            suggestedFix: `Replace it with the canonical wallet ID '${destination?.id}'.`,
+          });
+        }
+      }
+    }
+
+    const taxonomyFields: Array<{ field: StructuredFinanceField; label: string }> = [
+      { field: 'budgetCategory', label: 'Category' },
+      { field: 'commodity', label: 'Commodity' },
+      { field: 'subcommodity', label: 'Subcommodity' },
+      { field: 'merchant', label: 'Merchant' },
+    ];
+    taxonomyFields.forEach(({ field, label }) => {
+      const value = item.meta[field];
+      if (value === undefined) return;
+      const inspection = inspectStructuredFinanceField(field, value);
+      if (inspection.rejectionReason) {
+        issues.push({
+          severity: 'critical',
+          itemId: item.id,
+          sheet,
+          reason: `${label} contains overlong/model/prompt prose: '${auditValuePreview(value)}'.`,
+          suggestedFix: `Move the raw value to quarantine and replace ${label} with a short structured value.`,
+        });
+      }
+    });
+
+    if (item.meta.budgetCategory && budgetConfig.rules.length > 0) {
+      const budgetRule = referenceMatch(item.meta.budgetCategory, budgetConfig.rules);
+      if (budgetRule && hasReferenceCasingMismatch(item.meta.budgetCategory, budgetRule)) {
+        issues.push({
+          severity: 'info',
+          itemId: item.id,
+          sheet,
+          reason: `Category '${item.meta.budgetCategory}' matches '${budgetRule.name}' only after case normalization.`,
+          suggestedFix: `Replace it with the canonical budget category ID '${budgetRule.id}'.`,
         });
       }
     }
@@ -193,6 +347,26 @@ export const buildDataQualityIssues = (
           suggestedFix: 'Use an existing Budget Rules ID/name, or add the category to Budget Rules.',
         });
       }
+    }
+
+    item.meta.dataQualityQuarantine?.forEach(quarantined => {
+      issues.push({
+        severity: 'critical',
+        itemId: item.id,
+        sheet,
+        reason: `${quarantined.field} is quarantined (${quarantined.reason}); rejected raw value: '${auditValuePreview(quarantined.rawValue)}'.`,
+        suggestedFix: 'Review the rejected raw value and enter a valid structured replacement before clearing the quarantine record.',
+      });
+    });
+
+    if (item.meta.parserNeedsReview && item.meta.parserReviewReason && /quarantined|Rejected\s+(?:meta|payload|entityRefs)\./i.test(item.meta.parserReviewReason)) {
+      issues.push({
+        severity: 'critical',
+        itemId: item.id,
+        sheet,
+        reason: `Parser quarantine review: ${auditValuePreview(item.meta.parserReviewReason)}`,
+        suggestedFix: 'Inspect the parser review reason and enter only validated structured values before approving the transaction.',
+      });
     }
   });
 

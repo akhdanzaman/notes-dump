@@ -1,12 +1,33 @@
-import { BrainDumpItem, ItemType, Priority } from '../types';
+import { BrainDumpItem, ItemType } from '../types';
 
-const normalizeText = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+export interface SemanticDuplicateReviewCandidate {
+  itemIds: string[];
+  itemType: ItemType;
+  signature: string;
+  reason: string;
+}
 
-const normalizeDate = (value: unknown) => {
-  const raw = String(value || '').trim();
+export interface BrainDumpDedupeResult {
+  items: BrainDumpItem[];
+  removedCount: number;
+  duplicateIds: Array<{ id: string; count: number }>;
+  reviewCandidates: SemanticDuplicateReviewCandidate[];
+}
+
+const normalizeText = (value: unknown) => String(value ?? '')
+  .normalize('NFKC')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLocaleLowerCase('en-US');
+
+const normalizeItemId = (value: unknown) => normalizeText(value);
+
+const normalizeDateToSecond = (value: unknown) => {
+  const raw = String(value ?? '').trim();
   if (!raw) return '';
   const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? raw : parsed.toISOString();
+  if (Number.isNaN(parsed.getTime())) return normalizeText(raw);
+  return parsed.toISOString().replace(/\.\d{3}Z$/, 'Z');
 };
 
 const normalizeTags = (value: unknown) => {
@@ -15,197 +36,195 @@ const normalizeTags = (value: unknown) => {
 };
 
 const normalizeNumber = (value: unknown) => {
-  const num = Number(value ?? 0);
+  if (value === undefined || value === null || value === '') return '';
+  const num = Number(value);
   return Number.isFinite(num) ? String(num) : '';
 };
 
-const priorityRank: Record<Priority, number> = { low: 0, normal: 1, high: 2 };
-
-const maxPriority = (items: BrainDumpItem[]): Priority | undefined => {
-  return items.reduce<Priority | undefined>((best, item) => {
-    const candidate = item.meta.priority;
-    if (!candidate) return best;
-    if (!best) return candidate;
-    return priorityRank[candidate] > priorityRank[best] ? candidate : best;
-  }, undefined);
+const normalizedForStableJson = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(normalizedForStableJson);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, nested]) => [key, normalizedForStableJson(nested)])
+    );
+  }
+  return value;
 };
 
-const eventDedupeKey = (item: BrainDumpItem) => [
+const stableItemSignature = (item: BrainDumpItem) => JSON.stringify(normalizedForStableJson(item));
+
+const populatedValueCount = (value: unknown): number => {
+  if (value === undefined || value === null || value === '') return 0;
+  if (Array.isArray(value)) return value.reduce((sum, nested) => sum + populatedValueCount(nested), 0);
+  if (typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>)
+      .reduce<number>((sum, nested) => sum + populatedValueCount(nested), 0);
+  }
+  return 1;
+};
+
+const timestamp = (value: unknown): number => {
+  const parsed = Date.parse(String(value ?? ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const compareCanonicalCandidates = (a: BrainDumpItem, b: BrainDumpItem): number => {
+  const completenessDelta = populatedValueCount(b) - populatedValueCount(a);
+  if (completenessDelta) return completenessDelta;
+
+  const aDone = a.status === 'done' ? 1 : 0;
+  const bDone = b.status === 'done' ? 1 : 0;
+  if (aDone !== bDone) return bDone - aDone;
+
+  const completionDelta = timestamp(b.completed_at) - timestamp(a.completed_at);
+  if (completionDelta) return completionDelta;
+
+  const createdDelta = timestamp(b.created_at) - timestamp(a.created_at);
+  if (createdDelta) return createdDelta;
+
+  return stableItemSignature(a).localeCompare(stableItemSignature(b));
+};
+
+const eventReviewKey = (item: BrainDumpItem) => [
   item.type,
   normalizeText(item.content),
-  normalizeDate(item.meta.date),
-  normalizeDate(item.meta.start),
-  normalizeDate(item.meta.end),
+  normalizeDateToSecond(item.meta.date),
+  normalizeDateToSecond(item.meta.start),
+  normalizeDateToSecond(item.meta.end),
   normalizeTags(item.meta.tags),
 ].join('::');
 
-const shoppingDedupeKey = (item: BrainDumpItem) => [
+const shoppingReviewKey = (item: BrainDumpItem) => [
   item.type,
   normalizeText(item.content),
   normalizeText(item.meta.shoppingCategory),
-  item.meta.shoppingCategory === 'routine' ? 'routine-parent' : `${item.status}::${normalizeDate(item.meta.date)}`,
+  item.status,
+  normalizeDateToSecond(item.meta.date),
   normalizeNumber(item.meta.amount),
   normalizeNumber(item.meta.quantity),
   normalizeTags(item.meta.tags),
 ].join('::');
 
-const financeDedupeKey = (item: BrainDumpItem) => [
+const financeReviewKey = (item: BrainDumpItem) => [
   item.type,
   normalizeText(item.content),
   item.status,
   normalizeText(item.meta.financeType),
-  normalizeDate(item.meta.date || item.completed_at),
+  normalizeDateToSecond(item.meta.date || item.completed_at),
   normalizeNumber(item.meta.amount),
   normalizeText(item.meta.paymentMethod),
   normalizeText(item.meta.toWallet),
+  normalizeText(item.meta.budgetCategory),
+  normalizeText(item.meta.merchant),
 ].join('::');
 
-const noteDedupeKey = (item: BrainDumpItem) => [
+const noteReviewKey = (item: BrainDumpItem) => [
   item.type,
   normalizeText(item.content),
   item.status,
-  normalizeDate(item.meta.date || item.created_at),
+  normalizeDateToSecond(item.meta.date || item.created_at),
   normalizeText(item.meta.title),
   normalizeTags(item.meta.tags),
 ].join('::');
 
-const todoDedupeKey = (item: BrainDumpItem) => [
+const todoReviewKey = (item: BrainDumpItem) => [
   item.type,
   normalizeText(item.content),
   item.status,
-  normalizeDate(item.meta.date),
+  normalizeDateToSecond(item.meta.date),
   normalizeText(item.meta.priority),
   normalizeTags(item.meta.tags),
 ].join('::');
 
-const isObviousSemanticDuplicateCandidate = (item: BrainDumpItem) => {
+const isSemanticReviewCandidate = (item: BrainDumpItem) => {
   if (!normalizeText(item.content)) return false;
-  if (item.type === ItemType.EVENT) return Boolean(normalizeDate(item.meta.date) || normalizeDate(item.meta.start));
-  if (item.type === ItemType.SHOPPING) return Boolean(normalizeText(item.meta.shoppingCategory) || normalizeDate(item.meta.date) || item.meta.amount !== undefined);
+  if (item.type === ItemType.EVENT) return Boolean(normalizeDateToSecond(item.meta.date) || normalizeDateToSecond(item.meta.start));
+  if (item.type === ItemType.SHOPPING) return Boolean(normalizeText(item.meta.shoppingCategory) || normalizeDateToSecond(item.meta.date) || item.meta.amount !== undefined);
   if (item.type === ItemType.FINANCE) return Boolean(item.meta.amount !== undefined && (item.meta.date || item.completed_at));
-  if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) return Boolean(normalizeDate(item.meta.date || item.created_at));
-  if (item.type === ItemType.TODO) return Boolean(normalizeText(item.content) && normalizeDate(item.meta.date));
+  if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) return Boolean(normalizeDateToSecond(item.meta.date || item.created_at));
+  if (item.type === ItemType.TODO) return Boolean(normalizeDateToSecond(item.meta.date));
   return false;
 };
 
-const semanticDedupeKey = (item: BrainDumpItem) => {
-  if (item.type === ItemType.EVENT) return eventDedupeKey(item);
-  if (item.type === ItemType.SHOPPING) return shoppingDedupeKey(item);
-  if (item.type === ItemType.FINANCE) return financeDedupeKey(item);
-  if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) return noteDedupeKey(item);
-  if (item.type === ItemType.TODO) return todoDedupeKey(item);
-  return `${item.type}::${item.id}`;
+const semanticReviewKey = (item: BrainDumpItem) => {
+  if (item.type === ItemType.EVENT) return eventReviewKey(item);
+  if (item.type === ItemType.SHOPPING) return shoppingReviewKey(item);
+  if (item.type === ItemType.FINANCE) return financeReviewKey(item);
+  if (item.type === ItemType.NOTE || item.type === ItemType.JOURNAL) return noteReviewKey(item);
+  if (item.type === ItemType.TODO) return todoReviewKey(item);
+  return '';
 };
 
-const pickPrimaryEvent = (items: BrainDumpItem[]) => {
-  return [...items].sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'done' ? -1 : 1;
-    const aCompleted = a.completed_at ? new Date(a.completed_at).getTime() : 0;
-    const bCompleted = b.completed_at ? new Date(b.completed_at).getTime() : 0;
-    if (aCompleted !== bCompleted) return bCompleted - aCompleted;
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-  })[0];
-};
-
-const mergeDuplicateEvents = (items: BrainDumpItem[]) => {
-  const primary = pickPrimaryEvent(items);
-  const allTags = Array.from(new Set(items.flatMap(item => item.meta.tags || [])));
-  const completedAt = items
-    .map(item => item.completed_at)
-    .filter(Boolean)
-    .sort()
-    .at(-1);
-  const createdAt = items
-    .map(item => item.created_at)
-    .filter(Boolean)
-    .sort()[0] || primary.created_at;
-
-  return {
-    ...primary,
-    status: items.some(item => item.status === 'done') ? 'done' as const : 'pending' as const,
-    created_at: createdAt,
-    completed_at: completedAt,
-    meta: {
-      ...primary.meta,
-      priority: maxPriority(items) || primary.meta.priority,
-      tags: allTags,
-    },
-  };
-};
-
-const pickPrimaryItem = (items: BrainDumpItem[]) => {
-  return [...items].sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'pending' ? -1 : 1;
-    const aCompleted = a.completed_at ? new Date(a.completed_at).getTime() : 0;
-    const bCompleted = b.completed_at ? new Date(b.completed_at).getTime() : 0;
-    if (aCompleted !== bCompleted) return bCompleted - aCompleted;
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-  })[0];
-};
-
-const mergeDuplicateItems = (items: BrainDumpItem[]) => {
-  if (items[0]?.type === ItemType.EVENT) return mergeDuplicateEvents(items);
-  const primary = pickPrimaryItem(items);
-  const allTags = Array.from(new Set(items.flatMap(item => item.meta.tags || [])));
-  const completedAt = items.map(item => item.completed_at).filter(Boolean).sort().at(-1);
-  const createdAt = items.map(item => item.created_at).filter(Boolean).sort()[0] || primary.created_at;
-  const routineSource = items.find(item =>
-    (item.meta.shoppingCategory === 'routine' || item.meta.isRoutine)
-    && (item.meta.routineInterval
-      || item.meta.routineDaysOfWeek?.length
-      || item.meta.routineDaysOfMonth?.length
-      || item.meta.routineMonthsOfYear?.length
-      || item.meta.recurrenceDays
-      || item.meta.lastGeneratedHistoryId)
-  );
-
-  return {
-    ...primary,
-    status: items.some(item => item.status === 'pending') ? 'pending' as const : 'done' as const,
-    created_at: createdAt,
-    completed_at: completedAt || primary.completed_at,
-    meta: {
-      ...primary.meta,
-      ...(routineSource ? {
-        isRoutine: routineSource.meta.isRoutine ?? primary.meta.isRoutine,
-        routineInterval: routineSource.meta.routineInterval ?? primary.meta.routineInterval,
-        routineDaysOfWeek: routineSource.meta.routineDaysOfWeek ?? primary.meta.routineDaysOfWeek,
-        routineDaysOfMonth: routineSource.meta.routineDaysOfMonth ?? primary.meta.routineDaysOfMonth,
-        routineMonthsOfYear: routineSource.meta.routineMonthsOfYear ?? primary.meta.routineMonthsOfYear,
-        recurrenceDays: routineSource.meta.recurrenceDays ?? primary.meta.recurrenceDays,
-        lastGeneratedHistoryId: routineSource.meta.lastGeneratedHistoryId ?? primary.meta.lastGeneratedHistoryId,
-      } : {}),
-      priority: maxPriority(items) || primary.meta.priority,
-      tags: allTags,
-    },
-  };
-};
-
-export const dedupeBrainDumpItems = (items: BrainDumpItem[]) => {
-  const passthrough: BrainDumpItem[] = [];
+export const findSemanticDuplicateReviewCandidates = (
+  items: BrainDumpItem[],
+): SemanticDuplicateReviewCandidate[] => {
   const groups = new Map<string, BrainDumpItem[]>();
 
   items.forEach(item => {
-    if (!isObviousSemanticDuplicateCandidate(item)) {
-      passthrough.push(item);
+    if (!isSemanticReviewCandidate(item)) return;
+    const signature = semanticReviewKey(item);
+    const group = groups.get(signature) || [];
+    group.push(item);
+    groups.set(signature, group);
+  });
+
+  return Array.from(groups.entries())
+    .filter(([, group]) => new Set(group.map(item => normalizeItemId(item.id))).size > 1)
+    .map(([signature, group]) => ({
+      signature,
+      itemType: group[0].type,
+      itemIds: Array.from(new Set(group.map(item => item.id))).sort((a, b) => a.localeCompare(b)),
+      reason: 'Different item IDs share the same normalized business fields; keep all rows until a user reviews them.',
+    }))
+    .sort((a, b) => a.itemType.localeCompare(b.itemType) || a.itemIds.join('|').localeCompare(b.itemIds.join('|')));
+};
+
+export const dedupeBrainDumpItems = (items: BrainDumpItem[]): BrainDumpDedupeResult => {
+  const groupsById = new Map<string, BrainDumpItem[]>();
+  const idOrder: string[] = [];
+  const idlessItems = new Map<number, BrainDumpItem>();
+
+  items.forEach((item, index) => {
+    const id = normalizeItemId(item.id);
+    if (!id) {
+      idlessItems.set(index, item);
       return;
     }
-
-    const key = semanticDedupeKey(item);
-    const group = groups.get(key) || [];
+    if (!groupsById.has(id)) idOrder.push(id);
+    const group = groupsById.get(id) || [];
     group.push(item);
-    groups.set(key, group);
+    groupsById.set(id, group);
   });
 
-  let removedCount = 0;
-  const dedupedGroups = Array.from(groups.values()).map(group => {
-    if (group.length === 1) return group[0];
-    removedCount += group.length - 1;
-    return mergeDuplicateItems(group);
+  const canonicalById = new Map<string, BrainDumpItem>();
+  const duplicateIds: Array<{ id: string; count: number }> = [];
+  groupsById.forEach((group, id) => {
+    canonicalById.set(id, [...group].sort(compareCanonicalCandidates)[0]);
+    if (group.length > 1) duplicateIds.push({ id: group[0].id, count: group.length });
   });
+
+  const emittedIds = new Set<string>();
+  const dedupedItems: BrainDumpItem[] = [];
+  items.forEach((item, index) => {
+    const id = normalizeItemId(item.id);
+    if (!id) {
+      dedupedItems.push(idlessItems.get(index)!);
+      return;
+    }
+    if (emittedIds.has(id)) return;
+    emittedIds.add(id);
+    dedupedItems.push(canonicalById.get(id)!);
+  });
+
+  duplicateIds.sort((a, b) => normalizeItemId(a.id).localeCompare(normalizeItemId(b.id)));
 
   return {
-    items: [...passthrough, ...dedupedGroups],
-    removedCount,
+    items: dedupedItems,
+    removedCount: duplicateIds.reduce((sum, duplicate) => sum + duplicate.count - 1, 0),
+    duplicateIds,
+    reviewCandidates: findSemanticDuplicateReviewCandidates(dedupedItems),
   };
 };
+

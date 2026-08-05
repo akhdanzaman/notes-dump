@@ -4,186 +4,116 @@ import assert from 'node:assert/strict';
 import { ItemType, BrainDumpItem } from '../../types';
 import { dedupeBrainDumpItems } from '../itemDedupe';
 
-test('dedupeBrainDumpItems collapses obvious duplicate events and keeps completed state', () => {
-  const duplicateEvents: BrainDumpItem[] = [
-    {
-      id: 'pending-copy-1',
-      type: ItemType.EVENT,
-      content: 'Event di SCBD buat bikin relasi',
-      status: 'pending',
-      created_at: '2026-05-13T01:00:00.000Z',
-      meta: { date: '2026-05-02T00:00:00.000Z', tags: ['event', 'business'], priority: 'normal' },
+const finance = (id: string, overrides: Partial<BrainDumpItem> = {}): BrainDumpItem => {
+  const { meta: metaOverrides, ...itemOverrides } = overrides;
+  return {
+    id,
+    type: ItemType.FINANCE,
+    content: 'beli tws sparepart',
+    status: 'done',
+    created_at: '2026-05-08T10:00:00.000Z',
+    completed_at: '2026-05-08T10:00:00.000Z',
+    ...itemOverrides,
+    meta: {
+      financeType: 'expense',
+      date: '2026-05-08T10:00:00.000Z',
+      amount: 125_000,
+      paymentMethod: 'BCA',
+      ...(metaOverrides || {}),
     },
-    {
-      id: 'pending-copy-2',
-      type: ItemType.EVENT,
-      content: 'Event di SCBD buat bikin relasi',
-      status: 'pending',
-      created_at: '2026-05-13T02:00:00.000Z',
-      meta: { date: '2026-05-02T00:00:00.000Z', tags: ['business', 'event'], priority: 'high' },
-    },
-    {
-      id: 'done-copy',
-      type: ItemType.EVENT,
-      content: 'Event di SCBD buat bikin relasi',
-      status: 'done',
-      created_at: '2026-05-13T03:00:00.000Z',
-      completed_at: '2026-05-13T04:00:00.000Z',
-      meta: { date: '2026-05-02T00:00:00.000Z', tags: ['event', 'business'], priority: 'normal' },
-    },
-  ];
+  };
+};
 
-  const { items, removedCount } = dedupeBrainDumpItems(duplicateEvents);
+test('dedupeBrainDumpItems removes physical rows only when their normalized IDs match', () => {
+  const duplicated = finance('540c9ae3-ba1f-43c0-832f-01d62154edbe');
+  const result = dedupeBrainDumpItems([
+    duplicated,
+    { ...duplicated, id: ' 540C9AE3-BA1F-43C0-832F-01D62154EDBE ' },
+  ]);
 
-  assert.equal(removedCount, 2);
-  assert.equal(items.length, 1);
-  assert.equal(items[0].status, 'done');
-  assert.equal(items[0].id, 'done-copy');
-  assert.equal(items[0].meta.priority, 'high');
-  assert.deepEqual(new Set(items[0].meta.tags), new Set(['event', 'business']));
-});
-
-test('dedupeBrainDumpItems does not collapse separate events on different dates', () => {
-  const events: BrainDumpItem[] = [
-    {
-      id: 'event-1',
-      type: ItemType.EVENT,
-      content: 'Event di SCBD buat bikin relasi',
-      status: 'pending',
-      created_at: '2026-05-13T01:00:00.000Z',
-      meta: { date: '2026-05-02T00:00:00.000Z' },
-    },
-    {
-      id: 'event-2',
-      type: ItemType.EVENT,
-      content: 'Event di SCBD buat bikin relasi',
-      status: 'pending',
-      created_at: '2026-05-13T02:00:00.000Z',
-      meta: { date: '2026-05-03T00:00:00.000Z' },
-    },
-  ];
-
-  const { items, removedCount } = dedupeBrainDumpItems(events);
-
-  assert.equal(removedCount, 0);
-  assert.deepEqual(items.map(item => item.id), ['event-1', 'event-2']);
-});
-
-test('dedupeBrainDumpItems collapses exact duplicate routine shopping entries', () => {
-  const duplicates: BrainDumpItem[] = [
-    {
-      id: 'laundry-1',
-      type: ItemType.SHOPPING,
-      content: 'Laundry',
-      status: 'pending',
-      created_at: '2026-03-08T08:29:26.000Z',
-      meta: { shoppingCategory: 'routine', date: '2026-01-01T19:00:00.000Z', amount: 36000, tags: ['routine'] },
-    },
-    {
-      id: 'laundry-2',
-      type: ItemType.SHOPPING,
-      content: 'Laundry',
-      status: 'pending',
-      created_at: '2026-03-08T08:29:26.450Z',
-      meta: { shoppingCategory: 'routine', date: '2026-01-01T19:00:00.000Z', amount: 36000, tags: ['routine'] },
-    },
-    {
-      id: 'internet',
-      type: ItemType.SHOPPING,
-      content: 'Internet',
-      status: 'pending',
-      created_at: '2026-03-08T08:30:18.000Z',
-      meta: { shoppingCategory: 'routine', date: '2026-04-13T12:57:00.000Z', amount: 70000 },
-    },
-  ];
-
-  const { items, removedCount } = dedupeBrainDumpItems(duplicates);
-
-  assert.equal(removedCount, 1);
-  assert.equal(items.length, 2);
-  const laundry = items.find(item => item.content === 'Laundry');
-  assert.equal(laundry?.id, 'laundry-1');
-  assert.equal(laundry?.status, 'pending');
-});
-
-test('dedupeBrainDumpItems collapses routine shopping parent duplicates across due-date drift and preserves recurrence', () => {
-  const items: BrainDumpItem[] = [
-    {
-      id: 'makan-1',
-      type: ItemType.SHOPPING,
-      content: 'Makan',
-      status: 'pending',
-      created_at: '2026-04-14T23:49:26.000Z',
-      meta: { shoppingCategory: 'routine', isRoutine: true, routineInterval: 'daily', date: '2026-04-14T01:00:00.000Z', amount: 30000 },
-    },
-    {
-      id: 'makan-2',
-      type: ItemType.SHOPPING,
-      content: 'Makan',
-      status: 'pending',
-      created_at: '2026-04-15T23:49:26.000Z',
-      meta: { shoppingCategory: 'routine', date: '2026-04-15T01:00:00.000Z', amount: 30000 },
-    },
-  ];
-
-  const result = dedupeBrainDumpItems(items);
-
-  assert.equal(result.removedCount, 1);
   assert.equal(result.items.length, 1);
-  assert.equal(result.items[0].meta.routineInterval, 'daily');
-  assert.equal(result.items[0].meta.isRoutine, true);
+  assert.equal(result.removedCount, 1);
+  assert.deepEqual(result.duplicateIds, [{ id: '540c9ae3-ba1f-43c0-832f-01d62154edbe', count: 2 }]);
+  assert.equal(result.reviewCandidates.length, 0);
 });
 
-test('dedupeBrainDumpItems does not collapse normal shopping items with different due dates', () => {
-  const items: BrainDumpItem[] = [
-    {
-      id: 'makan-1',
-      type: ItemType.SHOPPING,
-      content: 'Makan',
-      status: 'pending',
-      created_at: '2026-04-14T23:49:26.000Z',
-      meta: { shoppingCategory: 'not_urgent', date: '2026-04-14T01:00:00.000Z', amount: 30000 },
-    },
-    {
-      id: 'makan-2',
-      type: ItemType.SHOPPING,
-      content: 'Makan',
-      status: 'pending',
-      created_at: '2026-04-15T23:49:26.000Z',
-      meta: { shoppingCategory: 'not_urgent', date: '2026-04-15T01:00:00.000Z', amount: 30000 },
-    },
+test('dedupeBrainDumpItems removes all repeated shopping rows for the same ID', () => {
+  const repeated: BrainDumpItem[] = Array.from({ length: 17 }, (_, index) => ({
+    id: 'fa6c9b77-4c61-49a8-bb79-3f12d806e0b5',
+    type: ItemType.SHOPPING,
+    content: 'PARKIR',
+    status: 'pending',
+    created_at: `2026-05-08T10:00:${String(index).padStart(2, '0')}.000Z`,
+    meta: { shoppingCategory: 'routine', amount: 15_000 },
+  }));
+
+  const result = dedupeBrainDumpItems(repeated);
+
+  assert.equal(result.items.length, 1);
+  assert.equal(result.removedCount, 16);
+  assert.equal(result.duplicateIds[0]?.count, 17);
+});
+
+test('different-ID semantic transaction duplicates are retained and sent to review', () => {
+  const items = [
+    finance('9bc80ed5-2a3e-4bdd-8d32-7f53d5e9f49c', {
+      content: 'Send laundry',
+      created_at: '2026-05-08T10:00:00.050Z',
+      meta: { amount: 0, paymentMethod: '', date: '2026-05-08T10:00:00.050Z' },
+    }),
+    finance('ba3249e8-9677-49ec-b450-bd11b7be946f', {
+      content: ' send  laundry ',
+      created_at: '2026-05-08T10:00:00.900Z',
+      meta: { amount: 0, paymentMethod: '', date: '2026-05-08T10:00:00.900Z' },
+    }),
   ];
 
   const result = dedupeBrainDumpItems(items);
 
   assert.equal(result.removedCount, 0);
-  assert.deepEqual(result.items.map(item => item.id), ['makan-1', 'makan-2']);
+  assert.deepEqual(result.items.map(item => item.id), items.map(item => item.id));
+  assert.equal(result.reviewCandidates.length, 1);
+  assert.deepEqual(new Set(result.reviewCandidates[0].itemIds), new Set(items.map(item => item.id)));
 });
 
-test('dedupeBrainDumpItems collapses exact duplicate finance transactions', () => {
-  const items: BrainDumpItem[] = [
-    {
-      id: 'tx-1',
-      type: ItemType.FINANCE,
-      content: 'beli vitamin c',
-      status: 'done',
-      created_at: '2026-03-09T11:10:07.871Z',
-      completed_at: '2026-03-09T13:10:07.000Z',
-      meta: { financeType: 'expense', date: '2026-03-09T13:10:07.000Z', amount: 12000, paymentMethod: 'cash' },
-    },
-    {
-      id: 'tx-2',
-      type: ItemType.FINANCE,
-      content: 'beli vitamin c',
-      status: 'done',
-      created_at: '2026-03-09T11:13:01.265Z',
-      completed_at: '2026-03-09T13:10:07.000Z',
-      meta: { financeType: 'expense', date: '2026-03-09T13:10:07.000Z', amount: 12000, paymentMethod: 'cash' },
-    },
+test('repeated legitimate purchases with different IDs are never silently deleted', () => {
+  const items = [
+    finance('parking-1', { content: 'Parkir', meta: { amount: 15_000, date: '2026-05-08T08:00:00.000Z' } }),
+    finance('parking-2', { content: 'Parkir', meta: { amount: 15_000, date: '2026-05-08T12:00:00.000Z' } }),
   ];
 
   const result = dedupeBrainDumpItems(items);
 
-  assert.equal(result.removedCount, 1);
-  assert.equal(result.items.length, 1);
+  assert.equal(result.removedCount, 0);
+  assert.equal(result.items.length, 2);
+  assert.equal(result.reviewCandidates.length, 0);
 });
+
+test('canonical same-ID selection is deterministic across input order', () => {
+  const sparse = finance('same-id', {
+    content: 'older sparse version',
+    status: 'pending',
+    completed_at: undefined,
+    meta: { amount: 50_000 },
+  });
+  const complete = finance('same-id', {
+    content: 'complete version',
+    meta: { amount: 50_000, paymentMethod: 'BCA', budgetCategory: 'needs', merchant: 'Toko Audio' },
+  });
+
+  const forward = dedupeBrainDumpItems([sparse, complete]).items[0];
+  const reverse = dedupeBrainDumpItems([complete, sparse]).items[0];
+
+  assert.deepEqual(forward, complete);
+  assert.deepEqual(reverse, complete);
+});
+
+test('items without IDs are preserved because identity cannot be established safely', () => {
+  const first = finance('', { content: 'Cash expense' });
+  const second = finance('   ', { content: 'Cash expense' });
+  const result = dedupeBrainDumpItems([first, second]);
+
+  assert.equal(result.items.length, 2);
+  assert.equal(result.removedCount, 0);
+});
+

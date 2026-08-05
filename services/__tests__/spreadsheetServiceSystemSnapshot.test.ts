@@ -54,7 +54,7 @@ test('system snapshot write batches keep proxy payloads bounded', () => {
   assert.deepEqual(batches.map(batch => batch.values.length), [20, 20, 5]);
 });
 
-test('incremental sheet rewrites blank stale trailing rows without using clear', () => {
+test('canonical sheet rewrites clear the complete prior managed range before writing current rows', () => {
   const batches = __test__.buildSheetRewriteBatches({
     name: 'Transactions',
     inputOption: 'RAW',
@@ -66,12 +66,20 @@ test('incremental sheet rewrites blank stale trailing rows without using clear',
     ],
   }, 10);
 
-  assert.deepEqual(batches.map(batch => batch.range), ["'Transactions'!A1:C4"]);
+  assert.equal(__test__.buildSheetClearRange({
+    name: 'Transactions',
+    inputOption: 'RAW',
+    previousRowCount: 4,
+    previousColumnCount: 3,
+    data: [
+      ['ID', 'Amount'],
+      ['tx-1', 5000],
+    ],
+  }), "'Transactions'!A1:C4");
+  assert.deepEqual(batches.map(batch => batch.range), ["'Transactions'!A1:B2"]);
   assert.deepEqual(batches[0].values, [
-    ['ID', 'Amount', ''],
-    ['tx-1', 5000, ''],
-    ['', '', ''],
-    ['', '', ''],
+    ['ID', 'Amount'],
+    ['tx-1', 5000],
   ]);
 });
 
@@ -251,7 +259,7 @@ test('incremental plan deletes rows for removed items and rewrites config change
   assert.equal(configPlan.deletions.length, 0);
 });
 
-test('incremental plan does not write back remote-only spreadsheet edits', () => {
+test('incremental plan does not write back remote-only item rows outside generated sheet refreshes', () => {
   const remoteOnlyDb: DbSchema = {
     ...baseDb,
     data: [{ ...baseDb.data[0], content: 'Remote manual edit' }],
@@ -270,10 +278,10 @@ test('incremental plan does not write back remote-only spreadsheet edits', () =>
   assert.deepEqual(plan.updates, []);
   assert.deepEqual(plan.appends, []);
   assert.deepEqual(plan.deletions, []);
-  assert.deepEqual(plan.rewrites, []);
+  assert.deepEqual(plan.rewrites.map(sheet => sheet.name).sort(), ['Data Quality', 'Sheet1']);
 });
 
-test('incremental plan ignores generated dashboard sheet drift during routine saves', () => {
+test('incremental plan refreshes Dashboard and Data Quality during routine saves', () => {
   const nextDb: DbSchema = {
     ...baseDb,
     data: [{ ...baseDb.data[0], content: 'Updated note' }],
@@ -293,7 +301,8 @@ test('incremental plan ignores generated dashboard sheet drift during routine sa
   );
 
   assert.equal(plan.canIncremental, true);
-  assert.equal(plan.rewrites.some(sheet => sheet.name === 'Sheet1'), false);
+  assert.equal(plan.rewrites.some(sheet => sheet.name === 'Sheet1'), true);
+  assert.equal(plan.rewrites.some(sheet => sheet.name === 'Data Quality'), true);
   assert.equal(plan.deletions.length, 0);
   assert.ok(plan.updates.some(update => update.range === "'Notes & Journals'!A2:G2"));
 });
@@ -373,4 +382,157 @@ test('write verification detects item ids missing from required destination shee
   const missing = __test__.findMissingExpectedItemRows(expected, actual);
 
   assert.deepEqual(missing, [{ sheetName: 'Transactions', itemId: 'shopping-done-1' }]);
+});
+
+test('physical row indexes retain every duplicate occurrence and delete all copies bottom-up', () => {
+  const nextDb: DbSchema = { ...baseDb, data: [] };
+  const previousNoteSheet = generateExportData(
+    baseDb.data,
+    [],
+    [],
+    baseDb.budgetConfig!,
+    {},
+    baseDb.appSettings!,
+  ).find(sheet => sheet.name === 'Notes & Journals');
+  assert.ok(previousNoteSheet);
+
+  const physicalNoteSheet = {
+    ...previousNoteSheet!,
+    data: [
+      previousNoteSheet!.data[0],
+      previousNoteSheet!.data[1],
+      previousNoteSheet!.data[1],
+    ],
+  };
+  const indexes = __test__.buildSheetRowIndexes([physicalNoteSheet]);
+  assert.deepEqual(indexes.get('Notes & Journals')?.rowNumbersById.get('note-1'), [2, 3]);
+
+  const plan = __test__.buildIncrementalUserSheetPlan(
+    baseDb,
+    nextDb,
+    generateExportData([], [], [], baseDb.budgetConfig!, {}, baseDb.appSettings!),
+    existingExportSheetTitles,
+    new Set(),
+    false,
+    baseDb,
+    new Set(),
+    [physicalNoteSheet],
+  );
+
+  assert.deepEqual(
+    plan.deletions.filter(deletion => deletion.sheetName === 'Notes & Journals').map(deletion => deletion.rowNumber),
+    [2, 3],
+  );
+});
+
+test('moving an item deletes all physical old-sheet occurrences before appending the destination row', () => {
+  const movedDb: DbSchema = {
+    ...baseDb,
+    data: [{ ...baseDb.data[0], type: ItemType.TODO, content: 'Now a todo' }],
+  };
+  const previousNoteSheet = generateExportData(
+    baseDb.data,
+    [],
+    [],
+    baseDb.budgetConfig!,
+    {},
+    baseDb.appSettings!,
+  ).find(sheet => sheet.name === 'Notes & Journals');
+  assert.ok(previousNoteSheet);
+  const physicalNoteSheet = {
+    ...previousNoteSheet!,
+    data: [previousNoteSheet!.data[0], previousNoteSheet!.data[1], previousNoteSheet!.data[1]],
+  };
+
+  const plan = __test__.buildIncrementalUserSheetPlan(
+    baseDb,
+    movedDb,
+    generateExportData(movedDb.data, [], [], movedDb.budgetConfig!, {}, movedDb.appSettings!),
+    existingExportSheetTitles,
+    new Set(),
+    false,
+    baseDb,
+    new Set(),
+    [physicalNoteSheet],
+  );
+
+  assert.deepEqual(
+    plan.deletions.filter(deletion => deletion.sheetName === 'Notes & Journals').map(deletion => deletion.rowNumber),
+    [2, 3],
+  );
+  assert.ok(plan.appends.some(append => append.sheetName === 'Todos'));
+});
+
+test('rewrite execution clears the actual prior range before sending canonical values', async () => {
+  const calls: Array<{ path: string; init?: RequestInit }> = [];
+  const fetcher = async (_spreadsheetId: string, path: string, init?: RequestInit) => {
+    calls.push({ path, init });
+    return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  await __test__.rewriteSheetValuesInBulk(
+    { spreadsheetId: 'sheet-1', spreadsheetUrl: 'https://example.invalid/sheet-1' },
+    {
+      name: 'Transactions',
+      inputOption: 'RAW',
+      previousRowCount: 4,
+      previousColumnCount: 3,
+      data: [['ID', 'Amount'], ['tx-1', 5000]],
+    },
+    0,
+    1,
+    undefined,
+    fetcher,
+  );
+
+  assert.equal(calls.length, 2);
+  assert.match(decodeURIComponent(calls[0].path), /'Transactions'!A1:C4:clear$/);
+  assert.equal(calls[1].path, '/values:batchUpdate');
+  const updateBody = JSON.parse(String(calls[1].init?.body));
+  assert.deepEqual(updateBody.data, [{
+    range: "'Transactions'!A1:B2",
+    values: [['ID', 'Amount'], ['tx-1', 5000]],
+  }]);
+});
+
+test('sheet verification compares ID and row-signature multisets, not unique-ID sets', () => {
+  const expected = [{
+    name: 'Transactions',
+    inputOption: 'RAW' as const,
+    data: [['ID', 'Amount'], ['tx-1', 5000]],
+  }];
+  const duplicateActual = [{
+    range: "'Transactions'!A:B",
+    values: [['ID', 'Amount'], ['tx-1', 5000], ['tx-1', 5000]],
+  }];
+
+  const duplicateMismatch = __test__.compareSheetValueMultisets(expected, duplicateActual);
+  assert.equal(duplicateMismatch.length, 1);
+  assert.equal(duplicateMismatch[0].actualRowCount, 3);
+  assert.deepEqual(duplicateMismatch[0].unexpectedIds, ['tx-1']);
+  assert.equal(duplicateMismatch[0].unexpectedRowSignatures.length, 1);
+
+  const signatureActual = [{
+    range: "'Transactions'!A:B",
+    values: [['ID', 'Amount'], ['tx-1', 6000]],
+  }];
+  const signatureMismatch = __test__.compareSheetValueMultisets(expected, signatureActual);
+  assert.deepEqual(signatureMismatch[0].missingIds, []);
+  assert.deepEqual(signatureMismatch[0].unexpectedIds, []);
+  assert.equal(signatureMismatch[0].missingRowSignatures.length, 1);
+  assert.equal(signatureMismatch[0].unexpectedRowSignatures.length, 1);
+  assert.deepEqual([...__test__.detectPhysicalSheetDrift(expected, signatureActual)], ['Transactions']);
+});
+
+test('generated-sheet formatting and charts are wired for newly created managed sheets', () => {
+  const requests = __test__.buildGeneratedSheetPresentationRequests({
+    sheets: [
+      { properties: { title: 'Sheet1', sheetId: 0 }, charts: [] },
+      { properties: { title: 'Data Quality', sheetId: 7 } },
+    ],
+  }, new Set(['Sheet1', 'Data Quality']), false);
+
+  assert.ok(requests.some(request => request.addChart));
+  assert.ok(requests.some(request => request.repeatCell?.range?.sheetId === 0));
+  assert.ok(requests.some(request => request.repeatCell?.range?.sheetId === 7));
 });

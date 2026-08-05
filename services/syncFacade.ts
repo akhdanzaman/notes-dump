@@ -3,6 +3,7 @@ import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, getSprea
 import { SyncProgressCallback, SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { dedupeBrainDumpItems } from "../utils/itemDedupe";
+import { sanitizeBrainDumpItemsForPersistence } from "./parserFieldValidator";
 
 export const getActiveSyncProviders = (): 'spreadsheet'[] => {
   return getSpreadsheetConfig() ? ['spreadsheet'] : [];
@@ -52,10 +53,17 @@ export const syncData = async (
   forceOverwrite = false,
   onProgress?: SyncProgressCallback
 ): Promise<SyncResult> => {
-  const deduped = dedupeBrainDumpItems(items);
+  const sanitized = sanitizeBrainDumpItemsForPersistence(items, {
+    availableWallets: wallets || [],
+    availableBudgetRules: budgetConfig?.rules || [],
+  });
+  const deduped = dedupeBrainDumpItems(sanitized.items);
   const outgoingItems = deduped.items;
   const outgoingDb = { data: outgoingItems, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory, canonicalRules };
-  onProgress?.({ phase: 'prepare', label: 'Preparing data', detail: `${outgoingItems.length} items ready to save` });
+  const qualityDetail = sanitized.quarantinedItemCount > 0
+    ? `; ${sanitized.quarantinedItemCount} item(s) contain quarantined fields for review`
+    : '';
+  onProgress?.({ phase: 'prepare', label: 'Preparing data', detail: `${outgoingItems.length} items ready to save${qualityDetail}` });
 
   if (!getSpreadsheetConfig()) {
     onProgress?.({ phase: 'pending_local', label: 'Caching local data', detail: 'Spreadsheet is not connected' });
