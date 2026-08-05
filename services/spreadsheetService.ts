@@ -784,6 +784,71 @@ const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.
 
 const getSheetColumnCount = (rows: SheetData['data']) => rows.reduce((max, row) => Math.max(max, row.length), 0);
 
+const DEFAULT_GOOGLE_SHEET_ROW_COUNT = 1000;
+const DEFAULT_GOOGLE_SHEET_COLUMN_COUNT = 26;
+
+const buildSheetGridCapacityRequests = (spreadsheetMeta: any, sheets: SheetData[]) => {
+  const metadataSheets = Array.isArray(spreadsheetMeta?.sheets) ? spreadsheetMeta.sheets : [];
+  const metadataByName = new Map<string, any>(metadataSheets.map((sheet: any) => [sheet?.properties?.title, sheet]));
+  const requests: any[] = [];
+
+  sheets.forEach(sheet => {
+    const metadataSheet = metadataByName.get(sheet.name);
+    const sheetId = metadataSheet?.properties?.sheetId;
+    if (sheetId === undefined) return;
+
+    const currentRows = Number(metadataSheet?.properties?.gridProperties?.rowCount) || DEFAULT_GOOGLE_SHEET_ROW_COUNT;
+    const currentColumns = Number(metadataSheet?.properties?.gridProperties?.columnCount) || DEFAULT_GOOGLE_SHEET_COLUMN_COUNT;
+    const requiredRows = Math.max(sheet.data.length, 1);
+    const requiredColumns = Math.max(getSheetColumnCount(sheet.data), 1);
+    const gridProperties: Record<string, number> = {};
+    const fields: string[] = [];
+
+    if (requiredRows > currentRows) {
+      gridProperties.rowCount = Math.ceil((requiredRows + 100) / 250) * 250;
+      fields.push('gridProperties.rowCount');
+    }
+    if (requiredColumns > currentColumns) {
+      gridProperties.columnCount = Math.ceil((requiredColumns + 2) / 5) * 5;
+      fields.push('gridProperties.columnCount');
+    }
+    if (fields.length === 0) return;
+
+    requests.push({
+      updateSheetProperties: {
+        properties: { sheetId, gridProperties },
+        fields: fields.join(','),
+      },
+    });
+  });
+
+  return requests;
+};
+
+const ensureSheetGridCapacity = async (
+  config: SpreadsheetConfig,
+  spreadsheetMeta: any,
+  sheets: SheetData[],
+  onProgress?: SyncProgressCallback,
+) => {
+  const requests = buildSheetGridCapacityRequests(spreadsheetMeta, sheets);
+  if (requests.length === 0) return;
+
+  onProgress?.({
+    phase: 'metadata',
+    label: 'Expanding spreadsheet capacity',
+    detail: `${requests.length} tab${requests.length === 1 ? '' : 's'} need more rows or columns`,
+  });
+  const response = await sheetsFetch(config.spreadsheetId, ':batchUpdate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to expand spreadsheet grid before save: ${await response.text()}`);
+  }
+};
+
 const generateDbExportSheets = (db: DbSchema, now = new Date()) => generateExportData(
   db.data || [],
   db.skills || [],
@@ -3325,6 +3390,12 @@ const performSync = async (
     }
 
     const effectiveExistingTitles = new Set([...existingTitles, ...createdSheetTitles]);
+    // Google Sheets starts new grids at 1,000 rows and 26 columns. Generated
+    // diagnostics (especially Data Quality) and wide round-trip schemas can
+    // legitimately exceed those defaults, so expand the grid before any clear
+    // or values:batchUpdate call. This keeps a failed capacity check from
+    // clearing a sheet and leaving it only partially rewritten.
+    await ensureSheetGridCapacity(config, meta, allSheetData, onProgress);
     const headerRewriteSheetNames = await detectHeaderRewriteSheets(config, allSheetData, effectiveExistingTitles);
     const schemaRewriteSheetNames = new Set<string>([
       ...headerRewriteSheetNames,
@@ -3578,6 +3649,7 @@ export const __test__ = {
   buildEventLogSheet,
   buildEventLogRow,
   buildColumnWriteBatches,
+  buildSheetGridCapacityRequests,
   columnLabel,
   getItemExportSheetNames,
   getExpectedItemIdsBySheet,

@@ -120,6 +120,30 @@ test('canonical sheet rewrites clear the complete prior managed range before wri
   ]);
 });
 
+test('grid capacity expands before rewrites that exceed default Google Sheets limits', () => {
+  const dataQualityRows = Array.from({ length: 1020 }, (_, index) => [`issue-${index + 1}`, 'high', 'Transactions', 'Review', 'Fix']);
+  const wideTodoHeader = Array.from({ length: 52 }, (_, index) => `Column_${index + 1}`);
+  const requests = __test__.buildSheetGridCapacityRequests({
+    sheets: [
+      { properties: { title: 'Data Quality', sheetId: 7, gridProperties: { rowCount: 1000, columnCount: 26 } } },
+      { properties: { title: 'Todos', sheetId: 8, gridProperties: { rowCount: 1000, columnCount: 26 } } },
+      { properties: { title: 'Transactions', sheetId: 9, gridProperties: { rowCount: 1500, columnCount: 30 } } },
+    ],
+  }, [
+    { name: 'Data Quality', data: dataQualityRows },
+    { name: 'Todos', data: [wideTodoHeader] },
+    { name: 'Transactions', data: [['Date', 'Amount']] },
+  ]);
+
+  assert.equal(requests.length, 2);
+  const dataQuality = requests.find(request => request.updateSheetProperties?.properties?.sheetId === 7);
+  const todos = requests.find(request => request.updateSheetProperties?.properties?.sheetId === 8);
+  assert.equal(dataQuality?.updateSheetProperties?.properties?.gridProperties?.rowCount, 1250);
+  assert.equal(dataQuality?.updateSheetProperties?.fields, 'gridProperties.rowCount');
+  assert.equal(todos?.updateSheetProperties?.properties?.gridProperties?.columnCount, 55);
+  assert.equal(todos?.updateSheetProperties?.fields, 'gridProperties.columnCount');
+});
+
 test('event log sheet exposes save activity and error rows for spreadsheet inspection', () => {
   const sheet = __test__.buildEventLogSheet();
   const row = __test__.buildEventLogRow('error', 'write_sheet', 'save_failed', 'proxy invocation failed', 'save-1');
