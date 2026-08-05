@@ -36,6 +36,43 @@ test('managed sheet formatting is limited to setup or newly-created sheets', () 
   assert.equal(__test__.shouldApplyManagedSheetFormatting('Dashboard', new Set(), true), true);
 });
 
+test('compact spreadsheet presentation is applied once to existing legacy sheets', () => {
+  const legacySheet = { properties: { title: 'Transactions', sheetId: 3 } };
+  const formattedSheet = {
+    ...legacySheet,
+    developerMetadata: [{ metadataKey: 'arkaiv.compact-presentation', metadataValue: '1' }],
+  };
+
+  assert.equal(__test__.hasCompactPresentationVersion(legacySheet), false);
+  assert.equal(__test__.shouldApplyCompactSheetPresentation('Transactions', legacySheet, new Set(), false), true);
+  assert.equal(__test__.hasCompactPresentationVersion(formattedSheet), true);
+  assert.equal(__test__.shouldApplyCompactSheetPresentation('Transactions', formattedSheet, new Set(), false), false);
+});
+
+test('compact data sheets freeze and filter headers while hiding internal columns', () => {
+  const headers = ['Date', 'Type', 'Category', 'Description', 'Amount', 'Wallet', 'To_Wallet', 'Payment_Method', 'Canonical_Payment_Method', 'Merchant', 'Canonical_Merchant', 'Commodity', 'Canonical_Commodity', 'Subcommodity', 'Canonical_Subcommodity', 'Tags', 'Created_At', 'Completed_At', 'ID'];
+  const requests = __test__.buildCompactSheetFormattingRequests(3, headers, {
+    name: 'Transactions',
+    tabColor: '#2563EB',
+    visibleHeaders: ['Date', 'Type', 'Category', 'Description', 'Amount', 'Wallet', 'To_Wallet', 'Merchant', 'Tags'],
+    widths: { Description: 340, Amount: 135 },
+    wrappedHeaders: ['Description', 'Tags'],
+    currencyHeaders: ['Amount'],
+    validationLists: { Type: ['expense', 'income', 'transfer'] },
+    requiredHeaders: ['Date', 'Description', 'Amount', 'Wallet'],
+    positiveAmountHeader: 'Amount',
+  }, 2);
+
+  assert.ok(requests.some(request => request.updateSheetProperties?.properties?.gridProperties?.frozenRowCount === 1));
+  assert.ok(requests.some(request => request.setBasicFilter?.filter?.range?.endColumnIndex === headers.length));
+  assert.ok(requests.some(request => request.updateDimensionProperties?.properties?.hiddenByUser === true));
+  assert.ok(requests.some(request => request.updateDimensionProperties?.properties?.pixelSize === 340));
+  assert.ok(requests.some(request => request.repeatCell?.cell?.userEnteredFormat?.numberFormat?.pattern?.includes('Rp')));
+  assert.ok(requests.some(request => request.setDataValidation?.rule?.condition?.type === 'ONE_OF_LIST'));
+  assert.ok(requests.some(request => request.addConditionalFormatRule?.rule?.booleanRule?.condition?.values?.[0]?.userEnteredValue?.includes('COUNTA')));
+  assert.ok(requests.some(request => request.createDeveloperMetadata?.developerMetadata?.metadataKey === 'arkaiv.compact-presentation'));
+});
+
 test('dashboard charts render only during setup or when charts are missing', () => {
   assert.equal(__test__.shouldRenderDashboardCharts(false, [101]), false);
   assert.equal(__test__.shouldRenderDashboardCharts(false, []), true);
@@ -535,4 +572,30 @@ test('generated-sheet formatting and charts are wired for newly created managed 
   assert.ok(requests.some(request => request.addChart));
   assert.ok(requests.some(request => request.repeatCell?.range?.sheetId === 0));
   assert.ok(requests.some(request => request.repeatCell?.range?.sheetId === 7));
+});
+
+test('spreadsheet presentation compacts user tabs and hides technical tabs without changing row schemas', () => {
+  const requests = __test__.buildGeneratedSheetPresentationRequests({
+    sheets: [
+      { properties: { title: 'Transactions', sheetId: 3 } },
+      { properties: { title: 'Chat History', sheetId: 20 } },
+      {
+        properties: { title: 'Canonical Rules', sheetId: 21 },
+        developerMetadata: [{ metadataKey: 'arkaiv.compact-presentation', metadataValue: '1' }],
+      },
+    ],
+  }, new Set(), false, [
+    {
+      name: 'Transactions',
+      data: [
+        ['Date', 'Type', 'Category', 'Description', 'Amount', 'Wallet', 'To_Wallet', 'Payment_Method', 'Merchant', 'Tags', 'ID'],
+        ['2026-08-05', 'expense', 'Food', 'Lunch', 50000, 'Cash', '', 'cash', 'Warung', '', 'tx-1'],
+      ],
+    },
+  ]);
+
+  assert.ok(requests.some(request => request.setBasicFilter?.filter?.range?.sheetId === 3));
+  assert.ok(requests.some(request => request.updateDimensionProperties?.range?.sheetId === 3 && request.updateDimensionProperties?.properties?.hiddenByUser === true));
+  assert.ok(requests.some(request => request.updateSheetProperties?.properties?.sheetId === 20 && request.updateSheetProperties?.properties?.hidden === true));
+  assert.equal(requests.some(request => request.updateSheetProperties?.properties?.sheetId === 21), false);
 });

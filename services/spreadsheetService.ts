@@ -78,6 +78,138 @@ export const SPREADSHEET_FETCH_RANGES = {
   'Canonical Rules': 'A:U',
 } as const;
 
+const COMPACT_PRESENTATION_METADATA_KEY = 'arkaiv.compact-presentation';
+const COMPACT_PRESENTATION_VERSION = '1';
+
+type CompactSheetPresentationSpec = {
+  name: string;
+  tabColor: string;
+  visibleHeaders: string[];
+  widths: Record<string, number>;
+  wrappedHeaders?: string[];
+  currencyHeaders?: string[];
+  validationLists?: Record<string, string[]>;
+  statusHeader?: string;
+  requiredHeaders?: string[];
+  positiveAmountHeader?: string;
+};
+
+const COMPACT_USER_SHEET_PRESENTATION: CompactSheetPresentationSpec[] = [
+  {
+    name: 'Transactions',
+    tabColor: '#2563EB',
+    visibleHeaders: ['Date', 'Type', 'Category', 'Description', 'Amount', 'Wallet', 'To_Wallet', 'Merchant', 'Tags'],
+    widths: { Date: 110, Type: 95, Category: 145, Description: 340, Amount: 135, Wallet: 130, To_Wallet: 130, Merchant: 160, Tags: 170 },
+    wrappedHeaders: ['Description', 'Tags'],
+    currencyHeaders: ['Amount'],
+    validationLists: { Type: ['expense', 'income', 'transfer', 'saving', 'loan', 'Achieved Goals'] },
+    requiredHeaders: ['Date', 'Description', 'Amount', 'Wallet'],
+    positiveAmountHeader: 'Amount',
+  },
+  {
+    name: 'Todos',
+    tabColor: '#7C3AED',
+    visibleHeaders: ['Type', 'Status', 'Priority', 'Content', 'Due_Date', 'Tags', 'Progress', 'Progress_Notes'],
+    widths: { Type: 90, Status: 95, Priority: 95, Content: 360, Due_Date: 120, Tags: 170, Progress: 90, Progress_Notes: 280 },
+    wrappedHeaders: ['Content', 'Tags', 'Progress_Notes'],
+    validationLists: { Status: ['pending', 'done'], Priority: ['low', 'normal', 'high', 'urgent'] },
+    statusHeader: 'Status',
+    requiredHeaders: ['Type', 'Status', 'Content'],
+  },
+  {
+    name: 'Shopping',
+    tabColor: '#16A34A',
+    visibleHeaders: ['Status', 'Item', 'Amount', 'Category', 'Quantity', 'Due_Date', 'Tags', 'Completed_At'],
+    widths: { Status: 95, Item: 340, Amount: 135, Category: 140, Quantity: 85, Due_Date: 120, Tags: 170, Completed_At: 145 },
+    wrappedHeaders: ['Item', 'Tags'],
+    currencyHeaders: ['Amount'],
+    validationLists: { Status: ['pending', 'done'], Category: ['regular', 'saving', 'investment'] },
+    statusHeader: 'Status',
+    requiredHeaders: ['Status', 'Item'],
+  },
+  {
+    name: SAVING_GOALS_INVESTMENTS_SHEET_NAME,
+    tabColor: '#0F766E',
+    visibleHeaders: ['Kind', 'Status', 'Name', 'Target_Amount', 'Saved_Amount', 'Dedicated_Wallet_ID', 'Due_Date', 'Tags'],
+    widths: { Kind: 100, Status: 95, Name: 290, Target_Amount: 145, Saved_Amount: 145, Dedicated_Wallet_ID: 175, Due_Date: 120, Tags: 170 },
+    wrappedHeaders: ['Name', 'Tags'],
+    currencyHeaders: ['Target_Amount', 'Saved_Amount'],
+    validationLists: { Kind: ['saving', 'investment'], Status: ['pending', 'done'] },
+    statusHeader: 'Status',
+    requiredHeaders: ['Kind', 'Status', 'Name', 'Target_Amount'],
+  },
+  {
+    name: 'Events',
+    tabColor: '#EA580C',
+    visibleHeaders: ['Date', 'Start_Date', 'End_Date', 'Priority', 'Event', 'Tags', 'Status'],
+    widths: { Date: 120, Start_Date: 145, End_Date: 145, Priority: 95, Event: 360, Tags: 170, Status: 95 },
+    wrappedHeaders: ['Event', 'Tags'],
+    validationLists: { Priority: ['low', 'normal', 'high', 'urgent'], Status: ['pending', 'done'] },
+    statusHeader: 'Status',
+    requiredHeaders: ['Date', 'Event', 'Status'],
+  },
+  {
+    name: 'Notes & Journals',
+    tabColor: '#475569',
+    visibleHeaders: ['Date', 'Type', 'Title', 'Content', 'Tags', 'Status'],
+    widths: { Date: 145, Type: 95, Title: 220, Content: 440, Tags: 170, Status: 95 },
+    wrappedHeaders: ['Title', 'Content', 'Tags'],
+    validationLists: { Type: ['NOTE', 'JOURNAL'], Status: ['pending', 'done'] },
+    statusHeader: 'Status',
+    requiredHeaders: ['Date', 'Type', 'Content'],
+  },
+  {
+    name: 'Skill Logs',
+    tabColor: '#9333EA',
+    visibleHeaders: ['Date', 'Skill_Name', 'Duration_Minutes', 'Content', 'Tags', 'Created_At', 'Completed_At'],
+    widths: { Date: 120, Skill_Name: 190, Duration_Minutes: 115, Content: 340, Tags: 170, Created_At: 145, Completed_At: 145 },
+    wrappedHeaders: ['Content', 'Tags'],
+    requiredHeaders: ['Date', 'Skill_Name', 'Content'],
+  },
+  {
+    name: 'Wallets Config',
+    tabColor: '#64748B',
+    visibleHeaders: ['ID', 'Name', 'Type', 'Initial_Balance', 'Color'],
+    widths: { ID: 190, Name: 170, Type: 130, Initial_Balance: 150, Color: 120 },
+    currencyHeaders: ['Initial_Balance'],
+    validationLists: { Type: ['cash', 'bank', 'e-wallet', 'saving', 'investment', 'loan'] },
+    requiredHeaders: ['ID', 'Name', 'Type'],
+  },
+  {
+    name: 'Skills Config',
+    tabColor: '#64748B',
+    visibleHeaders: ['Name', 'Description', 'Weekly_Target_Minutes', 'Schedule_Enabled', 'Schedule_Interval', 'Schedule_Start_Time', 'Schedule_End_Time', 'Color'],
+    widths: { Name: 180, Description: 340, Weekly_Target_Minutes: 150, Schedule_Enabled: 125, Schedule_Interval: 130, Schedule_Start_Time: 135, Schedule_End_Time: 135, Color: 120 },
+    wrappedHeaders: ['Description'],
+    validationLists: { Schedule_Enabled: ['TRUE', 'FALSE'], Schedule_Interval: ['daily', 'weekly', 'monthly', 'yearly'] },
+    requiredHeaders: ['Name'],
+  },
+  {
+    name: 'Budget Rules',
+    tabColor: '#64748B',
+    visibleHeaders: ['Property', 'Value', 'Color'],
+    widths: { Property: 250, Value: 260, Color: 130 },
+    wrappedHeaders: ['Property', 'Value'],
+    requiredHeaders: ['Property', 'Value'],
+  },
+  {
+    name: 'Themes & Settings',
+    tabColor: '#64748B',
+    visibleHeaders: ['Type', 'Key', 'Value', 'Hero_Image_URL'],
+    widths: { Type: 100, Key: 220, Value: 360, Hero_Image_URL: 320 },
+    wrappedHeaders: ['Value', 'Hero_Image_URL'],
+    requiredHeaders: ['Type', 'Key'],
+  },
+];
+
+const TECHNICAL_SHEET_NAMES = new Set<string>([
+  SYSTEM_SHEET_NAME,
+  HISTORY_SHEET_NAME,
+  'Chat History',
+  'Canonical Rules',
+  EVENT_LOG_SHEET_NAME,
+]);
+
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const safeLocalStorageGet = (key: string): string | null => {
@@ -858,6 +990,277 @@ const buildSourceRange = (
   sources: [{ sheetId, startRowIndex, endRowIndex, startColumnIndex, endColumnIndex }]
 });
 
+const hasCompactPresentationVersion = (sheet: any) => (
+  (sheet?.developerMetadata || []).some((entry: any) => (
+    entry?.metadataKey === COMPACT_PRESENTATION_METADATA_KEY
+    && entry?.metadataValue === COMPACT_PRESENTATION_VERSION
+  ))
+);
+
+const shouldApplyCompactSheetPresentation = (
+  sheetName: string,
+  sheet: any,
+  createdSheetTitles: Set<string>,
+  isInitialSpreadsheetWrite: boolean,
+) => (
+  shouldApplyManagedSheetFormatting(sheetName, createdSheetTitles, isInitialSpreadsheetWrite)
+  || !hasCompactPresentationVersion(sheet)
+);
+
+const buildCompactPresentationMarkerRequest = (sheetId: number) => ({
+  createDeveloperMetadata: {
+    developerMetadata: {
+      metadataKey: COMPACT_PRESENTATION_METADATA_KEY,
+      metadataValue: COMPACT_PRESENTATION_VERSION,
+      visibility: 'DOCUMENT',
+      location: { sheetId },
+    },
+  },
+});
+
+const groupColumnIndexes = (indexes: number[]) => {
+  const ordered = [...new Set(indexes)].sort((a, b) => a - b);
+  const spans: Array<{ startIndex: number; endIndex: number }> = [];
+  ordered.forEach(index => {
+    const previous = spans[spans.length - 1];
+    if (previous && previous.endIndex === index) {
+      previous.endIndex = index + 1;
+    } else {
+      spans.push({ startIndex: index, endIndex: index + 1 });
+    }
+  });
+  return spans;
+};
+
+const buildCompactSheetFormattingRequests = (
+  sheetId: number,
+  headers: string[],
+  spec: CompactSheetPresentationSpec,
+  sheetIndex: number,
+) => {
+  if (headers.length === 0) return [];
+
+  const requests: any[] = [];
+  const headerIndex = new Map(headers.map((header, index) => [String(header), index]));
+  const visibleIndexes = spec.visibleHeaders
+    .map(header => headerIndex.get(header))
+    .filter((index): index is number => index !== undefined);
+  const visibleIndexSet = new Set(visibleIndexes);
+  const hiddenIndexes = headers.map((_, index) => index).filter(index => !visibleIndexSet.has(index));
+  const fullRange = { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: headers.length };
+  const bodyRange = { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: headers.length };
+
+  requests.push(
+    {
+      updateSheetProperties: {
+        properties: {
+          sheetId,
+          index: sheetIndex,
+          hidden: false,
+          tabColorStyle: { rgbColor: hexToRgb(spec.tabColor) },
+          gridProperties: { frozenRowCount: 1 },
+        },
+        fields: 'index,hidden,tabColorStyle,gridProperties.frozenRowCount',
+      },
+    },
+    {
+      repeatCell: {
+        range: { ...fullRange, endRowIndex: 1 },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: hexToRgb('#1F2937'),
+            textFormat: { foregroundColor: hexToRgb('#F8FAFC'), fontSize: 10, bold: true },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE',
+            wrapStrategy: 'WRAP',
+          },
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)',
+      },
+    },
+    {
+      updateDimensionProperties: {
+        range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 },
+        properties: { pixelSize: 34 },
+        fields: 'pixelSize',
+      },
+    },
+    {
+      repeatCell: {
+        range: bodyRange,
+        cell: {
+          userEnteredFormat: {
+            textFormat: { foregroundColor: hexToRgb('#0F172A'), fontSize: 10 },
+            verticalAlignment: 'MIDDLE',
+          },
+        },
+        fields: 'userEnteredFormat(textFormat,verticalAlignment)',
+      },
+    },
+    {
+      setBasicFilter: {
+        filter: { range: fullRange },
+      },
+    },
+    {
+      updateDimensionProperties: {
+        range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: headers.length },
+        properties: { hiddenByUser: false },
+        fields: 'hiddenByUser',
+      },
+    },
+    {
+      addConditionalFormatRule: {
+        rule: {
+          ranges: [bodyRange],
+          booleanRule: {
+            condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: '=ISEVEN(ROW())' }] },
+            format: { backgroundColor: hexToRgb('#F8FAFC') },
+          },
+        },
+        index: 0,
+      },
+    },
+  );
+
+  groupColumnIndexes(hiddenIndexes).forEach(range => {
+    requests.push({
+      updateDimensionProperties: {
+        range: { sheetId, dimension: 'COLUMNS', ...range },
+        properties: { hiddenByUser: true },
+        fields: 'hiddenByUser',
+      },
+    });
+  });
+
+  Object.entries(spec.widths).forEach(([header, pixelSize]) => {
+    const index = headerIndex.get(header);
+    if (index === undefined) return;
+    requests.push({
+      updateDimensionProperties: {
+        range: { sheetId, dimension: 'COLUMNS', startIndex: index, endIndex: index + 1 },
+        properties: { pixelSize },
+        fields: 'pixelSize',
+      },
+    });
+  });
+
+  (spec.wrappedHeaders || []).forEach(header => {
+    const index = headerIndex.get(header);
+    if (index === undefined) return;
+    requests.push({
+      repeatCell: {
+        range: { sheetId, startRowIndex: 1, startColumnIndex: index, endColumnIndex: index + 1 },
+        cell: { userEnteredFormat: { wrapStrategy: 'WRAP', verticalAlignment: 'TOP' } },
+        fields: 'userEnteredFormat(wrapStrategy,verticalAlignment)',
+      },
+    });
+  });
+
+  (spec.currencyHeaders || []).forEach(header => {
+    const index = headerIndex.get(header);
+    if (index === undefined) return;
+    requests.push({
+      repeatCell: {
+        range: { sheetId, startRowIndex: 1, startColumnIndex: index, endColumnIndex: index + 1 },
+        cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: 'Rp #,##0;[Red]-Rp #,##0' } } },
+        fields: 'userEnteredFormat.numberFormat',
+      },
+    });
+  });
+
+  Object.entries(spec.validationLists || {}).forEach(([header, values]) => {
+    const index = headerIndex.get(header);
+    if (index === undefined) return;
+    requests.push({
+      setDataValidation: {
+        range: { sheetId, startRowIndex: 1, startColumnIndex: index, endColumnIndex: index + 1 },
+        rule: {
+          condition: { type: 'ONE_OF_LIST', values: values.map(userEnteredValue => ({ userEnteredValue })) },
+          strict: false,
+          showCustomUi: true,
+        },
+      },
+    });
+  });
+
+  if (spec.statusHeader) {
+    const index = headerIndex.get(spec.statusHeader);
+    if (index !== undefined) {
+      const range = { sheetId, startRowIndex: 1, startColumnIndex: index, endColumnIndex: index + 1 };
+      requests.push(
+        {
+          addConditionalFormatRule: {
+            rule: {
+              ranges: [range],
+              booleanRule: {
+                condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: 'done' }] },
+                format: { backgroundColor: hexToRgb('#DCFCE7'), textFormat: { foregroundColor: hexToRgb('#166534'), bold: true } },
+              },
+            },
+            index: 0,
+          },
+        },
+        {
+          addConditionalFormatRule: {
+            rule: {
+              ranges: [range],
+              booleanRule: {
+                condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: 'pending' }] },
+                format: { backgroundColor: hexToRgb('#FEF3C7'), textFormat: { foregroundColor: hexToRgb('#92400E'), bold: true } },
+              },
+            },
+            index: 0,
+          },
+        },
+      );
+    }
+  }
+
+  const requiredIndexes = (spec.requiredHeaders || [])
+    .map(header => headerIndex.get(header))
+    .filter((index): index is number => index !== undefined);
+  if (requiredIndexes.length > 0) {
+    const populatedRowGuard = `COUNTA($A2:$${columnLabel(headers.length - 1)}2)>0`;
+    const formula = `=AND(${populatedRowGuard},OR(${requiredIndexes.map(index => `$${columnLabel(index)}2=""`).join(',')}))`;
+    requests.push({
+      addConditionalFormatRule: {
+        rule: {
+          ranges: [bodyRange],
+          booleanRule: {
+            condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: formula }] },
+            format: { backgroundColor: hexToRgb('#FEE2E2'), textFormat: { foregroundColor: hexToRgb('#991B1B') } },
+          },
+        },
+        index: 0,
+      },
+    });
+  }
+
+  if (spec.positiveAmountHeader) {
+    const index = headerIndex.get(spec.positiveAmountHeader);
+    if (index !== undefined) {
+      const column = `$${columnLabel(index)}2`;
+      const populatedRowGuard = `COUNTA($A2:$${columnLabel(headers.length - 1)}2)>0`;
+      requests.push({
+        addConditionalFormatRule: {
+          rule: {
+            ranges: [{ sheetId, startRowIndex: 1, startColumnIndex: index, endColumnIndex: index + 1 }],
+            booleanRule: {
+              condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: `=AND(${populatedRowGuard},OR(${column}="",NOT(ISNUMBER(${column})),${column}<=0))` }] },
+              format: { backgroundColor: hexToRgb('#FECACA'), textFormat: { foregroundColor: hexToRgb('#991B1B'), bold: true } },
+            },
+          },
+          index: 0,
+        },
+      });
+    }
+  }
+
+  requests.push(buildCompactPresentationMarkerRequest(sheetId));
+  return requests;
+};
+
 const buildDashboardFormattingRequests = (sheetId: number) => {
   const visibleEndColumn = 7;
 
@@ -1252,23 +1655,39 @@ const buildGeneratedSheetPresentationRequests = (
   spreadsheetMeta: any,
   createdSheetTitles: Set<string>,
   isInitialSpreadsheetWrite: boolean,
+  presentationSheets: SheetData[] = [],
 ) => {
   const requests: any[] = [];
   const sheets = Array.isArray(spreadsheetMeta?.sheets) ? spreadsheetMeta.sheets : [];
   const findSheet = (title: string) => sheets.find((sheet: any) => sheet?.properties?.title === title);
+  const presentationDataByName = new Map(presentationSheets.map(sheet => [sheet.name, sheet]));
 
   const dashboard = findSheet(DASHBOARD_SHEET_NAME);
   const dashboardSheetId = dashboard?.properties?.sheetId;
   if (dashboardSheetId !== undefined) {
-    const shouldFormatDashboard = shouldApplyManagedSheetFormatting(
+    const shouldFormatDashboard = shouldApplyCompactSheetPresentation(
       DASHBOARD_SHEET_NAME,
+      dashboard,
       createdSheetTitles,
       isInitialSpreadsheetWrite,
     );
     const existingChartIds = (dashboard.charts || [])
       .map((chart: any) => chart?.chartId ?? chart?.objectId)
       .filter((chartId: unknown): chartId is number => typeof chartId === 'number');
-    if (shouldFormatDashboard) requests.push(...buildDashboardFormattingRequests(dashboardSheetId));
+    if (shouldFormatDashboard) {
+      requests.push(
+        ...buildDashboardFormattingRequests(dashboardSheetId),
+        {
+          updateSheetProperties: {
+            properties: { sheetId: dashboardSheetId, hidden: false, tabColorStyle: { rgbColor: hexToRgb('#111827') } },
+            fields: 'hidden,tabColorStyle',
+          },
+        },
+      );
+      if (!hasCompactPresentationVersion(dashboard)) {
+        requests.push(buildCompactPresentationMarkerRequest(dashboardSheetId));
+      }
+    }
     if (shouldRenderDashboardCharts(shouldFormatDashboard, existingChartIds)) {
       requests.push(...buildDashboardChartRequests(dashboardSheetId, existingChartIds));
     }
@@ -1278,10 +1697,54 @@ const buildGeneratedSheetPresentationRequests = (
   const dataQualitySheetId = dataQuality?.properties?.sheetId;
   if (
     dataQualitySheetId !== undefined
-    && shouldApplyManagedSheetFormatting(DATA_QUALITY_SHEET_NAME, createdSheetTitles, isInitialSpreadsheetWrite)
+    && shouldApplyCompactSheetPresentation(DATA_QUALITY_SHEET_NAME, dataQuality, createdSheetTitles, isInitialSpreadsheetWrite)
   ) {
-    requests.push(...buildDataQualityFormattingRequests(dataQualitySheetId));
+    requests.push(
+      ...buildDataQualityFormattingRequests(dataQualitySheetId),
+      {
+        updateSheetProperties: {
+          properties: { sheetId: dataQualitySheetId, index: 1, hidden: false, tabColorStyle: { rgbColor: hexToRgb('#D97706') } },
+          fields: 'index,hidden,tabColorStyle',
+        },
+      },
+    );
+    if (!hasCompactPresentationVersion(dataQuality)) {
+      requests.push(buildCompactPresentationMarkerRequest(dataQualitySheetId));
+    }
   }
+
+  COMPACT_USER_SHEET_PRESENTATION.forEach((spec, specIndex) => {
+    const sheet = findSheet(spec.name);
+    const sheetId = sheet?.properties?.sheetId;
+    const sheetData = presentationDataByName.get(spec.name);
+    const headers = (sheetData?.data?.[0] || []).map(value => String(value || ''));
+    if (
+      sheetId === undefined
+      || headers.length === 0
+      || !shouldApplyCompactSheetPresentation(spec.name, sheet, createdSheetTitles, isInitialSpreadsheetWrite)
+    ) return;
+
+    requests.push(...buildCompactSheetFormattingRequests(sheetId, headers, spec, specIndex + 2));
+  });
+
+  TECHNICAL_SHEET_NAMES.forEach(sheetName => {
+    const sheet = findSheet(sheetName);
+    const sheetId = sheet?.properties?.sheetId;
+    if (
+      sheetId === undefined
+      || !shouldApplyCompactSheetPresentation(sheetName, sheet, createdSheetTitles, isInitialSpreadsheetWrite)
+    ) return;
+
+    requests.push({
+      updateSheetProperties: {
+        properties: { sheetId, hidden: true, tabColorStyle: { rgbColor: hexToRgb('#94A3B8') } },
+        fields: 'hidden,tabColorStyle',
+      },
+    });
+    if (!hasCompactPresentationVersion(sheet)) {
+      requests.push(buildCompactPresentationMarkerRequest(sheetId));
+    }
+  });
 
   return requests;
 };
@@ -1291,11 +1754,13 @@ const applyGeneratedSheetPresentation = async (
   spreadsheetMeta: any,
   createdSheetTitles: Set<string>,
   isInitialSpreadsheetWrite: boolean,
+  presentationSheets: SheetData[] = [],
 ) => {
   const requests = buildGeneratedSheetPresentationRequests(
     spreadsheetMeta,
     createdSheetTitles,
     isInitialSpreadsheetWrite,
+    presentationSheets,
   );
   if (requests.length === 0) return;
 
@@ -2924,7 +3389,7 @@ const performSync = async (
     }
 
     // 5. Cache & cleanup
-    await applyGeneratedSheetPresentation(config, meta, createdSheetTitles, isInitialSpreadsheetWrite);
+    await applyGeneratedSheetPresentation(config, meta, createdSheetTitles, isInitialSpreadsheetWrite, allSheetData);
     await verifySpreadsheetWriteCommitted(config, exportSheets, onProgress);
     onProgress?.({ phase: 'complete', label: 'Finalizing save', detail: 'Updating local cache' });
     writeSpreadsheetCache(finalJsonString);
@@ -3096,6 +3561,9 @@ export const __test__ = {
   buildSystemSheetRows,
   extractSystemSheetSnapshot,
   shouldApplyManagedSheetFormatting,
+  hasCompactPresentationVersion,
+  shouldApplyCompactSheetPresentation,
+  buildCompactSheetFormattingRequests,
   shouldRenderDashboardCharts,
   buildIncrementalUserSheetPlan,
   buildSheetRowIndexes,

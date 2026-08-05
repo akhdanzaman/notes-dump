@@ -27,10 +27,18 @@ This project revision implements the spreadsheet audit's P0-P2 recommendations w
 - Dates, numbers, and booleans are written as typed values, with tables, filters, frozen headers, bounded column widths, Rupiah/date formats, validation, wrapping, and conditional formatting.
 - Export generation is lazy-loaded; the Control Center waits for completion and displays busy/error states.
 
+## Compact Google Sheets presentation
+
+- Save/sync keeps the complete round-trip schema, but shows only the most useful working columns by default; internal IDs, canonical fields, recurrence payloads, and parser metadata remain available as hidden columns.
+- User-facing tabs now receive a frozen header, filter, compact widths, wrapping, Rupiah formats, dropdown guidance, alternating row shading, status colors, and missing/invalid-value highlighting.
+- Dashboard and Data Quality stay first, followed by daily working tabs and editable configuration tabs.
+- App state, history, chat history, canonical rules, and event log tabs are hidden from the normal workspace without being deleted.
+- A sheet-level presentation-version marker applies the migration once to existing spreadsheets and avoids repeating large formatting batches on every save.
+
 ## Verification
 
 - TypeScript: `npm run lint` passed.
-- Tests: 328 passed, 0 failed.
+- Tests: 331 passed, 0 failed.
 - Production build: `npm run build` passed.
 
 The repaired one-time workbook is delivered separately. Its Data Quality sheet intentionally lists unresolved records that need a human decision; no wallet, amount, or different-ID duplicate was invented or auto-merged.
