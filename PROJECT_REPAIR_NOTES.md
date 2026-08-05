@@ -35,11 +35,12 @@ This project revision implements the spreadsheet audit's P0-P2 recommendations w
 - App state, history, chat history, canonical rules, and event log tabs are hidden from the normal workspace without being deleted.
 - A sheet-level presentation-version marker applies the migration once to existing spreadsheets and avoids repeating large formatting batches on every save.
 - Before any canonical clear/rewrite, the save pipeline now expands Google Sheets grid capacity when generated rows exceed 1,000 or schemas exceed 26 columns, with headroom for subsequent saves.
+- Save verification trims presentation-only trailing rows and ignores locale-parsed chart-helper cells on `Sheet1`, while retaining strict ID multiplicity and full row-signature checks for every source-of-truth sheet.
 
 ## Verification
 
 - TypeScript: `npm run lint` passed.
-- Tests: 332 passed, 0 failed.
+- Tests: 333 passed, 0 failed.
 - Production build: `npm run build` passed.
 
 The repaired one-time workbook is delivered separately. Its Data Quality sheet intentionally lists unresolved records that need a human decision; no wallet, amount, or different-ID duplicate was invented or auto-merged.

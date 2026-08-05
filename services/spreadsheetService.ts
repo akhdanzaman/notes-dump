@@ -640,14 +640,30 @@ type SheetValueProfile = {
   rowSignatureCounts: Map<string, number>;
 };
 
+const DASHBOARD_VERIFICATION_COLUMN_COUNT = 7;
+
+const getVerificationRows = (sheet: SheetData) => {
+  const rows = (sheet.data || []).map(row => normalizeSignatureRow(
+    sheet.name === DASHBOARD_SHEET_NAME
+      ? row.slice(0, DASHBOARD_VERIFICATION_COLUMN_COUNT)
+      : row
+  ));
+
+  // The Values API omits trailing rows that contain no values. Generated
+  // dashboards intentionally reserve blank rows for chart layout, so those
+  // rows are presentation capacity rather than canonical data.
+  while (rows.length > 0 && rows[rows.length - 1].length === 0) rows.pop();
+  return rows;
+};
+
 const buildSheetValueProfile = (sheet: SheetData): SheetValueProfile => {
-  const rows = sheet.data || [];
+  const rows = getVerificationRows(sheet);
   const idColumnIndex = (rows[0] || []).indexOf('ID');
   const idCounts = new Map<string, number>();
   const rowSignatureCounts = new Map<string, number>();
 
   rows.forEach((row, index) => {
-    const signature = JSON.stringify(normalizeSignatureRow(row));
+    const signature = JSON.stringify(row);
     incrementCount(rowSignatureCounts, signature);
     if (index === 0 || idColumnIndex < 0) return;
     const id = String(row?.[idColumnIndex] || '').trim();

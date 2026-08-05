@@ -585,6 +585,36 @@ test('sheet verification compares ID and row-signature multisets, not unique-ID 
   assert.deepEqual([...__test__.detectPhysicalSheetDrift(expected, signatureActual)], ['Transactions']);
 });
 
+test('dashboard verification ignores reserved blank layout rows and parsed chart-helper values', () => {
+  const expectedRows: Array<Array<string | number>> = [
+    ['BRAINDUMP HQ', '', '', '', '', '', '', 'Aug 5'],
+    ['Auto-generated finance + life tracker command center', '', '', '', '', '', '', 1000],
+    ['Data health is current'],
+  ];
+  while (expectedRows.length < 52) expectedRows.push([]);
+  const expected = [{ name: 'Sheet1', inputOption: 'USER_ENTERED' as const, data: expectedRows }];
+  const actual = [{
+    range: "'Sheet1'!A:AE",
+    values: [
+      ['BRAINDUMP HQ', '', '', '', '', '', '', 45874],
+      ['Auto-generated finance + life tracker command center', '', '', '', '', '', '', 1000],
+      ['Data health is current'],
+    ],
+  }];
+
+  assert.deepEqual(__test__.compareSheetValueMultisets(expected, actual), []);
+
+  const changedVisibleValue = [{
+    ...actual[0],
+    values: [
+      ['BRAINDUMP HQ'],
+      ['Wrong dashboard title'],
+      ['Data health is current'],
+    ],
+  }];
+  assert.equal(__test__.compareSheetValueMultisets(expected, changedVisibleValue).length, 1);
+});
+
 test('generated-sheet formatting and charts are wired for newly created managed sheets', () => {
   const requests = __test__.buildGeneratedSheetPresentationRequests({
     sheets: [
