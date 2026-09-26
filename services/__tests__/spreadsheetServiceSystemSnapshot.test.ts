@@ -91,7 +91,7 @@ test('system snapshot write batches keep proxy payloads bounded', () => {
   assert.deepEqual(batches.map(batch => batch.values.length), [20, 20, 5]);
 });
 
-test('canonical sheet rewrites clear the complete prior managed range before writing current rows', () => {
+test('canonical sheet rewrites include explicit empty cells across the old managed range', () => {
   const batches = __test__.buildSheetRewriteBatches({
     name: 'Transactions',
     inputOption: 'RAW',
@@ -113,10 +113,12 @@ test('canonical sheet rewrites clear the complete prior managed range before wri
       ['tx-1', 5000],
     ],
   }), "'Transactions'!A1:C4");
-  assert.deepEqual(batches.map(batch => batch.range), ["'Transactions'!A1:B2"]);
+  assert.deepEqual(batches.map(batch => batch.range), ["'Transactions'!A1:C4"]);
   assert.deepEqual(batches[0].values, [
-    ['ID', 'Amount'],
-    ['tx-1', 5000],
+    ['ID', 'Amount', ''],
+    ['tx-1', 5000, ''],
+    ['', '', ''],
+    ['', '', ''],
   ]);
 });
 
@@ -524,7 +526,7 @@ test('moving an item deletes all physical old-sheet occurrences before appending
   assert.ok(plan.appends.some(append => append.sheetName === 'Todos'));
 });
 
-test('rewrite execution clears the actual prior range before sending canonical values', async () => {
+test('rewrite execution replaces values and clears stale cells in a single request', async () => {
   const calls: Array<{ path: string; init?: RequestInit }> = [];
   const fetcher = async (_spreadsheetId: string, path: string, init?: RequestInit) => {
     calls.push({ path, init });
@@ -546,13 +548,12 @@ test('rewrite execution clears the actual prior range before sending canonical v
     fetcher,
   );
 
-  assert.equal(calls.length, 2);
-  assert.match(decodeURIComponent(calls[0].path), /'Transactions'!A1:C4:clear$/);
-  assert.equal(calls[1].path, '/values:batchUpdate');
-  const updateBody = JSON.parse(String(calls[1].init?.body));
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, '/values:batchUpdate');
+  const updateBody = JSON.parse(String(calls[0].init?.body));
   assert.deepEqual(updateBody.data, [{
-    range: "'Transactions'!A1:B2",
-    values: [['ID', 'Amount'], ['tx-1', 5000]],
+    range: "'Transactions'!A1:C4",
+    values: [['ID', 'Amount', ''], ['tx-1', 5000, ''], ['', '', ''], ['', '', '']],
   }]);
 });
 

@@ -623,8 +623,8 @@ export const buildSpreadsheetHealthSummary = (
 
   return {
     generatedAt: now.toLocaleString(),
-    guideLine: 'Generated-only: Sheet1 and Data Quality are rewritten on sync. Source-of-truth tabs are dedicated sheets: Transactions, Todos, Shopping, Events, Notes & Journals, Skill Logs, Wallets Config, Skills Config, Budget Rules, Themes & Settings, Chat History, Canonical Rules.',
-    syncHealthLine: `SYNC HEALTH: generated ${now.toLocaleString()} • dedicated sheet schema • each source tab is cleared and rewritten directly.`,
+    guideLine: 'Generated-only: Sheet1 and Data Quality refresh when their contents change. Edit data in the dedicated source tabs. Budget Rules stores categories; Monthly Income is in Themes & Settings.',
+    syncHealthLine: `Report date: ${now.toLocaleDateString()}. Changed rows sync incrementally. See Event Log for save times and outcomes.`,
     dataHealthLine: issues.length === 0
       ? `DATA HEALTH: no issues detected${staleConfigWarnings.length ? `; setup note: ${staleConfigWarnings.join(', ')}` : ''}.`
       : `DATA HEALTH: ${issues.length} issue(s): ${criticalCount} critical, ${warningCount} warning. See generated Data Quality tab for fixes.`,
@@ -636,7 +636,7 @@ export const buildDataQualitySheetData = (issues: DataQualityIssue[]): (string |
   const header = ['Severity', 'Item ID', 'Sheet/Tab', 'Reason', 'Suggested Fix'];
   return [
     ['DATA QUALITY'],
-    ['Generated-only audit. Fix the editable source tabs; this tab is cleared and rewritten on every spreadsheet sync.'],
+    ['Generated-only audit. Fix the editable source tabs; this report refreshes when its contents change.'],
     [issues.length === 0 ? 'No issues detected. Sync/data audit looks healthy.' : `${issues.length} issue(s) detected. Highest severity rows are listed first.`],
     header,
     ...(issues.length === 0

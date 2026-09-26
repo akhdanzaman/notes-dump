@@ -36,7 +36,7 @@ test('export data starts with premium Sheet1 dashboard and helper analytics data
   assert.equal(sheets[0].inputOption, 'USER_ENTERED');
   assert.equal(sheets[0].data[0][0], 'BRAINDUMP HQ');
   assert.match(String(sheets[0].data[2][0]), /Generated-only/);
-  assert.match(String(sheets[0].data[3][0]), /SYNC HEALTH/);
+  assert.match(String(sheets[0].data[3][0]), /Report date:/);
   assert.equal(sheets[0].data[25][0], 'ANALYTICS DECK');
   assert.ok(typeof sheets[0].data[1][7] === 'number');
   const dataQualitySheet = sheets.find(sheet => sheet.name === DATA_QUALITY_SHEET_NAME);

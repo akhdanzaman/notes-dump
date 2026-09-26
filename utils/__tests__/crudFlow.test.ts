@@ -228,13 +228,19 @@ test('[CRUD-UPDATE] skill name update is preserved after merge', () => {
   assert.equal(merged.skills![0].name, 'Programming');
 });
 
-test('[CRUD-UPDATE] budgetConfig monthlyIncome 0 is preserved (not replaced by remote)', () => {
+test('[CRUD-UPDATE] an explicit local change of monthlyIncome to 0 wins a concurrent edit', () => {
   const local: DbSchema = { data: [], budgetConfig: { monthlyIncome: 0, rules: [] } };
   const remote: DbSchema = { data: [], budgetConfig: { monthlyIncome: 5000000, rules: [] } };
-  const base: DbSchema = { data: [], budgetConfig: { monthlyIncome: 0, rules: [] } };
+  const base: DbSchema = { data: [], budgetConfig: { monthlyIncome: 1000000, rules: [] } };
 
   const merged = mergeDbData(local, remote, base);
   assert.equal(merged.budgetConfig?.monthlyIncome, 0);
+});
+
+test('[CRUD-UPDATE] remote income edit is preserved when local income has not changed', () => {
+  const base: DbSchema = { data: [], budgetConfig: { monthlyIncome: 0, rules: [] } };
+  const remote: DbSchema = { data: [], budgetConfig: { monthlyIncome: 5000000, rules: [] } };
+  assert.equal(mergeDbData(base, remote, base).budgetConfig?.monthlyIncome, 5000000);
 });
 
 // ════════════════════════════════════════

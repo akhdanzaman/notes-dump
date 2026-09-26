@@ -1,6 +1,7 @@
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule, ItemType, SyncProgressCallback, SyncResult } from "../types";
 import { CHANGELOG_ENTRIES } from "../utils/changelog";
 import { mergeDbData } from "../utils/mergeUtils";
+import { parseSpreadsheetBudget } from "../utils/spreadsheetBudget";
 import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, SAVING_GOALS_INVESTMENTS_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
 import { parseSubtasksFromSheet } from "../utils/deepWorkTodoModel";
@@ -72,14 +73,14 @@ export const SPREADSHEET_FETCH_RANGES = {
   'Skill Logs': 'A:P',
   'Wallets Config': 'A:E',
   'Skills Config': 'A:N',
-  'Budget Rules': 'A:C',
+  'Budget Rules': 'A:D',
   'Themes & Settings': 'A:D',
   'Chat History': 'A:C',
   'Canonical Rules': 'A:U',
 } as const;
 
 const COMPACT_PRESENTATION_METADATA_KEY = 'arkaiv.compact-presentation';
-const COMPACT_PRESENTATION_VERSION = '1';
+const compactPresentationVersion = (sheetName?: string) => sheetName === 'Budget Rules' ? '3' : '1';
 
 type CompactSheetPresentationSpec = {
   name: string;
@@ -187,10 +188,10 @@ const COMPACT_USER_SHEET_PRESENTATION: CompactSheetPresentationSpec[] = [
   {
     name: 'Budget Rules',
     tabColor: '#64748B',
-    visibleHeaders: ['Property', 'Value', 'Color'],
-    widths: { Property: 250, Value: 260, Color: 130 },
-    wrappedHeaders: ['Property', 'Value'],
-    requiredHeaders: ['Property', 'Value'],
+    visibleHeaders: ['ID', 'Name', 'Percentage', 'Color'],
+    widths: { ID: 180, Name: 250, Percentage: 150, Color: 130 },
+    wrappedHeaders: ['Name'],
+    requiredHeaders: ['ID', 'Name'],
   },
   {
     name: 'Themes & Settings',
@@ -905,9 +906,7 @@ const buildIncrementalUserSheetPlan = (
     .filter(item => JSON.stringify(previousById.get(item.id)) !== JSON.stringify(item))
     .map(item => item.id);
 
-  const previousSheets = generateDbExportSheets(actualSheetDb);
-
-  const previousIndexes = buildSheetRowIndexes(physicalSheetData || previousSheets);
+  const previousIndexes = buildSheetRowIndexes(physicalSheetData || generateDbExportSheets(actualSheetDb));
   const nextIndexes = buildSheetRowIndexes(exportSheets);
   const nextSheetByName = new Map(exportSheets.map(sheet => [sheet.name, sheet]));
   const rewriteNames = new Set<string>([...createdSheetTitles, ...schemaRewriteSheetNames]);
@@ -921,16 +920,27 @@ const buildIncrementalUserSheetPlan = (
   };
 
   // Dashboard and Data Quality are generated projections of the canonical DB.
-  // Refresh them on every successful save, not only during initial setup.
-  GENERATED_DASHBOARD_SHEET_NAMES.forEach(markRewrite);
+  // Compare physical rows in order, preserving layout and formula changes.
+  // Without a physical snapshot, refresh conservatively (e.g. a new month).
+  GENERATED_DASHBOARD_SHEET_NAMES.forEach(name => {
+    const actual = physicalSheetData?.find(sheet => sheet.name === name);
+    const expected = nextSheetByName.get(name);
+    const normalizeRows = (sheet: SheetData) => {
+      const rows = sheet.data.map(normalizeSignatureRow);
+      while (rows.length && rows[rows.length - 1].length === 0) rows.pop();
+      return rows;
+    };
+    if (!actual || !expected || !sameJson(normalizeRows(actual), normalizeRows(expected))) markRewrite(name);
+  });
 
-  if (!sameJson(previousDb.budgetConfig, nextDb.budgetConfig)) markRewrite('Budget Rules');
+  if (!sameJson(previousDb.budgetConfig?.rules, nextDb.budgetConfig?.rules)) markRewrite('Budget Rules');
   if (!sameJson(previousDb.skills, nextDb.skills)) markRewrite('Skills Config');
   if (!sameJson(previousDb.wallets, nextDb.wallets)) markRewrite('Wallets Config');
   if (!sameJson(previousDb.monthlyThemes, nextDb.monthlyThemes)
     || !sameJson(previousDb.monthlyThemeImages, nextDb.monthlyThemeImages)
     || !sameJson(previousDb.appSettings, nextDb.appSettings)
-    || !sameJson(previousDb.customPrompt, nextDb.customPrompt)) markRewrite('Themes & Settings');
+    || !sameJson(previousDb.customPrompt, nextDb.customPrompt)
+    || previousDb.budgetConfig?.monthlyIncome !== nextDb.budgetConfig?.monthlyIncome) markRewrite('Themes & Settings');
   if (!sameJson(previousDb.chatHistory, nextDb.chatHistory)) markRewrite('Chat History');
   if (!sameJson(previousDb.canonicalRules, nextDb.canonicalRules)) markRewrite('Canonical Rules');
 
@@ -1065,7 +1075,7 @@ const buildSourceRange = (
 const hasCompactPresentationVersion = (sheet: any) => (
   (sheet?.developerMetadata || []).some((entry: any) => (
     entry?.metadataKey === COMPACT_PRESENTATION_METADATA_KEY
-    && entry?.metadataValue === COMPACT_PRESENTATION_VERSION
+    && entry?.metadataValue === compactPresentationVersion(sheet?.properties?.title)
   ))
 );
 
@@ -1079,11 +1089,11 @@ const shouldApplyCompactSheetPresentation = (
   || !hasCompactPresentationVersion(sheet)
 );
 
-const buildCompactPresentationMarkerRequest = (sheetId: number) => ({
+const buildCompactPresentationMarkerRequest = (sheetId: number, sheetName?: string) => ({
   createDeveloperMetadata: {
     developerMetadata: {
       metadataKey: COMPACT_PRESENTATION_METADATA_KEY,
-      metadataValue: COMPACT_PRESENTATION_VERSION,
+      metadataValue: compactPresentationVersion(sheetName),
       visibility: 'DOCUMENT',
       location: { sheetId },
     },
@@ -1289,6 +1299,34 @@ const buildCompactSheetFormattingRequests = (
     }
   }
 
+  if (spec.name === 'Budget Rules') {
+    const percentageIndex = headerIndex.get('Percentage');
+    const idIndex = headerIndex.get('ID');
+    if (idIndex !== undefined) requests.push({ repeatCell: {
+      range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: idIndex, endColumnIndex: idIndex + 1 },
+      cell: { note: 'Required, unique category ID (for example: groceries). Keep this ID when renaming a category.' },
+      fields: 'note',
+    } });
+    if (percentageIndex !== undefined) {
+      const column = columnLabel(percentageIndex);
+      requests.push({ repeatCell: {
+        range: { sheetId, startRowIndex: 1, startColumnIndex: percentageIndex, endColumnIndex: percentageIndex + 1 },
+        cell: { userEnteredFormat: { numberFormat: { type: 'TEXT', pattern: '@' } } },
+        fields: 'userEnteredFormat.numberFormat',
+      } }, { repeatCell: {
+        range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: percentageIndex, endColumnIndex: percentageIndex + 1 },
+        cell: { note: 'Enter 50 or 50% for fifty percent. Values must be between 0 and 100. Decimal comma or point is supported.' },
+        fields: 'note',
+      } }, { setDataValidation: {
+        range: { sheetId, startRowIndex: 1, startColumnIndex: percentageIndex, endColumnIndex: percentageIndex + 1 },
+        rule: {
+          condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: `=REGEXMATCH(TO_TEXT(${column}2),"^\\s*(100([.,]0+)?|[0-9]{1,2}([.,][0-9]+)?)\\s*%?\\s*$")` }] },
+          strict: true, inputMessage: 'Use 0–100, for example 50 or 50%.',
+        },
+      } });
+    }
+  }
+
   const requiredIndexes = (spec.requiredHeaders || [])
     .map(header => headerIndex.get(header))
     .filter((index): index is number => index !== undefined);
@@ -1329,7 +1367,7 @@ const buildCompactSheetFormattingRequests = (
     }
   }
 
-  requests.push(buildCompactPresentationMarkerRequest(sheetId));
+  requests.push(buildCompactPresentationMarkerRequest(sheetId, spec.name));
   return requests;
 };
 
@@ -2262,37 +2300,22 @@ export const saveSecurityPasswordHash = async (encryptedPassword: string): Promi
 
 const getTitleFromRange = (range: string) => range.split('!')[0]?.replace(/^'/, '').replace(/'$/, '').replace(/''/g, "'") || '';
 
-const detectHeaderRewriteSheets = async (
-  config: SpreadsheetConfig,
+const detectHeaderRewriteSheets = (
   exportSheets: SheetData[],
-  existingTitles: Set<string>
-): Promise<Set<string>> => {
+  existingTitles: Set<string>,
+  physicalSheets: SheetData[],
+): Set<string> => {
   const sheetsToCheck = exportSheets
-    .filter(sheet => !isGeneratedDashboardSheet(sheet.name) && existingTitles.has(sheet.name))
+    .filter(sheet => !isGeneratedDashboardSheet(sheet.name) && sheet.name !== EVENT_LOG_SHEET_NAME && existingTitles.has(sheet.name))
     .filter(sheet => sheet.data.length > 0);
   if (sheetsToCheck.length === 0) return new Set();
 
-  const ranges = sheetsToCheck
-    .map(sheet => `${escapeSheetName(sheet.name)}!1:1`)
-    .map(range => `ranges=${encodeURIComponent(range)}`)
-    .join('&');
-  const response = await sheetsFetch(config.spreadsheetId, `/values:batchGet?${ranges}`);
-  if (!response.ok) {
-    console.warn(`Failed to inspect spreadsheet headers for schema drift: ${response.status} ${response.statusText}`);
-    return new Set();
-  }
-
-  const payload = await response.json();
-  const valueRanges = Array.isArray(payload.valueRanges) ? payload.valueRanges : [];
-  const expectedByName = new Map(sheetsToCheck.map(sheet => [sheet.name, sheet.data[0] || []]));
+  const physicalByName = new Map(physicalSheets.map(sheet => [sheet.name, sheet]));
   const rewriteNames = new Set<string>();
-
-  for (const valueRange of valueRanges) {
-    const title = getTitleFromRange(String(valueRange.range || ''));
-    const expected = expectedByName.get(title);
-    if (!expected) continue;
-    const actual = valueRange.values?.[0] || [];
-    if (!sameSheetHeader(actual, expected)) rewriteNames.add(title);
+  for (const sheet of sheetsToCheck) {
+    const actual = physicalByName.get(sheet.name);
+    if (!actual) throw new Error(`Missing spreadsheet snapshot for ${sheet.name}; save stopped.`);
+    if (!sameSheetHeader(actual.data[0] || [], sheet.data[0] || [])) rewriteNames.add(sheet.name);
   }
 
   return rewriteNames;
@@ -2353,6 +2376,20 @@ export const fetchSpreadsheetDb = (skipLocalStorage = false, onProgress?: SyncPr
 // ── Fetch/migration path: dedicated sheets first, then legacy raw/system/user sheets ──
 type SpreadsheetReadSource = 'dedicated_sheets' | 'current_raw' | 'legacy_system_snapshot' | 'legacy_user_sheets' | 'cache' | 'empty';
 
+const assertCompleteValueRanges = (ranges: string[], valueRanges: any): any[] => {
+  if (!Array.isArray(valueRanges) || valueRanges.length !== ranges.length) {
+    throw new Error('Spreadsheet returned an incomplete read; save stopped. Local changes are kept.');
+  }
+  for (let index = 0; index < ranges.length; index++) {
+    const entry = valueRanges[index];
+    if (!entry || getTitleFromRange(String(entry.range || '')) !== getTitleFromRange(ranges[index])
+      || (entry.values !== undefined && (!Array.isArray(entry.values) || !entry.values.every(Array.isArray)))) {
+      throw new Error('Spreadsheet returned an invalid range; save stopped. Local changes are kept.');
+    }
+  }
+  return valueRanges;
+};
+
 const batchGetSpreadsheetRanges = async (
   config: SpreadsheetConfig,
   ranges: string[],
@@ -2371,7 +2408,7 @@ const batchGetSpreadsheetRanges = async (
   }
 
   const batchData = await res.json();
-  return batchData.valueRanges || [];
+  return assertCompleteValueRanges(ranges, batchData.valueRanges);
 };
 
 const buildCurrentRawDbFromValueRanges = (valueRanges: any[]): DbSchema => {
@@ -2503,7 +2540,10 @@ const applyConfigSheetsToBaseDb = (baseDb: DbSchema, valueRanges: any[]): DbSche
     ...baseDb,
     wallets: rangeNames.has('Wallets Config') ? sheetConfig.wallets : baseDb.wallets,
     skills: rangeNames.has('Skills Config') ? sheetConfig.skills : baseDb.skills,
-    budgetConfig: rangeNames.has('Budget Rules') ? (sheetConfig.budgetConfig || baseDb.budgetConfig) : baseDb.budgetConfig,
+    budgetConfig: sheetConfig.budgetConfig ? {
+      monthlyIncome: sheetConfig.hasBudgetIncome ? sheetConfig.budgetConfig.monthlyIncome : baseDb.budgetConfig?.monthlyIncome ?? 0,
+      rules: rangeNames.has('Budget Rules') ? sheetConfig.budgetConfig.rules : baseDb.budgetConfig?.rules || [],
+    } : baseDb.budgetConfig,
     monthlyThemes: hasThemesAndSettings ? sheetConfig.monthlyThemes : baseDb.monthlyThemes,
     monthlyThemeImages: hasThemesAndSettings ? sheetConfig.monthlyThemeImages : baseDb.monthlyThemeImages,
     appSettings: hasThemesAndSettings ? (sheetConfig.appSettings || baseDb.appSettings) : baseDb.appSettings,
@@ -2721,19 +2761,11 @@ const splitSheetListValue = (value: unknown): string[] => String(value || '')
   .map(part => part.trim())
   .filter(Boolean);
 
-const parseBudgetRuleValue = (value: unknown) => {
-  const raw = String(value || '').trim();
-  const match = raw.match(/([\d.]+)%?\s*(?:\(ID:\s*(.+?)\))?$/i);
-  return {
-    percentage: match ? Number(match[1]) || 0 : Number(raw) || 0,
-    id: match?.[2]?.trim(),
-  };
-};
-
 const parseConfigSheets = (valueRanges: any[]): {
   wallets: Wallet[];
   skills: Skill[];
   budgetConfig: BudgetConfig | undefined;
+  hasBudgetIncome: boolean;
   monthlyThemes: Record<string, string>;
   monthlyThemeImages: Record<string, string>;
   appSettings: AppSettings | undefined;
@@ -2746,6 +2778,7 @@ const parseConfigSheets = (valueRanges: any[]): {
   const chatHistory: ChatMessage[] = [];
   const canonicalRules: CanonicalRule[] = [];
   let budgetConfig: BudgetConfig | undefined;
+  let hasBudgetIncome = false;
   const monthlyThemes: Record<string, string> = {};
   const monthlyThemeImages: Record<string, string> = {};
   let appSettings: AppSettings | undefined;
@@ -2762,7 +2795,7 @@ const parseConfigSheets = (valueRanges: any[]): {
   for (const vr of valueRanges) {
     const name = vr.range?.split('!')[0]?.replace(/'/g, '') || '';
     const rows = vr.values || [];
-    if (rows.length < 2) continue;
+    if (rows.length < 2 && name !== 'Budget Rules') continue;
     const headers = rows[0] || [];
     const cell = (row: any[], header: string, fallbackIndex: number, aliases: string[] = []) => readHeaderAwareCell(headers, row, header, fallbackIndex, aliases);
 
@@ -2812,40 +2845,9 @@ const parseConfigSheets = (valueRanges: any[]): {
         });
       }
     } else if (name === 'Budget Rules') {
-      const rules: BudgetConfig['rules'] = [];
-      for (let i = 1; i < rows.length; i++) {
-        const r = rows[i];
-        const first = String(r[0] || '').trim();
-        if (!first) continue;
-
-        if (first === 'Monthly Income') {
-          ensureBudgetConfig().monthlyIncome = Number(r[1]) || 0;
-          continue;
-        }
-
-        if (first.startsWith('Rule: ')) {
-          const name = first.replace('Rule: ', '').trim();
-          const parsed = parseBudgetRuleValue(r[1]);
-          rules.push({
-            id: parsed.id || name,
-            name,
-            percentage: parsed.percentage,
-            color: String(r[2] || 'bg-gray-500'),
-          });
-          continue;
-        }
-
-        // Older config shape: ID | Name | Percentage | Color
-        rules.push({
-          id: String(cell(r, 'ID', 0)),
-          name: String(cell(r, 'Name', 1) || ''),
-          percentage: Number(cell(r, 'Percentage', 2)) || 0,
-          color: String(cell(r, 'Color', 3) || 'bg-blue-500'),
-        });
-      }
-      if (rules.length > 0) {
-        ensureBudgetConfig().rules = rules;
-      }
+      const parsedBudget = parseSpreadsheetBudget(rows);
+      hasBudgetIncome ||= parsedBudget.monthlyIncome !== undefined;
+      Object.assign(ensureBudgetConfig(), parsedBudget);
     } else if (name === 'Themes & Settings') {
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
@@ -2854,6 +2856,11 @@ const parseConfigSheets = (valueRanges: any[]): {
         if (!first) continue;
 
         if (first === 'Setting') {
+          if (second === 'Monthly Income') {
+            hasBudgetIncome = true;
+            ensureBudgetConfig().monthlyIncome = Number(r[2]) || 0;
+            continue;
+          }
           const settings = ensureAppSettings();
           if (second === 'Default Collapsed') settings.defaultCollapsed = truthySheetValue(r[2]);
           if (second === 'Hide Money') settings.hideMoney = truthySheetValue(r[2]);
@@ -2879,6 +2886,7 @@ const parseConfigSheets = (valueRanges: any[]): {
 
         // Legacy key/value shape: monthlyIncome | 1000000, defaultCollapsed | true, theme_YYYY-MM | text
         if (first === 'monthlyIncome') {
+          hasBudgetIncome = true;
           ensureBudgetConfig().monthlyIncome = Number(r[1]) || 0;
         } else if (first === 'defaultCollapsed') {
           ensureAppSettings().defaultCollapsed = truthySheetValue(r[1]);
@@ -2958,6 +2966,7 @@ const parseConfigSheets = (valueRanges: any[]): {
     wallets,
     skills,
     budgetConfig,
+    hasBudgetIncome,
     monthlyThemes,
     monthlyThemeImages,
     appSettings,
@@ -2968,7 +2977,7 @@ const parseConfigSheets = (valueRanges: any[]): {
 };
 
 const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb: DbSchema) => {
-  const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config, true);
+  const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config);
   const expectedBaseSheets = generateDbExportSheets(baseDb);
   const expectedExistingSheets = expectedBaseSheets.filter(sheet => existingTitles.has(sheet.name));
   const rangesToFetch = expectedExistingSheets.map(getManagedSheetReadRange);
@@ -2991,27 +3000,29 @@ const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb:
   const res = await sheetsFetch(config.spreadsheetId, path);
   if (!res.ok) {
     const errorText = await res.text();
-    if (!reliable) {
-      console.warn('User-editable sheet fetch failed after metadata fallback; continuing save without manual spreadsheet merge:', errorText);
-      return {
-        data: baseDb,
-        reconciled: false,
-        meta,
-        existingTitles,
-        reliableMeta: reliable,
-        physicalSheetData: [] as SheetData[],
-        physicalDriftSheetNames: new Set<string>(),
-      };
-    }
     throw new Error(`Failed to fetch user-editable sheets: ${res.status} ${res.statusText} - ${errorText}`);
   }
 
   const batchData = await res.json();
-  const valueRanges = batchData.valueRanges || [];
+  const valueRanges = assertCompleteValueRanges(rangesToFetch, batchData.valueRanges);
   const physicalSheetData = valueRangesToSheetData(valueRanges, expectedExistingSheets);
   const physicalDriftSheetNames = detectPhysicalSheetDrift(expectedExistingSheets, valueRanges);
-  const configMergedBase = applyConfigSheetsToBaseDb(baseDb, valueRanges);
-  const reconciledDb = reconcileSpreadsheetData(configMergedBase, valueRanges);
+  // Percentage-formatted Sheets cells return 0.5 for 50% in FORMULA mode.
+  // Use displayed budget values for parsing, keeping raw rows for conflict checks.
+  const rawBudget = valueRanges.find(vr => getTitleFromRange(String(vr.range)) === 'Budget Rules');
+  const percentageColumn = rawBudget?.values?.[0]?.indexOf('Percentage') ?? -1;
+  const budgetValues = percentageColumn >= 0
+    ? await batchGetSpreadsheetRanges(config, ["'Budget Rules'!A:D"], { valueRenderOption: 'FORMATTED_VALUE' })
+    : [];
+  const reconciliationRanges = valueRanges.map(vr => vr === rawBudget && percentageColumn >= 0
+    ? { ...vr, values: vr.values.map((row: unknown[], index: number) => {
+      if (index === 0) return row;
+      const parsedRow = [...row];
+      parsedRow[percentageColumn] = budgetValues[0]?.values?.[index]?.[percentageColumn] ?? '';
+      return parsedRow;
+    }) } : vr);
+  const configMergedBase = applyConfigSheetsToBaseDb(baseDb, reconciliationRanges);
+  const reconciledDb = reconcileSpreadsheetData(configMergedBase, reconciliationRanges);
   const reconciled = JSON.stringify(reconciledDb.data) !== JSON.stringify(baseDb.data)
     || JSON.stringify(reconciledDb.budgetConfig) !== JSON.stringify(baseDb.budgetConfig)
     || JSON.stringify(reconciledDb.skills) !== JSON.stringify(baseDb.skills)
@@ -3071,6 +3082,35 @@ const verifySpreadsheetWriteCommitted = async (
   throw new Error(`Spreadsheet save verification failed: ${lastMismatches.length} managed sheet(s) differed after write (${examples}${extra}). Local pending copy was kept for retry.`);
 };
 
+const normalizeSnapshotRows = (sheet: SheetData) => {
+  const rows = sheet.data.map(normalizeSignatureRow);
+  while (rows.length && rows[rows.length - 1].length === 0) rows.pop();
+  return rows;
+};
+
+const findChangedSnapshotSheets = (before: SheetData[], after: SheetData[]) => {
+  const current = new Map(after.map(sheet => [sheet.name, sheet]));
+  return before.filter(sheet => {
+    const actual = current.get(sheet.name);
+    return !actual || !sameJson(normalizeSnapshotRows(sheet), normalizeSnapshotRows(actual));
+  }).map(sheet => sheet.name);
+};
+
+const getVerificationSheets = (sheets: SheetData[], plan: IncrementalUserSheetPlan, full: boolean) => {
+  if (full || !plan.canIncremental) return sheets;
+  const touched = new Set([
+    ...plan.rewrites.map(sheet => sheet.name),
+    ...plan.deletions.map(row => row.sheetName),
+    ...plan.appends.map(row => row.sheetName),
+    ...plan.updates.map(row => getTitleFromRange(row.range)),
+  ]);
+  return sheets.filter(sheet => touched.has(sheet.name));
+};
+
+// First save in a session, every tenth save, and recovery after an error use
+// full verification. Routine successful saves verify only affected tabs.
+const verifiedSaves = new Map<string, number>();
+
 const writeSystemSheetSnapshotInBatches = async (
   config: SpreadsheetConfig,
   sheet: SheetData,
@@ -3101,8 +3141,8 @@ const buildSheetRewriteBatches = (
   sheet: RewriteSheetData,
   chunkSize = 20,
 ): { range: string; values: SheetData['data']; startRow: number; endRow: number }[] => {
-  const totalRows = Math.max(sheet.data.length, 1);
-  const totalColumns = Math.max(getSheetColumnCount(sheet.data), 1);
+  const totalRows = Math.max(sheet.data.length, sheet.previousRowCount || 0, 1);
+  const totalColumns = Math.max(getSheetColumnCount(sheet.data), sheet.previousColumnCount || 0, 1);
   const batches: { range: string; values: SheetData['data']; startRow: number; endRow: number }[] = [];
 
   for (let start = 0; start < totalRows; start += chunkSize) {
@@ -3154,16 +3194,8 @@ const rewriteSheetValuesInBulk = async (
     current: sheetIndex + 1,
     total: totalSheets,
   });
-  const clearRange = buildSheetClearRange(sheet);
-  const clearRes = await fetcher(config.spreadsheetId, `/values/${encodeURIComponent(clearRange)}:clear`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{}',
-  });
-  if (!clearRes.ok) {
-    throw new Error(`Failed to clear stale values from sheet ${sheet.name}: ${await clearRes.text()}`);
-  }
-
+  // Empty padded cells clear the old tail in the same atomic Values request.
+  // Never clear the live sheet in a separate request before replacing it.
   const updateRes = await fetcher(config.spreadsheetId, '/values:batchUpdate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -3292,7 +3324,7 @@ const writeIncrementalUserSheetPlan = async (
 };
 
 // Save only changed user sheets/ranges after the first full setup write.
-const performSync = async ({ db, forceOverwrite = false, onProgress }: SpreadsheetSyncRequest): Promise<SyncResult> => {
+const performSync = async ({ db, forceOverwrite = false, onProgress }: SpreadsheetSyncRequest, conflictAttempt = 0): Promise<SyncResult> => {
   const updatedDb: DbSchema = { ...db, canonicalRules: db.canonicalRules || [] };
 
   writeSpreadsheetCache(JSON.stringify(updatedDb));
@@ -3302,6 +3334,7 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
     return { success: false, method: 'error', error: 'Spreadsheet is not connected.' };
   }
   const saveId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  let saveWritesStarted = false;
 
   try {
     const localDbForPlan = validateSchema(updatedDb);
@@ -3311,11 +3344,15 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
     let currentSheetDbForPlan: DbSchema | undefined;
     let physicalSheetDataForPlan: SheetData[] = [];
     let physicalDriftSheetNames = new Set<string>();
+    let remoteMetadata: Awaited<ReturnType<typeof fetchSpreadsheetMetadata>> | undefined;
 
     if (!forceOverwrite) {
       onProgress?.({ phase: 'merge_remote', label: 'Checking sheet edits', detail: 'Merging current spreadsheet rows before save' });
       const sheetBase = validateSchema(safeJsonParse(JSON.stringify(baseSnapshot || dbToWrite), { data: [] }));
       const sheetState = await fetchUserEditableSpreadsheetDb(config, sheetBase);
+      if (sheetState.reliableMeta) {
+        remoteMetadata = { meta: sheetState.meta, existingTitles: sheetState.existingTitles, reliable: true };
+      }
       currentSheetDbForPlan = sheetState.data;
       physicalSheetDataForPlan = sheetState.physicalSheetData;
       physicalDriftSheetNames = sheetState.physicalDriftSheetNames;
@@ -3333,7 +3370,7 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
 
     // 2. Get existing sheets
     onProgress?.({ phase: 'metadata', label: 'Checking spreadsheet structure', detail: 'Reading tab list and permissions' });
-    const metadataResult = await fetchSpreadsheetMetadata(config, true);
+    const metadataResult = remoteMetadata || await fetchSpreadsheetMetadata(config);
     let meta = metadataResult.meta;
     const { existingTitles, reliable } = metadataResult;
     const allSheetData = [...exportSheets, buildEventLogSheet()];
@@ -3392,7 +3429,7 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
     // or values:batchUpdate call. This keeps a failed capacity check from
     // clearing a sheet and leaving it only partially rewritten.
     await ensureSheetGridCapacity(config, meta, allSheetData, onProgress);
-    const headerRewriteSheetNames = await detectHeaderRewriteSheets(config, allSheetData, effectiveExistingTitles);
+    const headerRewriteSheetNames = detectHeaderRewriteSheets(allSheetData, existingTitles, physicalSheetDataForPlan);
     const schemaRewriteSheetNames = new Set<string>([
       ...headerRewriteSheetNames,
       ...physicalDriftSheetNames,
@@ -3421,10 +3458,28 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
       )
       : emptyIncrementalPlan(false, forceOverwrite ? 'force_overwrite' : 'missing_base_snapshot');
 
+    const writeCount = incrementalPlan.canIncremental
+      ? incrementalPlan.deletions.length + incrementalPlan.rewrites.length + incrementalPlan.updates.length + incrementalPlan.appends.length
+      : allSheetData.length;
+    if (!forceOverwrite && writeCount > 0) {
+      onProgress?.({ phase: 'merge_remote', label: 'Checking concurrent edits', detail: 'Confirming source rows before writing' });
+      const sourceSnapshots = physicalSheetDataForPlan.filter(sheet => !isGeneratedDashboardSheet(sheet.name));
+      const newSources = exportSheets.filter(sheet => createdSheetTitles.has(sheet.name) && !isGeneratedDashboardSheet(sheet.name));
+      const expectedSnapshots = [...sourceSnapshots, ...newSources.map(sheet => ({ ...sheet, data: [] }))];
+      const checkRanges = [...sourceSnapshots, ...newSources].map(getManagedSheetReadRange);
+      const currentRows = await batchGetSpreadsheetRanges(config, checkRanges, { valueRenderOption: 'FORMULA' });
+      const changed = findChangedSnapshotSheets(expectedSnapshots, valueRangesToSheetData(currentRows));
+      if (changed.length > 0) {
+        if (conflictAttempt >= 2) throw new Error(`Spreadsheet keeps changing (${changed.join(', ')}). Save postponed; local changes are kept for retry.`);
+        onProgress?.({ phase: 'merge_remote', label: 'Merging newer edits', detail: changed.join(', ') });
+        return performSync({ db: updatedDb, forceOverwrite, onProgress }, conflictAttempt + 1);
+      }
+    }
+
+    saveWritesStarted = writeCount > 0;
     // 4. Write only changed ranges/sheets after initial setup. Force overwrite and
     // first writes still rebuild all sheets to establish headers and formulas.
     if (incrementalPlan.canIncremental) {
-      const writeCount = incrementalPlan.deletions.length + incrementalPlan.rewrites.length + incrementalPlan.updates.length + incrementalPlan.appends.length;
       onProgress?.({
         phase: 'write_sheet',
         label: writeCount > 0 ? 'Writing changed sheets only' : 'No sheet changes to write',
@@ -3432,7 +3487,6 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
           ? `${incrementalPlan.deletions.length} row deletion(s), ${incrementalPlan.rewrites.length} sheet rewrite(s), ${incrementalPlan.updates.length} row update(s), ${incrementalPlan.appends.length} append batch(es)`
           : 'Local and spreadsheet data already match',
       });
-      await appendSpreadsheetEvent(config, buildEventLogRow('info', 'plan', 'incremental_save_plan', `${incrementalPlan.deletions.length} delete(s), ${incrementalPlan.rewrites.length} rewrite(s), ${incrementalPlan.updates.length} update(s), ${incrementalPlan.appends.length} append(s); reason=${incrementalPlan.reason || 'changed_ranges'}`, saveId));
       await writeIncrementalUserSheetPlan(config, incrementalPlan, sheetNameToId, onProgress);
     } else {
       await appendSpreadsheetEvent(config, buildEventLogRow('info', 'plan', 'full_sheet_rewrite_plan', `reason=${incrementalPlan.reason || 'unknown'}; sheets=${allSheetData.map(sheet => sheet.name).join(', ')}`, saveId));
@@ -3457,12 +3511,17 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
 
     // 5. Cache & cleanup
     await applyGeneratedSheetPresentation(config, meta, createdSheetTitles, isInitialSpreadsheetWrite, allSheetData);
-    await verifySpreadsheetWriteCommitted(config, exportSheets, onProgress);
+    const saveCount = verifiedSaves.get(config.spreadsheetId) || 0;
+    const verificationSheets = writeCount > 0
+      ? getVerificationSheets(exportSheets, incrementalPlan, saveCount % 10 === 0)
+      : [];
+    await verifySpreadsheetWriteCommitted(config, verificationSheets, onProgress);
+    if (writeCount > 0) verifiedSaves.set(config.spreadsheetId, saveCount + 1);
     onProgress?.({ phase: 'complete', label: 'Finalizing save', detail: 'Updating local cache' });
     writeSpreadsheetCache(finalJsonString);
     lastSnapshot = finalJsonString;
     isHydrated = true;
-    await appendSpreadsheetEvent(config, buildEventLogRow('success', 'complete', 'save_success', `${dbToWrite.data.length} item(s) saved`, saveId));
+    if (writeCount > 0) await appendSpreadsheetEvent(config, buildEventLogRow('success', 'complete', 'save_success', `${dbToWrite.data.length} item(s) saved`, saveId));
 
     return {
       success: true,
@@ -3470,9 +3529,10 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
       mergedData: JSON.stringify(dbToWrite) !== JSON.stringify(updatedDb) ? dbToWrite : undefined,
     };
   } catch (error: any) {
+    verifiedSaves.delete(config.spreadsheetId);
     onProgress?.({ phase: 'error', label: 'Save failed', detail: error.message || 'Unknown sync error' });
     console.error('Failed to sync to Spreadsheet:', error);
-    await appendSpreadsheetEvent(config, buildEventLogRow('error', 'error', 'save_failed', error.message || 'Unknown sync error', saveId));
+    if (saveWritesStarted) await appendSpreadsheetEvent(config, buildEventLogRow('error', 'error', 'save_failed', error.message || 'Unknown sync error', saveId));
     return { success: false, method: 'error', error: error.message || 'Unknown sync error' };
   }
 };
@@ -3643,5 +3703,12 @@ export const __test__ = {
   buildCurrentRawDbFromValueRanges,
   buildDedicatedDbFromValueRanges,
   parseConfigSheets,
+  applyConfigSheetsToBaseDb,
   fetchLegacyUserSheetDb,
+  assertCompleteValueRanges,
+  detectHeaderRewriteSheets,
+  findChangedSnapshotSheets,
+  getVerificationSheets,
+  fetchUserEditableSpreadsheetDb,
+  performSync,
 };

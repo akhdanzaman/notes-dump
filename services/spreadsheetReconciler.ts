@@ -5,6 +5,7 @@ import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalize
 import { SAVING_GOALS_INVESTMENTS_SHEET_NAME } from '../utils/exportUtils';
 import { parseShoppingLineItemsFromSheet, sumShoppingLineItems } from '../utils/shoppingLineItems';
 import { parseTransactionLineItemsFromSheet, sumTransactionLineItems } from '../utils/transactionLineItems';
+import { parseSpreadsheetBudget } from '../utils/spreadsheetBudget';
 
 const fmtDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -1474,34 +1475,9 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const budgetSheet = valueRanges.find(r => r.range && r.range.includes('Budget Rules'));
-    if (hasAuthoritativeRows(budgetSheet)) {
-        const rows = budgetSheet.values.slice(1);
+    if (Array.isArray(budgetSheet?.values) && budgetSheet.values.length > 0) {
         if (!db.budgetConfig) db.budgetConfig = { monthlyIncome: 0, rules: [] };
-        
-        const newRules: any[] = [];
-        for (const row of rows) {
-            const prop = row[0];
-            const val = row[1];
-            const color = row[2];
-            if (prop === 'Monthly Income') {
-                db.budgetConfig.monthlyIncome = parseFloat(val) || 0;
-            } else if (prop && prop.startsWith('Rule: ')) {
-                const name = prop.replace('Rule: ', '');
-                // Parse "50% (ID: 123)"
-                const match = val ? val.match(/([\d.]+)%\s*\(ID:\s*(.+)\)/) : null;
-                if (match) {
-                    newRules.push({
-                        id: match[2],
-                        name: name,
-                        percentage: parseFloat(match[1]) || 0,
-                        color: color || db.budgetConfig.rules.find(r => r.id === match[2])?.color || 'bg-gray-500'
-                    });
-                }
-            }
-        }
-        if (newRules.length > 0) {
-            db.budgetConfig.rules = newRules;
-        }
+        Object.assign(db.budgetConfig, parseSpreadsheetBudget(budgetSheet.values));
         hasChanges = true;
     }
 
@@ -1584,6 +1560,10 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
         const newThemeImages: Record<string, string> = {};
         for (const row of rows) {
             if (row[0] === 'Setting') {
+                if (row[1] === 'Monthly Income') {
+                    if (!db.budgetConfig) db.budgetConfig = { monthlyIncome: 0, rules: [] };
+                    db.budgetConfig.monthlyIncome = Number(row[2]) || 0;
+                }
                 if (row[1] === 'Default Collapsed') db.appSettings.defaultCollapsed = row[2] === 'TRUE';
                 if (row[1] === 'Hide Money') db.appSettings.hideMoney = row[2] === 'TRUE';
                 if (row[1] === 'Theme') {

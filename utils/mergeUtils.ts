@@ -232,7 +232,9 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     return {
         data: Array.from(itemMap.values()),
         budgetConfig: {
-            monthlyIncome: local.budgetConfig?.monthlyIncome ?? remote.budgetConfig?.monthlyIncome ?? 0,
+            monthlyIncome: base
+                ? pickField(local.budgetConfig?.monthlyIncome, remote.budgetConfig?.monthlyIncome, base.budgetConfig?.monthlyIncome) ?? 0
+                : local.budgetConfig?.monthlyIncome ?? remote.budgetConfig?.monthlyIncome ?? 0,
             rules: Array.from(ruleMap.values())
         },
         appSettings: local.appSettings || remote.appSettings,

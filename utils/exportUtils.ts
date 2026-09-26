@@ -731,19 +731,11 @@ export const generateExportData = (
   });
 
   // --- Sheet 10: Budget Config ---
-  const budgetData = [
-    { Property: 'Monthly Income', Value: budgetConfig.monthlyIncome, Color: '' },
-    ...budgetConfig.rules.map(r => ({
-      Property: `Rule: ${r.name}`,
-      Value: `${r.percentage}% (ID: ${r.id})`,
-      Color: r.color || 'bg-gray-500'
-    }))
-  ];
   sheets.push({
     name: "Budget Rules",
     data: [
-      ["Property", "Value", "Color"],
-      ...budgetData.map(b => [b.Property, b.Value, b.Color])
+      ["ID", "Name", "Percentage", "Color"],
+      ...budgetConfig.rules.map(r => [r.id, r.name, r.percentage, r.color || 'bg-gray-500'])
     ]
   });
 
@@ -781,6 +773,7 @@ export const generateExportData = (
     data: [
       ["Type", "Key", "Value", "Hero_Image_URL"],
       ...themesData.map(d => [d.Type, d.Key, d.Value, d.Hero_Image_URL]),
+      ['Setting', 'Monthly Income', budgetConfig.monthlyIncome, ''],
       ...settingsData.map(d => [d.Type, d.Key, d.Value, ''])
     ]
   });
