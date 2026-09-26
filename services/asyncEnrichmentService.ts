@@ -1,7 +1,6 @@
 import {
   BrainDumpItem,
   CanonicalField,
-  CanonicalReviewSuggestion,
   EnrichmentTask,
   ItemCanonicalMeta,
   ItemMeta,
@@ -277,8 +276,4 @@ export function runCanonicalEnrichmentTasks(params: {
   });
 
   return { items: nextItems, reviews, taskResults, changedItemIds };
-}
-
-export function collectCanonicalReviewSuggestions(reviews: HistoricalCanonicalReview[]): CanonicalReviewSuggestion[] {
-  return reviews.flatMap(review => review.originalResults.flatMap(result => result.canonicalReview || []));
 }

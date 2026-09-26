@@ -48,7 +48,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
       isOpen={isOpen}
       onClose={onCancel}
       overlayClassName="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm dark:bg-black/65"
-      panelClassName="w-full max-w-sm overflow-hidden rounded-[24px] border border-border/80 bg-surface shadow-2xl"
+      panelClassName="w-full max-w-sm overflow-hidden rounded-xl border border-border/80 bg-surface shadow-2xl"
       presentation="form"
       closeOnBackdrop={false}
       ariaLabel={title}
@@ -56,7 +56,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
       <form onSubmit={submit} className="contents">
         <div className="flex items-start justify-between gap-4 border-b border-border p-5">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="rounded-xl bg-indigo-500/10 p-2 text-indigo-500"><KeyRound className="h-5 w-5" /></div>
+            <div className="rounded-xl bg-brand-500/10 p-2 text-brand-500"><KeyRound className="h-5 w-5" /></div>
             <div>
               <h3 className="text-lg font-bold text-primary">{title}</h3>
               <p className="mt-1 text-sm leading-relaxed text-muted">{message}</p>
@@ -74,7 +74,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
               type="password"
               value={password}
               onChange={(event) => { setPassword(event.target.value); setError(''); }}
-              className="w-full rounded-xl border border-border bg-background/70 px-3 py-3 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+              className="w-full rounded-xl border border-border bg-background/70 px-3 py-3 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
               autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
             />
           </label>
@@ -85,7 +85,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
                 type="password"
                 value={confirmation}
                 onChange={(event) => { setConfirmation(event.target.value); setError(''); }}
-                className="w-full rounded-xl border border-border bg-background/70 px-3 py-3 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                className="w-full rounded-xl border border-border bg-background/70 px-3 py-3 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                 autoComplete="new-password"
               />
             </label>
@@ -94,7 +94,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
         </div>
         <div className="grid grid-cols-2 gap-3 border-t border-border p-4">
           <button type="button" onClick={onCancel} className="rounded-xl border border-border/80 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">Batal</button>
-          <button type="submit" className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500">{mode === 'create' ? 'Buat password' : 'Lanjutkan'}</button>
+          <button type="submit" className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-500/20 transition-colors hover:bg-brand-500">{mode === 'create' ? 'Buat password' : 'Lanjutkan'}</button>
         </div>
       </form>
     </PresencePanel>

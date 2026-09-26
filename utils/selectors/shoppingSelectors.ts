@@ -2,9 +2,13 @@ import { BrainDumpItem, ItemType } from '../../types';
 import { getShoppingCreatedSortTime, getShoppingDueSortTime } from '../shoppingDateUtils';
 import { getSavedAmountForGoal } from '../savingTransactionUtils';
 
-export const getShoppingItems = (items: BrainDumpItem[]) => {
+export const getShoppingItems = (items: BrainDumpItem[], searchQuery = '', selectedTag = '') => {
+    const query = searchQuery.trim().toLowerCase();
     const visibleItems = items.filter(i => {
         if (i.type !== ItemType.SHOPPING) return false;
+        if (selectedTag && !i.meta.tags?.includes(selectedTag)) return false;
+        if (query && ![i.content, i.meta.title || '', ...(i.meta.tags || [])]
+            .some(value => value.toLowerCase().includes(query))) return false;
         if (i.status === 'pending') return true;
         if (i.status === 'done' && i.meta?.shoppingCategory === 'routine') return true;
         if (i.status === 'done' && i.meta?.shoppingCategory === 'saving') return true; // Keep savings visible even if done

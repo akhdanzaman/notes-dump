@@ -203,17 +203,17 @@ const ReviewCard: React.FC<{
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-        className="bg-surface border border-indigo-500/30 rounded-xl shadow-lg overflow-hidden"
+        className="bg-surface border border-brand-500/30 rounded-xl shadow-lg overflow-hidden"
       >
         <div className="p-3 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-brand-500" />
+                <span className="text-[10px] font-semibold text-brand-500 uppercase tracking-wider">
                   Parser Batch Draft
                 </span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-500/10 text-indigo-500">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-500">
                   {results.length} results
                 </span>
               </div>
@@ -223,7 +223,7 @@ const ReviewCard: React.FC<{
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={handleApprove}
-                className="w-8 h-8 rounded-lg bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors shadow-sm"
+                className="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 transition-colors shadow-sm"
                 title="Approve batch"
               >
                 <Check className="w-4 h-4" />
@@ -245,7 +245,7 @@ const ReviewCard: React.FC<{
               return (
                 <div key={`${review.id}-${index}`} className="rounded-lg bg-background/60 border border-border p-2.5 space-y-2">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 font-bold uppercase tracking-wide">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-bold uppercase tracking-wide">
                       Item {result.batchItem ? result.batchItem.index + 1 : index + 1}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border capitalize">
@@ -256,8 +256,8 @@ const ReviewCard: React.FC<{
                     </span>
                   </div>
                   {result.batchItem && (
-                    <div className="rounded-md bg-indigo-500/5 border border-indigo-500/15 px-2 py-1.5">
-                      <div className="text-[9px] uppercase tracking-wide text-indigo-600 font-bold">Source</div>
+                    <div className="rounded-md bg-brand-500/5 border border-brand-500/15 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-wide text-brand-600 font-bold">Source</div>
                       <div className="text-[11px] text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
                     </div>
                   )}
@@ -289,14 +289,14 @@ const ReviewCard: React.FC<{
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-      className="bg-surface border border-indigo-500/30 rounded-xl shadow-lg overflow-hidden"
+      className="bg-surface border border-brand-500/30 rounded-xl shadow-lg overflow-hidden"
     >
       <div className="p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-brand-500" />
+              <span className="text-[10px] font-semibold text-brand-500 uppercase tracking-wider">
                 Parser Draft
               </span>
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${confidenceColor}`}>
@@ -311,7 +311,7 @@ const ReviewCard: React.FC<{
                     type="text" 
                     value={content}
                     onChange={(e) => handleUpdateField('content', e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-sm text-primary focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-sm text-primary focus:outline-none focus:border-brand-500"
                     placeholder="Title / Content"
                   />
                 </div>
@@ -319,7 +319,7 @@ const ReviewCard: React.FC<{
                   <select 
                     value={primaryResult.entityType}
                     onChange={(e) => handleUpdateField('entityType', e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-brand-500"
                   >
                     <option value="finance">Finance</option>
                     <option value="todo">Task</option>
@@ -332,7 +332,7 @@ const ReviewCard: React.FC<{
                       type="number" 
                       value={amount}
                       onChange={(e) => handleUpdateField('amount', Number(e.target.value))}
-                      className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-brand-500"
                       placeholder="Amount"
                     />
                   )}
@@ -370,7 +370,7 @@ const ReviewCard: React.FC<{
             {isEditing ? (
               <button
                 onClick={() => setIsEditing(false)}
-                className="w-8 h-8 rounded-lg bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors shadow-sm"
+                className="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 transition-colors shadow-sm"
               >
                 <Save className="w-4 h-4" />
               </button>
@@ -378,13 +378,13 @@ const ReviewCard: React.FC<{
               <>
                 <button
                   onClick={handleApprove}
-                  className="w-8 h-8 rounded-lg bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors shadow-sm"
+                  className="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 transition-colors shadow-sm"
                 >
                   <Check className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="w-8 h-8 rounded-lg bg-surface-elevated text-muted flex items-center justify-center hover:text-indigo-500 transition-colors border border-border"
+                  className="w-8 h-8 rounded-lg bg-surface-elevated text-muted flex items-center justify-center hover:text-brand-500 transition-colors border border-border"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
@@ -412,7 +412,7 @@ const ReviewCard: React.FC<{
           <div className="mt-3 p-2.5 bg-background/60 border border-border rounded-lg space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Parsed Output</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 font-medium">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-medium">
                 {parsedDestination}
               </span>
             </div>
@@ -432,8 +432,8 @@ const ReviewCard: React.FC<{
         )}
 
         {!isEditing && canonicalReview.length > 0 && (
-          <div className="mt-3 p-2.5 bg-indigo-500/5 border border-indigo-500/20 rounded-lg space-y-2">
-            <div className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
+          <div className="mt-3 p-2.5 bg-brand-500/5 border border-brand-500/20 rounded-lg space-y-2">
+            <div className="text-[10px] font-semibold text-brand-500 uppercase tracking-wider">
               Canonical Suggestions
             </div>
             {canonicalReview.map((suggestion) => {
@@ -449,7 +449,7 @@ const ReviewCard: React.FC<{
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted uppercase tracking-wide">
                         {suggestion.field}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20">
                         {Math.round(suggestion.confidence * 100)}%
                       </span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted">
@@ -459,7 +459,7 @@ const ReviewCard: React.FC<{
                     <div className="text-[11px] text-primary font-medium">
                       <span className="text-muted">Raw:</span> {suggestion.rawValue || '—'}
                       <span className="text-muted mx-1">→</span>
-                      <span className="text-indigo-500">{suggestion.suggestedValue || '—'}</span>
+                      <span className="text-brand-500">{suggestion.suggestedValue || '—'}</span>
                     </div>
                     <div className="text-[10px] text-muted leading-tight">
                       {suggestion.reason}
@@ -473,7 +473,7 @@ const ReviewCard: React.FC<{
                   <div className="shrink-0 flex flex-col gap-1">
                     <button
                       onClick={() => handleApplyCanonicalSuggestion(suggestion)}
-                      className={`px-2 py-1 rounded-md text-[10px] font-semibold transition-colors ${isApplied ? 'bg-emerald-500 text-white' : 'bg-indigo-500 text-white hover:bg-indigo-600'}`}
+                      className={`px-2 py-1 rounded-md text-[10px] font-semibold transition-colors ${isApplied ? 'bg-emerald-500 text-white' : 'bg-brand-500 text-white hover:bg-brand-600'}`}
                     >
                       {isApplied ? 'Using' : 'Use'}
                     </button>

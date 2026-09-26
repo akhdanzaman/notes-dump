@@ -81,7 +81,7 @@ const ReceiptAttachmentPanel: React.FC<Props> = ({ capture, onChange, compact = 
             disabled={!previewUrl}
             className="flex min-w-0 items-center gap-2 text-left disabled:cursor-default"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
               {previewUrl ? <Eye className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
             </span>
             <span className="min-w-0">
@@ -106,7 +106,7 @@ const ReceiptAttachmentPanel: React.FC<Props> = ({ capture, onChange, compact = 
                   inputRef.current?.click();
                 }}
                 disabled={isUpdating}
-                className="rounded-lg p-2 text-muted hover:bg-indigo-500/10 hover:text-indigo-500 disabled:opacity-50"
+                className="rounded-lg p-2 text-muted hover:bg-brand-500/10 hover:text-brand-500 disabled:opacity-50"
                 title="Ganti gambar nota"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
@@ -130,7 +130,7 @@ const ReceiptAttachmentPanel: React.FC<Props> = ({ capture, onChange, compact = 
       {showPreview && previewUrl && (
         <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/80 p-4" onClick={() => setShowPreview(false)}>
           <div className="relative max-h-full max-w-4xl" onClick={(event) => event.stopPropagation()}>
-            <img src={previewUrl} alt="Gambar nota" className="max-h-[88vh] max-w-full rounded-2xl object-contain" />
+            <img src={previewUrl} alt="Gambar nota" className="max-h-[88vh] max-w-full rounded-lg object-contain" />
             <button
               type="button"
               onClick={() => setShowPreview(false)}

@@ -60,6 +60,7 @@ import ReviewCenterPanel from "./components/ReviewCenterPanel";
 import Onboarding from "./components/Onboarding";
 import FeatureTutorialPopup from "./components/FeatureTutorialPopup";
 import DesktopNavRail from "./components/layout/DesktopNavRail";
+import DesktopCommandBar, { CreateAction } from "./components/layout/DesktopCommandBar";
 import MobileAppBar from "./components/layout/MobileAppBar";
 import {
   getResponsiveShellContentVariant,
@@ -598,9 +599,15 @@ const App: React.FC = () => {
   // Input Focus State
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false);
   const fixedBottomRef = useRef<HTMLDivElement>(null);
+  const [composerInset, setComposerInset] = useState(192);
 
   // Chat State
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [desktopComposerOpen, setDesktopComposerOpen] = useState(false);
+  const openDesktopCapture = () => {
+    setDesktopComposerOpen(true);
+    requestAnimationFrame(() => document.getElementById('global-composer-input')?.focus());
+  };
   const [hasLoadedChat, setHasLoadedChat] = useState(false);
   const [newChatMessage, setNewChatMessage] = useState<{
     text: string;
@@ -927,6 +934,17 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.lang = appSettings.language === "en" ? "en" : "id";
   }, [appSettings.language]);
+
+  // Reserve the actual mobile composer height, including shortcuts and errors.
+  useEffect(() => {
+    const bottom = fixedBottomRef.current;
+    if (!bottom || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setComposerInset(Math.ceil(bottom.getBoundingClientRect().height));
+    const observer = new ResizeObserver(measure);
+    observer.observe(bottom);
+    measure();
+    return () => observer.disconnect();
+  }, []);
 
   // --- Keyboard Detection Effect ---
   useEffect(() => {
@@ -1761,7 +1779,7 @@ const App: React.FC = () => {
         id,
         name,
         weeklyTargetMinutes: target,
-        color: "indigo-500",
+        color: "brand-500",
         created_at: new Date().toISOString(),
       },
     });
@@ -1789,7 +1807,7 @@ const App: React.FC = () => {
         name,
         description: payload.description?.trim() || undefined,
         imageUrl: payload.imageUrl?.trim() || undefined,
-        color: "indigo-500",
+        color: "brand-500",
         created_at: new Date().toISOString(),
         weeklyTargetMinutes: payload.weeklyTargetMinutes,
         schedule: payload.schedule,
@@ -2009,6 +2027,7 @@ const App: React.FC = () => {
       <main
         className={responsiveShellClass.main}
         data-app-main="true"
+        style={{ '--composer-inset': `${composerInset}px` } as React.CSSProperties}
         tabIndex={-1}
       >
         <MobileAppBar
@@ -2020,6 +2039,22 @@ const App: React.FC = () => {
           onOpenReview={openReviewCenterFromInput}
           onOpenSettings={openControlCenter}
         />
+        <DesktopCommandBar
+          activeTab={activeTab} language={appSettings.language}
+          query={searchQuery} onSearch={setSearchQuery}
+          onCapture={openDesktopCapture}
+          onFilters={() => { setDesktopComposerOpen(true); setIsSearchExpanded(true); }}
+          onReview={openReviewCenterFromInput} reviewCount={reviewCenterBadgeCount + pendingCount}
+          onCreate={(action: CreateAction) => {
+            if (action === 'task') setAddTaskModal({ isOpen: true });
+            else if (action === 'routine') setRoutineModalOpen(true);
+            else if (action === 'shopping' || action === 'goal') setAddShoppingModal({ isOpen: true, initialCategory: action === 'goal' ? 'saving' : 'urgent' });
+            else if (action === 'note' || action === 'journal') { setAddNoteModalType(action === 'note' ? ItemType.NOTE : ItemType.JOURNAL); setAddNoteModalOpen(true); }
+            else if (action === 'skill') handleOpenAddSkill();
+            else if (action === 'wallet') handleOpenAddWallet();
+            else openAddTransactionModal(action);
+          }}
+        />
         <div
           className={responsiveShellContentClass[activeShellContentVariant]}
           data-shell-variant={activeShellContentVariant}
@@ -2027,13 +2062,13 @@ const App: React.FC = () => {
           {loading && items.length === 0 ? (
             <div className="flex min-h-[62vh] flex-col items-center justify-center px-6 text-center">
               <div className="relative mb-5">
-                <div className="absolute -inset-3 animate-pulse rounded-[22px] bg-indigo-500/10" />
-                <img src="/icon.svg" alt="Arkaiv" className="relative h-14 w-14 rounded-2xl bg-zinc-950 shadow-sm ring-1 ring-white/10" />
+                <div className="absolute -inset-3 animate-pulse rounded-[22px] bg-brand-500/10" />
+                <img src="/icon.svg" alt="Arkaiv" className="relative h-14 w-14 rounded-lg bg-zinc-950 shadow-sm ring-1 ring-white/10" />
               </div>
               <p className="text-sm font-bold text-primary">Menyiapkan workspace</p>
               <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted">Memuat catatan, rencana, dan data keuangan terbaru.</p>
               <div className="mt-5 h-1 w-36 overflow-hidden rounded-full bg-border/70">
-                <div className="h-full w-1/2 animate-pulse rounded-full bg-indigo-500" />
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-brand-500" />
               </div>
             </div>
           ) : (
@@ -2255,9 +2290,14 @@ const App: React.FC = () => {
       {/* Fixed Bottom Layout */}
       <div
         ref={fixedBottomRef}
+        data-desktop-composer-open={desktopComposerOpen || isChatOpen ? "true" : "false"}
         data-keyboard-open={isMobileKeyboardOpen ? "true" : "false"}
         className={responsiveShellClass.fixedBottom}
       >
+        <div className="pointer-events-auto hidden items-center justify-between border-b border-border px-4 py-2 lg:flex">
+          <span className="text-xs font-semibold text-muted">{appSettings.language === 'en' ? 'Quick capture · AI · Receipt' : 'Catatan cepat · AI · Struk'}</span>
+          <button type="button" onClick={() => { setDesktopComposerOpen(false); setIsChatOpen(false); setIsSearchExpanded(false); }} aria-label={appSettings.language === 'en' ? 'Close capture' : 'Tutup catatan cepat'} className="rounded-lg p-2 text-muted hover:bg-surface-soft"><X className="h-4 w-4" /></button>
+        </div>
         <div
           className={
             responsiveShellComposerContentClass[activeShellContentVariant]
@@ -2443,18 +2483,18 @@ const App: React.FC = () => {
             isOpen={isReviewCenterOpen}
             onClose={closeReviewCenterFromInput}
             overlayClassName="fixed inset-0 z-[94] flex items-end justify-center bg-black/40 px-4 pb-28 lg:pl-72 lg:pb-24"
-            panelClassName="flex max-h-[70vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl lg:max-w-3xl"
+            panelClassName="flex max-h-[70vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl lg:max-w-3xl"
             presentation="sheet"
             ariaLabel="Pusat tinjauan"
           >
                   <div className="flex items-center justify-between p-4 border-b border-border bg-surface shrink-0">
                     <h3 className="font-bold text-lg flex items-center gap-2">
-                      <ClipboardCheck className="w-5 h-5 text-indigo-500" />
+                      <ClipboardCheck className="w-5 h-5 text-brand-500" />
                       Pusat tinjauan
                     </h3>
                     <div className="flex items-center gap-2">
                       {(receiptReviews.length + pendingReviews.length + unresolvedReceiptTaskCount) > 0 && (
-                        <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
+                        <span className="text-xs bg-brand-500/10 text-brand-600 px-2 py-0.5 rounded-full font-bold">
                           {receiptReviews.length + pendingReviews.length + unresolvedReceiptTaskCount} Perlu perhatian
                         </span>
                       )}
@@ -2506,17 +2546,17 @@ const App: React.FC = () => {
         isOpen={showChangelogPopup}
         onClose={handleCloseChangelogPopup}
         overlayClassName="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-        panelClassName="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+        panelClassName="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
         closeOnBackdrop={false}
         ariaLabel="Perubahan terbaru Arkaiv"
       >
               <div className="p-5 border-b border-border flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-indigo-500/10 text-indigo-500 rounded-2xl">
+                  <div className="p-2.5 bg-brand-500/10 text-brand-500 rounded-lg">
                     <History className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-indigo-500">
+                    <div className="text-xs font-bold uppercase tracking-wider text-brand-500">
                       Yang baru
                     </div>
                     <h3 className="text-xl font-bold text-primary">
@@ -2544,7 +2584,7 @@ const App: React.FC = () => {
                 </ul>
                 <button
                   onClick={handleCloseChangelogPopup}
-                  className="w-full py-3 rounded-2xl bg-primary text-background font-bold hover:opacity-90 transition-opacity"
+                  className="w-full py-3 rounded-lg bg-primary text-background font-bold hover:opacity-90 transition-opacity"
                 >
                   Mengerti
                 </button>
@@ -2555,7 +2595,7 @@ const App: React.FC = () => {
         isOpen={themeEditMode}
         onClose={closeThemeEditor}
         overlayClassName="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        panelClassName="w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+        panelClassName="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
         presentation="form"
         closeOnBackdrop={false}
         ariaLabel="Edit tema bulanan"
@@ -2584,7 +2624,7 @@ const App: React.FC = () => {
                 </span>
                 <textarea
                   autoFocus
-                  className="h-32 w-full resize-none rounded-2xl border border-border bg-background p-4 text-primary focus:border-indigo-500 focus:outline-none"
+                  className="h-32 w-full resize-none rounded-lg border border-border bg-background p-4 text-primary focus:border-brand-500 focus:outline-none"
                   placeholder="e.g. Month of Discipline, Focus on Skill X..."
                   value={tempThemeContent}
                   onChange={(e) => setTempThemeContent(e.target.value)}
@@ -2598,7 +2638,7 @@ const App: React.FC = () => {
                 <input
                   type="url"
                   inputMode="url"
-                  className="w-full rounded-2xl border border-border bg-background p-4 text-primary focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-border bg-background p-4 text-primary focus:border-brand-500 focus:outline-none"
                   placeholder="https://example.com/theme-image.jpg"
                   value={tempThemeImageUrl}
                   onChange={(e) => setTempThemeImageUrl(e.target.value)}
@@ -2606,7 +2646,7 @@ const App: React.FC = () => {
               </label>
 
               {tempThemeImageUrl.trim() ? (
-                <div className="overflow-hidden rounded-2xl border border-border bg-background">
+                <div className="overflow-hidden rounded-lg border border-border bg-background">
                   <img
                     src={tempThemeImageUrl.trim()}
                     alt="Theme preview"
@@ -2614,8 +2654,8 @@ const App: React.FC = () => {
                   />
                 </div>
               ) : (
-                <div className="flex min-h-32 items-center gap-4 rounded-2xl border border-dashed border-border bg-background/70 p-4 text-muted">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-muted/10">
+                <div className="flex min-h-32 items-center gap-4 rounded-lg border border-dashed border-border bg-background/70 p-4 text-muted">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted/10">
                     <ImageIcon className="h-6 w-6" />
                   </div>
                   <div>
@@ -2640,7 +2680,7 @@ const App: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveTheme}
-                className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20"
+                className="px-5 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-semibold hover:bg-brand-500 transition-colors shadow-lg shadow-brand-500/20"
               >
                 Save Theme
               </button>
@@ -2798,7 +2838,7 @@ const App: React.FC = () => {
         isOpen={!!lockedSecurityPopup}
         onClose={() => setLockedSecurityPopup(null)}
         overlayClassName="fixed inset-0 z-[98] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        panelClassName="w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+        panelClassName="w-full max-w-sm overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
         closeOnBackdrop={false}
         ariaLabel="Akses terkunci"
       >
@@ -2809,13 +2849,13 @@ const App: React.FC = () => {
               <div className="grid grid-cols-2 gap-3 p-4">
                 <button
                   onClick={() => setLockedSecurityPopup(null)}
-                  className="rounded-2xl border border-border px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-muted/10"
+                  className="rounded-lg border border-border px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-muted/10"
                 >
                   Tutup
                 </button>
                 <button
                   onClick={handleDisableLockedSecurity}
-                  className="rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-background transition-opacity hover:opacity-90"
+                  className="rounded-lg bg-primary px-4 py-3 text-sm font-bold text-background transition-opacity hover:opacity-90"
                 >
                   Masukkan password
                 </button>
@@ -2847,12 +2887,12 @@ const App: React.FC = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className={`fixed bottom-28 left-4 right-4 z-[120] mx-auto w-auto max-w-sm rounded-2xl border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur-xl lg:bottom-8 ${
+            className={`fixed bottom-28 left-4 right-4 z-[120] mx-auto w-auto max-w-sm rounded-lg border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur-xl lg:bottom-8 ${
               appNotice.tone === 'error'
                 ? 'border-red-500/30 bg-red-950/90 text-red-100'
                 : appNotice.tone === 'success'
                   ? 'border-emerald-500/30 bg-emerald-950/90 text-emerald-100'
-                  : 'border-indigo-500/30 bg-slate-950/90 text-white'
+                  : 'border-brand-500/30 bg-slate-950/90 text-white'
             }`}
           >
             {appNotice.message}

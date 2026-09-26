@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-    Settings, RefreshCw, CloudCheck, CloudOff, Save, 
+import {
+    Settings, RefreshCw, CloudCheck, CloudOff, Save,
     Moon, Sun, X, AlertTriangle,
     Monitor, Layout, Eye, EyeOff, Database, Download, Upload, Trash2,
     Check, Smartphone, CheckCircle2, PieChart, Plus, Sparkles, Languages,
@@ -34,7 +34,7 @@ interface ControlCenterProps {
     canonicalRules?: CanonicalRule[];
     pendingReviews?: { id: string; text: string; results: ParserResultV2[] }[];
     onToggleCanonicalRuleDisabled?: (ruleId: string) => void;
-    
+
     // App State & Settings
     appSettings: AppSettings;
     setAppSettings: (settings: AppSettings) => void;
@@ -48,7 +48,7 @@ interface ControlCenterProps {
     onSave: (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => void;
     currentBudgetConfig?: BudgetConfig;
     currentPrompt?: string;
-    
+
     // Data for export
     allItems: BrainDumpItem[];
     allSkills: Skill[];
@@ -99,7 +99,7 @@ const ClockDisplay = ({ language }: { language?: AppSettings['language'] }) => {
     );
 };
 
-const ControlCenter: React.FC<ControlCenterProps> = ({ 
+const ControlCenter: React.FC<ControlCenterProps> = ({
     isOpen, onClose, saveStatus, saveProgress, fetchProgress, fetchStatus, onSyncClick, onRefreshClick, onRunCanonicalBackfill, canonicalRules = [], pendingReviews = [], onToggleCanonicalRuleDisabled,
     appSettings, setAppSettings, error, pendingCount, parsingTasks, enrichmentTasks = [], retryParsing,
     onSave, currentBudgetConfig, currentPrompt,
@@ -107,7 +107,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     onImportData, onClearData,
     securitySettings, onSecuritySettingsChange, authorizeSecurityPassword
 }) => {
-    
+
     const [syncMode, setSyncMode] = useState<'merge' | 'overwrite'>('merge');
     const [isParsingTasksExpanded, setIsParsingTasksExpanded] = useState(false);
     const [history, setHistory] = useState<SpreadsheetHistoryEntry[]>([]);
@@ -192,7 +192,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                     files: [file]
                 }
             } as unknown as React.ChangeEvent<HTMLInputElement>;
-            
+
             onImportData(event);
         }
     };
@@ -321,7 +321,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     };
 
     const renderSyncStatus = () => {
-        const activeStatus = saveStatus === 'saving' ? 'saving' 
+        const activeStatus = saveStatus === 'saving' ? 'saving'
                            : fetchStatus === 'syncing' ? 'syncing'
                            : saveStatus === 'error' ? 'error'
                            : fetchStatus === 'error' ? 'error'
@@ -382,11 +382,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             ariaLabel={controlCopy.settings}
             panelProps={{ 'data-control-center-panel': 'true' }}
         >
-                        
+
                         {/* Header */}
                         <div className={controlCenterSurface.header}>
                             <div className={controlCenterSurface.handle} />
-                            
+
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                     {activeTab !== 'main' && (
@@ -401,7 +401,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                 </div>
                                 <div className="flex gap-2">
                                     {activeTab !== 'main' && (
-                                        <button 
+                                        <button
                                             onClick={handleSave}
                                             disabled={settingsSaveStatus === 'saved'}
                                             className={`p-2 rounded-full transition-[color,background-color,opacity] ${settingsSaveStatus === 'saved' ? 'bg-[var(--finance-positive)] text-white' : 'hover:bg-muted/10 text-primary'}`}
@@ -495,7 +495,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     initial={{ opacity: 0, x: direction * 20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: direction * -20 }}
-                                    transition={{ 
+                                    transition={{
                                         duration: 0.25,
                                         ease: "easeInOut"
                                     }}
@@ -505,7 +505,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {activeTab === 'main' && (
                                         <div className="space-y-6">
                                             {/* Status Card */}
-                                            <div className="bg-background border border-border rounded-2xl p-4 flex flex-col gap-4 shadow-sm">
+                                            <div className="bg-background border border-border rounded-lg p-4 flex flex-col gap-4 shadow-sm">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-6">
                                                         {pendingCount > 0 && (
@@ -524,11 +524,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <div aria-live="polite">{renderSyncStatus()}</div>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div className="flex gap-2">
                                                         {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
-                                                            <button 
-                                                                onClick={() => onSyncClick(syncMode === 'overwrite')} 
+                                                            <button
+                                                                onClick={() => onSyncClick(syncMode === 'overwrite')}
                                                                 className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors"
                                                                 title={syncMode === 'overwrite' ? controlCopy.overwriteTitle : controlCopy.mergeTitle}
                                                                 aria-label={syncMode === 'overwrite' ? controlCopy.overwriteTitle : controlCopy.mergeTitle}
@@ -547,14 +547,14 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 {/* Sync Mode Selector */}
                                                 {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
                                                     <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden self-end">
-                                                        <button 
+                                                        <button
                                                             onClick={() => setSyncMode('merge')}
                                                             className={`px-3 py-1.5 text-xs font-medium transition-colors ${syncMode === 'merge' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-primary'}`}
                                                         >
                                                             {controlCopy.merge}
                                                         </button>
                                                         <div className="w-px h-4 bg-border"></div>
-                                                        <button 
+                                                        <button
                                                             onClick={() => setSyncMode('overwrite')}
                                                             className={`px-3 py-1.5 text-xs font-medium transition-colors ${syncMode === 'overwrite' ? 'bg-[var(--finance-negative-soft)] text-[var(--finance-negative)]' : 'text-muted hover:text-[var(--finance-negative)]'}`}
                                                         >
@@ -565,7 +565,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             </div>
 
                                             {error && (
-                                                <div className="flex items-start gap-3 rounded-2xl border border-[var(--finance-negative)]/20 bg-[var(--finance-negative-soft)] p-4 text-[var(--finance-negative)]">
+                                                <div className="flex items-start gap-3 rounded-lg border border-[var(--finance-negative)]/20 bg-[var(--finance-negative-soft)] p-4 text-[var(--finance-negative)]">
                                                     <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-medium">Perubahan belum tersinkron. Data tetap aman di perangkat.</p>
@@ -579,23 +579,23 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                             {/* Quick Actions */}
                                             <div className="grid grid-cols-2 gap-4">
-                                                <button 
+                                                <button
                                                     onClick={toggleTheme}
-                                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-background border border-border rounded-2xl hover:bg-muted/5 active:scale-95 transition-all shadow-sm"
+                                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-background border border-border rounded-lg hover:bg-muted/5 active:scale-95 transition-all shadow-sm"
                                                 >
-                                                    {localAppSettings.theme === 'dark' ? <Moon className="w-8 h-8 text-indigo-400" /> : <Sun className="w-8 h-8 text-amber-500" />}
+                                                    {localAppSettings.theme === 'dark' ? <Moon className="w-8 h-8 text-brand-400" /> : <Sun className="w-8 h-8 text-amber-500" />}
                                                     <span className="font-medium text-primary">{localAppSettings.theme === 'dark' ? controlCopy.darkMode : controlCopy.lightMode}</span>
                                                 </button>
-                                                
+
                                                 {/* Clock & Date */}
-                                                <div className="flex flex-col items-center justify-center gap-2 p-6 bg-background border border-border rounded-2xl shadow-sm">
+                                                <div className="flex flex-col items-center justify-center gap-2 p-6 bg-background border border-border rounded-lg shadow-sm">
                                                     <ClockDisplay language={localAppSettings.language} />
                                                 </div>
                                             </div>
 
-                                            <section className="rounded-2xl bg-background p-4 shadow-sm ring-1 ring-inset ring-border/70" aria-labelledby="quick-language-title">
+                                            <section className="rounded-lg bg-background p-4 shadow-sm ring-1 ring-inset ring-border/70" aria-labelledby="quick-language-title">
                                                 <div className="mb-3 flex items-start gap-3">
-                                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
+                                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-300">
                                                         <Languages className="h-4 w-4" />
                                                     </span>
                                                     <div>
@@ -613,7 +613,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 role="radio"
                                                                 aria-checked={selected}
                                                                 onClick={() => applyLanguage(value)}
-                                                                className={`flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${selected ? 'bg-indigo-600 text-white shadow-sm' : 'bg-surface-soft text-primary ring-1 ring-inset ring-border/60 hover:ring-indigo-500/30'}`}
+                                                                className={`flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 ${selected ? 'bg-brand-600 text-white shadow-sm' : 'bg-surface-soft text-primary ring-1 ring-inset ring-border/60 hover:ring-brand-500/30'}`}
                                                             >
                                                                 <span className="leading-tight">{label}</span>
                                                                 {selected && <Check className="h-4 w-4 shrink-0" />}
@@ -630,7 +630,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     <button
                                                         key={item.id}
                                                         onClick={() => handleTabChange(item.id as any)}
-                                                        className="w-full flex items-center justify-between p-4 bg-background border border-border rounded-2xl hover:bg-muted/5 active:scale-95 transition-all group"
+                                                        className="w-full flex items-center justify-between p-4 bg-background border border-border rounded-lg hover:bg-muted/5 active:scale-95 transition-all group"
                                                     >
                                                         <div className="flex items-center gap-4">
                                                             <div className="p-2 bg-surface border border-border rounded-xl text-muted group-hover:text-primary transition-colors">
@@ -661,7 +661,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         <div className={contentSurface.desktopSettingsGrid}>
                                             <section className={contentSurface.desktopSettingsWide}>
                                                 <div className="mb-3 flex items-start gap-3 px-1">
-                                                    <Languages className="mt-0.5 h-5 w-5 text-indigo-500" />
+                                                    <Languages className="mt-0.5 h-5 w-5 text-brand-500" />
                                                     <div>
                                                         <h3 className="text-sm font-semibold text-primary">{controlCopy.language}</h3>
                                                         <p className="mt-0.5 text-xs leading-relaxed text-muted">{controlCopy.languageDescription}</p>
@@ -682,7 +682,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 onClick={() => {
                                                                     applyLanguage(value);
                                                                 }}
-                                                                className={`flex min-h-12 items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${selected ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' : 'border-border bg-background text-primary hover:border-indigo-500/35'}`}
+                                                                className={`flex min-h-12 items-center justify-between rounded-lg border px-4 py-3 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 ${selected ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-300' : 'border-border bg-background text-primary hover:border-brand-500/35'}`}
                                                             >
                                                                 <span>{label}</span>
                                                                 {selected && <Check className="h-4 w-4 shrink-0" />}
@@ -701,9 +701,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             setLocalAppSettings(s);
                                                             setAppSettings(s);
                                                         }}
-                                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                                                            localAppSettings.theme === 'light' 
-                                                                ? 'bg-amber-500/10 border-amber-500 text-amber-600' 
+                                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${
+                                                            localAppSettings.theme === 'light'
+                                                                ? 'bg-amber-500/10 border-amber-500 text-amber-600'
                                                                 : 'bg-background border-border text-muted hover:border-primary/50'
                                                         }`}
                                                     >
@@ -716,9 +716,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             setLocalAppSettings(s);
                                                             setAppSettings(s);
                                                         }}
-                                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                                                            localAppSettings.theme === 'dark' 
-                                                                ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400' 
+                                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${
+                                                            localAppSettings.theme === 'dark'
+                                                                ? 'bg-brand-500/10 border-brand-500 text-brand-400'
                                                                 : 'bg-background border-border text-muted hover:border-primary/50'
                                                         }`}
                                                     >
@@ -731,9 +731,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             setLocalAppSettings(s);
                                                             setAppSettings(s);
                                                         }}
-                                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                                                            !localAppSettings.theme 
-                                                                ? 'bg-primary/10 border-primary text-primary' 
+                                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${
+                                                            !localAppSettings.theme
+                                                                ? 'bg-primary/10 border-primary text-primary'
                                                                 : 'bg-background border-border text-muted hover:border-primary/50'
                                                         }`}
                                                     >
@@ -747,7 +747,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="mb-3 ml-1 text-sm font-semibold text-primary">{controlCopy.display}</h3>
                                                 <div className="space-y-3">
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
                                                                 <EyeOff className="w-5 h-5" />
@@ -758,8 +758,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.hideMoney}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, hideMoney: e.target.checked })}
@@ -768,7 +768,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </label>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
                                                                 <Sparkles className="w-5 h-5" />
@@ -779,8 +779,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.enableDailyInsight ?? false}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, enableDailyInsight: e.target.checked })}
@@ -789,7 +789,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </label>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
                                                                 <Layout className="w-5 h-5" />
@@ -800,8 +800,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.defaultCollapsed}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, defaultCollapsed: e.target.checked })}
@@ -820,7 +820,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section className={contentSurface.desktopSettingsWide}>
                                                 <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Keamanan perangkat</h3>
                                                 <div className="space-y-3">
-                                                    <div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4">
+                                                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className="rounded-xl bg-red-500/10 p-2 text-red-500"><Lock className="h-5 w-5" /></div>
                                                             <div>
@@ -833,7 +833,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <div className="relative h-6 w-11 overflow-hidden rounded-full bg-muted/30 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-[18px]"></div>
                                                         </label>
                                                     </div>
-                                                    <div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4">
+                                                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className="rounded-xl bg-amber-500/10 p-2 text-amber-500"><Shield className="h-5 w-5" /></div>
                                                             <div>
@@ -846,7 +846,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <div className="relative h-6 w-11 overflow-hidden rounded-full bg-muted/30 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-[18px]"></div>
                                                         </label>
                                                     </div>
-                                                    <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 text-xs leading-relaxed text-muted">
+                                                    <div className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-4 text-xs leading-relaxed text-muted">
                                                         Kata sandi keamanan disimpan melalui konfigurasi yang terhubung, sedangkan status kunci hanya berlaku pada perangkat ini.
                                                     </div>
                                                 </div>
@@ -860,7 +860,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Alur input AI</h3>
                                                 <div className="flex flex-col gap-3">
-                                                    <div className="hidden items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="hidden items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
                                                                 <Sparkles className="w-5 h-5" />
@@ -871,8 +871,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.useProParser ?? false}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, useProParser: e.target.checked })}
@@ -881,9 +881,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </label>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500">
+                                                            <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500">
                                                                 <CheckSquare className="w-5 h-5" />
                                                             </div>
                                                             <div>
@@ -892,8 +892,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.enableDraftReview ?? false}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, enableDraftReview: e.target.checked })}
@@ -906,7 +906,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section className={`${contentSurface.desktopSettingsWide} hidden`}>
                                                 <div className="flex items-center justify-between mb-3">
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider ml-1">Instruksi sistem</h3>
-                                                    <button 
+                                                    <button
                                                         onClick={() => setPrompt(DEFAULT_PROMPT)}
                                                         className="text-[10px] text-acc-todo hover:underline disabled:opacity-50"
                                                         disabled={prompt === DEFAULT_PROMPT}
@@ -914,7 +914,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         Pulihkan bawaan
                                                     </button>
                                                 </div>
-                                                <div className="bg-background border border-border rounded-2xl p-4">
+                                                <div className="bg-background border border-border rounded-lg p-4">
                                                     <div className="flex items-start gap-3 mb-3">
                                                         <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500 shrink-0">
                                                             <MessageSquare className="w-5 h-5" />
@@ -934,7 +934,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             </section>
                                             <section className="hidden">
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Model AI</h3>
-                                                <div className="bg-background border border-border rounded-2xl p-4 space-y-4">
+                                                <div className="bg-background border border-border rounded-lg p-4 space-y-4">
                                                     <div>
                                                         <label className="block text-xs font-medium text-muted mb-1">Parsing percakapan (geminiService)</label>
                                                         <select
@@ -997,7 +997,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Mesin parsing</h3>
                                                 <div className="space-y-3">
-                                                    <div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4">
+                                                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-500"><Sparkles className="h-5 w-5" /></div>
                                                             <div>
@@ -1010,7 +1010,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <div className="relative h-6 w-11 overflow-hidden rounded-full bg-muted/30 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-[18px]"></div>
                                                         </label>
                                                     </div>
-                                                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs leading-relaxed text-muted">
+                                                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-xs leading-relaxed text-muted">
                                                         Pengaturan di halaman ini ditujukan untuk diagnosis dan eksperimen. Pengguna umum tidak perlu mengubahnya.
                                                     </div>
                                                 </div>
@@ -1018,7 +1018,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                             <section>
                                                 <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Model AI</h3>
-                                                <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                                                <div className="space-y-3 rounded-lg border border-border bg-background p-4">
                                                     {[
                                                         ['Parser input', 'parsingModel'],
                                                         ['Percakapan AI', 'chatModel'],
@@ -1027,7 +1027,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         <label key={key} className="block">
                                                             <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
                                                             <select
-                                                                className="w-full rounded-xl border border-border bg-surface p-3 text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                                                                className="w-full rounded-xl border border-border bg-surface p-3 text-xs text-primary focus:border-brand-500 focus:outline-none"
                                                                 value={(localAppSettings as any)[key] || 'gemini-3-flash-preview'}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, [key]: e.target.value })}
                                                             >
@@ -1046,10 +1046,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section className={contentSurface.desktopSettingsWide}>
                                                 <div className="mb-3 flex items-center justify-between">
                                                     <h3 className="ml-1 text-xs font-bold uppercase tracking-wider text-muted">Instruksi parser</h3>
-                                                    <button type="button" onClick={() => setPrompt(DEFAULT_PROMPT)} disabled={prompt === DEFAULT_PROMPT} className="text-[10px] font-bold text-indigo-500 disabled:opacity-40">Pulihkan bawaan</button>
+                                                    <button type="button" onClick={() => setPrompt(DEFAULT_PROMPT)} disabled={prompt === DEFAULT_PROMPT} className="text-[10px] font-bold text-brand-500 disabled:opacity-40">Pulihkan bawaan</button>
                                                 </div>
                                                 <textarea
-                                                    className="h-72 w-full resize-y rounded-2xl border border-border bg-background p-4 font-mono text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                                                    className="h-72 w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-xs text-primary focus:border-brand-500 focus:outline-none"
                                                     value={prompt}
                                                     onChange={(e) => setPrompt(e.target.value)}
                                                     placeholder="Instruksi khusus untuk parser..."
@@ -1058,7 +1058,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                             <section>
                                                 <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Kesehatan parser</h3>
-                                                <div className="rounded-2xl border border-border bg-background p-4 space-y-3" data-testid="parser-health-card">
+                                                <div className="rounded-lg border border-border bg-background p-4 space-y-3" data-testid="parser-health-card">
                                                     <div className="flex items-center justify-between gap-3">
                                                         <div>
                                                             <div className="text-sm font-bold text-primary">Aktivitas terbaru</div>
@@ -1077,7 +1077,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                             <section>
                                                 <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Kualitas data</h3>
-                                                <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                                                <div className="space-y-3 rounded-lg border border-border bg-background p-4">
                                                     <div className="grid grid-cols-2 gap-2 text-center">
                                                         <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{canonicalizedItemCount}</div><div className="text-[10px] text-muted">catatan dinormalisasi</div></div>
                                                         <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{canonicalRuleStats.activeLearned}</div><div className="text-[10px] text-muted">aturan aktif</div></div>
@@ -1105,7 +1105,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                         <div className={contentSurface.desktopSettingsGrid}>
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Izin sistem</h3>
-                                                <div className="bg-background border border-border rounded-2xl p-4">
+                                                <div className="bg-background border border-border rounded-lg p-4">
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex items-start gap-3">
                                                             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500 shrink-0">
@@ -1115,7 +1115,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <div className="font-medium text-primary text-sm">Notifikasi browser</div>
                                                                 <div className="text-xs text-muted mb-3">Izinkan Arkaiv mengirim notifikasi di desktop dan perangkat seluler.</div>
                                                                 <div className="flex gap-2">
-                                                                    <button 
+                                                                    <button
                                                                         onClick={async () => {
                                                                             const { requestNotificationPermission } = await import('../utils/notificationHandler');
                                                                             const granted = await requestNotificationPermission();
@@ -1125,11 +1125,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                                 notifyUser('Izin notifikasi ditolak atau tidak didukung.', 'error');
                                                                             }
                                                                         }}
-                                                                        className="px-3 py-1.5 bg-indigo-500 text-white text-xs font-medium rounded-lg hover:bg-indigo-600 transition-colors"
+                                                                        className="px-3 py-1.5 bg-brand-500 text-white text-xs font-medium rounded-lg hover:bg-brand-600 transition-colors"
                                                                     >
                                                                         Minta izin
                                                                     </button>
-                                                                    <button 
+                                                                    <button
                                                                         onClick={async () => {
                                                                             const { sendTestNotification } = await import('../utils/notificationHandler');
                                                                             sendTestNotification();
@@ -1148,11 +1148,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Jenis notifikasi</h3>
                                                 <div className="flex flex-col gap-3">
-                                                    <div className="flex flex-col gap-2 p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex flex-col gap-2 p-4 bg-background border border-border rounded-lg">
                                                         <div className="font-medium text-primary text-sm">Mode notifikasi</div>
                                                         <div className="text-xs text-muted mb-2">Pilih cara notifikasi memberi tahu Anda</div>
                                                         <select
-                                                            className="w-full bg-surface border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-indigo-500 transition-colors"
+                                                            className="w-full bg-surface border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-brand-500 transition-colors"
                                                             value={localAppSettings.notificationMode || 'both'}
                                                             onChange={(e) => setLocalAppSettings({ ...localAppSettings, notificationMode: e.target.value as any })}
                                                         >
@@ -1163,9 +1163,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </select>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500">
+                                                            <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500">
                                                                 <MessageSquare className="w-5 h-5" />
                                                             </div>
                                                             <div>
@@ -1174,8 +1174,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.persistentNotification ?? false}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, persistentNotification: e.target.checked })}
@@ -1184,7 +1184,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </label>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
                                                                 <Sparkles className="w-5 h-5" />
@@ -1195,8 +1195,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.notifyBehavior ?? false}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, notifyBehavior: e.target.checked })}
@@ -1205,7 +1205,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </label>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500">
                                                                 <Sparkles className="w-5 h-5" />
@@ -1216,8 +1216,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.notifyInsights ?? false}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, notifyInsights: e.target.checked })}
@@ -1226,7 +1226,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </label>
                                                     </div>
 
-                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
+                                                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-amber-500/10 rounded-xl text-amber-500">
                                                                 <Calendar className="w-5 h-5" />
@@ -1237,8 +1237,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                         <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 className="sr-only peer"
                                                                 checked={localAppSettings.notifyReminders ?? false}
                                                                 onChange={(e) => setLocalAppSettings({ ...localAppSettings, notifyReminders: e.target.checked })}
@@ -1275,7 +1275,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         Total: {totalPercentage}%
                                                     </span>
                                                 </div>
-                                                
+
                                                 <div className="space-y-2">
                                                     {budgetRules.map((rule, idx) => (
                                                         <div key={rule.id} className="flex items-center gap-2 p-2 bg-background rounded-xl border border-border">
@@ -1284,8 +1284,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <div className={`w-6 h-6 rounded-full cursor-pointer ${rule.color} border border-border`}></div>
                                                                 <div className="absolute top-full left-0 mt-1 bg-surface border border-border rounded-xl p-2 grid grid-cols-4 gap-1 shadow-xl hidden group-hover/color:grid z-10 w-32">
                                                                     {COLOR_PRESETS.map(c => (
-                                                                        <button 
-                                                                            key={c.name} 
+                                                                        <button
+                                                                            key={c.name}
                                                                             onClick={() => handleUpdateRule(idx, 'color', c.class)}
                                                                             className={`w-5 h-5 rounded-full ${c.class} hover:scale-110 transition-transform`}
                                                                             title={c.name}
@@ -1295,8 +1295,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
 
                                                             {/* Name */}
-                                                            <input 
-                                                                type="text" 
+                                                            <input
+                                                                type="text"
                                                                 value={rule.name}
                                                                 onChange={(e) => handleUpdateRule(idx, 'name', e.target.value)}
                                                                 className="flex-1 bg-transparent text-xs text-primary focus:outline-none border-b border-transparent focus:border-muted"
@@ -1305,8 +1305,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                                             {/* Percentage */}
                                                             <div className="flex items-center gap-1">
-                                                                <input 
-                                                                    type="number" 
+                                                                <input
+                                                                    type="number"
                                                                     value={rule.percentage}
                                                                     onChange={(e) => handleUpdateRule(idx, 'percentage', parseFloat(e.target.value) || 0)}
                                                                     className="w-12 bg-black/10 dark:bg-white/10 text-xs text-right text-primary rounded p-1 focus:outline-none"
@@ -1320,7 +1320,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </button>
                                                         </div>
                                                     ))}
-                                                    
+
                                                     <button onClick={handleAddRule} className="w-full py-2 border border-dashed border-border rounded-xl text-xs text-muted hover:text-primary hover:border-muted flex items-center justify-center gap-1 transition-colors">
                                                         <Plus className="w-3 h-3" /> Tambah kategori
                                                     </button>
@@ -1342,10 +1342,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Ekspor & impor</h3>
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <button 
+                                                    <button
                                                         onClick={async () => { await handleExportExcel(); }}
                                                         disabled={isExportingExcel}
-                                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-background border border-border rounded-2xl hover:bg-muted/5 hover:border-primary/30 transition-all disabled:cursor-wait disabled:opacity-60"
+                                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-background border border-border rounded-lg hover:bg-muted/5 hover:border-primary/30 transition-all disabled:cursor-wait disabled:opacity-60"
                                                     >
                                                         {isExportingExcel
                                                             ? <RefreshCw className="w-6 h-6 text-emerald-500 animate-spin" />
@@ -1354,15 +1354,15 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             {isExportingExcel ? 'Membuat Excel…' : 'Ekspor Excel'}
                                                         </span>
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         onClick={handleExportJSON}
-                                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-background border border-border rounded-2xl hover:bg-muted/5 hover:border-primary/30 transition-all"
+                                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-background border border-border rounded-lg hover:bg-muted/5 hover:border-primary/30 transition-all"
                                                     >
                                                         <Database className="w-6 h-6 text-blue-500" />
                                                         <span className="text-xs font-medium text-primary">Ekspor JSON</span>
                                                     </button>
-                                                    <label className="col-span-2 flex flex-col items-center justify-center gap-2 p-4 bg-background border border-border rounded-2xl hover:bg-muted/5 hover:border-primary/30 transition-all cursor-pointer">
-                                                        <Upload className="w-6 h-6 text-indigo-500" />
+                                                    <label className="col-span-2 flex flex-col items-center justify-center gap-2 p-4 bg-background border border-border rounded-lg hover:bg-muted/5 hover:border-primary/30 transition-all cursor-pointer">
+                                                        <Upload className="w-6 h-6 text-brand-500" />
                                                         <span className="text-xs font-medium text-primary">Impor cadangan JSON</span>
                                                         <input type="file" accept=".json" onChange={onImportData} className="hidden" />
                                                     </label>
@@ -1372,7 +1372,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             {onRunCanonicalBackfill && (
                                                 <section className={`${contentSurface.desktopSettingsWide} hidden`}>
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Kesehatan parser</h3>
-                                                    <div className="bg-background border border-border rounded-2xl p-4 space-y-3 mb-4" data-testid="parser-health-card">
+                                                    <div className="bg-background border border-border rounded-lg p-4 space-y-3 mb-4" data-testid="parser-health-card">
                                                         <div className="flex items-start gap-3">
                                                             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500 shrink-0">
                                                                 <Sparkles className="w-5 h-5" />
@@ -1427,9 +1427,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         )}
                                                     </div>
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Pembersihan data kanonis</h3>
-                                                    <div className="bg-background border border-border rounded-2xl p-4 space-y-3">
+                                                    <div className="bg-background border border-border rounded-lg p-4 space-y-3">
                                                         <div className="flex items-start gap-3">
-                                                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500 shrink-0">
+                                                            <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500 shrink-0">
                                                                 <Sparkles className="w-5 h-5" />
                                                             </div>
                                                             <div>
@@ -1500,7 +1500,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 const result = onRunCanonicalBackfill();
                                                                 setCanonicalBackfillSummary(`${result.autoAppliedCount} perubahan diterapkan otomatis pada ${result.changedItemIds.length} catatan. ${result.reviewSuggestionCount} saran menunggu tinjauan.`);
                                                             }}
-                                                            className="w-full py-2.5 bg-indigo-500/10 text-indigo-500 font-medium rounded-xl hover:bg-indigo-500/20 transition-colors"
+                                                            className="w-full py-2.5 bg-brand-500/10 text-brand-500 font-medium rounded-xl hover:bg-brand-500/20 transition-colors"
                                                         >
                                                             Periksa ulang riwayat data kanonis
                                                         </button>
@@ -1518,7 +1518,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     <div className="flex items-center justify-between mb-3 ml-1">
                                                         <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Riwayat database</h3>
                                                         <div className="flex items-center gap-3">
-                                                            <button 
+                                                            <button
                                                                 onClick={async () => {
                                                                     const confirmed = await requestUserConfirmation({
                                                                         title: 'Buat cadangan sekarang?',
@@ -1535,18 +1535,18 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <Save className="w-3 h-3" />
                                                                 Buat cadangan
                                                             </button>
-                                                            <button 
+                                                            <button
                                                                 onClick={fetchHistory}
                                                                 disabled={isFetchingHistory}
-                                                                className="text-xs text-indigo-500 hover:text-indigo-400 flex items-center gap-1"
+                                                                className="text-xs text-brand-500 hover:text-brand-400 flex items-center gap-1"
                                                             >
                                                                 <RefreshCw className={`w-3 h-3 ${isFetchingHistory ? 'animate-spin' : ''}`} />
                                                                 Muat ulang
                                                             </button>
                                                         </div>
                                                     </div>
-                                                    
-                                                    <div className="bg-background border border-border rounded-2xl overflow-hidden">
+
+                                                    <div className="bg-background border border-border rounded-lg overflow-hidden">
                                                         {isFetchingHistory && history.length === 0 ? (
                                                             <div className="p-6 text-center text-muted text-sm">Memuat riwayat…</div>
                                                         ) : historyError ? (
@@ -1565,7 +1565,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 {history.map((entry, idx) => (
                                                                     <div key={idx} className="p-3 flex items-center justify-between hover:bg-muted/5 transition-colors">
                                                                         <div className="flex items-center gap-3">
-                                                                            <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500">
+                                                                            <div className="p-2 bg-brand-500/10 rounded-lg text-brand-500">
                                                                                 <History className="w-4 h-4" />
                                                                             </div>
                                                                             <div>
@@ -1579,7 +1579,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                         </div>
                                                                         <button
                                                                             onClick={() => handleRestoreHistory(entry)}
-                                                                            className="px-3 py-1.5 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 rounded-lg text-xs font-medium transition-colors"
+                                                                            className="px-3 py-1.5 bg-brand-500/10 text-brand-500 hover:bg-brand-500/20 rounded-lg text-xs font-medium transition-colors"
                                                                         >
                                                                             Pulihkan
                                                                         </button>
@@ -1593,7 +1593,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
                                             <section className={contentSurface.desktopSettingsWide} data-ndz-danger-zone="separated-from-form-workflows">
                                                 <h3 className="text-xs font-bold text-[var(--finance-negative)] uppercase tracking-wider mb-3 ml-1">Zona berisiko</h3>
-                                                <div className="max-w-xl bg-red-500/5 border border-red-500/20 rounded-2xl p-4 ring-1 ring-red-500/10">
+                                                <div className="max-w-xl bg-red-500/5 border border-red-500/20 rounded-lg p-4 ring-1 ring-red-500/10">
                                                     <div className="flex items-start gap-3 mb-4">
                                                         <div className="p-2 bg-red-500/10 rounded-xl text-red-500 shrink-0">
                                                             <Trash2 className="w-5 h-5" />
@@ -1608,7 +1608,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <button 
+                                                    <button
                                                         onClick={async () => {
                                                             const confirmed = await requestUserConfirmation({
                                                                 title: 'Hapus seluruh data?',
@@ -1633,13 +1633,13 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             {/* Google Profile Section */}
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Akun Google</h3>
-                                                <div className="bg-background border border-border rounded-2xl p-4">
+                                                <div className="bg-background border border-border rounded-lg p-4">
                                                     {googleProfile ? (
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center gap-3">
-                                                                <img 
-                                                                    src={googleProfile.picture} 
-                                                                    alt={googleProfile.name} 
+                                                                <img
+                                                                    src={googleProfile.picture}
+                                                                    alt={googleProfile.name}
                                                                     className="w-10 h-10 rounded-full border border-border"
                                                                 />
                                                                 <div>
@@ -1647,7 +1647,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                     <div className="text-xs text-muted">{googleProfile.email}</div>
                                                                 </div>
                                                             </div>
-                                                            <button 
+                                                            <button
                                                                 onClick={handleGoogleSignOut}
                                                                 className="text-xs text-red-500 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
                                                             >
@@ -1680,7 +1680,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     ) : (
                                                         <div className="text-center py-4">
                                                             <p className="text-sm text-muted mb-4">Login Google terpisah dari spreadsheet. Gunakan untuk sinkronisasi Kalender dan cadangan profil; Sheets tetap dapat memakai akun layanan di bawah.</p>
-                                                            <button 
+                                                            <button
                                                                 onClick={handleGoogleLogin}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                                                             >
@@ -1700,15 +1700,15 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             {/* Spreadsheet Config */}
                                             <section>
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Koneksi spreadsheet</h3>
-                                                    <div className="bg-background border border-border rounded-2xl p-4 space-y-4">
+                                                    <div className="bg-background border border-border rounded-lg p-4 space-y-4">
                                                         <div className="text-xs text-muted bg-surface border border-border rounded-xl p-3 leading-relaxed">
                                                             Bagikan spreadsheet kepada <span className="font-mono text-primary">{SERVICE_ACCOUNT_EMAIL}</span> sebagai Editor, tempel tautannya, lalu hubungkan. Login Google tidak diperlukan untuk sinkronisasi spreadsheet.
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-muted mb-1">Tautan spreadsheet</label>
                                                             <div className="flex gap-2">
-                                                                <input 
-                                                                    type="text" 
+                                                                <input
+                                                                    type="text"
                                                                     className="flex-1 bg-surface border border-border rounded-xl p-3 text-xs text-primary focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
                                                                     placeholder="https://docs.google.com/spreadsheets/d/..."
                                                                     value={spreadsheetLink}
@@ -1716,9 +1716,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                     disabled={!!spreadsheetConfig}
                                                                 />
                                                                 {spreadsheetConfig && (
-                                                                    <a 
-                                                                        href={spreadsheetConfig.spreadsheetUrl} 
-                                                                        target="_blank" 
+                                                                    <a
+                                                                        href={spreadsheetConfig.spreadsheetUrl}
+                                                                        target="_blank"
                                                                         rel="noopener noreferrer"
                                                                         className="p-3 bg-surface border border-border rounded-xl text-primary hover:bg-muted/10 transition-colors"
                                                                     >
@@ -1729,7 +1729,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </div>
 
                                                         {!spreadsheetConfig && (
-                                                            <button 
+                                                            <button
                                                                 onClick={() => {
                                                                     if (!spreadsheetLink) return;
                                                                     const match = spreadsheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
@@ -1737,7 +1737,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                         notifyUser('Link tidak valid.', 'error');
                                                                         return;
                                                                     }
-                                                                    handleConnectSpreadsheet(); 
+                                                                    handleConnectSpreadsheet();
                                                                 }}
                                                                 disabled={!spreadsheetLink || isConnectingSpreadsheet}
                                                                 className="w-full py-2.5 bg-primary text-background font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1746,7 +1746,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             </button>
                                                         )}
                                                         {spreadsheetConfig && (
-                                                            <button 
+                                                            <button
                                                                 onClick={handleDisconnectSpreadsheet}
                                                                 className="w-full py-2.5 bg-red-500/10 text-red-500 font-medium rounded-xl hover:bg-red-500/20 transition-colors"
                                                             >
@@ -1759,9 +1759,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             {/* Gemini */}
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Kecerdasan AI</h3>
-                                                <div className="bg-background border border-border rounded-2xl p-4">
+                                                <div className="bg-background border border-border rounded-lg p-4">
                                                     <div className="flex items-center gap-3 mb-3">
-                                                        <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500">
+                                                        <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500">
                                                             <Sparkles className="w-5 h-5" />
                                                         </div>
                                                         <div>
@@ -1782,7 +1782,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             {/* Google Calendar */}
                                             <section>
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Integrasi</h3>
-                                                <div className="bg-background border border-border rounded-2xl p-4 space-y-3">
+                                                <div className="bg-background border border-border rounded-lg p-4 space-y-3">
                                                     <div className="flex items-center justify-between gap-3">
                                                         <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
@@ -1852,12 +1852,12 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Riwayat versi</h3>
                                                 <div className="space-y-4">
                                                     {CHANGELOG_ENTRIES.map((entry) => (
-                                                        <div key={entry.version} className="bg-background border border-border rounded-2xl p-4">
+                                                        <div key={entry.version} className="bg-background border border-border rounded-lg p-4">
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <div className="font-bold text-primary flex items-center gap-2">
                                                                     {entry.version}
                                                                     {entry.version === LATEST_CHANGELOG_VERSION && (
-                                                                        <span className="text-[10px] uppercase tracking-wider bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">Baru</span>
+                                                                        <span className="text-[10px] uppercase tracking-wider bg-brand-500/10 text-brand-500 px-2 py-0.5 rounded-full">Baru</span>
                                                                     )}
                                                                 </div>
                                                                 <div className="text-xs text-muted">{entry.date}</div>

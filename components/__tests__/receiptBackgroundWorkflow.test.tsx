@@ -42,12 +42,12 @@ test('direct receipt save remains visible as recent Review Center activity', () 
     completedAt: Date.now(),
   });
 
-  assert.match(html, /Tersimpan di Transactions/);
+  assert.match(html, /Tersimpan di transaksi/);
 });
 
 test('primary navigation labels stay stable when sub-tabs change', () => {
-  const taskLabels = getAppNavigationItems('tasks', 'general').map((item) => item.label);
-  const alternateLabels = getAppNavigationItems('shopping', 'journal').map((item) => item.label);
+  const taskLabels = getAppNavigationItems('tasks', 'general', 'en').map((item) => item.label);
+  const alternateLabels = getAppNavigationItems('shopping', 'journal', 'en').map((item) => item.label);
 
   assert.deepEqual(taskLabels, ['Home', 'Plan', 'Library', 'Money', 'Calendar']);
   assert.deepEqual(alternateLabels, taskLabels);

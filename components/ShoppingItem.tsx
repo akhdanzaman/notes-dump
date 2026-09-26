@@ -1,58 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet, ShoppingLineItem } from '../types';
+import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet, ShoppingLineItem, ItemUpdateHandler } from '../types';
 import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw } from 'lucide-react';
 import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, advanceRecurringDueDateByDaysToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
 import LineItemsEditor from './LineItemsEditor';
 import LineItemsPreview from './LineItemsPreview';
+import { formatCurrencyAmount } from '../utils/formatters';
 
 interface ShoppingItemProps {
   item: BrainDumpItem;
   onToggleStatus: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdate?: (
-    id: string, 
-    newContent: string, 
-    newTags: string[], 
-    newAmount?: number, 
-    newDate?: string, 
-    newPaymentMethod?: string, 
-    newBudgetCategory?: string, 
-    newDuration?: number, 
-    newSkillId?: string, 
-    newToWallet?: string, 
-    newFinanceType?: any,
-    newProgress?: number,
-    newProgressNotes?: string,
-    newShoppingCategory?: ShoppingCategory,
-    newRecurrenceDays?: number,
-    newQuantity?: string,
-    newIsRoutine?: boolean,
-    newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
-    newRoutineDaysOfWeek?: number[],
-    newRoutineDaysOfMonth?: number[],
-    newRoutineMonthsOfYear?: number[],
-    newSavingGoalId?: string,
-    newDedicatedWalletId?: string,
-    newPriority?: any,
-    newStart?: string,
-    newEnd?: string,
-    newHideFromCalendar?: boolean,
-    newInvestmentAssetType?: any,
-    newInvestmentSymbol?: string,
-    newInvestmentUnits?: number,
-    newInvestmentAveragePrice?: number,
-    newInvestmentCurrentPrice?: number,
-    newInvestmentPlatform?: string,
-    newCommodity?: string,
-    newSubcommodity?: string,
-    newNoteTitle?: string,
-    newImageUrl?: string,
-    newShoppingLineItems?: ShoppingLineItem[]
-  ) => void;
+  onUpdate?: ItemUpdateHandler;
   readonly?: boolean;
-  handleUpdateItem?: any; // To match prop drilling, though we use onUpdate
+  handleUpdateItem?: ItemUpdateHandler;
   budgetRules?: BudgetRule[];
   wallets?: Wallet[];
   onResetRoutine?: (id: string) => void;
@@ -126,47 +88,34 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       let finalDate: string | undefined = undefined;
       if (editDate) finalDate = new Date(editDate).toISOString();
 
-      updateFn(
-          item.id,
-          editContent,
-          meta.tags || [],
-          numAmount,
-          finalDate, // Pass the new date
-          editPaymentMethod,
-          editBudgetCategory,
-          meta.durationMinutes,
-          meta.skillId,
-          meta.toWallet,
-          meta.financeType,
-          meta.progress,
-          meta.progressNotes,
-          editCategory,
-          numRecurrence,
-          editQuantity,
-          // Routine params (isRoutine is implied by category='routine')
-          editCategory === 'routine',
-          editRoutineInterval,
-          editRoutineDaysOfWeek,
-          editRoutineDaysOfMonth,
-          editRoutineMonthsOfYear,
-          undefined,
-          meta.dedicatedWalletId,
-          meta.priority,
-          meta.start,
-          meta.end,
-          editHideFromCalendar,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          hasEditLineItems ? sanitizedEditLineItems : undefined
-      );
+      updateFn(item.id, {
+          content: editContent,
+          tags: meta.tags || [],
+          amount: numAmount,
+          date: finalDate,
+          paymentMethod: editPaymentMethod,
+          budgetCategory: editBudgetCategory,
+          duration: meta.durationMinutes,
+          skillId: meta.skillId,
+          toWallet: meta.toWallet,
+          financeType: meta.financeType,
+          progress: meta.progress,
+          progressNotes: meta.progressNotes,
+          shoppingCategory: editCategory,
+          recurrenceDays: numRecurrence,
+          quantity: editQuantity,
+          isRoutine: editCategory === 'routine',
+          routineInterval: editRoutineInterval,
+          routineDaysOfWeek: editRoutineDaysOfWeek,
+          routineDaysOfMonth: editRoutineDaysOfMonth,
+          routineMonthsOfYear: editRoutineMonthsOfYear,
+          dedicatedWalletId: meta.dedicatedWalletId,
+          priority: meta.priority,
+          start: meta.start,
+          end: meta.end,
+          hideFromCalendar: editHideFromCalendar,
+          shoppingLineItems: hasEditLineItems ? sanitizedEditLineItems : undefined,
+      });
       onSaveComplete?.(item.id);
   };
 
@@ -294,7 +243,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       role={onOpen ? 'group' : undefined}
       tabIndex={onOpen ? 0 : undefined}
       aria-label={onOpen ? `Buka detail ${content}` : undefined}
-      className={`group flex flex-col rounded-[24px] p-4 shadow-sm ring-1 ring-inset ring-border/65 transition-[background-color,opacity,box-shadow] duration-150 overflow-hidden cursor-pointer
+      className={`group flex flex-col rounded-xl p-4 shadow-sm ring-1 ring-inset ring-border/65 transition-[background-color,opacity,box-shadow] duration-150 overflow-hidden cursor-pointer
         ${(isDone || isRoutineUnavailable)
             ? 'bg-surface/50 opacity-75' 
             : `bg-surface hover:bg-surface/80`
@@ -332,9 +281,9 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                     {isUrgent ? 'Urgent' : (isRoutine ? 'Routine' : 'Shopping')}
                 </span>
                 {isRoutine && (
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 ml-2">
-                        <Repeat className="w-2.5 h-2.5 text-indigo-500" />
-                        <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-tight">
+                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 border border-brand-500/20 ml-2">
+                        <Repeat className="w-2.5 h-2.5 text-brand-500" />
+                        <span className="text-[9px] font-bold text-brand-500 uppercase tracking-tight">
                             {getRoutineScheduleLabel(
                                 meta.routineInterval,
                                 meta.routineDaysOfWeek,
@@ -352,7 +301,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                             onResetRoutine(item.id);
                         }}
                         title={isRoutineUnavailable ? 'Activate this routine for today without changing the next scheduled due date' : (routineNextDueDate ? `Reset for today and keep history. Next scheduled due: ${routineNextDueDate.toLocaleDateString()}` : 'Reset routine and keep history')}
-                        className="ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500"
+                        className="ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 bg-brand-500/10 hover:bg-brand-500/20 text-brand-500"
                     >
                         <RotateCcw className="w-2.5 h-2.5" /> Reset
                     </button>
@@ -398,7 +347,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
             {(meta.amount || hasLineItems) && (
                 <div className="text-base font-bold text-primary shrink-0 mt-0.5">
-                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(hasLineItems ? lineItemsTotal : (meta.amount || 0))}
+                    {formatCurrencyAmount(hasLineItems ? lineItemsTotal : meta.amount)}
                 </div>
             )}
         </div>
@@ -499,7 +448,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                                 id={`hideFromCalendarShopping-${item.id}`}
                                 checked={editHideFromCalendar}
                                 onChange={(e) => setEditHideFromCalendar(e.target.checked)}
-                                className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                                className="w-4 h-4 rounded border-border text-brand-600 focus:ring-brand-500"
                            />
                            <label htmlFor={`hideFromCalendarShopping-${item.id}`} className="text-xs font-medium text-primary">
                                 Hide from Calendar
@@ -509,14 +458,14 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
                   {/* Routine Extras */}
                   {editCategory === 'routine' && (
-                       <div className="col-span-2 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl p-4 mt-2">
+                       <div className="col-span-2 bg-brand-500/5 border border-brand-500/10 rounded-xl p-4 mt-2">
                            <div className="flex items-center justify-between mb-4">
                                <div className="flex items-center gap-2">
-                                   <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                                       <Repeat className="w-4 h-4 text-indigo-500" />
+                                   <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center">
+                                       <Repeat className="w-4 h-4 text-brand-500" />
                                    </div>
                                    <div>
-                                       <h4 className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Routine Schedule</h4>
+                                       <h4 className="text-xs font-bold text-brand-500 uppercase tracking-wider">Routine Schedule</h4>
                                        <p className="text-[10px] text-muted font-medium">Configure how this task repeats</p>
                                    </div>
                                </div>
@@ -524,12 +473,12 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                            
                            <div className="space-y-4">
                                {/* Interval Selector */}
-                               <div className="grid grid-cols-4 gap-2 bg-background/50 p-1.5 rounded-2xl border border-border/50">
+                               <div className="grid grid-cols-4 gap-2 bg-background/50 p-1.5 rounded-lg border border-border/50">
                                    {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
                                        <button
                                            key={int}
                                            onClick={() => setEditRoutineInterval(int)}
-                                           className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${editRoutineInterval === int ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:text-primary hover:bg-background'}`}
+                                           className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${editRoutineInterval === int ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:text-primary hover:bg-background'}`}
                                        >
                                            {int}
                                        </button>
@@ -551,7 +500,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                                                            setEditRoutineDaysOfWeek([...editRoutineDaysOfWeek, idx]);
                                                        }
                                                    }}
-                                                   className={`flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all border ${editRoutineDaysOfWeek.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                   className={`flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all border ${editRoutineDaysOfWeek.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                                                >
                                                    {label}
                                                </button>
@@ -575,7 +524,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                                                            setEditRoutineDaysOfMonth([...editRoutineDaysOfMonth, day]);
                                                        }
                                                    }}
-                                                   className={`w-full aspect-square rounded-md flex items-center justify-center text-[9px] font-bold transition-all border ${editRoutineDaysOfMonth.includes(day) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                   className={`w-full aspect-square rounded-md flex items-center justify-center text-[9px] font-bold transition-all border ${editRoutineDaysOfMonth.includes(day) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                                                >
                                                    {day}
                                                </button>
@@ -599,7 +548,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                                                            setEditRoutineMonthsOfYear([...editRoutineMonthsOfYear, idx]);
                                                        }
                                                    }}
-                                                   className={`py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${editRoutineMonthsOfYear.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                   className={`py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${editRoutineMonthsOfYear.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                                                >
                                                    {label}
                                                </button>

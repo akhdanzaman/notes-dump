@@ -26,6 +26,25 @@ const makeShopping = (overrides: Partial<BrainDumpItem>): BrainDumpItem => {
   };
 };
 
+test('Plan search and tags filter every shopping category without losing goal contributions', () => {
+  const categories = ['urgent', 'routine', 'not_urgent', 'saving', 'investment'] as const;
+  const targets = categories.map(category => makeShopping({
+    id: category, content: `Buy ${category}`, meta: { shoppingCategory: category, title: 'Laptop', tags: ['work'] },
+  }));
+  const contributions: BrainDumpItem[] = ['saving', 'investment'].map(id => ({
+    id: `deposit-${id}`, type: ItemType.FINANCE, status: 'done', content: 'unrelated search text',
+    created_at: '2026-09-01T00:00:00Z', meta: { savingGoalId: id, financeType: 'saving', amount: 500 },
+  }));
+  const items = [...targets, ...contributions];
+  const result = getShoppingItems(items, ' LAPTOP ', 'work');
+  for (const group of Object.values(result)) assert.equal(group.length, 1);
+  assert.equal(result.savings[0].meta.savedAmount, 500);
+  assert.equal(result.investments[0].meta.savedAmount, 500);
+  for (const group of Object.values(getShoppingItems(items, 'no-match'))) assert.equal(group.length, 0);
+  for (const group of Object.values(getShoppingItems(items, '', 'personal'))) assert.equal(group.length, 0);
+  for (const group of Object.values(getShoppingItems(items, 'WORK'))) assert.equal(group.length, 1);
+});
+
 test('shopping date helpers keep due date separate from completed and created dates', () => {
   const item = makeShopping({
     status: 'done',

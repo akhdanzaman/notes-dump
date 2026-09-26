@@ -8,58 +8,52 @@ export const getPriorityWeight = (p?: string) => {
 
 const isRootFocusItem = (item: BrainDumpItem) => !item.meta.parentTodoId;
 
+const sortFocusItems = (a: BrainDumpItem, b: BrainDumpItem) => {
+    if (a.status !== b.status) return a.status === 'pending' ? -1 : 1;
+
+    const priorityDifference = getPriorityWeight(b.meta.priority) - getPriorityWeight(a.meta.priority);
+    if (priorityDifference !== 0) return priorityDifference;
+
+    const aDate = a.meta.date ? new Date(a.meta.date).getTime() : Infinity;
+    const bDate = b.meta.date ? new Date(b.meta.date).getTime() : Infinity;
+    return aDate - bDate;
+};
+
+const groupFocusItemsByDate = (items: BrainDumpItem[], todayStart: number) => {
+    const tomorrowStart = todayStart + 86400000;
+    const afterTomorrowStart = tomorrowStart + 86400000;
+    const groups = {
+        today: [] as BrainDumpItem[],
+        tomorrow: [] as BrainDumpItem[],
+        later: [] as BrainDumpItem[],
+    };
+
+    items.forEach(item => {
+        const itemTime = item.meta.date ? new Date(item.meta.date).getTime() : NaN;
+        if (Number.isNaN(itemTime)) groups.later.push(item);
+        else if (itemTime < tomorrowStart) groups.today.push(item);
+        else if (itemTime < afterTomorrowStart) groups.tomorrow.push(item);
+        else groups.later.push(item);
+    });
+
+    return groups;
+};
+
 export const getFocusItems = (items: BrainDumpItem[]) => {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const tomorrowStart = todayStart + 86400000;
-  const afterTomorrowStart = tomorrowStart + 86400000;
 
   const relevantItems = items.filter(i => 
       (i.type === ItemType.TODO || i.type === ItemType.EVENT || i.type === ItemType.SKILLS) && 
       i.status === 'pending'
   );
-  
-  const today: BrainDumpItem[] = [];
-  const tomorrow: BrainDumpItem[] = [];
-  const later: BrainDumpItem[] = [];
 
-  relevantItems.forEach(item => {
-      if (!item.meta.date) {
-          later.push(item);
-          return;
-      }
+  const { today, tomorrow, later } = groupFocusItemsByDate(relevantItems, todayStart);
 
-      const d = new Date(item.meta.date);
-      const itemTime = d.getTime();
-      
-      if (isNaN(itemTime)) {
-          later.push(item);
-          return;
-      }
-      
-      if (itemTime < tomorrowStart) {
-          today.push(item);
-      } else if (itemTime >= tomorrowStart && itemTime < afterTomorrowStart) {
-          tomorrow.push(item);
-      } else {
-          later.push(item);
-      }
-  });
-
-  const sortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
-       const pa = getPriorityWeight(a.meta.priority);
-       const pb = getPriorityWeight(b.meta.priority);
-       if (pa !== pb) return pb - pa;
-
-       const da = a.meta.date ? new Date(a.meta.date).getTime() : Infinity;
-       const db = b.meta.date ? new Date(b.meta.date).getTime() : Infinity;
-       return da - db;
-  };
-
-  return { 
-      today: today.sort(sortFn), 
-      tomorrow: tomorrow.sort(sortFn), 
-      later: later.sort(sortFn) 
+  return {
+      today: today.sort(sortFocusItems),
+      tomorrow: tomorrow.sort(sortFocusItems),
+      later: later.sort(sortFocusItems)
   };
 };
 
@@ -112,12 +106,6 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
     const now = new Date();
     const oneDayAgo = now.getTime() - 86400000;
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const tomorrowStart = todayStart + 86400000;
-    const afterTomorrowStart = tomorrowStart + 86400000;
-
-    const today: BrainDumpItem[] = [];
-    const tomorrow: BrainDumpItem[] = [];
-    const later: BrainDumpItem[] = [];
     const routines: BrainDumpItem[] = [];
 
     // Add all routine items (pending and done) to routines group
@@ -126,61 +114,13 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
     });
 
     // Process non-routine items (pending OR recently done within 24h)
-    relevantItems.filter(i => !i.meta.isRoutine).forEach(item => {
+    const actionableItems = relevantItems.filter(item => {
+        if (item.meta.isRoutine) return false;
         const isPending = item.status === 'pending';
         const isRecentlyDone = item.status === 'done' && item.completed_at && new Date(item.completed_at).getTime() > oneDayAgo;
-
-        if (!isPending && !isRecentlyDone) return;
-
-        // If no due date, categorize as Later
-        if (!item.meta.date) {
-            later.push(item);
-            return;
-        }
-
-        const d = new Date(item.meta.date);
-        const itemTime = d.getTime();
-        
-        if (isNaN(itemTime)) {
-            later.push(item);
-            return;
-        }
-
-        if (itemTime < tomorrowStart) {
-            today.push(item);
-        } else if (itemTime >= tomorrowStart && itemTime < afterTomorrowStart) {
-            tomorrow.push(item);
-        } else {
-            later.push(item);
-        }
+        return isPending || isRecentlyDone;
     });
-
-    const sortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
-        if (a.status !== b.status) {
-            return a.status === 'pending' ? -1 : 1;
-        }
-        const pa = getPriorityWeight(a.meta.priority);
-        const pb = getPriorityWeight(b.meta.priority);
-        if (pa !== pb) return pb - pa;
-
-        const da = a.meta.date ? new Date(a.meta.date).getTime() : Infinity;
-        const db = b.meta.date ? new Date(b.meta.date).getTime() : Infinity;
-        return da - db;
-    };
-
-    // Special sort for routines: pending first, then done, then by priority, then by date
-    const routineSortFn = (a: BrainDumpItem, b: BrainDumpItem) => {
-        if (a.status !== b.status) {
-            return a.status === 'pending' ? -1 : 1;
-        }
-        const pa = getPriorityWeight(a.meta.priority);
-        const pb = getPriorityWeight(b.meta.priority);
-        if (pa !== pb) return pb - pa;
-
-        const da = a.meta.date ? new Date(a.meta.date).getTime() : Infinity;
-        const db = b.meta.date ? new Date(b.meta.date).getTime() : Infinity;
-        return da - db;
-    };
+    const { today, tomorrow, later } = groupFocusItemsByDate(actionableItems, todayStart);
     
     // Sort Done list by completed_at desc
     const sortedDone = doneList.sort((a,b) => {
@@ -212,10 +152,10 @@ export const getFocusMonthData = (items: BrainDumpItem[], date: Date, searchQuer
             done: totalDoneCount
         },
         pendingGroups: {
-            today: today.sort(sortFn),
-            tomorrow: tomorrow.sort(sortFn),
-            later: later.sort(sortFn),
-            routines: routines.sort(routineSortFn)
+            today: today.sort(sortFocusItems),
+            tomorrow: tomorrow.sort(sortFocusItems),
+            later: later.sort(sortFocusItems),
+            routines: routines.sort(sortFocusItems)
         },
         doneList: sortedDone
     };

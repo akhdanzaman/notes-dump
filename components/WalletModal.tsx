@@ -68,7 +68,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
     >
         <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-5 py-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500" aria-hidden="true">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500" aria-hidden="true">
               <WalletIcon className="h-5 w-5" />
             </span>
             <div className="min-w-0">
@@ -79,7 +79,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
           <button
             type="button"
             onClick={onClose}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-black/[0.04] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-white/[0.06]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-black/[0.04] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 dark:hover:bg-white/[0.06]"
             aria-label="Tutup form wallet"
           >
             <X className="w-5 h-5" />
@@ -94,7 +94,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                     type="text"
                     autoFocus
                     required
-                    className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-primary outline-none transition placeholder:text-muted/60 focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                    className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-primary outline-none transition placeholder:text-muted/60 focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                     placeholder="Contoh: Rekening utama, BCA, GoPay"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -108,7 +108,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                         id="wallet-type"
                         value={type}
                         onChange={(e) => setType(e.target.value as Wallet['type'])}
-                        className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                        className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                     >
                         <option value="cash">Tunai</option>
                         <option value="bank">Bank</option>
@@ -125,7 +125,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                                     key={c}
                                     type="button"
                                     onClick={() => setColor(c)}
-                                    className="flex h-11 min-w-10 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70"
+                                    className="flex h-11 min-w-10 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/70"
                                     aria-label={`Gunakan warna ${COLOR_LABELS[c]}`}
                                     aria-pressed={color === c}
                                  >
@@ -148,7 +148,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                     inputMode="decimal"
                     step="any"
                     aria-describedby="wallet-balance-help"
-                    className="min-h-12 w-full rounded-xl border border-border/80 bg-background/70 py-2.5 pl-12 pr-3.5 text-lg font-semibold tabular-nums tracking-tight text-primary outline-none transition placeholder:text-muted/60 focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                    className="min-h-12 w-full rounded-xl border border-border/80 bg-background/70 py-2.5 pl-12 pr-3.5 text-lg font-semibold tabular-nums tracking-tight text-primary outline-none transition placeholder:text-muted/60 focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                     placeholder="0"
                     value={initialBalance}
                     onChange={(e) => setInitialBalance(e.target.value)}
@@ -166,7 +166,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
 
         <div className="shrink-0 border-t border-border/60 bg-surface/98 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:p-6">
           <div className={responsiveModal.footer}>
-            <button type="button" onClick={onClose} className="min-h-11 rounded-xl px-4 text-sm font-medium text-muted transition-colors hover:bg-muted/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60">Batal</button>
+            <button type="button" onClick={onClose} className="min-h-11 rounded-xl px-4 text-sm font-medium text-muted transition-colors hover:bg-muted/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60">Batal</button>
             <button 
                 type="button"
                 onClick={handleSave}

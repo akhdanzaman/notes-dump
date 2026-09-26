@@ -152,16 +152,12 @@ test('[CRUD-UPDATE] local content edit beats remote unchanged content', () => {
 
 test('[CRUD-UPDATE] remote content edit beats unchanged local content', () => {
   const baseItem = makeItem({ id: 'edit-2', content: 'original' });
-  // When local matches base, merge preserves local (which equals base).
-  // The remote-only change is detected in the next fetch cycle.
   const local: DbSchema = { data: [baseItem] };
   const remote: DbSchema = { data: [{ ...baseItem, content: 'edited in sheet' }] };
   const base: DbSchema = { data: [baseItem] };
 
   const merged = mergeDbData(local, remote, base);
-  // Local unchanged → return local (= base). Remote-only edits get picked up
-  // on the next fetch when base is updated to include this change.
-  assert.equal(merged.data[0].content, 'original');
+  assert.equal(merged.data[0].content, 'edited in sheet');
 });
 
 test('[CRUD-UPDATE] local edit wins when both local and remote changed from base (pickField local preference)', () => {
@@ -314,7 +310,7 @@ test('[CRUD-EDGE] null/undefined base does not crash and returns local', () => {
   assert.equal(merged.data[0].content, 'no base');
 });
 
-test('[CRUD-EDGE] items with duplicate IDs in local — remote version wins merge', () => {
+test('[CRUD-EDGE] a shared ID produces one row with the remote-only update', () => {
   // This simulates the incremental plan update path where remote is authoritative
   const oldVer = makeItem({ id: 'dup-id', content: 'old version' });
   const newVer = { ...oldVer, content: 'new version' };
@@ -324,8 +320,7 @@ test('[CRUD-EDGE] items with duplicate IDs in local — remote version wins merg
     { data: [oldVer] }
   );
   assert.equal(merged.data.length, 1);
-  // Both changed from base, local wins (local-wins strategy)
-  assert.equal(merged.data[0].content, 'old version');
+  assert.equal(merged.data[0].content, 'new version');
 });
 
 test('[CRUD-EDGE] wallets config survives merge when base is empty', () => {

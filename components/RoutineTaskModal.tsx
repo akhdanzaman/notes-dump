@@ -4,6 +4,7 @@ import { X, Calendar, Clock, Check } from 'lucide-react';
 import { Priority } from '../types';
 import PresencePanel from '../motion/PresencePanel';
 import { addItemModal, responsiveModal } from './layout/contentSurface';
+import { calculateFirstDueDate } from '../utils/selectors';
 
 interface RoutineTaskModalProps {
     isOpen: boolean;
@@ -47,97 +48,13 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
     const [priority, setPriority] = useState<Priority>('normal');
     const [formError, setFormError] = useState('');
 
-    // Helper to calculate next due date based on schedule
-    const calculateNextDate = (
-        int: 'daily' | 'weekly' | 'monthly' | 'yearly',
-        dOfWeek: number[],
-        dOfMonth: number[],
-        mOfYear: number[]
-    ) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        if (int === 'daily') {
-            return today;
-        }
-
-        if (int === 'weekly' && dOfWeek.length > 0) {
-            // Find next occurrence of any selected day
-            for (let i = 0; i < 7; i++) {
-                const d = new Date(today);
-                d.setDate(today.getDate() + i);
-                if (dOfWeek.includes(d.getDay())) {
-                    return d;
-                }
-            }
-        }
-
-        if (int === 'monthly' && dOfMonth.length > 0) {
-            // Find next occurrence of any selected date
-            // Check current month first
-            const currentMonth = today.getMonth();
-            const currentYear = today.getFullYear();
-            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-            // Sort selected days
-            const sortedDays = [...dOfMonth].sort((a, b) => a - b);
-
-            // Check remaining days in current month
-            for (const day of sortedDays) {
-                if (day >= today.getDate() && day <= daysInMonth) {
-                    return new Date(currentYear, currentMonth, day);
-                }
-            }
-
-            // If not found, get first available day in next month
-            const nextMonth = new Date(currentYear, currentMonth + 1, 1);
-            // Handle edge case where next month might not have the day (e.g. Feb 30)
-            // But for simplicity, we just take the first valid day from the list
-            // Ideally we should check validity for next month
-            const nextMonthDays = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
-            for (const day of sortedDays) {
-                if (day <= nextMonthDays) {
-                    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
-                }
-            }
-        }
-
-        if (int === 'yearly' && mOfYear.length > 0) {
-             // Find next occurrence of any selected month
-             const currentMonth = today.getMonth();
-             const currentYear = today.getFullYear();
-             const sortedMonths = [...mOfYear].sort((a, b) => a - b);
-
-             // Check remaining months in current year
-             for (const month of sortedMonths) {
-                 if (month >= currentMonth) {
-                     // If it's the current month, check if today is valid (assuming 1st of month if no day specified, or just today)
-                     // For yearly, we usually just set it to the 1st of that month if we don't have day selector
-                     // But if it's current month, we can set to today if we want immediate start, or 1st if strictly following pattern
-                     // Let's set to 1st of the month for future months, and today if current month (and today is >= 1st)
-                     if (month > currentMonth) {
-                         return new Date(currentYear, month, 1);
-                     } else {
-                         // Current month
-                         return today;
-                     }
-                 }
-             }
-
-             // If not found, go to next year
-             return new Date(currentYear + 1, sortedMonths[0], 1);
-        }
-
-        return today;
-    };
-
     const updateDateFromSchedule = (
         int: 'daily' | 'weekly' | 'monthly' | 'yearly',
         dOfWeek: number[],
         dOfMonth: number[],
         mOfYear: number[]
     ) => {
-        const nextDate = calculateNextDate(int, dOfWeek, dOfMonth, mOfYear);
+        const nextDate = calculateFirstDueDate(new Date(), int, dOfWeek, dOfMonth, mOfYear);
         // Adjust for timezone offset to ensure YYYY-MM-DD is correct
         const offset = nextDate.getTimezoneOffset() * 60000;
         const localISOTime = (new Date(nextDate.getTime() - offset)).toISOString().slice(0, 10);
@@ -262,7 +179,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                             setInterval(int);
                                             updateDateFromSchedule(int, daysOfWeek, daysOfMonth, monthsOfYear);
                                         }}
-                                        className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
+                                        className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
                                     >
                                         {int}
                                     </button>
@@ -295,7 +212,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                             <button
                                                 key={day}
                                                 onClick={() => toggleDayOfMonth(day)}
-                                                className={`w-full aspect-square rounded-md flex items-center justify-center text-[10px] font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-indigo-600 border-indigo-500 text-white shadow-sm')}`}
+                                                className={`w-full aspect-square rounded-md flex items-center justify-center text-[10px] font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-brand-600 border-brand-500 text-white shadow-sm')}`}
                                             >
                                                 {day}
                                             </button>
@@ -323,10 +240,10 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                             )}
 
                             {/* Start Date */}
-                            <div className="bg-muted/5 p-3 rounded-2xl border border-border/50 mt-4">
+                            <div className="bg-muted/5 p-3 rounded-lg border border-border/50 mt-4">
                                 <label className={addItemModal.label}>Start Date</label>
                                 <div className="relative">
-                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-500" />
                                     <input
                                         type="date"
                                         value={date}
@@ -345,8 +262,8 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                             onClick={() => setPriority(p)}
                                             className={`py-3 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all ${
                                                 priority === p
-                                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                                                    : 'bg-background border border-border text-muted hover:border-indigo-500/50'
+                                                    ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
+                                                    : 'bg-background border border-border text-muted hover:border-brand-500/50'
                                             }`}
                                         >
                                             {p}

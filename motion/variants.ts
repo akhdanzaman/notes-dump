@@ -1,6 +1,5 @@
 import type { Variants } from 'motion/react';
-import { motionDistance, motionStagger } from './config';
-import { motionTransition } from './transitions';
+import { motionDistance, motionStagger, motionTransition } from './transitions';
 
 export const fadeVariants: Variants = {
   hidden: { opacity: 0 },

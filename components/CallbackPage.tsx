@@ -59,10 +59,10 @@ const CallbackPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-primary">
-      <div className="max-w-md w-full p-8 bg-surface rounded-2xl shadow-xl border border-border text-center">
+      <div className="max-w-md w-full p-8 bg-surface rounded-lg shadow-xl border border-border text-center">
         {status === 'loading' && (
           <>
-            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <h2 className="text-xl font-semibold mb-2">Authenticating...</h2>
             <p className="text-muted">Please wait while we complete the sign-in process.</p>
           </>
@@ -91,7 +91,7 @@ const CallbackPage: React.FC = () => {
             <p className="text-red-500 mb-4">{errorMessage}</p>
             <button 
               onClick={() => window.location.href = '/'}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-500 transition-colors"
+              className="px-4 py-2 bg-brand-600 text-white rounded-xl font-medium hover:bg-brand-500 transition-colors"
             >
               Return to App
             </button>

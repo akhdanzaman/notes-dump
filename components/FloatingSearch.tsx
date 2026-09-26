@@ -140,8 +140,8 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
             data-floating-search-trigger="content-anchored"
             className={`pointer-events-auto relative flex h-10 items-center justify-center gap-2 rounded-xl border px-3 shadow-sm backdrop-blur-xl transition-colors active:scale-[0.97] ${
                 isFilterActive
-                    ? 'border-indigo-500/30 bg-indigo-500 text-white'
-                    : 'border-border/80 bg-surface/92 text-muted hover:border-indigo-500/25 hover:text-primary'
+                    ? 'border-brand-500/30 bg-brand-500 text-white'
+                    : 'border-border/80 bg-surface/92 text-muted hover:border-brand-500/25 hover:text-primary'
             }`}
             aria-label={isFilterActive ? `Buka pencarian, ${activeFilterCount} filter aktif` : 'Buka pencarian dan filter'}
         >
@@ -181,7 +181,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                 onKeyDown={(event) => {
                     if (event.key === 'Escape') setIsSearchExpanded(false);
                 }}
-                className="pointer-events-auto relative max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-[28px] border border-border/80 bg-surface/96 p-5 shadow-2xl backdrop-blur-2xl lg:mx-0 lg:max-w-2xl sm:p-6"
+                className="pointer-events-auto relative max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-xl border border-border/80 bg-surface/96 p-5 shadow-2xl backdrop-blur-2xl lg:mx-0 lg:max-w-2xl sm:p-6"
               >
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="min-w-0">
@@ -191,7 +191,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                         <h3 className="mt-1 text-base font-bold tracking-tight text-primary">
                             Temukan data lebih cepat
                         </h3>
-                        {isFilterActive && <p className="mt-1 text-[11px] text-indigo-500">{activeFilterCount} filter aktif</p>}
+                        {isFilterActive && <p className="mt-1 text-[11px] text-brand-500">{activeFilterCount} filter aktif</p>}
                     </div>
 
                     <button
@@ -209,14 +209,14 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                             Search
                         </label>
                         <div className="relative group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-indigo-500 transition-colors" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-brand-500 transition-colors" />
                             <input
                                 autoFocus
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Cari isi atau tag..."
-                                className="w-full rounded-xl border border-border/80 bg-background/65 py-3 pl-10 pr-4 text-sm text-primary outline-none transition focus:border-indigo-500/50 focus:bg-background focus:ring-4 focus:ring-indigo-500/10"
+                                className="w-full rounded-xl border border-border/80 bg-background/65 py-3 pl-10 pr-4 text-sm text-primary outline-none transition focus:border-brand-500/50 focus:bg-background focus:ring-4 focus:ring-brand-500/10"
                             />
                         </div>
                     </div>
@@ -257,7 +257,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                 <select
                                     value={selectedTag || ''}
                                     onChange={(e) => setSelectedTag(e.target.value)}
-                                    className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 transition-colors"
+                                    className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 transition-colors"
                                 >
                                     <option value="">All Tags</option>
                                     {uniqueTags.map((tag) => (
@@ -278,14 +278,14 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         type="date"
                                         value={filterDate}
                                         onChange={(e) => setFilterDate(e.target.value)}
-                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-[10px] text-primary outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark]"
+                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-[10px] text-primary outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 [color-scheme:dark]"
                                     />
                                     <span className="text-muted text-[10px]">to</span>
                                     <input
                                         type="date"
                                         value={filterDateTo}
                                         onChange={(e) => setFilterDateTo(e.target.value)}
-                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-[10px] text-primary outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark]"
+                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-[10px] text-primary outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 [color-scheme:dark]"
                                         min={filterDate}
                                     />
                                 </div>
@@ -425,8 +425,8 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                     onClick={() => setSortOrder(option.id as SortOrder)}
                                     className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
                                         sortOrder === option.id
-                                            ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
-                                            : 'border border-border/80 bg-background/65 text-muted hover:border-indigo-500/25 hover:text-primary'
+                                            ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/20'
+                                            : 'border border-border/80 bg-background/65 text-muted hover:border-brand-500/25 hover:text-primary'
                                     }`}
                                 >
                                     {option.label}

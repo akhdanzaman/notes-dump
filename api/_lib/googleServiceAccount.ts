@@ -5,7 +5,7 @@ export const DEFAULT_SERVICE_ACCOUNT_EMAIL = 'openclaw-adan@gen-lang-client-0558
 const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
-const SERVICE_ACCOUNT_ALLOWED_ORIGINS = (process.env.SERVICE_ACCOUNT_ALLOWED_ORIGINS || '')
+const getServiceAccountAllowedOrigins = () => (process.env.SERVICE_ACCOUNT_ALLOWED_ORIGINS || '')
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
@@ -31,17 +31,9 @@ export type ServiceAccountStatus = {
   error?: string;
 };
 
-const base64Url = (input: string | Buffer) => Buffer.from(input)
-  .toString('base64')
-  .replace(/=/g, '')
-  .replace(/\+/g, '-')
-  .replace(/\//g, '_');
+const base64Url = (input: string | Buffer) => Buffer.from(input).toString('base64url');
 
-const decodeBase64Url = (input: string) => {
-  const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  return Buffer.from(padded, 'base64').toString('utf8');
-};
+const decodeBase64Url = (input: string) => Buffer.from(input, 'base64url').toString('utf8');
 
 const sha256 = (input: string) => crypto.createHash('sha256').update(input).digest('hex');
 
@@ -142,14 +134,22 @@ export const validateSpreadsheetId = (spreadsheetId: unknown): string => {
 
 export const validateSheetsPath = (path: unknown): string => {
   const raw = String(path || '');
-  if (raw.includes('\n') || raw.includes('\r') || raw.startsWith('http://') || raw.startsWith('https://')) {
+  if (
+    raw.includes('\n')
+    || raw.includes('\r')
+    || raw.includes('\\')
+    || raw.includes('..')
+    || raw.includes('#')
+    || raw.startsWith('http://')
+    || raw.startsWith('https://')
+  ) {
     throw new Error('Invalid Google Sheets API path');
   }
 
   if (
     raw === ''
     || raw === ':batchUpdate'
-    || raw.startsWith('/values')
+    || /^\/values(?:\/|:|$)/.test(raw)
   ) {
     return raw;
   }
@@ -265,7 +265,7 @@ const isAllowedOrigin = (candidate: string, headers: Record<string, unknown>) =>
     const requestOrigin = getRequestOrigin(headers);
     const allowed = new Set([
       requestOrigin ? new URL(requestOrigin).origin : '',
-      ...SERVICE_ACCOUNT_ALLOWED_ORIGINS.map(origin => new URL(origin).origin),
+      ...getServiceAccountAllowedOrigins().map(origin => new URL(origin).origin),
     ].filter(Boolean));
     return allowed.has(candidateOrigin);
   } catch {

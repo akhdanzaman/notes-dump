@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Check, Calendar } from 'lucide-react';
 import { Priority } from '../types';
 import PresencePanel from '../motion/PresencePanel';
 import { addItemModal, responsiveModal } from './layout/contentSurface';
+import { getLocalDateKey } from '../utils/selectors/dateUtils';
 
 interface AddTaskModalProps {
     isOpen: boolean;
@@ -13,20 +14,24 @@ interface AddTaskModalProps {
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, initialDate }) => {
     const [content, setContent] = useState('');
-    const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(() => getLocalDateKey(initialDate || new Date()));
     const [start, setStart] = useState('');
     const [end, setEnd] = useState('');
     const [priority, setPriority] = useState<Priority>('normal');
     const [hideFromCalendar, setHideFromCalendar] = useState(false);
 
+    useEffect(() => {
+        if (isOpen) setDate(getLocalDateKey(initialDate || new Date()));
+    }, [isOpen, initialDate]);
+
     const handleSave = () => {
-        if (!content.trim()) return;
+        if (!content.trim() || !date) return;
 
         let startIso, endIso;
         if (start) startIso = new Date(start).toISOString();
         if (end) endIso = new Date(end).toISOString();
 
-        onSave(content, new Date(date).toISOString(), priority, startIso, endIso, hideFromCalendar);
+        onSave(content, new Date(`${date}T00:00:00`).toISOString(), priority, startIso, endIso, hideFromCalendar);
         setContent('');
         setStart('');
         setEnd('');
@@ -113,8 +118,8 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                                         onClick={() => setPriority(p)}
                                         className={`py-3 rounded-xl font-bold text-sm capitalize transition-all ${
                                             priority === p
-                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                                                : 'bg-background border border-border text-muted hover:border-indigo-500/50'
+                                                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
+                                                : 'bg-background border border-border text-muted hover:border-brand-500/50'
                                         }`}
                                     >
                                         {p}

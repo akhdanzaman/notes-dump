@@ -1,13 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildContextTextForIntent, buildLegacyParserContextText, resolveParserContextIntent, type IntentParserContext } from '../parserContextBuilder';
 import { sanitizeBrainDumpItemsForPersistence, sanitizeParserResultsBeforeResolve } from '../parserFieldValidator';
 import { ItemType, type BrainDumpItem, type CreateItemPayload, type ParserResultV2 } from '../../types';
 
 const item = (id: string, type: ItemType, content: string, status: 'pending' | 'done' = 'pending', meta: BrainDumpItem['meta'] = {}): BrainDumpItem => ({ id, type, content, status, created_at: '2026-05-01T00:00:00.000Z', meta });
 
-const ctx: IntentParserContext = {
+const ctx = {
   existingTags: ['home', 'urgent'],
   availableSkills: [{ id: 'skill-english', name: 'English', color: '#fff', created_at: '2026-01-01T00:00:00.000Z' }],
   availableWallets: [
@@ -29,31 +28,6 @@ const ctx: IntentParserContext = {
   currentDayName: 'Saturday',
   currentMonthKey: '2026-05',
 };
-
-test('intent context builder sends only relevant context slices', () => {
-  const financeContext = buildContextTextForIntent(ctx, 'finance');
-  const taskContext = buildContextTextForIntent(ctx, 'task');
-  const shoppingContext = buildContextTextForIntent(ctx, 'shopping');
-  const stage1Context = buildContextTextForIntent(ctx, 'stage1');
-  const legacyContext = buildLegacyParserContextText(ctx);
-  assert.match(financeContext, /Known wallets/);
-  assert.match(financeContext, /Known budget categories/);
-  assert.match(financeContext, /Recent finance patterns/);
-  assert.match(financeContext, /Spreadsheet budget category examples/);
-  assert.doesNotMatch(financeContext, /Pending task\/event items/);
-  assert.match(taskContext, /Pending task\/event items/);
-  assert.doesNotMatch(taskContext, /Known wallets/);
-  assert.match(shoppingContext, /Shopping patterns/);
-  assert.doesNotMatch(shoppingContext, /Known budget categories/);
-  assert.doesNotMatch(stage1Context, /Known wallets|Pending items|Known skills/);
-  assert.ok(legacyContext.includes('Pending items'));
-});
-
-test('context intent resolver maps stage1 results to feature contexts', () => {
-  assert.equal(resolveParserContextIntent([{ action: 'create_item', entityType: 'finance', confidence: 'high', needsReview: false }]), 'finance');
-  assert.equal(resolveParserContextIntent([{ action: 'complete_item', entityType: 'todo', confidence: 'high', needsReview: false }]), 'task');
-  assert.equal(resolveParserContextIntent([{ action: 'create_item', entityType: 'shopping', confidence: 'high', needsReview: false }]), 'shopping');
-});
 
 test('strict validator strips invalid finance refs/prose while preserving raw content', () => {
   const rawResult: ParserResultV2 = { action: 'create_item', entityType: 'finance', content: 'makan sahur 10rb cash', confidence: 'high', needsReview: false, payload: { itemType: 'FINANCE', content: 'makan sahur 10rb cash', status: 'done', meta: { amount: 10000, financeType: 'expense', paymentMethod: 'cash because user said cash', toWallet: 'BCA maybe destination wallet', budgetCategory: 'Food because this is eating', commodity: 'food because sahur is a meal', subcommodity: 'breakfast confidence low', date: 'today' } as any } };

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShoppingLineItem, TransactionLineItem } from '../types';
+import { formatCurrencyAmount } from '../utils/formatters';
 
 interface Props {
   items: (ShoppingLineItem | TransactionLineItem)[];
@@ -12,18 +13,6 @@ interface Props {
   accentClassName?: string;
 }
 
-const formatMoney = (amount: number, currency = 'IDR') => {
-  try {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: currency === 'IDR' ? 0 : 2,
-    }).format(amount || 0);
-  } catch {
-    return `${currency} ${(amount || 0).toLocaleString('id-ID')}`;
-  }
-};
-
 const LineItemsPreview: React.FC<Props> = ({
   items,
   currency = 'IDR',
@@ -32,7 +21,7 @@ const LineItemsPreview: React.FC<Props> = ({
   expanded = false,
   onToggleExpanded,
   maxCollapsed = 3,
-  accentClassName = 'text-indigo-500',
+  accentClassName = 'text-brand-500',
 }) => {
   const visible = expanded ? items : items.slice(0, maxCollapsed);
   return (
@@ -50,7 +39,7 @@ const LineItemsPreview: React.FC<Props> = ({
               <div className="truncate">{line.name || 'Item tanpa nama'}{line.quantity ? ` · ${line.quantity}` : ''}</div>
               {allocationLabel && <div className="truncate text-[9px] opacity-75">{allocationLabel}</div>}
             </div>
-            <span className="shrink-0 font-bold text-primary">{formatMoney(Number(line.amount || 0), currency)}</span>
+            <span className="shrink-0 font-bold text-primary">{formatCurrencyAmount(Number(line.amount || 0), currency)}</span>
           </div>
         );
       })}

@@ -1,6 +1,7 @@
 import { AppSettings, BrainDumpItem, ItemType } from '../types';
 import { getValidGoogleAccessToken } from './googleProfileService';
 import { getShoppingDueDate } from '../utils/shoppingDateUtils';
+import { getLocalDateKey } from '../utils/selectors/dateUtils';
 
 export interface GoogleCalendarSyncEvent {
   itemId: string;
@@ -39,22 +40,17 @@ const isSyncableCalendarItem = (item: BrainDumpItem): boolean => {
   return Boolean(item.meta.start || item.meta.date || item.meta.dateTime || getShoppingDueDate(item));
 };
 
-const addDays = (date: Date, days: number): Date => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+const nextCalendarDate = (dateKey: string): string => {
+  // UTC arithmetic here advances a date key, not an instant in local time.
+  const next = new Date(`${dateKey}T00:00:00.000Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
 };
 
 const addMinutes = (date: Date, minutes: number): Date => {
   const next = new Date(date);
   next.setMinutes(next.getMinutes() + minutes);
   return next;
-};
-
-const toCalendarDate = (value: string | Date): string => {
-  const date = value instanceof Date ? value : new Date(value);
-  if (!Number.isFinite(date.getTime())) return new Date().toISOString().slice(0, 10);
-  return date.toISOString().slice(0, 10);
 };
 
 const toDateTime = (value: string | Date): string => {
@@ -109,11 +105,11 @@ export const buildGoogleCalendarEvents = (items: BrainDumpItem[]): GoogleCalenda
 
     const start = useTimedEvent
       ? { dateTime: toDateTime(startValue) }
-      : { date: toCalendarDate(startValue) };
+      : { date: getLocalDateKey(startValue) };
 
     const end = useTimedEvent
       ? { dateTime: toDateTime(endValue || addMinutes(new Date(startValue), 60)) }
-      : { date: toCalendarDate(addDays(new Date(startValue), 1)) };
+      : { date: nextCalendarDate(start.date!) };
 
     return {
       itemId: item.id,

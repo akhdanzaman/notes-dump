@@ -1,20 +1,35 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Arkaiv
 
-# Run and deploy your AI Studio app
+Aplikasi pencatatan harian dengan sinkronisasi Google Sheets, Google Calendar, dan bantuan Gemini.
 
-This contains everything you need to run your app locally.
+## Menjalankan proyek
 
-View your app in AI Studio: https://ai.studio/apps/3069c24a-a11d-49e8-83aa-1ce7f1bbe4c1
+Prasyarat: Node.js 22 atau lebih baru.
 
-## Run Locally
+```powershell
+npm ci
+copy .env.example .env
+npm run dev
+```
 
-**Prerequisites:**  Node.js
+Server lokal berjalan di `http://localhost:3010` secara default. Variabel `PORT` dapat digunakan untuk mengganti port.
 
+## Pemeriksaan sebelum rilis
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```powershell
+npm test
+npm run lint
+npm run build
+```
+
+`npm run lint` memeriksa TypeScript aplikasi dan fungsi API. Untuk menjalankan hasil build dengan server produksi:
+
+```powershell
+npm run build
+$env:NODE_ENV="production" # PowerShell
+npm start
+```
+
+Konfigurasi Google OAuth dan service account dijelaskan di `.env.example`. Endpoint publik tetap berada di bawah `/api/auth/google/*` dan `/api/spreadsheets/service-account/*`.
+
+Lihat `REFACTOR_NOTES.md` untuk ringkasan penyederhanaan backend dan daftar pekerjaan frontend berikutnya.

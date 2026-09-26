@@ -33,7 +33,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
     >
       <div className="mx-auto w-full max-w-[35rem] md:max-w-[46rem]">
         <LayoutGroup id="mobile-primary-navigation">
-          <div className="grid grid-cols-5 gap-0.5 rounded-[1.25rem] bg-surface/92 p-1 shadow-[0_10px_28px_rgba(16,23,19,0.11)] ring-1 ring-inset ring-border/70 backdrop-blur-xl dark:shadow-[0_14px_32px_rgba(0,0,0,0.32)] sm:gap-1 sm:p-1.5 md:rounded-[1.25rem] md:bg-surface/88 md:p-2">
+          <div className="grid grid-cols-5 gap-0.5 rounded-lg bg-surface/92 p-1 shadow-[0_10px_28px_rgba(16,23,19,0.11)] ring-1 ring-inset ring-border/70 backdrop-blur-xl dark:shadow-[0_14px_32px_rgba(0,0,0,0.32)] sm:gap-1 sm:p-1.5 md:rounded-lg md:bg-surface/88 md:p-2">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
@@ -48,10 +48,10 @@ const BottomNav: React.FC<BottomNavProps> = ({
                   aria-label={`${tab.label}. ${tab.helper}`}
                   onClick={() => setActiveTab(tab.id)}
                   className={[
-                    'group relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 rounded-[1rem] px-1 py-1.5',
+                    'group relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1.5',
                     'transition-[color,transform] duration-150 active:scale-[0.97]',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-1 focus-visible:ring-offset-surface',
-                    'md:min-h-12 md:flex-row md:gap-2 md:rounded-[0.9rem] md:px-3 md:py-2',
+                    'md:min-h-12 md:flex-row md:gap-2 md:rounded-lg md:px-3 md:py-2',
                     isActive
                       ? 'text-accent'
                       : 'text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]',
@@ -59,7 +59,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
                 >
                   {isActive && (
                     <ActiveIndicator
-                      className="absolute inset-0 rounded-[1rem] bg-accent/10 ring-1 ring-inset ring-accent/15 after:absolute after:bottom-0.5 after:left-1/2 after:h-0.5 after:w-4 after:-translate-x-1/2 after:rounded-full after:bg-accent after:content-[''] md:rounded-[0.9rem] md:after:bottom-auto md:after:left-0.5 md:after:top-1/2 md:after:h-5 md:after:w-0.5 md:after:-translate-x-0 md:after:-translate-y-1/2"
+                      className="absolute inset-0 rounded-lg bg-brand-400/25 ring-1 ring-inset ring-accent/15 after:absolute after:bottom-0.5 after:left-1/2 after:h-0.5 after:w-4 after:-translate-x-1/2 after:rounded-full after:bg-accent after:content-[''] md:rounded-lg md:after:bottom-auto md:after:left-0.5 md:after:top-1/2 md:after:h-5 md:after:w-0.5 md:after:-translate-x-0 md:after:-translate-y-1/2"
                     />
                   )}
                   <span className="relative z-10 flex h-5 w-5 shrink-0 items-center justify-center transition-transform duration-150 group-active:scale-90 md:h-7 md:w-7">

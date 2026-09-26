@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { collapseVariants, popVariants } from '../motion/variants';
-import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, BudgetRule, Priority, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta, LoanTransactionKind } from '../types';
+import { ItemType, BrainDumpItem, FinanceType, Skill, Wallet, Priority, TransactionLineItem, ReceiptCaptureMeta, LoanTransactionKind, ItemUpdateHandler } from '../types';
 import { CheckCircle2, ShoppingCart, Calendar, StickyNote, Tag, Clock, Circle, Trash2, TrendingUp, TrendingDown, Wallet as WalletIcon, ArrowRightLeft, BookOpen, ArrowRight, BookText, ChevronDown, ChevronUp, Save, DollarSign, Type, Hourglass, X, Activity, Repeat, RotateCcw, AlertCircle, HandCoins, EyeOff } from 'lucide-react';
 
-import { calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
+import { calculateFirstDueDate, calculateNextDueDate, getRoutineScheduleLabel, advanceRoutineDueDateToTodayOrFuture, isSameLocalDay } from '../utils/selectors';
 import { ACHIEVED_GOAL_FINANCE_TYPE, SAVING_WITHDRAWAL_FINANCE_TYPE, formatFinanceTypeLabel, isIncomingLoanFinanceType, isOutgoingLoanFinanceType, isLoanFinanceType } from '../utils/financeTypeUtils';
 import { getShoppingDueDate, getShoppingTransactionDate, shouldShoppingDateEditCompletion } from '../utils/shoppingDateUtils';
 import { getNoteDisplayParts } from '../utils/noteDisplay';
@@ -13,83 +13,7 @@ import { countUncategorizedTransactionLines, getTransactionCategorySummary, sani
 import LineItemsEditor from './LineItemsEditor';
 import LineItemsPreview from './LineItemsPreview';
 import ReceiptAttachmentPanel from './ReceiptAttachmentPanel';
-
-// Helper to calculate next due date based on schedule (Same as RoutineTaskModal)
-const calculateNextDate = (
-    int: 'daily' | 'weekly' | 'monthly' | 'yearly',
-    dOfWeek: number[],
-    dOfMonth: number[],
-    mOfYear: number[]
-) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    if (int === 'daily') {
-        return today;
-    }
-
-    if (int === 'weekly' && dOfWeek.length > 0) {
-        // Find next occurrence of any selected day
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(today);
-            d.setDate(today.getDate() + i);
-            if (dOfWeek.includes(d.getDay())) {
-                return d;
-            }
-        }
-    }
-
-    if (int === 'monthly' && dOfMonth.length > 0) {
-        // Find next occurrence of any selected date
-        // Check current month first
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        
-        // Sort selected days
-        const sortedDays = [...dOfMonth].sort((a, b) => a - b);
-        
-        // Check remaining days in current month
-        for (const day of sortedDays) {
-            if (day >= today.getDate() && day <= daysInMonth) {
-                return new Date(currentYear, currentMonth, day);
-            }
-        }
-        
-        // If not found, get first available day in next month
-        const nextMonth = new Date(currentYear, currentMonth + 1, 1);
-        const nextMonthDays = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
-        for (const day of sortedDays) {
-            if (day <= nextMonthDays) {
-                return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
-            }
-        }
-    }
-
-    if (int === 'yearly' && mOfYear.length > 0) {
-            // Find next occurrence of any selected month
-            const currentMonth = today.getMonth();
-            const currentYear = today.getFullYear();
-            const sortedMonths = [...mOfYear].sort((a, b) => a - b);
-
-            // Check remaining months in current year
-            for (const month of sortedMonths) {
-                if (month >= currentMonth) {
-                    if (month > currentMonth) {
-                        return new Date(currentYear, month, 1);
-                    } else {
-                        // Current month
-                        return today;
-                    }
-                }
-            }
-
-            // If not found, go to next year
-            return new Date(currentYear + 1, sortedMonths[0], 1);
-    }
-
-    return today;
-};
+import { formatCurrencyAmount } from '../utils/formatters';
 
 const editableFinanceTabs: Array<{ value: 'expense' | 'income' | 'transfer' | 'saving' | 'loan'; label: string }> = [
   { value: 'expense', label: 'Pengeluaran' },
@@ -115,55 +39,7 @@ interface CardProps {
   item: BrainDumpItem;
   onToggleStatus?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onUpdate?: (
-    id: string, 
-    newContent: string, 
-    newTags: string[], 
-    newAmount?: number, 
-    newDate?: string, 
-    newPaymentMethod?: string, 
-    newBudgetCategory?: string, 
-    newDuration?: number, 
-    newSkillId?: string, 
-    newToWallet?: string, 
-    newFinanceType?: FinanceType, 
-    newProgress?: number, 
-    newProgressNotes?: string,
-    newShoppingCategory?: any,
-    newRecurrenceDays?: number,
-    newQuantity?: string,
-    newIsRoutine?: boolean,
-    newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
-    newRoutineDaysOfWeek?: number[],
-    newRoutineDaysOfMonth?: number[],
-    newRoutineMonthsOfYear?: number[],
-    newSavingGoalId?: string,
-    newDedicatedWalletId?: string,
-    newPriority?: Priority,
-    newStart?: string,
-    newEnd?: string,
-    newHideFromCalendar?: boolean,
-    newInvestmentAssetType?: InvestmentAssetType,
-    newInvestmentSymbol?: string,
-    newInvestmentUnits?: number,
-    newInvestmentAveragePrice?: number,
-    newInvestmentCurrentPrice?: number,
-    newInvestmentPlatform?: string,
-    newCommodity?: string,
-    newSubcommodity?: string,
-    newNoteTitle?: string,
-    newImageUrl?: string,
-    newShoppingLineItems?: ShoppingLineItem[],
-    newTransactionLineItems?: TransactionLineItem[],
-    newMerchant?: string,
-    newReceiptCapture?: ReceiptCaptureMeta | null,
-    newOriginalCurrency?: string,
-    newOriginalAmount?: number,
-    newExchangeRateToIdr?: number,
-    newLoanCounterparty?: string,
-    newLoanAccountId?: string,
-    newLoanDueDate?: string
-  ) => void;
+  onUpdate?: ItemUpdateHandler;
   onUpdateReceiptCapture?: (id: string, capture: ReceiptCaptureMeta | null) => void | Promise<void>;
   onResetRoutine?: (id: string) => void;
   onAcceptDeepWorkPlan?: (id: string) => void;
@@ -177,6 +53,7 @@ interface CardProps {
   defaultCollapsed?: boolean;
   hideMoney?: boolean;
   className?: string;
+  surface?: 'card' | 'plain';
   editComfort?: 'default' | 'taskWorkspace';
   collapsibleEditPanel?: boolean;
   editPanelExpanded?: boolean;
@@ -186,7 +63,7 @@ interface CardProps {
   onCollapseChange?: (id: string, collapsed: boolean) => void;
   onOpen?: (item: BrainDumpItem) => void;
   onSaveComplete?: (id: string) => void;
-  
+
   // Context Props
   skills?: Skill[];
   wallets?: Wallet[];
@@ -195,24 +72,25 @@ interface CardProps {
   commodityOptions?: { name: string; subcommodities: string[] }[];
 }
 
-const Card: React.FC<CardProps> = ({ 
-    item, 
-    onToggleStatus, 
-    onDelete, 
+const Card: React.FC<CardProps> = ({
+    item,
+    onToggleStatus,
+    onDelete,
     onUpdate,
     onUpdateReceiptCapture,
     onResetRoutine,
     onAcceptDeepWorkPlan,
     onDismissDeepWorkPlan,
-    readonly = false, 
-    skillName, 
-    categoryName, 
+    readonly = false,
+    skillName,
+    categoryName,
     noStrikethrough = false,
     noDarken = false,
     enableCollapse = false,
     defaultCollapsed = false,
     hideMoney = false,
     className = '',
+    surface = 'card',
     editComfort = 'default',
     collapsibleEditPanel = false,
     editPanelExpanded = false,
@@ -231,7 +109,7 @@ const Card: React.FC<CardProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [showFullText, setShowFullText] = useState(false);
   const { type, content = '', meta = {}, isOptimistic, status, created_at, completed_at } = item;
-  
+
   // --- Edit State ---
   const [editContent, setEditContent] = useState(content);
   const [editTitle, setEditTitle] = useState(meta.title || '');
@@ -244,7 +122,7 @@ const Card: React.FC<CardProps> = ({
   const [editStart, setEditStart] = useState<string>('');
   const [editEnd, setEditEnd] = useState<string>('');
   const [editHideFromCalendar, setEditHideFromCalendar] = useState<boolean>(meta.hideFromCalendar || false);
-  
+
   // Specifics
   const normalizeEditableFinanceType = (financeType?: FinanceType): FinanceType => financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'saving' : (financeType || 'expense');
   const [editFinanceType, setEditFinanceType] = useState<FinanceType>(normalizeEditableFinanceType(meta.financeType));
@@ -291,18 +169,18 @@ const Card: React.FC<CardProps> = ({
     dOfMonth: number[],
     mOfYear: number[]
   ) => {
-    const nextDate = calculateNextDate(int, dOfWeek, dOfMonth, mOfYear);
+    const nextDate = calculateFirstDueDate(new Date(), int, dOfWeek, dOfMonth, mOfYear);
     // Adjust for timezone offset to ensure YYYY-MM-DD is correct
     const offset = nextDate.getTimezoneOffset() * 60000;
     // We want to preserve the time if it was set, but for routine start date, usually 00:00 or current time is fine.
     // However, editDate is datetime-local string (YYYY-MM-DDTHH:mm).
     // Let's keep the current time from editDate if possible, or default to 09:00
-    
+
     let timePart = '09:00';
     if (editDate && editDate.includes('T')) {
         timePart = editDate.split('T')[1];
     }
-    
+
     const localISODate = (new Date(nextDate.getTime() - offset)).toISOString().slice(0, 10);
     setEditDate(`${localISODate}T${timePart}`);
   };
@@ -332,7 +210,7 @@ const Card: React.FC<CardProps> = ({
     setEditLoanDueDate(meta.loanDueDate ? meta.loanDueDate.slice(0, 10) : '');
     setEditProgress(meta.progress || 0);
     setEditProgressNotes(meta.progressNotes || '');
-    
+
     setEditRecurrenceDays(meta.recurrenceDays ? meta.recurrenceDays.toString() : '1');
     setEditRoutineInterval(meta.routineInterval || 'daily');
     setEditRoutineDaysOfWeek(meta.routineDaysOfWeek || []);
@@ -340,7 +218,7 @@ const Card: React.FC<CardProps> = ({
     setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
     setEditPriority(meta.priority || 'normal');
     setEditHideFromCalendar(meta.hideFromCalendar || false);
-    
+
     // Date Init
     const isoDate = type === ItemType.SHOPPING
       ? (shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item))
@@ -393,7 +271,7 @@ const Card: React.FC<CardProps> = ({
       const finalTransactionLineItems = type === ItemType.FINANCE ? sanitizeTransactionLineItems(editTransactionLineItems) : [];
       const numAmount = finalTransactionLineItems.length ? sumTransactionLineItems(finalTransactionLineItems) : (editAmount ? parseFloat(editAmount) : undefined);
       const numDuration = editDuration ? parseFloat(editDuration) : undefined;
-      
+
       let finalDate: string | undefined = undefined;
       if (editDate) finalDate = new Date(editDate).toISOString();
 
@@ -429,57 +307,42 @@ const Card: React.FC<CardProps> = ({
 
       const numRecurrence = editRecurrenceDays ? parseInt(editRecurrenceDays) : undefined;
 
-      onUpdate(
-          item.id,
-          editContent,
-          tagArray,
-          numAmount,
-          finalDate,
-          finalPaymentMethod,
-          finalBudgetCategory,
-          numDuration,
-          finalSkillId,
-          finalToWallet,
-          editFinanceType,
-          showProgress ? editProgress : undefined,
-          showProgress ? editProgressNotes : undefined,
-          item.meta.shoppingCategory,
-          numRecurrence,
-          item.meta.quantity,
-          // Routine params
-          item.meta.isRoutine,
-          editRoutineInterval,
-          editRoutineDaysOfWeek,
-          editRoutineDaysOfMonth,
-          editRoutineMonthsOfYear,
-          finalSavingGoalId,
-          undefined, // newDedicatedWalletId
-          editPriority,
-          finalStart,
-          finalEnd,
-          editHideFromCalendar,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          finalCommodity,
-          finalSubcommodity,
-          isNote ? editTitle.trim() : undefined,
-          undefined, // newImageUrl
-          undefined, // newShoppingLineItems
-          finalTransactionLineItems.length ? finalTransactionLineItems : undefined,
-          editMerchant.trim() || undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          editingLoan ? editLoanCounterparty.trim() : '',
-          finalLoanAccountId,
-          finalLoanDueDate
-      );
-      
+      onUpdate(item.id, {
+          content: editContent,
+          tags: tagArray,
+          amount: numAmount,
+          date: finalDate,
+          paymentMethod: finalPaymentMethod,
+          budgetCategory: finalBudgetCategory,
+          duration: numDuration,
+          skillId: finalSkillId,
+          toWallet: finalToWallet,
+          financeType: editFinanceType,
+          progress: showProgress ? editProgress : undefined,
+          progressNotes: showProgress ? editProgressNotes : undefined,
+          shoppingCategory: item.meta.shoppingCategory,
+          recurrenceDays: numRecurrence,
+          quantity: item.meta.quantity,
+          isRoutine: item.meta.isRoutine,
+          routineInterval: editRoutineInterval,
+          routineDaysOfWeek: editRoutineDaysOfWeek,
+          routineDaysOfMonth: editRoutineDaysOfMonth,
+          routineMonthsOfYear: editRoutineMonthsOfYear,
+          savingGoalId: finalSavingGoalId,
+          priority: editPriority,
+          start: finalStart,
+          end: finalEnd,
+          hideFromCalendar: editHideFromCalendar,
+          commodity: finalCommodity,
+          subcommodity: finalSubcommodity,
+          noteTitle: isNote ? editTitle.trim() : undefined,
+          transactionLineItems: finalTransactionLineItems.length ? finalTransactionLineItems : undefined,
+          merchant: editMerchant.trim() || undefined,
+          loanCounterparty: editingLoan ? editLoanCounterparty.trim() : '',
+          loanAccountId: finalLoanAccountId,
+          loanDueDate: finalLoanDueDate,
+      });
+
       if (enableCollapse) {
           setIsCollapsed(true);
       }
@@ -505,27 +368,19 @@ const Card: React.FC<CardProps> = ({
   const formatMoney = (amount?: number) => {
       if (amount === undefined || amount === null) return null;
       if (hideMoney) return 'Rp •••••••';
-      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+      return formatCurrencyAmount(amount);
   };
 
   const formatCurrency = (amount: number, currency = 'IDR') => {
       if (hideMoney) return `${currency} •••••`;
-      try {
-          return new Intl.NumberFormat('id-ID', {
-              style: 'currency',
-              currency,
-              maximumFractionDigits: currency === 'IDR' ? 0 : 2,
-          }).format(amount);
-      } catch {
-          return `${currency} ${amount.toLocaleString('id-ID')}`;
-      }
+      return formatCurrencyAmount(amount, currency);
   };
 
   const getStyles = () => {
     switch (type) {
       case ItemType.TODO:
       case ItemType.SKILLS:
-        return { textColor: type === ItemType.SKILLS ? 'text-indigo-500' : 'text-acc-todo', bg: 'bg-surface' };
+        return { textColor: type === ItemType.SKILLS ? 'text-brand-500' : 'text-acc-todo', bg: 'bg-surface' };
       case ItemType.SHOPPING:
         return { textColor: 'text-purple-500', bg: 'bg-surface' };
       case ItemType.EVENT:
@@ -541,7 +396,7 @@ const Card: React.FC<CardProps> = ({
         const isOutgoingLoan = isOutgoingLoanFinanceType(meta?.financeType);
         const isAchievedGoal = meta?.financeType === ACHIEVED_GOAL_FINANCE_TYPE;
         const iconColor = isTransfer ? 'text-blue-400' : ((isIncome || isIncomingLoan) ? 'text-emerald-500' : (isSaving ? 'text-[#6366F1]' : ((isSavingWithdrawal || isAchievedGoal) ? 'text-amber-500' : (isOutgoingLoan ? 'text-orange-500' : 'text-red-500'))));
-        
+
         return {
             textColor: iconColor,
             bg: 'bg-surface'
@@ -608,7 +463,7 @@ const Card: React.FC<CardProps> = ({
          meta.routineMonthsOfYear,
          routineNow
      );
-     
+
      isWaitingForNextCycle = true;
      nextDueText = `Berikutnya: ${nextDate.toLocaleDateString('id-ID', { weekday: 'short', month: 'short', day: 'numeric' })}`;
   }
@@ -623,14 +478,14 @@ const Card: React.FC<CardProps> = ({
       const isTomorrow = dateObj.toDateString() === tomorrow.toDateString();
 
       const hasTimeComponent = rawDate.includes('T') && !rawDate.endsWith('00:00:00.000Z');
-      
+
       let datePart = '';
       if (isToday) datePart = 'Hari ini';
       else if (isTomorrow) datePart = 'Besok';
-      else datePart = dateObj.toLocaleDateString('id-ID', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
+      else datePart = dateObj.toLocaleDateString('id-ID', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
       });
 
       if (meta.isRoutine) {
@@ -696,10 +551,10 @@ const Card: React.FC<CardProps> = ({
 
   const getWalletNameOptions = () => {
     const unique = new Map<string, {name: string, id: string}>();
-    
+
     // Add registered wallets
     wallets.forEach(w => unique.set(w.id, {name: w.name, id: w.id}));
-    
+
     // Check if current items have a custom method not in register
     if (editPaymentMethod && !unique.has(editPaymentMethod)) {
         unique.set(editPaymentMethod, {name: getWalletName(editPaymentMethod), id: editPaymentMethod});
@@ -754,17 +609,17 @@ const Card: React.FC<CardProps> = ({
   const hasMoneyMetadata = canShowMoneyMetadata && (meta.paymentMethod || meta.toWallet || meta.loanCounterparty || (meta.savingGoalId && (meta.financeType === 'saving' || meta.financeType === SAVING_WITHDRAWAL_FINANCE_TYPE || meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE)));
   const showCommodityFields = (type === ItemType.FINANCE || type === ItemType.SHOPPING) && (editFinanceType === 'expense' || editFinanceType === 'saving' || editFinanceType === 'income');
   const noteDisplay = isNote ? getNoteDisplayParts(item) : null;
-  
+
   const isDarkened = !noDarken && (isRoutineDone || isRecentlyDone || isParsingFailed || isRoutineUnavailable) && type !== ItemType.JOURNAL;
   const bgClass = isDarkened ? 'bg-zinc-100 dark:bg-zinc-900/50 opacity-75' : style.bg;
   const isTaskWorkspaceEdit = editComfort === 'taskWorkspace' && !isCollapsed;
   const showInlineEditPanel = !enableCollapse || !isCollapsed;
   const showEditBody = showInlineEditPanel && (!collapsibleEditPanel || editPanelExpanded);
-  const showPreviewContent = enableCollapse && (isCollapsed || (collapsibleEditPanel && !editPanelExpanded));
+  const showPreviewContent = (enableCollapse && isCollapsed) || (collapsibleEditPanel && !editPanelExpanded);
   const editGridClass = isTaskWorkspaceEdit ? taskEditSurface.fieldGrid : 'grid grid-cols-2 gap-3 mb-3';
   const actionRowClass = isTaskWorkspaceEdit ? taskEditSurface.actions : 'flex justify-end gap-2 pt-2 border-t border-border/30';
   const actionButtonComfort = isTaskWorkspaceEdit ? taskEditSurface.actionButton : '';
-  const financeFieldClass = 'min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3 py-2.5 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10';
+  const financeFieldClass = 'min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3 py-2.5 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10';
   const financeLabelClass = 'mb-1.5 block text-xs font-semibold text-primary';
 
   return (
@@ -775,7 +630,7 @@ const Card: React.FC<CardProps> = ({
         role={onOpen ? 'group' : undefined}
         tabIndex={onOpen ? 0 : undefined}
         aria-label={onOpen ? `Buka detail ${content}` : undefined}
-        className={`${bgClass} ${!isCollapsed ? 'ring-2 ring-indigo-500/20 shadow-md' : 'ring-1 ring-inset ring-border/65'} break-inside-avoid rounded-[24px] p-4 shadow-sm transition-[box-shadow,background-color] duration-200 hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''} ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse || onOpen ? 'cursor-pointer' : ''}`}
+        className={`${surface === 'plain' ? 'bg-transparent p-0' : `${bgClass} ${!isCollapsed ? 'ring-2 ring-brand-500/20 shadow-md' : 'ring-1 ring-inset ring-border/65'} rounded-xl p-4 shadow-sm hover:bg-surface hover:shadow-md ${isTaskWorkspaceEdit ? taskEditSurface.cardExpanded : ''}`} break-inside-avoid transition-colors duration-150 ${isOptimistic || isParsingFailed ? 'opacity-50' : ''} ${className} ${enableCollapse || onOpen ? 'cursor-pointer' : ''}`}
         onClick={toggleCollapse}
         onKeyDown={(event) => {
           if (!onOpen || event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
@@ -784,11 +639,11 @@ const Card: React.FC<CardProps> = ({
         }}
     >
       <div className="flex flex-col gap-1">
-        
+
         {/* COLLAPSED HEADER */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-              <button 
+              <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -796,7 +651,7 @@ const Card: React.FC<CardProps> = ({
                 }}
                 disabled={!canToggleStatus}
                 title={isRoutineDone ? 'Tandai belum selesai dan hapus riwayat rutin terbaru' : undefined}
-                className={`-ml-3 -mr-1 -my-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-[color,opacity,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${canToggleStatus ? 'hover:bg-black/[0.04] hover:opacity-80 active:scale-95 dark:hover:bg-white/[0.06]' : 'cursor-default'}`}
+                className={`-ml-3 -mr-1 -my-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-[color,opacity,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 ${canToggleStatus ? 'hover:bg-black/[0.04] hover:opacity-80 active:scale-95 dark:hover:bg-white/[0.06]' : 'cursor-default'}`}
                 aria-label={status === 'done' ? `Tandai ${content} belum selesai` : `Tandai ${content} selesai`}
                 aria-pressed={status === 'done'}
               >
@@ -829,9 +684,9 @@ const Card: React.FC<CardProps> = ({
                       </div>
                   )}
                   {meta.isRoutine && (
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-                          <Repeat className="w-2.5 h-2.5 text-indigo-500" />
-                          <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-tight">
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 border border-brand-500/20">
+                          <Repeat className="w-2.5 h-2.5 text-brand-500" />
+                          <span className="text-[9px] font-bold text-brand-500 uppercase tracking-tight">
                               {getRoutineScheduleLabel(
                                   meta.routineInterval,
                                   meta.routineDaysOfWeek,
@@ -844,8 +699,8 @@ const Card: React.FC<CardProps> = ({
                   )}
                   {meta.priority && meta.priority !== 'normal' && (
                       <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border ${
-                          meta.priority === 'high' 
-                            ? 'bg-red-500/10 border-red-500/20 text-red-500' 
+                          meta.priority === 'high'
+                            ? 'bg-red-500/10 border-red-500/20 text-red-500'
                             : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
                       }`}>
                           <AlertCircle className="w-2.5 h-2.5" />
@@ -861,14 +716,14 @@ const Card: React.FC<CardProps> = ({
                               onResetRoutine(item.id);
                           }}
                           title={isRoutineUnavailable ? 'Activate this routine for today without changing the next scheduled due date' : 'Reset for today and keep history'}
-                          className="ml-1 px-2 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
+                          className="ml-1 px-2 py-0.5 bg-brand-500/10 hover:bg-brand-500/20 text-brand-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
                       >
                           <RotateCcw className="w-2.5 h-2.5" /> Reset
                       </button>
                   )}
               </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {validTags.map(tag => {
                 if (tag === 'parsing_failed' && meta.parsingError) {
@@ -895,7 +750,7 @@ const Card: React.FC<CardProps> = ({
             </div>
           </div>
         </div>
-        
+
         {/* COLLAPSED CONTENT */}
         {showPreviewContent ? (
             <div className="flex justify-between items-start gap-4 mt-1">
@@ -916,7 +771,7 @@ const Card: React.FC<CardProps> = ({
                             {content}
                         </div>
                     )}
-                    
+
                     {/* Extra Metadata Row */}
                     {(hasMoneyMetadata || skillName || hasTransactionLineItems) && (
                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
@@ -959,7 +814,7 @@ const Card: React.FC<CardProps> = ({
                                 </>
                             )}
                             {skillName && (
-                                <span className="text-indigo-500">{skillName}</span>
+                                <span className="text-brand-500">{skillName}</span>
                             )}
                             {hasTransactionLineItems && (
                                 <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 font-bold">
@@ -968,7 +823,7 @@ const Card: React.FC<CardProps> = ({
                             )}
                         </div>
                     )}
-                    
+
                     {/* Progress Bar */}
                     {showProgress && meta.progress !== undefined && meta.progress > 0 && meta.progress < 100 && (
                         <div className="mt-2 w-full max-w-[200px]">
@@ -1004,7 +859,7 @@ const Card: React.FC<CardProps> = ({
                                 ? (budgetRules.find((rule) => rule.id === entry.budgetCategory)?.name || entry.budgetCategory)
                                 : 'Belum berkategori';
                             return (
-                                <span key={entry.budgetCategory || 'uncategorized'} className={`rounded-full px-2 py-1 text-[9px] font-bold ${entry.budgetCategory ? 'bg-indigo-500/10 text-indigo-500' : 'bg-amber-500/10 text-amber-600'}`}>
+                                <span key={entry.budgetCategory || 'uncategorized'} className={`rounded-full px-2 py-1 text-[9px] font-bold ${entry.budgetCategory ? 'bg-brand-500/10 text-brand-500' : 'bg-amber-500/10 text-amber-600'}`}>
                                     {name} · {formatMoney(entry.amount)}
                                 </span>
                             );
@@ -1040,7 +895,7 @@ const Card: React.FC<CardProps> = ({
       </div>
 
       {/* EXPANDED EDIT BODY */}
-      {enableCollapse && !isCollapsed && collapsibleEditPanel && !readonly && onUpdate && (
+      {showInlineEditPanel && collapsibleEditPanel && !readonly && onUpdate && (
           <div className="mt-3 flex justify-end border-t border-border/30 pt-3" onClick={(e) => e.stopPropagation()}>
               {editPanelControls || (
                   <button
@@ -1049,7 +904,7 @@ const Card: React.FC<CardProps> = ({
                           e.stopPropagation();
                           onEditPanelExpandedChange?.(item.id, !editPanelExpanded);
                       }}
-                      className="flex min-h-11 items-center gap-1.5 rounded-xl bg-black/5 px-3 py-2 text-xs font-semibold text-muted transition-colors hover:bg-black/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-white/10 dark:hover:bg-white/[0.09]"
+                      className="flex min-h-11 items-center gap-1.5 rounded-xl bg-black/5 px-3 py-2 text-xs font-semibold text-muted transition-colors hover:bg-black/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 dark:bg-white/10 dark:hover:bg-white/[0.09]"
                   >
                       {editPanelExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       {editPanelExpanded ? 'Sembunyikan edit' : 'Edit detail'}
@@ -1070,10 +925,10 @@ const Card: React.FC<CardProps> = ({
           <div className={`${collapsibleEditPanel ? 'min-h-0 overflow-hidden' : ''} ${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
                {hideMoney && type === ItemType.FINANCE ? (
                    <div
-                       className="flex items-start gap-3 rounded-2xl bg-indigo-500/10 p-4 text-indigo-800 ring-1 ring-inset ring-indigo-500/20 dark:text-indigo-200"
+                       className="flex items-start gap-3 rounded-lg bg-brand-500/10 p-4 text-brand-800 ring-1 ring-inset ring-brand-500/20 dark:text-brand-200"
                        role="status"
                    >
-                       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface/70">
+                       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-surface/70">
                            <EyeOff className="h-5 w-5" aria-hidden="true" />
                        </span>
                        <div>
@@ -1105,9 +960,9 @@ const Card: React.FC<CardProps> = ({
                    id={`card-content-${item.id}`}
                    ref={textareaRef}
                    className={`w-full text-primary focus:outline-none mb-3 resize-none overflow-hidden ${
-                       isNote 
-                           ? 'text-base bg-transparent border-none p-0 min-h-[120px] leading-relaxed' 
-                           : `text-sm bg-background border border-border rounded-2xl p-3 focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 min-h-[80px] ${isTaskWorkspaceEdit ? taskEditSurface.textarea : ''}`
+                       isNote
+                           ? 'text-base bg-transparent border-none p-0 min-h-[120px] leading-relaxed'
+                           : `text-sm bg-background border border-border rounded-lg p-3 focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 min-h-[80px] ${isTaskWorkspaceEdit ? taskEditSurface.textarea : ''}`
                    }`}
                    value={editContent}
                    onChange={(e) => setEditContent(e.target.value)}
@@ -1119,7 +974,7 @@ const Card: React.FC<CardProps> = ({
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
                        <>
-                           <div className="col-span-2 rounded-2xl bg-background/70 p-1 ring-1 ring-inset ring-border/60">
+                           <div className="col-span-2 rounded-lg bg-background/70 p-1 ring-1 ring-inset ring-border/60">
                                <div className="flex gap-1 overflow-x-auto no-scrollbar" role="group" aria-label="Jenis transaksi">
                                    {editableFinanceTabs.map((tab) => (
                                        <button
@@ -1132,7 +987,7 @@ const Card: React.FC<CardProps> = ({
                                                }
                                                setEditFinanceType(tab.value);
                                            }}
-                                           className={`min-h-11 flex-none whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${editFinanceMode === tab.value ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:bg-surface hover:text-primary'}`}
+                                           className={`min-h-11 flex-none whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 ${editFinanceMode === tab.value ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:bg-surface hover:text-primary'}`}
                                            aria-pressed={editFinanceMode === tab.value}
                                        >
                                            {tab.label}
@@ -1142,7 +997,7 @@ const Card: React.FC<CardProps> = ({
                            </div>
 
                            {editFinanceMode === 'loan' && (
-                               <fieldset className="col-span-2 rounded-2xl bg-surface/70 p-4 ring-1 ring-inset ring-border/60 sm:p-5">
+                               <fieldset className="col-span-2 rounded-lg bg-surface/70 p-4 ring-1 ring-inset ring-border/60 sm:p-5">
                                    <legend className="px-1 text-sm font-semibold text-primary">Arah uang dan kewajiban</legend>
                                    <p className="mb-3 mt-1 text-xs leading-relaxed text-muted">Pilih kejadian yang benar agar utang dan piutang tidak tertukar.</p>
 
@@ -1155,11 +1010,11 @@ const Card: React.FC<CardProps> = ({
                                                    key={option.kind}
                                                    type="button"
                                                    onClick={() => setEditFinanceType(option.kind)}
-                                                   className={`group relative min-h-[92px] rounded-2xl p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${active ? 'bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/55' : 'bg-background/70 ring-1 ring-inset ring-border/70 hover:bg-surface'}`}
+                                                   className={`group relative min-h-[92px] rounded-lg p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 ${active ? 'bg-brand-500/10 ring-1 ring-inset ring-brand-500/55' : 'bg-background/70 ring-1 ring-inset ring-border/70 hover:bg-surface'}`}
                                                    aria-pressed={active}
                                                >
                                                    <div className="flex items-start gap-3">
-                                                       <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${active ? 'bg-indigo-500/15 text-indigo-400' : 'bg-surface text-indigo-400/90'}`}>
+                                                       <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${active ? 'bg-brand-500/15 text-brand-400' : 'bg-surface text-brand-400/90'}`}>
                                                            <Icon className="h-4.5 w-4.5" />
                                                        </div>
                                                        <div className="min-w-0">
@@ -1168,7 +1023,7 @@ const Card: React.FC<CardProps> = ({
                                                        </div>
                                                    </div>
                                                    {active && (
-                                                       <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-white">
+                                                       <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white">
                                                            <CheckCircle2 className="h-3.5 w-3.5" />
                                                        </div>
                                                    )}
@@ -1187,7 +1042,7 @@ const Card: React.FC<CardProps> = ({
                            <input
                                id={`card-merchant-${item.id}`}
                                type="text"
-                               className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3 py-2.5 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                               className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3 py-2.5 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                                value={editMerchant}
                                onChange={(event) => setEditMerchant(event.target.value)}
                                placeholder="Nama merchant"
@@ -1207,7 +1062,7 @@ const Card: React.FC<CardProps> = ({
                                     inputMode="decimal"
                                     min="0"
                                     step="any"
-                                    className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums tracking-tight text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                                    className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums tracking-tight text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                                     value={hasEditTransactionLineItems ? editTransactionTotal : editAmount}
                                     onChange={(e) => setEditAmount(e.target.value)}
                                     readOnly={hasEditTransactionLineItems}
@@ -1229,7 +1084,7 @@ const Card: React.FC<CardProps> = ({
                                 <input
                                     id={`card-date-${item.id}`}
                                     type="datetime-local"
-                                    className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 py-2.5 pl-8 pr-3 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 dark:[color-scheme:dark]"
+                                    className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 py-2.5 pl-8 pr-3 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 dark:[color-scheme:dark]"
                                     value={editDate}
                                     onChange={(e) => setEditDate(e.target.value)}
                                 />
@@ -1246,7 +1101,7 @@ const Card: React.FC<CardProps> = ({
                                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                    <input
                                        type="datetime-local"
-                                       className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                       className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                        value={editStart}
                                        onChange={(e) => setEditStart(e.target.value)}
                                    />
@@ -1258,7 +1113,7 @@ const Card: React.FC<CardProps> = ({
                                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                    <input
                                        type="datetime-local"
-                                       className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+                                       className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
                                        value={editEnd}
                                        onChange={(e) => setEditEnd(e.target.value)}
                                    />
@@ -1277,9 +1132,9 @@ const Card: React.FC<CardProps> = ({
                                        key={p}
                                        onClick={() => setEditPriority(p)}
                                        className={`py-2 ${isTaskWorkspaceEdit ? taskEditSurface.priorityButton : ''} rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
-                                           editPriority === p 
-                                               ? 'bg-indigo-600 text-white shadow-sm' 
-                                               : 'bg-background border border-border text-muted hover:border-indigo-500/50'
+                                           editPriority === p
+                                               ? 'bg-brand-600 text-white shadow-sm'
+                                               : 'bg-background border border-border text-muted hover:border-brand-500/50'
                                        }`}
                                    >
                                        {p}
@@ -1292,12 +1147,12 @@ const Card: React.FC<CardProps> = ({
                    {/* Hide from Calendar */}
                    {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT || type === ItemType.SHOPPING) && (
                        <div className="col-span-2 flex items-center gap-2 mt-1">
-                           <input 
-                               type="checkbox" 
+                           <input
+                               type="checkbox"
                                id={`hideFromCalendar-${item.id}`}
                                checked={editHideFromCalendar}
                                onChange={(e) => setEditHideFromCalendar(e.target.checked)}
-                               className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                               className="w-4 h-4 rounded border-border text-brand-600 focus:ring-brand-500"
                            />
                            <label htmlFor={`hideFromCalendar-${item.id}`} className="text-xs font-medium text-primary">
                                Hide from Calendar
@@ -1307,22 +1162,22 @@ const Card: React.FC<CardProps> = ({
 
                    {/* Routine Settings */}
                    {meta.isRoutine && (
-                       <div className="col-span-2 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl p-4 mt-2">
+                       <div className="col-span-2 bg-brand-500/5 border border-brand-500/10 rounded-xl p-4 mt-2">
                            <div className="flex items-center justify-between mb-4">
                                <div className="flex items-center gap-2">
-                                   <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                                       <Repeat className="w-4 h-4 text-indigo-500" />
+                                   <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center">
+                                       <Repeat className="w-4 h-4 text-brand-500" />
                                    </div>
                                    <div>
-                                       <h4 className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Routine Schedule</h4>
+                                       <h4 className="text-xs font-bold text-brand-500 uppercase tracking-wider">Routine Schedule</h4>
                                        <p className="text-[10px] text-muted font-medium">Configure how this task repeats</p>
                                    </div>
                                </div>
                            </div>
-                           
+
                            <div className="space-y-4">
                                {/* Interval Selector */}
-                               <div className="grid grid-cols-4 gap-2 bg-background/50 p-1.5 rounded-2xl border border-border/50">
+                               <div className="grid grid-cols-4 gap-2 bg-background/50 p-1.5 rounded-lg border border-border/50">
                                    {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
                                        <button
                                            key={int}
@@ -1330,7 +1185,7 @@ const Card: React.FC<CardProps> = ({
                                                setEditRoutineInterval(int);
                                                updateDateFromSchedule(int, editRoutineDaysOfWeek, editRoutineDaysOfMonth, editRoutineMonthsOfYear);
                                            }}
-                                           className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${editRoutineInterval === int ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:text-primary hover:bg-background'}`}
+                                           className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${editRoutineInterval === int ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:text-primary hover:bg-background'}`}
                                        >
                                            {int}
                                        </button>
@@ -1355,7 +1210,7 @@ const Card: React.FC<CardProps> = ({
                                                        setEditRoutineDaysOfWeek(newDays);
                                                        updateDateFromSchedule(editRoutineInterval, newDays, editRoutineDaysOfMonth, editRoutineMonthsOfYear);
                                                    }}
-                                                   className={`flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all border ${editRoutineDaysOfWeek.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                   className={`flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all border ${editRoutineDaysOfWeek.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                                                >
                                                    {label}
                                                </button>
@@ -1382,7 +1237,7 @@ const Card: React.FC<CardProps> = ({
                                                        setEditRoutineDaysOfMonth(newDays);
                                                        updateDateFromSchedule(editRoutineInterval, editRoutineDaysOfWeek, newDays, editRoutineMonthsOfYear);
                                                    }}
-                                                   className={`w-full aspect-square rounded-md flex items-center justify-center text-[9px] font-bold transition-all border ${editRoutineDaysOfMonth.includes(day) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                   className={`w-full aspect-square rounded-md flex items-center justify-center text-[9px] font-bold transition-all border ${editRoutineDaysOfMonth.includes(day) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                                                >
                                                    {day}
                                                </button>
@@ -1406,7 +1261,7 @@ const Card: React.FC<CardProps> = ({
                                                            setEditRoutineMonthsOfYear([...editRoutineMonthsOfYear, idx]);
                                                        }
                                                    }}
-                                                   className={`py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${editRoutineMonthsOfYear.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                                                   className={`py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${editRoutineMonthsOfYear.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                                                >
                                                    {label}
                                                </button>
@@ -1427,7 +1282,7 @@ const Card: React.FC<CardProps> = ({
                                     <Hourglass className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                     <input
                                         type="number"
-                                        className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                                        className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                                         value={editDuration}
                                         onChange={(e) => setEditDuration(e.target.value)}
                                     />
@@ -1436,7 +1291,7 @@ const Card: React.FC<CardProps> = ({
                            <div>
                                 <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Skill</label>
                                 <select
-                                    className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                                    className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                                     value={editSkillId}
                                     onChange={(e) => setEditSkillId(e.target.value)}
                                 >
@@ -1646,14 +1501,14 @@ const Card: React.FC<CardProps> = ({
 
                {/* Progress Control (Only for Todo) */}
                {showProgress && (
-                   <div className={`bg-acc-todo/5 border border-acc-todo/20 rounded-2xl p-3 mb-3 ${isTaskWorkspaceEdit ? taskEditSurface.progressPanel : ''}`} data-edit-progress={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
+                   <div className={`bg-acc-todo/5 border border-acc-todo/20 rounded-lg p-3 mb-3 ${isTaskWorkspaceEdit ? taskEditSurface.progressPanel : ''}`} data-edit-progress={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
                        <div className="flex justify-between items-center mb-2">
                            <span className="text-xs uppercase font-bold text-acc-todo flex items-center gap-1">
                                <Activity className="w-3.5 h-3.5" /> Progress
                            </span>
                            <span className="text-lg font-bold text-primary">{editProgress}%</span>
                        </div>
-                       <input 
+                       <input
                            type="range"
                            min="0" max="100" step="5"
                            value={editProgress}
@@ -1662,11 +1517,11 @@ const Card: React.FC<CardProps> = ({
                        />
                        <div>
                             <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Latest Update</label>
-                            <input 
+                            <input
                                 type="text"
                                 value={editProgressNotes}
                                 onChange={(e) => setEditProgressNotes(e.target.value)}
-                                className="w-full bg-background border border-border rounded-2xl px-3 py-2 text-sm text-primary placeholder-muted/50 focus:outline-none focus:border-acc-todo"
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-primary placeholder-muted/50 focus:outline-none focus:border-acc-todo"
                                 placeholder="Add a progress note..."
                             />
                        </div>
@@ -1674,7 +1529,7 @@ const Card: React.FC<CardProps> = ({
                )}
 
                {showDeepWorkSuggestion && (
-                   <div className="bg-purple-500/5 border border-purple-500/20 rounded-2xl p-3 mb-3">
+                   <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 mb-3">
                        <div className="flex items-start justify-between gap-3 mb-2">
                            <div>
                                <div className="text-xs uppercase font-bold text-purple-500 flex items-center gap-1">
@@ -1738,7 +1593,7 @@ const Card: React.FC<CardProps> = ({
                            {onDismissDeepWorkPlan && (
                                <button
                                    onClick={(e) => { e.stopPropagation(); onDismissDeepWorkPlan(item.id); }}
-                                   className="px-3 py-1.5 bg-background border border-border text-muted hover:text-primary rounded-2xl text-xs font-medium transition-colors"
+                                   className="px-3 py-1.5 bg-background border border-border text-muted hover:text-primary rounded-lg text-xs font-medium transition-colors"
                                >
                                    Dismiss
                                </button>
@@ -1746,7 +1601,7 @@ const Card: React.FC<CardProps> = ({
                            {onAcceptDeepWorkPlan && (
                                <button
                                    onClick={(e) => { e.stopPropagation(); onAcceptDeepWorkPlan(item.id); }}
-                                   className="px-3 py-1.5 bg-purple-600 text-white hover:bg-purple-500 rounded-2xl text-xs font-medium transition-colors"
+                                   className="px-3 py-1.5 bg-purple-600 text-white hover:bg-purple-500 rounded-lg text-xs font-medium transition-colors"
                                >
                                    Create steps
                                </button>
@@ -1762,7 +1617,7 @@ const Card: React.FC<CardProps> = ({
                     <input
                         id={`card-tags-${item.id}`}
                         type="text"
-                        className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 placeholder-muted/50"
+                        className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-xs text-primary focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 placeholder-muted/50"
                         value={editTags}
                         onChange={(e) => setEditTags(e.target.value)}
                         placeholder="Tag, pisahkan dengan koma"
@@ -1772,20 +1627,20 @@ const Card: React.FC<CardProps> = ({
                {/* Actions */}
                <div className={actionRowClass} data-edit-actions={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
                    {onDelete && (
-                    <button 
+                    <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 
+                      onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
                       className={`flex min-h-11 items-center gap-1.5 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 ${actionButtonComfort}`}
                     >
                        <Trash2 className="w-3.5 h-3.5" /> Hapus
                     </button>
                    )}
-                   
+
                    {!readonly && onUpdate && (
                        <button
                            type="button"
                            onClick={(e) => { e.stopPropagation(); handleSave(); }}
-                           className={`flex min-h-11 items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 ${actionButtonComfort}`}
+                           className={`flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/70 ${actionButtonComfort}`}
                        >
                            <Save className="w-3.5 h-3.5" /> Simpan perubahan
                        </button>
@@ -1798,7 +1653,7 @@ const Card: React.FC<CardProps> = ({
       )}
       </AnimatePresence>
 
-      {enableCollapse && !isCollapsed && extraExpandedContent && (
+      {showInlineEditPanel && extraExpandedContent && (
           <div className="pt-3 mt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
               {extraExpandedContent}
           </div>

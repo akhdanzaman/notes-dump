@@ -34,11 +34,12 @@ import {
   FinanceType,
   ItemType,
   Tab,
-  Priority,
   ReceiptCaptureMeta,
+  ItemUpdateHandler,
 } from "../../types";
 import { getWalletStats, getFinanceItems } from "../../utils/selectors";
 import Card from "../Card";
+import TransactionLedger from "../TransactionLedger";
 import { useSwipeTabs } from "../../hooks/useSwipeTabs";
 import ActiveIndicator from "../../motion/ActiveIndicator";
 import AnimatedNumber from "../../motion/AnimatedNumber";
@@ -67,6 +68,7 @@ import { motionTransition } from "../../motion/transitions";
 import PresencePanel from "../../motion/PresencePanel";
 import { getSavedAmountForGoal } from "../../utils/savingTransactionUtils";
 import { getAppLocale, normalizeAppLanguage } from "../../utils/i18n";
+import { formatCurrencyAmount } from "../../utils/formatters";
 
 interface MoneyViewProps {
   items: BrainDumpItem[];
@@ -81,32 +83,7 @@ interface MoneyViewProps {
   appSettings: AppSettings;
 
   handleDelete: (id: string) => void;
-  handleUpdateItem: (
-    id: string,
-    newContent: string,
-    newTags: string[],
-    newAmount?: number,
-    newDate?: string,
-    newPaymentMethod?: string,
-    newBudgetCategory?: string,
-    newDuration?: number,
-    newSkillId?: string,
-    newToWallet?: string,
-    newFinanceType?: FinanceType,
-    newProgress?: number,
-    newProgressNotes?: string,
-    newShoppingCategory?: any,
-    newRecurrenceDays?: number,
-    newQuantity?: string,
-    newIsRoutine?: boolean,
-    newRoutineInterval?: "daily" | "weekly" | "monthly" | "yearly",
-    newRoutineDaysOfWeek?: number[],
-    newRoutineDaysOfMonth?: number[],
-    newRoutineMonthsOfYear?: number[],
-    newSavingGoalId?: string,
-    newDedicatedWalletId?: string,
-    newPriority?: Priority,
-  ) => void;
+  handleUpdateItem: ItemUpdateHandler;
   handleUpdateReceiptCapture: (id: string, capture: ReceiptCaptureMeta | null) => void;
   handleToggleStatus: (id: string) => void;
   handleOpenEditWallet: (w: Wallet) => void;
@@ -253,8 +230,9 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
   const [hoveredCommodityBox, setHoveredCommodityBox] = useState<string | null>(
     null,
   );
-  const [selectedTransaction, setSelectedTransaction] =
-    useState<BrainDumpItem | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const selectedTransaction = items.find(item => item.id === selectedTransactionId) || null;
+  const setSelectedTransaction = (item: BrainDumpItem | null) => setSelectedTransactionId(item?.id || null);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -269,15 +247,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
-
-  useEffect(() => {
-    if (
-      selectedTransaction &&
-      !items.some((item) => item.id === selectedTransaction.id)
-    ) {
-      setSelectedTransaction(null);
-    }
-  }, [items, selectedTransaction]);
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -367,12 +336,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     resetKey: `money-transactions-${budgetViewMode}-${financeDate.toISOString()}-${filterWallet}-${filterTransactionType}-${filterCategory}-${filterMinAmount}-${filterMaxAmount}-${selectedTag}-${searchQuery}-${sortOrder}`,
   });
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(n);
+  const fmt = (n: number) => formatCurrencyAmount(n, "IDR", locale);
   const canShowAmounts = showBalance && !appSettings.hideMoney;
   const walletTypeLabel: Record<Wallet["type"], string> = {
     cash: isEnglish ? "Cash" : "Tunai",
@@ -976,7 +940,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   <ActiveIndicator className={contentSurface.workspaceTabIndicator} />
                 )}
                 <span className="relative z-10 flex min-w-0 items-center gap-1 sm:gap-2">
-                  <Icon className="h-4 w-4 shrink-0" />
+                  <Icon className="hidden h-4 w-4 shrink-0 sm:block" />
                   <span className="truncate">{tab.label}</span>
                 </span>
               </button>
@@ -989,12 +953,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
   const renderBudgetDecisionSummary = () => (
     <section
-      className="rounded-[28px] bg-surface p-5 shadow-sm ring-1 ring-inset ring-border/70 sm:p-6"
+      className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-inset ring-border/70 sm:p-6"
       aria-labelledby="budget-decision-title"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-300">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">
             Status budget · {periodTitle} {periodKicker}
           </div>
           <h2
@@ -1042,7 +1006,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             helper: "Perkiraan konservatif",
           },
         ].map((metric) => (
-          <div key={metric.label} className="rounded-2xl bg-surface-soft p-3.5 sm:p-4">
+          <div key={metric.label} className="rounded-lg bg-surface-soft p-3.5 sm:p-4">
             <div className="text-[11px] font-semibold text-muted">{metric.label}</div>
             <div
               data-financial-amount="true"
@@ -1076,7 +1040,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 ? motionTransition.instant
                 : motionTransition.standard
             }
-            className="h-full bg-indigo-600"
+            className="h-full bg-brand-600"
           />
           <motion.div
             initial={false}
@@ -1128,7 +1092,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         <div
           role="status"
           aria-live="polite"
-          className="mb-3 flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-inset ring-amber-200 dark:bg-amber-400/[0.08] dark:text-amber-200 dark:ring-amber-300/15"
+          className="mb-3 flex items-start gap-3 rounded-lg bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-inset ring-amber-200 dark:bg-amber-400/[0.08] dark:text-amber-200 dark:ring-amber-300/15"
         >
           <WifiOff className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
@@ -1142,7 +1106,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
       {syncError && (
         <div
           role="alert"
-          className="mb-3 flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-900 ring-1 ring-inset ring-red-200 dark:bg-red-400/[0.08] dark:text-red-200 dark:ring-red-300/15"
+          className="mb-3 flex items-start gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-900 ring-1 ring-inset ring-red-200 dark:bg-red-400/[0.08] dark:text-red-200 dark:ring-red-300/15"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
@@ -1167,15 +1131,15 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
           transition={{ duration: 0.2, ease: "linear" }}
         >
           {renderMoneyTabs()}
-          <div className="lg:space-y-6" data-money-header-grid="true">
-            <div className="mb-6 grid grid-cols-1 gap-4 pb-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start lg:mb-0 lg:grid-cols-8 lg:gap-4 lg:pb-3 xl:gap-5">
-              <div className="min-w-0 lg:col-span-6 lg:pt-1">
+          <div className="space-y-4" data-money-header-grid="true">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+              <div className="min-w-0">
                 <div className="text-xs font-semibold text-muted">{moneyCopy.netWorth}</div>
                 <div className="mt-1 text-xs text-muted">
                   {moneyCopy.netWorthHelper}
                 </div>
                 <div className="mt-2 flex min-w-0 items-center gap-3 lg:mt-3">
-                  <div data-financial-amount="true" className="truncate text-3xl font-semibold tracking-[-0.045em] sm:text-4xl lg:text-[2.75rem]">
+                  <div data-financial-amount="true" className="truncate text-2xl font-semibold tracking-tight">
                     <AnimatedNumber
                       value={totalNetWorth}
                       formatter={fmt}
@@ -1187,7 +1151,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowBalance(!canShowAmounts)}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-soft text-muted transition-colors hover:text-primary"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-surface-soft text-muted transition-colors hover:text-primary"
                     aria-label={canShowAmounts ? moneyCopy.hideAmounts : moneyCopy.showAmounts}
                     aria-pressed={!canShowAmounts}
                   >
@@ -1201,7 +1165,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               </div>
               <div
                 data-swipe-date="money-month"
-                className={`${contentSurface.workspacePeriodControl} lg:col-span-2 lg:w-full`}
+                className={contentSurface.workspacePeriodControl}
                 onTouchStart={dateSwipeHandlers.onTouchStart}
                 onTouchMove={dateSwipeHandlers.onTouchMove}
                 onTouchEnd={dateSwipeHandlers.onTouchEnd}
@@ -1269,7 +1233,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                           setBudgetViewMode(mode);
                         }}
                         aria-pressed={budgetViewMode === mode}
-                        className={`${budgetViewMode === mode ? "bg-indigo-600 text-white shadow-sm" : "text-muted hover:text-primary"} min-h-11 rounded-md px-2 py-1 text-xs font-semibold transition-colors`}
+                        className={`${budgetViewMode === mode ? "bg-brand-600 text-white shadow-sm" : "text-muted hover:text-primary"} min-h-11 rounded-md px-2 py-1 text-xs font-semibold transition-colors`}
                       >
                         {label}
                       </button>
@@ -1279,8 +1243,8 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-8 gap-3 mb-4 lg:mb-5 lg:gap-4 xl:gap-5">
-              <div className="col-span-3 min-w-0 rounded-2xl border border-border/70 bg-background/55 px-3 py-4 lg:px-5 lg:py-5">
+            <div className="metric-strip [--metric-count:3] [--metric-mobile-count:3]">
+              <div className="min-w-0">
                 <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-muted lg:mb-2">
                   <TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" />{" "}
                   {moneyCopy.income}
@@ -1295,7 +1259,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   />
                 </div>
               </div>
-              <div className="col-span-3 min-w-0 rounded-2xl border border-border/70 bg-background/55 px-3 py-4 lg:px-5 lg:py-5">
+              <div className="min-w-0">
                 <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-muted lg:mb-2">
                   <TrendingDown className="w-4 h-4 shrink-0" data-finance-status="negative" />{" "}
                   {moneyCopy.expense}
@@ -1310,12 +1274,12 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   />
                 </div>
               </div>
-              <div className="relative col-span-2 min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background/55 px-3 py-4 lg:px-5 lg:py-5">
+              <div className="relative min-w-0 overflow-hidden">
                 {budgetAttentionSequence > 0 && (
                   <motion.span
                     key={budgetAttentionSequence}
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-amber-500/70"
+                    className="pointer-events-none absolute inset-0 rounded-lg ring-2 ring-amber-500/70"
                     variants={budgetThresholdVariants}
                     initial="hidden"
                     animate="visible"
@@ -1362,14 +1326,14 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 </div>
                 <div className="text-sm font-medium opacity-80 flex items-center gap-1">
                   {moneyCopy.savings}:{" "}
-                  <span className="font-bold text-indigo-700 dark:text-indigo-300">
+                  <span className="font-bold text-brand-700 dark:text-brand-300">
                     <AnimatedNumber value={walletTotalSavings || 0} formatter={fmt} hidden={!canShowAmounts} hiddenLabel="••" ariaLabel={moneyCopy.totalSavings} />
                   </span>
                 </div>
               </div>
               <button
                 onClick={() => onAddItem(ItemType.FINANCE)}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-sm transition-colors hover:bg-indigo-500"
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm transition-colors hover:bg-brand-500"
                 aria-label={moneyCopy.recordTransaction}
                 title={moneyCopy.recordTransaction}
               >
@@ -1426,7 +1390,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               {visibleWallets.visibleItems.map((wallet) => (
                 <div
                   key={wallet.id}
-                  className="group relative min-w-[82%] snap-center rounded-[24px] bg-surface p-4 shadow-sm ring-1 ring-inset ring-border/65 transition-colors hover:bg-surface/80 sm:min-w-[46%] lg:min-w-0"
+                  className="group relative min-w-[82%] snap-center rounded-xl bg-surface p-4 shadow-sm ring-1 ring-inset ring-border/65 transition-colors hover:bg-surface/80 sm:min-w-[46%] lg:min-w-0"
                 >
                   <div className="flex flex-col gap-1">
                     {/* Header */}
@@ -1501,7 +1465,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                           if (walletSavings > 0) {
                             return (
                               <div className="mt-1">
-                                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                <span className="text-[10px] font-bold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
                                   Tabungan:{" "}
                                   {canShowAmounts ? fmt(walletSavings) : "••••"}
                                 </span>
@@ -1535,7 +1499,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               <button
                 type="button"
                 onClick={handleOpenAddWallet}
-                className="flex min-h-14 min-w-[82%] snap-center items-center justify-center gap-2 rounded-[24px] border border-dashed border-border p-4 text-muted transition-colors hover:border-primary/30 hover:bg-surface/50 hover:text-primary sm:min-w-[46%] lg:min-w-0"
+                className="flex min-h-14 min-w-[82%] snap-center items-center justify-center gap-2 rounded-xl border border-dashed border-border p-4 text-muted transition-colors hover:border-primary/30 hover:bg-surface/50 hover:text-primary sm:min-w-[46%] lg:min-w-0"
               >
                 <Plus className="w-5 h-5" />
                 <span className="text-sm font-medium">Tambah wallet</span>
@@ -1575,7 +1539,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         <button
                           type="button"
                           onClick={clearAllFinanceFilters}
-                          className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white"
+                          className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white"
                         >
                           Hapus semua filter
                         </button>
@@ -1593,7 +1557,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onAddItem(ItemType.FINANCE)}
-                        className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white"
+                        className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white"
                       >
                         <Plus className="h-4 w-4" />
                         Catat transaksi
@@ -1606,152 +1570,16 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   className={`${contentSurface.denseList} ${contentSurface.moneyPrimaryPanel}`}
                   data-money-primary-column="true"
                 >
-                  <div className="space-y-5">
-                    {transactionGroups.map((group) => (
-                      <section key={group.label} aria-labelledby={`transaction-group-${group.date.getTime()}`}>
-                        <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                          <h2
-                            id={`transaction-group-${group.date.getTime()}`}
-                            className="text-xs font-semibold capitalize text-muted"
-                          >
-                            {group.label}
-                          </h2>
-                          <span className="text-[10px] text-muted">
-                            {group.items.length} transaksi
-                          </span>
-                        </div>
-                        <div className="overflow-hidden rounded-[24px] bg-surface shadow-sm ring-1 ring-inset ring-border/65">
-                          {group.items.map((item) => {
-                            const financeType = item.meta.financeType || "expense";
-                            const transactionCategoryIds =
-                              getTransactionCategoryIds(item);
-                            const categoryName =
-                              transactionCategoryIds.length > 1
-                                ? `${transactionCategoryIds.length} kategori`
-                                : budgetConfig.rules.find(
-                                    (rule) =>
-                                      rule.id ===
-                                      (transactionCategoryIds[0] ||
-                                        item.meta.budgetCategory),
-                                  )?.name ||
-                                  transactionCategoryIds[0] ||
-                                  item.meta.budgetCategory ||
-                                  "Belum berkategori";
-                            const lineItems = sanitizeTransactionLineItems(
-                              item.meta.transactionLineItems,
-                            );
-                            const amount = lineItems.length
-                              ? sumTransactionLineItems(lineItems)
-                              : item.meta.amount || 0;
-                            const sourceWallet = wallets.find(
-                              (wallet) =>
-                                wallet.id === item.meta.paymentMethod ||
-                                wallet.name.toLowerCase() ===
-                                  item.meta.paymentMethod?.toLowerCase(),
-                            );
-                            const isIncome =
-                              financeType === "income" ||
-                              financeType === "loan_in" ||
-                              financeType === "loan_repayment_in";
-                            const isTransfer =
-                              financeType === "transfer" ||
-                              financeType === "saving" ||
-                              financeType === "saving_withdrawal";
-                            const isLoan = financeType.startsWith("loan_");
-                            const TransactionIcon = isIncome
-                              ? TrendingUp
-                              : isTransfer
-                                ? ArrowRightLeft
-                                : isLoan
-                                  ? Banknote
-                                  : TrendingDown;
-                            const typeLabel =
-                              financeTypeLabel[financeType as FinanceType] ||
-                              "Pengeluaran";
-                            const needsCategory =
-                              !isIncome &&
-                              !isTransfer &&
-                              !isLoan &&
-                              transactionCategoryIds.length === 0;
-                            return (
-                              <button
-                                key={item.id}
-                                type="button"
-                                onClick={() => setSelectedTransaction(item)}
-                                className="group flex min-h-[72px] w-full items-center gap-3 border-b border-border/60 px-3 py-3 text-left last:border-b-0 sm:px-4"
-                                aria-label={`Buka detail ${item.meta.merchant || item.content}`}
-                              >
-                                <span
-                                  data-finance-status={
-                                    isIncome
-                                      ? "positive"
-                                      : isTransfer
-                                        ? "info"
-                                        : "negative"
-                                  }
-                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-surface-soft"
-                                >
-                                  <TransactionIcon className="h-4 w-4" />
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-sm font-semibold">
-                                    {item.meta.merchant || item.content}
-                                  </span>
-                                  <span className="mt-0.5 block truncate text-[11px] text-muted">
-                                    {categoryName}
-                                    {" · "}
-                                    {sourceWallet?.name ||
-                                      item.meta.paymentMethod ||
-                                      "Wallet belum dipilih"}
-                                  </span>
-                                  <span className="mt-1 flex flex-wrap gap-1.5">
-                                    <span className="rounded-full bg-surface-soft px-2 py-0.5 text-[9px] font-semibold text-muted">
-                                      {typeLabel}
-                                    </span>
-                                    {item.status === "pending" && (
-                                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-300">
-                                        Terencana
-                                      </span>
-                                    )}
-                                    {item.meta.receiptCapture && (
-                                      <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[9px] font-semibold text-indigo-700 dark:text-indigo-300">
-                                        Ada nota
-                                      </span>
-                                    )}
-                                    {needsCategory && (
-                                      <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-semibold text-red-700 dark:text-red-300">
-                                        Perlu kategori
-                                      </span>
-                                    )}
-                                  </span>
-                                </span>
-                                <span className="shrink-0 text-right">
-                                  <span
-                                    data-financial-amount="true"
-                                    data-finance-status={
-                                      isIncome
-                                        ? "positive"
-                                        : isTransfer
-                                          ? "info"
-                                          : "negative"
-                                    }
-                                    className="block text-sm font-semibold"
-                                  >
-                                    {canShowAmounts
-                                      ? `${isIncome ? "+" : isTransfer ? "" : "−"}${fmt(amount)}`
-                                      : "••••"}
-                                  </span>
-                                  <span className="mt-1 block text-[10px] text-muted">
-                                    Detail
-                                  </span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
+                  <TransactionLedger
+                    groups={transactionGroups}
+                    wallets={wallets}
+                    budgetConfig={budgetConfig}
+                    typeLabels={financeTypeLabel}
+                    showAmounts={canShowAmounts}
+                    formatAmount={fmt}
+                    language={appSettings.language}
+                    onOpen={setSelectedTransaction}
+                  />
                   <LoadMoreButton
                     remainingCount={visibleTransactions.remainingCount}
                     onClick={visibleTransactions.loadMore}
@@ -1784,7 +1612,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                       <button
                         type="button"
                         onClick={clearAllFinanceFilters}
-                        className="min-h-11 w-full rounded-xl text-xs font-semibold text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-300"
+                        className="min-h-11 w-full rounded-xl text-xs font-semibold text-brand-600 hover:bg-brand-500/10 dark:text-brand-300"
                       >
                         Hapus semua
                       </button>
@@ -1842,7 +1670,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   )}
                 </div>
                 <div className="mt-4 border-t border-border pt-4 text-xs leading-relaxed">
-                  Gunakan tombol pencarian mengambang untuk mengubah filter.
+                  {isEnglish ? 'Use Filters and sorting in the toolbar to change these filters.' : 'Gunakan Filter dan urutan di toolbar untuk mengubah filter.'}
                 </div>
               </aside>
             </div>
@@ -1860,7 +1688,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             className={`w-full flex-shrink-0 ${contentSurface.contentPad} pb-8 ${moneyView !== "budget" ? "pointer-events-none" : ""}`}
           >
             {effectiveIncome === 0 ? (
-              <div className="text-center p-6 bg-surface border border-border rounded-3xl">
+              <div className="text-center p-6 bg-surface border border-border rounded-xl">
                 <PiggyBank className="w-8 h-8 text-muted mx-auto mb-2" />
                 <p className="text-sm text-muted">
                   Atur <strong>pemasukan bulanan</strong> di Pengaturan <br />
@@ -1877,7 +1705,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             ) : (
               <div className="space-y-6 text-primary">
                 {renderBudgetDecisionSummary()}
-                <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
+                <div className="bg-surface border border-border rounded-xl p-6 text-primary">
                   <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <h2 className="text-3xl font-bold tracking-tight">
@@ -1897,7 +1725,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                   </div>
 
                   <div className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
-                    <div className="rounded-3xl bg-black/[0.03] p-4 dark:bg-white/[0.04]">
+                    <div className="rounded-xl bg-black/[0.03] p-4 dark:bg-white/[0.04]">
                       <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
                         {budgetViewMode === "yearly"
                           ? "Tren tahunan"
@@ -1928,7 +1756,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-muted">Arus bersih</span>
                           <span
-                            className={`font-bold ${totalIncome - totalExpense >= 0 ? "text-indigo-700 dark:text-indigo-300" : "text-red-700 dark:text-red-300"}`}
+                            className={`font-bold ${totalIncome - totalExpense >= 0 ? "text-brand-700 dark:text-brand-300" : "text-red-700 dark:text-red-300"}`}
                           >
                             {canShowAmounts
                               ? fmt(totalIncome - totalExpense)
@@ -1948,7 +1776,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="relative min-h-64 rounded-3xl border border-border bg-white/60 p-4 dark:bg-black/10">
+                    <div className="relative min-h-64 rounded-xl border border-border bg-white/60 p-4 dark:bg-black/10">
                       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
                         <div className="flex flex-wrap items-center gap-4 font-semibold text-muted">
                           <span className="inline-flex items-center gap-1.5">
@@ -1960,7 +1788,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                             Pengeluaran
                           </span>
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full bg-indigo-600"></span>
+                            <span className="h-2 w-2 rounded-full bg-brand-600"></span>
                             Arus bersih
                           </span>
                           {budgetViewMode === "yearly" &&
@@ -1981,7 +1809,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                       {hoveredTrendPoint && (
                         <div
-                          className="pointer-events-none absolute top-12 z-20 w-64 -translate-x-1/2 rounded-2xl border border-border bg-surface/95 p-3 text-xs shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30"
+                          className="pointer-events-none absolute top-12 z-20 w-64 -translate-x-1/2 rounded-lg border border-border bg-surface/95 p-3 text-xs shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30"
                           style={{ left: `${hoveredTrendTooltipLeft}%` }}
                         >
                           <div className="mb-2 flex items-start justify-between gap-3">
@@ -2015,7 +1843,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                   ? fmt(hoveredTrendPoint.total)
                                   : "••••"}
                               </div>
-                              <div className="font-bold text-indigo-700 dark:text-indigo-300">
+                              <div className="font-bold text-brand-700 dark:text-brand-300">
                                 {canShowAmounts
                                   ? fmt(
                                       hoveredTrendPoint.income -
@@ -2102,7 +1930,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                   ? `${point.label}: pemasukan ${fmt(point.income)}, pengeluaran ${fmt(point.total)}, arus bersih ${fmt(netAmount)}`
                                   : `${point.label}: nominal disembunyikan`
                               }
-                              className="group relative flex min-h-44 min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-sm focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                              className="group relative flex min-h-44 min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-sm focus-visible:ring-2 focus-visible:ring-brand-500/60"
                             >
                               <div className="relative flex h-32 w-full items-end justify-center gap-0.5">
                                 {budgetViewMode === "yearly" &&
@@ -2124,7 +1952,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                   style={{ height: `${scale(point.total)}%` }}
                                 />
                                 <div
-                                  className={`relative z-10 w-full max-w-2 rounded-t-sm bg-indigo-600 transition-all group-hover:max-w-2.5 ${isHovered ? "shadow-sm" : ""}`}
+                                  className={`relative z-10 w-full max-w-2 rounded-t-sm bg-brand-600 transition-all group-hover:max-w-2.5 ${isHovered ? "shadow-sm" : ""}`}
                                   style={{
                                     height: `${scale(netAmount)}%`,
                                     opacity: netAmount === 0 ? 0.25 : 1,
@@ -2141,7 +1969,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         })}
                       </div>
                       <p
-                        className="mt-3 rounded-2xl bg-surface-soft p-3 text-xs leading-relaxed text-muted"
+                        className="mt-3 rounded-lg bg-surface-soft p-3 text-xs leading-relaxed text-muted"
                         aria-live="polite"
                       >
                         {hoveredTrendPoint
@@ -2159,7 +1987,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 <div
                   className={`grid gap-6 ${budgetCategoryAnalytics.length > 0 ? "lg:grid-cols-2 lg:items-start" : ""}`}
                 >
-                  <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
+                  <div className="bg-surface border border-border rounded-xl p-6 text-primary">
                     {/* Header */}
                     <div className="mb-8 flex items-start justify-between gap-4">
                       <div>
@@ -2356,10 +2184,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                           {budgetInsightCards.map((card) => (
                             <div
                               key={card.title}
-                              className="flex items-start gap-3 rounded-2xl bg-black/[0.03] p-3 text-xs dark:bg-white/[0.04]"
+                              className="flex items-start gap-3 rounded-lg bg-black/[0.03] p-3 text-xs dark:bg-white/[0.04]"
                             >
                               <span
-                                className={`mt-1 h-2 w-2 shrink-0 rounded-full ${card.tone === "red" ? "bg-red-600 dark:bg-red-400" : card.tone === "amber" ? "bg-amber-500" : card.tone === "emerald" ? "bg-emerald-500" : "bg-indigo-600"}`}
+                                className={`mt-1 h-2 w-2 shrink-0 rounded-full ${card.tone === "red" ? "bg-red-600 dark:bg-red-400" : card.tone === "amber" ? "bg-amber-500" : card.tone === "emerald" ? "bg-emerald-500" : "bg-brand-600"}`}
                               ></span>
                               <div className="min-w-0">
                                 <div className="font-bold text-primary">
@@ -2373,7 +2201,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => setMoneyView("transactions")}
-                                  className="mt-2 min-h-11 rounded-lg px-3 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-500/10 dark:text-indigo-300"
+                                  className="mt-2 min-h-11 rounded-lg px-3 text-[10px] font-semibold text-brand-700 hover:bg-brand-500/10 dark:text-brand-300"
                                 >
                                   Tinjau transaksi
                                 </button>
@@ -2385,7 +2213,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     )}
                   </div>
                   {budgetCategoryAnalytics.length > 0 && (
-                    <div className="bg-surface border border-border rounded-[32px] p-6 text-primary">
+                    <div className="bg-surface border border-border rounded-xl p-6 text-primary">
                       <div className="mb-6 flex items-start justify-between gap-4">
                         <div>
                           <h2 className="text-3xl font-bold tracking-tight">
@@ -2415,7 +2243,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 (item, index) => {
                                   const colors = [
                                     "bg-emerald-700",
-                                    "bg-indigo-700",
+                                    "bg-brand-700",
                                     "bg-slate-700",
                                     "bg-teal-700",
                                     "bg-amber-700",
@@ -2429,7 +2257,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                       className="relative"
                                     >
                                       {isHovered && (
-                                        <div className="pointer-events-none absolute left-1/2 top-0 z-30 w-72 -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-2xl border border-border bg-surface/95 p-3 text-xs text-primary shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30">
+                                        <div className="pointer-events-none absolute left-1/2 top-0 z-30 w-72 -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-lg border border-border bg-surface/95 p-3 text-xs text-primary shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30">
                                           <div className="mb-2 flex items-start justify-between gap-3">
                                             <div className="min-w-0">
                                               <div className="truncate font-bold capitalize text-primary">
@@ -2559,7 +2387,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                               : item.name,
                                           )
                                         }
-                                        className={`${colors[index % colors.length]} min-h-24 w-full cursor-help rounded-2xl p-3 text-left text-white shadow-sm transition-all hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isHovered ? "-translate-y-0.5 brightness-105" : ""}`}
+                                        className={`${colors[index % colors.length]} min-h-24 w-full cursor-help rounded-lg p-3 text-left text-white shadow-sm transition-all hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isHovered ? "-translate-y-0.5 brightness-105" : ""}`}
                                         aria-pressed={isHovered}
                                         aria-label={`${item.name}: ${item.percentage.toFixed(1)} persen, ${item.count} transaksi`}
                                       >
@@ -2585,7 +2413,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         )}
 
                         {topSpendBreakdowns.subcommodities.length > 0 && (
-                          <div className="rounded-3xl bg-black/[0.03] p-4 dark:bg-white/[0.04]">
+                          <div className="rounded-xl bg-black/[0.03] p-4 dark:bg-white/[0.04]">
                             <div className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-muted">
                               Berdasarkan subkategori
                             </div>
@@ -2649,7 +2477,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         : undefined;
                                     return hoveredCommodity ? (
                                       <div
-                                        className="pointer-events-none absolute -top-3 z-20 w-64 -translate-x-1/2 -translate-y-full rounded-2xl border border-border bg-surface/95 p-3 text-xs shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30"
+                                        className="pointer-events-none absolute -top-3 z-20 w-64 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface/95 p-3 text-xs shadow-xl shadow-black/10 backdrop-blur dark:shadow-black/30"
                                         style={{
                                           left: `${getAnatomySegmentLeft(category.commodities, hoveredCommodityIndex)}%`,
                                         }}
@@ -2804,7 +2632,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                               commodity.name
                                           }
                                           aria-label={`${commodity.name}: ${commodity.percentage.toFixed(1)} persen dari ${category.categoryName}`}
-                                          className="min-h-11 rounded-2xl bg-white/60 p-3 text-left text-xs transition-colors hover:bg-surface-soft focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-white/5"
+                                          className="min-h-11 rounded-lg bg-white/60 p-3 text-left text-xs transition-colors hover:bg-surface-soft focus-visible:ring-2 focus-visible:ring-brand-500/60 dark:bg-white/5"
                                         >
                                           <div className="flex items-center justify-between gap-2">
                                             <span className="font-bold text-primary capitalize">
@@ -2868,6 +2696,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
           {selectedTransaction && (
             <Card
               item={selectedTransaction}
+              surface="plain"
               {...cardProps}
               enableCollapse={false}
               defaultCollapsed={false}

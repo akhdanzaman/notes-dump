@@ -9,15 +9,14 @@ test('NDZ-016 tablet baseline is explicit and bounded before desktop rail', () =
   assert.equal(TABLET_BASELINE.maxWidth, 1023);
   assert.equal(TABLET_BASELINE.desktopBreakpointClass, 'lg');
   assert.equal(RESPONSIVE_SHELL.desktopBreakpoint, 'lg');
-  assert.match(responsiveShellClass.main, /lg:ml-72/);
+  assert.equal(RESPONSIVE_SHELL.railWidth, '14rem');
+  assert.ok(responsiveShellClass.main.includes('lg:ml-[var(--rail-width)]'));
   assert.match(responsiveShellClass.bottomNavWrap, /lg:hidden/);
 });
 
-test('NDZ-016 keeps tablet masonry at two columns until lg desktop expansion', () => {
+test('Library uses a readable record list at every breakpoint', () => {
   assert.equal(contentSurface.tabletMasonryGrid, 'columns-1 sm:columns-2 gap-4');
-  assert.match(contentSurface.masonryGrid, /columns-1/);
-  assert.match(contentSurface.masonryGrid, /sm:columns-2/);
-  assert.match(contentSurface.masonryGrid, /lg:columns-3/);
+  assert.equal(contentSurface.masonryGrid, 'record-list');
   assert.doesNotMatch(contentSurface.tabletMasonryGrid, /md:columns-3|md:grid|lg:columns-3/);
 });
 
@@ -61,7 +60,7 @@ test('NDZ-017 keeps Summary dashboard dense on wide desktop without new widget s
   assert.doesNotMatch(contentSurface.summaryDashboardGrid, /repeat\(|3fr|4fr/);
 });
 
-test('NDZ-018 gives Plan/Focus task editing a wider workspace without changing the tablet breakpoint', () => {
+test('Plan groups compact rows vertically and keeps full editing in a detail panel', () => {
   assert.equal(getResponsiveShellContentVariant({
     activeTab: 'plan',
     planSubTab: 'tasks',
@@ -69,10 +68,7 @@ test('NDZ-018 gives Plan/Focus task editing a wider workspace without changing t
     moneyView: 'transactions',
   }), 'workspace');
 
-  assert.match(contentSurface.taskWorkspaceGrid, /lg:grid-cols-\[repeat\(2,minmax\(22rem,1fr\)\)\]/);
-  assert.match(contentSurface.taskWorkspaceGrid, /min-\[1440px\]:grid-cols-\[minmax\(23rem,1\.2fr\)_repeat\(2,minmax\(21rem,1fr\)\)\]/);
-  assert.match(contentSurface.taskWorkspaceGrid, /2xl:grid-cols-\[minmax\(24rem,1\.2fr\)_repeat\(2,minmax\(22rem,1fr\)\)\]/);
-  assert.doesNotMatch(contentSurface.taskWorkspaceGrid, /md:grid|md:grid-cols/);
+  assert.equal(contentSurface.taskWorkspaceGrid, 'space-y-4');
 });
 
 test('NDZ-018 separates passive list density from edit-card comfort controls', () => {
@@ -107,10 +103,8 @@ test('NDZ-019 gives Money a workspace shell and fixed context rail', () => {
     moneyView: 'budget',
   }), 'workspace');
 
-  assert.match(contentSurface.moneyHeaderGrid, /lg:grid-cols-\[minmax\(0,1fr\)_22rem\]/);
-  assert.match(contentSurface.moneyHeaderGrid, /xl:grid-cols-\[minmax\(0,1fr\)_24rem\]/);
-  assert.match(contentSurface.moneyWorkspaceGrid, /2xl:grid-cols-\[minmax\(0,1fr\)_25rem\]/);
-  assert.match(contentSurface.moneySideCard, /lg:sticky/);
+  assert.ok(contentSurface.moneyWorkspaceGrid.includes('xl:grid-cols-[minmax(0,1fr)_18rem]'));
+  assert.match(contentSurface.moneySideCard, /xl:sticky/);
   assert.doesNotMatch(contentSurface.moneyWorkspaceGrid, /repeat\(|md:grid|3fr|4fr/);
 });
 
@@ -155,7 +149,7 @@ test('workspace detail panels clear the global composer and become a desktop sid
   assert.match(contentSurface.workspaceDetailOverlay, /lg:justify-end/);
   assert.match(contentSurface.workspaceDetailPanel, /max-h-\[92dvh\]/);
   assert.match(contentSurface.workspaceDetailPanel, /lg:h-full/);
-  assert.match(contentSurface.workspaceDetailPanel, /lg:max-w-xl/);
+  assert.match(contentSurface.workspaceDetailPanel, /lg:max-w-md/);
   assert.match(contentSurface.workspaceDetailBody, /overflow-y-auto/);
   assert.match(contentSurface.workspaceDetailBody, /safe-area-inset-bottom/);
 });

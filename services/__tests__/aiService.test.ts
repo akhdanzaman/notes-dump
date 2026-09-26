@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getGeminiKey, parseJsonResponse, saveGeminiKey } from '../aiService';
+import { fileToBase64, getGeminiKey, parseJsonResponse, saveGeminiKey } from '../aiService';
 
 test('getGeminiKey falls back to env when localStorage is unavailable', () => {
   const previous = process.env.GEMINI_API_KEY;
@@ -19,6 +19,11 @@ test('getGeminiKey falls back to env when localStorage is unavailable', () => {
 test('saveGeminiKey does not throw when localStorage is unavailable', () => {
   assert.doesNotThrow(() => saveGeminiKey('test-key'));
   assert.doesNotThrow(() => saveGeminiKey(''));
+});
+
+test('fileToBase64 handles binary payloads larger than one conversion chunk', async () => {
+  const bytes = Uint8Array.from({ length: 70_000 }, (_, index) => index % 251);
+  assert.equal(await fileToBase64(new Blob([bytes])), Buffer.from(bytes).toString('base64'));
 });
 
 test('parseJsonResponse handles fenced JSON and surrounding prose', () => {

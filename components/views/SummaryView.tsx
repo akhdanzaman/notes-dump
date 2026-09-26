@@ -62,13 +62,12 @@ import {
   Wallet,
   BudgetConfig,
   Tab,
-  FinanceType,
-  Priority,
   ShoppingCategory,
   AppSettings,
   ItemType,
   ReceiptReviewDraft,
   ReceiptCaptureMeta,
+  ItemUpdateHandler,
 } from "../../types";
 import {
   getFocusMonthData,
@@ -99,11 +98,16 @@ import { contentSurface } from "../layout/contentSurface";
 import { buildSummaryFocusDisplay } from "../../utils/summaryFocusUtils";
 import { getDeepWorkChildren, supportsNestedTodoSubtasks } from "../../utils/deepWorkTodoModel";
 import { getShoppingDueDate } from "../../utils/shoppingDateUtils";
-import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { getSavedAmountForGoal } from "../../utils/savingTransactionUtils";
 import { getInvestmentMetrics } from "../../utils/investmentMetrics";
 import { getLoanAccounts } from "../../utils/loanAccounts";
 import { getAppLocale, normalizeAppLanguage } from "../../utils/i18n";
+import { formatCurrencyAmount } from "../../utils/formatters";
+import {
+  renderDeepWorkDetail,
+  taskPanelButtonClass,
+  useTaskWorkspace,
+} from "../../hooks/useTaskWorkspace";
 
 interface SummaryViewProps {
   items: BrainDumpItem[];
@@ -133,35 +137,7 @@ interface SummaryViewProps {
   handleOpenAddShopping: (category?: ShoppingCategory) => void;
   handleOpenAddExpense: () => void;
   handleOpenAddNote: () => void;
-  handleUpdateItem: (
-    id: string,
-    content: string,
-    tags: string[],
-    amount?: number,
-    date?: string,
-    paymentMethod?: string,
-    budgetCategory?: string,
-    duration?: number,
-    skillId?: string,
-    toWallet?: string,
-    financeType?: FinanceType,
-    progress?: number,
-    progressNotes?: string,
-    shoppingCategory?: any,
-    recurrenceDays?: number,
-    quantity?: string,
-    isRoutine?: boolean,
-    routineInterval?: "daily" | "weekly" | "monthly" | "yearly",
-    routineDaysOfWeek?: number[],
-    routineDaysOfMonth?: number[],
-    routineMonthsOfYear?: number[],
-    savingGoalId?: string,
-    dedicatedWalletId?: string,
-    priority?: Priority,
-    start?: string,
-    end?: string,
-    hideFromCalendar?: boolean,
-  ) => void;
+  handleUpdateItem: ItemUpdateHandler;
   handleDelete: (id: string) => void;
   handleKeepRawTodo: (id: string) => void;
   handleRetriggerDeepWorkTodo: (id: string) => void;
@@ -189,12 +165,28 @@ type PopupPosition = {
   transformOrigin: string;
 };
 
-type TaskPanel = "edit" | "subtasks" | "editSubtasks" | "none";
-
 const AI_INSIGHTS_CACHE_KEY = "braindump_ai_insights";
 const AI_INSIGHTS_CACHE_DATE_KEY = "braindump_ai_insights_date";
 const AI_INSIGHTS_CACHE_VERSION_KEY = "braindump_ai_insights_version";
 const AI_INSIGHTS_CACHE_VERSION = "2026-05-behavior-drift-v1";
+
+const readStoredValue = (key: string) => {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredValue = (key: string, value: string) => {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // The dashboard still works when browser storage is unavailable.
+  }
+};
 
 const isSummaryTaskItem = (item: BrainDumpItem) =>
   item.type === ItemType.TODO && !item.meta.isRoutine;
@@ -255,7 +247,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     previous: 'Periode sebelumnya', next: 'Periode berikutnya', show: 'Tampilkan seluruh nominal', hide: 'Sembunyikan seluruh nominal', actual: 'Aktual', planned: 'Rencana', remaining: 'Sisa',
     noComparison: 'Belum ada pembanding', source: 'Bersumber dari wallet, transaksi, dan budget Arkaiv', record: 'Catat transaksi',
   };
-  const isDesktopDashboard = useMediaQuery("(min-width: 1024px)");
   const swipeHandlers = useSwipeTabs("summary", setActiveTab);
 
   const changeThemeMonth = (offset: number) => {
@@ -456,12 +447,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     .filter((account) => account.remainingAmount > 0 && account.dueDate)
     .slice(0, 3);
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(n);
+  const fmt = (n: number) => formatCurrencyAmount(n);
 
   const budgetPercent =
     totalLimits > 0 ? Math.min(100, (totalExpense / totalLimits) * 100) : 0;
@@ -480,7 +466,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     if (typeof window === "undefined") return {};
     try {
       return JSON.parse(
-        localStorage.getItem("braindump_monthly_theme_images") || "{}",
+        readStoredValue("braindump_monthly_theme_images") || "{}",
       );
     } catch {
       return {};
@@ -503,8 +489,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   );
 
   const [aiInsights, setAiInsights] = useState<Insight[]>(() => {
-    const saved = localStorage.getItem(AI_INSIGHTS_CACHE_KEY);
-    const savedVersion = localStorage.getItem(AI_INSIGHTS_CACHE_VERSION_KEY);
+    const saved = readStoredValue(AI_INSIGHTS_CACHE_KEY);
+    const savedVersion = readStoredValue(AI_INSIGHTS_CACHE_VERSION_KEY);
     if (savedVersion !== AI_INSIGHTS_CACHE_VERSION) {
       return [];
     }
@@ -521,7 +507,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [hasNewNotification, setHasNewNotification] = useState(() => {
-    return localStorage.getItem("braindump_has_new_notification") === "true";
+    return readStoredValue("braindump_has_new_notification") === "true";
   });
 
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -530,15 +516,20 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   useEffect(() => {
     setIsFinanceInsightDismissed(false);
   }, [themeKey]);
-  const [taskCardCollapsed, setTaskCardCollapsed] = useState<
-    Record<string, boolean>
-  >({});
-  const [activeTaskPanels, setActiveTaskPanels] = useState<
-    Record<string, TaskPanel | undefined>
-  >({});
-  const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>(
-    {},
-  );
+  const {
+    isTaskCardExpanded,
+    setTaskPanel,
+    toggleTaskPanel,
+    getActiveTaskPanel,
+    getTaskCardProps,
+    getSubtaskDraft,
+    acceptDeepWorkPlan,
+    openManualSubtaskDraft,
+    renderSubtaskDraftEditor,
+  } = useTaskWorkspace({
+    defaultCollapsed: true,
+    onAcceptSubtasks: handleAcceptDeepWorkTodo,
+  });
   const [goalDashboardVisibility, setGoalDashboardVisibility] = useState({
     savings: true,
     skills: false,
@@ -677,8 +668,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   };
 
   const fetchAIInsights = async (force = false) => {
-    const lastFetched = localStorage.getItem(AI_INSIGHTS_CACHE_DATE_KEY);
-    const cachedVersion = localStorage.getItem(AI_INSIGHTS_CACHE_VERSION_KEY);
+    const lastFetched = readStoredValue(AI_INSIGHTS_CACHE_DATE_KEY);
+    const cachedVersion = readStoredValue(AI_INSIGHTS_CACHE_VERSION_KEY);
     const today = new Date().toDateString();
 
     if (
@@ -700,14 +691,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     if (generated.length > 0) {
       setAiInsights(generated);
-      localStorage.setItem(AI_INSIGHTS_CACHE_KEY, JSON.stringify(generated));
-      localStorage.setItem(AI_INSIGHTS_CACHE_DATE_KEY, today);
-      localStorage.setItem(
+      writeStoredValue(AI_INSIGHTS_CACHE_KEY, JSON.stringify(generated));
+      writeStoredValue(AI_INSIGHTS_CACHE_DATE_KEY, today);
+      writeStoredValue(
         AI_INSIGHTS_CACHE_VERSION_KEY,
         AI_INSIGHTS_CACHE_VERSION,
       );
       setHasNewNotification(true);
-      localStorage.setItem("braindump_has_new_notification", "true");
+      writeStoredValue("braindump_has_new_notification", "true");
     }
 
     setIsLoadingInsights(false);
@@ -717,7 +708,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     updatePopupPosition();
     setIsNotificationOpen(true);
     setHasNewNotification(false);
-    localStorage.setItem("braindump_has_new_notification", "false");
+    writeStoredValue("braindump_has_new_notification", "false");
   };
 
   const handleCloseNotification = () => {
@@ -914,213 +905,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     onResetRoutine: handleResetRoutine,
   };
 
-  const isTaskCardExpanded = (id: string) => {
-    const collapsed = taskCardCollapsed[id];
-    return collapsed === undefined ? false : !collapsed;
-  };
-
-  const setTaskPanel = (id: string, panel: TaskPanel) => {
-    setActiveTaskPanels((prev) => ({ ...prev, [id]: panel }));
-  };
-
-  const toggleTaskPanel = (
-    id: string,
-    panel: Exclude<TaskPanel, "none">,
-    activePanel: TaskPanel,
-  ) => {
-    setTaskPanel(id, activePanel === panel ? "none" : panel);
-  };
-
-  const resetTaskPanel = (id: string) => {
-    setActiveTaskPanels((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  };
-
-  const getDefaultTaskPanel = (
-    children: BrainDumpItem[],
-    isDeepWork: boolean,
-  ): TaskPanel => {
-    return isDeepWork && children.length > 0 ? "subtasks" : "none";
-  };
-
-  const getActiveTaskPanel = (
-    item: BrainDumpItem,
-    children: BrainDumpItem[],
-    isDeepWork: boolean,
-  ): TaskPanel => {
-    return (
-      activeTaskPanels[item.id] || getDefaultTaskPanel(children, isDeepWork)
-    );
-  };
-
-  const taskPanelButtonClass = (
-    active: boolean,
-    tone: "edit" | "subtasks" = "edit",
-  ) => {
-    if (active && tone === "subtasks")
-      return "px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors flex items-center gap-1";
-    if (tone === "subtasks")
-      return "px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1";
-    if (active)
-      return "px-3 py-2 rounded-xl bg-primary text-background text-xs font-bold hover:opacity-90 transition-colors flex items-center gap-1";
-    return "px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/[0.09] text-xs font-bold transition-colors flex items-center gap-1";
-  };
-
-  const getTaskCardProps = (
-    item: BrainDumpItem,
-    activePanel: TaskPanel,
-    editPanelControls: React.ReactNode,
-    extraExpandedContent?: React.ReactNode,
-  ) => ({
-    ...cardProps,
-    collapsibleEditPanel: true,
-    editPanelExpanded: activePanel === "edit",
-    editPanelControls,
-    extraExpandedContent,
-    onEditPanelExpandedChange: (id: string, expanded: boolean) => {
-      if (expanded) setTaskPanel(id, "edit");
-    },
-    onCollapseChange: (id: string, collapsed: boolean) => {
-      setTaskCardCollapsed((prev) => ({ ...prev, [id]: collapsed }));
-      if (collapsed) resetTaskPanel(id);
-    },
-  });
-
-  const getChildCardProps = () => cardProps;
-
-  const getSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[]) => {
-    if (subtaskDrafts[item.id]) return subtaskDrafts[item.id];
-    if (item.meta.subtasks?.length) return item.meta.subtasks;
-    if (children.length > 0) return children.map((child) => child.content);
-    const emptyStepCount = Math.min(item.meta.deepWorkStepCount || 0, 5);
-    return emptyStepCount > 0 ? Array.from({ length: emptyStepCount }, () => "") : [];
-  };
-
-  const updateSubtaskDraft = (
-    itemId: string,
-    index: number,
-    value: string,
-    fallback: string[],
-  ) => {
-    const next = [...fallback];
-    next[index] = value;
-    setSubtaskDrafts((prev) => ({ ...prev, [itemId]: next }));
-  };
-
-  const acceptDeepWorkPlan = (
-    item: BrainDumpItem,
-    children: BrainDumpItem[],
-  ) => {
-    const draft = getSubtaskDraft(item, children)
-      .map((step) => step.trim())
-      .filter(Boolean);
-    if (draft.length === 0) return;
-    handleAcceptDeepWorkTodo(item.id, draft);
-    setSubtaskDrafts((prev) => {
-      const next = { ...prev };
-      delete next[item.id];
-      return next;
-    });
-    setTaskPanel(item.id, "subtasks");
-  };
-
-  const openManualSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[] = []) => {
-    const draft = getSubtaskDraft(item, children);
-    setSubtaskDrafts((prev) => ({
-      ...prev,
-      [item.id]: draft.length ? draft : [""],
-    }));
-    setTaskPanel(item.id, "editSubtasks");
-  };
-
-  const renderSubtaskDraftEditor = (
-    item: BrainDumpItem,
-    children: BrainDumpItem[],
-    saveLabel: string,
-  ) => {
-    const draft = getSubtaskDraft(item, children);
-    return (
-      <div className="space-y-2">
-        {draft.map((step, index) => (
-          <div key={`${item.id}-draft-${index}`} className="flex gap-2">
-            <div className="mt-3 h-5 w-5 shrink-0 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-bold flex items-center justify-center">
-              {index + 1}
-            </div>
-            <textarea
-              value={step}
-              onChange={(event) =>
-                updateSubtaskDraft(item.id, index, event.target.value, draft)
-              }
-              className="min-h-[44px] flex-1 resize-none rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-purple-500/60"
-              placeholder="Subtask..."
-            />
-            <button
-              onClick={() =>
-                setSubtaskDrafts((prev) => ({
-                  ...prev,
-                  [item.id]: draft.filter(
-                    (_, draftIndex) => draftIndex !== index,
-                  ),
-                }))
-              }
-              className="self-center p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
-              aria-label="Remove subtask"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            onClick={() =>
-              setSubtaskDrafts((prev) => ({
-                ...prev,
-                [item.id]: [...draft, ""],
-              }))
-            }
-            className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/[0.09] transition-colors"
-          >
-            Add step
-          </button>
-          <button
-            onClick={() => acceptDeepWorkPlan(item, children)}
-            className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={
-              draft.map((step) => step.trim()).filter(Boolean).length === 0
-            }
-          >
-            {saveLabel}
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderDeepWorkDetail = (
-    icon: React.ReactNode,
-    label: string,
-    value?: string | number,
-    tone = "text-purple-500",
-  ) => {
-    if (value === undefined || value === null || value === "") return null;
-    return (
-      <div className="rounded-2xl border border-border/60 bg-surface/70 px-3 py-2">
-        <div
-          className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}
-        >
-          {icon}
-          {label}
-        </div>
-        <div className="mt-1 text-sm font-medium text-primary leading-snug break-words">
-          {value}
-        </div>
-      </div>
-    );
-  };
-
   const renderSummaryFocusCard = (item: BrainDumpItem) => {
     const children = getDeepWorkChildren(items, item.id);
     const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
@@ -1176,7 +960,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 exit="exit"
                 className="grid overflow-hidden"
               >
-                <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+                <div className="min-h-0 overflow-hidden rounded-lg border border-border bg-background/70 p-3 space-y-3 lg:p-4">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
                     Edit subtasks
                   </div>
@@ -1191,7 +975,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           </AnimatePresence>
         ) : undefined;
       const taskCardProps = getTaskCardProps(
-        item,
+        cardProps,
         activePanel,
         editPanelControls,
         manualSubtaskPanel,
@@ -1322,7 +1106,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             exit="exit"
             className="grid overflow-hidden"
           >
-            <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+            <div className="min-h-0 overflow-hidden rounded-lg border border-border bg-background/70 p-3 space-y-3 lg:p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 {hasDeepWorkDetails && (
                   <div className="flex items-center gap-2 text-purple-500">
@@ -1399,14 +1183,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                       <Card
                         key={child.id}
                         item={child}
-                        {...getChildCardProps()}
+                        {...cardProps}
                         editComfort="taskWorkspace"
                         className="rounded-[14px]"
                       />
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">
+                  <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted">
                     No todo subtask cards yet. Use Add subtasks to create them.
                   </div>
                 )}
@@ -1417,7 +1201,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       </AnimatePresence>
     ) : undefined;
     const taskCardProps = getTaskCardProps(
-      item,
+      cardProps,
       activePanel,
       deepWorkPanelControls,
       deepWorkSubtaskPanel,
@@ -1828,15 +1612,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     "dark:border-0 dark:bg-transparent dark:text-zinc-50 dark:shadow-none",
   ].join(" ");
   const dashboardCardClass = [
-    "rounded-[1.4rem] border border-border/75 bg-surface/88 shadow-sm backdrop-blur-xl",
-    "transition-[border-color,box-shadow] duration-200 hover:border-border hover:shadow-md",
+    "rounded-xl border border-border bg-surface",
+    "transition-colors duration-150",
   ].join(" ");
   const dashboardIconClass =
-    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300";
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-300";
   const dashboardSectionTitle =
-    "text-sm font-black tracking-tight text-slate-950 dark:text-zinc-50";
+    "text-sm font-semibold tracking-tight text-primary";
   const dashboardKicker =
-    "text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-300";
+    "text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300";
   const dashboardMuted = "text-slate-500 dark:text-zinc-400";
   const dashboardScrollbarClass = [
     "[scrollbar-width:thin]",
@@ -1856,7 +1640,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     description: string,
     action?: { label: string; onClick: () => void },
   ) => (
-    <div className="rounded-2xl border border-dashed border-blue-200/80 bg-blue-50/50 p-4 text-sm dark:border-blue-300/20 dark:bg-blue-400/5">
+    <div className="rounded-lg border border-dashed border-blue-200/80 bg-blue-50/50 p-4 text-sm dark:border-blue-300/20 dark:bg-blue-400/5">
       <p className="font-bold text-slate-800 dark:text-zinc-100">{title}</p>
       <p className={`mt-1 text-xs leading-relaxed ${dashboardMuted}`}>
         {description}
@@ -1893,7 +1677,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.92, y: -8 }}
                   transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                  className="fixed z-[9999] flex max-h-[60vh] flex-col overflow-hidden rounded-3xl border border-border bg-surface lg:max-h-[70vh] lg:shadow-2xl"
+                  className="fixed z-[9999] flex max-h-[60vh] flex-col overflow-hidden rounded-xl border border-border bg-surface lg:max-h-[70vh] lg:shadow-2xl"
                   style={{
                     top: popupPosition.top,
                     left: popupPosition.left,
@@ -1903,7 +1687,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 >
                   <div className="flex items-center justify-between border-b border-border p-4">
                     <h3 className="flex items-center gap-2 text-lg font-bold">
-                      <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
+                      <Sparkles className="h-5 w-5 text-brand-600 dark:text-brand-300" />
                       Insight dan notifikasi
                     </h3>
 
@@ -1936,11 +1720,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   >
                     {hideSensitiveMoney ? (
                       <div
-                        className="rounded-2xl bg-surface-soft p-4"
+                        className="rounded-lg bg-surface-soft p-4"
                         role="status"
                       >
                         <div className="flex items-start gap-3">
-                          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" />
+                          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-brand-600 dark:text-brand-300" />
                           <div>
                             <p className="text-sm font-semibold">
                               Insight finansial disembunyikan
@@ -1963,7 +1747,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         {[0, 1, 2].map((index) => (
                           <div
                             key={index}
-                            className="animate-pulse rounded-2xl border border-border bg-background/60 p-4"
+                            className="animate-pulse rounded-lg border border-border bg-background/60 p-4"
                           >
                             <div className="h-3 w-1/3 rounded-full bg-muted/20" />
                             <div className="mt-3 h-2.5 w-full rounded-full bg-muted/15" />
@@ -2008,7 +1792,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                           <motion.div
                             key={`${insight.title}-${idx}`}
                             variants={riseVariants}
-                            className={`flex items-start gap-3 rounded-2xl p-4 ${bgColor}`}
+                            className={`flex items-start gap-3 rounded-lg p-4 ${bgColor}`}
                           >
                             <Icon
                               className={`mt-0.5 h-5 w-5 shrink-0 ${iconColor}`}
@@ -2051,7 +1835,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.92, y: -8 }}
                   transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                  className="fixed z-[9999] flex max-h-[70vh] flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl"
+                  className="fixed z-[9999] flex max-h-[70vh] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
                   style={{
                     top: reviewPopupPosition.top,
                     left: reviewPopupPosition.left,
@@ -2061,13 +1845,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 >
                   <div className="z-10 flex shrink-0 items-center justify-between border-b border-border bg-surface p-4">
                     <h3 className="flex items-center gap-2 text-lg font-bold">
-                      <ClipboardCheck className="h-5 w-5 text-indigo-500" />
+                      <ClipboardCheck className="h-5 w-5 text-brand-500" />
                       Pusat pemeriksaan
                     </h3>
 
                     <div className="flex items-center gap-2">
                       {(pendingReviews.length + receiptReviews.length) > 0 && (
-                        <span className="rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                        <span className="rounded-full bg-brand-500/10 px-2 py-1 text-xs font-bold text-brand-700 dark:text-brand-300">
                           {pendingReviews.length + receiptReviews.length} menunggu
                         </span>
                       )}
@@ -2117,7 +1901,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="h-full w-full bg-indigo-50 dark:bg-indigo-400/[0.07]" />
+        <div className="h-full w-full bg-brand-50 dark:bg-brand-400/[0.07]" />
       )}
     </div>
   );
@@ -2136,320 +1920,91 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     ) : null;
 
   const renderFinanceCommandHero = () => {
-    const actualPercent =
-      budgetBasis > 0 ? Math.min(100, (totalExpense / budgetBasis) * 100) : 0;
-    const plannedPercent =
-      budgetBasis > 0 ? Math.min(100, (projectedExpense / budgetBasis) * 100) : 0;
-    const visiblePlannedPercent = Math.min(
-      plannedPercent,
-      Math.max(0, 100 - actualPercent),
-    );
-    const reviewCount =
-      pendingReviews.length + receiptReviews.length + parsingTasks.length;
+    const actualPercent = budgetBasis > 0 ? Math.min(100, (totalExpense / budgetBasis) * 100) : 0;
+    const plannedPercent = budgetBasis > 0 ? Math.min(100, (projectedExpense / budgetBasis) * 100) : 0;
     const metrics = [
-      {
-        label: homeCopy.income,
-        value: totalIncome,
-        icon: TrendingUp,
-        tone: "positive",
-      },
-      {
-        label: homeCopy.expense,
-        value: totalExpense,
-        icon: TrendingDown,
-        tone: "negative",
-      },
-      {
-        label: homeCopy.savings,
-        value: periodSavings,
-        icon: PiggyBank,
-        tone: "info",
-      },
-      {
-        label: homeCopy.cashFlow,
-        value: cashFlow,
-        icon: cashFlow >= 0 ? ArrowUpRight : ArrowDownRight,
-        tone: cashFlow >= 0 ? "positive" : "negative",
-      },
-    ] as const;
-
-    return (
-      <section
-        data-finance-surface="hero"
-        className="overflow-hidden rounded-[28px] bg-surface p-5 text-primary ring-1 ring-inset ring-border/55 sm:p-6 lg:p-8"
-        aria-labelledby="home-financial-snapshot"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-muted">{greeting}</div>
-            <h1
-              id="home-financial-snapshot"
-              className="mt-1 text-[clamp(1.65rem,4vw,2.4rem)] font-semibold leading-tight tracking-[-0.035em]"
-            >
-              {homeCopy.headline}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div
-              data-swipe-date="summary-finance-month"
-              className="flex min-h-11 items-center rounded-2xl bg-surface-soft p-1"
-              onTouchStart={dateSwipeHandlers.onTouchStart}
-              onTouchMove={dateSwipeHandlers.onTouchMove}
-              onTouchEnd={dateSwipeHandlers.onTouchEnd}
-            >
-              <button
-                type="button"
-                onClick={() => changeThemeMonth(-1)}
-                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-primary"
-                aria-label={homeCopy.previous}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="min-w-[6.25rem] px-1 text-center text-[11px] font-semibold capitalize text-primary sm:min-w-[9.5rem] sm:px-2 sm:text-sm">
-                {activePeriodLabel}
-              </span>
-              <button
-                type="button"
-                onClick={() => changeThemeMonth(1)}
-                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-primary"
-                aria-label={homeCopy.next}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            <button
-              ref={reviewButtonRef}
-              type="button"
-              onClick={handleOpenReview}
-              className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-soft text-muted transition-colors hover:text-primary max-[420px]:hidden lg:hidden"
-              aria-label={`${reviewCount} item perlu diperiksa`}
-            >
-              <ClipboardCheck className="h-[18px] w-[18px]" />
-              {reviewCount > 0 && (
-                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[9px] font-bold text-white">
-                  {Math.min(reviewCount, 9)}
-                </span>
-              )}
-            </button>
-            <button
-              ref={notificationButtonRef}
-              type="button"
-              onClick={handleOpenNotification}
-              className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-soft text-muted transition-colors hover:text-primary lg:hidden"
-              aria-label="Buka insight dan notifikasi"
-            >
-              <AlertTriangle className="h-[18px] w-[18px]" />
-              {hasNewNotification && (
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-surface-soft bg-[#c94f3d]" />
-              )}
-            </button>
-          </div>
+      { label: homeCopy.netWorth, value: totalNetWorth },
+      { label: homeCopy.assets, value: totalAssets },
+      { label: homeCopy.debt, value: totalDebt },
+      { label: homeCopy.safeToSpend, value: safeToSpend },
+    ];
+    const cashMetrics = [
+      { label: homeCopy.income, value: totalIncome, tone: 'positive' },
+      { label: homeCopy.expense, value: totalExpense, tone: 'negative' },
+      { label: homeCopy.savings, value: periodSavings, tone: 'info' },
+      { label: homeCopy.cashFlow, value: cashFlow, tone: cashFlow >= 0 ? 'positive' : 'negative' },
+    ];
+    return <section aria-labelledby="home-financial-snapshot" className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted">{greeting}</p>
+          <h2 id="home-financial-snapshot" className="mt-1 max-w-xl text-lg font-semibold tracking-tight">{homeCopy.headline}</h2>
         </div>
-
-        <div className="mt-7 grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] lg:items-stretch">
-          <div className="flex min-w-0 flex-col justify-between rounded-[24px] bg-[#121a16] p-5 text-white dark:bg-[#e9f2ed] dark:text-[#101713] sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-xs font-semibold text-white/60 dark:text-[#506058]">
-                  {homeCopy.netWorth}
-                </div>
-                <div
-                  data-financial-amount="true"
-                  className="mt-2 break-words text-[clamp(2rem,7vw,3.5rem)] font-semibold leading-none tracking-[-0.055em]"
-                >
-                  <AnimatedNumber
-                    value={totalNetWorth}
-                    formatter={fmt}
-                    hidden={hideSensitiveMoney}
-                    hiddenLabel="••••••••"
-                    ariaLabel="Kekayaan bersih"
-                  />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowBalance(!showBalance)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white transition-colors hover:bg-white/15 dark:bg-black/[0.07] dark:text-[#101713] dark:hover:bg-black/10"
-                aria-label={hideSensitiveMoney ? homeCopy.show : homeCopy.hide}
-                aria-pressed={hideSensitiveMoney}
-              >
-                {!hideSensitiveMoney ? (
-                  <EyeOff className="h-[18px] w-[18px]" />
-                ) : (
-                  <Eye className="h-[18px] w-[18px]" />
-                )}
-              </button>
-            </div>
-
-            <div className="mt-8 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-white/[0.07] p-3 dark:bg-black/[0.055]">
-                <div className="flex items-center gap-2 text-[11px] font-semibold text-white/60 dark:text-[#506058]">
-                  <Landmark className="h-3.5 w-3.5" />
-                  {homeCopy.assets}
-                </div>
-                <div data-financial-amount="true" className="mt-1 truncate text-base font-semibold">
-                  <AnimatedNumber
-                    value={totalAssets}
-                    formatter={fmt}
-                    hidden={hideSensitiveMoney}
-                    hiddenLabel="••••"
-                    ariaLabel="Total aset"
-                  />
-                </div>
-              </div>
-              <div className="rounded-2xl bg-white/[0.07] p-3 dark:bg-black/[0.055]">
-                <div className="flex items-center gap-2 text-[11px] font-semibold text-white/60 dark:text-[#506058]">
-                  <CreditCard className="h-3.5 w-3.5" />
-                  {homeCopy.debt}
-                </div>
-                <div data-financial-amount="true" className="mt-1 truncate text-base font-semibold">
-                  <AnimatedNumber
-                    value={totalDebt}
-                    formatter={fmt}
-                    hidden={hideSensitiveMoney}
-                    hiddenLabel="••••"
-                    ariaLabel="Total utang"
-                  />
-                </div>
-              </div>
-            </div>
+        <div className="flex items-center gap-2">
+          <div data-swipe-date="summary-finance-month" className="flex items-center rounded-lg border border-border bg-surface p-1"
+            onTouchStart={dateSwipeHandlers.onTouchStart} onTouchMove={dateSwipeHandlers.onTouchMove} onTouchEnd={dateSwipeHandlers.onTouchEnd}>
+            <button type="button" onClick={() => changeThemeMonth(-1)} aria-label={homeCopy.previous} className="flex items-center justify-center rounded-md text-muted hover:bg-surface-soft"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="min-w-28 px-2 text-center text-xs font-medium capitalize">{activePeriodLabel}</span>
+            <button type="button" onClick={() => changeThemeMonth(1)} aria-label={homeCopy.next} className="flex items-center justify-center rounded-md text-muted hover:bg-surface-soft"><ChevronRight className="h-4 w-4" /></button>
           </div>
-
-          <div className="flex flex-col justify-between rounded-[24px] bg-surface-soft p-5 sm:p-6">
-            <div>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-xs font-semibold text-muted">
-                    {homeCopy.safeToSpend}
-                  </div>
-                  <div
-                    data-financial-amount="true"
-                    className="mt-2 text-3xl font-semibold tracking-[-0.04em]"
-                  >
-                    <AnimatedNumber
-                      value={safeToSpend}
-                      formatter={fmt}
-                      hidden={hideSensitiveMoney}
-                      hiddenLabel="••••••"
-                      ariaLabel="Perkiraan aman dibelanjakan"
-                    />
-                  </div>
-                </div>
-                <span
-                  data-finance-status={budgetHealth.tone}
-                  className="rounded-full bg-surface px-3 py-1.5 text-[11px] font-semibold shadow-sm"
-                >
-                  {budgetHealth.label}
-                </span>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted">
-                {budgetHealth.detail}. Perkiraan memakai budget aktual dan transaksi terencana.
-              </p>
-            </div>
-
-            <div className="mt-7">
-              <div
-                className="relative flex h-3 overflow-hidden rounded-full bg-border/70"
-                role="img"
-                aria-label={`Budget terpakai ${actualPercent.toFixed(0)} persen, rencana ${plannedPercent.toFixed(0)} persen`}
-              >
-                <motion.div
-                  initial={false}
-                  animate={{ width: `${actualPercent}%` }}
-                  className="h-full bg-indigo-600"
-                />
-                <motion.div
-                  initial={false}
-                  animate={{ width: `${visiblePlannedPercent}%` }}
-                  data-planned-fill="true"
-                  className="h-full bg-amber-600 text-amber-700 dark:bg-amber-400 dark:text-amber-200"
-                />
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] font-semibold text-muted">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-indigo-600" />
-                  {homeCopy.actual}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-sm border border-amber-700 bg-amber-200" />
-                  {homeCopy.planned}
-                </span>
-                <span className="text-right">{homeCopy.remaining}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5 border-t border-border/70 pt-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold">{homeCopy.cashFlowPulse}</h2>
-            <span className="text-[11px] text-muted">
-              {expenseChangePercent === null
-                ? homeCopy.noComparison
-                : `${expenseChangePercent >= 0 ? "Naik" : "Turun"} ${Math.abs(expenseChangePercent).toFixed(0)}% vs periode lalu`}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            {metrics.map((metric) => {
-              const Icon = metric.icon;
-              return (
-                <div key={metric.label} className="min-w-0 rounded-2xl bg-surface-soft/75 p-3.5">
-                  <div className="flex items-center gap-2 text-[11px] font-semibold text-muted">
-                    <Icon className="h-3.5 w-3.5" data-finance-status={metric.tone} />
-                    {metric.label}
-                  </div>
-                  <div
-                    data-financial-amount="true"
-                    data-finance-status={metric.tone}
-                    className="mt-1.5 truncate text-base font-semibold"
-                  >
-                    <AnimatedNumber
-                      value={metric.value}
-                      formatter={fmt}
-                      hidden={hideSensitiveMoney}
-                      hiddenLabel="••••"
-                      ariaLabel={metric.label}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[11px] leading-relaxed text-muted">
-            {homeCopy.source} · {activePeriodLabel}
-          </p>
-          <button
-            type="button"
-            onClick={handleOpenAddExpense}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500"
-          >
-            <Plus className="h-4 w-4" />
-            {homeCopy.record}
+          <button type="button" onClick={() => setShowBalance(!showBalance)} aria-label={hideSensitiveMoney ? homeCopy.show : homeCopy.hide} aria-pressed={hideSensitiveMoney} className="flex items-center justify-center rounded-lg border border-border bg-surface p-2 text-muted">
+            {hideSensitiveMoney ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </button>
+          <button ref={notificationButtonRef} type="button" onClick={handleOpenNotification} aria-label="Buka insight dan notifikasi" className="relative flex items-center justify-center rounded-lg border border-border bg-surface p-2 text-muted">
+            <AlertTriangle className="h-4 w-4" />{hasNewNotification && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-500" />}
           </button>
         </div>
-      </section>
-    );
+      </div>
+      <div className="metric-strip" data-finance-surface="hero">
+        {metrics.map(metric => <div key={metric.label}>
+          <p className="text-[11px] font-medium text-muted">{metric.label}</p>
+          <div className="mt-2 truncate text-xl font-semibold tracking-tight" data-financial-amount="true">
+            <AnimatedNumber value={metric.value} formatter={fmt} hidden={hideSensitiveMoney} hiddenLabel="••••••" ariaLabel={metric.label} />
+          </div>
+        </div>)}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">{homeCopy.cashFlowPulse}</h3>
+            <span className="text-[10px] text-muted">{expenseChangePercent === null ? homeCopy.noComparison : `${expenseChangePercent >= 0 ? "Naik" : "Turun"} ${Math.abs(expenseChangePercent).toFixed(0)}% vs periode lalu`}</span>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {cashMetrics.map(metric => <div key={metric.label}><p className="text-[11px] text-muted">{metric.label}</p><div className="mt-1 truncate text-sm font-semibold" data-financial-amount="true" data-finance-status={metric.tone}>
+              <AnimatedNumber value={metric.value} formatter={fmt} hidden={hideSensitiveMoney} hiddenLabel="••••" ariaLabel={metric.label} />
+            </div></div>)}
+          </div>
+          <div className="mt-4 border-t border-border pt-3">
+            <div className="mb-2 flex justify-between gap-3 text-[11px] text-muted"><span>{homeCopy.actual} / {homeCopy.planned}</span><span data-finance-status={budgetHealth.tone}>{budgetHealth.label}</span></div>
+            <div className="flex h-2 overflow-hidden rounded-full bg-surface-soft" role="img" aria-label={`Budget terpakai ${actualPercent.toFixed(0)} persen, rencana ${plannedPercent.toFixed(0)} persen`}>
+              <motion.div initial={false} animate={{width: `${actualPercent}%`}} className="h-full bg-brand-500" />
+              <motion.div initial={false} animate={{width: `${Math.min(plannedPercent, Math.max(0, 100 - actualPercent))}%`}} data-planned-fill="true" className="h-full bg-amber-200 text-amber-600" />
+            </div>
+            <p className="mt-2 text-[10px] leading-relaxed text-muted">{budgetHealth.detail}. Perkiraan memakai budget aktual dan transaksi terencana.</p>
+          </div>
+        </div>
+        <div className="flex flex-col justify-between gap-4 rounded-xl bg-[#3c3d3a] p-4 text-white">
+          <div><p className="text-[10px] uppercase tracking-wider text-white/60">{activePeriodLabel}</p><p className="mt-2 text-sm font-medium">{homeCopy.source}</p></div>
+          <button type="button" onClick={handleOpenAddExpense} className="flex items-center justify-center gap-2 rounded-lg bg-brand-400 px-3 py-2 text-xs font-semibold text-[#234123]"><Plus className="h-4 w-4" />{homeCopy.record}</button>
+        </div>
+      </div>
+    </section>;
   };
 
   const renderPrimaryFinanceInsight = () =>
     isFinanceInsightDismissed ? null : (
       <section
-        className="relative overflow-hidden rounded-[24px] bg-indigo-50 p-5 ring-1 ring-inset ring-indigo-200/65 dark:bg-indigo-400/[0.08] dark:ring-indigo-300/15 sm:p-6"
+        className="relative overflow-hidden rounded-xl bg-brand-50 p-5 ring-1 ring-inset ring-brand-200/65 dark:bg-brand-400/[0.08] dark:ring-brand-300/15 sm:p-6"
         aria-labelledby="home-copilot-title"
       >
         <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white">
             <Sparkles className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-700 dark:text-indigo-300">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
                   Arkaiv Copilot · insight utama
                 </div>
                 <h2 id="home-copilot-title" className="mt-1 text-lg font-semibold tracking-tight">
@@ -2475,7 +2030,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab("money")}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-surface px-3.5 py-2 text-xs font-semibold text-indigo-700 shadow-sm ring-1 ring-inset ring-indigo-200 transition-colors hover:bg-white dark:text-indigo-300 dark:ring-indigo-300/20 dark:hover:bg-white/[0.06]"
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-surface px-3.5 py-2 text-xs font-semibold text-brand-700 shadow-sm ring-1 ring-inset ring-brand-200 transition-colors hover:bg-white dark:text-brand-300 dark:ring-brand-300/20 dark:hover:bg-white/[0.06]"
               >
                 {visiblePrimaryFinanceInsight.action}
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -2515,7 +2070,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   setPlanSubTab("loans");
                   setActiveTab("plan");
                 }}
-                className="flex w-full items-center gap-3 rounded-2xl bg-surface-soft p-3 text-left transition-colors hover:bg-border/55"
+                className="flex w-full items-center gap-3 rounded-lg bg-surface-soft p-3 text-left transition-colors hover:bg-border/55"
               >
                 <span
                   data-finance-status={account.status === "overdue" ? "warning" : "info"}
@@ -2547,7 +2102,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => setActiveTab("money")}
-                className="flex w-full items-center gap-3 rounded-2xl bg-surface-soft p-3 text-left transition-colors hover:bg-border/55"
+                className="flex w-full items-center gap-3 rounded-lg bg-surface-soft p-3 text-left transition-colors hover:bg-border/55"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface text-amber-700 dark:text-amber-300">
                   <ReceiptText className="h-4 w-4" />
@@ -2565,8 +2120,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             {upcomingLoanAccounts.length === 0 &&
               plannedTransactions.length === 0 &&
               nextUpItems.slice(0, 3).map((item) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-surface-soft p-3">
-                  <span className="w-12 shrink-0 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                <div key={item.id} className="flex items-center gap-3 rounded-lg bg-surface-soft p-3">
+                  <span className="w-12 shrink-0 text-xs font-semibold text-brand-600 dark:text-brand-300">
                     {item.time}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.label}</span>
@@ -2593,7 +2148,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab("money")}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/10 dark:text-indigo-300"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-500/10 dark:text-brand-300"
         >
           Lihat semua
           <ArrowRight className="h-3.5 w-3.5" />
@@ -2718,7 +2273,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           {missionTitle}
         </h1>
 
-        <div className="mt-6 text-sm font-bold uppercase tracking-[0.14em] text-indigo-600 dark:text-indigo-300">
+        <div className="mt-6 text-sm font-bold uppercase tracking-[0.14em] text-brand-600 dark:text-brand-300">
           Fokus bulan ini
         </div>
         <p
@@ -2727,7 +2282,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           {missionSubtitle}
         </p>
 
-        <div className="mt-7 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-indigo-600/80 opacity-100 transition-opacity dark:text-indigo-300/80 xl:opacity-0 xl:group-hover:opacity-100">
+        <div className="mt-7 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-brand-600/80 opacity-100 transition-opacity dark:text-brand-300/80 xl:opacity-0 xl:group-hover:opacity-100">
           <Pencil className="h-3.5 w-3.5" />
           Tambah tema
         </div>
@@ -2743,7 +2298,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       onTouchMove={dateSwipeHandlers.onTouchMove}
       onTouchEnd={dateSwipeHandlers.onTouchEnd}
     >
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
         <CalendarDays className="h-7 w-7" />
       </div>
 
@@ -2829,7 +2384,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 exit="exit"
                 transition={{ layout: motionSpring.layout }}
                 onClick={() => handleToggleStatus(item.id)}
-                className="group flex w-full items-center gap-4 rounded-2xl py-1 text-left active:scale-[0.99]"
+                className="group flex w-full items-center gap-4 rounded-lg py-1 text-left active:scale-[0.99]"
                 aria-label={`${item.done ? "Tandai belum selesai" : "Tandai selesai"}: ${item.label}`}
                 aria-pressed={item.done}
               >
@@ -2882,20 +2437,20 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
   const renderGoalsCard = () => {
     const goalToggleClass = (active: boolean) =>
-      `rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${
+      `rounded-lg px-3 py-1.5 text-xs font-medium leading-5 whitespace-nowrap transition-colors ${
         active
-          ? "bg-indigo-600 text-white shadow-sm dark:bg-indigo-300 dark:text-[#101713]"
-          : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-400/10 dark:text-indigo-300 dark:hover:bg-indigo-400/15"
+          ? "bg-brand-600 text-white shadow-sm dark:bg-brand-300 dark:text-[#101713]"
+          : "bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-400/10 dark:text-brand-300 dark:hover:bg-brand-400/15"
       }`;
 
     return (
       <section
         className={`${dashboardCardClass} flex max-h-[21rem] flex-col p-5 xl:p-6`}
       >
-        <div className="mb-5 flex shrink-0 items-center justify-between gap-3">
+        <div className="mb-5 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3" data-goal-progress-header="true">
           <h2 className={dashboardSectionTitle}>Progres tujuan</h2>
-          <div className="flex shrink-0 items-center gap-2">
-            <div className="flex flex-wrap justify-end gap-2">
+          <div className="contents">
+            <div className="col-span-2 row-start-2 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() =>
@@ -2923,7 +2478,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 Keterampilan
               </button>
             </div>
-            <div className={dashboardIconClass}>
+            <div className={`${dashboardIconClass} col-start-2 row-start-1`}>
               <BarChart3 className="h-5 w-5" />
             </div>
           </div>
@@ -2938,7 +2493,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 key={goal.id}
                 className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-300">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-400/10 dark:text-brand-300">
                   {goal.kind === "investment" ? (
                     <BarChart3 className="h-4 w-4" />
                   ) : goal.kind === "skill" ? (
@@ -2958,7 +2513,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
                       <AnimatedProgress
                         value={goal.progress}
-                        className="rounded-full bg-indigo-600 dark:bg-indigo-400"
+                        className="rounded-full bg-brand-600 dark:bg-brand-400"
                         label={`Progres ${goal.label}`}
                       />
                     </div>
@@ -3020,7 +2575,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       {routineDashboardItems.length > 0 ? (
         <>
           <div className="mb-4 flex shrink-0 items-end gap-2">
-            <span className="text-4xl font-black text-indigo-700 dark:text-indigo-300">
+            <span className="text-4xl font-black text-brand-700 dark:text-brand-300">
               {routineDoneCount}
             </span>
             <span className="pb-1 text-2xl font-bold text-slate-500 dark:text-zinc-400">
@@ -3167,7 +2722,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       className={`${dashboardCardClass} flex items-center justify-between gap-6 p-5 xl:p-6`}
     >
       <div className="flex items-center gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300">
           <Trophy className="h-7 w-7" />
         </div>
         <div>
@@ -3187,10 +2742,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     </section>
   );
 
-  const renderDesktopDashboard = () => (
+  const renderDashboard = () => (
     <motion.div
       data-swipe-tabs="summary"
-      className="hidden w-full min-w-0 max-w-full overflow-x-hidden lg:block lg:mt-6"
+      className="mt-4 w-full min-w-0 max-w-full overflow-x-hidden"
       onTouchStart={swipeHandlers.onTouchStart}
       onTouchMove={swipeHandlers.onTouchMove}
       onTouchEnd={swipeHandlers.onTouchEnd}
@@ -3200,21 +2755,21 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       <div className={dashboardShellClass}>
         {renderFinanceCommandHero()}
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(19rem,0.75fr)] xl:items-start">
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
           <div className="min-w-0 space-y-4">
             {renderPrimaryFinanceInsight()}
-            <div className="grid gap-4 2xl:grid-cols-2">
+            <div className="grid gap-4">
               {renderRecentTransactions()}
               {renderTasksCard()}
             </div>
           </div>
-          <aside className="space-y-4 xl:sticky xl:top-6" aria-label="Konteks keuangan dan tujuan">
+          <aside className="space-y-4 xl:sticky xl:top-24" aria-label="Konteks keuangan dan tujuan">
             {renderUpcomingFinance()}
             {renderGoalsCard()}
           </aside>
         </div>
 
-        <details className="group mt-4 rounded-[24px] bg-surface/70 ring-1 ring-inset ring-border/65">
+        <details className="group mt-4 rounded-xl bg-surface/70 ring-1 ring-inset ring-border/65">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 text-sm font-semibold marker:content-none">
             <span>
               Ruang personal
@@ -3236,40 +2791,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     </motion.div>
   );
 
-  const renderMobileDashboard = () => (
-    <motion.div
-      data-swipe-tabs="summary"
-      className="mt-3 w-full min-w-0 max-w-full space-y-4 overflow-x-hidden lg:hidden"
-      onTouchStart={swipeHandlers.onTouchStart}
-      onTouchMove={swipeHandlers.onTouchMove}
-      onTouchEnd={swipeHandlers.onTouchEnd}
-      style={{ x: swipeHandlers.dragOffset }}
-      initial={false}
-    >
-      {renderFinanceCommandHero()}
-      {renderPrimaryFinanceInsight()}
-      {renderUpcomingFinance()}
-      {renderGoalsCard()}
-      {renderTasksCard()}
-      {renderRecentTransactions()}
-
-      <details className="group rounded-[24px] bg-surface/70 ring-1 ring-inset ring-border/65">
-        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-sm font-semibold marker:content-none">
-          <span>Ruang personal</span>
-          <ChevronDown className="h-4 w-4 text-muted transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="space-y-4 border-t border-border/65 p-3">
-          {renderHeroCard(true)}
-          {renderRoutineCard()}
-          {renderWeeklyWinCard()}
-        </div>
-      </details>
-    </motion.div>
-  );
-
   return (
     <div className={contentSurface.summaryPageShell}>
-      {isDesktopDashboard ? renderDesktopDashboard() : renderMobileDashboard()}
+      {renderDashboard()}
       {renderDashboardOverlays()}
     </div>
   );

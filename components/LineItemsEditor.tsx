@@ -9,6 +9,7 @@ import {
   createTransactionLineItemId,
   sumTransactionLineItems,
 } from '../utils/transactionLineItems';
+import { formatCurrencyAmount } from '../utils/formatters';
 
 interface BaseProps {
   budgetRules?: { id: string; name: string }[];
@@ -39,18 +40,6 @@ const parseNumericQuantity = (value?: string): number | undefined => {
   if (!value) return undefined;
   const parsed = Number(value.replace(',', '.').replace(/[^\d.-]/g, ''));
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-};
-
-const formatMoney = (amount: number, currency = 'IDR') => {
-  try {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: currency === 'IDR' ? 0 : 2,
-    }).format(amount || 0);
-  } catch {
-    return `${currency} ${(amount || 0).toLocaleString('id-ID')}`;
-  }
 };
 
 const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
@@ -106,7 +95,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
   };
 
   return (
-    <section className={`rounded-2xl border border-border bg-background/50 p-3 space-y-3 ${props.className || ''}`}>
+    <section className={`rounded-lg border border-border bg-background/50 p-3 space-y-3 ${props.className || ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[10px] uppercase text-muted font-bold tracking-wider">
@@ -117,11 +106,11 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="text-xs font-bold text-primary">{formatMoney(total, currency)}</div>
+          <div className="text-xs font-bold text-primary">{formatCurrencyAmount(total, currency)}</div>
           <button
             type="button"
             onClick={addItem}
-            className="mt-1 inline-flex items-center gap-1 rounded-xl bg-indigo-500/10 px-2.5 py-1.5 text-[10px] font-bold text-indigo-500 hover:bg-indigo-500/20"
+            className="mt-1 inline-flex items-center gap-1 rounded-xl bg-brand-500/10 px-2.5 py-1.5 text-[10px] font-bold text-brand-500 hover:bg-brand-500/20"
           >
             <Plus className="h-3 w-3" /> Tambah item
           </button>
@@ -132,7 +121,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
         <button
           type="button"
           onClick={addItem}
-          className="w-full rounded-xl border border-dashed border-border py-4 text-xs font-medium text-muted hover:border-indigo-500/40 hover:text-indigo-500"
+          className="w-full rounded-xl border border-dashed border-border py-4 text-xs font-medium text-muted hover:border-brand-500/40 hover:text-brand-500"
         >
           Tambahkan rincian item
         </button>
@@ -145,11 +134,11 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
               : undefined;
             const isAdjustment = props.variant === 'transaction' && line.kind && line.kind !== 'item';
             return (
-              <div key={line.id} className="rounded-2xl border border-border bg-surface/70 p-2.5 space-y-2">
+              <div key={line.id} className="rounded-lg border border-border bg-surface/70 p-2.5 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-5 shrink-0 text-[10px] font-bold text-muted">{index + 1}.</span>
                   <input
-                    className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                    className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
                     value={line.name}
                     onChange={(event) => props.variant === 'shopping'
                       ? updateShopping(line.id, { name: event.target.value })
@@ -171,7 +160,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                   <div>
                     <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-muted">Jumlah</label>
                     <input
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
                       value={line.quantity || ''}
                       onChange={(event) => props.variant === 'shopping'
                         ? updateShopping(line.id, { quantity: event.target.value })
@@ -183,7 +172,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                     <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-muted">Total item</label>
                     <input
                       type="number"
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
                       value={line.amount ?? ''}
                       onChange={(event) => {
                         const amount = event.target.value === '' ? undefined : Number(event.target.value);
@@ -194,7 +183,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                     />
                     {derivedUnitPrice !== undefined && (
                       <div className="mt-1 truncate text-[9px] text-muted">
-                        ≈ {formatMoney(derivedUnitPrice, currency)} / unit
+                        ≈ {formatCurrencyAmount(derivedUnitPrice, currency)} / unit
                       </div>
                     )}
                   </div>
@@ -204,7 +193,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                       <div>
                         <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-muted">Jenis</label>
                         <select
-                          className="w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                          className="w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
                           value={line.kind || 'item'}
                           onChange={(event) => {
                             const kind = event.target.value as TransactionLineItem['kind'];
@@ -226,7 +215,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                           {isAdjustment ? 'Alokasi budget' : 'Kategori budget'}
                         </label>
                         <select
-                          className="w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-primary focus:border-indigo-500 focus:outline-none"
+                          className="w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
                           value={line.allocationMode === 'proportional'
                             ? '__proportional__'
                             : line.allocationMode === 'uncategorized'

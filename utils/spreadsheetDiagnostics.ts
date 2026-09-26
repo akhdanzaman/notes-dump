@@ -4,6 +4,7 @@ import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
 import { findSemanticDuplicateReviewCandidates } from './itemDedupe';
 import { inspectStructuredFinanceField, normalizeReferenceKey, referenceMatch, StructuredFinanceField } from './structuredFieldValidation';
 import { getTransactionBudgetAllocations } from './transactionLineItems';
+import { formatCurrencyAmount } from './formatters';
 
 export type DataQualitySeverity = 'critical' | 'warning' | 'info';
 
@@ -36,11 +37,7 @@ export interface SpreadsheetHealthSummary {
   itemCountLine: string;
 }
 
-const fmtCurrency = (value: number) => new Intl.NumberFormat('id-ID', {
-  style: 'currency',
-  currency: 'IDR',
-  maximumFractionDigits: 0,
-}).format(value || 0);
+const fmtCurrency = (value: number) => formatCurrencyAmount(value);
 
 const startOfDay = (date: Date) => {
   const d = new Date(date);

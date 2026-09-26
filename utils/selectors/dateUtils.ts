@@ -1,3 +1,12 @@
+// Date-only input is a civil date, not UTC midnight. Timestamps follow the
+// device's local calendar, just like the app's calendar view.
+export const getLocalDateKey = (value: string | Date = new Date()): string => {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const parsed = value instanceof Date ? value : new Date(value);
+    const date = Number.isFinite(parsed.getTime()) ? parsed : new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 export const getLocalISOString = (date: Date = new Date()): string => {
     const tzo = -date.getTimezoneOffset(),
         dif = tzo >= 0 ? '+' : '-',

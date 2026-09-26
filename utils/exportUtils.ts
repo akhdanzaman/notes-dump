@@ -14,6 +14,7 @@ import {
   buildDataQualitySheetData,
   buildSpreadsheetHealthSummary,
 } from './spreadsheetDiagnostics';
+import { formatCurrencyAmount } from './formatters';
 
 export interface SheetData {
   name: string;
@@ -85,11 +86,7 @@ const isSavingOrInvestmentItem = (item: BrainDumpItem) =>
   item.type === ItemType.SHOPPING
   && (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment');
 
-const fmtCurrency = (value: number) => new Intl.NumberFormat('id-ID', {
-  style: 'currency',
-  currency: 'IDR',
-  maximumFractionDigits: 0,
-}).format(value || 0);
+const fmtCurrency = (value: number) => formatCurrencyAmount(value);
 
 const getDaySeries = (days: number, now: Date, computeValue: (dayStart: Date, dayEnd: Date) => number) => {
   const today = startOfDay(now);

@@ -1,16 +1,11 @@
-import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage, CanonicalRule } from "../types";
+import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage, CanonicalRule, SyncProgressCallback, SyncResult } from "../types";
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, getSpreadsheetHistory, SpreadsheetHistoryEntry, getCachedSpreadsheetDb, cacheSpreadsheetDbForMigration, cachePendingSpreadsheetWrite, getPendingSpreadsheetWrite, clearPendingSpreadsheetWrite } from "./spreadsheetService";
-import { SyncProgressCallback, SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { dedupeBrainDumpItems } from "../utils/itemDedupe";
 import { sanitizeBrainDumpItemsForPersistence } from "./parserFieldValidator";
 
-export const getActiveSyncProviders = (): 'spreadsheet'[] => {
-  return getSpreadsheetConfig() ? ['spreadsheet'] : [];
-};
-
-export const mergePendingSpreadsheetWrite = (remoteData: DbSchema, pendingData: DbSchema) => {
-  const merged = mergeDbData(pendingData, remoteData);
+export const mergePendingSpreadsheetWrite = (remoteData: DbSchema, pendingData: DbSchema, baseData?: DbSchema) => {
+  const merged = mergeDbData(pendingData, remoteData, baseData);
   const hasPendingChanges = JSON.stringify(merged) !== JSON.stringify(remoteData);
   return { merged, hasPendingChanges };
 };
@@ -29,7 +24,12 @@ export const fetchDb = async (skipLocalStorage = false, onProgress?: SyncProgres
   const { data, sha, reconciled } = await fetchSpreadsheetDb(skipLocalStorage, onProgress);
 
   if (pendingWrite) {
-    const { merged, hasPendingChanges } = mergePendingSpreadsheetWrite(data, pendingWrite.data);
+    // A cache fallback is not a server acknowledgement. Keep the pending write
+    // and its baseline so offline deletions can still be replayed on reconnect.
+    if (sha === 'spreadsheet-cache-sha') {
+      return { data: pendingWrite.data, sha: `${sha}-pending-local`, hasChanges: true };
+    }
+    const { merged, hasPendingChanges } = mergePendingSpreadsheetWrite(data, pendingWrite.data, pendingWrite.base);
     if (hasPendingChanges) {
       return { data: merged, sha: `${sha}-pending-local`, hasChanges: true };
     }
@@ -77,20 +77,7 @@ export const syncData = async (
 
   const pendingWriteId = cachePendingSpreadsheetWrite(outgoingDb);
   onProgress?.({ phase: 'pending_local', label: 'Caching pending write', detail: 'Local safety copy stored before cloud sync' });
-  const result = await syncSpreadsheetData(
-    outgoingItems,
-    budgetConfig,
-    customPrompt,
-    skills,
-    wallets,
-    monthlyThemes,
-    monthlyThemeImages,
-    appSettings,
-    chatHistory,
-    canonicalRules,
-    forceOverwrite,
-    onProgress
-  );
+  const result = await syncSpreadsheetData({ db: outgoingDb, forceOverwrite, onProgress });
 
   if (result.success) {
     clearPendingSpreadsheetWrite(pendingWriteId);

@@ -260,7 +260,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
             >
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-300">
                             <CalendarIcon className="h-5 w-5" />
                         </div>
                         <div>
@@ -270,7 +270,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     </div>
                     <button
                         onClick={goToToday}
-                        className="shrink-0 whitespace-nowrap rounded-xl border border-border/70 bg-background/55 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:border-indigo-500/25"
+                        className="shrink-0 whitespace-nowrap rounded-xl border border-border/70 bg-background/55 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:border-brand-500/25"
                     >
                         {calendarCopy.today}
                     </button>
@@ -323,7 +323,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="metric-strip">
                     <div className={contentSurface.workspaceMetric}>
                         <div className="text-xs font-medium text-muted">{calendarCopy.scheduled}</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{scheduledCount}</div>
@@ -334,7 +334,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     </div>
                     <div className={contentSurface.workspaceMetric}>
                         <div className="text-xs font-medium text-muted">{calendarCopy.routine}</div>
-                        <div className="mt-1 text-lg font-semibold text-indigo-600 dark:text-indigo-300">{routineCount}</div>
+                        <div className="mt-1 text-lg font-semibold text-brand-600 dark:text-brand-300">{routineCount}</div>
                     </div>
                     <div className={contentSurface.workspaceMetric}>
                         <div className="text-xs font-medium text-muted">{calendarCopy.busiest}</div>
@@ -366,7 +366,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 initial={{ opacity: 0, x: monthDirection * 12 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: monthDirection * -12 }}
-                                className="grid grid-cols-7 auto-rows-[minmax(132px,auto)] sm:auto-rows-[minmax(148px,auto)] lg:auto-rows-[minmax(168px,auto)]"
+                                className="grid grid-cols-7 auto-rows-[minmax(104px,auto)] sm:auto-rows-[minmax(120px,auto)] lg:auto-rows-[minmax(132px,auto)]"
                             >
                             {calendarDays.map((dayObj, idx) => {
                             const isToday = dayObj.date.getDate() === today.getDate() &&
@@ -386,8 +386,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         dayObj.isCurrentMonth
                                             ? 'bg-surface/70'
                                             : 'bg-background/30 text-muted/50',
-                                        isToday ? 'bg-indigo-500/5' : '',
-                                        isSelected ? 'bg-indigo-500/[0.07] ring-2 ring-inset ring-indigo-500/35' : '',
+                                        isToday ? 'bg-brand-500/5' : '',
+                                        isSelected ? 'bg-brand-500/[0.07] ring-2 ring-inset ring-brand-500/35' : '',
                                     ].join(' ')}
                                 >
                                     <div className="flex items-center justify-between min-w-0">
@@ -398,13 +398,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                             aria-label={`${calendarCopy.selectDate} ${dayObj.date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`}
                                             className={[
                                                 'relative flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[11px] font-bold leading-none transition-colors',
-                                                isSelected ? 'text-white' : isToday ? 'bg-primary text-background' : dayObj.isCurrentMonth ? 'text-primary hover:bg-indigo-500/10' : 'text-muted/50 hover:bg-indigo-500/10',
+                                                isSelected ? 'text-white' : isToday ? 'bg-primary text-background' : dayObj.isCurrentMonth ? 'text-primary hover:bg-brand-500/10' : 'text-muted/50 hover:bg-brand-500/10',
                                             ].join(' ')}
                                         >
                                             {isSelected && (
                                                 <ActiveIndicator
                                                     layoutId="calendar-date-highlight"
-                                                    className="absolute inset-0 rounded-full bg-indigo-600 shadow-sm"
+                                                    className="absolute inset-0 rounded-full bg-brand-600 shadow-sm"
                                                 />
                                             )}
                                             <span className="relative z-10">{dayObj.date.getDate()}</span>
@@ -432,7 +432,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                                             ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-500/25'
                                                             : item.type === ItemType.SHOPPING
                                                                 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25'
-                                                                : 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/25',
+                                                                : 'bg-brand-500/15 text-brand-700 dark:text-brand-300 hover:bg-brand-500/25',
                                                 ].join(' ')}
                                                 title={`${getItemTypeLabel(item.type, isEnglish)} · ${item.content}`}
                                             >
@@ -466,14 +466,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                             </h2>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                            <span className="rounded-full bg-brand-500/10 px-2.5 py-1 text-xs font-bold text-brand-600">
                                 {selectedAgendaItems.length}
                             </span>
                             {handleOpenAddTask && (
                                 <button
                                     type="button"
                                     onClick={() => handleOpenAddTask(selectedDateKey)}
-                                    className="flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+                                    className="flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-500"
                                 >
                                     <Plus className="h-4 w-4" />
                                     <span className="hidden sm:inline">{calendarCopy.add}</span>
@@ -498,7 +498,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         type="button"
                                         variants={highlightedListItemVariants}
                                         onClick={() => setSelectedItem(item)}
-                                        className={`flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left ${contentSurface.workspaceListRow}`}
+                                        className={`flex w-full items-center justify-between gap-3 rounded-lg p-3 text-left ${contentSurface.workspaceListRow}`}
                                     >
                                         <span className="min-w-0">
                                             <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
@@ -511,14 +511,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         {item.status === 'done' ? (
                                             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
                                         ) : (
-                                            <Circle className="h-4 w-4 shrink-0 text-indigo-500" />
+                                            <Circle className="h-4 w-4 shrink-0 text-brand-500" />
                                         )}
                                     </motion.button>
                                 ))
                             ) : (
                                 <motion.div
                                     variants={highlightedListItemVariants}
-                                    className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted"
+                                    className="rounded-lg border border-dashed border-border p-4 text-sm text-muted"
                                 >
                                     {calendarCopy.noItems}
                                 </motion.div>
@@ -549,11 +549,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
 
                             <div className="space-y-4 p-4">
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="rounded-2xl border border-border p-3">
+                                    <div className="rounded-lg border border-border p-3">
                                         <div className="text-xs font-medium text-muted">{calendarCopy.type}</div>
                                         <div className="mt-1 text-sm font-semibold text-primary">{getItemTypeLabel(selectedItem.type, isEnglish)}</div>
                                     </div>
-                                    <div className="rounded-2xl border border-border p-3">
+                                    <div className="rounded-lg border border-border p-3">
                                         <div className="text-xs font-medium text-muted">{calendarCopy.status}</div>
                                         <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-primary">
                                             {selectedItem.status === 'done' ? (
@@ -567,7 +567,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 </div>
 
                                 {selectedItemDate && (
-                                    <div className="rounded-2xl border border-border p-3">
+                                    <div className="rounded-lg border border-border p-3">
                                         <div className="text-xs font-medium text-muted">{calendarCopy.schedule}</div>
                                         <div className="mt-1 text-sm text-primary">
                                             {new Date(selectedItemDate).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -581,7 +581,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 )}
 
                                 {selectedItem.meta.tags && selectedItem.meta.tags.length > 0 && (
-                                    <div className="rounded-2xl border border-border p-3">
+                                    <div className="rounded-lg border border-border p-3">
                                         <div className="text-xs font-medium text-muted">{calendarCopy.tags}</div>
                                         <div className="mt-2 flex flex-wrap gap-2">
                                             {selectedItem.meta.tags.map(tag => (

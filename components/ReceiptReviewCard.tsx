@@ -17,6 +17,7 @@ import {
 import { getReceiptAttachmentUrl } from '../services/receiptAttachmentService';
 import LineItemsEditor from './LineItemsEditor';
 import { sumTransactionLineItems } from '../utils/transactionLineItems';
+import { formatCurrencyAmount } from '../utils/formatters';
 
 interface Props {
   draft: ReceiptReviewDraft;
@@ -29,18 +30,6 @@ interface Props {
   onViewDuplicate?: (item: BrainDumpItem) => void;
   hideMoney?: boolean;
 }
-
-const formatMoney = (amount: number, currency: string) => {
-  try {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: currency === 'IDR' ? 0 : 2,
-    }).format(amount || 0);
-  } catch {
-    return `${currency} ${(amount || 0).toLocaleString('id-ID')}`;
-  }
-};
 
 const ReceiptReviewCard: React.FC<Props> = ({
   draft,
@@ -153,11 +142,11 @@ const ReceiptReviewCard: React.FC<Props> = ({
   if (hideMoney) {
     return (
       <article
-        className="rounded-[24px] bg-surface p-5 shadow-sm ring-1 ring-inset ring-border/70"
+        className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-inset ring-border/70"
         aria-label="Rincian nota disembunyikan oleh mode privasi"
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-300">
             <EyeOff className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
@@ -176,7 +165,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
   }
 
   return (
-    <article className="overflow-hidden rounded-[24px] bg-surface shadow-sm ring-1 ring-inset ring-border/70" aria-labelledby={`receipt-review-title-${draft.id}`}>
+    <article className="overflow-hidden rounded-xl bg-surface shadow-sm ring-1 ring-inset ring-border/70" aria-labelledby={`receipt-review-title-${draft.id}`}>
       <div className="space-y-5 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -185,7 +174,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
               type="button"
               onClick={() => previewUrl && setShowLargePreview(true)}
               disabled={!previewUrl}
-              className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-background ring-1 ring-inset ring-border/70 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 disabled:cursor-default"
+              className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background ring-1 ring-inset ring-border/70 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 disabled:cursor-default"
               title={previewUrl ? 'Lihat gambar nota' : previewState === 'loading' ? 'Memuat gambar nota' : 'Gambar tidak tersedia di perangkat ini'}
               aria-label={previewUrl ? 'Buka pratinjau gambar nota' : previewState === 'loading' ? 'Gambar nota sedang dimuat' : 'Gambar nota tidak tersedia'}
             >
@@ -196,7 +185,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
               )}
             </button>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-indigo-500">Perlu ditinjau</div>
+              <div className="text-xs font-semibold text-brand-500">Perlu ditinjau</div>
               <div id={`receipt-review-title-${draft.id}`} className="truncate text-sm font-semibold text-primary">{draft.imageName}</div>
               <div className="text-xs text-muted">Periksa hasil pembacaan sebelum menyimpan transaksi.</div>
             </div>
@@ -206,7 +195,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
               type="button"
               onClick={() => void approveDraft()}
               disabled={!canApprove || isSaving || isRejecting}
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-white transition-colors hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40"
               title={canApprove ? 'Simpan transaksi' : 'Lengkapi data yang diperlukan'}
               aria-label={isSaving ? 'Transaksi sedang disimpan' : canApprove ? 'Simpan transaksi dari nota' : 'Lengkapi data sebelum menyimpan transaksi'}
             >
@@ -226,14 +215,14 @@ const ReceiptReviewCard: React.FC<Props> = ({
         </div>
 
         {actionError && (
-          <div className="flex items-start gap-2 rounded-2xl bg-red-500/10 p-3 text-xs font-medium leading-relaxed text-red-600 ring-1 ring-inset ring-red-500/20" role="alert">
+          <div className="flex items-start gap-2 rounded-lg bg-red-500/10 p-3 text-xs font-medium leading-relaxed text-red-600 ring-1 ring-inset ring-red-500/20" role="alert">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{actionError} Data Anda belum diubah; silakan coba lagi.</span>
           </div>
         )}
 
         {(draft.warnings.length > 0 || missingCategoryCount > 0) && (
-          <div className="rounded-2xl bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-700 ring-1 ring-inset ring-amber-500/20 dark:text-amber-400">
+          <div className="rounded-lg bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-700 ring-1 ring-inset ring-amber-500/20 dark:text-amber-400">
             <div className="flex items-start gap-2">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="space-y-1">
@@ -245,12 +234,12 @@ const ReceiptReviewCard: React.FC<Props> = ({
         )}
 
         {duplicateItem && (
-          <div className="rounded-2xl bg-red-500/10 p-3 text-xs leading-relaxed text-red-600 ring-1 ring-inset ring-red-500/20">
+          <div className="rounded-lg bg-red-500/10 p-3 text-xs leading-relaxed text-red-600 ring-1 ring-inset ring-red-500/20">
             <div className="flex items-start gap-2">
               <Copy className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="font-bold">Transaksi serupa sudah ada</div>
-                <div className="truncate text-red-500/80">{duplicateItem.content} · {formatMoney(duplicateItem.meta.amount || 0, 'IDR')}</div>
+                <div className="truncate text-red-500/80">{duplicateItem.content} · {formatCurrencyAmount(duplicateItem.meta.amount || 0)}</div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   {onViewDuplicate && (
                     <button type="button" onClick={() => onViewDuplicate(duplicateItem)} className="min-h-11 rounded-xl px-3 py-2 font-semibold ring-1 ring-inset ring-red-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50">
@@ -262,7 +251,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
                       type="checkbox"
                       checked={!!draft.allowDuplicate}
                       onChange={(event) => onChange({ ...draft, allowDuplicate: event.target.checked })}
-                      className="h-5 w-5 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                      className="h-5 w-5 rounded border-border text-brand-600 focus:ring-brand-500"
                     />
                     Tetap simpan sebagai transaksi baru
                   </label>
@@ -279,7 +268,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
               id={`receipt-merchant-${draft.id}`}
               value={draft.merchant || ''}
               onChange={(event) => onChange({ ...draft, merchant: event.target.value })}
-              className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+              className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
               placeholder="Nama merchant"
             />
           </div>
@@ -290,7 +279,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
               type="date"
               value={draft.date}
               onChange={(event) => onChange({ ...draft, date: event.target.value })}
-              className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+              className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
             />
           </div>
           <div>
@@ -299,7 +288,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
               id={`receipt-wallet-${draft.id}`}
               value={draft.walletId || ''}
               onChange={(event) => onChange({ ...draft, walletId: event.target.value || undefined })}
-              className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+              className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
             >
               <option value="">Pilih wallet</option>
               {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
@@ -312,7 +301,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
                 id={`receipt-category-${draft.id}`}
                 value={draft.defaultBudgetCategory || ''}
                 onChange={(event) => onChange({ ...draft, defaultBudgetCategory: event.target.value || undefined })}
-                className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-sm text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                className="min-h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3.5 py-2.5 text-sm text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
               >
                 <option value="">Tanpa kategori default</option>
                 {budgetRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}
@@ -333,11 +322,11 @@ const ReceiptReviewCard: React.FC<Props> = ({
           helpText="Perbaiki nama, jumlah, total item, dan alokasi budget sebelum menyimpan."
         />
 
-        <div className="rounded-2xl bg-background/60 p-4 ring-1 ring-inset ring-border/60">
+        <div className="rounded-lg bg-background/60 p-4 ring-1 ring-inset ring-border/60">
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <div className="text-xs font-medium text-muted">Total pada nota</div>
-              <div className="mt-1 text-base font-semibold tabular-nums tracking-tight text-primary">{formatMoney(originalTotal, normalizedCurrency)}</div>
+              <div className="mt-1 text-base font-semibold tabular-nums tracking-tight text-primary">{formatCurrencyAmount(originalTotal, normalizedCurrency)}</div>
             </div>
             {normalizedCurrency !== 'IDR' && (
               <div>
@@ -350,14 +339,14 @@ const ReceiptReviewCard: React.FC<Props> = ({
                   step="any"
                   value={draft.exchangeRateToIdr || ''}
                   onChange={(event) => onChange({ ...draft, exchangeRateToIdr: Number(event.target.value) || undefined })}
-                  className="mt-1 min-h-11 w-full rounded-xl border border-border/80 bg-surface px-3 py-2 text-sm tabular-nums text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-border/80 bg-surface px-3 py-2 text-sm tabular-nums text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                   placeholder="Contoh: 16250"
                 />
               </div>
             )}
             <div>
               <div className="text-xs font-medium text-muted">Nilai yang masuk budget</div>
-              <div className="mt-1 text-base font-semibold tabular-nums tracking-tight text-indigo-500">{formatMoney(idrTotal, 'IDR')}</div>
+              <div className="mt-1 text-base font-semibold tabular-nums tracking-tight text-brand-500">{formatCurrencyAmount(idrTotal)}</div>
             </div>
           </div>
           {normalizedCurrency !== 'IDR' && !draft.exchangeRateToIdr && (
@@ -369,10 +358,10 @@ const ReceiptReviewCard: React.FC<Props> = ({
           type="button"
           onClick={() => void approveDraft()}
           disabled={!canApprove || isSaving || isRejecting}
-          className="min-h-12 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-500/15 transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-12 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-500/15 transition-colors hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40"
           aria-busy={isSaving || undefined}
         >
-          {isSaving ? 'Menyimpan transaksi…' : `Simpan transaksi · ${formatMoney(idrTotal, 'IDR')}`}
+          {isSaving ? 'Menyimpan transaksi…' : `Simpan transaksi · ${formatCurrencyAmount(idrTotal)}`}
         </button>
         <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
           {isSaving ? 'Transaksi sedang disimpan.' : isRejecting ? 'Hasil scan sedang dibatalkan.' : ''}
@@ -394,7 +383,7 @@ const ReceiptReviewCard: React.FC<Props> = ({
           aria-label={`Pratinjau nota ${draft.imageName}`}
         >
           <div className="relative max-h-full max-w-4xl" onClick={(event) => event.stopPropagation()}>
-            <img src={previewUrl} alt="Gambar nota" className="max-h-[88vh] max-w-full rounded-2xl object-contain" />
+            <img src={previewUrl} alt="Gambar nota" className="max-h-[88vh] max-w-full rounded-lg object-contain" />
             <button
               ref={previewCloseRef}
               type="button"

@@ -4,6 +4,29 @@ import assert from 'node:assert/strict';
 import { mergeDbData } from '../mergeUtils';
 import { DbSchema, ItemType } from '../../types';
 
+test('remote-only content and metadata edits survive saving unchanged local data', () => {
+  const item = { id: 'remote-edit', type: ItemType.NOTE, content: 'original', status: 'pending' as const, created_at: '2026-09-01T00:00:00Z', meta: { tags: ['old'] } };
+  const remoteItem = { ...item, content: 'edited in sheet', meta: { tags: ['new'], title: 'Updated title' } };
+  assert.deepEqual(mergeDbData({ data: [item] }, { data: [remoteItem] }, { data: [item] }).data, [remoteItem]);
+});
+
+test('budget merge preserves deletions in either direction and independent additions', () => {
+  const oldRule = { id: 'old', name: 'Old', percentage: 100, color: 'green' };
+  const newRule = { ...oldRule, id: 'new', name: 'New' };
+  const db = (rules: typeof oldRule[]): DbSchema => ({ data: [], budgetConfig: { monthlyIncome: 100, rules } });
+  assert.deepEqual(mergeDbData(db([]), db([oldRule, newRule]), db([oldRule])).budgetConfig?.rules, [newRule]);
+  assert.deepEqual(mergeDbData(db([oldRule, newRule]), db([]), db([oldRule])).budgetConfig?.rules, [newRule]);
+  assert.deepEqual(mergeDbData({ data: [] }, db([oldRule]), db([oldRule])).budgetConfig?.rules, [oldRule]);
+});
+
+test('budget rules merge independent field edits and accept remote-only changes', () => {
+  const rule = { id: 'category', name: 'Food', percentage: 50, color: 'green' };
+  const db = (value: typeof rule): DbSchema => ({ data: [], budgetConfig: { monthlyIncome: 100, rules: [value] } });
+  const remote = { ...rule, name: 'Groceries' };
+  assert.deepEqual(mergeDbData(db(rule), db(remote), db(rule)).budgetConfig?.rules, [remote]);
+  assert.deepEqual(mergeDbData(db({ ...rule, percentage: 60 }), db(remote), db(rule)).budgetConfig?.rules, [{ ...remote, percentage: 60 }]);
+});
+
 test('mergeDbData preserves canonical rules from local and remote snapshots', () => {
   const local: DbSchema = {
     data: [],
@@ -210,4 +233,3 @@ test('mergeDbData keeps skill metadata during concurrent skill edits', () => {
   assert.equal(skill?.weeklyTargetMinutes, 180);
   assert.deepEqual(skill?.schedule?.daysOfWeek, [2]);
 });
-

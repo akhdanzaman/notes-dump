@@ -1,6 +1,5 @@
-import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule, ItemType } from "../types";
+import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule, ItemType, SyncProgressCallback, SyncResult } from "../types";
 import { CHANGELOG_ENTRIES } from "../utils/changelog";
-import { SyncProgressCallback, SyncResult } from "./syncTypes";
 import { mergeDbData } from "../utils/mergeUtils";
 import { DASHBOARD_HELPER_END_COLUMN_INDEX, DASHBOARD_HELPER_START_COLUMN_INDEX, DASHBOARD_SHEET_NAME, DATA_QUALITY_SHEET_NAME, SAVING_GOALS_INVESTMENTS_SHEET_NAME, generateExportData, SheetData } from "../utils/exportUtils";
 import { reconcileSpreadsheetData } from "./spreadsheetReconciler";
@@ -52,6 +51,7 @@ type PendingSpreadsheetWrite = {
   id: string;
   createdAt: string;
   data: DbSchema;
+  base?: DbSchema;
 };
 
 type SystemSheetSnapshotMeta = {
@@ -281,22 +281,13 @@ let isHydrated = false;
 let lastSnapshot: string | null = null;
 let needsInitialSpreadsheetWrite = false;
 let operationQueue: Promise<any> = Promise.resolve();
-type SpreadsheetSyncArgs = [
-  BrainDumpItem[],
-  BudgetConfig | undefined,
-  string | undefined,
-  Skill[] | undefined,
-  Wallet[] | undefined,
-  Record<string, string> | undefined,
-  Record<string, string> | undefined,
-  AppSettings | undefined,
-  ChatMessage[] | undefined,
-  CanonicalRule[] | undefined,
-  boolean | undefined,
-  SyncProgressCallback | undefined,
-];
+type SpreadsheetSyncRequest = {
+  db: DbSchema;
+  forceOverwrite?: boolean;
+  onProgress?: SyncProgressCallback;
+};
 type PendingDebouncedSync = {
-  args: SpreadsheetSyncArgs;
+  request: SpreadsheetSyncRequest;
   resolvers: Array<{
     resolve: (value: SyncResult) => void;
     reject: (reason?: unknown) => void;
@@ -1873,10 +1864,6 @@ export const normalizeSpreadsheetConfig = (config: SpreadsheetConfig | null | un
   };
 };
 
-export const isServiceAccountSpreadsheetConfig = (config: SpreadsheetConfig | null | undefined) => (
-  normalizeSpreadsheetConfig(config)?.authMode === 'service_account'
-);
-
 export const getSpreadsheetConfig = (): SpreadsheetConfig | null => {
   const raw = safeLocalStorageGet(SETTINGS_KEY);
   const parsed = safeJsonParse<SpreadsheetConfig | null>(raw, null);
@@ -1969,10 +1956,17 @@ export const cacheSpreadsheetDbForMigration = (db: DbSchema) => {
 };
 
 export const cachePendingSpreadsheetWrite = (db: DbSchema): string => {
+  const previous = getPendingSpreadsheetWrite();
+  // Keep the original baseline across retries/reloads. Legacy pending writes have
+  // no baseline, so do not infer deletions from their already-edited cache.
+  const base = previous ? previous.base : (lastSnapshot
+    ? validateSchema(safeJsonParse(lastSnapshot, { data: [] }))
+    : getCachedSpreadsheetDb() || undefined);
   const pending: PendingSpreadsheetWrite = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     createdAt: new Date().toISOString(),
     data: validateSchema(db),
+    base,
   };
   writeSpreadsheetCache(JSON.stringify(pending.data));
   safeLocalStorageSet(PENDING_SPREADSHEET_WRITE_KEY, JSON.stringify(pending));
@@ -1989,6 +1983,7 @@ export const getPendingSpreadsheetWrite = (): PendingSpreadsheetWrite | null => 
       id: parsed.id,
       createdAt: parsed.createdAt || new Date(0).toISOString(),
       data: validateSchema(parsed.data),
+      base: parsed.base ? validateSchema(parsed.base) : undefined,
     };
   } catch (error) {
     console.warn('Failed to read pending spreadsheet write cache', error);
@@ -3297,24 +3292,8 @@ const writeIncrementalUserSheetPlan = async (
 };
 
 // Save only changed user sheets/ranges after the first full setup write.
-const performSync = async (
-  items: BrainDumpItem[], 
-  budgetConfig?: BudgetConfig, 
-  customPrompt?: string, 
-  skills?: Skill[], 
-  wallets?: Wallet[],
-  monthlyThemes?: Record<string, string>,
-  monthlyThemeImages?: Record<string, string>,
-  appSettings?: AppSettings,
-  chatHistory?: ChatMessage[],
-  canonicalRules?: CanonicalRule[],
-  forceOverwrite = false,
-  onProgress?: SyncProgressCallback
-): Promise<SyncResult> => {
-  const updatedDb: DbSchema = { 
-    data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory,
-    canonicalRules: canonicalRules || []
-  };
+const performSync = async ({ db, forceOverwrite = false, onProgress }: SpreadsheetSyncRequest): Promise<SyncResult> => {
+  const updatedDb: DbSchema = { ...db, canonicalRules: db.canonicalRules || [] };
 
   writeSpreadsheetCache(JSON.stringify(updatedDb));
 
@@ -3327,7 +3306,8 @@ const performSync = async (
   try {
     const localDbForPlan = validateSchema(updatedDb);
     let dbToWrite = localDbForPlan;
-    const baseSnapshot = lastSnapshot ? validateSchema(safeJsonParse(lastSnapshot, { data: [] })) : undefined;
+    const baseSnapshot = getPendingSpreadsheetWrite()?.base
+      || (lastSnapshot ? validateSchema(safeJsonParse(lastSnapshot, { data: [] })) : undefined);
     let currentSheetDbForPlan: DbSchema | undefined;
     let physicalSheetDataForPlan: SheetData[] = [];
     let physicalDriftSheetNames = new Set<string>();
@@ -3504,8 +3484,8 @@ const chunkArray = <T>(arr: T[], size: number): T[][] => {
   }
   return chunks;
 };
-const enqueueSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<SyncResult> => {
-  const task = () => performSync(...args);
+const enqueueSpreadsheetSync = (request: SpreadsheetSyncRequest): Promise<SyncResult> => {
+  const task = () => performSync(request);
   const queuedTask = operationQueue.then(() => task(), () => task());
   operationQueue = queuedTask;
   return queuedTask;
@@ -3523,19 +3503,19 @@ const cancelPendingDebouncedSync = (result: SyncResult) => {
   pending.resolvers.forEach(({ resolve }) => resolve(result));
 };
 
-const scheduleDebouncedSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<SyncResult> => {
+const scheduleDebouncedSpreadsheetSync = (request: SpreadsheetSyncRequest): Promise<SyncResult> => {
   return new Promise<SyncResult>((resolve, reject) => {
     if (pendingDebouncedSync) {
-      // Replace args and reject the previous caller — only the latest
+      // Replace the request and reject the previous caller — only the latest
       // caller gets the result, preventing stale mergedData in old callers.
-      pendingDebouncedSync.args = args;
+      pendingDebouncedSync.request = request;
       pendingDebouncedSync.resolvers.forEach(({ reject: oldReject }) => {
         oldReject(new Error('Superseded by more recent save'));
       });
       pendingDebouncedSync.resolvers = [{ resolve, reject }];
     } else {
       pendingDebouncedSync = {
-        args,
+        request,
         resolvers: [{ resolve, reject }],
       };
     }
@@ -3549,7 +3529,7 @@ const scheduleDebouncedSpreadsheetSync = (args: SpreadsheetSyncArgs): Promise<Sy
 
       if (!pending) return;
 
-      enqueueSpreadsheetSync(pending.args)
+      enqueueSpreadsheetSync(pending.request)
         .then(result => pending.resolvers.forEach(({ resolve }) => resolve(result)))
         .catch(error => pending.resolvers.forEach(({ reject }) => reject(error)));
     }, SPREADSHEET_SYNC_DEBOUNCE_MS);
@@ -3567,7 +3547,7 @@ export const flushPendingSpreadsheetSync = async (): Promise<SyncResult | null> 
   }
 
   try {
-    const result = await enqueueSpreadsheetSync(pending.args);
+    const result = await enqueueSpreadsheetSync(pending.request);
     pending.resolvers.forEach(({ resolve }) => resolve(result));
     return result;
   } catch (error) {
@@ -3576,29 +3556,14 @@ export const flushPendingSpreadsheetSync = async (): Promise<SyncResult | null> 
   }
 };
 
-export const syncSpreadsheetData = (
-  items: BrainDumpItem[], 
-  budgetConfig?: BudgetConfig, 
-  customPrompt?: string, 
-  skills?: Skill[], 
-  wallets?: Wallet[],
-  monthlyThemes?: Record<string, string>,
-  monthlyThemeImages?: Record<string, string>,
-  appSettings?: AppSettings,
-  chatHistory?: ChatMessage[],
-  canonicalRules?: CanonicalRule[],
-  forceOverwrite = false,
-  onProgress?: SyncProgressCallback
-): Promise<SyncResult> => {
-  const args: SpreadsheetSyncArgs = [items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory, canonicalRules, forceOverwrite, onProgress];
-
-  if (forceOverwrite) {
+export const syncSpreadsheetData = (request: SpreadsheetSyncRequest): Promise<SyncResult> => {
+  if (request.forceOverwrite) {
     cancelPendingDebouncedSync({ success: true, method: 'skipped_no_changes' });
-    return enqueueSpreadsheetSync(args);
+    return enqueueSpreadsheetSync(request);
   }
 
-  onProgress?.({ phase: 'queue', label: 'Waiting for save debounce', detail: `${SPREADSHEET_SYNC_DEBOUNCE_MS}ms batching window` });
-  return scheduleDebouncedSpreadsheetSync(args);
+  request.onProgress?.({ phase: 'queue', label: 'Waiting for save debounce', detail: `${SPREADSHEET_SYNC_DEBOUNCE_MS}ms batching window` });
+  return scheduleDebouncedSpreadsheetSync(request);
 };
 
 export interface SpreadsheetHistoryEntry {

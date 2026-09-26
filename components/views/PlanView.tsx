@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon, HandCoins, ArrowDownLeft, ArrowUpRight, Clock3, CheckCircle } from 'lucide-react';
-import { BrainDumpItem, PlanSubTab, Skill, AppSettings, FinanceType, Wallet, BudgetRule, Tab, Priority, ShoppingCategory, InvestmentAssetType, ShoppingLineItem, TransactionLineItem, ReceiptCaptureMeta, ItemType } from '../../types';
+import { BrainDumpItem, PlanSubTab, Skill, AppSettings, Wallet, BudgetRule, Tab, ShoppingCategory, InvestmentAssetType, ItemType, ItemUpdateHandler } from '../../types';
 import { getFocusMonthData, getShoppingItems } from '../../utils/selectors';
 import { getDeepWorkChildren, supportsNestedTodoSubtasks } from '../../utils/deepWorkTodoModel';
 import Card from '../Card';
+import RecordRow from '../layout/RecordRow';
 import ShoppingItem from '../ShoppingItem';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import ActiveIndicator from '../../motion/ActiveIndicator';
@@ -20,6 +21,8 @@ import PresencePanel from '../../motion/PresencePanel';
 import { collapseVariants, directionalLabelVariants, highlightedListItemVariants } from '../../motion/variants';
 import { motionSpring } from '../../motion/transitions';
 import { getAppLocale, normalizeAppLanguage } from '../../utils/i18n';
+import { renderDeepWorkDetail, taskPanelButtonClass, useTaskWorkspace } from '../../hooks/useTaskWorkspace';
+import { formatCurrencyAmount } from '../../utils/formatters';
 
 interface PlanViewProps {
     items: BrainDumpItem[];
@@ -36,55 +39,7 @@ interface PlanViewProps {
     handleKeepRawTodo: (id: string) => void;
     handleRetriggerDeepWorkTodo: (id: string) => void;
     handleAcceptDeepWorkTodo: (id: string, subtasks?: string[]) => void;
-    handleUpdateItem: (
-        id: string,
-        newContent: string,
-        newTags: string[],
-        newAmount?: number,
-        newDate?: string,
-        newPaymentMethod?: string,
-        newBudgetCategory?: string,
-        newDuration?: number,
-        newSkillId?: string,
-        newToWallet?: string,
-        newFinanceType?: FinanceType,
-        newProgress?: number,
-        newProgressNotes?: string,
-        newShoppingCategory?: any,
-        newRecurrenceDays?: number,
-        newQuantity?: string,
-        newIsRoutine?: boolean,
-        newRoutineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly',
-        newRoutineDaysOfWeek?: number[],
-        newRoutineDaysOfMonth?: number[],
-        newRoutineMonthsOfYear?: number[],
-        newSavingGoalId?: string,
-        newDedicatedWalletId?: string,
-        newPriority?: Priority,
-        newStart?: string,
-        newEnd?: string,
-        newHideFromCalendar?: boolean,
-        newInvestmentAssetType?: InvestmentAssetType,
-        newInvestmentSymbol?: string,
-        newInvestmentUnits?: number,
-        newInvestmentAveragePrice?: number,
-        newInvestmentCurrentPrice?: number,
-        newInvestmentPlatform?: string,
-        newCommodity?: string,
-        newSubcommodity?: string,
-        newNoteTitle?: string,
-        newImageUrl?: string,
-        newShoppingLineItems?: ShoppingLineItem[],
-        newTransactionLineItems?: TransactionLineItem[],
-        newMerchant?: string,
-        newReceiptCapture?: ReceiptCaptureMeta | null,
-        newOriginalCurrency?: string,
-        newOriginalAmount?: number,
-        newExchangeRateToIdr?: number,
-        newLoanCounterparty?: string,
-        newLoanAccountId?: string,
-        newLoanDueDate?: string
-    ) => void;
+    handleUpdateItem: ItemUpdateHandler;
     handleOpenAddRoutine: () => void;
     handleOpenAddTask: (initialDate?: string) => void;
     handleOpenAddShopping: (category: ShoppingCategory) => void;
@@ -105,8 +60,6 @@ interface PlanViewProps {
     handleOpenAddLoan: (loanAccountId?: string) => void;
     setActiveTab: (tab: Tab) => void;
 }
-
-type TaskPanel = 'edit' | 'subtasks' | 'editSubtasks' | 'none';
 
 const PlanView: React.FC<PlanViewProps> = ({
     items, skills, planSubTab, setPlanSubTab,
@@ -157,7 +110,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const rootLater = later.filter(item => !item.meta.parentTodoId);
     const rootRoutines = (routines || []).filter(item => !item.meta.parentTodoId);
 
-    const { urgent, routine, normal, savings, investments } = getShoppingItems(items);
+    const { urgent, routine, normal, savings, investments } = getShoppingItems(items, searchQuery, selectedTag);
     const isShoppingEmpty = urgent.length === 0 && routine.length === 0 && normal.length === 0;
 
     const taskResetKey = `plan-tasks-${focusDate.getFullYear()}-${focusDate.getMonth()}-${searchQuery}-${selectedTag}`;
@@ -170,8 +123,8 @@ const PlanView: React.FC<PlanViewProps> = ({
     const visibleUrgent = useLazyItems(urgent, { resetKey: `${shoppingResetKey}-urgent` });
     const visibleRoutineShopping = useLazyItems(routine, { resetKey: `${shoppingResetKey}-routine` });
     const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal` });
-    const visibleSavings = useLazyItems(savings, { resetKey: 'plan-savings' });
-    const visibleInvestments = useLazyItems(investments, { resetKey: 'plan-investments' });
+    const visibleSavings = useLazyItems(savings, { resetKey: `plan-savings-${searchQuery}-${selectedTag}` });
+    const visibleInvestments = useLazyItems(investments, { resetKey: `plan-investments-${searchQuery}-${selectedTag}` });
     const loanAccounts = React.useMemo(() => getLoanAccounts(items), [items]);
     const loanSummary = React.useMemo(() => getLoanSummary(loanAccounts), [loanAccounts]);
     const activeLoanAccounts = loanAccounts.filter(account => account.remainingAmount > 0);
@@ -183,9 +136,20 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [fundDate, setFundDate] = useState(new Date().toISOString().split('T')[0]);
     const [fundUnits, setFundUnits] = useState('');
     const [fundUnitPrice, setFundUnitPrice] = useState('');
-    const [taskCardCollapsed, setTaskCardCollapsed] = useState<Record<string, boolean>>({});
-    const [activeTaskPanels, setActiveTaskPanels] = useState<Record<string, TaskPanel | undefined>>({});
-    const [subtaskDrafts, setSubtaskDrafts] = useState<Record<string, string[]>>({});
+    const {
+        isTaskCardExpanded,
+        setTaskPanel,
+        toggleTaskPanel,
+        getActiveTaskPanel,
+        getTaskCardProps,
+        getSubtaskDraft,
+        acceptDeepWorkPlan,
+        openManualSubtaskDraft,
+        renderSubtaskDraftEditor,
+    } = useTaskWorkspace({
+        defaultCollapsed: appSettings.defaultCollapsed,
+        onAcceptSubtasks: handleAcceptDeepWorkTodo,
+    });
     const [selectedPlanItemId, setSelectedPlanItemId] = useState<string | null>(null);
     const selectedPlanItem = selectedPlanItemId ? items.find(item => item.id === selectedPlanItemId) || null : null;
 
@@ -358,7 +322,7 @@ const PlanView: React.FC<PlanViewProps> = ({
 
     const formatIdr = (n: number) => appSettings.hideMoney
         ? '••••'
-        : new Intl.NumberFormat(locale, { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n || 0);
+        : formatCurrencyAmount(n, 'IDR', locale);
 
     const planTabs: Array<{
         id: PlanSubTab;
@@ -379,7 +343,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             metrics: [
                 { label: planCopy.pending, value: summary.todo, tone: 'text-primary' },
                 { label: planCopy.done, value: summary.done, tone: 'text-emerald-600 dark:text-emerald-300' },
-                { label: planCopy.routines, value: routines?.length || 0, tone: 'text-indigo-600 dark:text-indigo-300' },
+                { label: planCopy.routines, value: routines?.length || 0, tone: 'text-brand-600 dark:text-brand-300' },
             ],
         },
         shopping: {
@@ -387,7 +351,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             description: planCopy.shoppingSubtitle,
             metrics: [
                 { label: planCopy.urgent, value: urgent.length, tone: 'text-[var(--finance-negative)]' },
-                { label: planCopy.routine, value: routine.length, tone: 'text-indigo-600 dark:text-indigo-300' },
+                { label: planCopy.routine, value: routine.length, tone: 'text-brand-600 dark:text-brand-300' },
                 { label: planCopy.normal, value: normal.length, tone: 'text-primary' },
             ],
         },
@@ -396,7 +360,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             description: planCopy.goalsSubtitle,
             metrics: [
                 { label: planCopy.goals, value: savings.length, tone: 'text-primary' },
-                { label: planCopy.investments, value: investments.length, tone: 'text-indigo-600 dark:text-indigo-300' },
+                { label: planCopy.investments, value: investments.length, tone: 'text-brand-600 dark:text-brand-300' },
                 { label: planCopy.saved, value: formatIdr(savedTotal), tone: 'text-emerald-600 dark:text-emerald-300' },
             ],
         },
@@ -437,7 +401,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 ? 'bg-amber-500/10 text-amber-600'
                 : account.status === 'paid'
                     ? 'bg-emerald-500/10 text-emerald-500'
-                    : 'bg-indigo-500/10 text-indigo-500';
+                    : 'bg-brand-500/10 text-brand-500';
 
         return (
             <article key={account.id} className={`${contentSurface.workspaceCompactCard} p-4`}>
@@ -457,7 +421,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </span>
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-black/5 p-3 dark:bg-white/5">
+                <div className="mt-4 grid grid-cols-3 gap-2 rounded-lg bg-black/5 p-3 dark:bg-white/5">
                     <div>
                         <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Awal</div>
                         <div className="mt-1 truncate text-xs font-bold text-primary">{formatIdr(account.originalAmount)}</div>
@@ -489,7 +453,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 </div>
 
                 {account.transactions.length > 0 && (
-                    <details className="mt-3 rounded-2xl border border-border/50 bg-background/50 px-3 py-2">
+                    <details className="mt-3 rounded-lg border border-border/50 bg-background/50 px-3 py-2">
                         <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider text-muted">Riwayat terbaru</summary>
                         <div className="mt-2 space-y-2">
                             {account.transactions.slice(0, 3).map(transaction => (
@@ -509,7 +473,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     <button
                         type="button"
                         onClick={() => handleOpenAddLoan(account.id)}
-                        className={`mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-bold transition-colors ${isReceivable ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/20'}`}
+                        className={`mt-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold transition-colors ${isReceivable ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/20'}`}
                     >
                         <HandCoins className="h-4 w-4" />
                         {isReceivable ? 'Catat pengembalian diterima' : 'Catat pembayaran'}
@@ -537,50 +501,40 @@ const PlanView: React.FC<PlanViewProps> = ({
     };
 
     const handleSaveEdit = (goal: BrainDumpItem) => {
-        handleUpdateItem(
-            goal.id,
-            editContent,
-            goal.meta.tags || [],
-            Number(editAmount),
-            new Date(editDate).toISOString(),
-            goal.meta.paymentMethod,
-            goal.meta.budgetCategory,
-            goal.meta.durationMinutes,
-            goal.meta.skillId,
-            goal.meta.toWallet,
-            'saving',
-            goal.meta.progress,
-            goal.meta.progressNotes,
-            goal.meta.shoppingCategory,
-            goal.meta.recurrenceDays,
-            goal.meta.quantity,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            editDedicatedWalletId,
-            goal.meta.priority,
-            goal.meta.start,
-            goal.meta.end,
-            goal.meta.hideFromCalendar,
-            goal.meta.investmentAssetType,
-            goal.meta.investmentSymbol,
-            goal.meta.investmentUnits,
-            goal.meta.investmentAveragePrice,
-            goal.meta.investmentCurrentPrice,
-            goal.meta.investmentPlatform,
-            undefined,
-            undefined,
-            undefined,
-            editImageUrl
-        );
+        handleUpdateItem(goal.id, {
+            content: editContent,
+            tags: goal.meta.tags || [],
+            amount: Number(editAmount),
+            date: new Date(editDate).toISOString(),
+            paymentMethod: goal.meta.paymentMethod,
+            budgetCategory: goal.meta.budgetCategory,
+            duration: goal.meta.durationMinutes,
+            skillId: goal.meta.skillId,
+            toWallet: goal.meta.toWallet,
+            financeType: 'saving',
+            progress: goal.meta.progress,
+            progressNotes: goal.meta.progressNotes,
+            shoppingCategory: goal.meta.shoppingCategory,
+            recurrenceDays: goal.meta.recurrenceDays,
+            quantity: goal.meta.quantity,
+            dedicatedWalletId: editDedicatedWalletId,
+            priority: goal.meta.priority,
+            start: goal.meta.start,
+            end: goal.meta.end,
+            hideFromCalendar: goal.meta.hideFromCalendar,
+            investmentAssetType: goal.meta.investmentAssetType,
+            investmentSymbol: goal.meta.investmentSymbol,
+            investmentUnits: goal.meta.investmentUnits,
+            investmentAveragePrice: goal.meta.investmentAveragePrice,
+            investmentCurrentPrice: goal.meta.investmentCurrentPrice,
+            investmentPlatform: goal.meta.investmentPlatform,
+            imageUrl: editImageUrl,
+        });
         closeGoalEditModal();
     };
 
     const thumbnailEmptyState = (tone: 'saving' | 'investment') => (
-        <div className={`flex h-full w-full items-center justify-center rounded-[22px] ${tone === 'investment' ? 'bg-emerald-500/10 text-emerald-500/45' : 'bg-indigo-500/10 text-indigo-500/45'}`}>
+        <div className={`flex h-full w-full items-center justify-center rounded-[22px] ${tone === 'investment' ? 'bg-emerald-500/10 text-emerald-500/45' : 'bg-brand-500/10 text-brand-500/45'}`}>
             <ImageIcon className="h-12 w-12" />
         </div>
     );
@@ -608,7 +562,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         const toneClass = tone === 'investment'
             ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'
             : tone === 'saving'
-                ? 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20'
+                ? 'bg-brand-500/10 text-brand-500 hover:bg-brand-500/20'
                 : tone === 'done'
                     ? 'bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25'
                     : 'bg-background/85 text-primary hover:bg-background';
@@ -665,20 +619,20 @@ const PlanView: React.FC<PlanViewProps> = ({
                     event.preventDefault();
                     openGoalEditModal(goal);
                 }}
-                className={`cursor-pointer overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 transition-shadow hover:shadow-md ${isDone ? 'opacity-70' : ''}`}
+                className={`cursor-pointer overflow-hidden rounded-xl bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 transition-shadow hover:shadow-md ${isDone ? 'opacity-70' : ''}`}
             >
                 {renderThumbnail(goal, 'saving', 'h-36 sm:h-40 lg:h-36 xl:h-40', actions)}
                 <div className="p-5 pt-4">
                     <h4 className="truncate text-lg font-bold text-primary">{goal.content}</h4>
                     <div className="mt-1 flex items-baseline gap-2">
-                        <span className={`text-xl font-bold ${progress >= 100 ? 'text-emerald-500' : 'text-indigo-500'}`}>{formatIdr(saved)}</span>
+                        <span className={`text-xl font-bold ${progress >= 100 ? 'text-emerald-500' : 'text-brand-500'}`}>{formatIdr(saved)}</span>
                         <span className="text-sm font-medium text-muted">/ {formatIdr(target)}</span>
                     </div>
 
                     <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
                         <AnimatedProgress
                             value={progress}
-                            className={progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}
+                            className={progress >= 100 ? 'bg-emerald-500' : 'bg-brand-500'}
                             label={`${goal.content} saving progress`}
                         />
                     </div>
@@ -715,45 +669,36 @@ const PlanView: React.FC<PlanViewProps> = ({
         const currentPrice = parseOptionalNumber(editInvestmentCurrentPrice);
         const linkedInvestmentWallet = wallets.find(w => w.id === editDedicatedWalletId);
 
-        handleUpdateItem(
-            investment.id,
-            editContent,
-            investment.meta.tags || [],
-            undefined,
-            new Date(editDate).toISOString(),
-            investment.meta.paymentMethod,
-            investment.meta.budgetCategory,
-            investment.meta.durationMinutes,
-            investment.meta.skillId,
-            investment.meta.toWallet,
-            investment.meta.financeType,
-            investment.meta.progress,
-            investment.meta.progressNotes,
-            'investment',
-            investment.meta.recurrenceDays,
-            investment.meta.quantity,
-            false,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            investment.meta.savingGoalId,
-            editDedicatedWalletId || undefined,
-            investment.meta.priority,
-            investment.meta.start,
-            investment.meta.end,
-            investment.meta.hideFromCalendar,
-            editInvestmentAssetType,
-            editInvestmentSymbol.trim() || undefined,
-            units,
-            averagePrice,
-            currentPrice,
-            linkedInvestmentWallet?.name || editInvestmentPlatform.trim() || undefined,
-            undefined,
-            undefined,
-            undefined,
-            editImageUrl
-        );
+        handleUpdateItem(investment.id, {
+            content: editContent,
+            tags: investment.meta.tags || [],
+            date: new Date(editDate).toISOString(),
+            paymentMethod: investment.meta.paymentMethod,
+            budgetCategory: investment.meta.budgetCategory,
+            duration: investment.meta.durationMinutes,
+            skillId: investment.meta.skillId,
+            toWallet: investment.meta.toWallet,
+            financeType: investment.meta.financeType,
+            progress: investment.meta.progress,
+            progressNotes: investment.meta.progressNotes,
+            shoppingCategory: 'investment',
+            recurrenceDays: investment.meta.recurrenceDays,
+            quantity: investment.meta.quantity,
+            isRoutine: false,
+            savingGoalId: investment.meta.savingGoalId,
+            dedicatedWalletId: editDedicatedWalletId || undefined,
+            priority: investment.meta.priority,
+            start: investment.meta.start,
+            end: investment.meta.end,
+            hideFromCalendar: investment.meta.hideFromCalendar,
+            investmentAssetType: editInvestmentAssetType,
+            investmentSymbol: editInvestmentSymbol.trim() || undefined,
+            investmentUnits: units,
+            investmentAveragePrice: averagePrice,
+            investmentCurrentPrice: currentPrice,
+            investmentPlatform: linkedInvestmentWallet?.name || editInvestmentPlatform.trim() || undefined,
+            imageUrl: editImageUrl,
+        });
         closeGoalEditModal();
     };
 
@@ -795,7 +740,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     event.preventDefault();
                     openGoalEditModal(investment);
                 }}
-                className="cursor-pointer overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-emerald-500/15 transition-shadow hover:shadow-md"
+                className="cursor-pointer overflow-hidden rounded-xl bg-surface p-1 shadow-sm ring-1 ring-inset ring-emerald-500/15 transition-shadow hover:shadow-md"
             >
                 <div className="flex flex-col gap-4 sm:flex-row">
                     {renderThumbnail(investment, 'investment', 'h-36 sm:h-auto sm:w-40 sm:shrink-0 lg:w-36 xl:w-40', actions)}
@@ -811,15 +756,15 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </div>
 
                         <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                            <div className="rounded-2xl border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
+                            <div className="rounded-lg border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
                                 <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Invested</div>
                                 <div className="mt-1 font-bold text-primary">{formatIdr(invested)}</div>
                             </div>
-                            <div className="rounded-2xl border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
+                            <div className="rounded-lg border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
                                 <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Units</div>
                                 <div className="mt-1 font-bold text-primary">{investment.meta.investmentUnits || '-'}</div>
                             </div>
-                            <div className="rounded-2xl border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
+                            <div className="rounded-lg border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
                                 <div className="text-[9px] font-bold uppercase tracking-wider text-muted">P/L</div>
                                 <div className={`mt-1 font-bold ${gain >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{gain >= 0 ? '+' : ''}{formatIdr(gain)} · {roi.toFixed(1)}%</div>
                                 <div className="mt-0.5 text-[9px] text-muted">vs cost basis</div>
@@ -851,7 +796,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         return (
             <aside className={`${contentSurface.workspaceCard} lg:sticky lg:top-6`}>
                 <div className="mb-5 flex items-start gap-3">
-                    <span className="grid h-8 w-8 place-items-center rounded-2xl bg-amber-500/10 text-amber-500">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-500/10 text-amber-500">
                         <Sparkles className="h-4 w-4" />
                     </span>
                     <div>
@@ -880,7 +825,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             </span>
                                         </div>
                                         <div className="mt-2 text-sm font-bold text-primary">
-                                            <span className={completed ? 'text-emerald-500' : 'text-indigo-500'}>{formatIdr(saved)}</span>
+                                            <span className={completed ? 'text-emerald-500' : 'text-brand-500'}>{formatIdr(saved)}</span>
                                             <span className="text-muted"> / {formatIdr(target)}</span>
                                         </div>
                                         <div className="mt-1 text-xs text-muted">{planCopy.target}: {goal.meta.date ? new Date(goal.meta.date).toLocaleDateString(locale, { month: 'short', year: 'numeric' }) : '-'}</div>
@@ -890,7 +835,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         })}
                     </div>
                 ) : (
-                    <div className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">{planCopy.noMilestones}</div>
+                    <div className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted">{planCopy.noMilestones}</div>
                 )}
             </aside>
         );
@@ -909,141 +854,9 @@ const PlanView: React.FC<PlanViewProps> = ({
         onResetRoutine: handleResetRoutine
     };
 
-    const isTaskCardExpanded = (id: string) => {
-        const collapsed = taskCardCollapsed[id];
-        return collapsed === undefined ? !appSettings.defaultCollapsed : !collapsed;
-    };
-
-    const setTaskPanel = (id: string, panel: TaskPanel) => {
-        setActiveTaskPanels(prev => ({ ...prev, [id]: panel }));
-    };
-
-    const toggleTaskPanel = (id: string, panel: Exclude<TaskPanel, 'none'>, activePanel: TaskPanel) => {
-        setTaskPanel(id, activePanel === panel ? 'none' : panel);
-    };
-
-    const resetTaskPanel = (id: string) => {
-        setActiveTaskPanels(prev => {
-            const next = { ...prev };
-            delete next[id];
-            return next;
-        });
-    };
-
-    const getDefaultTaskPanel = (children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
-        const hasAddedSubtasks = children.length > 0;
-        return isDeepWork && hasAddedSubtasks ? 'subtasks' : 'none';
-    };
-
-    const getActiveTaskPanel = (item: BrainDumpItem, children: BrainDumpItem[], isDeepWork: boolean): TaskPanel => {
-        return activeTaskPanels[item.id] || getDefaultTaskPanel(children, isDeepWork);
-    };
-
-    const taskPanelButtonClass = (active: boolean, tone: 'edit' | 'subtasks' = 'edit') => {
-        if (active && tone === 'subtasks') return 'px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors flex items-center gap-1';
-        if (tone === 'subtasks') return 'px-3 py-2 rounded-xl bg-purple-500/10 text-purple-500 text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-1';
-        if (active) return 'px-3 py-2 rounded-xl bg-primary text-background text-xs font-bold hover:opacity-90 transition-colors flex items-center gap-1';
-        return 'px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted hover:text-primary hover:bg-black/10 dark:hover:bg-white/[0.09] text-xs font-bold transition-colors flex items-center gap-1';
-    };
-
-    const getTaskCardProps = (item: BrainDumpItem, activePanel: TaskPanel, editPanelControls: React.ReactNode, extraExpandedContent?: React.ReactNode) => ({
-        ...cardProps,
-        collapsibleEditPanel: true,
-        editPanelExpanded: activePanel === 'edit',
-        editPanelControls,
-        extraExpandedContent,
-        onEditPanelExpandedChange: (id: string, expanded: boolean) => {
-            if (expanded) setTaskPanel(id, 'edit');
-        },
-        onCollapseChange: (id: string, collapsed: boolean) => {
-            setTaskCardCollapsed(prev => ({ ...prev, [id]: collapsed }));
-            if (collapsed) resetTaskPanel(id);
-        }
-    });
-
-    const getChildCardProps = () => cardProps;
-
-    const getSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[]) => {
-        if (subtaskDrafts[item.id]) return subtaskDrafts[item.id];
-        if (item.meta.subtasks?.length) return item.meta.subtasks;
-        if (children.length > 0) return children.map(child => child.content);
-        const emptyStepCount = Math.min(item.meta.deepWorkStepCount || 0, 5);
-        return emptyStepCount > 0 ? Array.from({ length: emptyStepCount }, () => '') : [];
-    };
-
-    const updateSubtaskDraft = (itemId: string, index: number, value: string, fallback: string[]) => {
-        const next = [...fallback];
-        next[index] = value;
-        setSubtaskDrafts(prev => ({ ...prev, [itemId]: next }));
-    };
-
-    const acceptDeepWorkPlan = (item: BrainDumpItem, children: BrainDumpItem[]) => {
-        const draft = getSubtaskDraft(item, children).map(step => step.trim()).filter(Boolean);
-        if (draft.length === 0) return;
-        handleAcceptDeepWorkTodo(item.id, draft);
-        setSubtaskDrafts(prev => {
-            const next = { ...prev };
-            delete next[item.id];
-            return next;
-        });
-        setTaskPanel(item.id, 'subtasks');
-    };
-
-    const openManualSubtaskDraft = (item: BrainDumpItem, children: BrainDumpItem[] = []) => {
-        const draft = getSubtaskDraft(item, children);
-        setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.length ? draft : [''] }));
-        setTaskPanel(item.id, 'editSubtasks');
-    };
-
-    const renderSubtaskDraftEditor = (item: BrainDumpItem, children: BrainDumpItem[], saveLabel: string) => {
-        const draft = getSubtaskDraft(item, children);
-        return (
-            <div className="space-y-2">
-                {draft.map((step, index) => (
-                    <div key={`${item.id}-draft-${index}`} className="flex gap-2">
-                        <div className="mt-3 h-5 w-5 shrink-0 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-bold flex items-center justify-center">{index + 1}</div>
-                        <textarea
-                            value={step}
-                            onChange={(event) => updateSubtaskDraft(item.id, index, event.target.value, draft)}
-                            className="min-h-[44px] flex-1 resize-none rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-purple-500/60"
-                            placeholder="Subtask..."
-                        />
-                        <button
-                            onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: draft.filter((_, draftIndex) => draftIndex !== index) }))}
-                            className="self-center p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                            aria-label="Remove subtask"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
-                ))}
-                <div className="flex flex-wrap gap-2 pt-1">
-                    <button onClick={() => setSubtaskDrafts(prev => ({ ...prev, [item.id]: [...draft, ''] }))} className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-muted text-xs font-bold hover:bg-black/10 dark:hover:bg-white/[0.09] transition-colors">
-                        Add step
-                    </button>
-                    <button onClick={() => acceptDeepWorkPlan(item, children)} className="px-3 py-2 rounded-xl bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={draft.map(step => step.trim()).filter(Boolean).length === 0}>
-                        {saveLabel}
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
-    const renderDeepWorkDetail = (icon: React.ReactNode, label: string, value?: string | number, tone = 'text-purple-500') => {
-        if (value === undefined || value === null || value === '') return null;
-        return (
-            <div className="rounded-2xl border border-border/60 bg-surface/70 px-3 py-2">
-                <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}>
-                    {icon}
-                    {label}
-                </div>
-                <div className="mt-1 text-sm font-medium text-primary leading-snug break-words">{value}</div>
-            </div>
-        );
-    };
-
     const renderTaskCard = (item: BrainDumpItem, detailMode = false) => {
         const children = getDeepWorkChildren(items, item.id);
+        if (!detailMode) return <RecordRow key={item.id} item={item} language={appSettings.language} childCount={children.length || item.meta.subtasks?.length || 0} onOpen={() => setSelectedPlanItemId(item.id)} onToggle={() => handleToggleStatus(item.id)} />;
         const isDeepWork = !!item.meta.deepWorkParent || children.length > 0;
         const canUseManualSubtasks = supportsNestedTodoSubtasks(item) && !item.meta.parentTodoId;
         const isCardExpanded = detailMode || isTaskCardExpanded(item.id);
@@ -1083,7 +896,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             exit="exit"
                             className="grid overflow-hidden"
                         >
-                            <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+                            <div className="min-h-0 overflow-hidden rounded-lg border border-border bg-background/70 p-3 space-y-3 lg:p-4">
                                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Edit subtasks</div>
                                 {renderSubtaskDraftEditor({ ...item, meta: { ...item.meta, subtasks: draft } }, children, 'Create subtasks')}
                             </div>
@@ -1091,7 +904,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     )}
                 </AnimatePresence>
             ) : undefined;
-            const taskCardProps = getTaskCardProps(item, activePanel, editPanelControls, manualSubtaskPanel);
+            const taskCardProps = getTaskCardProps(cardProps, activePanel, editPanelControls, manualSubtaskPanel);
 
             const taskCard = (
                 <Card
@@ -1110,23 +923,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 />
             );
 
-            if (detailMode) return taskCard;
-
-            return (
-                <motion.div
-                    key={item.id}
-                    layout="position"
-                    layoutDependency={`${item.status}-${item.content}-${children.length}-${activePanel}`}
-                    variants={highlightedListItemVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    transition={{ layout: motionSpring.layout }}
-                    className="rounded-[24px]"
-                >
-                    {taskCard}
-                </motion.div>
-            );
+            return taskCard;
         }
 
         const isSuggested = item.meta.deepWorkStatus === 'suggested';
@@ -1189,7 +986,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         exit="exit"
                         className="grid overflow-hidden"
                     >
-                        <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-background/70 p-3 space-y-3 lg:p-4">
+                        <div className="min-h-0 overflow-hidden rounded-lg border border-border bg-background/70 p-3 space-y-3 lg:p-4">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 {hasDeepWorkDetails && (
                                     <div className="flex items-center gap-2 text-purple-500">
@@ -1215,7 +1012,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             )}
 
                             {hasDeepWorkDetails && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {renderDeepWorkDetail(<Flag className="w-3 h-3" />, 'Next action', item.meta.deepWorkNextAction)}
                                     {renderDeepWorkDetail(<ListChecks className="w-3 h-3" />, 'Final output', item.meta.deepWorkFinalOutput)}
                                     {renderDeepWorkDetail(<Timer className="w-3 h-3" />, 'Session estimate', item.meta.deepWorkSessionEstimateMinutes ? `${item.meta.deepWorkSessionEstimateMinutes} min${item.meta.deepWorkSessionEstimateConfidence ? ` • ${item.meta.deepWorkSessionEstimateConfidence}` : ''}` : undefined)}
@@ -1236,11 +1033,11 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 ) : hasSubtaskCards ? (
                                     <div className="space-y-2">
                                         {children.map(child => (
-                                            <Card key={child.id} item={child} {...getChildCardProps()} editComfort="taskWorkspace" className="rounded-[14px]" />
+                                            <Card key={child.id} item={child} {...cardProps} editComfort="taskWorkspace" className="rounded-[14px]" />
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">
+                                    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted">
                                         No todo subtask cards yet. Use Add subtasks to create them.
                                     </div>
                                 )}
@@ -1250,7 +1047,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 )}
             </AnimatePresence>
         ) : undefined;
-        const taskCardProps = getTaskCardProps(item, activePanel, deepWorkPanelControls, deepWorkSubtaskPanel);
+        const taskCardProps = getTaskCardProps(cardProps, activePanel, deepWorkPanelControls, deepWorkSubtaskPanel);
 
         const taskCard = (
             <Card
@@ -1269,23 +1066,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             />
         );
 
-        if (detailMode) return taskCard;
-
-        return (
-            <motion.div
-                key={item.id}
-                layout="position"
-                layoutDependency={`${item.status}-${item.content}-${children.length}-${activePanel}`}
-                variants={highlightedListItemVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                transition={{ layout: motionSpring.layout }}
-                className="rounded-[24px]"
-            >
-                {taskCard}
-            </motion.div>
-        );
+        return taskCard;
     };
 
     const renderTaskItems = (taskItems: BrainDumpItem[]) => (
@@ -1306,7 +1087,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     animate="visible"
                     exit="exit"
                     transition={{ layout: motionSpring.layout }}
-                    className="rounded-[24px]"
+                    className="rounded-xl"
                 >
                     <ShoppingItem
                         item={item}
@@ -1423,13 +1204,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </div>
                                 )}
                                 {planSubTab === 'loans' && (
-                                    <button type="button" onClick={() => handleOpenAddLoan()} className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500">
+                                    <button type="button" onClick={() => handleOpenAddLoan()} className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-500">
                                         <Plus className="h-4 w-4" /> <span className="hidden sm:inline">{planCopy.record}</span>
                                     </button>
                                 )}
                             </div>
 
-                            <div className="mt-5 grid grid-cols-3 gap-2" aria-label={activePlanHeader.title}>
+                            <div className="metric-strip mt-4 [--metric-count:3]" aria-label={activePlanHeader.title}>
                                 {activePlanHeader.metrics.map(metric => (
                                     <div key={metric.label} className={contentSurface.workspaceMetric}>
                                         <div className="min-h-8 text-[11px] font-medium leading-tight text-muted sm:min-h-0">{metric.label}</div>
@@ -1518,12 +1299,12 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                                 <section className={contentSurface.workflowPanel}>
                                     <div className="flex items-center justify-between mb-3 pl-1">
-                                        <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
-                                            <span className="bg-indigo-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> {planCopy.routines}
+                                        <h3 className="text-sm font-bold text-brand-500 uppercase tracking-wider flex items-center gap-2">
+                                            <span className="bg-brand-500/10 p-1 rounded-md"><CheckCircle2 className="w-3 h-3" /></span> {planCopy.routines}
                                         </h3>
                                         <button
                                             onClick={handleOpenAddRoutine}
-                                            className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
+                                            className="p-1 hover:bg-brand-500/10 text-brand-500 rounded-md transition-colors"
                                         >
                                             <Plus className="w-4 h-4" />
                                         </button>
@@ -1565,13 +1346,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <div className="flex gap-3">
                                         <button
                                             onClick={() => handleOpenAddTask()}
-                                            className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
+                                            className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-lg text-sm font-bold transition-colors"
                                         >
                                             <Plus className="w-4 h-4" /> {planCopy.addTask}
                                         </button>
                                         <button
                                             onClick={handleOpenAddRoutine}
-                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
+                                            className="flex items-center gap-2 px-4 py-2 bg-brand-500/10 hover:bg-brand-500/20 text-brand-500 rounded-lg text-sm font-bold transition-colors"
                                         >
                                             <Plus className="w-4 h-4" /> {planCopy.addRoutine}
                                         </button>
@@ -1617,12 +1398,12 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                         <section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
-                                <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="bg-indigo-500/10 p-1 rounded-md"><History className="w-3 h-3" /></span> {planCopy.routine}
+                                <h3 className="text-sm font-bold text-brand-500 uppercase tracking-wider flex items-center gap-2">
+                                    <span className="bg-brand-500/10 p-1 rounded-md"><History className="w-3 h-3" /></span> {planCopy.routine}
                                 </h3>
                                 <button
                                     onClick={() => handleOpenAddShopping('routine')}
-                                    className="p-1 hover:bg-indigo-500/10 text-indigo-500 rounded-md transition-colors"
+                                    className="p-1 hover:bg-brand-500/10 text-brand-500 rounded-md transition-colors"
                                 >
                                     <Plus className="w-4 h-4" />
                                 </button>
@@ -1662,7 +1443,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <p className="text-muted font-medium">{planCopy.emptyShopping}</p>
                                 <button
                                     onClick={() => handleOpenAddShopping('not_urgent')}
-                                    className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-2xl text-sm font-bold transition-colors"
+                                    className="flex items-center gap-2 px-4 py-2 bg-black/5 hover:bg-black/10 text-primary rounded-lg text-sm font-bold transition-colors"
                                 >
                                     <Plus className="w-4 h-4" /> {planCopy.addItem}
                                 </button>
@@ -1706,7 +1487,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         <p className="font-medium text-muted">{planCopy.noGoals}</p>
                                         <button
                                             onClick={() => handleOpenAddShopping('saving')}
-                                            className="flex items-center gap-2 rounded-2xl bg-indigo-500/10 px-4 py-2 text-sm font-bold text-indigo-500 transition-colors hover:bg-indigo-500/20"
+                                            className="flex items-center gap-2 rounded-lg bg-brand-500/10 px-4 py-2 text-sm font-bold text-brand-500 transition-colors hover:bg-brand-500/20"
                                         >
                                             <Plus className="h-4 w-4" /> {planCopy.createGoal}
                                         </button>
@@ -1740,7 +1521,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         <p className="font-medium text-muted">{planCopy.noInvestments}</p>
                                         <button
                                             onClick={() => handleOpenAddShopping('investment')}
-                                            className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-500 transition-colors hover:bg-emerald-500/20"
+                                            className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-500 transition-colors hover:bg-emerald-500/20"
                                         >
                                             <Plus className="h-4 w-4" /> {planCopy.addInvestment}
                                         </button>
@@ -1765,14 +1546,14 @@ const PlanView: React.FC<PlanViewProps> = ({
                 >
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/5 p-4">
+                            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
                                     <ArrowDownLeft className="h-4 w-4" /> Akan diterima
                                 </div>
                                 <div className="mt-2 text-xl font-bold text-primary">{formatIdr(loanSummary.receivable)}</div>
                                 <p className="mt-1 text-xs text-muted">Total uang yang masih perlu dikembalikan kepada Anda.</p>
                             </div>
-                            <div className="rounded-[24px] border border-orange-500/20 bg-orange-500/5 p-4">
+                            <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
                                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-orange-500">
                                     <ArrowUpRight className="h-4 w-4" /> Harus dibayar
                                 </div>
@@ -1825,7 +1606,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => handleOpenAddLoan()}
-                                        className="flex items-center gap-2 rounded-2xl bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-600 hover:bg-amber-500/20"
+                                        className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-600 hover:bg-amber-500/20"
                                     >
                                         <Plus className="h-4 w-4" /> Catat pinjaman
                                     </button>
@@ -1913,7 +1694,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     <>
                             <div className={addItemModal.header}>
                                 <h3 className={addItemModal.title}>
-                                    {editingGoal.meta.shoppingCategory === 'investment' ? <TrendingUp className="h-5 w-5 text-emerald-500" /> : <PiggyBank className="h-5 w-5 text-indigo-500" />}
+                                    {editingGoal.meta.shoppingCategory === 'investment' ? <TrendingUp className="h-5 w-5 text-emerald-500" /> : <PiggyBank className="h-5 w-5 text-brand-500" />}
                                     {editingGoal.meta.shoppingCategory === 'investment' ? 'Edit Investment' : 'Edit Saving Goal'}
                                 </h3>
                                 <button onClick={closeGoalEditModal} className={addItemModal.closeButton}>
@@ -1928,7 +1709,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         type="text"
                                         value={editContent}
                                         onChange={e => setEditContent(e.target.value)}
-                                        className={`${addItemModal.input} ${editingGoal.meta.shoppingCategory === 'investment' ? 'focus:border-emerald-500' : 'focus:border-indigo-500'}`}
+                                        className={`${addItemModal.input} ${editingGoal.meta.shoppingCategory === 'investment' ? 'focus:border-emerald-500' : 'focus:border-brand-500'}`}
                                     />
                                 </div>
 
@@ -1941,7 +1722,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         value={editImageUrl}
                                         onChange={e => setEditImageUrl(e.target.value)}
                                         placeholder="https://example.com/thumbnail.jpg"
-                                        className={`${addItemModal.input} ${editingGoal.meta.shoppingCategory === 'investment' ? 'focus:border-emerald-500' : 'focus:border-indigo-500'}`}
+                                        className={`${addItemModal.input} ${editingGoal.meta.shoppingCategory === 'investment' ? 'focus:border-emerald-500' : 'focus:border-brand-500'}`}
                                     />
                                     <p className={addItemModal.helpText}>Optional. This URL is used as the card thumbnail.</p>
                                 </div>
@@ -2028,13 +1809,13 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             handleDelete(editingGoal.id);
                                             closeGoalEditModal();
                                         }}
-                                        className="rounded-2xl px-4 py-3 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/10"
+                                        className="rounded-lg px-4 py-3 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/10"
                                     >
                                         Delete
                                     </button>
                                     <button
                                         onClick={() => editingGoal.meta.shoppingCategory === 'investment' ? handleSaveInvestmentEdit(editingGoal) : handleSaveEdit(editingGoal)}
-                                        className={`rounded-2xl px-5 py-3 text-sm font-bold text-white transition-colors ${editingGoal.meta.shoppingCategory === 'investment' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+                                        className={`rounded-lg px-5 py-3 text-sm font-bold text-white transition-colors ${editingGoal.meta.shoppingCategory === 'investment' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-brand-600 hover:bg-brand-500'}`}
                                     >
                                         Save Changes
                                     </button>
@@ -2058,7 +1839,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     <>
                             <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                                 <h3 className="text-xl font-bold text-primary flex items-center gap-2">
-                                    {addFundsModal.targetType === 'investment' ? <TrendingUp className="w-5 h-5 text-emerald-500" /> : <PiggyBank className="w-5 h-5 text-indigo-500" />}
+                                    {addFundsModal.targetType === 'investment' ? <TrendingUp className="w-5 h-5 text-emerald-500" /> : <PiggyBank className="w-5 h-5 text-brand-500" />}
                                     {addFundsModal.targetType === 'investment' ? 'Add Investment Capital' : 'Add Funds'}
                                 </h3>
                                 <button onClick={resetFundModalState} className="p-2 bg-muted/10 hover:bg-muted/20 rounded-full text-muted transition-colors">
@@ -2080,12 +1861,12 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         value={fundAmount}
                                         onChange={e => handleFundAmountChange(e.target.value)}
                                         placeholder="0"
-                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium text-2xl"
+                                        className="w-full bg-background border border-border rounded-lg p-4 text-primary focus:outline-none focus:border-brand-500 font-medium text-2xl"
                                     />
                                 </div>
 
                                 {addFundsModal.targetType === 'investment' && (
-                                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3">
+                                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3">
                                         <div className="flex items-start justify-between gap-3">
                                             <div>
                                                 <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Auto-fill units or capital</div>
@@ -2129,12 +1910,12 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <select
                                         value={fundWallet}
                                         onChange={e => setFundWallet(e.target.value)}
-                                        className="w-full bg-background border border-border rounded-2xl p-4 text-primary focus:outline-none focus:border-indigo-500 font-medium appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full bg-background border border-border rounded-lg p-4 text-primary focus:outline-none focus:border-brand-500 font-medium appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={!!addFundsModal.defaultWallet}
                                     >
                                         <option value="">Select Wallet</option>
                                         {wallets.filter(w => addFundsModal.targetType !== 'investment' || (w.type !== 'investment' && w.id !== addFundsModal.destinationWalletId)).map(w => (
-                                            <option key={w.id} value={w.id}>{w.name} ({new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(w.initialBalance)})</option>
+                                            <option key={w.id} value={w.id}>{w.name} ({formatCurrencyAmount(w.initialBalance)})</option>
                                         ))}
                                     </select>
                                     {!!addFundsModal.defaultWallet && (
@@ -2145,7 +1926,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 {addFundsModal.targetType === 'investment' && (
                                     <div>
                                         <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">To Investment Wallet</label>
-                                        <div className="w-full bg-background border border-border rounded-2xl p-4 text-muted font-medium">
+                                        <div className="w-full bg-background border border-border rounded-lg p-4 text-muted font-medium">
                                             {wallets.find(w => w.id === addFundsModal.destinationWalletId)?.name || 'No linked investment wallet'}
                                         </div>
                                     </div>
@@ -2159,7 +1940,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                             type="date"
                                             value={fundDate}
                                             onChange={e => setFundDate(e.target.value)}
-                                            className="w-full bg-background border border-border rounded-2xl pl-12 pr-4 py-4 text-primary focus:outline-none focus:border-indigo-500 font-medium"
+                                            className="w-full bg-background border border-border rounded-lg pl-12 pr-4 py-4 text-primary focus:outline-none focus:border-brand-500 font-medium"
                                         />
                                     </div>
                                 </div>
@@ -2169,7 +1950,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 <button
                                     onClick={handleSaveFunds}
                                     disabled={!fundWallet || !(addFundsModal.targetType === 'investment' ? resolvedFundInput.investedCapital : fundAmount) || (addFundsModal.targetType === 'investment' && !addFundsModal.destinationWalletId)}
-                                    className={`w-full py-4 text-white rounded-2xl font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${addFundsModal.targetType === 'investment' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+                                    className={`w-full py-4 text-white rounded-lg font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${addFundsModal.targetType === 'investment' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-brand-600 hover:bg-brand-500'}`}
                                 >
                                     <Plus className="w-5 h-5" />
                                     Add Funds

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight, Clock, X } from 'lucide-react';
-import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, FinanceType, Tab, Priority, SkillSessionLogInput } from '../../types';
+import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, Tab, SkillSessionLogInput, ItemUpdateHandler } from '../../types';
 import { getJournalDayGroups, getNoteItems, getSkillItems, getSkillLogActualRange, getSkillLogDurationMinutes, getSkillLogForSession, SkillScheduleSession, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
+import RecordRow from '../layout/RecordRow';
 import { useSwipeTabs } from '../../hooks/useSwipeTabs';
 import ActiveIndicator from '../../motion/ActiveIndicator';
 import AnimatedProgress from '../../motion/AnimatedProgress';
@@ -15,6 +16,7 @@ import { formatFinanceTypeLabel } from '../../utils/financeTypeUtils';
 import { directionalLabelVariants } from '../../motion/variants';
 import PresencePanel from '../../motion/PresencePanel';
 import { getAppLocale, normalizeAppLanguage } from '../../utils/i18n';
+import { formatCurrencyAmount } from '../../utils/formatters';
 
 interface LibraryViewProps {
     items: BrainDumpItem[];
@@ -23,32 +25,7 @@ interface LibraryViewProps {
     setLibrarySubTab: (tab: LibrarySubTab) => void;
     appSettings: AppSettings;
     handleDelete: (id: string) => void;
-    handleUpdateItem: (
-        id: string,
-        newContent: string,
-        newTags: string[],
-        newAmount?: number,
-        newDate?: string,
-        newPaymentMethod?: string,
-        newBudgetCategory?: string,
-        newDuration?: number,
-        newSkillId?: string,
-        newToWallet?: string,
-        newFinanceType?: FinanceType,
-        newProgress?: number,
-        newProgressNotes?: string,
-        newShoppingCategory?: any,
-        newRecurrenceDays?: number,
-        newQuantity?: string,
-        newIsRoutine?: boolean,
-        newRoutineInterval?: any,
-        newRoutineDaysOfWeek?: number[],
-        newRoutineDaysOfMonth?: number[],
-        newRoutineMonthsOfYear?: number[],
-        newSavingGoalId?: string,
-        newDedicatedWalletId?: string,
-        newPriority?: Priority
-    ) => void;
+    handleUpdateItem: ItemUpdateHandler;
     handleOpenEditSkill: (id: string, name: string, target?: number) => void;
     handleOpenAddSkill: () => void;
     handleUpsertSkillSessionLog: (input: SkillSessionLogInput) => void;
@@ -273,11 +250,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         closeSkillSessionEditor();
     };
 
-    const formatCurrency = (amount?: number) => new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        maximumFractionDigits: 0,
-    }).format(amount || 0);
+    const formatCurrency = (amount?: number) => formatCurrencyAmount(amount);
 
     const formatJournalTime = (value?: string) => {
         if (!value) return '';
@@ -307,7 +280,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         >
             <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${accentClass}`}>{icon}</div>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accentClass}`}>{icon}</div>
                     <div>
                         <h4 className="text-sm font-bold text-primary">{title}</h4>
                         {typeof count === 'number' && <p className="text-xs text-muted">{count} item{count === 1 ? '' : 's'}</p>}
@@ -351,7 +324,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         'bg-emerald-100 dark:bg-emerald-500/20',
                         <div className="space-y-2">
                             {group.todos.map(item => (
-                                <div key={item.id} className="rounded-2xl bg-background px-3 py-2">
+                                <div key={item.id} className="rounded-lg bg-background px-3 py-2">
                                     <div className="text-sm font-medium text-primary">{item.content}</div>
                                     <div className="text-xs text-muted">Done {formatJournalTime(item.completed_at)}</div>
                                 </div>
@@ -366,7 +339,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         'bg-amber-100 dark:bg-amber-500/20',
                         <div className="space-y-2">
                             {group.shopping.map(item => (
-                                <div key={item.id} className="rounded-2xl bg-background px-3 py-2">
+                                <div key={item.id} className="rounded-lg bg-background px-3 py-2">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="text-sm font-medium text-primary">{item.content}</div>
@@ -386,7 +359,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         'bg-sky-100 dark:bg-sky-500/20',
                         <div className="space-y-2">
                             {group.events.map(item => (
-                                <div key={item.id} className="rounded-2xl bg-background px-3 py-2">
+                                <div key={item.id} className="rounded-lg bg-background px-3 py-2">
                                     <div className="text-sm font-medium text-primary">{item.content}</div>
                                     <div className="text-xs text-muted">
                                         {[formatJournalTime(item.meta.start || item.meta.date), item.meta.end ? `→ ${formatJournalTime(item.meta.end)}` : ''].filter(Boolean).join(' ')}
@@ -403,7 +376,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         'bg-violet-100 dark:bg-violet-500/20',
                         <div className="space-y-2">
                             {group.transactions.map(item => (
-                                <div key={item.id} className="rounded-2xl bg-background px-3 py-2">
+                                <div key={item.id} className="rounded-lg bg-background px-3 py-2">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="text-sm font-medium text-primary">{item.content}</div>
@@ -487,7 +460,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             const isJournal = type === 'journal';
             return (
                 <div className={`${contentSurface.emptyStateCard} ${contentSurface.libraryEmptyState}`} data-ndz-library-empty-state="intentional">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 lg:mx-0">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500 lg:mx-0">
                         {isJournal ? <BookText className="w-6 h-6" /> : <Library className="w-6 h-6" />}
                     </div>
                     <h3 className="mt-4 text-lg font-bold text-primary">
@@ -503,32 +476,19 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     <div className={contentSurface.libraryEmptyActions}>
                         <button
                             onClick={() => onAddItem(isJournal ? ItemType.JOURNAL : ItemType.NOTE)}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-600"
+                            className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-600"
                         >
                             <Plus className="w-4 h-4" /> {isJournal ? libraryCopy.writeJournal : libraryCopy.addNote}
                         </button>
                         {!isJournal && (
                             <span className="rounded-full border border-border bg-background/60 px-3 py-2 text-xs font-medium text-muted">
-                                {isEnglish ? 'Search stays available from the composer.' : 'Pencarian tetap tersedia dari composer.'}
+                                {isEnglish ? 'Search and filters stay available in the workspace toolbar.' : 'Pencarian dan filter tersedia di toolbar workspace.'}
                             </span>
                         )}
                     </div>
                 </div>
             );
         }
-
-        const commonProps = {
-            onUpdate: handleUpdateItem,
-            onDelete: handleDelete,
-            enableCollapse: true,
-            defaultCollapsed: true,
-            hideMoney: appSettings.hideMoney,
-            skills,
-            className: "mb-4 break-inside-avoid",
-            noStrikethrough: type === 'journal',
-            noDarken: type === 'journal',
-            onOpen: (item: BrainDumpItem) => setSelectedLibraryItemId(item.id),
-        };
 
         if (type === 'journal') {
             return (
@@ -539,16 +499,15 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             );
         }
 
-        // Masonry layout for general notes
+        // Browsing stays compact; the existing full editor opens in the detail panel.
         return (
             <div className="space-y-4">
                 <div
-                    data-tablet-masonry="library-notes"
-                    data-ndz-tablet-baseline="masonry"
+                    data-record-list="library-notes"
                     className={contentSurface.masonryGrid}
                 >
                     {visibleGeneralItems.visibleItems.map(item => (
-                        <Card key={item.id} item={item} {...commonProps} />
+                        <RecordRow key={item.id} item={item} language={appSettings.language} onOpen={() => setSelectedLibraryItemId(item.id)} />
                     ))}
                 </div>
                 <LoadMoreButton remainingCount={visibleGeneralItems.remainingCount} onClick={visibleGeneralItems.loadMore} />
@@ -619,7 +578,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     <p className="text-muted font-medium">{libraryCopy.noSkills}</p>
                     <button
                         onClick={handleOpenAddSkill}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 rounded-2xl text-sm font-bold transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-brand-500/10 hover:bg-brand-500/20 text-brand-500 rounded-lg text-sm font-bold transition-colors"
                     >
                         <Plus className="w-4 h-4" /> {libraryCopy.trackSkill}
                     </button>
@@ -659,15 +618,15 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     event.preventDefault();
                                     handleOpenEditSkill(skill.id, skill.name, skill.weeklyTargetMinutes);
                                 }}
-                                className="group cursor-pointer overflow-hidden rounded-[28px] bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 transition-shadow hover:shadow-md"
+                                className="group cursor-pointer overflow-hidden rounded-xl bg-surface p-1 shadow-sm ring-1 ring-inset ring-border/70 transition-shadow hover:shadow-md"
                             >
                                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_auto] gap-0 sm:gap-4 items-stretch">
                                     <div className="w-full aspect-[16/9] sm:aspect-auto sm:h-full sm:min-h-[184px] rounded-[26px] bg-background border border-border overflow-hidden flex items-center justify-center">
                                         {skill.imageUrl ? (
                                             <img src={skill.imageUrl} alt={skill.name} className="h-full w-full object-cover" />
                                         ) : (
-                                            <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-muted bg-indigo-500/5">
-                                                <Target className="w-9 h-9 text-indigo-500" />
+                                            <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-muted bg-brand-500/5">
+                                                <Target className="w-9 h-9 text-brand-500" />
                                                 <span className="text-[10px] font-semibold text-muted">{libraryCopy.noImage}</span>
                                             </div>
                                         )}
@@ -689,7 +648,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         <div className="flex flex-wrap gap-2 mt-3">
                                             <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-bold text-muted">{libraryCopy.skills}</span>
                                             {skill.schedule?.enabled && (
-                                                <span className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-500 capitalize">
+                                                <span className="px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-[10px] font-bold text-brand-500 capitalize">
                                                     {skill.schedule.interval}
                                                 </span>
                                             )}
@@ -709,7 +668,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                             <div className="w-full h-2.5 bg-background border border-border rounded-full overflow-hidden">
                                                 <AnimatedProgress
                                                     value={Math.min(100, progress)}
-                                                    className="bg-indigo-500"
+                                                    className="bg-brand-500"
                                                     label={`${skill.name} weekly progress`}
                                                 />
                                             </div>
@@ -764,7 +723,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             <h3 className="text-lg font-semibold text-primary">{libraryCopy.schedule}</h3>
                             <p className="text-xs text-muted">{libraryCopy.scheduleSubtitle}</p>
                         </div>
-                        <button onClick={handleOpenAddSkill} className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
+                        <button onClick={handleOpenAddSkill} className="p-2 rounded-xl bg-brand-500/10 text-brand-500 hover:bg-brand-500/20 transition-colors">
                             <Plus className="w-4 h-4" />
                         </button>
                     </div>
@@ -774,17 +733,17 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             const hasSchedule = scheduleRows.some(row => row.session.start.toDateString() === day.toDateString());
                             const isToday = day.toDateString() === new Date().toDateString();
                             return (
-                                <div key={day.toISOString()} className={`${dayVisibilityClass(index)} rounded-2xl p-2 text-center border min-w-0 ${isToday ? 'border-indigo-500 bg-indigo-500/10' : 'border-border bg-background'}`}>
+                                <div key={day.toISOString()} className={`${dayVisibilityClass(index)} rounded-lg p-2 text-center border min-w-0 ${isToday ? 'border-brand-500 bg-brand-500/10' : 'border-border bg-background'}`}>
                                     <div className="text-[10px] text-muted font-bold truncate">{day.toLocaleDateString(locale, { weekday: 'short' })}</div>
                                     <div className="text-sm font-bold text-primary">{day.getDate()}</div>
-                                    {hasSchedule && <div className="mx-auto mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                                    {hasSchedule && <div className="mx-auto mt-1 w-1.5 h-1.5 rounded-full bg-brand-500" />}
                                 </div>
                             );
                         })}
                     </div>
 
                     {scheduleRows.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">
+                        <div className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted">
                             {libraryCopy.noSchedule}
                         </div>
                     ) : (
@@ -794,8 +753,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     done: { label: libraryCopy.statusDone, className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
                                     partial: { label: libraryCopy.statusPartial, className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
                                     missed: { label: libraryCopy.statusMissed, className: 'bg-red-500/10 text-red-500 border-red-500/20' },
-                                    today: { label: libraryCopy.statusToday, className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
-                                    in_progress: { label: libraryCopy.statusInProgress, className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
+                                    today: { label: libraryCopy.statusToday, className: 'bg-brand-500/10 text-brand-500 border-brand-500/20' },
+                                    in_progress: { label: libraryCopy.statusInProgress, className: 'bg-brand-500/10 text-brand-500 border-brand-500/20' },
                                     ready_to_log: { label: libraryCopy.statusReady, className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
                                     upcoming: { label: libraryCopy.statusUpcoming, className: 'bg-surface text-muted border-border' },
                                 }[status];
@@ -809,7 +768,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         key={`${skill.id}-${session.start.toISOString()}`}
                                         type="button"
                                         onClick={() => openSkillSessionEditor(skill, session, log)}
-                                        className={`grid w-full min-w-0 grid-cols-[40px_minmax(0,1fr)] items-center gap-3 rounded-2xl p-3 text-left sm:grid-cols-[44px_minmax(0,1fr)_auto] ${contentSurface.workspaceListRow}`}
+                                        className={`grid w-full min-w-0 grid-cols-[40px_minmax(0,1fr)] items-center gap-3 rounded-lg p-3 text-left sm:grid-cols-[44px_minmax(0,1fr)_auto] ${contentSurface.workspaceListRow}`}
                                     >
                                         <div className="text-center border-r border-border pr-3">
                                             <div className="text-sm font-bold text-primary">{session.start.getDate().toString().padStart(2, '0')}</div>
@@ -833,7 +792,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                                 <div className="mt-2 h-1.5 bg-surface rounded-full overflow-hidden border border-border">
                                                     <AnimatedProgress
                                                         value={progressWidth}
-                                                        className="bg-indigo-500"
+                                                        className="bg-brand-500"
                                                         label={`${skill.name} session progress`}
                                                     />
                                                 </div>
@@ -978,7 +937,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         if (librarySubTab === 'skills') handleOpenAddSkill();
                                         if (librarySubTab === 'journal') onAddItem(ItemType.JOURNAL);
                                     }}
-                                    className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
+                                    className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-500/20 transition-colors hover:bg-brand-500"
                                 >
                                     <Plus className="w-5 h-5" />
                                     <span>{librarySubTab === 'general' ? libraryCopy.addNote : librarySubTab === 'skills' ? libraryCopy.addSkill : libraryCopy.writeJournal}</span>
@@ -1124,7 +1083,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         type="datetime-local"
                                         value={actualStartInput}
                                         onChange={(event) => setActualStartInput(event.target.value)}
-                                        className="mt-2 w-full rounded-2xl border border-border bg-background px-3 py-3 text-sm font-medium text-primary outline-none focus:border-indigo-500"
+                                        className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-3 text-sm font-medium text-primary outline-none focus:border-brand-500"
                                     />
                                 </div>
                                 <div>
@@ -1133,11 +1092,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         type="datetime-local"
                                         value={actualEndInput}
                                         onChange={(event) => setActualEndInput(event.target.value)}
-                                        className="mt-2 w-full rounded-2xl border border-border bg-background px-3 py-3 text-sm font-medium text-primary outline-none focus:border-indigo-500"
+                                        className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-3 text-sm font-medium text-primary outline-none focus:border-brand-500"
                                     />
                                 </div>
                                 {modalActualStart && modalActualEnd && modalActualEnd > modalActualStart && (
-                                    <div className="rounded-2xl bg-background border border-border p-3 text-xs text-muted">
+                                    <div className="rounded-lg bg-background border border-border p-3 text-xs text-muted">
                                         {libraryCopy.duration}: <span className="font-bold text-primary">{Math.round((modalActualEnd.getTime() - modalActualStart.getTime()) / 60000)}m {libraryCopy.session}</span>
                                     </div>
                                 )}
@@ -1150,7 +1109,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 <button
                                     type="button"
                                     onClick={closeSkillSessionEditor}
-                                    className="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-bold text-muted hover:text-primary transition-colors"
+                                    className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-bold text-muted hover:text-primary transition-colors"
                                 >
                                     {libraryCopy.cancel}
                                 </button>
@@ -1158,7 +1117,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     type="button"
                                     onClick={saveSkillSessionActualTime}
                                     disabled={isSkillSessionSaveDisabled}
-                                    className="rounded-2xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     {libraryCopy.saveActual}
                                 </button>

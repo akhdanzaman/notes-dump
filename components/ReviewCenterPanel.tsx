@@ -96,9 +96,9 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
     'text-red-500 bg-red-500/10 border-red-500/20';
 
   return (
-    <div className="space-y-2 rounded-2xl bg-background/65 p-3 ring-1 ring-inset ring-border/60">
+    <div className="space-y-2 rounded-lg bg-background/65 p-3 ring-1 ring-inset ring-border/60">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 font-bold uppercase tracking-wide">
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-bold uppercase tracking-wide">
           {result.batchItem ? `Item ${result.batchItem.index + 1}` : `${index + 1}.`} {parserActionDestination(result)}
         </span>
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted capitalize">
@@ -113,8 +113,8 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
       </div>
 
       {result.batchItem && (
-        <div className="rounded-md bg-indigo-500/5 border border-indigo-500/15 px-2 py-1.5">
-          <div className="text-[10px] font-semibold text-indigo-600">Sumber input</div>
+        <div className="rounded-md bg-brand-500/5 border border-brand-500/15 px-2 py-1.5">
+          <div className="text-[10px] font-semibold text-brand-600">Sumber input</div>
           <div className="text-[11px] text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
         </div>
       )}
@@ -178,7 +178,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
     <section className="overflow-y-auto bg-background px-4 py-4 sm:px-5" aria-label="Pusat tinjauan">
       {hideMoney && (
         <div
-          className="mb-5 flex items-start gap-3 rounded-2xl bg-indigo-500/10 p-3.5 text-indigo-800 ring-1 ring-inset ring-indigo-500/20 dark:text-indigo-200"
+          className="mb-5 flex items-start gap-3 rounded-lg bg-brand-500/10 p-3.5 text-brand-800 ring-1 ring-inset ring-brand-500/20 dark:text-brand-200"
           role="status"
         >
           <EyeOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -195,10 +195,10 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
         <div className="mb-6 flex flex-col gap-2">
           <h3 className="mb-1 text-sm font-semibold text-primary">Pemrosesan nota</h3>
           {receiptTasks.map((task, index) => (
-            <article key={task.id} className="rounded-2xl bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
+            <article key={task.id} className="rounded-lg bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
                     <FileImage className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -241,7 +241,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onRetryReceiptTask(task.id)}
-                      className="min-h-11 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                      className="min-h-11 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
                     >
                       Coba lagi
                     </button>
@@ -250,7 +250,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onViewReceiptTaskTransaction(task.transactionItemId!)}
-                      className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-500/10 px-3 py-2 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
                     >
                       <Eye className="h-3.5 w-3.5" /> Lihat
                     </button>
@@ -300,7 +300,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
             const batchSummary = formatBatchSummary(task);
             const visibleResults = (task.results || []).filter(result => !getParserResultSummary(result).noop);
             return (
-            <article key={task.id} className="space-y-3 rounded-2xl bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
+            <article key={task.id} className="space-y-3 rounded-lg bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col gap-1 overflow-hidden flex-1">
                   <span className="text-sm font-medium text-primary truncate" title={hideMoney ? undefined : task.text}>
@@ -354,7 +354,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => retryParsing(task.id)}
-                      className="min-h-11 shrink-0 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                      className="min-h-11 shrink-0 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
                     >
                       Coba lagi
                     </button>
@@ -374,7 +374,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
               </div>
 
               {task.status === 'success' && batchSummary && (
-                <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2 text-[11px] text-indigo-600">
+                <div className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-2 text-[11px] text-brand-600">
                   {batchSummary}
                 </div>
               )}
@@ -388,7 +388,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
               {task.status === 'success' && visibleResults.length > 0 && (
                 <div className="space-y-2">
                   {hideMoney ? (
-                    <div className="flex items-center gap-2 rounded-2xl bg-background/65 p-3 text-xs text-muted ring-1 ring-inset ring-border/60">
+                    <div className="flex items-center gap-2 rounded-lg bg-background/65 p-3 text-xs text-muted ring-1 ring-inset ring-border/60">
                       <EyeOff className="h-4 w-4 shrink-0" aria-hidden="true" />
                       Hasil parsing dan nilai finansial disembunyikan.
                     </div>
@@ -417,7 +417,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
         <div className="mb-6 flex flex-col gap-2">
           <h3 className="mb-1 text-sm font-semibold text-primary">Penyempurnaan data</h3>
           {visibleEnrichmentTasks.map(task => (
-            <article key={task.id} className="space-y-2 rounded-2xl bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
+            <article key={task.id} className="space-y-2 rounded-lg bg-surface p-3.5 shadow-sm ring-1 ring-inset ring-border/65">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-primary truncate" title={hideMoney ? undefined : task.sourceText || task.itemId}>
                   {hideMoney ? 'Sumber data disembunyikan' : task.sourceText || task.itemId}
@@ -431,7 +431,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                     <AlertCircle className="w-3 h-3" /> Gagal
                   </span>
                 ) : task.reviewCount ? (
-                  <span className="text-xs text-indigo-500 font-bold">Perlu ditinjau</span>
+                  <span className="text-xs text-brand-500 font-bold">Perlu ditinjau</span>
                 ) : (
                   <span className="text-xs text-emerald-500 font-bold">Diperbarui</span>
                 )}
@@ -453,8 +453,8 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
       )}
 
       {hasPendingReviews && hideMoney ? (
-        <div className="flex items-start gap-3 rounded-[24px] bg-surface p-5 text-muted ring-1 ring-inset ring-border/60">
-          <EyeOff className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true" />
+        <div className="flex items-start gap-3 rounded-xl bg-surface p-5 text-muted ring-1 ring-inset ring-border/60">
+          <EyeOff className="mt-0.5 h-5 w-5 shrink-0 text-brand-500" aria-hidden="true" />
           <div>
             <p className="text-sm font-semibold text-primary">Tinjauan input disembunyikan</p>
             <p className="mt-1 text-xs leading-relaxed">
@@ -470,7 +470,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
         />
       ) : (
         !hasReceiptReviews && !hasReceiptTasks && !hasParsingTasks && !hasEnrichmentTasks && (
-          <div className="flex flex-col items-center justify-center rounded-[24px] bg-surface/60 py-12 text-center text-muted ring-1 ring-inset ring-border/50">
+          <div className="flex flex-col items-center justify-center rounded-xl bg-surface/60 py-12 text-center text-muted ring-1 ring-inset ring-border/50">
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
               <CheckCircle2 className="w-6 h-6" />
             </div>

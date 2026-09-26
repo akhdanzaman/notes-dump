@@ -384,6 +384,57 @@ export interface BrainDumpItem {
   isOptimistic?: boolean;
 }
 
+export interface ItemUpdatePatch {
+  content: string;
+  tags: string[];
+  amount?: number;
+  date?: string;
+  paymentMethod?: string;
+  budgetCategory?: string;
+  duration?: number;
+  skillId?: string;
+  toWallet?: string;
+  financeType?: FinanceType;
+  progress?: number;
+  progressNotes?: string;
+  shoppingCategory?: ShoppingCategory;
+  recurrenceDays?: number;
+  quantity?: string;
+  isRoutine?: boolean;
+  routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  routineDaysOfWeek?: number[];
+  routineDaysOfMonth?: number[];
+  routineMonthsOfYear?: number[];
+  savingGoalId?: string;
+  dedicatedWalletId?: string;
+  priority?: Priority;
+  start?: string;
+  end?: string;
+  hideFromCalendar?: boolean;
+  investmentAssetType?: InvestmentAssetType;
+  investmentSymbol?: string;
+  investmentUnits?: number;
+  investmentAveragePrice?: number;
+  investmentCurrentPrice?: number;
+  investmentPlatform?: string;
+  commodity?: string;
+  subcommodity?: string;
+  noteTitle?: string;
+  imageUrl?: string;
+  shoppingLineItems?: ShoppingLineItem[];
+  transactionLineItems?: TransactionLineItem[];
+  merchant?: string;
+  receiptCapture?: ReceiptCaptureMeta | null;
+  originalCurrency?: string;
+  originalAmount?: number;
+  exchangeRateToIdr?: number;
+  loanCounterparty?: string;
+  loanAccountId?: string;
+  loanDueDate?: string;
+}
+
+export type ItemUpdateHandler = (id: string, patch: ItemUpdatePatch) => void | Promise<void>;
+
 
 export interface SkillSessionLogInput {
   logId?: string;
@@ -450,6 +501,16 @@ export interface SyncProgress {
   total?: number;
   updatedAt?: number;
 }
+
+export type SyncProgressCallback = (progress: SyncProgress) => void;
+
+export type SyncResult = {
+  success: boolean;
+  method: 'cloud' | 'local' | 'skipped_not_hydrated' | 'skipped_no_changes' | 'error';
+  mergedData?: DbSchema;
+  error?: string;
+};
+
 export type MoneyView = 'transactions' | 'budget' | 'wallets';
 export type SortOrder = 'newest' | 'oldest' | 'highest_amount' | 'lowest_amount';
 

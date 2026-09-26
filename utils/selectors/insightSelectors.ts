@@ -3,6 +3,7 @@ import { getFinanceItems, getWalletStats } from './moneySelectors';
 import { getShoppingItems } from './shoppingSelectors';
 import { getSkillItems } from './skillSelectors';
 import { generateBehaviorDriftInsights } from '../behaviorDrift';
+import { formatCurrencyAmount } from '../formatters';
 
 export interface Insight {
   type: 'warning' | 'info' | 'success';
@@ -25,7 +26,7 @@ export const generateInsights = (
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-  const fmt = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+  const fmt = (n: number) => formatCurrencyAmount(n);
 
   // 1. Finance Insights
   const thisMonthFinance = getFinanceItems(items, now, budgetConfig, '', '', '', '', '', '', '', 'newest');

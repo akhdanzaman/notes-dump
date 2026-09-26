@@ -38,7 +38,7 @@ export const BEHAVIOR_CACHE_MIN_AGREEMENT_FOR_AUTO_APPLY = 0.8;
 
 const normalizeKey = (input: string): string => input.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-export const normalizeBehaviorText = (value?: string): string => (value || '')
+const normalizeBehaviorText = (value?: string): string => (value || '')
   .trim()
   .toLowerCase()
   .replace(/rp\s*/g, ' ')

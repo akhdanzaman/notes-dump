@@ -4,7 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import AnimatedNumber from '../AnimatedNumber';
 import PresencePanel from '../PresencePanel';
-import { motionDuration, motionStagger } from '../config';
+import { motionDuration, motionStagger } from '../transitions';
 import { motionTransition } from '../transitions';
 import { errorNudgeVariants } from '../variants';
 

@@ -40,7 +40,9 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
   activeTab,
   setActiveTab,
   planSubTab,
+  setPlanSubTab,
   librarySubTab,
+  setLibrarySubTab,
   pendingCount,
   reviewQueueCount,
   saveStatus,
@@ -109,10 +111,10 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
   return (
     <aside
       data-desktop-rail="true"
-      className="fixed inset-y-0 left-0 z-50 hidden w-72 flex-col overflow-y-auto border-r border-border/70 bg-surface/86 p-3 backdrop-blur-xl lg:flex"
+      className="fixed z-40 hidden flex-col overflow-y-auto border-r border-border bg-surface p-3 lg:flex"
       aria-label={`${copy.navigation} Arkaiv`}
     >
-      <div className="flex items-center gap-3 rounded-2xl px-2 py-2">
+      <div className="flex items-center gap-3 rounded-lg px-2 py-2">
         <div className="shrink-0">
           <img
             src="/icon.svg"
@@ -122,7 +124,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
         </div>
         <div className="min-w-0">
           <h1 className="truncate text-[17px] font-bold tracking-[-0.025em] text-primary">Arkaiv</h1>
-          <p className="truncate text-[11px] font-medium text-muted">{copy.productMessage}</p>
+            <p className="truncate text-[10px] font-medium text-muted">Personal workspace</p>
         </div>
       </div>
 
@@ -142,11 +144,11 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
                 data-desktop-nav-tab={item.id}
                 data-active={isActive ? 'true' : 'false'}
                 className={[
-                  'group relative flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2 text-left',
+                  'group relative flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left',
                   'transition-[color,background-color,transform] duration-150 active:scale-[0.985]',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/65 focus-visible:ring-offset-1 focus-visible:ring-offset-surface',
                   isActive
-                    ? 'text-accent'
+                    ? 'text-[#234123]'
                     : 'text-muted hover:bg-black/[0.035] hover:text-primary dark:hover:bg-white/[0.055]',
                 ].join(' ')}
                 aria-current={isActive ? 'page' : undefined}
@@ -155,7 +157,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
               >
                 {isActive && (
                   <ActiveIndicator
-                    className="absolute inset-0 rounded-2xl bg-accent/10 ring-1 ring-inset ring-accent/15 before:absolute before:left-0 before:top-1/2 before:h-6 before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-accent before:content-['']"
+                    className="absolute inset-0 rounded-lg bg-brand-400"
                   />
                 )}
                 <span
@@ -163,7 +165,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
                   className={[
                     'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-[color,background-color,transform] duration-150 group-active:scale-[0.94]',
                     isActive
-                      ? 'bg-accent/12 text-accent'
+                      ? 'text-[#234123]'
                       : 'text-muted group-hover:bg-black/[0.035] group-hover:text-primary dark:group-hover:bg-white/[0.055]',
                   ].join(' ')}
                 >
@@ -178,11 +180,19 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
         </nav>
       </LayoutGroup>
 
+      {(activeTab === 'plan' || activeTab === 'library') && <div className="mt-4 border-t border-border pt-4">
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted">{language === 'en' ? 'Sections' : 'Bagian'}</p>
+        {(activeTab === 'plan'
+          ? ([['tasks', 'Tasks', 'Tugas'], ['shopping', 'Shopping', 'Belanja'], ['savings', 'Goals & investments', 'Target & investasi'], ['loans', 'Loans', 'Pinjaman']] as const)
+          : ([['general', 'Notes', 'Catatan'], ['skills', 'Skills', 'Skill'], ['journal', 'Journal', 'Jurnal']] as const)
+        ).map(([id, en, ind]) => <button key={id} type="button" onClick={() => activeTab === 'plan' ? setPlanSubTab(id as PlanSubTab) : setLibrarySubTab(id as LibrarySubTab)} aria-current={(activeTab === 'plan' ? planSubTab : librarySubTab) === id ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs ${(activeTab === 'plan' ? planSubTab : librarySubTab) === id ? 'bg-accent/10 font-semibold text-accent' : 'text-muted hover:bg-surface-soft'}`}><span className="h-1 w-1 rounded-full bg-current" />{language === 'en' ? en : ind}</button>)}
+      </div>}
+
       <div className="mt-auto space-y-2 pt-5">
         {error && (
           <div
             role="status"
-            className="rounded-2xl bg-red-500/[0.08] p-3 text-red-600 ring-1 ring-inset ring-red-500/15 dark:text-red-400"
+            className="rounded-lg bg-red-500/[0.08] p-3 text-red-600 ring-1 ring-inset ring-red-500/15 dark:text-red-400"
           >
             <div className="flex items-center gap-2 text-xs font-semibold">
               <AlertTriangle className="h-4 w-4" />
@@ -194,7 +204,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
 
         <div className="border-t border-border/65 pt-3">
           <div
-            className="flex min-h-11 items-center gap-3 rounded-2xl px-2"
+            className="flex min-h-11 items-center gap-3 rounded-lg px-2"
             role="status"
             aria-live="polite"
             aria-atomic="true"
@@ -221,16 +231,16 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
             </span>
           </div>
 
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_2.75rem_2.75rem] gap-1.5">
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] gap-1">
             <button
               type="button"
               onClick={onOpenReviewCenter}
-              className="relative flex h-11 min-w-0 items-center gap-2 rounded-xl bg-surface-soft px-3 pr-8 text-xs font-semibold text-muted transition-[color,background-color,transform] duration-150 hover:bg-accent/10 hover:text-accent active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/65"
+              className="relative flex min-w-0 items-center gap-1 rounded-lg bg-surface-soft px-2 text-xs font-medium text-muted hover:bg-accent/10 hover:text-accent"
               title={copy.review}
               aria-label={`${copy.openReview}${totalQueue ? `, ${totalQueue}` : ''}`}
             >
               <ClipboardCheck className="h-4 w-4 shrink-0" />
-              <span className="truncate">{copy.review}</span>
+              <span className="truncate">{language === 'en' ? 'Review' : 'Tinjau'}</span>
               <CountBadge
                 count={totalQueue}
                 ariaLabel={`${totalQueue} item perlu diperiksa`}
@@ -240,7 +250,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
             <button
               type="button"
               onClick={onRefreshClick}
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-soft text-muted transition-[color,background-color,transform] duration-150 hover:bg-blue-500/10 hover:text-blue-600 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/65 dark:hover:text-blue-400"
+              className="flex items-center justify-center rounded-lg bg-surface-soft text-muted hover:text-primary"
               title={copy.refresh}
               aria-label={copy.refresh}
             >
@@ -249,7 +259,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
             <button
               type="button"
               onClick={onSyncClick}
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-soft text-muted transition-[color,background-color,transform] duration-150 hover:bg-emerald-500/10 hover:text-emerald-700 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/65 dark:hover:text-emerald-400"
+              className="flex items-center justify-center rounded-lg bg-surface-soft text-muted hover:text-primary"
               title={copy.syncNow}
               aria-label={copy.syncNow}
             >
@@ -261,7 +271,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
         <button
           type="button"
           onClick={onSettingsClick}
-          className="flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm font-semibold text-muted transition-[color,background-color,transform] duration-150 hover:bg-black/[0.035] hover:text-primary active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/65 dark:hover:bg-white/[0.055]"
+          className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-muted transition-[color,background-color,transform] duration-150 hover:bg-black/[0.035] hover:text-primary active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/65 dark:hover:bg-white/[0.055]"
           aria-label={copy.openSettings}
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-black/[0.035] dark:bg-white/[0.055]">

@@ -4,6 +4,7 @@ import { resolveBudgetCategoryIdFromRules } from './budgetCategoryService';
 import {
   createGeminiClient,
   DEFAULT_FLASH_MODEL,
+  fileToBase64,
   getGeminiKey,
   parseJsonResponse,
   withAiRetry,
@@ -19,16 +20,6 @@ export interface ReceiptParseResult {
   lineItems: TransactionLineItem[];
   warnings: string[];
 }
-
-const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-  let binary = '';
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
-  }
-  return btoa(binary);
-};
 
 const normalizeWalletId = (value: unknown, wallets: Wallet[]): string | undefined => {
   if (typeof value !== 'string' || !value.trim()) return undefined;
@@ -63,7 +54,7 @@ export const parseReceiptImage = async (
   const ai = createGeminiClient(apiKey);
   if (!apiKey || !ai) throw new Error('Gemini API key belum dikonfigurasi.');
 
-  const base64 = arrayBufferToBase64(await file.arrayBuffer());
+  const base64 = await fileToBase64(file);
   const walletContext = wallets.length
     ? wallets.map((wallet) => `${wallet.name} [ID: ${wallet.id}]`).join(', ')
     : 'Tidak ada wallet yang dikonfigurasi.';

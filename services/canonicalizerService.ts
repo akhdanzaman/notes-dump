@@ -63,6 +63,18 @@ const mergeReviewReason = (currentReason: string | undefined, nextReason: string
   return `${currentReason} ${nextReason}`.trim();
 };
 
+const withCanonicalReview = (result: ParserResultV2, canonicalized: CanonicalizationResult): ParserResultV2 => {
+  const nextResult = { ...result, canonicalReview: canonicalized.suggestions };
+  if (canonicalized.suggestions.length === 0) return nextResult;
+
+  nextResult.needsReview = true;
+  nextResult.reviewReason = mergeReviewReason(
+    result.reviewReason,
+    `Canonical review suggested for ${canonicalized.suggestions.map(suggestion => suggestion.field).join(', ')}.`
+  );
+  return nextResult;
+};
+
 const buildCanonicalValue = (
   field: CanonicalField,
   rawValue: string,
@@ -314,24 +326,13 @@ export function canonicalizeParserResults(
 
       const enrichedMeta = enrichMetaWithContext(result, payload.meta as ParsedItemMetaV2, ctx, behaviorCache);
       const canonicalized = canonicalizeMeta(enrichedMeta, ctx);
-      const nextResult: ParserResultV2 = {
+      return withCanonicalReview({
         ...result,
         payload: {
           ...payload,
           meta: canonicalized.meta,
         },
-        canonicalReview: canonicalized.suggestions,
-      };
-
-      if (canonicalized.suggestions.length > 0) {
-        nextResult.needsReview = true;
-        nextResult.reviewReason = mergeReviewReason(
-          result.reviewReason,
-          `Canonical review suggested for ${canonicalized.suggestions.map(s => s.field).join(', ')}.`
-        );
-      }
-
-      return nextResult;
+      }, canonicalized);
     }
 
     if (result.action === 'update_item') {
@@ -341,7 +342,7 @@ export function canonicalizeParserResults(
       const partialMeta = payload.changes as ParsedItemMetaV2;
       const enrichedMeta = enrichMetaWithContext(result, partialMeta, ctx, behaviorCache);
       const canonicalized = canonicalizeMeta(enrichedMeta, ctx);
-      const nextResult: ParserResultV2 = {
+      return withCanonicalReview({
         ...result,
         payload: {
           ...payload,
@@ -350,18 +351,7 @@ export function canonicalizeParserResults(
             canonical: canonicalized.meta.canonical,
           } as ParsedItemMetaV2,
         },
-        canonicalReview: canonicalized.suggestions,
-      };
-
-      if (canonicalized.suggestions.length > 0) {
-        nextResult.needsReview = true;
-        nextResult.reviewReason = mergeReviewReason(
-          result.reviewReason,
-          `Canonical review suggested for ${canonicalized.suggestions.map(s => s.field).join(', ')}.`
-        );
-      }
-
-      return nextResult;
+      }, canonicalized);
     }
 
     return result;

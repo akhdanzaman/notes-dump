@@ -55,7 +55,7 @@ const getSuggestions = (language?: AppLanguage) => {
   return [
     { label: copy.expense, value: 'Expense:', icon: <TrendingDown className="h-4 w-4 text-red-500" /> },
     { label: copy.income, value: 'Income:', icon: <TrendingUp className="h-4 w-4 text-emerald-500" /> },
-    { label: copy.saving, value: 'Saving:', icon: <PiggyBank className="h-4 w-4 text-indigo-500" /> },
+    { label: copy.saving, value: 'Saving:', icon: <PiggyBank className="h-4 w-4 text-brand-500" /> },
     { label: copy.focus, value: 'Focus:', icon: <Target className="h-4 w-4 text-blue-500" /> },
     { label: copy.shopping, value: 'shopping:', icon: <ShoppingCart className="h-4 w-4 text-purple-500" /> },
     { label: copy.note, value: 'notes:', icon: <StickyNote className="h-4 w-4 text-amber-500" /> },
@@ -66,7 +66,7 @@ const getSuggestions = (language?: AppLanguage) => {
 const getReceiptSuggestions = (language?: AppLanguage) => {
   const copy = composerCopy(language);
   return [
-    { label: copy.wallet, value: 'wallet:', icon: <TrendingDown className="h-4 w-4 text-indigo-500" /> },
+    { label: copy.wallet, value: 'wallet:', icon: <TrendingDown className="h-4 w-4 text-brand-500" /> },
     { label: copy.date, value: 'tanggal:', icon: <ClipboardCheck className="h-4 w-4 text-emerald-500" /> },
     { label: copy.detail, value: 'catatan:', icon: <StickyNote className="h-4 w-4 text-amber-500" /> },
   ];
@@ -247,10 +247,10 @@ const InputBar: React.FC<InputBarProps> = ({
           : 'idle';
 
   return (
-    <div data-global-composer="true" className="z-[60] w-full px-3 pb-3 pt-2 pointer-events-none sm:px-5 lg:px-0 lg:pb-5">
+    <div data-global-composer="true" className="z-[60] w-full px-3 pb-3 pt-2 pointer-events-none sm:px-5 lg:px-3 lg:pb-3">
       <div className="mx-auto w-full max-w-3xl pointer-events-none lg:max-w-4xl">
         <div
-          className="relative"
+          className="relative flex min-w-0 flex-col gap-2"
           onBlurCapture={(event) => {
             const nextTarget = event.relatedTarget;
             if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
@@ -262,7 +262,7 @@ const InputBar: React.FC<InputBarProps> = ({
             {visibleError && (
               <motion.div
                 key={visibleError}
-                className="absolute bottom-full left-0 w-full mb-3 pointer-events-auto"
+                className="w-full pointer-events-auto"
                 variants={reduceMotion ? fadeVariants : errorNudgeVariants}
                 initial="hidden"
                 animate="visible"
@@ -278,7 +278,7 @@ const InputBar: React.FC<InputBarProps> = ({
           </AnimatePresence>
 
           {topContent && (
-            <div className="absolute bottom-full left-0 w-full mb-16 pointer-events-none">
+            <div className="w-full pointer-events-none">
               {topContent}
             </div>
           )}
@@ -286,14 +286,14 @@ const InputBar: React.FC<InputBarProps> = ({
           <AnimatePresence initial={false}>
             {isPopupVisible && (
             <motion.div
-              className="pointer-events-none absolute bottom-full left-0 mb-3 w-full"
+              className="pointer-events-none relative w-full"
               variants={reduceMotion ? fadeVariants : riseVariants}
               initial="hidden"
               animate="visible"
               exit="exit"
             >
             <div className="flex items-center justify-between gap-2 px-1 py-1 w-full pointer-events-none">
-              <div className="flex items-center gap-2 flex-1 overflow-hidden pointer-events-none">
+              <div className="flex min-w-0 items-center gap-2 flex-1 pointer-events-none">
                 {startAction && (
                   <div className="shrink-0 z-20 pointer-events-auto">
                     {startAction}
@@ -320,7 +320,8 @@ const InputBar: React.FC<InputBarProps> = ({
                         onClick={() => addTemplate(item.value)}
                         aria-label={item.label}
                         title={item.label}
-                        className="flex min-h-12 w-[10.5rem] max-w-[calc(100vw-4.5rem)] shrink-0 snap-start items-center justify-start gap-2 overflow-hidden rounded-2xl bg-surface/96 px-3 py-2 text-xs font-semibold text-primary shadow-sm ring-1 ring-inset ring-border/70 backdrop-blur-xl transition-colors hover:bg-surface hover:ring-indigo-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 active:scale-[0.98] sm:w-auto sm:max-w-none sm:rounded-full sm:px-3.5"
+                        type="button"
+                        className="flex min-h-11 w-auto shrink-0 snap-start items-center justify-start gap-2 whitespace-nowrap rounded-lg bg-surface px-3 py-2 text-xs font-medium text-primary ring-1 ring-inset ring-border transition-colors hover:bg-surface-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
                       >
                         <span data-quick-input-icon="true" aria-hidden="true" className="flex h-5 w-5 shrink-0 items-center justify-center">{item.icon}</span>
                         <span className="min-w-0 flex-1 text-left leading-tight sm:whitespace-nowrap">{item.label}</span>
@@ -337,18 +338,18 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={onOpenReviewCenter}
-                    className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 shadow-sm ring-1 ring-inset ring-indigo-500/25 backdrop-blur-xl transition-colors hover:bg-indigo-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 active:scale-[0.98]"
+                    className="relative flex h-11 w-11 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500 shadow-sm ring-1 ring-inset ring-brand-500/25 backdrop-blur-xl transition-colors hover:bg-brand-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 active:scale-[0.98]"
                     title={copy.reviewCenter}
                     aria-label={`${copy.reviewCenter}${reviewCenterCount ? `, ${reviewCenterCount}` : ''}`}
                     aria-busy={reviewCenterActive || undefined}
                   >
                     {reviewCenterActive && (
-                      <span className={`absolute -inset-1 rounded-full border-2 border-transparent border-r-indigo-300 border-t-indigo-500 ${reduceMotion ? '' : 'animate-spin'}`} />
+                      <span className={`absolute -inset-1 rounded-full border-2 border-transparent border-r-brand-300 border-t-brand-500 ${reduceMotion ? '' : 'animate-spin'}`} />
                     )}
                     <ClipboardCheck className="w-5 h-5" />
                     <CountBadge
                       count={reviewCenterCount || 0}
-                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center border border-surface"
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[10px] font-bold flex items-center justify-center border border-surface"
                     />
                   </button>
                 </div>
@@ -397,10 +398,10 @@ const InputBar: React.FC<InputBarProps> = ({
           <div
             data-composer-surface="true"
             data-composer-state={buttonState}
-            className={`relative overflow-hidden rounded-[1.6rem] border bg-surface/94 backdrop-blur-2xl pointer-events-auto transition-[border-color,box-shadow,transform] duration-150 ${
+            className={`relative overflow-hidden rounded-xl border bg-surface pointer-events-auto transition-[border-color,box-shadow] duration-150 ${
               showSuggestions
-                ? 'scale-[1.002] border-indigo-500/40 shadow-[0_16px_42px_rgba(79,70,229,0.14)]'
-                : 'border-border/80 shadow-[0_14px_38px_rgba(0,0,0,0.12)]'
+                ? 'border-brand-500/40 shadow-sm'
+                : 'border-border shadow-sm'
             }`}
           >
             <AnimatePresence initial={false}>
@@ -418,7 +419,7 @@ const InputBar: React.FC<InputBarProps> = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-500">
+                      <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-500">
                         {imageMode === 'receipt' ? copy.receipt : copy.imageQuestion}
                       </span>
                     </div>
@@ -428,7 +429,7 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onClick={removeImage}
                     disabled={isSubmitting}
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-black/5 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-white/10 disabled:opacity-50"
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-black/5 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 dark:hover:bg-white/10 disabled:opacity-50"
                     title={copy.removeImage}
                     aria-label={copy.removeImage}
                   >
@@ -440,7 +441,7 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onClick={() => setImageMode('receipt')}
                     disabled={isSubmitting}
-                    className={`min-h-11 rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${imageMode === 'receipt' ? 'bg-indigo-500 text-white' : 'text-muted hover:text-primary'}`}
+                    className={`min-h-11 rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 ${imageMode === 'receipt' ? 'bg-brand-500 text-white' : 'text-muted hover:text-primary'}`}
                     aria-pressed={imageMode === 'receipt'}
                   >
                     {copy.receiptMode}
@@ -449,7 +450,7 @@ const InputBar: React.FC<InputBarProps> = ({
                     type="button"
                     onClick={() => setImageMode('chat')}
                     disabled={isSubmitting}
-                    className={`min-h-11 rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${imageMode === 'chat' ? 'bg-indigo-500 text-white' : 'text-muted hover:text-primary'}`}
+                    className={`min-h-11 rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 ${imageMode === 'chat' ? 'bg-brand-500 text-white' : 'text-muted hover:text-primary'}`}
                     aria-pressed={imageMode === 'chat'}
                   >
                     {copy.imageMode}
@@ -459,7 +460,7 @@ const InputBar: React.FC<InputBarProps> = ({
               )}
             </AnimatePresence>
 
-            <div className="flex min-h-[56px] items-end">
+            <div data-composer-controls="true" className="grid grid-cols-[minmax(0,1fr)_auto] items-end">
               <input
                 ref={imageInputRef}
                 type="file"
@@ -469,7 +470,7 @@ const InputBar: React.FC<InputBarProps> = ({
                 onChange={(event) => handleImageChange(event.target.files?.[0])}
               />
               <div
-                className="m-1.5 mr-0 flex shrink-0 items-center gap-0.5 rounded-xl bg-surface-soft/80 p-0.5"
+                className="col-start-1 row-start-2 m-1.5 mr-0 flex w-fit items-center gap-1 rounded-lg bg-surface-soft p-0.5"
                 role="group"
                 aria-label={copy.modesLabel}
               >
@@ -489,7 +490,7 @@ const InputBar: React.FC<InputBarProps> = ({
                       aria-label={label}
                       aria-pressed={isActive}
                       title={label}
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 disabled:opacity-50 ${isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted hover:bg-surface hover:text-primary'}`}
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 disabled:opacity-50 ${isActive ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:bg-surface hover:text-primary'}`}
                     >
                       <Icon className="h-[18px] w-[18px]" />
                     </button>
@@ -510,7 +511,7 @@ const InputBar: React.FC<InputBarProps> = ({
                 placeholder={image ? copy.scanPlaceholder : composerMode === 'ask' ? copy.askPlaceholder : copy.capturePlaceholder}
                 aria-label={copy.inputLabel}
                 enterKeyHint="send"
-                className="max-h-[120px] min-w-0 flex-1 resize-none bg-transparent px-3 py-[18px] text-[15px] font-medium leading-5 text-primary placeholder:text-muted/75 focus:outline-none no-scrollbar"
+                className="col-span-2 row-start-1 max-h-[120px] min-h-[64px] w-full min-w-0 resize-none border-b border-border bg-transparent px-3 py-3 text-[15px] font-normal leading-5 text-primary placeholder:text-muted/75 focus:outline-none"
                 rows={1}
               />
 
@@ -518,12 +519,12 @@ const InputBar: React.FC<InputBarProps> = ({
                 type="button"
                 onClick={() => void handleSubmit()}
                 disabled={!isReady || isSubmitting}
-                className={`m-1.5 ml-1 flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl px-3 text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:bg-muted/20 disabled:text-muted disabled:opacity-60 disabled:shadow-none ${
+                className={`col-start-2 row-start-2 m-1.5 ml-1 flex h-11 min-w-11 shrink-0 items-center justify-center rounded-lg px-3 text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:bg-muted/20 disabled:text-muted disabled:opacity-60 disabled:shadow-none ${
                   buttonState === 'received'
                     ? 'bg-emerald-600 shadow-emerald-500/20'
                     : buttonState === 'error'
                       ? 'bg-red-500 shadow-red-500/20 hover:bg-red-400'
-                      : 'bg-indigo-600 shadow-indigo-500/20 hover:bg-indigo-500'
+                      : 'bg-brand-600 shadow-brand-500/20 hover:bg-brand-500'
                 }`}
                 title={copy.send}
                 aria-label={

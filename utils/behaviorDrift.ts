@@ -1,5 +1,6 @@
 import { BrainDumpItem, Skill } from '../types';
 import { getCanonicalOrRawItemValue } from './canonicalization/accessors';
+import { formatCurrencyAmount } from './formatters';
 
 export interface BehaviorDriftInsight {
   type: 'warning' | 'info' | 'success';
@@ -13,11 +14,7 @@ type ScoredBehaviorDriftInsight = BehaviorDriftInsight & { score: number };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FOOD_TAGS = new Set(['food', 'breakfast', 'lunch', 'dinner', 'snack']);
 
-const fmt = (n: number) => new Intl.NumberFormat('id-ID', {
-  style: 'currency',
-  currency: 'IDR',
-  maximumFractionDigits: 0,
-}).format(n);
+const fmt = (n: number) => formatCurrencyAmount(n);
 
 const getItemTimestamp = (item: BrainDumpItem) => {
   const raw = item.completed_at || item.meta.date || item.created_at;

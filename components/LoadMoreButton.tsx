@@ -14,7 +14,7 @@ const LoadMoreButton: React.FC<LoadMoreButtonProps> = ({ remainingCount, onClick
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-3xl border border-border bg-surface/80 px-4 py-3 text-sm font-semibold text-primary transition-all hover:bg-surface hover:border-primary/20 flex items-center justify-center gap-2 ${className}`.trim()}
+      className={`w-full rounded-xl border border-border bg-surface/80 px-4 py-3 text-sm font-semibold text-primary transition-all hover:bg-surface hover:border-primary/20 flex items-center justify-center gap-2 ${className}`.trim()}
     >
       <ChevronDown className="w-4 h-4" />
       Load {Math.min(remainingCount, 20)} more

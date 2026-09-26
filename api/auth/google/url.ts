@@ -1,68 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import crypto from 'node:crypto';
-
-const firstHeaderValue = (value: string | string[] | undefined, fallback = '') => (
-  Array.isArray(value) ? value[0] || fallback : value || fallback
-).split(',')[0].trim();
-
-const allowedExtraOrigins = () => (process.env.OAUTH_ALLOWED_ORIGINS || process.env.SERVICE_ACCOUNT_ALLOWED_ORIGINS || '')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
-
-const requestOrigin = (req: VercelRequest) => {
-  const protocol = firstHeaderValue(req.headers['x-forwarded-proto'], 'https');
-  const host = firstHeaderValue(req.headers.host);
-  return `${protocol}://${host}`;
-};
-
-const resolveOAuthOrigin = (req: VercelRequest) => {
-  const fallbackOrigin = requestOrigin(req);
-  const candidate = String(req.query.origin || fallbackOrigin);
-  const allowed = new Set([fallbackOrigin, ...allowedExtraOrigins()].map(origin => new URL(origin).origin));
-  const origin = new URL(candidate).origin;
-  if (!allowed.has(origin)) throw new Error('OAuth origin is not allowed');
-  return origin;
-};
-
-const getOAuthStateSecret = () => (
-  process.env.OAUTH_STATE_SECRET
-  || process.env.SERVICE_ACCOUNT_SESSION_SECRET
-  || process.env.GOOGLE_CLIENT_SECRET
-  || (process.env.NODE_ENV === 'production' ? '' : 'arkaiv-development-oauth-state')
-);
-
-const hmac = (input: string, secret: string) => crypto.createHmac('sha256', secret).update(input).digest('base64url');
-
-const encodeOAuthState = (origin: string) => {
-  const secret = getOAuthStateSecret();
-  if (!secret) throw new Error('OAUTH_STATE_SECRET or GOOGLE_CLIENT_SECRET is required for OAuth state signing.');
-  const payload = Buffer.from(JSON.stringify({ origin, nonce: crypto.randomUUID(), exp: Date.now() + 10 * 60 * 1000 })).toString('base64url');
-  return `${payload}.${hmac(payload, secret)}`;
-};
+import { createGoogleAuthorizationUrl } from '../../_lib/googleOAuth.js';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  
-  if (!clientId) {
-    console.error("GOOGLE_CLIENT_ID is missing from environment variables");
-    return res.status(500).json({ error: "Server configuration error: GOOGLE_CLIENT_ID is missing" });
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const origin = resolveOAuthOrigin(req);
-  const redirectUri = `${origin}/auth/callback`;
-  
-  // Construct the OAuth provider's authorization URL
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
-    access_type: 'offline',
-    prompt: 'consent',
-    state: encodeOAuthState(origin)
-  });
-
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-  res.status(200).json({ url: authUrl });
+  try {
+    return res.status(200).json({ url: createGoogleAuthorizationUrl(req, req.query.origin) });
+  } catch (error: any) {
+    const status = error?.message?.includes('GOOGLE_CLIENT_ID is missing') ? 500 : 400;
+    return res.status(status).json({ error: error?.message || 'Failed to create Google authorization URL' });
+  }
 }

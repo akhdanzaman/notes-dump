@@ -265,6 +265,20 @@ const findSavingGoalMentionedInText = (text: string, items: BrainDumpItem[]): Br
     .sort((a, b) => normalizeKey(b.content).length - normalizeKey(a.content).length)[0];
 };
 
+const extractFinanceInput = (text: string, options: LocalFinanceParseOptions) => {
+  const dateHint = extractDateHint(text, options.now || new Date());
+  const textWithoutDateHint = dateHint
+    ? normalizeWhitespace(text.replace(new RegExp(escapeRegExp(dateHint.raw), 'i'), ' '))
+    : text;
+  const amountMatches = findAmountMatches(textWithoutDateHint);
+  if (amountMatches.length > 1) return null;
+  return {
+    dateHint,
+    amount: amountMatches[0],
+    wallets: findWalletMatches(text, options.availableWallets || []),
+  };
+};
+
 const parseSavingWithdrawalCommand = (
   normalizedText: string,
   options: LocalFinanceParseOptions,
@@ -273,15 +287,9 @@ const parseSavingWithdrawalCommand = (
   const triggerMatch = normalizedText.match(/^\s*(withdraw|tarik|cairkan?|ambil)\b/i);
   if (!triggerMatch) return null;
 
-  const dateHint = extractDateHint(normalizedText, options.now || new Date());
-  const textWithoutDateHint = dateHint
-    ? normalizeWhitespace(normalizedText.replace(new RegExp(escapeRegExp(dateHint.raw), 'i'), ' '))
-    : normalizedText;
-  const amountMatches = findAmountMatches(textWithoutDateHint);
-  if (amountMatches.length > 1) return null;
-
-  const amount = amountMatches[0];
-  const wallets = findWalletMatches(normalizedText, options.availableWallets || []);
+  const fields = extractFinanceInput(normalizedText, options);
+  if (!fields) return null;
+  const { dateHint, amount, wallets } = fields;
   const trigger: TriggerSpec = { kind: 'saving_withdrawal', keyword: triggerMatch[1].toLowerCase() };
   const label = buildContentLabel(normalizedText, trigger, amount, wallets, dateHint)
     .replace(/\b(?:dari|from|ke|to|into)\b/gi, ' ')
@@ -497,15 +505,9 @@ export const parseLocalFinanceCommand = (text: string, options: LocalFinancePars
   if (!trigger) return null;
   const tokenCount = normalizedText.split(/\s+/).length;
   if (tokenCount > 14 || normalizedText.length > 120 || AMBIGUOUS_FALLBACK_PATTERN.test(normalizedText)) return null;
-  const dateHint = extractDateHint(normalizedText, options.now || new Date());
-  const textWithoutDateHint = dateHint
-    ? normalizeWhitespace(normalizedText.replace(new RegExp(escapeRegExp(dateHint.raw), 'i'), ' '))
-    : normalizedText;
-  const amountMatches = findAmountMatches(textWithoutDateHint);
-  if (amountMatches.length > 1) return null;
-
-  const amount = amountMatches[0];
-  const wallets = findWalletMatches(normalizedText, options.availableWallets || []);
+  const fields = extractFinanceInput(normalizedText, options);
+  if (!fields) return null;
+  const { dateHint, amount, wallets } = fields;
   const unknownWalletHints = detectUnknownWalletHints(normalizedText, wallets);
   const label = buildContentLabel(normalizedText, trigger, amount, wallets, dateHint);
   const roles = resolveWalletRoles(trigger.kind, normalizedText, wallets);

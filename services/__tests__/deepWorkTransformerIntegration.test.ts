@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildDeepWorkPlan, buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../deepWorkTransformer';
+import { analyzeDeepWorkTodo, buildDeepWorkSuggestionMeta, createDeepWorkSubtaskItems } from '../deepWorkTransformer';
 import { normalizeDeepWorkTodoMeta } from '../../utils/deepWorkTodoModel';
 import { generateExportData } from '../../utils/exportUtils';
 import { reconcileSpreadsheetData } from '../spreadsheetReconciler';
@@ -30,17 +30,17 @@ const makeTodo = (content: string): BrainDumpItem => ({
   },
 });
 
-test('buildDeepWorkPlan transforms abstract work and skips concrete errands', () => {
-  const abstractPlan = buildDeepWorkPlan('Selesaiin summary IIMS 2026');
+test('analyzeDeepWorkTodo transforms abstract work and skips concrete errands', () => {
+  const abstractPlan = analyzeDeepWorkTodo('Selesaiin summary IIMS 2026');
   assert.equal(abstractPlan.shouldTransform, true);
   assert.ok(abstractPlan.steps.length >= 3);
 
-  const explicitPlan = buildDeepWorkPlan('Lanjut summary regulasi', {
+  const explicitPlan = analyzeDeepWorkTodo('Lanjut summary regulasi', {
     subtasks: ['Identify regulation source', 'Extract obligations', 'Draft final summary'],
   });
   assert.deepEqual(explicitPlan.steps, ['Identify regulation source', 'Extract obligations', 'Draft final summary']);
 
-  const errandPlan = buildDeepWorkPlan('buy milk');
+  const errandPlan = analyzeDeepWorkTodo('buy milk');
   assert.equal(errandPlan.shouldTransform, false);
 });
 

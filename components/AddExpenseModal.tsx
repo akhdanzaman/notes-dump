@@ -331,7 +331,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             <h3 className={addItemModal.title}>
               {isLoanMode
                 ? <HandCoins className="w-5 h-5 text-amber-500" />
-                : <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-indigo-500'}`} />}
+                : <DollarSign className={`w-5 h-5 ${transactionType === 'expense' ? 'text-red-500' : transactionType === 'income' ? 'text-green-500' : 'text-brand-500'}`} />}
               {modeLabel}
             </h3>
             <button type="button" onClick={handleClose} className={addItemModal.closeButton} aria-label={`Tutup form ${modeLabel.toLowerCase()}`}>
@@ -364,13 +364,13 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       key={kind}
                       type="button"
                       onClick={() => chooseLoanKind(kind)}
-                      className={`relative min-h-[88px] rounded-2xl p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${loanKind === kind ? 'bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/55' : 'bg-background/70 ring-1 ring-inset ring-border/70 hover:bg-surface'}`}
+                      className={`relative min-h-[88px] rounded-lg p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 ${loanKind === kind ? 'bg-brand-500/10 ring-1 ring-inset ring-brand-500/55' : 'bg-background/70 ring-1 ring-inset ring-border/70 hover:bg-surface'}`}
                       aria-pressed={loanKind === kind}
                     >
                       <div className="pr-8 text-sm font-bold text-primary">{loanActionLabels[kind].title}</div>
                       <div className="mt-1 text-xs leading-relaxed text-muted">{loanActionLabels[kind].description}</div>
                       {loanKind === kind && (
-                        <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-white">
+                        <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white">
                           <Check className="w-3.5 h-3.5" />
                         </div>
                       )}

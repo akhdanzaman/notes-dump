@@ -84,7 +84,7 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
                 >
                     <div className="flex shrink-0 items-center justify-between border-b border-border/75 px-4 py-3.5 sm:px-5">
                         <div className="flex min-w-0 items-center gap-3">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
                                 <Bot className="h-[18px] w-[18px]" />
                             </span>
                             <div className="min-w-0">
@@ -117,7 +117,7 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
                     <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5 no-scrollbar">
                         {(!chatHistory || chatHistory.length === 0) && !isLoading && (
                             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500">
+                                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
                                     <Bot className="h-5 w-5" />
                                 </div>
                                 <p className="text-sm font-semibold text-primary">Tanyakan apa pun tentang workspace</p>
@@ -126,10 +126,10 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
                         )}
                         {(chatHistory || []).filter(Boolean).map((msg, idx) => (
                             <div key={idx} className={`flex gap-3 ${msg?.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${msg?.role === 'user' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-500' : 'border-indigo-500/20 bg-indigo-500/10 text-indigo-500'}`}>
+                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${msg?.role === 'user' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-500' : 'border-brand-500/20 bg-brand-500/10 text-brand-500'}`}>
                                     {msg?.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                                 </div>
-                                <div className={`max-w-[84%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg?.role === 'user' ? 'rounded-tr-md bg-indigo-600 text-white' : 'rounded-tl-md border border-border/70 bg-background/60 text-primary'}`}>
+                                <div className={`max-w-[84%] rounded-lg px-4 py-3 text-sm leading-relaxed ${msg?.role === 'user' ? 'rounded-tr-md bg-brand-600 text-white' : 'rounded-tl-md border border-border/70 bg-background/60 text-primary'}`}>
                                     {msg?.role === 'user' ? (
                                         msg?.text
                                     ) : (
@@ -142,11 +142,11 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
                         ))}
                         {isLoading && (
                             <div className="flex gap-3">
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-brand-500/20 bg-brand-500/10 text-brand-500">
                                     <Bot className="w-4 h-4" />
                                 </div>
-                                <div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-border/70 bg-background/60 px-4 py-3 text-primary">
-                                    <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                                <div className="flex items-center gap-2 rounded-lg rounded-tl-md border border-border/70 bg-background/60 px-4 py-3 text-primary">
+                                    <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
                                     <span className="text-sm text-muted">Sedang berpikir...</span>
                                 </div>
                             </div>

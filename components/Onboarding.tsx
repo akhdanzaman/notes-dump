@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Sparkles, 
-  Moon, 
-  Sun, 
-  Wallet as WalletIcon, 
-  DollarSign, 
-  Cloud, 
-  ArrowRight, 
-  Check, 
+import {
+  Sparkles,
+  Moon,
+  Sun,
+  Wallet as WalletIcon,
+  DollarSign,
+  Cloud,
+  ArrowRight,
+  Check,
   Bot,
   Play
 } from 'lucide-react';
@@ -18,9 +18,9 @@ import { createOnboardingSampleItems, ONBOARDING_DEFAULT_INPUT } from '../utils/
 
 interface OnboardingProps {
   onComplete: (
-    settings: AppSettings, 
-    wallet: Wallet | null, 
-    budget: BudgetConfig | null, 
+    settings: AppSettings,
+    wallet: Wallet | null,
+    budget: BudgetConfig | null,
     sampleItems: BrainDumpItem[]
   ) => void;
   onTestParsing: (text: string, context?: { wallet?: Wallet | null }) => Promise<BrainDumpItem[]>;
@@ -50,7 +50,7 @@ const ITEM_STATUS_LABELS: Record<string, string> = {
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  
+
   // State for setup
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
     typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
@@ -99,7 +99,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
             name: walletName.trim(),
             type: 'bank' as const,
             initialBalance: Number(walletBalance) || 0,
-            color: 'indigo-500',
+            color: 'brand-500',
           }
         : null;
       const result = await onTestParsing(testInput, { wallet: previewWallet });
@@ -128,7 +128,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         name: walletName,
         type: 'bank',
         initialBalance: Number(walletBalance) || 0,
-        color: 'indigo-500'
+        color: 'brand-500'
       };
     }
 
@@ -162,14 +162,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
     switch (currentStep) {
       case 0:
         return (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             className="flex flex-col items-center text-center space-y-6 lg:max-w-3xl lg:mx-auto"
           >
-            <div className="mb-2 flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-500/10 ring-1 ring-indigo-500/15">
-              <Sparkles className="h-9 w-9 text-indigo-500" />
+            <div className="mb-2 flex h-20 w-20 items-center justify-center rounded-xl bg-brand-500/10 ring-1 ring-brand-500/15">
+              <Sparkles className="h-9 w-9 text-brand-500" />
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Selamat datang di Arkaiv</h1>
             <p className="max-w-xl text-lg leading-relaxed text-muted">
@@ -179,7 +179,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         );
       case 1:
         return (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -194,25 +194,25 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <button
                 onClick={() => setTheme('light')}
                 aria-pressed={theme === 'light'}
-                className={`p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all ${
-                  theme === 'light' 
-                    ? 'border-indigo-500/40 bg-indigo-500/10 ring-4 ring-indigo-500/[0.06]' 
-                    : 'border-border/80 bg-surface/70 hover:border-indigo-500/25 hover:bg-surface'
+                className={`p-6 rounded-lg border flex flex-col items-center gap-4 transition-all ${
+                  theme === 'light'
+                    ? 'border-brand-500/40 bg-brand-500/10 ring-4 ring-brand-500/[0.06]'
+                    : 'border-border/80 bg-surface/70 hover:border-brand-500/25 hover:bg-surface'
                 }`}
               >
-                <Sun className={`w-8 h-8 ${theme === 'light' ? 'text-indigo-500' : 'text-muted'}`} />
+                <Sun className={`w-8 h-8 ${theme === 'light' ? 'text-brand-500' : 'text-muted'}`} />
                 <span className="font-medium text-primary">Terang</span>
               </button>
               <button
                 onClick={() => setTheme('dark')}
                 aria-pressed={theme === 'dark'}
-                className={`p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all ${
-                  theme === 'dark' 
-                    ? 'border-indigo-500/40 bg-indigo-500/10 ring-4 ring-indigo-500/[0.06]' 
-                    : 'border-border/80 bg-surface/70 hover:border-indigo-500/25 hover:bg-surface'
+                className={`p-6 rounded-lg border flex flex-col items-center gap-4 transition-all ${
+                  theme === 'dark'
+                    ? 'border-brand-500/40 bg-brand-500/10 ring-4 ring-brand-500/[0.06]'
+                    : 'border-border/80 bg-surface/70 hover:border-brand-500/25 hover:bg-surface'
                 }`}
               >
-                <Moon className={`w-8 h-8 ${theme === 'dark' ? 'text-indigo-500' : 'text-muted'}`} />
+                <Moon className={`w-8 h-8 ${theme === 'dark' ? 'text-brand-500' : 'text-muted'}`} />
                 <span className="font-medium text-primary">Gelap</span>
               </button>
             </div>
@@ -238,7 +238,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                     value={walletName}
                     onChange={(event) => setWalletName(event.target.value)}
                     placeholder="Contoh: Rekening utama"
-                    className="mt-1 min-h-12 w-full rounded-xl border border-border bg-surface px-4 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                    className="mt-1 min-h-12 w-full rounded-xl border border-border bg-surface px-4 text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                   />
                 </label>
                 <label className="block text-sm font-medium text-muted">
@@ -251,7 +251,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                       value={walletBalance}
                       onChange={(event) => setWalletBalance(event.target.value)}
                       placeholder="0"
-                      className="min-h-12 w-full rounded-xl border border-border bg-surface pl-12 pr-4 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                      className="min-h-12 w-full rounded-xl border border-border bg-surface pl-12 pr-4 text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                     />
                   </div>
                 </label>
@@ -261,7 +261,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         );
       case 6:
         return (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -282,7 +282,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                   value={walletName}
                   onChange={(e) => setWalletName(e.target.value)}
                   placeholder="Contoh: Rekening utama, Tunai"
-                  className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                  className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                 />
               </div>
               <div>
@@ -295,7 +295,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                     value={walletBalance}
                     onChange={(e) => setWalletBalance(e.target.value)}
                     placeholder="0"
-                    className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                    className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                   />
                 </div>
               </div>
@@ -304,7 +304,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         );
       case 3:
         return (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -328,7 +328,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                     value={monthlyIncome}
                     onChange={(e) => setMonthlyIncome(e.target.value)}
                     placeholder="Contoh: 10000000"
-                    className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
+                    className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                   />
                 </div>
                 <p className="text-xs text-muted mt-2">
@@ -340,7 +340,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         );
       case 4:
         return (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -354,9 +354,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <p className="text-muted">Arkaiv menggunakan Google Sheets sebagai sumber data utama.</p>
             </div>
             <div className="space-y-4">
-              <div className="w-full p-4 rounded-xl border-2 border-indigo-500 bg-indigo-500/10 flex items-center gap-4 text-left">
-                <div className="p-2 rounded-lg bg-indigo-500/20">
-                  <Cloud className="w-6 h-6 text-indigo-500" />
+              <div className="w-full p-4 rounded-xl border-2 border-brand-500 bg-brand-500/10 flex items-center gap-4 text-left">
+                <div className="p-2 rounded-lg bg-brand-500/20">
+                  <Cloud className="w-6 h-6 text-brand-500" />
                 </div>
                 <div>
                   <h3 className="font-medium text-primary">Database Google Sheets</h3>
@@ -368,7 +368,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         );
       case 2:
         return (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -381,7 +381,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               <h2 className="text-2xl font-bold text-primary">Coba aktivitas pertama</h2>
               <p className="text-muted">Pilih contoh, lalu lihat bagaimana Arkaiv mengubah bahasa sehari-hari menjadi data yang berguna.</p>
             </div>
-            
+
             <div className="space-y-4">
               <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Pilihan aktivitas pertama">
                 {[
@@ -393,7 +393,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                     key={label}
                     type="button"
                     onClick={() => setTestInput(value)}
-                    className="min-h-11 shrink-0 rounded-full border border-border bg-background px-4 text-xs font-semibold text-primary transition-colors hover:border-indigo-500/35 hover:bg-indigo-500/5"
+                    className="min-h-11 shrink-0 rounded-full border border-border bg-background px-4 text-xs font-semibold text-primary transition-colors hover:border-brand-500/35 hover:bg-brand-500/5"
                   >
                     {label}
                   </button>
@@ -410,9 +410,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
                   onChange={(e) => setTestInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleTestAI()}
                   placeholder="Contoh: Catat kopi 35 ribu dari GoPay"
-                  className="w-full bg-surface border border-border rounded-xl pl-4 pr-12 py-4 text-primary outline-none transition focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
+                  className="w-full bg-surface border border-border rounded-xl pl-4 pr-12 py-4 text-primary outline-none transition focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 shadow-sm"
                 />
-                <button 
+                <button
                   onClick={handleTestAI}
                   disabled={isTesting || !testInput.trim()}
                   aria-label={isTesting ? 'Sedang memproses input' : 'Proses dengan AI'}
@@ -423,13 +423,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               </div>
 
               {testResult.length > 0 && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-surface border border-border rounded-xl p-4 text-left"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="rounded-full bg-indigo-500/15 px-2 py-1 text-xs font-semibold text-indigo-500">
+                    <span className="rounded-full bg-brand-500/15 px-2 py-1 text-xs font-semibold text-brand-500">
                       {testResult.length} entri
                     </span>
                     <span className="text-sm text-muted">Berhasil dikenali dan akan tampil di Beranda setelah penyiapan selesai.</span>
@@ -455,12 +455,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
               )}
 
               <label htmlFor="addSamples" className="mt-6 flex min-h-11 cursor-pointer items-center gap-3 border-t border-border pt-6">
-                <input 
-                  type="checkbox" 
-                  id="addSamples" 
+                <input
+                  type="checkbox"
+                  id="addSamples"
                   checked={addSamples}
                   onChange={(e) => setAddSamples(e.target.checked)}
-                  className="w-5 h-5 rounded border-border text-indigo-500 focus:ring-indigo-500 bg-surface"
+                  className="w-5 h-5 rounded border-border text-brand-500 focus:ring-brand-500 bg-surface"
                 />
                 <span className="text-sm text-primary">
                   Tambahkan data contoh untuk mengenal Arkaiv
@@ -500,21 +500,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
           aria-valuemin={1}
           aria-valuemax={STEPS.length}
           aria-valuenow={currentStep + 1}
-          className="h-full rounded-full bg-indigo-500 transition-all duration-500 ease-out"
+          className="h-full rounded-full bg-brand-500 transition-all duration-500 ease-out"
           style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
         />
       </div>
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-1 items-center justify-center py-6 lg:py-8">
-      <div className="absolute left-0 top-1/2 hidden w-64 -translate-y-1/2 rounded-[28px] border border-border/80 bg-surface/75 p-3 shadow-sm backdrop-blur-xl lg:block">
+      <div className="absolute left-0 top-1/2 hidden w-64 -translate-y-1/2 rounded-xl border border-border/80 bg-surface/75 p-3 shadow-sm backdrop-blur-xl lg:block">
         <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Tahapan penyiapan</div>
         <div className="space-y-2">
           {STEPS.map((step, i) => (
             <div
               key={step.id}
-              className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${i === currentStep ? 'bg-indigo-500/10 text-primary ring-1 ring-inset ring-indigo-500/15' : 'text-muted'}`}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors ${i === currentStep ? 'bg-brand-500/10 text-primary ring-1 ring-inset ring-brand-500/15' : 'text-muted'}`}
             >
-              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i === currentStep ? 'bg-indigo-500 text-white' : i < currentStep ? 'bg-emerald-500/15 text-emerald-500' : 'bg-background text-muted'}`}>
+              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i === currentStep ? 'bg-brand-500 text-white' : i < currentStep ? 'bg-emerald-500/15 text-emerald-500' : 'bg-background text-muted'}`}>
                 {i < currentStep ? <Check className="h-4 w-4" /> : i + 1}
               </span>
               <span>
@@ -526,10 +526,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         </div>
       </div>
 
-      <div className="flex min-h-[460px] w-full max-w-2xl flex-col justify-center rounded-[30px] border border-border/80 bg-surface/72 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:max-w-3xl lg:p-10">
+      <div className="flex min-h-[460px] w-full max-w-2xl flex-col justify-center rounded-xl border border-border/80 bg-surface/72 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:max-w-3xl lg:p-10">
         <div className="mb-6 flex items-center justify-between lg:hidden">
           <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">{STEPS[currentStep].title}</span>
-          <span className="rounded-full bg-indigo-500/10 px-2.5 py-1 text-[11px] font-bold text-indigo-500">{currentStep + 1}/{STEPS.length}</span>
+          <span className="rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-bold text-brand-500">{currentStep + 1}/{STEPS.length}</span>
         </div>
         <AnimatePresence mode="wait">
           <div key={currentStep} className="w-full">
@@ -541,21 +541,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
         <button
           onClick={handleBack}
           className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-            currentStep === 0 
-              ? 'opacity-0 pointer-events-none' 
+            currentStep === 0
+              ? 'opacity-0 pointer-events-none'
               : 'text-muted hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]'
           }`}
         >
           Kembali
         </button>
-        
+
         <div className="flex gap-1.5">
           {STEPS.map((_, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               aria-hidden="true"
               className={`w-2 h-2 rounded-full transition-all ${
-                i === currentStep ? 'bg-indigo-500 w-6' : 'bg-border'
+                i === currentStep ? 'bg-brand-500 w-6' : 'bg-border'
               }`}
             />
           ))}
@@ -563,7 +563,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
 
         <button
           onClick={handleNext}
-          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500"
+          className="flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-500/20 transition-colors hover:bg-brand-500"
         >
           {currentStep === STEPS.length - 1 ? (
             <>Mulai gunakan Arkaiv <Check className="w-5 h-5" /></>

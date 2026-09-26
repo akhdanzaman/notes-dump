@@ -210,8 +210,6 @@ export const analyzeDeepWorkTodo = (content: string, meta?: Pick<ParsedItemMetaV
   return { shouldTransform: true, status: 'suggested', reason: confidence === 'low' ? 'Low-confidence abstract task: surface as editable guidance only.' : 'Abstract/stuck todo has enough structure for a useful suggested breakdown.', confidence, transform, steps: subtasks.map(subtask => subtask.title), source: explicitSubtasks.length > 0 ? 'explicit_subtasks' : 'heuristic' };
 };
 
-export const buildDeepWorkPlan = analyzeDeepWorkTodo;
-
 export const buildDeepWorkSuggestionMeta = (content: string, meta: ItemMeta = {}): ItemMeta => {
   if (meta.deepWorkStatus === 'dismissed' || meta.parentTodoId) return meta;
   const plan = analyzeDeepWorkTodo(content, meta);
@@ -236,5 +234,3 @@ export const createDeepWorkSubtaskItems = (parent: BrainDumpItem, idFactory: () 
     return { id: idFactory(), type: ItemType.TODO, content: title, status: 'pending' as const, created_at: now, meta: { tags: inheritedTags, date: inheritedDate, priority: parent.meta.priority || 'normal', parentTodoId: parent.id, deepWorkParent: false, deepWorkPlanId: parent.meta.deepWorkPlanId || parent.id, deepWorkStatus: 'active' as DeepWorkStatus, deepWorkStepIndex: index + 1, deepWorkStepCount: stepCount, deepWorkGeneratedAt: now, deepWorkReason: parent.meta.deepWorkReason, deepWorkSessionEstimateMinutes: transformSubtask?.estimateMinutes, deepWorkNextActionAcceptanceCheck: transformSubtask?.doneCheck } };
   });
 };
-
-export const getDeepWorkChildren = (items: BrainDumpItem[], parentId: string) => items.filter(item => item.type === ItemType.TODO && item.meta.parentTodoId === parentId).sort((a, b) => (a.meta.deepWorkStepIndex || 0) - (b.meta.deepWorkStepIndex || 0));

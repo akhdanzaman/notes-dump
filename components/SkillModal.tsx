@@ -135,7 +135,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
             <div className="grid grid-cols-1 lg:grid-cols-[180px_minmax(0,1fr)] gap-5">
               <div className="space-y-3">
                 <label className={addItemModal.label}>Skill Image</label>
-                <div className="aspect-square w-full rounded-[28px] overflow-hidden border border-border bg-background flex items-center justify-center">
+                <div className="aspect-square w-full rounded-xl overflow-hidden border border-border bg-background flex items-center justify-center">
                   {imageUrl.trim() ? (
                     <img src={imageUrl.trim()} alt={name || 'Skill image'} className="h-full w-full object-cover" />
                   ) : (
@@ -195,8 +195,8 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
             <div className={addItemModal.sectionPanel}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
-                    <CalendarClock className="w-5 h-5 text-indigo-500" />
+                  <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center">
+                    <CalendarClock className="w-5 h-5 text-brand-500" />
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-primary">Schedule Skill Routine</h4>
@@ -206,7 +206,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                 <button
                   type="button"
                   onClick={() => setSchedule(prev => ({ ...prev, enabled: !prev.enabled }))}
-                  className={`px-4 py-2 rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors ${schedule.enabled ? 'bg-indigo-600 text-white' : 'bg-background text-muted border border-border'}`}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${schedule.enabled ? 'bg-brand-600 text-white' : 'bg-background text-muted border border-border'}`}
                 >
                   {schedule.enabled ? 'Enabled' : 'Disabled'}
                 </button>
@@ -259,7 +259,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                             key={`${label}-${idx}`}
                             type="button"
                             onClick={() => setSchedule(prev => ({ ...prev, daysOfWeek: toggleNumber(prev.daysOfWeek, idx) }))}
-                            className={`h-9 rounded-xl text-xs font-bold border transition-colors ${schedule.daysOfWeek?.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                            className={`h-9 rounded-xl text-xs font-bold border transition-colors ${schedule.daysOfWeek?.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                           >
                             {label}
                           </button>
@@ -277,7 +277,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                             key={day}
                             type="button"
                             onClick={() => setSchedule(prev => ({ ...prev, daysOfMonth: toggleNumber(prev.daysOfMonth, day) }))}
-                            className={`aspect-square rounded-lg text-[10px] font-bold border transition-colors ${schedule.daysOfMonth?.includes(day) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                            className={`aspect-square rounded-lg text-[10px] font-bold border transition-colors ${schedule.daysOfMonth?.includes(day) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                           >
                             {day}
                           </button>
@@ -295,7 +295,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                             key={label}
                             type="button"
                             onClick={() => setSchedule(prev => ({ ...prev, monthsOfYear: toggleNumber(prev.monthsOfYear, idx) }))}
-                            className={`py-2 rounded-xl text-[10px] font-bold border uppercase transition-colors ${schedule.monthsOfYear?.includes(idx) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-background border-border text-muted hover:border-indigo-500'}`}
+                            className={`py-2 rounded-xl text-[10px] font-bold border uppercase transition-colors ${schedule.monthsOfYear?.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                           >
                             {label}
                           </button>
@@ -304,7 +304,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                     </div>
                   )}
 
-                  <div className="rounded-2xl bg-background border border-border p-4 text-sm text-muted">
+                  <div className="rounded-lg bg-background border border-border p-4 text-sm text-muted">
                     Weekly target from this schedule: <span className="font-bold text-primary">{derivedWeeklyTarget} min</span>
                   </div>
                 </div>

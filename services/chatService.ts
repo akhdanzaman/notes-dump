@@ -1,5 +1,5 @@
 import { BrainDumpItem, BudgetConfig, Skill, Wallet, ChatMessage } from '../types';
-import { createGeminiClient, getGeminiKey, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
+import { createGeminiClient, fileToBase64, getGeminiKey, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
 
 export const generateChatResponse = async (
     message: string,
@@ -69,16 +69,6 @@ ${JSON.stringify(skills, null, 2)}
         console.error("Chat error:", error);
         return "Sorry, I encountered an error while processing your request.";
     }
-};
-
-const fileToBase64 = async (file: File): Promise<string> => {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const chunkSize = 0x8000;
-    let binary = '';
-    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
-    }
-    return btoa(binary);
 };
 
 export const analyzeImageForChat = async (

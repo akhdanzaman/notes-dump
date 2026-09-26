@@ -6,6 +6,7 @@ import PresencePanel from '../motion/PresencePanel';
 import { addItemModal, responsiveModal } from './layout/contentSurface';
 import { calculateFirstDueDate } from '../utils/selectors';
 import { createShoppingLineItemId, sanitizeShoppingLineItems, sumShoppingLineItems } from '../utils/shoppingLineItems';
+import { formatCurrencyAmount } from '../utils/formatters';
 
 interface AddShoppingModalProps {
     isOpen: boolean;
@@ -482,7 +483,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                         <ShoppingCart className="w-4 h-4" /> Line Items
                                     </label>
                                     <span className="text-xs font-bold text-acc-shopping">
-                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(lineItemsTotal)}
+                                        {formatCurrencyAmount(lineItemsTotal)}
                                     </span>
                                 </div>
                                 <p className={addItemModal.helpText}>Optional. Add each grocery/product row here; the shopping total is summarized from these amounts.</p>
@@ -578,7 +579,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                                 setInterval(int);
                                                 updateDateFromRoutineSchedule(int, daysOfWeek, daysOfMonth, monthsOfYear);
                                             }}
-                                            className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
+                                            className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
                                         >
                                             {int}
                                         </button>
@@ -611,7 +612,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                                 <button
                                                     key={day}
                                                     onClick={() => toggleDayOfMonth(day)}
-                                                    className={`w-full aspect-square rounded-md flex items-center justify-center text-[10px] font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-indigo-600 border-indigo-500 text-white shadow-sm')}`}
+                                                    className={`w-full aspect-square rounded-md flex items-center justify-center text-[10px] font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-brand-600 border-brand-500 text-white shadow-sm')}`}
                                                 >
                                                     {day}
                                                 </button>

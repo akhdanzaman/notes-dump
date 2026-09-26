@@ -45,7 +45,7 @@ const successfulTask = (overrides: Partial<ParsingTask> = {}): ParsingTask => ({
 test('Review Center success cards render structured local parser details instead of blank success noise', () => {
   const html = renderToStaticMarkup(React.createElement(ReviewCenterPanel, { parsingTasks: [successfulTask()] }));
   assert.match(html, /Money &gt; Transactions/);
-  assert.match(html, /Result summary/);
+  assert.match(html, /Ringkasan hasil/);
   assert.match(html, /Saved transaction: bayar listrik/);
   assert.match(html, /item type/);
   assert.match(html, /FINANCE/);
@@ -71,7 +71,7 @@ test('Review Center suppresses no-op successful query tasks with no saved eviden
     })],
   }));
 
-  assert.match(html, /All caught up!/);
+  assert.match(html, /Semua sudah beres/);
   assert.doesNotMatch(html, /Parsing Queue/);
   assert.doesNotMatch(html, /No saved changes/);
   assert.doesNotMatch(html, /berapa pengeluaran hari ini/);
@@ -175,10 +175,10 @@ test('Review Center covers deep-AI parser and async enrichment paths without emp
 
   assert.match(html, /Calendar/);
   assert.match(html, /Saved event: Strategy sync/);
-  assert.match(html, /Background Enrichment/);
-  assert.match(html, /Needs review/);
-  assert.match(html, /Applied: commodity, subcommodity/);
-  assert.match(html, /1 ambiguous suggestion moved to Review Center\./);
+  assert.match(html, /Penyempurnaan data/);
+  assert.match(html, /Perlu ditinjau/);
+  assert.match(html, /Diterapkan: commodity, subcommodity/);
+  assert.match(html, /1 saran yang perlu dicek dipindahkan ke pusat tinjauan\./);
   assert.doesNotMatch(html, /No structured attributes returned\./);
   assert.doesNotMatch(html, /Saved successfully\. No extra review details needed\./);
   assert.doesNotMatch(html, /system_rule/);
@@ -252,10 +252,10 @@ test('Review Center groups successful batch parser results with per-item source 
     })],
   }));
 
-  assert.match(html, /Batch parse: 2 items · 1 local · 1 AI fallback · 1 AI batch call · 1 review/);
+  assert.match(html, /2 item diproses · 1 selesai cepat · 1 diperiksa lebih lanjut · 1 perlu ditinjau/);
   assert.match(html, /Item 1 Money &gt; Transactions/);
   assert.match(html, /Item 2 Library &gt; Notes/);
-  assert.match(html, /Batch source/);
+  assert.match(html, /Sumber input/);
   assert.match(html, /expense kopi 10rb cash/);
   assert.match(html, /lunch with Maya maybe reimburse later/);
 });

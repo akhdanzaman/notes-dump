@@ -1,4 +1,4 @@
-import { BrainDumpItem, DbSchema, ItemCanonicalMeta, ItemMeta, Skill, Wallet } from '../types';
+import { BrainDumpItem, BudgetRule, DbSchema, ItemCanonicalMeta, ItemMeta, Skill, Wallet } from '../types';
 import { consolidateCanonicalRules } from './canonicalization/learnedRules';
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -51,7 +51,7 @@ const mergeConcurrentItem = (localItem: BrainDumpItem, remoteItem: BrainDumpItem
 
     const localChanged = !same(localItem, baseItem);
     const remoteChanged = !same(remoteItem, baseItem);
-    if (!localChanged || !remoteChanged) return localItem;
+    if (!localChanged || !remoteChanged) return localChanged ? localItem : remoteItem;
 
     return {
         id: localItem.id,
@@ -197,11 +197,27 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
 
     // 3. Merge other properties (LWW)
     // Merge budgetConfig rules
-    const localRules = local.budgetConfig?.rules || [];
-    const remoteRules = remote.budgetConfig?.rules || [];
-    const ruleMap = new Map<string, any>();
-    // Add remote rules first, then local rules to overwrite
-    [...remoteRules, ...localRules].forEach(r => ruleMap.set(r.id, r));
+    // Missing config means it was not supplied; an explicit empty list means deletion.
+    const baseRules = new Map((base?.budgetConfig?.rules || []).map(rule => [rule.id, rule]));
+    const localRules = new Map((local.budgetConfig?.rules ?? base?.budgetConfig?.rules ?? []).map(rule => [rule.id, rule]));
+    const remoteRules = new Map((remote.budgetConfig?.rules ?? base?.budgetConfig?.rules ?? []).map(rule => [rule.id, rule]));
+    const ruleMap = new Map<string, BudgetRule>();
+    for (const id of new Set([...remoteRules.keys(), ...localRules.keys()])) {
+        const localRule = localRules.get(id);
+        const remoteRule = remoteRules.get(id);
+        const baseRule = baseRules.get(id);
+        if (baseRule && (!localRule || !remoteRule)) continue;
+        if (localRule && remoteRule && baseRule) {
+            ruleMap.set(id, {
+                id,
+                name: pickField(localRule.name, remoteRule.name, baseRule.name),
+                percentage: pickField(localRule.percentage, remoteRule.percentage, baseRule.percentage),
+                color: pickField(localRule.color, remoteRule.color, baseRule.color),
+            });
+        } else {
+            ruleMap.set(id, (localRule || remoteRule)!);
+        }
+    }
 
     const localChat = local.chatHistory || [];
     const remoteChat = remote.chatHistory || [];

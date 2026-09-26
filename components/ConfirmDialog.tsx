@@ -35,14 +35,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       ariaLabel={title}
       panelProps={{ 'data-ndz-destructive-confirm': 'compact-separated' }}
     >
-        <div className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${tone === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
+        <div className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${tone === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-brand-500/10 text-brand-500'}`}>
             <AlertTriangle className="w-6 h-6" />
         </div>
         <h3 className="text-lg font-bold text-primary mb-2">{title}</h3>
         <p className="text-sm text-muted mb-6 leading-relaxed">{message}</p>
         <div className="grid grid-cols-2 gap-2">
             <button onClick={onCancel} className="rounded-xl border border-border/80 px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:bg-black/[0.04] hover:text-primary dark:hover:bg-white/[0.06]">{cancelLabel}</button>
-            <button onClick={onConfirm} className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors ${tone === 'danger' ? 'bg-red-500 hover:bg-red-400' : 'bg-indigo-500 hover:bg-indigo-400'}`}>{confirmLabel}</button>
+            <button onClick={onConfirm} className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors ${tone === 'danger' ? 'bg-red-500 hover:bg-red-400' : 'bg-brand-500 hover:bg-brand-400'}`}>{confirmLabel}</button>
         </div>
     </PresencePanel>
   );
