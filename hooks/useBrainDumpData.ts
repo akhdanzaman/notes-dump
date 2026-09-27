@@ -1,3 +1,5 @@
+import type { SaveChanges } from '../utils/saveChanges';
+import { useDatabaseSave } from './useDatabaseSave';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -15,7 +17,6 @@ import {
     ChatMessage,
     ParserResultV2,
     SyncProgress,
-    SyncResult,
     ParserAction,
     ParserEntityType,
     ParsedItemMetaV2,
@@ -43,9 +44,8 @@ import {
     ReceiptCaptureMeta,
     ItemUpdatePatch
 } from '../types';
-import { fetchDb, syncData, isUsingLocalStorage } from '../services/syncFacade';
+import { fetchDb, isUsingLocalStorage } from '../services/syncFacade';
 import { getCachedSpreadsheetDb } from '../services/spreadsheetService';
-import { syncItemsToGoogleCalendar } from '../services/googleCalendarService';
 import { recoverMisclassifiedJournalNotes, upsertDailyJournalEntry } from '../utils/journalUtils';
 import { mergeDbData } from '../utils/mergeUtils';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
@@ -758,18 +758,7 @@ export const useBrainDumpData = () => {
     const [pendingReviews, setPendingReviews] = useState<HistoricalCanonicalReview[]>([]);
 
     const parsingInFlightRef = useRef<Set<string>>(new Set());
-    const pendingSaveAfterParsingRef = useRef<{
-        newItems?: BrainDumpItem[];
-        newConfig?: BudgetConfig;
-        newPrompt?: string;
-        newSkills?: Skill[];
-        newWallets?: Wallet[];
-        newThemes?: Record<string, string>;
-        newThemeImages?: Record<string, string>;
-        newAppSettings?: AppSettings;
-        newCanonicalRules?: CanonicalRule[];
-        forceOverwrite: boolean;
-    } | null>(null);
+    const pendingSaveAfterParsingRef = useRef<SaveChanges | null>(null);
     const pendingFetchAfterParsingRef = useRef(false);
     const parsingUndoSnapshotsRef = useRef<Record<string, ParsingUndoSnapshot>>({});
     const enrichmentTasksRef = useRef<EnrichmentTask[]>([]);
@@ -808,150 +797,23 @@ export const useBrainDumpData = () => {
         return updatedItems;
     };
 
-    const performSaveAndSync = useCallback(async (
-        newItems?: BrainDumpItem[],
-        newConfig?: BudgetConfig,
-        newPrompt?: string,
-        newSkills?: Skill[],
-        newWallets?: Wallet[],
-        newThemes?: Record<string, string>,
-        newAppSettings?: AppSettings,
-        newCanonicalRules?: CanonicalRule[],
-        forceOverwrite = false,
-        newThemeImages?: Record<string, string>
-    ) => {
-        const baseItems = itemsRef.current;
-        const itemsToSave = newItems || itemsRef.current;
-        setSaveStatus('saving');
-        setSaveProgress({ phase: 'prepare', label: 'Preparing save', detail: `${itemsToSave.length} items in memory`, updatedAt: Date.now() });
-
-        const reportSaveProgress = (progress: SyncProgress) => {
-            setSaveProgress({ ...progress, updatedAt: Date.now() });
-        };
-
-        try {
-            const configToSave = newConfig || budgetConfigRef.current;
-            const promptToSave = newPrompt !== undefined ? newPrompt : customPromptRef.current;
-            const skillsToSave = newSkills || skillsRef.current;
-            const walletsToSave = newWallets || walletsRef.current;
-            const themesToSave = newThemes || monthlyThemesRef.current;
-            const themeImagesToSave = newThemeImages || monthlyThemeImagesRef.current;
-            const settingsToSave = newAppSettings || appSettingsRef.current;
-            const canonicalRulesToSave = newCanonicalRules || canonicalRulesRef.current;
-
-            const result: SyncResult = await syncData(
-                itemsToSave,
-                configToSave,
-                promptToSave,
-                skillsToSave,
-                walletsToSave,
-                themesToSave,
-                themeImagesToSave,
-                settingsToSave,
-                undefined,
-                canonicalRulesToSave,
-                forceOverwrite,
-                reportSaveProgress
-            );
-
-            if (!result.success) {
-                throw new Error(result.error || "Sync failed, preserving local state.");
-            }
-
-            if (result.mergedData) {
-                const remoteSchema = result.mergedData;
-                const baseForMerge = { data: baseItems, skills: skillsToSave, wallets: walletsToSave, monthlyThemes: themesToSave, monthlyThemeImages: themeImagesToSave } as DbSchema;
-                const currentForMerge = { data: itemsRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, monthlyThemeImages: monthlyThemeImagesRef.current } as DbSchema;
-                const merged = mergeDbData(currentForMerge, remoteSchema, baseForMerge);
-                // Items: only merge remote additions (items in sheet but missing locally).
-                // Never overwrite items the user just changed — itemsRef.current already has those.
-                // Relies on the three-way merge to keep local changes (status, content, etc.)
-                // while picking up manual sheet-only entries.
-                itemsRef.current = merged.data;
-                lastSyncedItemsRef.current = merged.data;
-                skillsRef.current = merged.skills || [];
-                walletsRef.current = merged.wallets || [];
-                const mergedThemes = remoteSchema.monthlyThemes ? { ...remoteSchema.monthlyThemes, ...themesToSave } : themesToSave;
-                const mergedThemeImages = remoteSchema.monthlyThemeImages ? { ...remoteSchema.monthlyThemeImages, ...themeImagesToSave } : themeImagesToSave;
-                monthlyThemesRef.current = mergedThemes;
-                monthlyThemeImagesRef.current = mergedThemeImages;
-                if (remoteSchema.canonicalRules) canonicalRulesRef.current = remoteSchema.canonicalRules;
-                setItems(merged.data);
-                setSkills(merged.skills || []);
-                setWallets(merged.wallets || []);
-                setMonthlyThemes(mergedThemes);
-                setMonthlyThemeImages(mergedThemeImages);
-                if (remoteSchema.canonicalRules) setCanonicalRules(remoteSchema.canonicalRules);
-            }
-
-            if (!result.mergedData) {
-                lastSyncedItemsRef.current = itemsToSave;
-            }
-
-            if (settingsToSave.googleCalendarSyncEnabled) {
-                try {
-                    reportSaveProgress({ phase: 'calendar', label: 'Syncing calendar', detail: 'Pushing dated items to Google Calendar' });
-                    await syncItemsToGoogleCalendar(itemsToSave, settingsToSave);
-                } catch (calendarError) {
-                    console.warn('Google Calendar sync failed after data save', calendarError);
-                    setError(`Data tersimpan, tapi sync Google Calendar gagal: ${calendarError instanceof Error ? calendarError.message : 'Unknown error'}`);
-                }
-            }
-
-            reportSaveProgress({ phase: 'complete', label: 'Save complete', detail: 'Sheets and local cache are up to date' });
-            setSaveStatus('synced');
-        } catch (e) {
-            console.error("Sync error:", e);
-            setSaveStatus('error');
-            setSaveProgress({ phase: 'error', label: 'Save failed', detail: e instanceof Error ? e.message : 'Unknown error', updatedAt: Date.now() });
-            setError(`Gagal menyimpan data ke cloud: ${e instanceof Error ? e.message : 'Unknown error'}`);
-        }
-    }, []);
-
-    const saveAndSync = useCallback(async (
-        newItems?: BrainDumpItem[],
-        newConfig?: BudgetConfig,
-        newPrompt?: string,
-        newSkills?: Skill[],
-        newWallets?: Wallet[],
-        newThemes?: Record<string, string>,
-        newAppSettings?: AppSettings,
-        newCanonicalRules?: CanonicalRule[],
-        forceOverwrite = false,
-        newThemeImages?: Record<string, string>
-    ) => {
-        if (hasActiveParsing()) {
-            const previous = pendingSaveAfterParsingRef.current;
-            pendingSaveAfterParsingRef.current = {
-                newItems: newItems || previous?.newItems,
-                newConfig: newConfig || previous?.newConfig,
-                newPrompt: newPrompt !== undefined ? newPrompt : previous?.newPrompt,
-                newSkills: newSkills || previous?.newSkills,
-                newWallets: newWallets || previous?.newWallets,
-                newThemes: newThemes || previous?.newThemes,
-                newThemeImages: newThemeImages || previous?.newThemeImages,
-                newAppSettings: newAppSettings || previous?.newAppSettings,
-                newCanonicalRules: newCanonicalRules || previous?.newCanonicalRules,
-                forceOverwrite: (previous?.forceOverwrite || forceOverwrite)
-            };
-            setSaveStatus('saving');
-            setSaveProgress({ phase: 'deferred', label: 'Waiting for parser', detail: 'Save will start after current parsing finishes', updatedAt: Date.now() });
-            return;
-        }
-
-        return performSaveAndSync(
-            newItems,
-            newConfig,
-            newPrompt,
-            newSkills,
-            newWallets,
-            newThemes,
-            newAppSettings,
-            newCanonicalRules,
-            forceOverwrite,
-            newThemeImages
-        );
-    }, [performSaveAndSync]);
+    const { saveAndSync, performSaveAndSync } = useDatabaseSave({
+        read: () => ({ data: itemsRef.current, budgetConfig: budgetConfigRef.current, customPrompt: customPromptRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, monthlyThemeImages: monthlyThemeImagesRef.current, appSettings: appSettingsRef.current, canonicalRules: canonicalRulesRef.current, chatHistory: chatHistoryRef.current }),
+        apply: (merged) => {
+                if (merged.data !== undefined) { itemsRef.current = merged.data; setItems(merged.data); }
+                if (merged.budgetConfig !== undefined) { budgetConfigRef.current = merged.budgetConfig; setBudgetConfig(merged.budgetConfig); }
+                if (merged.customPrompt !== undefined) { customPromptRef.current = merged.customPrompt; setCustomPrompt(merged.customPrompt); }
+                if (merged.skills !== undefined) { skillsRef.current = merged.skills; setSkills(merged.skills); }
+                if (merged.wallets !== undefined) { walletsRef.current = merged.wallets; setWallets(merged.wallets); }
+                if (merged.monthlyThemes !== undefined) { monthlyThemesRef.current = merged.monthlyThemes; setMonthlyThemes(merged.monthlyThemes); }
+                if (merged.monthlyThemeImages !== undefined) { monthlyThemeImagesRef.current = merged.monthlyThemeImages; setMonthlyThemeImages(merged.monthlyThemeImages); }
+                if (merged.appSettings !== undefined) { appSettingsRef.current = merged.appSettings; setAppSettings(merged.appSettings); }
+                if (merged.canonicalRules !== undefined) { canonicalRulesRef.current = merged.canonicalRules; setCanonicalRules(merged.canonicalRules); }
+                if (merged.chatHistory !== undefined) { chatHistoryRef.current = merged.chatHistory; setChatHistory(merged.chatHistory); }
+        },
+        hasActiveParsing, pendingSaveAfterParsingRef, lastSyncedItemsRef,
+        setSaveStatus, setSaveProgress, setError,
+    });
 
     useRoutineReset({ itemsRef, setItems, saveAndSync, checkRoutineResets });
 
@@ -1035,17 +897,7 @@ export const useBrainDumpData = () => {
                     appliedData = { ...data, data: mergedItems, wallets: walletsForSweep };
 
                     if (dedupeResult.removedCount > 0 || investmentWalletMigration.changed || JSON.stringify(mergedItems) !== JSON.stringify(data.data)) {
-                        saveAndSync(
-                            mergedItems,
-                            data.budgetConfig,
-                            data.customPrompt,
-                            data.skills,
-                            walletsForSweep,
-                            data.monthlyThemes,
-                            data.appSettings,
-                            data.canonicalRules,
-                            false,
-                            data.monthlyThemeImages
+                        saveAndSync({ data: mergedItems, budgetConfig: data.budgetConfig, customPrompt: data.customPrompt, skills: data.skills, wallets: walletsForSweep, monthlyThemes: data.monthlyThemes, appSettings: data.appSettings, canonicalRules: data.canonicalRules, forceOverwrite: false, monthlyThemeImages: data.monthlyThemeImages }
                         );
                     }
                 }
@@ -1067,17 +919,7 @@ export const useBrainDumpData = () => {
                     ];
                     skillsRef.current = defaults;
                     setSkills(defaults);
-                    saveAndSync(
-                        data.data || [],
-                        data.budgetConfig,
-                        data.customPrompt,
-                        defaults,
-                        data.wallets,
-                        data.monthlyThemes,
-                        data.appSettings,
-                        data.canonicalRules,
-                        false,
-                        data.monthlyThemeImages
+                    saveAndSync({ data: data.data || [], budgetConfig: data.budgetConfig, customPrompt: data.customPrompt, skills: defaults, wallets: data.wallets, monthlyThemes: data.monthlyThemes, appSettings: data.appSettings, canonicalRules: data.canonicalRules, forceOverwrite: false, monthlyThemeImages: data.monthlyThemeImages }
                     );
                 }
 
@@ -1112,17 +954,7 @@ export const useBrainDumpData = () => {
             if (data) {
                 const appliedData = applyData(data);
                 if (hasChanges && !isUsingLocalStorage()) {
-                    saveAndSync(
-                        appliedData.data || [],
-                        appliedData.budgetConfig,
-                        appliedData.customPrompt,
-                        appliedData.skills,
-                        appliedData.wallets,
-                        appliedData.monthlyThemes,
-                        appliedData.appSettings,
-                        appliedData.canonicalRules,
-                        true,
-                        appliedData.monthlyThemeImages
+                    saveAndSync({ data: appliedData.data || [], budgetConfig: appliedData.budgetConfig, customPrompt: appliedData.customPrompt, skills: appliedData.skills, wallets: appliedData.wallets, monthlyThemes: appliedData.monthlyThemes, appSettings: appliedData.appSettings, canonicalRules: appliedData.canonicalRules, forceOverwrite: true, monthlyThemeImages: appliedData.monthlyThemeImages }
                     );
                 }
             }
@@ -1158,18 +990,7 @@ export const useBrainDumpData = () => {
         pendingFetchAfterParsingRef.current = false;
 
         if (deferredSave) {
-            await performSaveAndSync(
-                deferredSave.newItems || itemsRef.current,
-                deferredSave.newConfig || budgetConfigRef.current,
-                deferredSave.newPrompt !== undefined ? deferredSave.newPrompt : customPromptRef.current,
-                deferredSave.newSkills || skillsRef.current,
-                deferredSave.newWallets || walletsRef.current,
-                deferredSave.newThemes || monthlyThemesRef.current,
-                deferredSave.newAppSettings || appSettingsRef.current,
-                deferredSave.newCanonicalRules || canonicalRulesRef.current,
-                deferredSave.forceOverwrite,
-                deferredSave.newThemeImages || monthlyThemeImagesRef.current
-            );
+            await performSaveAndSync(deferredSave);
         }
 
         if (shouldFetch) {
@@ -1859,15 +1680,7 @@ export const useBrainDumpData = () => {
 
             itemsRef.current = updated;
 
-            saveAndSync(
-                updated,
-                undefined,
-                undefined,
-                hasSkillChange ? newSkills : undefined,
-                hasWalletChange ? newWallets : undefined,
-                hasThemeChange ? newThemes : undefined,
-                undefined,
-                canonicalRulesOverride
+            saveAndSync({ data: updated, skills: hasSkillChange ? newSkills : undefined, wallets: hasWalletChange ? newWallets : undefined, monthlyThemes: hasThemeChange ? newThemes : undefined, canonicalRules: canonicalRulesOverride }
             );
 
             return updated;
@@ -1899,31 +1712,27 @@ export const useBrainDumpData = () => {
                 setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'stage2' } : t));
             } else if (appSettingsRef.current.useProParser) {
                 setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'stage1' } : t));
-                parsedResults = await parsePro(
-                    text,
-                    Array.from(currentTags),
-                    skillsRef.current,
-                    walletsRef.current,
-                    budgetConfigRef.current?.rules || [],
-                    itemsRef.current,
-                    customPromptRef.current,
-                    appSettingsRef.current.parsingModel,
-                    0,
-                    (stage) => {
+                parsedResults = await parsePro(text,
+Array.from(currentTags),
+skillsRef.current,
+walletsRef.current,
+budgetConfigRef.current?.rules || [],
+itemsRef.current,
+customPromptRef.current,
+appSettingsRef.current.parsingModel,
+(stage) => {
                         setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage } : t));
                     }
                 );
             } else {
                 setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, stage: 'legacy' } : t));
-                const legacy = await classifyText(
-                    text,
-                    Array.from(currentTags),
-                    skillsRef.current.map(s => s.name),
-                    0,
-                    customPromptRef.current,
-                    appSettingsRef.current.parsingModel,
-                    walletsRef.current,
-                    budgetConfigRef.current?.rules || []
+                const legacy = await classifyText(text,
+Array.from(currentTags),
+skillsRef.current.map(s => s.name),
+customPromptRef.current,
+appSettingsRef.current.parsingModel,
+walletsRef.current,
+budgetConfigRef.current?.rules || []
                 );
                 parsedResults = convertLegacyResultsToNative(legacy, text);
             }
@@ -2029,15 +1838,7 @@ export const useBrainDumpData = () => {
 
             itemsRef.current = updated;
 
-            saveAndSync(
-                updated,
-                undefined,
-                undefined,
-                shouldRestoreSkills ? snapshot.skills : undefined,
-                shouldRestoreWallets ? snapshot.wallets : undefined,
-                shouldRestoreThemes ? snapshot.monthlyThemes : undefined,
-                undefined,
-                snapshot.canonicalRules
+            saveAndSync({ data: updated, skills: shouldRestoreSkills ? snapshot.skills : undefined, wallets: shouldRestoreWallets ? snapshot.wallets : undefined, monthlyThemes: shouldRestoreThemes ? snapshot.monthlyThemes : undefined, canonicalRules: snapshot.canonicalRules }
             );
 
             return updated;
@@ -2081,7 +1882,7 @@ export const useBrainDumpData = () => {
         setItems(prev => {
             const updated = prev.filter(item => !createdItemIds.has(item.id));
             itemsRef.current = updated;
-            saveAndSync(updated);
+            saveAndSync({ data: updated });
             return updated;
         });
         setParsingTasks(prev => prev.map(t => t.id === taskId ? { ...t, undoStatus: 'deleted' } : t));
@@ -2265,7 +2066,7 @@ export const useBrainDumpData = () => {
         updatedItems = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(updatedItems));
         itemsRef.current = updatedItems;
         setItems(updatedItems);
-        saveAndSync(updatedItems);
+        saveAndSync({ data: updatedItems });
     };
 
     const handleResetRoutine = async (id: string) => {
@@ -2274,7 +2075,7 @@ export const useBrainDumpData = () => {
 
         itemsRef.current = updatedList;
         setItems(updatedList);
-        saveAndSync(updatedList);
+        saveAndSync({ data: updatedList });
     };
 
     const handleDelete = async (id: string) => {
@@ -2284,7 +2085,7 @@ export const useBrainDumpData = () => {
         updatedItems = applyDeepWorkChildProgress(updatedItems);
         itemsRef.current = updatedItems;
         setItems(updatedItems);
-        saveAndSync(updatedItems);
+        saveAndSync({ data: updatedItems });
     };
 
     const {
@@ -2347,7 +2148,7 @@ export const useBrainDumpData = () => {
         const updated = [newItem, ...itemsRef.current];
         itemsRef.current = updated;
         setItems(updated);
-        saveAndSync(updated);
+        saveAndSync({ data: updated });
     };
 
     const handleUpdateItem = async (id: string, patch: ItemUpdatePatch) => {
@@ -2531,7 +2332,7 @@ export const useBrainDumpData = () => {
         const reconciledDeepWorkItems = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(updatedItems));
         itemsRef.current = reconciledDeepWorkItems;
         setItems(reconciledDeepWorkItems);
-        saveAndSync(reconciledDeepWorkItems);
+        saveAndSync({ data: reconciledDeepWorkItems });
     };
 
     const handleUpdateReceiptCapture = async (id: string, receiptCapture: ReceiptCaptureMeta | null) => {
@@ -2546,7 +2347,7 @@ export const useBrainDumpData = () => {
             : item);
         itemsRef.current = updatedItems;
         setItems(updatedItems);
-        saveAndSync(updatedItems);
+        saveAndSync({ data: updatedItems });
     };
 
 
@@ -2577,7 +2378,7 @@ export const useBrainDumpData = () => {
         const updated = [...newItems, ...itemsRef.current];
         itemsRef.current = updated;
         setItems(updated);
-        saveAndSync(updated);
+        saveAndSync({ data: updated });
     };
 
     const handleAddShoppingItem = async (
@@ -2665,7 +2466,7 @@ export const useBrainDumpData = () => {
         const updated = [newItem, ...itemsRef.current];
         itemsRef.current = updated;
         setItems(updated);
-        saveAndSync(updated, undefined, undefined, undefined, updatedWallets);
+        saveAndSync({ data: updated, wallets: updatedWallets });
     };
 
     const handleAddSavingTransaction = (
@@ -2712,7 +2513,7 @@ export const useBrainDumpData = () => {
         const updated = [newFinanceItem, ...updatedItems];
         itemsRef.current = updated;
         setItems(updated);
-        saveAndSync(updated);
+        saveAndSync({ data: updated });
     };
 
     const handleAddTransaction = async (
@@ -2769,7 +2570,7 @@ export const useBrainDumpData = () => {
         const updated = [newItem, ...itemsRef.current];
         itemsRef.current = updated;
         setItems(updated);
-        await saveAndSync(updated);
+        await saveAndSync({ data: updated });
         return newItem;
     };
 
@@ -2808,7 +2609,7 @@ export const useBrainDumpData = () => {
             : [newItem, ...itemsRef.current];
         itemsRef.current = updated;
         setItems(updated);
-        saveAndSync(updated);
+        saveAndSync({ data: updated });
     };
 
     const handleUpsertSkillSessionLog = (input: SkillSessionLogInput) => {
@@ -2884,7 +2685,7 @@ export const useBrainDumpData = () => {
 
         itemsRef.current = finalItems;
         setItems(finalItems);
-        saveAndSync(finalItems);
+        saveAndSync({ data: finalItems });
     };
 
     const {

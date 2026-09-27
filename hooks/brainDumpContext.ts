@@ -1,3 +1,4 @@
+import type { SaveChanges } from '../utils/saveChanges';
 import { MutableRefObject } from 'react';
 import {
   BrainDumpItem,
@@ -17,18 +18,7 @@ import { HistoricalCanonicalReview } from '../services/canonicalizerService';
 export type BrainDumpContext = {
   itemsRef: MutableRefObject<BrainDumpItem[]>;
   setItems: (items: BrainDumpItem[]) => void;
-  saveAndSync: (
-    newItems?: BrainDumpItem[],
-    newConfig?: BudgetConfig,
-    newPrompt?: string,
-    newSkills?: Skill[],
-    newWallets?: Wallet[],
-    newThemes?: Record<string, string>,
-    newAppSettings?: AppSettings,
-    newCanonicalRules?: CanonicalRule[],
-    forceOverwrite?: boolean,
-    newThemeImages?: Record<string, string>,
-  ) => Promise<void>;
+  saveAndSync: (changes?: SaveChanges) => Promise<void>;
   skillsRef: MutableRefObject<Skill[]>;
   setSkills: (skills: Skill[]) => void;
   walletsRef: MutableRefObject<Wallet[]>;
@@ -54,18 +44,7 @@ export type BrainDumpContext = {
   setFetchProgress: (progress: SyncProgress | null) => void;
   setFetchStatus: (status: SyncStatus) => void;
   parsingInFlightRef: MutableRefObject<Set<string>>;
-  pendingSaveAfterParsingRef: MutableRefObject<{
-    newItems?: BrainDumpItem[];
-    newConfig?: BudgetConfig;
-    newPrompt?: string;
-    newSkills?: Skill[];
-    newWallets?: Wallet[];
-    newThemes?: Record<string, string>;
-    newThemeImages?: Record<string, string>;
-    newAppSettings?: AppSettings;
-    newCanonicalRules?: CanonicalRule[];
-    forceOverwrite?: boolean;
-  } | null>;
+  pendingSaveAfterParsingRef: MutableRefObject<SaveChanges | null>;
   pendingFetchAfterParsingRef: MutableRefObject<boolean>;
   parsingUndoSnapshotsRef: MutableRefObject<Record<string, any>>;
   enrichmentTasksRef: MutableRefObject<EnrichmentTask[]>;

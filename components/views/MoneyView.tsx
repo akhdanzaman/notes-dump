@@ -261,7 +261,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     totalAssets,
     totalDebt,
     totalSavings: walletTotalSavings,
-  } = getWalletStats(items, wallets);
+  } = useMemo(() => getWalletStats(items, wallets), [items, wallets]);
 
   const {
     list,
@@ -275,7 +275,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     plannedBudgetMap,
     uncategorized,
     projectedUncategorized,
-  } = getFinanceItems(
+  } = useMemo(() => getFinanceItems(
     items,
     financeDate,
     budgetConfig,
@@ -289,7 +289,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     sortOrder,
     budgetViewMode,
     wallets,
-  );
+  ), [items, financeDate.getTime(), budgetConfig, filterWallet, filterTransactionType, filterCategory, filterMinAmount, filterMaxAmount, selectedTag, searchQuery, sortOrder, budgetViewMode, wallets]);
   const previousComparableDate = new Date(financeDate);
   const comparableDay = previousComparableDate.getDate();
   if (budgetViewMode === "yearly") {
@@ -313,7 +313,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     ).getDate();
     previousComparableDate.setDate(Math.min(comparableDay, lastComparableDay));
   }
-  const { totalExpense: previousComparableExpense } = getFinanceItems(
+  const { totalExpense: previousComparableExpense } = useMemo(() => getFinanceItems(
     items,
     previousComparableDate,
     budgetConfig,
@@ -327,7 +327,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     "newest",
     budgetViewMode,
     wallets,
-  );
+  ), [items, previousComparableDate.getTime(), budgetConfig, budgetViewMode, wallets]);
 
   const visibleWallets = useLazyItems(walletStats, {
     resetKey: "money-wallets",

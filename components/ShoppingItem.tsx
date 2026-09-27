@@ -1,3 +1,4 @@
+import { useRoutineDraft } from '../hooks/useRoutineDraft';
 import React, { useState, useEffect } from 'react';
 import { BrainDumpItem, ItemType, ShoppingCategory, BudgetRule, Wallet, ShoppingLineItem, ItemUpdateHandler } from '../types';
 import { Circle, CheckCircle2, Trash2, Repeat, AlertCircle, Calendar, Clock, Edit2, ChevronDown, ChevronUp, Save, Tag, RotateCcw } from 'lucide-react';
@@ -34,11 +35,9 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const [editShoppingLineItems, setEditShoppingLineItems] = useState<ShoppingLineItem[]>(sanitizeShoppingLineItems(meta.shoppingLineItems));
   const [editAmount, setEditAmount] = useState(meta.amount ? meta.amount.toString() : '');
   const [editCategory, setEditCategory] = useState<ShoppingCategory>(meta.shoppingCategory || 'not_urgent');
-  const [editRecurrence, setEditRecurrence] = useState(meta.recurrenceDays ? meta.recurrenceDays.toString() : '');
-  const [editRoutineInterval, setEditRoutineInterval] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>(meta.routineInterval || 'daily');
-  const [editRoutineDaysOfWeek, setEditRoutineDaysOfWeek] = useState<number[]>(meta.routineDaysOfWeek || []);
-  const [editRoutineDaysOfMonth, setEditRoutineDaysOfMonth] = useState<number[]>(meta.routineDaysOfMonth || []);
-  const [editRoutineMonthsOfYear, setEditRoutineMonthsOfYear] = useState<number[]>(meta.routineMonthsOfYear || []);
+  const { editRecurrenceDays, setEditRecurrenceDays, editRoutineInterval, setEditRoutineInterval,
+    editRoutineDaysOfWeek, setEditRoutineDaysOfWeek, editRoutineDaysOfMonth, setEditRoutineDaysOfMonth,
+    editRoutineMonthsOfYear, setEditRoutineMonthsOfYear, resetRoutine, getRoutinePatch } = useRoutineDraft(meta, '');
   const [editDate, setEditDate] = useState<string>('');
   const [editBudgetCategory, setEditBudgetCategory] = useState(meta.budgetCategory || '');
   const [editPaymentMethod, setEditPaymentMethod] = useState(meta.paymentMethod || '');
@@ -51,11 +50,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       setEditShoppingLineItems(sanitizeShoppingLineItems(meta.shoppingLineItems));
       setEditAmount(meta.amount ? meta.amount.toString() : '');
       setEditCategory(meta.shoppingCategory || 'not_urgent');
-      setEditRecurrence(meta.recurrenceDays ? meta.recurrenceDays.toString() : '');
-      setEditRoutineInterval(meta.routineInterval || 'daily');
-      setEditRoutineDaysOfWeek(meta.routineDaysOfWeek || []);
-      setEditRoutineDaysOfMonth(meta.routineDaysOfMonth || []);
-      setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
+      resetRoutine(meta);
       setEditBudgetCategory(meta.budgetCategory || '');
       setEditPaymentMethod(meta.paymentMethod || '');
       setEditHideFromCalendar(!!meta.hideFromCalendar);
@@ -83,7 +78,6 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       const sanitizedEditLineItems = sanitizeShoppingLineItems(editShoppingLineItems);
       const hasEditLineItems = sanitizedEditLineItems.length > 0;
       const numAmount = hasEditLineItems ? sumShoppingLineItems(sanitizedEditLineItems) : (editAmount ? parseFloat(editAmount) : undefined);
-      const numRecurrence = editRecurrence ? parseInt(editRecurrence) : undefined;
       
       let finalDate: string | undefined = undefined;
       if (editDate) finalDate = new Date(editDate).toISOString();
@@ -102,13 +96,9 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           progress: meta.progress,
           progressNotes: meta.progressNotes,
           shoppingCategory: editCategory,
-          recurrenceDays: numRecurrence,
+          ...getRoutinePatch(),
           quantity: editQuantity,
           isRoutine: editCategory === 'routine',
-          routineInterval: editRoutineInterval,
-          routineDaysOfWeek: editRoutineDaysOfWeek,
-          routineDaysOfMonth: editRoutineDaysOfMonth,
-          routineMonthsOfYear: editRoutineMonthsOfYear,
           dedicatedWalletId: meta.dedicatedWalletId,
           priority: meta.priority,
           start: meta.start,

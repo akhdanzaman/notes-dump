@@ -6,7 +6,7 @@ import { DbSchema, ItemType } from '../../types';
 import { cachePendingSpreadsheetWrite, cacheSpreadsheetDbForMigration, clearPendingSpreadsheetWrite, clearSpreadsheetConfig, getPendingSpreadsheetWrite, saveSpreadsheetConfig } from '../spreadsheetService';
 
 test('sync facade no longer exposes GitHub/db.json as a runtime provider', async () => {
-  const result = await syncData([]);
+  const result = await syncData({ data: [] });
   assert.equal(result.success, false);
   assert.equal(result.method, 'error');
   assert.match(result.error || '', /Spreadsheet is not connected/i);

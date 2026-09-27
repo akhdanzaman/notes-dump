@@ -72,6 +72,9 @@ export const isRetryableAiError = (error: any) => {
   return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 };
 
+export const isRetryableParserError = (error: unknown): boolean => isRetryableAiError(error) ||
+  (error instanceof Error && /Failed to parse JSON|Empty JSON response/.test(error.message));
+
 export async function withAiRetry<T>(
   operation: () => Promise<T>,
   options: { retries?: number; baseDelayMs?: number; shouldRetry?: (error: any) => boolean } = {}

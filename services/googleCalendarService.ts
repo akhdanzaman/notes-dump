@@ -20,6 +20,11 @@ export interface GoogleCalendarSyncEvent {
 
 interface GoogleCalendarEventListItem {
   id: string;
+  summary?: string;
+  description?: string;
+  start?: GoogleCalendarSyncEvent['start'];
+  end?: GoogleCalendarSyncEvent['end'];
+  recurrence?: string[];
   extendedProperties?: {
     private?: Record<string, string>;
   };
@@ -160,9 +165,17 @@ const toCalendarApiEvent = (event: GoogleCalendarSyncEvent) => {
     description: event.description,
     start: event.start,
     end: event.end,
-    recurrence: event.recurrence,
+    recurrence: event.recurrence || [],
     extendedProperties: event.extendedProperties,
   };
+};
+
+export const calendarEventMatches = (desired: GoogleCalendarSyncEvent, existing: GoogleCalendarEventListItem): boolean => {
+  const dateKey = (value?: GoogleCalendarSyncEvent['start']) => value?.date ||
+    (value?.dateTime ? String(Date.parse(value.dateTime)) : '');
+  return desired.summary === existing.summary && desired.description === (existing.description || '') &&
+    dateKey(desired.start) === dateKey(existing.start) && dateKey(desired.end) === dateKey(existing.end) &&
+    JSON.stringify([...(desired.recurrence || [])].sort()) === JSON.stringify([...(existing.recurrence || [])].sort());
 };
 
 const listExistingArkaivEvents = async (calendarId: string): Promise<GoogleCalendarEventListItem[]> => {
@@ -208,10 +221,15 @@ export const syncItemsToGoogleCalendar = async (
   let created = 0;
   let updated = 0;
   let deleted = 0;
+  let skipped = items.length - desiredEvents.length;
 
   for (const event of desiredEvents) {
     const existing = existingByItemId.get(event.itemId);
     if (existing?.id) {
+      if (calendarEventMatches(event, existing)) {
+        skipped += 1;
+        continue;
+      }
       const response = await calendarFetch(calendarId, `/events/${encodeURIComponent(existing.id)}`, {
         method: 'PATCH',
         body: JSON.stringify(toCalendarApiEvent(event)),
@@ -238,5 +256,5 @@ export const syncItemsToGoogleCalendar = async (
     deleted += 1;
   }
 
-  return { created, updated, deleted, skipped: items.length - desiredEvents.length };
+  return { created, updated, deleted, skipped };
 };

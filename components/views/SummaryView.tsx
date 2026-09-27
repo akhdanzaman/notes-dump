@@ -378,7 +378,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     totalExpense,
     projectedExpense,
     totalSavings: periodSavings,
-  } = getFinanceItems(
+  } = useMemo(() => getFinanceItems(
     items,
     themeNavDate,
     budgetConfig,
@@ -392,13 +392,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     "newest",
     "monthly",
     wallets,
-  );
+  ), [items, themeNavDate.getTime(), budgetConfig, wallets]);
   const previousPeriodDate = new Date(
     themeNavDate.getFullYear(),
     themeNavDate.getMonth() - 1,
     1,
   );
-  const { totalExpense: previousPeriodExpense } = getFinanceItems(
+  const { totalExpense: previousPeriodExpense } = useMemo(() => getFinanceItems(
     items,
     previousPeriodDate,
     budgetConfig,
@@ -412,13 +412,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     "newest",
     "monthly",
     wallets,
-  );
+  ), [items, previousPeriodDate.getTime(), budgetConfig, wallets]);
   const {
     totalNetWorth,
     totalAssets,
     totalDebt,
     totalSavings: walletTotalSavings,
-  } = getWalletStats(items, wallets);
+  } = useMemo(() => getWalletStats(items, wallets), [items, wallets]);
 
   const totalLimits = budgetConfig.rules.reduce(
     (acc, rule) => acc + (rule.percentage / 100) * budgetConfig.monthlyIncome,

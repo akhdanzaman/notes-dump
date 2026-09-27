@@ -1,10 +1,11 @@
+import type { SaveChanges } from '../utils/saveChanges';
 import { useCallback, useEffect, useRef } from 'react';
 import { BrainDumpItem } from '../types';
 
 type RoutineResetDeps = {
   itemsRef: { current: BrainDumpItem[] };
   setItems: (items: BrainDumpItem[]) => void;
-  saveAndSync: (items: BrainDumpItem[], ...rest: any[]) => Promise<void>;
+  saveAndSync: (changes?: SaveChanges) => Promise<void>;
   checkRoutineResets: (items: BrainDumpItem[]) => BrainDumpItem[];
 };
 
@@ -23,7 +24,7 @@ export const useRoutineReset = (deps: RoutineResetDeps) => {
 
     itemsRef.current = updatedItems;
     setItems(updatedItems);
-    saveAndSync(updatedItems);
+    saveAndSync({ data: updatedItems });
   }, []);
 
   useEffect(() => {

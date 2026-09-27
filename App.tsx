@@ -29,6 +29,7 @@ import {
   saveSecurityPasswordHash,
   verifySecurityPassword,
 } from "./services/spreadsheetService";
+import { useBackHandler } from "./hooks/useBackHandler";
 import { BackHandler } from "./utils/backHandler";
 import {
   LocalSecuritySettings,
@@ -38,8 +39,8 @@ import {
 } from "./utils/securitySettings";
 
 import InputBar from "./components/InputBar";
-import SkillModal from "./components/SkillModal";
-import WalletModal from "./components/WalletModal";
+const SkillModal = React.lazy(() => import("./components/SkillModal"));
+const WalletModal = React.lazy(() => import("./components/WalletModal"));
 import ConfirmDialog from "./components/ConfirmDialog";
 import PasswordDialog from "./components/PasswordDialog";
 
@@ -47,16 +48,17 @@ import BottomNav from "./components/BottomNav";
 import FloatingSearch from "./components/FloatingSearch";
 
 import SummaryView from "./components/views/SummaryView";
-import PlanView from "./components/views/PlanView";
-import LibraryView from "./components/views/LibraryView";
-import MoneyViewComponent from "./components/views/MoneyView";
-import CalendarView from "./components/views/CalendarView";
-import RoutineTaskModal from "./components/RoutineTaskModal";
-import AddTaskModal from "./components/AddTaskModal";
-import AddShoppingModal from "./components/AddShoppingModal";
-import AddExpenseModal, { TransactionComposerMode } from "./components/AddExpenseModal";
-import AddNoteModal from "./components/AddNoteModal";
-import ReviewCenterPanel from "./components/ReviewCenterPanel";
+const PlanView = React.lazy(() => import("./components/views/PlanView"));
+const LibraryView = React.lazy(() => import("./components/views/LibraryView"));
+const MoneyViewComponent = React.lazy(() => import("./components/views/MoneyView"));
+const CalendarView = React.lazy(() => import("./components/views/CalendarView"));
+const RoutineTaskModal = React.lazy(() => import("./components/RoutineTaskModal"));
+const AddTaskModal = React.lazy(() => import("./components/AddTaskModal"));
+const AddShoppingModal = React.lazy(() => import("./components/AddShoppingModal"));
+import type { TransactionComposerMode } from "./components/AddExpenseModal";
+const AddExpenseModal = React.lazy(() => import("./components/AddExpenseModal"));
+const AddNoteModal = React.lazy(() => import("./components/AddNoteModal"));
+const ReviewCenterPanel = React.lazy(() => import("./components/ReviewCenterPanel"));
 import Onboarding from "./components/Onboarding";
 import FeatureTutorialPopup from "./components/FeatureTutorialPopup";
 import DesktopNavRail from "./components/layout/DesktopNavRail";
@@ -1023,134 +1025,80 @@ const App: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (deleteId)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(deleteId), () => {
         setDeleteId(null);
         setDeleteType(null);
         return true;
       });
-  }, [deleteId]);
-  useEffect(() => {
-    if (globalConfirmation)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(globalConfirmation), () => {
         globalConfirmation.resolve(false);
         setGlobalConfirmation(null);
         return true;
       });
-  }, [globalConfirmation]);
-  useEffect(() => {
-    if (securityPasswordDialog)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(securityPasswordDialog), () => {
         closeSecurityPasswordDialog(null);
         return true;
       });
-  }, [securityPasswordDialog]);
-  useEffect(() => {
-    if (lockedSecurityPopup)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(lockedSecurityPopup), () => {
         setLockedSecurityPopup(null);
         return true;
       });
-  }, [lockedSecurityPopup]);
-  useEffect(() => {
-    if (isReviewCenterOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(isReviewCenterOpen), () => {
         closeReviewCenterFromInput();
         return true;
       });
-  }, [isReviewCenterOpen]);
-  useEffect(() => {
-    if (themeEditMode)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(themeEditMode), () => {
         setThemeEditMode(false);
         return true;
       });
-  }, [themeEditMode]);
-  useEffect(() => {
-    if (skillModal.isOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(skillModal.isOpen), () => {
         setSkillModal((prev) => ({ ...prev, isOpen: false }));
         return true;
       });
-  }, [skillModal.isOpen]);
-  useEffect(() => {
-    if (walletModal.isOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(walletModal.isOpen), () => {
         setWalletModal((prev) => ({ ...prev, isOpen: false }));
         return true;
       });
-  }, [walletModal.isOpen]);
-  useEffect(() => {
-    if (routineModalOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(routineModalOpen), () => {
         setRoutineModalOpen(false);
         return true;
       });
-  }, [routineModalOpen]);
-  useEffect(() => {
-    if (showChangelogPopup)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(showChangelogPopup), () => {
         handleCloseChangelogPopup();
         return true;
       });
-  }, [showChangelogPopup]);
-  useEffect(() => {
-    if (activeFeatureTutorialKey)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(activeFeatureTutorialKey), () => {
         handleCloseFeatureTutorial();
         return true;
       });
-  }, [activeFeatureTutorialKey]);
-  useEffect(() => {
-    if (addTaskModal.isOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(addTaskModal.isOpen), () => {
         setAddTaskModal((prev) => ({ ...prev, isOpen: false }));
         return true;
       });
-  }, [addTaskModal.isOpen]);
-  useEffect(() => {
-    if (addShoppingModal.isOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(addShoppingModal.isOpen), () => {
         setAddShoppingModal((prev) => ({ ...prev, isOpen: false }));
         return true;
       });
-  }, [addShoppingModal.isOpen]);
-  useEffect(() => {
-    if (addExpenseModalOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(addExpenseModalOpen), () => {
         closeAddTransactionModal();
         return true;
       });
-  }, [addExpenseModalOpen]);
-  useEffect(() => {
-    if (addNoteModalOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(addNoteModalOpen), () => {
         setAddNoteModalOpen(false);
         return true;
       });
-  }, [addNoteModalOpen]);
-  useEffect(() => {
-    if (isControlCenterOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(isControlCenterOpen), () => {
         setIsControlCenterOpen(false);
         return true;
       });
-  }, [isControlCenterOpen]);
-  useEffect(() => {
-    if (isChatOpen)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(isChatOpen), () => {
         setIsChatOpen(false);
         return true;
       });
-  }, [isChatOpen]);
-  useEffect(() => {
-    if (isSearchExpanded)
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(isSearchExpanded), () => {
         setIsSearchExpanded(false);
         return true;
       });
-  }, [isSearchExpanded]);
   useEffect(() => {
     const supportsFloatingSearch =
       (activeTab === "library" || activeTab === "money") &&
@@ -1158,13 +1106,10 @@ const App: React.FC = () => {
     if (!supportsFloatingSearch && isSearchExpanded) setIsSearchExpanded(false);
   }, [activeTab, isSearchExpanded, librarySubTab]);
 
-  useEffect(() => {
-    if (activeTab === "money" && moneyView !== "transactions")
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(activeTab === "money" && moneyView !== "transactions"), () => {
         setMoneyView("transactions");
         return true;
       });
-  }, [activeTab, moneyView]);
 
   useEffect(() => {
     if (activeTab === "money" && securitySettings.lockTabTransaction) {
@@ -1172,27 +1117,18 @@ const App: React.FC = () => {
       openLockedSecurityPopup('lockTabTransaction', 'Tab Money dikunci di perangkat ini.');
     }
   }, [activeTab, securitySettings.lockTabTransaction]);
-  useEffect(() => {
-    if (activeTab === "plan" && planSubTab !== "tasks")
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(activeTab === "plan" && planSubTab !== "tasks"), () => {
         setPlanSubTab("tasks");
         return true;
       });
-  }, [activeTab, planSubTab]);
-  useEffect(() => {
-    if (activeTab === "library" && librarySubTab !== "general")
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(activeTab === "library" && librarySubTab !== "general"), () => {
         setLibrarySubTab("general");
         return true;
       });
-  }, [activeTab, librarySubTab]);
-  useEffect(() => {
-    if (activeTab !== "summary")
-      return BackHandler.register(() => {
+  useBackHandler(Boolean(activeTab !== "summary"), () => {
         handleSetActiveTab("summary");
         return true;
       });
-  }, [activeTab]);
 
   // --- Handlers ---
 
@@ -1637,14 +1573,7 @@ const App: React.FC = () => {
     }
 
     if (shouldSync) {
-      saveAndSync(
-        items,
-        newBudgetConfig,
-        newPrompt,
-        skills,
-        wallets,
-        monthlyThemes,
-        newAppSettings,
+      saveAndSync({ data: items, budgetConfig: newBudgetConfig, customPrompt: newPrompt, skills: skills, wallets: wallets, monthlyThemes: monthlyThemes, appSettings: newAppSettings }
       );
     } else {
       loadData();
@@ -1678,17 +1607,7 @@ const App: React.FC = () => {
 
     setMonthlyThemes(nextThemes);
     setMonthlyThemeImages(nextThemeImages);
-    saveAndSync(
-      items,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      nextThemes,
-      undefined,
-      undefined,
-      false,
-      nextThemeImages,
+    saveAndSync({ data: items, monthlyThemes: nextThemes, forceOverwrite: false, monthlyThemeImages: nextThemeImages }
     );
     closeThemeEditor();
   };
@@ -1699,11 +1618,11 @@ const App: React.FC = () => {
       const updatedItems = syncSkillRoutineItems(items, updated);
       setSkills(updated);
       setItems(updatedItems);
-      saveAndSync(updatedItems, undefined, undefined, updated, wallets, monthlyThemes);
+      saveAndSync({ data: updatedItems, skills: updated, wallets: wallets, monthlyThemes: monthlyThemes });
     } else if (deleteType === "wallet" && deleteId) {
       const updated = wallets.filter((w) => w.id !== deleteId);
       setWallets(updated);
-      saveAndSync(items, undefined, undefined, skills, updated, monthlyThemes);
+      saveAndSync({ data: items, skills: skills, wallets: updated, monthlyThemes: monthlyThemes });
     } else if (deleteId) {
       handleDelete(deleteId); // Call actual delete logic after confirmation
     }
@@ -1728,14 +1647,7 @@ const App: React.FC = () => {
         // Basic validation
         if (data.items && Array.isArray(data.items)) {
           // Update all states
-          saveAndSync(
-            data.items,
-            data.budgetConfig || budgetConfig,
-            data.customPrompt || customPrompt,
-            data.skills || skills,
-            data.wallets || wallets,
-            data.monthlyThemes || monthlyThemes,
-            data.appSettings || appSettings,
+          saveAndSync({ data: data.items, budgetConfig: data.budgetConfig || budgetConfig, customPrompt: data.customPrompt || customPrompt, skills: data.skills || skills, wallets: data.wallets || wallets, monthlyThemes: data.monthlyThemes || monthlyThemes, appSettings: data.appSettings || appSettings }
           );
           showAppNotice('Data berhasil diimpor.', 'success');
           setIsControlCenterOpen(false);
@@ -1751,16 +1663,7 @@ const App: React.FC = () => {
   };
 
   const handleClearData = async () => {
-    await saveAndSync(
-      [],
-      undefined,
-      undefined,
-      [],
-      [],
-      {},
-      undefined,
-      undefined,
-      true,
+    await saveAndSync({ data: [], skills: [], wallets: [], monthlyThemes: {}, forceOverwrite: true }
     );
     clearSpreadsheetConfig();
     setIsControlCenterOpen(false);
@@ -1829,7 +1732,7 @@ const App: React.FC = () => {
     const updatedItems = syncSkillRoutineItems(items, updatedSkills);
     setSkills(updatedSkills);
     setItems(updatedItems);
-    saveAndSync(updatedItems, undefined, undefined, updatedSkills, wallets, monthlyThemes);
+    saveAndSync({ data: updatedItems, skills: updatedSkills, wallets: wallets, monthlyThemes: monthlyThemes });
     setSkillModal({ ...skillModal, isOpen: false });
   };
 
@@ -1850,7 +1753,7 @@ const App: React.FC = () => {
       };
       const updated = [...wallets, newWallet];
       setWallets(updated);
-      saveAndSync(items, undefined, undefined, skills, updated, monthlyThemes);
+      saveAndSync({ data: items, skills: skills, wallets: updated, monthlyThemes: monthlyThemes });
     } else if (walletModal.mode === "edit" && walletModal.walletId) {
       const updated = wallets.map((w) =>
         w.id === walletModal.walletId
@@ -1858,7 +1761,7 @@ const App: React.FC = () => {
           : w,
       );
       setWallets(updated);
-      saveAndSync(items, undefined, undefined, skills, updated, monthlyThemes);
+      saveAndSync({ data: items, skills: skills, wallets: updated, monthlyThemes: monthlyThemes });
     }
     setWalletModal({ ...walletModal, isOpen: false });
   };
@@ -1928,16 +1831,7 @@ const App: React.FC = () => {
 
     if (budget) setBudgetConfig(budget);
 
-    saveAndSync(
-      sampleItems.length > 0 ? [...items, ...sampleItems] : items,
-      budget || budgetConfig,
-      customPrompt,
-      skills,
-      newWallets.length > 0 ? newWallets : wallets,
-      monthlyThemes,
-      settings,
-      undefined,
-      true, // force overwrite
+    saveAndSync({ data: sampleItems.length > 0 ? [...items, ...sampleItems] : items, budgetConfig: budget || budgetConfig, customPrompt: customPrompt, skills: skills, wallets: newWallets.length > 0 ? newWallets : wallets, monthlyThemes: monthlyThemes, appSettings: settings, forceOverwrite: true } // force overwrite
     );
   };
 
@@ -1946,15 +1840,13 @@ const App: React.FC = () => {
     context?: { wallet?: Wallet | null },
   ): Promise<BrainDumpItem[]> => {
     const previewWallets = context?.wallet ? [context.wallet] : wallets;
-    const parsed = await classifyText(
-      text,
-      [],
-      skills.map((s) => s.name),
-      0,
-      customPrompt,
-      appSettings.parsingModel,
-      previewWallets,
-      budgetConfig?.rules || [],
+    const parsed = await classifyText(text,
+[],
+skills.map((s) => s.name),
+customPrompt,
+appSettings.parsingModel,
+previewWallets,
+budgetConfig?.rules || []
     );
 
     const now = new Date().toISOString();
@@ -2015,7 +1907,7 @@ const App: React.FC = () => {
         saveStatus={displaySaveStatus}
         saveProgress={saveProgress}
         fetchStatus={displayFetchStatus}
-        onSyncClick={() => saveAndSync(items)}
+        onSyncClick={() => saveAndSync({ data: items })}
         onRefreshClick={() => loadData()}
         onSettingsClick={openControlCenter}
         onOpenReviewCenter={openReviewCenterFromInput}
@@ -2147,7 +2039,7 @@ const App: React.FC = () => {
                   )}
 
                   {activeTab === "plan" && (
-                    <PlanView
+                    <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><PlanView
                   items={items}
                   skills={skills}
                   planSubTab={planSubTab}
@@ -2192,11 +2084,11 @@ const App: React.FC = () => {
                   }}
                   handleOpenAddLoan={(loanAccountId) => openAddTransactionModal('loan', loanAccountId)}
                   setActiveTab={handleSetActiveTab}
-                    />
+                    /></React.Suspense>
                   )}
 
                   {activeTab === "library" && (
-                    <LibraryView
+                    <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><LibraryView
                   items={items}
                   skills={skills}
                   librarySubTab={librarySubTab}
@@ -2225,11 +2117,11 @@ const App: React.FC = () => {
                       setAddNoteModalOpen(true);
                     }
                   }}
-                    />
+                    /></React.Suspense>
                   )}
 
                   {activeTab === "money" && !securitySettings.lockTabTransaction && (
-                    <MoneyViewComponent
+                    <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><MoneyViewComponent
                   items={items}
                   wallets={wallets}
                   budgetConfig={budgetConfig}
@@ -2265,11 +2157,11 @@ const App: React.FC = () => {
                   onAddItem={(type) => {
                     if (type === ItemType.FINANCE) openAddTransactionModal('expense');
                   }}
-                    />
+                    /></React.Suspense>
                   )}
 
                   {activeTab === "calendar" && (
-                    <CalendarView
+                    <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><CalendarView
                   items={items}
                   handleToggleStatus={handleToggleStatus}
                   handleDelete={requestDeleteItem}
@@ -2278,7 +2170,7 @@ const App: React.FC = () => {
                   handleOpenAddTask={(date) =>
                     setAddTaskModal({ isOpen: true, initialDate: date })
                   }
-                    />
+                    /></React.Suspense>
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -2426,16 +2318,7 @@ const App: React.FC = () => {
         fetchProgress={fetchProgress}
         fetchStatus={displayFetchStatus}
         onSyncClick={(forceOverwrite) =>
-          saveAndSync(
-            items,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            forceOverwrite,
+          saveAndSync({ data: items, forceOverwrite: forceOverwrite }
           )
         }
         onRefreshClick={() => loadData()}
@@ -2512,7 +2395,7 @@ const App: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  <ReviewCenterPanel
+                  <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><ReviewCenterPanel
                     hideMoney={secureAppSettings.hideMoney}
                     parsingTasks={parsingTasks}
                     enrichmentTasks={enrichmentTasks}
@@ -2537,7 +2420,7 @@ const App: React.FC = () => {
                     deleteParsingTaskEntries={
                       deleteSuccessfulParsingTaskEntries
                     }
-                  />
+                  /></React.Suspense>
           </PresencePanel>,
           document.body,
         )}
@@ -2702,45 +2585,45 @@ const App: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <SkillModal
+      {skillModal.isOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><SkillModal
         isOpen={skillModal.isOpen}
         onClose={() => setSkillModal({ ...skillModal, isOpen: false })}
         onSave={handleSaveSkill}
         initialSkill={skillModal.initialSkill}
         mode={skillModal.mode}
-      />
+      /></React.Suspense>)}
 
-      <WalletModal
+      {walletModal.isOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><WalletModal
         isOpen={walletModal.isOpen}
         onClose={() => setWalletModal({ ...walletModal, isOpen: false })}
         onSave={handleSaveWallet}
         initialData={walletModal.initialData}
         mode={walletModal.mode}
-      />
+      /></React.Suspense>)}
 
-      <RoutineTaskModal
+      {routineModalOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><RoutineTaskModal
         isOpen={routineModalOpen}
         onClose={() => setRoutineModalOpen(false)}
         onSave={handleAddRoutineTask}
-      />
+      /></React.Suspense>)}
 
-      <AddTaskModal
+      {addTaskModal.isOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><AddTaskModal
         isOpen={addTaskModal.isOpen}
         onClose={() => setAddTaskModal({ isOpen: false })}
         onSave={handleAddTask}
         initialDate={addTaskModal.initialDate}
-      />
+      /></React.Suspense>)}
 
-      <AddShoppingModal
+      {addShoppingModal.isOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><AddShoppingModal
         isOpen={addShoppingModal.isOpen}
         onClose={() => setAddShoppingModal({ isOpen: false })}
         onSave={handleAddShoppingItem}
         initialCategory={addShoppingModal.initialCategory}
         budgetRules={budgetConfig.rules}
         wallets={wallets}
-      />
+      /></React.Suspense>)}
 
-      <AddExpenseModal
+      {addExpenseModalOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><AddExpenseModal
         isOpen={addExpenseModalOpen}
         onClose={closeAddTransactionModal}
         onSave={(
@@ -2823,16 +2706,16 @@ const App: React.FC = () => {
         items={items}
         initialMode={addExpenseInitialMode}
         initialLoanAccountId={addExpenseInitialLoanAccountId}
-      />
+      /></React.Suspense>)}
 
-      <AddNoteModal
+      {addNoteModalOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><AddNoteModal
         isOpen={addNoteModalOpen}
         onClose={() => setAddNoteModalOpen(false)}
         onSave={(title, content, tags) =>
           handleAddNote(title, content, tags, addNoteModalType)
         }
         mode={addNoteModalType === ItemType.JOURNAL ? "journal" : "note"}
-      />
+      /></React.Suspense>)}
 
       <PresencePanel
         isOpen={!!lockedSecurityPopup}

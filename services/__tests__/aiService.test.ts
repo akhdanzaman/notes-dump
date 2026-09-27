@@ -1,7 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { fileToBase64, getGeminiKey, parseJsonResponse, saveGeminiKey } from '../aiService';
+import { fileToBase64, getGeminiKey, parseJsonResponse, saveGeminiKey, withAiRetry } from '../aiService';
+
+test('AI retry has a bounded attempt count and does not retry non-transient failures', async () => {
+  let calls = 0;
+  await assert.rejects(withAiRetry(async () => { calls++; throw { status: 429 }; }, { baseDelayMs: 0 }));
+  assert.equal(calls, 3);
+  calls = 0;
+  await assert.rejects(withAiRetry(async () => { calls++; throw { status: 401 }; }, { baseDelayMs: 0 }));
+  assert.equal(calls, 1);
+});
 
 test('getGeminiKey falls back to env when localStorage is unavailable', () => {
   const previous = process.env.GEMINI_API_KEY;

@@ -11,7 +11,7 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
     const normalized = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(nextItems));
     ctx.itemsRef.current = normalized;
     ctx.setItems(normalized);
-    ctx.saveAndSync(normalized);
+    ctx.saveAndSync({ data: normalized });
   }, [ctx]);
 
   const handleKeepRawTodo = useCallback(async (id: string) => {
@@ -165,7 +165,7 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
     const updated = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress([updatedParent, ...childItems, ...withoutParent]));
     ctx.itemsRef.current = updated;
     ctx.setItems(updated);
-    ctx.saveAndSync(updated);
+    ctx.saveAndSync({ data: updated });
   }, [ctx]);
 
   const handleDismissDeepWorkPlan = useCallback((id: string) => {
@@ -184,7 +184,7 @@ export const useDeepWork = (ctx: BrainDumpContext) => {
     });
     ctx.itemsRef.current = updated;
     ctx.setItems(updated);
-    ctx.saveAndSync(updated);
+    ctx.saveAndSync({ data: updated });
   }, [ctx]);
 
   return {

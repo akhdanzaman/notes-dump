@@ -1,3 +1,4 @@
+import { createWalletLookup, type WalletLookup } from '../walletLookup';
 import {
   BrainDumpItem,
   ItemType,
@@ -25,18 +26,10 @@ import { getInvestmentMetrics } from "../investmentMetrics";
 import { getTransactionBudgetAllocations } from "../transactionLineItems";
 import { getLoanAccounts, getLoanSummary } from "../loanAccounts";
 
-const resolveWalletBalanceKey = (wallets: Wallet[], value?: string) => {
-  const normalized = value?.toLowerCase().trim();
-  if (!normalized) return "";
-  const wallet = wallets.find(
-    (w) =>
-      w.id.toLowerCase() === normalized || w.name.toLowerCase() === normalized,
-  );
-  return wallet ? wallet.name.toLowerCase() : normalized;
-};
+const resolveWalletBalanceKey = (wallets: WalletLookup, value?: string) => wallets.resolve(value);
 
 const resolveItemWalletBalanceKey = (
-  wallets: Wallet[],
+  wallets: WalletLookup,
   item: BrainDumpItem,
 ) => {
   const canonicalPaymentMethod = getCanonicalMetaValue(
@@ -46,13 +39,13 @@ const resolveItemWalletBalanceKey = (
   const canonicalKey = resolveWalletBalanceKey(wallets, canonicalPaymentMethod);
   if (
     canonicalKey &&
-    wallets.some((w) => w.name.toLowerCase() === canonicalKey)
+    wallets.byName.has(canonicalKey)
   )
     return canonicalKey;
 
   const rawPaymentMethod = getRawMetaValue(item.meta, "paymentMethod");
   const rawKey = resolveWalletBalanceKey(wallets, rawPaymentMethod);
-  if (rawKey && wallets.some((w) => w.name.toLowerCase() === rawKey))
+  if (rawKey && wallets.byName.has(rawKey))
     return rawKey;
 
   // Fall back to dedicated wallet for shopping/implicit expenses
@@ -63,7 +56,7 @@ const resolveItemWalletBalanceKey = (
     );
     if (
       dedicatedKey &&
-      wallets.some((w) => w.name.toLowerCase() === dedicatedKey)
+      wallets.byName.has(dedicatedKey)
     )
       return dedicatedKey;
   }
@@ -72,6 +65,7 @@ const resolveItemWalletBalanceKey = (
 };
 
 export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
+  const lookup = createWalletLookup(wallets);
   // Create a map to track balances
   const balanceMap = new Map<string, number>();
 
@@ -106,11 +100,11 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
       return;
 
     const amount = item.meta.amount;
-    const walletName = resolveItemWalletBalanceKey(wallets, item); // Source Wallet
+    const walletName = resolveItemWalletBalanceKey(lookup, item); // Source Wallet
 
     if (walletName && balanceMap.has(walletName)) {
       const current = balanceMap.get(walletName) || 0;
-      const wallet = wallets.find((w) => w.name.toLowerCase() === walletName);
+      const wallet = lookup.byName.get(walletName);
       const isCC = wallet?.type === "cc";
 
       const isIncome = isFinance && item.meta.financeType === "income";
@@ -135,12 +129,10 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         else balanceMap.set(walletName, current - amount); // Transfer from Asset -> Decreases Asset
 
         // Destination of Transfer
-        const destName = resolveWalletBalanceKey(wallets, item.meta.toWallet);
+        const destName = resolveWalletBalanceKey(lookup, item.meta.toWallet);
         if (destName && balanceMap.has(destName)) {
           const destCurrent = balanceMap.get(destName) || 0;
-          const destWallet = wallets.find(
-            (w) => w.name.toLowerCase() === destName,
-          );
+          const destWallet = lookup.byName.get(destName);
           const isDestCC = destWallet?.type === "cc";
 
           if (isDestCC)
@@ -148,7 +140,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
           else balanceMap.set(destName, destCurrent + amount); // Transfer to Asset -> Increases Asset
         }
       } else if (isSaving) {
-        const destName = resolveWalletBalanceKey(wallets, item.meta.toWallet);
+        const destName = resolveWalletBalanceKey(lookup, item.meta.toWallet);
         if (destName && balanceMap.has(destName)) {
           // Investment saving moves money from a source wallet into an investment platform wallet.
           if (isCC) balanceMap.set(walletName, current + amount);
@@ -163,10 +155,10 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         if (isCC) balanceMap.set(walletName, Math.max(0, current - amount));
         else balanceMap.set(walletName, current - amount);
 
-        const destName = resolveWalletBalanceKey(wallets, item.meta.toWallet);
+        const destName = resolveWalletBalanceKey(lookup, item.meta.toWallet);
         if (destName && balanceMap.has(destName)) {
           const destCurrent = balanceMap.get(destName) || 0;
-          const destWallet = wallets.find((w) => w.name.toLowerCase() === destName);
+          const destWallet = lookup.byName.get(destName);
           if (destWallet?.type === "cc") balanceMap.set(destName, Math.max(0, destCurrent - amount));
           else balanceMap.set(destName, destCurrent + amount);
         }
@@ -206,8 +198,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         item.meta.dedicatedWalletId,
     )
     .forEach((investment) => {
-      const walletKey = resolveWalletBalanceKey(
-        wallets,
+      const walletKey = resolveWalletBalanceKey(lookup,
         investment.meta.dedicatedWalletId,
       );
       if (!walletKey || !balanceMap.has(walletKey)) return;
@@ -248,8 +239,7 @@ export const getWalletStats = (items: BrainDumpItem[], wallets: Wallet[]) => {
         account.direction === "receivable" && account.remainingAmount > 0,
     )
     .forEach((account) => {
-      const walletKey = resolveWalletBalanceKey(
-        wallets,
+      const walletKey = resolveWalletBalanceKey(lookup,
         account.originWalletId || account.preferredWalletId,
       );
       if (!walletKey || !balanceMap.has(walletKey)) return;
@@ -335,6 +325,7 @@ export const getFinanceItems = (
   viewMode: BudgetAnalyticsViewMode = "monthly",
   wallets: Wallet[] = [],
 ) => {
+  const lookup = createWalletLookup(wallets);
   const resolveCategory = (cat?: string) => {
     if (!cat) return null;
     if (budgetConfig.rules.some((r) => r.id === cat)) return cat;
@@ -407,14 +398,12 @@ export const getFinanceItems = (
           !getCanonicalOrRawItemValue(i, "paymentMethod") && !i.meta.toWallet,
       );
     } else {
-      const walletKey = resolveWalletBalanceKey(wallets, filterWallet);
+      const walletKey = resolveWalletBalanceKey(lookup, filterWallet);
       allTransactions = allTransactions.filter((i) => {
-        const sourceKey = resolveWalletBalanceKey(
-          wallets,
+        const sourceKey = resolveWalletBalanceKey(lookup,
           getCanonicalOrRawItemValue(i, "paymentMethod"),
         );
-        const destinationKey = resolveWalletBalanceKey(
-          wallets,
+        const destinationKey = resolveWalletBalanceKey(lookup,
           i.meta.toWallet,
         );
         return sourceKey === walletKey || destinationKey === walletKey;

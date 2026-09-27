@@ -1,3 +1,4 @@
+import type { SaveChanges } from '../utils/saveChanges';
 import { useCallback } from 'react';
 import { BrainDumpItem, CanonicalRule, EnrichmentTask, ParserResultV2, ParsingTask } from '../types';
 import { HistoricalCanonicalReview, learnCanonicalRulesFromReview, sweepHistoricalCanonicalMeta } from '../services/canonicalizerService';
@@ -32,7 +33,7 @@ export const removeResolvedReviewActivity = (
 type EnrichmentDeps = {
   itemsRef: { current: BrainDumpItem[] };
   setItems: (items: BrainDumpItem[] | ((prev: BrainDumpItem[]) => BrainDumpItem[])) => void;
-  saveAndSync: (items: BrainDumpItem[], ...rest: any[]) => Promise<void>;
+  saveAndSync: (changes?: SaveChanges) => Promise<void>;
   canonicalRulesRef: { current: CanonicalRule[] };
   setCanonicalRules: (rules: CanonicalRule[]) => void;
   walletsRef: { current: any[] };
@@ -86,7 +87,7 @@ export const useEnrichment = (deps: EnrichmentDeps) => {
       if (result.changedItemIds.length > 0) {
         itemsRef.current = result.items;
         setItems(result.items);
-        saveAndSync(result.items, undefined, undefined, undefined, undefined, undefined, undefined, canonicalRulesRef.current);
+        saveAndSync({ data: result.items, canonicalRules: canonicalRulesRef.current });
       }
 
       setEnrichmentTasks((prev: any[]) => {
@@ -134,7 +135,7 @@ export const useEnrichment = (deps: EnrichmentDeps) => {
     if (sweep.changedItemIds.length > 0) {
       itemsRef.current = sweep.items;
       setItems(sweep.items);
-      saveAndSync(sweep.items, undefined, undefined, undefined, undefined, undefined, undefined, canonicalRulesRef.current);
+      saveAndSync({ data: sweep.items, canonicalRules: canonicalRulesRef.current });
     }
 
     return sweep;
@@ -156,7 +157,7 @@ export const useEnrichment = (deps: EnrichmentDeps) => {
 
     canonicalRulesRef.current = nextRules;
     setCanonicalRules(nextRules);
-    saveAndSync(undefined, undefined, undefined, undefined, undefined, undefined, undefined, nextRules);
+    saveAndSync({ canonicalRules: nextRules });
   }, [canonicalRulesRef, setCanonicalRules, saveAndSync]);
 
   const clearResolvedReviewActivity = (id: string) => {

@@ -1,3 +1,4 @@
+import { parseConfigSheets } from '../utils/spreadsheetConfig';
 import { v4 as uuidv4 } from 'uuid';
 import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat, SkillSchedule } from '../types';
 import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
@@ -62,14 +63,6 @@ const parseRoutineInterval = (value: unknown): 'daily' | 'weekly' | 'monthly' | 
         : undefined;
 };
 
-const normalizeTimeCell = (value: unknown, fallback: string): string => {
-    const raw = String(value || '').trim();
-    const match = raw.match(/^(\d{1,2}):(\d{2})/);
-    if (!match) return fallback;
-    const hour = Math.min(Math.max(parseInt(match[1], 10), 0), 23);
-    const minute = Math.min(Math.max(parseInt(match[2], 10), 0), 59);
-    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-};
 
 const getTimeCellFromDate = (value: unknown, fallback: string): string => {
     const parsed = new Date(String(value || ''));
@@ -85,35 +78,6 @@ const addMinutesToTime = (time: string, minutes: number): string => {
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 };
 
-const buildSkillSchedule = (
-    enabledValue: unknown,
-    intervalValue: unknown,
-    daysOfWeekValue: unknown,
-    daysOfMonthValue: unknown,
-    monthsOfYearValue: unknown,
-    startTimeValue: unknown,
-    endTimeValue: unknown,
-): SkillSchedule | undefined => {
-    const enabled = parseSheetBoolean(enabledValue);
-    const interval = parseRoutineInterval(intervalValue);
-    const startTime = normalizeTimeCell(startTimeValue, '09:00');
-    const endTime = normalizeTimeCell(endTimeValue, '10:00');
-    const hasScheduleCells = enabled !== undefined || !!interval || !!String(startTimeValue || '').trim() || !!String(endTimeValue || '').trim();
-    if (!hasScheduleCells) return undefined;
-
-    const resolvedInterval = interval || 'weekly';
-    const schedule: SkillSchedule = {
-        enabled: enabled ?? true,
-        interval: resolvedInterval,
-        startTime,
-        endTime,
-    };
-
-    if (resolvedInterval === 'weekly') schedule.daysOfWeek = splitSheetNumberList(daysOfWeekValue) || [];
-    if (resolvedInterval === 'monthly') schedule.daysOfMonth = splitSheetNumberList(daysOfMonthValue) || [];
-    if (resolvedInterval === 'yearly') schedule.monthsOfYear = splitSheetNumberList(monthsOfYearValue) || [];
-    return schedule;
-};
 
 
 const cleanCell = (value: unknown): string | undefined => {
@@ -1461,16 +1425,10 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     // 7. Settings Reconciliation
+    const config = parseConfigSheets(valueRanges, { createSkillIds: true });
     const walletSheet = valueRanges.find(r => r.range && r.range.includes('Wallets Config'));
     if (hasAuthoritativeRows(walletSheet)) {
-        const rows = walletSheet.values.slice(1);
-        db.wallets = rows.map(row => ({
-            id: row[0],
-            name: row[1],
-            type: row[2],
-            initialBalance: parseFloat(row[3]) || 0,
-            color: row[4]
-        }));
+        db.wallets = config.wallets;
         hasChanges = true;
     }
 
@@ -1483,10 +1441,6 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
     const skillConfigSheet = valueRanges.find(r => r.range && r.range.includes('Skills Config'));
     if (hasAuthoritativeRows(skillConfigSheet)) {
-        const headers = skillConfigSheet.values[0] || [];
-        const rows = skillConfigSheet.values.slice(1);
-        const cell = (row: unknown[], name: string, fallbackIndex: number) => getHeaderAwareCell(headers, row, name, fallbackIndex);
-
         const inferScheduleFromRoutine = (skillId: string, skillName: string): SkillSchedule | undefined => {
             const routine = newItems.find(item =>
                 item.type === ItemType.SKILLS
@@ -1516,76 +1470,17 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             };
         };
 
-        db.skills = rows
-            .map(row => {
-                const id = cleanCell(cell(row, 'ID', 0)) || uuidv4();
-                const name = cleanCell(cell(row, 'Name', 1));
-                if (!name) return null;
-
-                const schedule = buildSkillSchedule(
-                    cell(row, 'Schedule_Enabled', 5),
-                    cell(row, 'Schedule_Interval', 6),
-                    cell(row, 'Schedule_Days_Of_Week', 7),
-                    cell(row, 'Schedule_Days_Of_Month', 8),
-                    cell(row, 'Schedule_Months_Of_Year', 9),
-                    cell(row, 'Schedule_Start_Time', 10),
-                    cell(row, 'Schedule_End_Time', 11),
-                );
-                const inferredSchedule = !schedule ? inferScheduleFromRoutine(id, name) : undefined;
-
-                return {
-                    id,
-                    name,
-                    description: cleanCell(getHeaderCellAny(headers, row, ['Description', 'Desc'])),
-                    imageUrl: cleanCell(getHeaderCellAny(headers, row, ['Image_URL', 'Image URL', 'Image_Url', 'ImageUrl'])),
-                    weeklyTargetMinutes: parsePositiveInt(cell(row, 'Weekly_Target_Minutes', 4)),
-                    schedule: schedule || inferredSchedule,
-                    created_at: cleanCell(cell(row, 'Created_At', 12)) || new Date().toISOString(),
-                    color: cleanCell(cell(row, 'Color', 13)) || 'indigo-500'
-                };
-            })
-            .filter((skill): skill is NonNullable<typeof skill> => !!skill);
+        db.skills = config.skills.map(skill => ({ ...skill, schedule: skill.schedule || inferScheduleFromRoutine(skill.id, skill.name) }));
         hasChanges = true;
     }
 
     const settingsSheet = valueRanges.find(r => r.range && r.range.includes('Themes & Settings'));
     if (hasAuthoritativeRows(settingsSheet)) {
-        const headers = settingsSheet.values[0] || [];
-        const rows = settingsSheet.values.slice(1);
-        if (!db.appSettings) db.appSettings = { defaultCollapsed: false, hideMoney: false };
-        if (!db.monthlyThemes) db.monthlyThemes = {};
-        if (!db.monthlyThemeImages) db.monthlyThemeImages = {};
-        
-        const newThemes: Record<string, string> = {};
-        const newThemeImages: Record<string, string> = {};
-        for (const row of rows) {
-            if (row[0] === 'Setting') {
-                if (row[1] === 'Monthly Income') {
-                    if (!db.budgetConfig) db.budgetConfig = { monthlyIncome: 0, rules: [] };
-                    db.budgetConfig.monthlyIncome = Number(row[2]) || 0;
-                }
-                if (row[1] === 'Default Collapsed') db.appSettings.defaultCollapsed = row[2] === 'TRUE';
-                if (row[1] === 'Hide Money') db.appSettings.hideMoney = row[2] === 'TRUE';
-                if (row[1] === 'Theme') {
-                    const rawTheme = String(row[2] || '').trim().toLowerCase();
-                    if (rawTheme === 'light' || rawTheme === 'dark') db.appSettings.theme = rawTheme;
-                }
-                if (row[1] === 'Google Calendar Sync') db.appSettings.googleCalendarSyncEnabled = row[2] === 'TRUE';
-                if (row[1] === 'Google Calendar ID') db.appSettings.googleCalendarId = row[2] || 'primary';
-                if (row[1] === 'Security Password') db.appSettings.securityPasswordHash = String(row[2] || '');
-            } else if (row[0] === 'Theme') {
-                if (row[1]) {
-                    newThemes[row[1]] = String(row[2] || '');
-                    const heroImageUrl = getHeaderCellAny(headers, row, ['Hero_Image_URL', 'Hero Image URL', 'Hero_Image_Url', 'Hero URL', 'Hero_URL', 'Image_URL', 'Image URL']) || row[3];
-                    if (heroImageUrl) newThemeImages[row[1]] = String(heroImageUrl);
-                }
-            } else if (typeof row[0] === 'string' && row[0].startsWith('themeImage_')) {
-                const key = row[0].replace('themeImage_', '');
-                if (key && row[1]) newThemeImages[key] = String(row[1]);
-            }
-        }
-        db.monthlyThemes = newThemes;
-        db.monthlyThemeImages = newThemeImages;
+        db.appSettings = { ...db.appSettings, ...config.appSettings };
+        db.monthlyThemes = config.monthlyThemes;
+        db.monthlyThemeImages = config.monthlyThemeImages;
+        if (config.hasBudgetIncome) db.budgetConfig = { rules: [], ...db.budgetConfig, monthlyIncome: config.budgetConfig.monthlyIncome };
+        if (config.customPrompt !== undefined) db.customPrompt = config.customPrompt;
         hasChanges = true;
     }
 

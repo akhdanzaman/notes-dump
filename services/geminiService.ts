@@ -2,7 +2,7 @@ import { Type } from "@google/genai";
 import { ItemType, BrainDumpItem } from '../types';
 
 import { getLocalISOString } from '../utils/selectors/dateUtils';
-import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_FLASH_MODEL } from './aiService';
+import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, isRetryableParserError, DEFAULT_FLASH_MODEL } from './aiService';
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
 import { sanitizeLegacyParsedItems } from './parserFieldValidator';
 
@@ -132,7 +132,6 @@ export const classifyText = async (
   text: string,
   existingTags: string[] = [],
   availableSkills: string[] = [],
-  retryCount = 0,
   customPrompt?: string,
   parsingModel?: string,
   availableWallets: {id: string, name: string}[] = [],
@@ -162,7 +161,8 @@ export const classifyText = async (
   const activeModel = parsingModel || DEFAULT_FLASH_MODEL;
 
   try {
-    const response = await withAiRetry(() => ai.models.generateContent({
+    const parsed = await withAiRetry(async () => {
+      const response = await ai.models.generateContent({
       model: activeModel,
       contents: `Analyze this user input: "${text}". 
       Current Date context: ${currentDate} (${currentDayName}).
@@ -219,9 +219,11 @@ export const classifyText = async (
           }
         },
       },
-    }));
-
-    const parsed = parseJsonResponse<any[]>(response.text, []);
+      });
+      const parsed = parseJsonResponse<any[]>(response.text, undefined);
+      if (!parsed || (Array.isArray(parsed) && !parsed.length)) throw new Error('Failed to parse JSON response');
+      return parsed;
+    }, { shouldRetry: isRetryableParserError });
     const resultsArray = Array.isArray(parsed) ? parsed : [parsed];
 
     const classified = resultsArray.map((result: any) => {
@@ -264,9 +266,6 @@ export const classifyText = async (
     });
 
   } catch (error: any) {
-    if (retryCount < 2) {
-      return classifyText(text, existingTags, availableSkills, retryCount + 1, customPrompt, parsingModel, availableWallets, availableBudgetRules);
-    }
 
     console.error("Gemini classification failed:", error);
 

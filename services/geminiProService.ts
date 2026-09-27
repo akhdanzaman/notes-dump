@@ -29,13 +29,12 @@ import {
   ParsedItemType
 } from '../types';
 import { DEFAULT_PROMPT } from './geminiService';
-import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, DEFAULT_PRO_MODEL } from './aiService';
+import { createGeminiClient, getGeminiKey, parseJsonResponse, withAiRetry, isRetryableParserError, DEFAULT_PRO_MODEL } from './aiService';
 import { enrichFinanceMetaFromText, PARSER_SIGNAL_GUIDANCE } from './parserSignalService';
 import { sanitizeShoppingLineItems } from '../utils/shoppingLineItems';
 import { parseLocalFinanceResults } from './localFinanceParser';
 import { sanitizeParserResultsBeforeResolve } from './parserFieldValidator';
 
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export interface ParserContext {
   existingTags: string[];
@@ -775,7 +774,7 @@ async function parseStage1(
   text: string,
   ctx: ParserContext
 ): Promise<ParserResultV2[]> {
-  const response = await withAiRetry(() => ai.models.generateContent({
+  const response = await ai.models.generateContent({
     model,
     contents: [
       INTENT_PROMPT_V2,
@@ -803,7 +802,7 @@ async function parseStage1(
       responseMimeType: "application/json",
       responseSchema: stage1Schema
     }
-  }));
+  });
 
   const parsed = safeParseJSON(response.text);
   const arr = Array.isArray(parsed) ? parsed : [parsed];
@@ -932,7 +931,7 @@ async function parseStage2(
   ctx: ParserContext,
   customPrompt?: string
 ): Promise<ParserResultV2[]> {
-  const response = await withAiRetry(() => ai.models.generateContent({
+  const response = await ai.models.generateContent({
     model,
     contents: buildFeaturePrompt(text, stage1Results, ctx, customPrompt),
     config: {
@@ -941,7 +940,7 @@ async function parseStage2(
       responseMimeType: "application/json",
       responseSchema: stage2Schema
     }
-  }));
+  });
 
   const parsed = safeParseJSON(response.text);
   const arr = Array.isArray(parsed) ? parsed : [parsed];
@@ -1485,7 +1484,6 @@ export const parsePro = async (
   existingItems: BrainDumpItem[] = [],
   customPrompt?: string,
   parsingModel?: string,
-  retryCount = 0,
   onProgress?: (stage: 'stage1' | 'stage2') => void
 ): Promise<ParserResultV2[]> => {
   const localFinanceResults = parseLocalFinanceResults(text, {
@@ -1524,34 +1522,13 @@ export const parsePro = async (
 
   try {
     onProgress?.('stage1');
-    const stage1 = await parseStage1(ai, activeModel, text, ctx);
+    const stage1 = await withAiRetry(() => parseStage1(ai, activeModel, text, ctx), { shouldRetry: isRetryableParserError });
     onProgress?.('stage2');
-    const stage2 = await parseStage2(ai, activeModel, text, stage1, ctx, customPrompt);
+    const stage2 = await withAiRetry(() => parseStage2(ai, activeModel, text, stage1, ctx, customPrompt), { shouldRetry: isRetryableParserError });
     const sanitizedStage2 = sanitizeParserResultsBeforeResolve(stage2, ctx);
     const resolved = resolveAndValidateResults(sanitizedStage2, ctx, text);
     return sanitizeParserResultsBeforeResolve(resolved, ctx);
   } catch (error: any) {
-    const status = error?.status || error?.response?.status;
-
-    const isJsonError = error?.message?.includes('Failed to parse JSON') || error?.message?.includes('Empty JSON response');
-
-    if (retryCount < 2 && (status === 429 || status >= 500 || isJsonError)) {
-      const delay = Math.pow(2, retryCount) * 1000;
-      await wait(delay);
-      return parsePro(
-        text,
-        existingTags,
-        availableSkills,
-        availableWallets,
-        availableBudgetRules,
-        existingItems,
-        customPrompt,
-        parsingModel,
-        retryCount + 1,
-        onProgress
-      );
-    }
-
     console.error("Gemini Pro parsing failed:", error);
 
     return [{

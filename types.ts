@@ -258,28 +258,16 @@ export interface ReceiptReviewDraft {
   allowDuplicate?: boolean;
 }
 
-export interface ItemMeta {
-  title?: string;
-  date?: string;
-  dateTime?: string;
-  start?: string;
-  end?: string;
-  when?: 'today' | 'tomorrow' | 'yesterday' | 'next_weekday' | 'specific_date' | 'unspecified';
-
-  tags?: string[];
-  quantity?: string;
-  shoppingLineItems?: ShoppingLineItem[];
-  imageUrl?: string;
-  shoppingCategory?: ShoppingCategory;
+export interface RoutineMeta {
   recurrenceDays?: number;
-  targetDay?: string;
-
   isRoutine?: boolean;
   routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';
   routineDaysOfWeek?: number[];
   routineDaysOfMonth?: number[];
   routineMonthsOfYear?: number[];
+}
 
+export interface FinanceMeta {
   amount?: number;
   currency?: string;
   financeType?: FinanceType;
@@ -294,7 +282,21 @@ export interface ItemMeta {
   originalCurrency?: string;
   originalAmount?: number;
   exchangeRateToIdr?: number;
+  savedAmount?: number;
+  savingGoalId?: string;
+  dedicatedWalletId?: string;
+  loanCounterparty?: string;
+  loanAccountId?: string;
+  loanDueDate?: string;
+  investmentAssetType?: InvestmentAssetType;
+  investmentSymbol?: string;
+  investmentUnits?: number;
+  investmentAveragePrice?: number;
+  investmentCurrentPrice?: number;
+  investmentPlatform?: string;
+}
 
+export interface TaskMeta {
   durationMinutes?: number;
   skillId?: string;
   skillName?: string;
@@ -305,10 +307,8 @@ export interface ItemMeta {
   actualStart?: string;
   actualEnd?: string;
   actualTimeEdited?: boolean;
-
   progress?: number;
   progressNotes?: string;
-
   parentTodoId?: string;
   childTodoIds?: string[];
   deepWorkParent?: boolean;
@@ -336,26 +336,29 @@ export interface ItemMeta {
   deepWorkDismissedAt?: string;
   deepWorkReason?: string;
   subtasks?: string[];
+  priority?: Priority;
+}
 
-  savedAmount?: number;
-  savingGoalId?: string;
-  dedicatedWalletId?: string;
-  loanCounterparty?: string;
-  loanAccountId?: string;
-  loanDueDate?: string;
+/** Compatibility envelope for persisted/legacy records; domain operations use focused metadata. */
+export interface ItemMeta extends RoutineMeta, FinanceMeta, TaskMeta {
+  title?: string;
+  date?: string;
+  dateTime?: string;
+  start?: string;
+  end?: string;
+  when?: 'today' | 'tomorrow' | 'yesterday' | 'next_weekday' | 'specific_date' | 'unspecified';
 
-  investmentAssetType?: InvestmentAssetType;
-  investmentSymbol?: string;
-  investmentUnits?: number;
-  investmentAveragePrice?: number;
-  investmentCurrentPrice?: number;
-  investmentPlatform?: string;
+  tags?: string[];
+  quantity?: string;
+  shoppingLineItems?: ShoppingLineItem[];
+  imageUrl?: string;
+  shoppingCategory?: ShoppingCategory;
+  targetDay?: string;
 
   canonical?: ItemCanonicalMeta;
   enrichment?: EnrichmentMeta;
 
   lastGeneratedHistoryId?: string;
-  priority?: Priority;
   parsingError?: string;
   hideFromCalendar?: boolean;
 

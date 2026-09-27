@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": false
+  },
+  "include": ["types.ts", "utils/routineDraft.ts", "utils/walletLookup.ts", "hooks/useRoutineDraft.ts", "hooks/useBackHandler.ts"],
+  "exclude": ["node_modules", "dist", "api"]
+}

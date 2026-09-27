@@ -1,4 +1,4 @@
-import { BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, DbSchema, ChatMessage, CanonicalRule, SyncProgressCallback, SyncResult } from "../types";
+import { DbSchema, SyncProgressCallback, SyncResult } from "../types";
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, getSpreadsheetHistory, SpreadsheetHistoryEntry, getCachedSpreadsheetDb, cacheSpreadsheetDbForMigration, cachePendingSpreadsheetWrite, getPendingSpreadsheetWrite, clearPendingSpreadsheetWrite } from "./spreadsheetService";
 import { mergeDbData } from "../utils/mergeUtils";
 import { dedupeBrainDumpItems } from "../utils/itemDedupe";
@@ -39,20 +39,8 @@ export const fetchDb = async (skipLocalStorage = false, onProgress?: SyncProgres
   return { data, sha, hasChanges: reconciled };
 };
 
-export const syncData = async (
-  items: BrainDumpItem[],
-  budgetConfig?: BudgetConfig,
-  customPrompt?: string,
-  skills?: Skill[],
-  wallets?: Wallet[],
-  monthlyThemes?: Record<string, string>,
-  monthlyThemeImages?: Record<string, string>,
-  appSettings?: AppSettings,
-  chatHistory?: ChatMessage[],
-  canonicalRules?: CanonicalRule[],
-  forceOverwrite = false,
-  onProgress?: SyncProgressCallback
-): Promise<SyncResult> => {
+export type SyncDataRequest = DbSchema & { forceOverwrite?: boolean; onProgress?: SyncProgressCallback };
+export const syncData = async ({ data: items, budgetConfig, customPrompt, skills, wallets, monthlyThemes, monthlyThemeImages, appSettings, chatHistory, canonicalRules, forceOverwrite = false, onProgress }: SyncDataRequest): Promise<SyncResult> => {
   const sanitized = sanitizeBrainDumpItemsForPersistence(items, {
     availableWallets: wallets || [],
     availableBudgetRules: budgetConfig?.rules || [],

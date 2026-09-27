@@ -1,3 +1,4 @@
+import { useRoutineDraft } from '../hooks/useRoutineDraft';
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { collapseVariants, popVariants } from '../motion/variants';
@@ -143,11 +144,9 @@ const Card: React.FC<CardProps> = ({
   const [editLoanDueDate, setEditLoanDueDate] = useState(meta.loanDueDate ? meta.loanDueDate.slice(0, 10) : '');
 
   // Routine
-  const [editRecurrenceDays, setEditRecurrenceDays] = useState<string>(meta.recurrenceDays ? meta.recurrenceDays.toString() : '1');
-  const [editRoutineInterval, setEditRoutineInterval] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>(meta.routineInterval || 'daily');
-  const [editRoutineDaysOfWeek, setEditRoutineDaysOfWeek] = useState<number[]>(meta.routineDaysOfWeek || []);
-  const [editRoutineDaysOfMonth, setEditRoutineDaysOfMonth] = useState<number[]>(meta.routineDaysOfMonth || []);
-  const [editRoutineMonthsOfYear, setEditRoutineMonthsOfYear] = useState<number[]>(meta.routineMonthsOfYear || []);
+  const { editRecurrenceDays, setEditRecurrenceDays, editRoutineInterval, setEditRoutineInterval,
+    editRoutineDaysOfWeek, setEditRoutineDaysOfWeek, editRoutineDaysOfMonth, setEditRoutineDaysOfMonth,
+    editRoutineMonthsOfYear, setEditRoutineMonthsOfYear, resetRoutine, getRoutinePatch } = useRoutineDraft(meta, '1');
 
   // Progress
   const [editProgress, setEditProgress] = useState(meta.progress || 0);
@@ -211,11 +210,7 @@ const Card: React.FC<CardProps> = ({
     setEditProgress(meta.progress || 0);
     setEditProgressNotes(meta.progressNotes || '');
 
-    setEditRecurrenceDays(meta.recurrenceDays ? meta.recurrenceDays.toString() : '1');
-    setEditRoutineInterval(meta.routineInterval || 'daily');
-    setEditRoutineDaysOfWeek(meta.routineDaysOfWeek || []);
-    setEditRoutineDaysOfMonth(meta.routineDaysOfMonth || []);
-    setEditRoutineMonthsOfYear(meta.routineMonthsOfYear || []);
+    resetRoutine(meta);
     setEditPriority(meta.priority || 'normal');
     setEditHideFromCalendar(meta.hideFromCalendar || false);
 
@@ -305,7 +300,6 @@ const Card: React.FC<CardProps> = ({
           : '';
       const finalLoanAccountId = editingLoan ? editLoanAccountId : '';
 
-      const numRecurrence = editRecurrenceDays ? parseInt(editRecurrenceDays) : undefined;
 
       onUpdate(item.id, {
           content: editContent,
@@ -321,13 +315,9 @@ const Card: React.FC<CardProps> = ({
           progress: showProgress ? editProgress : undefined,
           progressNotes: showProgress ? editProgressNotes : undefined,
           shoppingCategory: item.meta.shoppingCategory,
-          recurrenceDays: numRecurrence,
+          ...getRoutinePatch(),
           quantity: item.meta.quantity,
           isRoutine: item.meta.isRoutine,
-          routineInterval: editRoutineInterval,
-          routineDaysOfWeek: editRoutineDaysOfWeek,
-          routineDaysOfMonth: editRoutineDaysOfMonth,
-          routineMonthsOfYear: editRoutineMonthsOfYear,
           savingGoalId: finalSavingGoalId,
           priority: editPriority,
           start: finalStart,
