@@ -20,7 +20,7 @@ test('calendar only writes changed/new events, deletes removed items and clears 
   const desired = buildGoogleCalendarEvents([item])[0];
   let existing = [{ ...desired, id: 'event' }];
   const writes: { method: string; body: any }[] = [];
-  t.mock.method(globalThis, 'fetch', async (_url, init: RequestInit = {}) => {
+  t.mock.method(globalThis, 'fetch', async (_url: string | URL | Request, init: RequestInit = {}) => {
     if (!init.method) return new Response(JSON.stringify({ items: existing }));
     writes.push({ method: init.method, body: init.body ? JSON.parse(String(init.body)) : null });
     return new Response('{}');

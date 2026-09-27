@@ -7,12 +7,12 @@
 3. **Perhitungan keuangan:** memoize selector saldo dan transaksi di Money/Summary dengan dependensi data/filter/tanggal. Bangun indeks wallet sekali per pemanggilan selector, menggantikan pencarian linear berulang. Prioritas alias ID/nama lama tetap dipertahankan.
 4. **Pemuatan UI:** Plan, Library, Money, Calendar dan dialog fitur berat dimuat melalui lazy import/Suspense. Dialog tertutup tidak langsung dimuat. Summary tetap eager sebagai halaman awal. Bundle utama berubah dari 1.706.252 menjadi 1.403.830 byte (turun sekitar 17,7%); ini ukuran chunk utama, bukan pengurangan total seluruh aset atau jaminan persentase waktu startup.
 5. **Kontrak save:** `saveAndSync({ data, budgetConfig, ... })` dan `syncData({ data, ... })` menggantikan argumen posisi panjang. Seluruh pemanggil internal ikut dimigrasi. Hasil save menerapkan kembali budget, settings, prompt, chat, themes, dan koleksi lain. Three-way merge menjaga edit lokal saat request berjalan, termasuk perubahan pada field konfigurasi yang berbeda. Save deferred mempertahankan nilai kosong yang disengaja dan flag force overwrite.
-6. **Tanggung jawab modul:** lifecycle save/queue/progress/error/Calendar dipindah ke `useDatabaseSave`; hook workspace menyediakan snapshot dan penerapan state. Registrasi back handler dialog/navigasi di App memakai `useBackHandler`, termasuk cleanup dan callback terbaru. Ref data tetap dipakai untuk operasi async—bukan dihapus secara mekanis. App dan hook utama masih cukup besar; perubahan ini memisahkan dua tanggung jawab konkret, bukan mengklaim seluruh komponen sudah kecil.
+6. **Tanggung jawab modul:** lifecycle save/queue/progress/error/Calendar memakai `useDatabaseSave`. Workflow nota, keamanan, pusat tinjauan, onboarding/tutorial, feedback, dan integrasi browser sekarang masing-masing memiliki hook sendiri. Logika lifecycle rutinitas dipindah ke `utils/routineLifecycle.ts` dan diuji langsung tanpa mengimpor hook utama. App fokus pada navigasi, komposisi tampilan, dan penghubung callback. Registrasi back handler tetap memakai `useBackHandler`. Detail penyelesaian ada di `PRIORITY_6_8_9_NOTES.md`.
 7. **Spreadsheet:** parsing konfigurasi wallet/skill/settings dipusatkan di `utils/spreadsheetConfig.ts` dan dipakai service maupun reconciler. Header-aware reading, format legacy, inference schedule skill, dan schedule nonaktif tetap didukung. Writer system snapshot yang tidak dipakai, chunk helper mati, dan parser schedule duplikat dihapus. Jalur baca data legacy tetap ada.
-8. **Editor recurrence:** Card dan ShoppingItem memakai `useRoutineDraft` serta fungsi pembentukan patch yang sama. Default masing-masing editor, interval, daftar hari/tanggal/bulan, dan perilaku tanggal khusus Card tetap dipertahankan. Nilai recurrence kosong/tidak valid tidak lagi berubah menjadi NaN.
-9. **Tipe domain:** metadata dipisahkan menjadi `FinanceMeta`, `TaskMeta`, dan `RoutineMeta`. `ItemMeta` menjadi envelope kompatibilitas penyimpanan lama. Modul draft rutin, lookup wallet, back handler, serta kontrak tipe diperiksa dalam mode TypeScript strict melalui `tsconfig.domain.json`, dan pemeriksaan ini menjadi bagian dari `npm run lint`. Ini migrasi strict bertahap, bukan strict untuk seluruh proyek.
+8. **Editor recurrence:** Card dan ShoppingItem memakai `useRoutineDraft`, fungsi pembentukan patch, serta komponen UI `RoutineScheduleEditor` yang sama. JSX interval/hari/tanggal/bulan tidak lagi diduplikasi. Default masing-masing editor dan perilaku penyesuaian tanggal khusus Card tetap dipertahankan. Nilai recurrence kosong/tidak valid tidak lagi berubah menjadi NaN.
+9. **Tipe domain:** metadata dipisahkan menjadi `FinanceMeta`, `TaskMeta`, dan `RoutineMeta`. Mode TypeScript strict sekarang aktif di seluruh aplikasi dan API, bukan hanya domain terpilih. Konfigurasi subset `tsconfig.domain.json` yang redundan dihapus. Snapshot undo dan konteks deep-work memiliki tipe eksplisit; cast konteks `as any` dihapus. `ItemMeta` tetap menjadi envelope kompatibilitas penyimpanan lama.
 
-## Verifikasi
+## Verifikasi tahap awal (sebelum penyelesaian 6/8/9)
 
 - `npm run lint`: lulus (aplikasi, API, dan domain strict).
 - `npm test`: **388 lulus, 0 gagal**.
@@ -25,6 +25,6 @@
 ## Batas yang masih relevan
 
 - Bundle utama dan ExcelJS masih melampaui peringatan 500 kB Vite; menu sudah dipisah tetapi library inti tetap besar. PWA masih dapat melakukan precache chunk terpisah.
-- Strict TypeScript baru diberlakukan pada domain terpilih. Envelope ItemMeta tetap diperlukan untuk data lama dan fitur lintas domain.
+- Strict TypeScript sudah berlaku untuk proyek. Envelope ItemMeta dan beberapa explicit `any` legacy masih ada; strict tidak berarti semua data eksternal sudah tervalidasi runtime.
 - Jaminan distributed locking Google Sheets tidak berubah oleh refactor ini.
 - Skrip transformasi sekali pakai sudah dihapus; tidak dibutuhkan untuk menjalankan aplikasi.

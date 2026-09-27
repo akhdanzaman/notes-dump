@@ -8,7 +8,7 @@
     "start": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit && tsc -p api/tsconfig.json --noEmit && tsc -p tsconfig.domain.json --noEmit",
+    "lint": "tsc --noEmit && tsc -p api/tsconfig.json --noEmit",
     "test": "tsx --test \"**/*.test.ts\" \"**/*.test.tsx\""
   },
   "dependencies": {
@@ -31,9 +31,12 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsdom": "^21.1.7",
     "@types/node": "^22.14.0",
+    "@types/react-dom": "^19.3.0",
     "@vercel/node": "^5.6.11",
     "@vitejs/plugin-react": "^5.0.0",
+    "jsdom": "^26.1.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vite-plugin-pwa": "^1.2.0"

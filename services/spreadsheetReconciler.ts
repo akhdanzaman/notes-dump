@@ -834,7 +834,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 ? newItems.find(i =>
                     i.type === ItemType.SHOPPING &&
                     i.meta.shoppingCategory === 'routine' &&
-                    cleanCell(i.content).toLowerCase() === cleanCell(item).toLowerCase() &&
+                    (cleanCell(i.content) || '').toLowerCase() === (cleanCell(item) || '').toLowerCase() &&
                     (i.meta.amount || 0) === resolvedShoppingAmount
                 )
                 : undefined;
@@ -1476,10 +1476,10 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
     const settingsSheet = valueRanges.find(r => r.range && r.range.includes('Themes & Settings'));
     if (hasAuthoritativeRows(settingsSheet)) {
-        db.appSettings = { ...db.appSettings, ...config.appSettings };
+        db.appSettings = { defaultCollapsed: false, hideMoney: false, ...db.appSettings, ...config.appSettings };
         db.monthlyThemes = config.monthlyThemes;
         db.monthlyThemeImages = config.monthlyThemeImages;
-        if (config.hasBudgetIncome) db.budgetConfig = { rules: [], ...db.budgetConfig, monthlyIncome: config.budgetConfig.monthlyIncome };
+        if (config.hasBudgetIncome && config.budgetConfig) db.budgetConfig = { rules: [], ...db.budgetConfig, monthlyIncome: config.budgetConfig.monthlyIncome };
         if (config.customPrompt !== undefined) db.customPrompt = config.customPrompt;
         hasChanges = true;
     }

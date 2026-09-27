@@ -54,7 +54,7 @@ test('failed metadata or row reads stop saving before any spreadsheet write', as
   setup(t);
   for (const failMetadata of [true, false]) {
     const writes: string[] = [];
-    const mock = t.mock.method(globalThis, 'fetch', async (input, init) => {
+    const mock = t.mock.method(globalThis, 'fetch', async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/session')) return json({ csrfToken: 'synthetic' });
       const path = new URL(url, 'http://synthetic').searchParams.get('path') || '';
@@ -108,7 +108,7 @@ for (const continuous of [false, true]) test(continuous
   let metadataReads = 0;
   let conflictChecks = 0;
   const writes: string[] = [];
-  t.mock.method(globalThis, 'fetch', async (input, init) => {
+  t.mock.method(globalThis, 'fetch', async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith('/session')) return json({ csrfToken: 'synthetic' });
     const path = new URL(url, 'http://synthetic').searchParams.get('path') || '';
@@ -176,7 +176,7 @@ test('native percent formatting is parsed using displayed values without changin
   const sheets = exportDb(base);
   const budgetSheet = sheets.find(sheet => sheet.name === 'Budget Rules')!;
   budgetSheet.data[1][2] = 0.5;
-  t.mock.method(globalThis, 'fetch', async input => {
+  t.mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
     const url = String(input);
     if (url.endsWith('/session')) return json({ csrfToken: 'synthetic' });
     const path = new URL(url, 'http://synthetic').searchParams.get('path') || '';

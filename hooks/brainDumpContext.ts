@@ -15,6 +15,16 @@ import {
 } from '../types';
 import { HistoricalCanonicalReview } from '../services/canonicalizerService';
 
+export type ParsingUndoSnapshot = {
+    items: BrainDumpItem[];
+    skills: Skill[];
+    wallets: Wallet[];
+    monthlyThemes: Record<string, string>;
+    monthlyThemeImages: Record<string, string>;
+    canonicalRules: CanonicalRule[];
+};
+
+
 export type BrainDumpContext = {
   itemsRef: MutableRefObject<BrainDumpItem[]>;
   setItems: (items: BrainDumpItem[]) => void;
@@ -46,7 +56,7 @@ export type BrainDumpContext = {
   parsingInFlightRef: MutableRefObject<Set<string>>;
   pendingSaveAfterParsingRef: MutableRefObject<SaveChanges | null>;
   pendingFetchAfterParsingRef: MutableRefObject<boolean>;
-  parsingUndoSnapshotsRef: MutableRefObject<Record<string, any>>;
+  parsingUndoSnapshotsRef: MutableRefObject<Record<string, ParsingUndoSnapshot>>;
   enrichmentTasksRef: MutableRefObject<EnrichmentTask[]>;
   hasActiveParsing: () => boolean;
   loadData: () => Promise<void>;

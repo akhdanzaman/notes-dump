@@ -30,8 +30,8 @@ export interface CanonicalizerContext {
   autoApplyHighConfidence?: boolean;
 }
 
-const CANONICAL_FIELDS: CanonicalField[] = ['commodity', 'paymentMethod', 'subcommodity'];
-const LEARNABLE_CANONICAL_FIELDS: CanonicalField[] = ['merchant', 'commodity', 'paymentMethod', 'subcommodity'];
+const CANONICAL_FIELDS = ['commodity', 'paymentMethod', 'subcommodity'] as const satisfies readonly CanonicalField[];
+const LEARNABLE_CANONICAL_FIELDS = ['merchant', 'commodity', 'paymentMethod', 'subcommodity'] as const satisfies readonly CanonicalField[];
 const HISTORICAL_REVIEW_ID_PREFIX = 'canonical-backfill';
 
 export interface HistoricalCanonicalReview {

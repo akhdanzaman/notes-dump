@@ -220,7 +220,7 @@ export const classifyText = async (
         },
       },
       });
-      const parsed = parseJsonResponse<any[]>(response.text, undefined);
+      const parsed = parseJsonResponse<unknown>(response.text, undefined);
       if (!parsed || (Array.isArray(parsed) && !parsed.length)) throw new Error('Failed to parse JSON response');
       return parsed;
     }, { shouldRetry: isRetryableParserError });

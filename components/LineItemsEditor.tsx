@@ -73,7 +73,8 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
   };
 
   const removeItem = (id: string) => {
-    props.onChange(props.value.filter((line) => line.id !== id) as never);
+    if (props.variant === 'shopping') props.onChange(props.value.filter(line => line.id !== id));
+    else props.onChange(props.value.filter(line => line.id !== id));
   };
 
   const updateShopping = (id: string, patch: Partial<ShoppingLineItem>) => {
@@ -128,11 +129,12 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
       ) : (
         <div className="space-y-2">
           {props.value.map((line, index) => {
+            const transaction = props.variant === 'transaction' ? props.value[index] : undefined;
             const numericQuantity = parseNumericQuantity(line.quantity);
             const derivedUnitPrice = props.variant === 'transaction' && numericQuantity && Number.isFinite(line.amount)
               ? Number(line.amount) / numericQuantity
               : undefined;
-            const isAdjustment = props.variant === 'transaction' && line.kind && line.kind !== 'item';
+            const isAdjustment = transaction?.kind && transaction.kind !== 'item';
             return (
               <div key={line.id} className="rounded-lg border border-border bg-surface/70 p-2.5 space-y-2">
                 <div className="flex items-center gap-2">
@@ -188,18 +190,18 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                     )}
                   </div>
 
-                  {props.variant === 'transaction' && (
+                  {transaction && (
                     <>
                       <div>
                         <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-muted">Jenis</label>
                         <select
                           className="w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
-                          value={line.kind || 'item'}
+                          value={transaction.kind || 'item'}
                           onChange={(event) => {
                             const kind = event.target.value as TransactionLineItem['kind'];
                             updateTransaction(line.id, {
                               kind,
-                              allocationMode: kind && kind !== 'item' && !line.budgetCategory ? 'proportional' : line.allocationMode,
+                              allocationMode: kind && kind !== 'item' && !transaction.budgetCategory ? 'proportional' : transaction.allocationMode,
                             });
                           }}
                         >
@@ -216,11 +218,11 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                         </label>
                         <select
                           className="w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
-                          value={line.allocationMode === 'proportional'
+                          value={transaction.allocationMode === 'proportional'
                             ? '__proportional__'
-                            : line.allocationMode === 'uncategorized'
+                            : transaction.allocationMode === 'uncategorized'
                               ? '__uncategorized__'
-                              : (line.budgetCategory || '')}
+                              : (transaction.budgetCategory || '')}
                           onChange={(event) => {
                             const value = event.target.value;
                             if (value === '__proportional__') {

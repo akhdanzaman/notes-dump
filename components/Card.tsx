@@ -1,3 +1,4 @@
+import RoutineScheduleEditor from './RoutineScheduleEditor';
 import { useRoutineDraft } from '../hooks/useRoutineDraft';
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -144,9 +145,7 @@ const Card: React.FC<CardProps> = ({
   const [editLoanDueDate, setEditLoanDueDate] = useState(meta.loanDueDate ? meta.loanDueDate.slice(0, 10) : '');
 
   // Routine
-  const { editRecurrenceDays, setEditRecurrenceDays, editRoutineInterval, setEditRoutineInterval,
-    editRoutineDaysOfWeek, setEditRoutineDaysOfWeek, editRoutineDaysOfMonth, setEditRoutineDaysOfMonth,
-    editRoutineMonthsOfYear, setEditRoutineMonthsOfYear, resetRoutine, getRoutinePatch } = useRoutineDraft(meta, '1');
+  const { draft: routineDraft, setDraft: setRoutineDraft, resetRoutine, getRoutinePatch } = useRoutineDraft(meta, '1');
 
   // Progress
   const [editProgress, setEditProgress] = useState(meta.progress || 0);
@@ -1152,115 +1151,10 @@ const Card: React.FC<CardProps> = ({
 
                    {/* Routine Settings */}
                    {meta.isRoutine && (
-                       <div className="col-span-2 bg-brand-500/5 border border-brand-500/10 rounded-xl p-4 mt-2">
-                           <div className="flex items-center justify-between mb-4">
-                               <div className="flex items-center gap-2">
-                                   <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center">
-                                       <Repeat className="w-4 h-4 text-brand-500" />
-                                   </div>
-                                   <div>
-                                       <h4 className="text-xs font-bold text-brand-500 uppercase tracking-wider">Routine Schedule</h4>
-                                       <p className="text-[10px] text-muted font-medium">Configure how this task repeats</p>
-                                   </div>
-                               </div>
-                           </div>
-
-                           <div className="space-y-4">
-                               {/* Interval Selector */}
-                               <div className="grid grid-cols-4 gap-2 bg-background/50 p-1.5 rounded-lg border border-border/50">
-                                   {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(int => (
-                                       <button
-                                           key={int}
-                                           onClick={() => {
-                                               setEditRoutineInterval(int);
-                                               updateDateFromSchedule(int, editRoutineDaysOfWeek, editRoutineDaysOfMonth, editRoutineMonthsOfYear);
-                                           }}
-                                           className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${editRoutineInterval === int ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:text-primary hover:bg-background'}`}
-                                       >
-                                           {int}
-                                       </button>
-                                   ))}
-                               </div>
-
-                               {/* Weekly Selector */}
-                               {editRoutineInterval === 'weekly' && (
-                                   <div>
-                                       <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Days</label>
-                                       <div className="flex gap-1">
-                                           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, idx) => (
-                                               <button
-                                                   key={idx}
-                                                   onClick={() => {
-                                                       let newDays;
-                                                       if (editRoutineDaysOfWeek.includes(idx)) {
-                                                           newDays = editRoutineDaysOfWeek.filter(d => d !== idx);
-                                                       } else {
-                                                           newDays = [...editRoutineDaysOfWeek, idx];
-                                                       }
-                                                       setEditRoutineDaysOfWeek(newDays);
-                                                       updateDateFromSchedule(editRoutineInterval, newDays, editRoutineDaysOfMonth, editRoutineMonthsOfYear);
-                                                   }}
-                                                   className={`flex-1 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all border ${editRoutineDaysOfWeek.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
-                                               >
-                                                   {label}
-                                               </button>
-                                           ))}
-                                       </div>
-                                   </div>
-                               )}
-
-                               {/* Monthly Selector */}
-                               {editRoutineInterval === 'monthly' && (
-                                   <div>
-                                       <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Dates</label>
-                                       <div className="grid grid-cols-7 gap-1">
-                                           {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                                               <button
-                                                   key={day}
-                                                   onClick={() => {
-                                                       let newDays;
-                                                       if (editRoutineDaysOfMonth.includes(day)) {
-                                                           newDays = editRoutineDaysOfMonth.filter(d => d !== day);
-                                                       } else {
-                                                           newDays = [...editRoutineDaysOfMonth, day];
-                                                       }
-                                                       setEditRoutineDaysOfMonth(newDays);
-                                                       updateDateFromSchedule(editRoutineInterval, editRoutineDaysOfWeek, newDays, editRoutineMonthsOfYear);
-                                                   }}
-                                                   className={`w-full aspect-square rounded-md flex items-center justify-center text-[9px] font-bold transition-all border ${editRoutineDaysOfMonth.includes(day) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
-                                               >
-                                                   {day}
-                                               </button>
-                                           ))}
-                                       </div>
-                                   </div>
-                               )}
-
-                               {/* Yearly Selector */}
-                               {editRoutineInterval === 'yearly' && (
-                                   <div>
-                                       <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Months</label>
-                                       <div className="grid grid-cols-4 gap-1.5">
-                                           {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((label, idx) => (
-                                               <button
-                                                   key={idx}
-                                                   onClick={() => {
-                                                       if (editRoutineMonthsOfYear.includes(idx)) {
-                                                           setEditRoutineMonthsOfYear(editRoutineMonthsOfYear.filter(m => m !== idx));
-                                                       } else {
-                                                           setEditRoutineMonthsOfYear([...editRoutineMonthsOfYear, idx]);
-                                                       }
-                                                   }}
-                                                   className={`py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${editRoutineMonthsOfYear.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
-                                               >
-                                                   {label}
-                                               </button>
-                                           ))}
-                                       </div>
-                                   </div>
-                               )}
-                           </div>
-                       </div>
+                       <RoutineScheduleEditor value={routineDraft} onChange={(next, field) => {
+                         setRoutineDraft(next);
+                         if (field !== 'monthsOfYear') updateDateFromSchedule(next.interval, next.daysOfWeek, next.daysOfMonth, next.monthsOfYear);
+                       }} />
                    )}
 
                    {/* Skill Fields */}

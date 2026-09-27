@@ -759,7 +759,7 @@ const stage2Schema = {
   }
 };
 
-function safeParseJSON(text: string) {
+function safeParseJSON(text: string | undefined) {
   if (!text) throw new Error("Empty JSON response");
   const parsed = parseJsonResponse<any>(text, undefined as any);
   if (parsed === undefined) {

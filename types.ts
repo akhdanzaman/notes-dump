@@ -259,6 +259,7 @@ export interface ReceiptReviewDraft {
 }
 
 export interface RoutineMeta {
+  routineManualNextDueDate?: string;
   recurrenceDays?: number;
   isRoutine?: boolean;
   routineInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';

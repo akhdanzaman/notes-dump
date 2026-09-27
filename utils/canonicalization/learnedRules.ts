@@ -130,9 +130,9 @@ export function consolidateCanonicalRules(rules: CanonicalRule[]): CanonicalRule
     if (!normalizedCanonical) return;
 
     const rule = applyLifecycle({
-      approvalCount: 0,
-      rejectionCount: 0,
       ...rawRule,
+      approvalCount: rawRule.approvalCount ?? 0,
+      rejectionCount: rawRule.rejectionCount ?? 0,
       aliases: uniqueAliases(rawRule.field, rawRule.aliases || []),
     });
 

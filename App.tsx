@@ -1,3 +1,9 @@
+import { useAppOnboarding } from './hooks/useAppOnboarding';
+import { useBrowserIntegration } from './hooks/useBrowserIntegration';
+import { useAppFeedback } from './hooks/useAppFeedback';
+import { useAppSecurity } from './hooks/useAppSecurity';
+import { useReceiptWorkflow } from './hooks/useReceiptWorkflow';
+import { useReviewCenter } from './hooks/useReviewCenter';
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -17,26 +23,13 @@ import {
   ItemType,
   ShoppingCategory,
   ImageAttachmentMode,
-  ReceiptProcessingTask,
-  ReceiptReviewDraft,
 } from "./types";
 import { useBrainDumpData } from "./hooks/useBrainDumpData";
 import { getShoppingItems } from "./utils/selectors";
-import {
-  clearSpreadsheetConfig,
-  encryptSecurityPassword,
-  fetchSecurityPasswordHash,
-  saveSecurityPasswordHash,
-  verifySecurityPassword,
-} from "./services/spreadsheetService";
+import { clearSpreadsheetConfig } from "./services/spreadsheetService";
 import { useBackHandler } from "./hooks/useBackHandler";
 import { BackHandler } from "./utils/backHandler";
-import {
-  LocalSecuritySettings,
-  SecurityPasswordRequestOptions,
-  loadLocalSecuritySettings,
-  saveLocalSecuritySettings,
-} from "./utils/securitySettings";
+
 
 import InputBar from "./components/InputBar";
 const SkillModal = React.lazy(() => import("./components/SkillModal"));
@@ -79,35 +72,12 @@ import {
 } from "lucide-react";
 import {
   LATEST_CHANGELOG,
-  LATEST_CHANGELOG_VERSION,
-  SEEN_CHANGELOG_STORAGE_KEY,
 } from "./utils/changelog";
-import {
-  FEATURE_TUTORIALS,
-  FEATURE_TUTORIALS_DISABLED_KEY,
-  FEATURE_TUTORIALS_STORAGE_KEY,
-  FeatureTutorialKey,
-  getFeatureTutorialKey,
-  parseSeenFeatureTutorials,
-} from "./utils/featureTutorials";
-import { classifyText } from "./services/geminiService";
-import { parseReceiptImage } from "./services/receiptParserService";
+import { FEATURE_TUTORIALS } from "./utils/featureTutorials";
 import { analyzeImageForChat } from "./services/chatService";
-import {
-  createReceiptFingerprint,
-  deleteReceiptAttachment,
-  saveReceiptAttachment,
-} from "./services/receiptAttachmentService";
-import { findDuplicateReceiptTransaction } from "./utils/receiptDuplicate";
-import { getReceiptTransactionViewDate, shouldQueueReceiptReview } from "./utils/receiptReviewPolicy";
-import { convertTransactionLineItemsToIdr, sumTransactionLineItems } from "./utils/transactionLineItems";
-import {
-  UI_CONFIRM_EVENT,
-  UI_NOTICE_EVENT,
-  UiConfirmationOptions,
-  UiNoticeDetail,
-  requestUserConfirmation,
-} from "./utils/uiFeedback";
+
+import { getReceiptTransactionViewDate } from "./utils/receiptReviewPolicy";
+import { requestUserConfirmation } from "./utils/uiFeedback";
 import {
   errorNudgeVariants,
   fadeVariants,
@@ -134,37 +104,6 @@ const getThemeMonthKey = (date: Date) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
 };
-
-const RECEIPT_REVIEWS_STORAGE_KEY = "braindump_receipt_reviews";
-
-const readStoredReceiptReviews = (): ReceiptReviewDraft[] => {
-  try {
-    const raw = JSON.parse(localStorage.getItem(RECEIPT_REVIEWS_STORAGE_KEY) || '[]');
-    if (!Array.isArray(raw)) return [];
-    const seenIds = new Set<string>();
-    return raw.filter((review): review is ReceiptReviewDraft => {
-      if (!review || typeof review !== 'object') return false;
-      if (typeof review.id !== 'string' || !review.id || seenIds.has(review.id)) return false;
-      if (!Array.isArray(review.lineItems) || typeof review.date !== 'string') return false;
-      seenIds.add(review.id);
-      return true;
-    });
-  } catch {
-    return [];
-  }
-};
-
-const persistReceiptReviews = (reviews: ReceiptReviewDraft[]) => {
-  try {
-    localStorage.setItem(RECEIPT_REVIEWS_STORAGE_KEY, JSON.stringify(reviews));
-  } catch {
-    // Storage may be unavailable in private/restricted browser contexts.
-  }
-};
-
-const getLocalDateInput = (date = new Date()) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
 
 type SkillModalPayload = {
   name: string;
@@ -349,15 +288,7 @@ const App: React.FC = () => {
     !displaySyncError && saveStatus === "error" ? "local" : saveStatus;
   const displayFetchStatus =
     !displaySyncError && fetchStatus === "error" ? "local" : fetchStatus;
-  const appItemsRef = useRef(items);
-  useEffect(() => {
-    appItemsRef.current = items;
-  }, [items]);
-
-  // Onboarding State
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return localStorage.getItem("braindump_onboarding_completed") !== "true";
-  });
+  const { appNotice, globalConfirmation, setGlobalConfirmation, showAppNotice } = useAppFeedback();
 
   // --- UI State ---
   const [activeTab, setActiveTab] = useState<Tab>("summary");
@@ -368,66 +299,11 @@ const App: React.FC = () => {
     "general" | "skills" | "journal"
   >("general");
   const [showBalance, setShowBalance] = useState(false);
-  const [securitySettings, setSecuritySettingsState] = useState<LocalSecuritySettings>(() =>
-    loadLocalSecuritySettings(),
-  );
-  const [lockedSecurityPopup, setLockedSecurityPopup] = useState<{
-    target: keyof LocalSecuritySettings;
-    message: string;
-  } | null>(null);
-  const [securityPasswordDialog, setSecurityPasswordDialog] = useState<{
-    mode: 'create' | 'verify';
-    title: string;
-    message: string;
-    resolve: (password: string | null) => void;
-  } | null>(null);
-  const [appNotice, setAppNotice] = useState<{
-    id: string;
-    message: string;
-    tone: 'success' | 'error' | 'info';
-  } | null>(null);
-  const [globalConfirmation, setGlobalConfirmation] = useState<{
-    options: UiConfirmationOptions;
-    resolve: (confirmed: boolean) => void;
-  } | null>(null);
+  const { securitySettings, setSecuritySettings, lockedSecurityPopup, setLockedSecurityPopup, securityPasswordDialog,
+    openLockedSecurityPopup, closeSecurityPasswordDialog, authorizeSecurityPassword, handleDisableLockedSecurity } = useAppSecurity(appSettings, setAppSettings, showAppNotice);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [hasLoadedControlCenter, setHasLoadedControlCenter] = useState(false);
-  const [showChangelogPopup, setShowChangelogPopup] = useState(false);
-  const [seenFeatureTutorials, setSeenFeatureTutorials] = useState<
-    FeatureTutorialKey[]
-  >(() =>
-    parseSeenFeatureTutorials(
-      localStorage.getItem(FEATURE_TUTORIALS_STORAGE_KEY),
-    ),
-  );
-  const [activeFeatureTutorialKey, setActiveFeatureTutorialKey] =
-    useState<FeatureTutorialKey | null>(null);
-  const [featureTutorialsDisabled, setFeatureTutorialsDisabled] = useState(
-    () => localStorage.getItem(FEATURE_TUTORIALS_DISABLED_KEY) === "true",
-  );
   const [themeNavDate, setThemeNavDate] = useState(new Date());
-
-  useEffect(() => {
-    const handleNotice = (event: Event) => {
-      const detail = (event as CustomEvent<UiNoticeDetail>).detail;
-      if (!detail?.message) return;
-      showAppNotice(detail.message, detail.tone || 'info');
-    };
-    const handleConfirmation = (event: Event) => {
-      const detail = (event as CustomEvent<{
-        options: UiConfirmationOptions;
-        resolve: (confirmed: boolean) => void;
-      }>).detail;
-      if (!detail?.options || typeof detail.resolve !== 'function') return;
-      setGlobalConfirmation(detail);
-    };
-    window.addEventListener(UI_NOTICE_EVENT, handleNotice);
-    window.addEventListener(UI_CONFIRM_EVENT, handleConfirmation);
-    return () => {
-      window.removeEventListener(UI_NOTICE_EVENT, handleNotice);
-      window.removeEventListener(UI_CONFIRM_EVENT, handleConfirmation);
-    };
-  }, []);
 
   // Focus View State
   const [focusDate, setFocusDate] = useState(new Date());
@@ -536,11 +412,6 @@ const App: React.FC = () => {
     [activeTab, planSubTab, librarySubTab, moneyView],
   );
 
-  const setSecuritySettings = (next: LocalSecuritySettings) => {
-    setSecuritySettingsState(next);
-    saveLocalSecuritySettings(next);
-  };
-
   const secureAppSettings = useMemo<AppSettings>(
     () => ({
       ...appSettings,
@@ -555,10 +426,6 @@ const App: React.FC = () => {
     showBalance &&
     !appSettings.hideMoney &&
     !securitySettings.forceHideMoneyValue;
-
-  const openLockedSecurityPopup = (target: keyof LocalSecuritySettings, message: string) => {
-    setLockedSecurityPopup({ target, message });
-  };
 
   const handleSetActiveTab = (tab: Tab) => {
     if (tab === 'money' && securitySettings.lockTabTransaction) {
@@ -621,102 +488,15 @@ const App: React.FC = () => {
   }, [isChatOpen]);
 
   // Review Center nudge above the input bar
-  const [isReviewCenterOpen, setIsReviewCenterOpen] = useState(false);
-  const [lastReviewCenterOpenedAt, setLastReviewCenterOpenedAt] = useState(0);
-  const [receiptTasks, setReceiptTasks] = useState<ReceiptProcessingTask[]>([]);
-  const receiptTaskFilesRef = useRef(new Map<string, { file: File; context: string }>());
-  const [receiptReviews, setReceiptReviews] = useState<ReceiptReviewDraft[]>(readStoredReceiptReviews);
-
-  const updateReceiptReviews = (
-    updater: (current: ReceiptReviewDraft[]) => ReceiptReviewDraft[],
-  ) => {
-    setReceiptReviews((current) => {
-      const next = updater(current);
-      persistReceiptReviews(next);
-      return next;
+  const { receiptTasks, receiptReviews, handleChangeReceiptReview, handleApproveReceiptReview, handleRejectReceiptReview,
+    clearReceiptTask, retryReceiptTask, enqueueReceiptProcessing, handleViewReceiptTaskTransaction } = useReceiptWorkflow({
+      items, wallets, budgetConfig, appSettings, handleAddTransaction, showAppNotice, revealReceiptTransaction,
     });
-  };
 
-  useEffect(() => {
-    if (!receiptReviews.length || !items.length) return;
-    const committedAttachmentIds = new Set(
-      items
-        .map((item) => item.meta.receiptCapture?.attachmentId)
-        .filter((value): value is string => !!value),
-    );
-    if (!committedAttachmentIds.size) return;
-
-    updateReceiptReviews((current) => {
-      const next = current.filter((review) =>
-        !review.attachmentId || !committedAttachmentIds.has(review.attachmentId),
-      );
-      return next.length === current.length ? current : next;
+  const { isReviewCenterOpen, setIsReviewCenterOpen, reviewCenterBadgeCount, showReviewCenterNudge, hasRunningProcess, unresolvedReceiptTaskCount,
+    openReviewCenterFromInput, closeReviewCenterFromInput } = useReviewCenter({
+      parsingTasks, enrichmentTasks, pendingCount, pendingReviews, saveStatus, fetchStatus, receiptTasks, receiptReviews,
     });
-  }, [items, receiptReviews.length]);
-
-  const latestParsingTaskAt = useMemo(() => {
-    const latestParsing = parsingTasks.reduce(
-      (latest, task) =>
-        Math.max(latest, task.createdAt || 0, task.completedAt || 0),
-      0,
-    );
-    return enrichmentTasks.reduce(
-      (latest, task) =>
-        Math.max(latest, task.createdAt || 0, task.completedAt || 0),
-      latestParsing,
-    );
-  }, [enrichmentTasks, parsingTasks]);
-
-  const latestReceiptReviewAt = useMemo(() => receiptReviews.reduce(
-    (latest, review) => Math.max(latest, new Date(review.createdAt).getTime() || 0),
-    0,
-  ), [receiptReviews]);
-
-  const latestReceiptTaskAt = useMemo(() => receiptTasks.reduce(
-    (latest, task) => Math.max(latest, task.createdAt || 0, task.completedAt || 0),
-    0,
-  ), [receiptTasks]);
-
-  const hasRunningProcess = useMemo(() => {
-    return (
-      pendingCount > 0 ||
-      parsingTasks.some((task) => task.status === "pending") ||
-      enrichmentTasks.some(
-        (task) => task.status === "pending" || task.status === "running",
-      ) ||
-      receiptTasks.some((task) => task.status === 'pending') ||
-      saveStatus === "saving" ||
-      fetchStatus === "syncing"
-    );
-  }, [enrichmentTasks, fetchStatus, parsingTasks, pendingCount, receiptTasks, saveStatus]);
-
-  const unresolvedParsingCount = parsingTasks.filter(
-    (task) => task.status === 'pending' || task.status === 'failed',
-  ).length;
-  const unresolvedEnrichmentCount = enrichmentTasks.filter(
-    (task) => task.status === 'pending' || task.status === 'running' || task.status === 'failed',
-  ).length;
-  const unresolvedReceiptTaskCount = receiptTasks.filter(
-    (task) => task.status === 'pending' || task.status === 'failed',
-  ).length;
-  const reviewCenterBadgeCount =
-    receiptReviews.length
-    + pendingReviews.length
-    + unresolvedParsingCount
-    + unresolvedEnrichmentCount
-    + unresolvedReceiptTaskCount;
-  const showReviewCenterNudge =
-    reviewCenterBadgeCount > 0
-    && Math.max(latestParsingTaskAt, latestReceiptReviewAt, latestReceiptTaskAt) > lastReviewCenterOpenedAt;
-
-  const openReviewCenterFromInput = () => {
-    setLastReviewCenterOpenedAt(Date.now());
-    setIsReviewCenterOpen(true);
-  };
-
-  const closeReviewCenterFromInput = () => {
-    setIsReviewCenterOpen(false);
-  };
 
   const handleUpdateChatHistory = (
     newHistory: import("./types").ChatMessage[],
@@ -728,214 +508,12 @@ const App: React.FC = () => {
     handleUpdateChatHistory([]);
   };
 
-  const handleSendRef = useRef(handleSend);
-  useEffect(() => {
-    handleSendRef.current = handleSend;
-  }, [handleSend]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const replyText = params.get("reply");
-    if (!replyText) return;
-
-    const replyKey = `braindump-open-reply:${replyText}`;
-    if (sessionStorage.getItem(replyKey) === "handled") return;
-    sessionStorage.setItem(replyKey, "handled");
-
-    handleSendRef.current(replyText);
-    params.delete("reply");
-    const nextSearch = params.toString();
-    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`;
-    window.history.replaceState({}, "", nextUrl);
-  }, []);
-
-  useEffect(() => {
-    const handleSWMessage = (event: MessageEvent) => {
-      const { type, text } = event.data || {};
-      if (type === "NOTIFICATION_REPLY" && text) {
-        handleSendRef.current(text);
-      }
-    };
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.addEventListener("message", handleSWMessage);
-    }
-
-    return () => {
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.removeEventListener("message", handleSWMessage);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-
-      const { type, tokens, error } = event.data || {};
-
-      if (type === "GOOGLE_OAUTH_SUCCESS") {
-        try {
-          // simpan session
-          localStorage.setItem(
-            "braindump_google_session",
-            JSON.stringify({
-              ...tokens,
-              expires_at: Date.now() + (tokens.expires_in || 3600) * 1000,
-            }),
-          );
-
-          console.log("Google login success");
-
-          // kalau mau, lanjut fetch profile / config di sini
-          // const profile = await fetchGoogleProfile(tokens.access_token);
-          // const config = await loadConfigFromDrive(tokens.access_token);
-
-          loadData(); // atau trigger refresh state
-        } catch (e) {
-          console.error("Failed to process OAuth success", e);
-        }
-      }
-
-      if (type === "GOOGLE_OAUTH_ERROR") {
-        console.error("Google login failed:", error);
-        showAppNotice(`Login gagal: ${error}`, 'error');
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [loadData]);
-
-  // --- Persistent Notification Effect ---
-  useEffect(() => {
-    import("./utils/notificationHandler").then(
-      ({ updatePersistentNotification }) => {
-        updatePersistentNotification(!!appSettings.persistentNotification);
-      },
-    );
-  }, [appSettings.persistentNotification]);
-
-  useEffect(() => {
-    if (showOnboarding) return;
-    try {
-      const seenVersion = localStorage.getItem(SEEN_CHANGELOG_STORAGE_KEY);
-      if (seenVersion !== LATEST_CHANGELOG_VERSION) {
-        setShowChangelogPopup(true);
-      }
-    } catch (e) {
-      console.warn("Failed to read changelog seen version", e);
-    }
-  }, [showOnboarding]);
-
-  const handleCloseChangelogPopup = () => {
-    try {
-      localStorage.setItem(
-        SEEN_CHANGELOG_STORAGE_KEY,
-        LATEST_CHANGELOG_VERSION,
-      );
-    } catch (e) {
-      console.warn("Failed to save changelog seen version", e);
-    }
-    setShowChangelogPopup(false);
-  };
-
-  const currentFeatureTutorialKey = useMemo(
-    () =>
-      getFeatureTutorialKey({
-        activeTab,
-        planSubTab,
-        librarySubTab,
-        moneyView,
-        isControlCenterOpen,
-      }),
-    [activeTab, isControlCenterOpen, librarySubTab, moneyView, planSubTab],
-  );
-
-  useEffect(() => {
-    if (
-      showOnboarding ||
-      showChangelogPopup ||
-      featureTutorialsDisabled ||
-      activeFeatureTutorialKey
-    )
-      return;
-    if (seenFeatureTutorials.includes(currentFeatureTutorialKey)) return;
-
-    const timeout = window.setTimeout(() => {
-      setActiveFeatureTutorialKey(currentFeatureTutorialKey);
-    }, 450);
-
-    return () => window.clearTimeout(timeout);
-  }, [
-    activeFeatureTutorialKey,
-    currentFeatureTutorialKey,
-    featureTutorialsDisabled,
-    seenFeatureTutorials,
-    showChangelogPopup,
-    showOnboarding,
-  ]);
-
-  const markFeatureTutorialSeen = (key: FeatureTutorialKey) => {
-    setSeenFeatureTutorials((prev) => {
-      const next = prev.includes(key) ? prev : [...prev, key];
-      try {
-        localStorage.setItem(
-          FEATURE_TUTORIALS_STORAGE_KEY,
-          JSON.stringify(next),
-        );
-      } catch (e) {
-        console.warn("Failed to save feature tutorial state", e);
-      }
-      return next;
+  const { showOnboarding, showChangelogPopup, activeFeatureTutorialKey, handleCloseChangelogPopup, handleCloseFeatureTutorial,
+    handleDisableFeatureTutorials, handleOnboardingComplete, handleOnboardingTestParsing } = useAppOnboarding({
+      items, wallets, skills, budgetConfig, customPrompt, monthlyThemes, appSettings, setAppSettings, setWallets, setBudgetConfig, saveAndSync,
+      activeTab, planSubTab, librarySubTab, moneyView, isControlCenterOpen,
     });
-  };
-
-  const handleCloseFeatureTutorial = () => {
-    if (activeFeatureTutorialKey)
-      markFeatureTutorialSeen(activeFeatureTutorialKey);
-    setActiveFeatureTutorialKey(null);
-  };
-
-  const handleDisableFeatureTutorials = () => {
-    try {
-      localStorage.setItem(FEATURE_TUTORIALS_DISABLED_KEY, "true");
-    } catch (e) {
-      console.warn("Failed to disable feature tutorials", e);
-    }
-    setFeatureTutorialsDisabled(true);
-    if (activeFeatureTutorialKey)
-      markFeatureTutorialSeen(activeFeatureTutorialKey);
-    setActiveFeatureTutorialKey(null);
-  };
-
-  // --- Handle Reply from URL ---
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const replyText = params.get("reply");
-    if (replyText) {
-      // Small delay to ensure everything is loaded
-      setTimeout(() => {
-        handleSendRef.current(replyText);
-      }, 500);
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // --- Theme Effect ---
-  useEffect(() => {
-    const theme = appSettings.theme || "dark";
-    document.documentElement.classList.toggle("dark", theme === "dark");
-
-    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    themeColor?.setAttribute("content", theme === "dark" ? "#15221C" : "#F4F6F5");
-  }, [appSettings.theme]);
-
-  useEffect(() => {
-    document.documentElement.lang = appSettings.language === "en" ? "en" : "id";
-  }, [appSettings.language]);
+  useBrowserIntegration({ handleSend, loadData, appSettings, showAppNotice });
 
   // Reserve the actual mobile composer height, including shortcuts and errors.
   useEffect(() => {
@@ -1031,7 +609,7 @@ const App: React.FC = () => {
         return true;
       });
   useBackHandler(Boolean(globalConfirmation), () => {
-        globalConfirmation.resolve(false);
+        globalConfirmation?.resolve(false);
         setGlobalConfirmation(null);
         return true;
       });
@@ -1132,24 +710,7 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
-  const handleChangeReceiptReview = (draft: ReceiptReviewDraft) => {
-    const duplicate = findDuplicateReceiptTransaction(appItemsRef.current, {
-      merchant: draft.merchant,
-      date: draft.date,
-      totalAmount: sumTransactionLineItems(draft.lineItems),
-      lineItems: draft.lineItems,
-      fingerprint: draft.fingerprint,
-    });
-    updateReceiptReviews((current) => current.map((review) => review.id === draft.id
-      ? {
-          ...draft,
-          duplicateItemId: duplicate?.id,
-          allowDuplicate: duplicate?.id === draft.duplicateItemId ? draft.allowDuplicate : false,
-        }
-      : review));
-  };
-
-  const revealReceiptTransaction = (date: string) => {
+  function revealReceiptTransaction(date: string) {
     const parsedDate = getReceiptTransactionViewDate(date);
     if (parsedDate) setFinanceDate(parsedDate);
 
@@ -1166,225 +727,11 @@ const App: React.FC = () => {
     setIsReviewCenterOpen(false);
   };
 
-  const commitReceiptDraft = async (
-    draft: ReceiptReviewDraft,
-    options: { requireWallet: boolean; revealTransaction: boolean },
-  ) => {
-    const duplicate = findDuplicateReceiptTransaction(appItemsRef.current, {
-      merchant: draft.merchant,
-      date: draft.date,
-      totalAmount: sumTransactionLineItems(draft.lineItems),
-      lineItems: draft.lineItems,
-      fingerprint: draft.fingerprint,
-    });
-    if (duplicate && !draft.allowDuplicate) {
-      throw new Error('Transaksi serupa sudah ada. Tinjau transaksi lama atau izinkan penyimpanan duplikat.');
-    }
-
-    const currency = (draft.originalCurrency || 'IDR').toUpperCase();
-    const exchangeRate = currency === 'IDR' ? 1 : Number(draft.exchangeRateToIdr || 0);
-    if (currency !== 'IDR' && (!Number.isFinite(exchangeRate) || exchangeRate <= 0)) {
-      throw new Error('Kurs mata uang ke IDR diperlukan sebelum transaksi dapat disimpan.');
-    }
-
-    const convertedLineItems = convertTransactionLineItemsToIdr(draft.lineItems, currency, exchangeRate);
-    if (!draft.date || !convertedLineItems.length || (options.requireWallet && !draft.walletId)) {
-      throw new Error(options.requireWallet
-        ? 'Lengkapi wallet, tanggal, dan rincian item sebelum menyimpan.'
-        : 'Tanggal dan rincian item harus tersedia sebelum menyimpan.');
-    }
-
-    const originalTotal = sumTransactionLineItems(draft.lineItems);
-    const description = draft.merchant?.trim()
-      || draft.imageName.replace(/\.[^.]+$/, '').trim()
-      || 'Transaksi dari nota';
-
-    const savedItem = await handleAddTransaction(
-      description,
-      sumTransactionLineItems(convertedLineItems),
-      'expense',
-      draft.walletId,
-      draft.defaultBudgetCategory,
-      undefined,
-      draft.date,
-      convertedLineItems,
-      draft.merchant,
-      {
-        attachmentId: draft.attachmentId,
-        imageName: draft.imageName,
-        imageMimeType: draft.imageMimeType,
-        imageSize: draft.imageSize,
-        fingerprint: draft.fingerprint,
-        context: draft.context,
-        extractedAt: draft.createdAt,
-        originalCurrency: currency,
-        originalTotal,
-        exchangeRateToIdr: exchangeRate,
-      },
-      currency,
-      originalTotal,
-      exchangeRate,
-    );
-
-    if (options.revealTransaction) revealReceiptTransaction(draft.date);
-    return savedItem;
-  };
-
-  const handleApproveReceiptReview = async (draft: ReceiptReviewDraft) => {
-    await commitReceiptDraft(draft, { requireWallet: true, revealTransaction: true });
-    updateReceiptReviews((current) => current.filter((review) => review.id !== draft.id));
-  };
-
-  const handleRejectReceiptReview = async (draft: ReceiptReviewDraft) => {
-    updateReceiptReviews((current) => current.filter((review) => review.id !== draft.id));
-    await deleteReceiptAttachment(draft.attachmentId).catch(() => undefined);
-  };
-
   const handleViewDuplicateReceipt = (item: BrainDumpItem) => {
     handleSetActiveTab('money');
     setMoneyView('transactions');
     setSearchQuery(item.meta.merchant || item.content);
     setIsReviewCenterOpen(false);
-  };
-
-  const updateReceiptTask = (taskId: string, changes: Partial<ReceiptProcessingTask>) => {
-    setReceiptTasks((current) => current.map((task) => task.id === taskId ? { ...task, ...changes } : task));
-  };
-
-  const clearReceiptTask = (taskId: string) => {
-    receiptTaskFilesRef.current.delete(taskId);
-    setReceiptTasks((current) => current.filter((task) => task.id !== taskId));
-  };
-
-  const processReceiptInBackground = async (taskId: string, image: File, text: string) => {
-    let attachmentId: string | undefined;
-    updateReceiptTask(taskId, {
-      status: 'pending',
-      stage: 'uploading',
-      error: undefined,
-      outcome: undefined,
-      transactionItemId: undefined,
-      completedAt: undefined,
-    });
-
-    try {
-      const [savedAttachmentId, fingerprint] = await Promise.all([
-        saveReceiptAttachment(image),
-        createReceiptFingerprint(image),
-      ]);
-      attachmentId = savedAttachmentId;
-      updateReceiptTask(taskId, { stage: 'reading' });
-
-      const parsed = await parseReceiptImage(
-        image,
-        text,
-        wallets,
-        budgetConfig.rules || [],
-        appSettings.parsingModel,
-      );
-      updateReceiptTask(taskId, { stage: 'categorizing' });
-
-      const originalCurrency = (parsed.currency || 'IDR').toUpperCase();
-      const originalTotal = sumTransactionLineItems(parsed.lineItems);
-      const duplicate = findDuplicateReceiptTransaction(appItemsRef.current, {
-        merchant: parsed.merchant,
-        date: parsed.date,
-        totalAmount: originalTotal,
-        lineItems: parsed.lineItems,
-        fingerprint,
-      });
-      const draft: ReceiptReviewDraft = {
-        id: uuidv4(),
-        createdAt: new Date().toISOString(),
-        imageName: image.name,
-        imageMimeType: image.type,
-        imageSize: image.size,
-        attachmentId,
-        fingerprint,
-        context: text.trim() || undefined,
-        merchant: parsed.merchant,
-        date: parsed.date || getLocalDateInput(),
-        walletId: parsed.walletId,
-        originalCurrency,
-        originalTotal,
-        exchangeRateToIdr: originalCurrency === 'IDR' ? 1 : undefined,
-        lineItems: parsed.lineItems,
-        warnings: parsed.warnings,
-        duplicateItemId: duplicate?.id,
-        allowDuplicate: false,
-      };
-
-      if (shouldQueueReceiptReview(appSettings)) {
-        updateReceiptReviews((current) => [draft, ...current]);
-        updateReceiptTask(taskId, {
-          status: 'success',
-          stage: 'ready',
-          outcome: 'review',
-          completedAt: Date.now(),
-        });
-        showAppNotice('Nota selesai dibaca dan siap ditinjau di pusat tinjauan.', 'success');
-        window.setTimeout(() => clearReceiptTask(taskId), 2500);
-      } else {
-        updateReceiptTask(taskId, { stage: 'saving' });
-        const savedItem = await commitReceiptDraft(draft, {
-          requireWallet: false,
-          revealTransaction: false,
-        });
-        updateReceiptTask(taskId, {
-          status: 'success',
-          stage: 'ready',
-          outcome: 'saved',
-          transactionItemId: savedItem.id,
-          completedAt: Date.now(),
-        });
-        showAppNotice('Transaksi dari nota sudah disimpan. Proses lengkap tersedia di pusat tinjauan.', 'success');
-        receiptTaskFilesRef.current.delete(taskId);
-        window.setTimeout(() => clearReceiptTask(taskId), 12000);
-      }
-    } catch (scanError) {
-      if (attachmentId) await deleteReceiptAttachment(attachmentId).catch(() => undefined);
-      const message = scanError instanceof Error ? scanError.message : 'Gagal memproses nota.';
-      updateReceiptTask(taskId, {
-        status: 'failed',
-        error: message,
-        completedAt: Date.now(),
-      });
-      showAppNotice(`Gagal memproses nota: ${message}`, 'error');
-    }
-  };
-
-  const enqueueReceiptProcessing = (image: File, text: string) => {
-    const taskId = uuidv4();
-    receiptTaskFilesRef.current.set(taskId, { file: image, context: text });
-    setReceiptTasks((current) => [{
-      id: taskId,
-      createdAt: Date.now(),
-      imageName: image.name,
-      context: text.trim() || undefined,
-      status: 'pending',
-      stage: 'uploading',
-    }, ...current]);
-    showAppNotice('Nota diproses di latar belakang. Kamu tetap bisa menambahkan input baru.', 'info');
-    void processReceiptInBackground(taskId, image, text);
-  };
-
-  const retryReceiptTask = (taskId: string) => {
-    const source = receiptTaskFilesRef.current.get(taskId);
-    if (!source) {
-      updateReceiptTask(taskId, {
-        status: 'failed',
-        error: 'Gambar asli tidak lagi tersedia. Lampirkan ulang nota dari chat bar.',
-        completedAt: Date.now(),
-      });
-      return;
-    }
-    void processReceiptInBackground(taskId, source.file, source.context);
-  };
-
-  const handleViewReceiptTaskTransaction = (itemId: string) => {
-    const item = appItemsRef.current.find((candidate) => candidate.id === itemId);
-    if (!item) return;
-    revealReceiptTransaction(item.meta.date || item.completed_at || item.created_at);
   };
 
   const handleAppSend = async (
@@ -1449,105 +796,6 @@ const App: React.FC = () => {
     } else {
       await handleSend(text);
     }
-  };
-
-  const showAppNotice = (message: string, tone: 'success' | 'error' | 'info' = 'info') => {
-    const id = uuidv4();
-    setAppNotice({ id, message, tone });
-    window.setTimeout(() => {
-      setAppNotice((current) => current?.id === id ? null : current);
-    }, 4500);
-  };
-
-  const requestSecurityPassword = (
-    mode: 'create' | 'verify',
-    title: string,
-    message: string,
-  ) => new Promise<string | null>((resolve) => {
-    setSecurityPasswordDialog({ mode, title, message, resolve });
-  });
-
-  const closeSecurityPasswordDialog = (password: string | null) => {
-    const dialog = securityPasswordDialog;
-    setSecurityPasswordDialog(null);
-    dialog?.resolve(password);
-  };
-
-  const authorizeSecurityPassword = async (
-    options: SecurityPasswordRequestOptions = {},
-  ): Promise<boolean> => {
-    const allowCreate = options.allowCreate ?? false;
-    let encryptedPassword = appSettings.securityPasswordHash || null;
-
-    try {
-      if (!encryptedPassword) {
-        encryptedPassword = await fetchSecurityPasswordHash();
-      }
-    } catch (error) {
-      console.error('Failed to load security password', error);
-      showAppNotice('Password keamanan tidak dapat dimuat. Periksa koneksi Google Sheets.', 'error');
-      return false;
-    }
-
-    if (!encryptedPassword) {
-      if (!allowCreate) {
-        showAppNotice('Password keamanan belum dibuat.', 'error');
-        return false;
-      }
-
-      const createdPassword = await requestSecurityPassword(
-        'create',
-        'Buat password keamanan',
-        'Password ini digunakan untuk mengubah pengaturan keamanan pada perangkat ini.',
-      );
-      if (!createdPassword) return false;
-
-      const newEncryptedPassword = encryptSecurityPassword(createdPassword);
-      try {
-        await saveSecurityPasswordHash(newEncryptedPassword);
-      } catch (error) {
-        console.error('Failed to save security password', error);
-        showAppNotice('Password keamanan tidak dapat disimpan ke Themes & Settings.', 'error');
-        return false;
-      }
-
-      setAppSettings({ ...appSettings, securityPasswordHash: newEncryptedPassword });
-      showAppNotice('Password keamanan berhasil dibuat.', 'success');
-      return true;
-    }
-
-    if (!appSettings.securityPasswordHash) {
-      setAppSettings({ ...appSettings, securityPasswordHash: encryptedPassword });
-    }
-
-    const actionLabel = options.actionLabel || 'mengubah pengaturan keamanan ini';
-    const enteredPassword = await requestSecurityPassword(
-      'verify',
-      'Konfirmasi password',
-      `Masukkan password untuk ${actionLabel}.`,
-    );
-    if (enteredPassword === null) return false;
-    if (!verifySecurityPassword(enteredPassword, encryptedPassword)) {
-      showAppNotice('Password salah.', 'error');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleDisableLockedSecurity = async () => {
-    if (!lockedSecurityPopup) return;
-    const ok = await authorizeSecurityPassword({
-      allowCreate: false,
-      actionLabel: 'disable this security setting',
-    });
-    if (!ok) return;
-
-    setSecuritySettings({
-      ...securitySettings,
-      [lockedSecurityPopup.target]: false,
-    });
-    setLockedSecurityPopup(null);
   };
 
   const handleSettingsSaved = (
@@ -1814,69 +1062,6 @@ const App: React.FC = () => {
     const { savings, investments } = getShoppingItems(items);
     return [...savings, ...investments];
   }, [items]);
-
-  const handleOnboardingComplete = (
-    settings: AppSettings,
-    wallet: Wallet | null,
-    budget: BudgetConfig | null,
-    sampleItems: BrainDumpItem[],
-  ) => {
-    localStorage.setItem("braindump_onboarding_completed", "true");
-    setShowOnboarding(false);
-
-    setAppSettings(settings);
-
-    const newWallets = wallet ? [wallet] : [];
-    if (wallet) setWallets(newWallets);
-
-    if (budget) setBudgetConfig(budget);
-
-    saveAndSync({ data: sampleItems.length > 0 ? [...items, ...sampleItems] : items, budgetConfig: budget || budgetConfig, customPrompt: customPrompt, skills: skills, wallets: newWallets.length > 0 ? newWallets : wallets, monthlyThemes: monthlyThemes, appSettings: settings, forceOverwrite: true } // force overwrite
-    );
-  };
-
-  const handleOnboardingTestParsing = async (
-    text: string,
-    context?: { wallet?: Wallet | null },
-  ): Promise<BrainDumpItem[]> => {
-    const previewWallets = context?.wallet ? [context.wallet] : wallets;
-    const parsed = await classifyText(text,
-[],
-skills.map((s) => s.name),
-customPrompt,
-appSettings.parsingModel,
-previewWallets,
-budgetConfig?.rules || []
-    );
-
-    const now = new Date().toISOString();
-    return parsed.map((partial) => {
-      const type =
-        partial.type &&
-        Object.values(ItemType).includes(partial.type as ItemType)
-          ? (partial.type as ItemType)
-          : ItemType.NOTE;
-      const isRecord =
-        type === ItemType.FINANCE ||
-        type === ItemType.JOURNAL ||
-        type === ItemType.SKILL_LOG;
-      const meta = { ...(partial.meta || {}) };
-      if ((type === ItemType.TODO || type === ItemType.EVENT) && !meta.priority)
-        meta.priority = "normal";
-      if (type === ItemType.JOURNAL && !meta.date) meta.date = now;
-
-      return {
-        id: uuidv4(),
-        type,
-        content: partial.content || text,
-        status: isRecord ? "done" : "pending",
-        created_at: now,
-        completed_at: isRecord ? now : undefined,
-        meta,
-        isOptimistic: false,
-      };
-    });
-  };
 
   if (showOnboarding) {
     return (

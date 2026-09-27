@@ -3180,7 +3180,7 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
     const sheetNameToId = new Map<string, number>(
       (meta?.sheets || [])
         .map((s: any) => [s.properties.title, s.properties.sheetId] as [string, number])
-        .filter(([, id]) => id !== undefined)
+        .filter(([, id]: [string, number]) => id !== undefined)
     );
     // Compare what's IN THE SHEET (currentSheetDbForPlan) vs what SHOULD BE (dbToWrite after merge)
     // NOT the old cached snapshot vs app state — that causes data loss when items were removed from app

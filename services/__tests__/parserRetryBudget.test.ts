@@ -32,5 +32,5 @@ test('Flash malformed output has one bounded retry layer and preserves input in 
   const result = await classifyText('A quiet morning');
   assert.equal(calls, 3);
   assert.equal(result[0].content, 'A quiet morning');
-  assert.ok(result[0].meta.parsingError);
+  assert.ok(result[0].meta?.parsingError);
 });

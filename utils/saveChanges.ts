@@ -23,12 +23,12 @@ export function applySaveResult(current: DbSchema, remote: DbSchema, before: DbS
   }
   for (const key of ['appSettings', 'monthlyThemes', 'monthlyThemeImages'] as const) {
     if (!remote[key]) continue;
-    const base = before[key] || {};
-    const local = current[key] || {};
-    const incoming = remote[key] || {};
+    const base = new Map<string, unknown>(Object.entries(before[key] || {}));
+    const local = new Map<string, unknown>(Object.entries(current[key] || {}));
+    const incoming = new Map<string, unknown>(Object.entries(remote[key] || {}));
     const merged: Record<string, unknown> = {};
-    for (const field of new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(incoming)])) {
-      const value = JSON.stringify(local[field]) === JSON.stringify(base[field]) ? incoming[field] : local[field];
+    for (const field of new Set([...base.keys(), ...local.keys(), ...incoming.keys()])) {
+      const value = JSON.stringify(local.get(field)) === JSON.stringify(base.get(field)) ? incoming.get(field) : local.get(field);
       if (value !== undefined) merged[field] = value;
     }
     Object.assign(result, { [key]: merged });
