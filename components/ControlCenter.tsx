@@ -1,3 +1,4 @@
+import SyncOutboxPanel from './SyncOutboxPanel';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -546,6 +547,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     </div>
                                                 </div>
 
+                                                <SyncOutboxPanel />
                                                 {/* Sync Mode Selector */}
                                                 {(saveStatus === 'error' || fetchStatus === 'error' || saveStatus === 'local') && (
                                                     <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden self-end">

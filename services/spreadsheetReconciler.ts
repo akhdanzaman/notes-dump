@@ -180,7 +180,16 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[], optio
             const location = `${range.range?.split('!')[0]} row ${index + 1}`;
             for (const [column, kind] of [['Line_Items', 'array'], ['Receipt_Capture', 'object']] as const) {
                 const offset = header.indexOf(column);
-                if (offset >= 0) decodeSheetJson(row[offset], `${location} ${column}`, kind);
+                if (offset >= 0) {
+                    const decoded = decodeSheetJson(row[offset], `${location} ${column}`, kind);
+                    if (column === 'Line_Items' && decoded) for (const [lineIndex, line] of decoded.entries()) {
+                        if (!line || typeof line !== 'object' || Array.isArray(line)) throw new Error(`${location} Line_Items[${lineIndex}]: Invalid line item`);
+                        const transaction = String(range.range).includes('Transactions');
+                        if (transaction && (typeof line.name !== 'string' || !line.name.trim() || line.amount === undefined || decodeSheetNumber(line.amount, location) === 0)) throw new Error(`${location} Line_Items[${lineIndex}]: Name and nonzero amount required`);
+                        if (!transaction && !line.name && !line.quantity && line.amount === undefined) throw new Error(`${location} Line_Items[${lineIndex}]: Empty line item`);
+                        for (const field of ['amount', 'unitPrice', 'originalAmount', 'originalUnitPrice']) if (line[field] !== undefined) decodeSheetNumber(line[field], `${location} Line_Items[${lineIndex}].${field}`);
+                    }
+                }
             }
             if (entityColumn < 0 || !row[entityColumn]) continue;
             if (Number(row[header.indexOf(ENTITY_SCHEMA_COLUMN)]) !== ENTITY_SCHEMA_VERSION) throw new Error(`${location}: Unsupported entity schema; migration required`);

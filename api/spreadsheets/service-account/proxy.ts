@@ -13,6 +13,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     assertServiceAccountSessionAllowed(req.headers);
     assertServiceAccountSpreadsheetAllowed(spreadsheetId);
     const path = validateSheetsPath(req.query.path);
+    if (process.env.SPREADSHEET_DURABLE_SYNC === 'true' && !['GET', 'HEAD'].includes(req.method || 'GET')) {
+      return res.status(409).json({ code: 'DURABLE_WRITER_REQUIRED', error: 'Direct writes disabled; use durable sync. Reports can be refreshed before activation.' });
+    }
     const body = req.method === 'GET' || req.method === 'HEAD'
       ? undefined
       : typeof req.body === 'string'

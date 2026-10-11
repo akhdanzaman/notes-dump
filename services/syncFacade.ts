@@ -1,3 +1,4 @@
+import { durableCapabilities, reconcileDurableReceipts, submitDurableOperations } from './durableSync';
 import { persistLocalState, readLocalState, reconstructBaseline, changeOperationState, acknowledgeOperations, localScope } from './localOutbox';
 import { DbSchema, SyncProgressCallback, SyncResult } from "../types";
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, getSpreadsheetHistory, SpreadsheetHistoryEntry, getCachedSpreadsheetDb, cacheSpreadsheetDbForMigration, cachePendingSpreadsheetWrite, getPendingSpreadsheetWrite, clearPendingSpreadsheetWrite } from "./spreadsheetService";
@@ -21,6 +22,8 @@ export const fetchDb = async (skipLocalStorage = false, onProgress?: SyncProgres
   }
 
   const scope = localScope(getSpreadsheetConfig()?.spreadsheetId);
+  const durable = getSpreadsheetConfig()?.authMode !== 'oauth' && typeof indexedDB !== 'undefined' && (await durableCapabilities(scope)).enabled;
+  if (durable) { const pending = await readLocalState(scope); await reconcileDurableReceipts(scope, pending.operations); }
   const local = !skipLocalStorage && typeof indexedDB !== 'undefined' ? await readLocalState(scope) : undefined;
   const pendingWrite = !skipLocalStorage && local?.data && local.operations.length ? { id: 'indexeddb', data: local.data, base: reconstructBaseline(local.data, local.operations) } : (skipLocalStorage ? null : getPendingSpreadsheetWrite());
   onProgress?.({ phase: 'metadata', label: 'Reading spreadsheet data', detail: 'Fetching all sheets', updatedAt: Date.now() });
@@ -36,6 +39,7 @@ export const fetchDb = async (skipLocalStorage = false, onProgress?: SyncProgres
     if (hasPendingChanges) {
       return { data: merged, sha: `${sha}-pending-local`, hasChanges: true };
     }
+    if (durable) return { data: merged, sha, hasChanges: hasPendingChanges || !!local?.operations.length };
     if (pendingWrite.id === 'indexeddb') await acknowledgeOperations(scope, local!.operations.map(operation => operation.operationId));
     else clearPendingSpreadsheetWrite(pendingWrite.id);
   }
@@ -74,6 +78,18 @@ export const syncData = async ({ data: items, budgetConfig, customPrompt, skills
   const outgoingById = new Map(outgoingDb.data.map(item => [item.id, item]));
   const claimed = local?.operations.filter(operation => (operation.state === 'pending' || operation.state === 'sending') && JSON.stringify(operation.after) === JSON.stringify((operation.entityKind === 'item' ? outgoingById.get(operation.entityId) : (outgoingDb as any)[operation.entityId]) ?? null)) || [];
   const operationIds = claimed.map(operation => operation.operationId);
+  if (indexed && getSpreadsheetConfig()?.authMode !== 'oauth') {
+    const capabilities = await durableCapabilities(scope);
+    if (capabilities.enabled) {
+      if (!capabilities.ready) return { success: false, method: 'error', state: 'failed', error: 'Durable sync awaits schema migration and queue activation; changes remain local.' };
+      if (forceOverwrite) return { success: false, method: 'error', error: 'Force overwrite is disabled during durable sync. Use entity changes and conflict review.' };
+      await reconcileDurableReceipts(scope, local?.operations || []);
+      const active = (await readLocalState(scope)).operations;
+      if (active.some(operation => operation.state === 'conflict')) return { success: false, method: 'error', state: 'conflict', error: 'Concurrent edits need review; local changes are retained.' };
+      await submitDurableOperations(scope, active.filter(operation => operation.state !== 'conflict'));
+      return { success: true, method: 'cloud', state: active.length ? 'accepted' : 'committed' };
+    }
+  }
   if (indexed) await changeOperationState(scope, operationIds, 'sending');
   const pendingWriteId = indexed ? undefined : cachePendingSpreadsheetWrite(outgoingDb);
   onProgress?.({ phase: 'pending_local', label: 'Caching pending write', detail: 'Local safety copy stored before cloud sync' });

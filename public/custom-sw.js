@@ -1,3 +1,4 @@
+importScripts('/durable-outbox-sw.js');
 const broadcastToWindowClients = function(message) {
   return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
     clientList.forEach(function(client) {
@@ -8,13 +9,13 @@ const broadcastToWindowClients = function(message) {
 
 self.addEventListener('sync', function(event) {
   if (event.tag === 'arkaiv-background-flush') {
-    event.waitUntil(broadcastToWindowClients({ type: 'ARKAIV_BACKGROUND_SYNC' }));
+    event.waitUntil(flushDurableOutbox().then(() => broadcastToWindowClients({ type: 'ARKAIV_BACKGROUND_SYNC' })));
   }
 });
 
 self.addEventListener('periodicsync', function(event) {
   if (event.tag === 'arkaiv-background-runtime') {
-    event.waitUntil(broadcastToWindowClients({ type: 'ARKAIV_PERIODIC_SYNC' }));
+    event.waitUntil(flushDurableOutbox().then(() => broadcastToWindowClients({ type: 'ARKAIV_PERIODIC_SYNC' })));
   }
 });
 

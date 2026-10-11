@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { indexedDB } from 'fake-indexeddb';
 import { ItemType, type DbSchema } from '../../types';
-import { persistLocalState, readLocalState, reconstructBaseline, changeOperationState, acknowledgeOperations, closeLocalStore, persistDraft, readDrafts } from '../localOutbox';
+import { persistLocalState, readLocalState, reconstructBaseline, changeOperationState, acknowledgeOperations, closeLocalStore, persistDraft, readDrafts, resolveLocalConflicts, claimOperations } from '../localOutbox';
 import { mergeFetchedItemsPreservingUnsavedLocal } from '../../hooks/useBrainDumpData';
 import { mergeDbData } from '../../utils/mergeUtils';
 import { __test__ } from '../spreadsheetService';
@@ -51,4 +51,26 @@ test('remote-only settings, cleared prompt and themes win against an unchanged l
   assert.deepEqual(merged.appSettings, remote.appSettings);
   assert.equal(merged.customPrompt, '');
   assert.deepEqual(merged.monthlyThemes, remote.monthlyThemes);
+});
+test('unknown acceptance cannot change an operation payload; newer edit depends on its immutable predecessor', async () => {
+  const scope = 'unknown-acceptance'; const first = { ...base, data: [{ ...item, content: 'first' }] };
+  await persistLocalState(scope, first, base);
+  const initial = (await readLocalState(scope)).operations[0];
+  await claimOperations(scope, [initial.operationId]);
+  await persistLocalState(scope, { ...first, data: [{ ...item, content: 'second' }] });
+  const operations = (await readLocalState(scope)).operations;
+  assert.equal((operations[0].after as any).content, 'first');
+  assert.equal(operations[1].parentOperationId, operations[0].operationId);
+});
+test('explicit conflict review preserves unrelated remote fields and creates a new operation ID', async () => {
+  const scope = 'review-conflict';
+  await persistLocalState(scope, { ...base, data: [{ ...item, content: 'local' }] }, base);
+  const previous = (await readLocalState(scope)).operations[0];
+  await changeOperationState(scope, [previous.operationId], 'conflict');
+  const remote = { ...base, data: [{ ...item, content: 'remote', meta: { tags: ['remote tag'] } }] };
+  await resolveLocalConflicts(scope, remote, true);
+  const local = await readLocalState(scope);
+  assert.equal(local.data?.data[0].content, 'local'); assert.deepEqual(local.data?.data[0].meta.tags, ['remote tag']);
+  assert.notEqual(local.operations[0].operationId, previous.operationId);
+  assert.equal((local.operations[0].before as any).content, 'remote');
 });

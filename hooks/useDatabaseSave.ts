@@ -45,6 +45,11 @@ export function useDatabaseSave(bindings: DatabaseSaveBindings) {
       try {
         const result = await syncData({ ...outgoing, preparedLocal: true, forceOverwrite, onProgress: report });
         if (!result.success) throw new Error(result.error || 'Sync failed, preserving local state.');
+        if (result.state === 'accepted') {
+          report({ phase: 'pending_local', label: 'Diterima server', detail: 'Antrean akan menyimpan ke Sheets; menunggu bukti commit' });
+          ctx.setSaveStatus('saving');
+          return result;
+        }
         const acknowledged = result.mergedData || outgoing;
         const applied = applySaveResult(ctx.read(), acknowledged, before);
         ctx.apply(applied);

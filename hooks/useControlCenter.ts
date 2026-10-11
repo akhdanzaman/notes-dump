@@ -506,8 +506,8 @@ export const useControlCenter = ({
 
     const handleRefreshReports = async () => {
         try {
-            await refreshSpreadsheetReports({ data: allItems, skills: allSkills, wallets: allWallets, budgetConfig: { monthlyIncome, rules: budgetRules }, monthlyThemes, monthlyThemeImages, appSettings: localAppSettings, customPrompt: prompt });
-            notifyUser('Laporan spreadsheet diperbarui.', 'success');
+            const result = await refreshSpreadsheetReports({ data: allItems, skills: allSkills, wallets: allWallets, budgetConfig: { monthlyIncome, rules: budgetRules }, monthlyThemes, monthlyThemeImages, appSettings: localAppSettings, customPrompt: prompt });
+            notifyUser(result.state === 'accepted' ? 'Pembaruan laporan diterima server; sedang diproses.' : 'Laporan spreadsheet diperbarui.', 'success');
         } catch (error) { notifyUser(`Laporan gagal diperbarui: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error'); }
     };
 

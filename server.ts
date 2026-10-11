@@ -1,3 +1,4 @@
+import syncReports from './api/spreadsheets/sync/reports';
 import express, { type ErrorRequestHandler, type RequestHandler } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -9,6 +10,10 @@ import googleAuthRefresh from './api/auth/google/refresh';
 import serviceAccountStatus from './api/spreadsheets/service-account/status';
 import serviceAccountSession from './api/spreadsheets/service-account/session';
 import serviceAccountProxy from './api/spreadsheets/service-account/proxy';
+
+import syncCapabilities from './api/spreadsheets/sync/capabilities';
+import syncSubmit from './api/spreadsheets/sync/submit';
+import syncStatus from './api/spreadsheets/sync/status';
 
 dotenv.config();
 
@@ -22,6 +27,10 @@ const asExpressHandler = (handler: ApiHandler): RequestHandler => (req, res, nex
 };
 
 const apiRoutes: Array<[path: string, handler: ApiHandler]> = [
+  ['/api/spreadsheets/sync/capabilities', syncCapabilities],
+  ['/api/spreadsheets/sync/submit', syncSubmit],
+  ['/api/spreadsheets/sync/status', syncStatus],
+  ['/api/spreadsheets/sync/reports', syncReports],
   ['/api/auth/google/url', googleAuthUrl],
   ['/api/auth/google/exchange', googleAuthExchange],
   ['/api/auth/google/refresh', googleAuthRefresh],

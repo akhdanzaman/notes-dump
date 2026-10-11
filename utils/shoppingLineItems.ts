@@ -1,4 +1,5 @@
 import { ShoppingLineItem } from '../types';
+import { decodeSheetNumber } from './spreadsheetCodec';
 
 const cleanOptionalText = (value?: unknown) => {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -8,8 +9,7 @@ const cleanOptionalText = (value?: unknown) => {
 const toFiniteAmount = (value?: unknown) => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim()) {
-    const normalized = Number(value.replace(/[^0-9.-]/g, ''));
-    return Number.isFinite(normalized) ? normalized : undefined;
+    try { return decodeSheetNumber(value); } catch { return undefined; }
   }
   return undefined;
 };

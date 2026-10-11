@@ -1,3 +1,4 @@
+import { applyLosslessConfig } from '../utils/losslessConfig';
 import { splitSheetsBatch } from '../utils/spreadsheetBatch';
 import { recordSpreadsheetRequest, getSpreadsheetDiagnostics } from './spreadsheetTelemetry';
 export { getSpreadsheetDiagnostics };
@@ -67,6 +68,7 @@ type SystemSheetSnapshotMeta = {
 };
 
 export const SPREADSHEET_FETCH_RANGES = {
+  '_Sync_Config': 'A:B',
   Transactions: 'A:AC',
   Todos: 'A:BB',
   Shopping: 'A:AC',
@@ -2118,6 +2120,17 @@ const ensureServiceAccountSession = async (): Promise<string> => {
   return serviceAccountSessionPromise;
 };
 
+export async function authenticatedAppFetch(path: string, body: unknown): Promise<Response> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const csrfToken = await ensureServiceAccountSession();
+    const response = await fetch(path, { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Arkaiv-Csrf': csrfToken }, body: JSON.stringify(body), signal: AbortSignal.timeout(25_000) });
+    if (response.status !== 401 || attempt === 1) return response;
+    serviceAccountSessionPromise = null;
+  }
+  throw new Error('Session renewal failed');
+}
+
 const isServiceAccountProxyInvocationFailure = async (response: Response): Promise<boolean> => {
   if (response.status < 500) return false;
   try {
@@ -2581,7 +2594,7 @@ const buildDedicatedDbFromValueRanges = (valueRanges: any[]): DbSchema => {
     canonicalRules: configSheets.canonicalRules,
   });
 
-  return mergeLegacyRawItemsForMissingDedicatedSheets(dedicatedDb, valueRanges || []);
+  return applyLosslessConfig(mergeLegacyRawItemsForMissingDedicatedSheets(dedicatedDb, valueRanges || []), valueRanges || []);
 };
 
 const fetchDedicatedSpreadsheetDb = async (config: SpreadsheetConfig, existingTitles: Set<string>) => {
@@ -3488,6 +3501,14 @@ export const syncSpreadsheetData = (request: SpreadsheetSyncRequest): Promise<Sy
 export const refreshSpreadsheetReports = async (db: DbSchema) => {
   const config = getSpreadsheetConfig();
   if (!config) throw new Error('Spreadsheet is not connected');
+  if (config.authMode !== 'oauth') {
+    const { durableCapabilities } = await import('./durableSync');
+    if ((await durableCapabilities(config.spreadsheetId)).enabled) {
+      const response = await authenticatedAppFetch('/api/spreadsheets/sync/reports', { spreadsheetId: config.spreadsheetId });
+      if (!response.ok) throw new Error('Could not queue spreadsheet reports');
+      return { state: 'accepted' as const };
+    }
+  }
   const { meta, existingTitles } = await fetchSpreadsheetMetadata(config);
   const reports = generateDbExportSheets(db).filter(sheet => isGeneratedDashboardSheet(sheet.name));
   const missing = reports.filter(sheet => !existingTitles.has(sheet.name));
@@ -3501,6 +3522,7 @@ export const refreshSpreadsheetReports = async (db: DbSchema) => {
   await ensureSheetGridCapacity(config, meta, reports);
   await rewriteChangedSheets(config, reports);
   await verifySpreadsheetWriteCommitted(config, reports);
+  return { state: 'committed' as const };
 };
 
 export interface SpreadsheetHistoryEntry {

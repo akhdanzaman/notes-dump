@@ -1,4 +1,4 @@
-import { persistDraft, readDrafts, removeDraft, localScope } from '../services/localOutbox';
+import { persistDraft, readDrafts, removeDraft, localScope, readLocalState } from '../services/localOutbox';
 import { isRoutineItem, getRoutineCurrentDueDate, isRoutineScheduledToday, isRoutineLockedUntilNextDue, calculateFirstRoutineDueDate, getRoutineDurationMinutes, getRoutineEndForNextStart, resetRoutineItemForToday, resetDueRoutineItems } from '../utils/routineLifecycle';
 import type { ParsingUndoSnapshot } from './brainDumpContext';
 import type { SaveChanges } from '../utils/saveChanges';
@@ -667,6 +667,19 @@ export const useBrainDumpData = () => {
 
     useEffect(() => {
         loadData();
+    }, [loadData]);
+
+    useEffect(() => {
+        const committed = () => { void loadData().then(async () => {
+            if (typeof indexedDB !== 'undefined') {
+                const local = await readLocalState(localScope(getSpreadsheetConfig()?.spreadsheetId));
+                setSaveStatus(local.operations.some(operation => operation.state === 'conflict') ? 'error' : local.operations.length ? 'saving' : 'synced');
+            }
+        }).catch(() => {}); };
+        const conflict = () => { setSaveStatus('error'); setError('Perubahan bersamaan perlu ditinjau. Salinan lokal dan antrean tetap tersimpan.'); };
+        window.addEventListener('arkaiv-sync-committed', committed);
+        window.addEventListener('arkaiv-sync-conflict', conflict);
+        return () => { window.removeEventListener('arkaiv-sync-committed', committed); window.removeEventListener('arkaiv-sync-conflict', conflict); };
     }, [loadData]);
 
     const flushDeferredSyncAfterParsing = useCallback(async () => {

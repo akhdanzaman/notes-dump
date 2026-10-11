@@ -1,3 +1,4 @@
+import { replayDurableOutbox } from '../services/durableSync';
 import { flushPendingSpreadsheetSync } from '../services/spreadsheetService';
 
 const BACKGROUND_SYNC_TAG = 'arkaiv-background-flush';
@@ -53,6 +54,7 @@ export const flushBackgroundRuntime = async () => {
   if (flushing) return null;
   flushing = true;
   try {
+    await replayDurableOutbox();
     return await flushPendingSpreadsheetSync();
   } finally {
     flushing = false;
@@ -85,6 +87,11 @@ export const registerBackgroundRuntime = () => {
     }
   });
 
+  window.addEventListener('online', flushAndAskWorkerToWakeLater);
+  window.addEventListener('focus', flushAndAskWorkerToWakeLater);
+  window.addEventListener('arkaiv-outbox-pending', () => { void registerOneShotBackgroundSync(); });
+  setInterval(() => { if (document.visibilityState === 'visible') void flushBackgroundRuntime().catch(() => {}); }, 15000);
+  void flushBackgroundRuntime().catch(() => {});
   void registerOneShotBackgroundSync();
   void registerPeriodicBackgroundSync();
 };
