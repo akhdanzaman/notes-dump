@@ -54,4 +54,5 @@ const removal = operation({ ...entity, content: 'Device A' }, null, 'delete');
 await call('/api/spreadsheets/sync/submit', { spreadsheetId: scope, operations: [removal] }); await waitFor(removal.operationId);
 pass('test item deleted through the queue with a durable receipt');
 await fs.writeFile(path.join(output, 'queue-acceptance-results.json'), JSON.stringify({ origin, scope, producerRequestEndedBeforeCommitCheck: true, outcomes, completedAt: new Date().toISOString() }, null, 2));
-console.log(JSON.stringify({ passed: outcomes.length, scope, productionTouched: false }));
+console.log(JSON.stringify({ passed: outcomes.length, scope, syntheticEntityCleaned: true }));
+
