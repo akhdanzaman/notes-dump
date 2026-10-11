@@ -1,6 +1,6 @@
-import { decodeSheetNumber } from './spreadsheetCodec';
-import { Wallet, Skill, BudgetConfig, AppSettings, ChatMessage, CanonicalRule } from '../types';
-import { parseSpreadsheetBudget } from './spreadsheetBudget';
+import { decodeSheetNumber } from './spreadsheetCodec.js';
+import { Wallet, Skill, BudgetConfig, AppSettings, ChatMessage, CanonicalRule } from '../types.js';
+import { parseSpreadsheetBudget } from './spreadsheetBudget.js';
 import { v4 as uuidv4 } from 'uuid';
 export const readHeaderAwareCell = (headers: unknown[], row: any[], name: string, fallbackIndex: number, aliases: string[] = []) => {
   const normalizedHeaders = headers.map(header => String(header || '').trim());

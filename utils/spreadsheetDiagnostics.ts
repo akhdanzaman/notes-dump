@@ -1,10 +1,10 @@
-import { BrainDumpItem, BudgetConfig, ItemType, Wallet } from '../types';
-import { getCanonicalMetaValue, getCanonicalOrRawItemValue } from './canonicalization/accessors';
-import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
-import { findSemanticDuplicateReviewCandidates } from './itemDedupe';
-import { inspectStructuredFinanceField, normalizeReferenceKey, referenceMatch, StructuredFinanceField } from './structuredFieldValidation';
-import { getTransactionBudgetAllocations } from './transactionLineItems';
-import { formatCurrencyAmount } from './formatters';
+import { BrainDumpItem, BudgetConfig, ItemType, Wallet } from '../types.js';
+import { getCanonicalMetaValue, getCanonicalOrRawItemValue } from './canonicalization/accessors.js';
+import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils.js';
+import { findSemanticDuplicateReviewCandidates } from './itemDedupe.js';
+import { inspectStructuredFinanceField, normalizeReferenceKey, referenceMatch, StructuredFinanceField } from './structuredFieldValidation.js';
+import { getTransactionBudgetAllocations } from './transactionLineItems.js';
+import { formatCurrencyAmount } from './formatters.js';
 
 export type DataQualitySeverity = 'critical' | 'warning' | 'info';
 

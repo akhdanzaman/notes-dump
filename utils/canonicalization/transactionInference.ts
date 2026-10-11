@@ -1,5 +1,5 @@
-import { BrainDumpItem, ItemType, ParsedItemMetaV2 } from '../../types';
-import { CANONICAL_OTHER_VALUE, normalizeCanonicalFallback } from './defaults';
+import { BrainDumpItem, ItemType, ParsedItemMetaV2 } from '../../types.js';
+import { CANONICAL_OTHER_VALUE, normalizeCanonicalFallback } from './defaults.js';
 
 export interface TransactionCommodityInference {
   commodity: string;

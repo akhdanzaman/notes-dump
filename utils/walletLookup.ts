@@ -1,4 +1,4 @@
-import type { Wallet } from '../types';
+import type { Wallet } from '../types.js';
 
 /** Preserve the old first-match precedence for colliding names/IDs. */
 export function createWalletLookup(wallets: readonly Wallet[]) {

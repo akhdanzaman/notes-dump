@@ -1,6 +1,6 @@
 import { QueueClient } from '@vercel/queue';
 import { DurableSheets } from '../../_lib/durableSheets.js';
-import { validateOperation, type SyncOperation } from '../../../utils/syncProtocol';
+import { validateOperation, type SyncOperation } from '../../../utils/syncProtocol.js';
 import { assertServiceAccountSpreadsheetAllowed } from '../../_lib/googleServiceAccount.js';
 import { durableReady } from '../../_lib/durableAuth.js';
 const queue = new QueueClient({ region: 'iad1' });

@@ -1,4 +1,4 @@
-import type { BudgetConfig } from '../types';
+import type { BudgetConfig } from '../types.js';
 
 const parsePercentage = (value: unknown, rowNumber: number) => {
   const text = String(value ?? '').trim().replace(/%$/, '').trim().replace(',', '.');

@@ -1,4 +1,4 @@
-import { BrainDumpItem, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkConfidence, DeepWorkOutputFormat, DeepWorkPattern, ItemMeta, ItemType } from '../types';
+import { BrainDumpItem, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkConfidence, DeepWorkOutputFormat, DeepWorkPattern, ItemMeta, ItemType } from '../types.js';
 
 export const supportsNestedTodoSubtasks = (item: BrainDumpItem): boolean =>
   item.type === ItemType.TODO || (item.type === ItemType.SKILLS && item.meta.isRoutine === true);

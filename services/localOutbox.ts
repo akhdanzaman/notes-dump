@@ -1,4 +1,5 @@
-import type { DbSchema, BrainDumpItem } from '../types';
+import type { DbSchema, BrainDumpItem, ParserResultV2 } from '../types';
+import { configTables } from '../utils/losslessConfig';
 import { mergeMutation } from '../utils/syncProtocol';
 export type MutationState = 'pending' | 'sending' | 'accepted' | 'conflict';
 export interface LocalMutation {
@@ -8,7 +9,8 @@ export interface LocalMutation {
 }
 interface StateRecord { scope: string; order: string[]; config: Omit<DbSchema, 'data'>; }
 interface EntityRecord { key: string; scope: string; item: BrainDumpItem; }
-interface DraftRecord { id: string; scope: string; text: string; createdAt: number; }
+interface DraftRecord { id: string; scope: string; text: string; createdAt: number; results?: ParserResultV2[]; originalResults?: ParserResultV2[]; completedAt?: number; review?: boolean; }
+export interface DraftCompletion { id: string; results: ParserResultV2[]; originalResults?: ParserResultV2[]; review: boolean; }
 let connection: Promise<IDBDatabase> | undefined;
 let writing: Promise<unknown> = Promise.resolve();
 const request = <T>(value: IDBRequest<T>) => new Promise<T>((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
@@ -48,10 +50,10 @@ export async function readLocalState(scope: string) {
   return { data: assemble(state, entities), operations: operations.sort((a, b) => a.createdAt - b.createdAt) };
 }
 /** The entity state and its pending mutations commit in ONE local transaction. */
-export function persistLocalState(scope: string, next: DbSchema, baseline?: DbSchema, recordMutations = true): Promise<void> {
-  const snapshot = structuredClone(next);
+export function persistLocalState(scope: string, next: DbSchema, baseline?: DbSchema, recordMutations = true, completedDraft?: DraftCompletion): Promise<void> {
+  const snapshot = structuredClone(Object.fromEntries(Object.entries(next).filter(([key]) => key === 'data' || Object.hasOwn(configTables, key))) as unknown as DbSchema);
   const task = async () => {
-    const db = await open(); const transaction = db.transaction(['states', 'entities', 'outbox'], 'readwrite'); const done = completion(transaction);
+    const db = await open(); const transaction = db.transaction(['states', 'entities', 'outbox', 'drafts'], 'readwrite'); const done = completion(transaction);
     const stateStore = transaction.objectStore('states'); const entityStore = transaction.objectStore('entities'); const outbox = transaction.objectStore('outbox');
     try {
       const [state, entities, pending] = await Promise.all([
@@ -59,6 +61,7 @@ export function persistLocalState(scope: string, next: DbSchema, baseline?: DbSc
         request(entityStore.index('scope').getAll(scope)) as Promise<EntityRecord[]>,
         request(outbox.index('scope').getAll(scope)) as Promise<LocalMutation[]>,
       ]);
+      for (const operation of pending) if (operation.entityKind === 'config' && !Object.hasOwn(configTables, operation.entityId)) outbox.delete(operation.operationId);
       const previous = assemble(state, entities) || baseline || { data: [] };
       const beforeById = new Map(previous.data.map(item => [item.id, item])); const afterById = new Map(snapshot.data.map(item => [item.id, item]));
       const changes: Array<{ entityKind: 'item' | 'config'; entityId: string; before: unknown; after: unknown }> = [];
@@ -68,7 +71,7 @@ export function persistLocalState(scope: string, next: DbSchema, baseline?: DbSc
         if (after) entityStore.put({ key: `${scope}|${entityId}`, scope, item: after }); else entityStore.delete(`${scope}|${entityId}`);
       }
       for (const field of new Set([...Object.keys(previous), ...Object.keys(snapshot)])) {
-        if (field === 'data') continue;
+        if (!Object.hasOwn(configTables, field)) continue;
         const before = (previous as any)[field]; const after = (snapshot as any)[field];
         if (!equal(before, after)) changes.push({ entityKind: 'config', entityId: field, before: before ?? null, after: after ?? null });
       }
@@ -80,7 +83,12 @@ export function persistLocalState(scope: string, next: DbSchema, baseline?: DbSc
         if (equal(mutation.before, mutation.after)) outbox.delete(mutation.operationId); else outbox.put(mutation);
       }
       const { data: _items, ...config } = snapshot;
-      stateStore.put({ scope, order: snapshot.data.map(item => item.id), config });
+      const nextState = { scope, order: snapshot.data.map(item => item.id), config };
+      if (!equal(state, nextState)) stateStore.put(nextState);
+      if (completedDraft) {
+        const draft = await request(transaction.objectStore('drafts').get(completedDraft.id)) as DraftRecord | undefined;
+        if (draft?.scope === scope) transaction.objectStore('drafts').put({ ...draft, results: completedDraft.results, originalResults: completedDraft.originalResults || completedDraft.results, review: completedDraft.review, completedAt: Date.now() });
+      }
       // Populate unmodified baseline entities on the first write as well.
       if (!state) for (const item of snapshot.data) entityStore.put({ key: `${scope}|${item.id}`, scope, item });
       await done;

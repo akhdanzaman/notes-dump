@@ -1,12 +1,12 @@
-import { BrainDumpItem, BudgetConfig, ItemType } from "../types";
-import { getCanonicalMetaValue } from "./canonicalization/accessors";
+import { BrainDumpItem, BudgetConfig, ItemType } from "../types.js";
+import { getCanonicalMetaValue } from "./canonicalization/accessors.js";
 import {
   getCommodityForItemAnalytics,
   getSubcommodityForItemAnalytics,
-} from "./canonicalization/transactionInference";
-import { ACHIEVED_GOAL_FINANCE_TYPE } from "./financeTypeUtils";
-import { getShoppingTransactionDate } from "./shoppingDateUtils";
-import { getTransactionBudgetAllocations } from "./transactionLineItems";
+} from "./canonicalization/transactionInference.js";
+import { ACHIEVED_GOAL_FINANCE_TYPE } from "./financeTypeUtils.js";
+import { getShoppingTransactionDate } from "./shoppingDateUtils.js";
+import { getTransactionBudgetAllocations } from "./transactionLineItems.js";
 
 export interface BudgetSubcommodityBreakdown {
   name: string;

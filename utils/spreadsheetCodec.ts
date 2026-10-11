@@ -1,4 +1,4 @@
-import type { BrainDumpItem } from '../types';
+import type { BrainDumpItem } from '../types.js';
 export const ENTITY_SCHEMA_VERSION = 3;
 export const ENTITY_JSON_COLUMN = '_Entity_JSON';
 export const ENTITY_SCHEMA_COLUMN = '_Schema';

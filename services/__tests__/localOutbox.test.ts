@@ -74,3 +74,18 @@ test('explicit conflict review preserves unrelated remote fields and creates a n
   assert.notEqual(local.operations[0].operationId, previous.operationId);
   assert.equal((local.operations[0].before as any).content, 'remote');
 });
+test('parser completion and parsed entities persist atomically, so restart does not suggest parsing the same input again', async () => {
+  const scope = 'parser-complete'; await persistDraft(scope, 'parser-draft-complete', 'a note');
+  await persistLocalState(scope, base, { data: [] }, true, { id: 'parser-draft-complete', results: [], review: false });
+  closeLocalStore(); const local = await readLocalState(scope); const draft = (await readDrafts(scope))[0];
+  assert.equal(local.data?.data[0].id, item.id); assert.equal(local.operations.length, 4);
+  assert.ok(draft.completedAt); assert.equal(draft.review, false);
+});
+
+ test('save options do not become durable config mutations', async () => {
+  const scope = 'options-boundary';
+  await persistLocalState(scope, { data: [], appSettings: { hideMoney: true }, forceOverwrite: false } as any);
+  const local = await readLocalState(scope);
+  assert.equal(local.operations.some(operation => operation.entityId === 'forceOverwrite'), false);
+  assert.equal(Object.hasOwn(local.data!, 'forceOverwrite'), false);
+});

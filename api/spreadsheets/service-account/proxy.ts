@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { assertServiceAccountRequestAllowed, assertServiceAccountSessionAllowed, assertServiceAccountSpreadsheetAllowed, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId } from '../../_lib/googleServiceAccount.js';
+import { assertServiceAccountRequestAllowed, assertServiceAccountSessionAllowed, assertServiceAccountSpreadsheetAllowed, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId, isSpreadsheetMaintenanceRequestAllowed } from '../../_lib/googleServiceAccount.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || 'GET')) {
@@ -13,7 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     assertServiceAccountSessionAllowed(req.headers);
     assertServiceAccountSpreadsheetAllowed(spreadsheetId);
     const path = validateSheetsPath(req.query.path);
-    if (process.env.SPREADSHEET_DURABLE_SYNC === 'true' && !['GET', 'HEAD'].includes(req.method || 'GET')) {
+    if (process.env.SPREADSHEET_DURABLE_SYNC === 'true' && !['GET', 'HEAD'].includes(req.method || 'GET') && !isSpreadsheetMaintenanceRequestAllowed(req.headers)) {
       return res.status(409).json({ code: 'DURABLE_WRITER_REQUIRED', error: 'Direct writes disabled; use durable sync. Reports can be refreshed before activation.' });
     }
     const body = req.method === 'GET' || req.method === 'HEAD'

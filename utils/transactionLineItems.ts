@@ -1,9 +1,9 @@
-import { decodeSheetNumber } from './spreadsheetCodec';
+import { decodeSheetNumber } from './spreadsheetCodec.js';
 import {
   BrainDumpItem,
   TransactionLineAllocationMode,
   TransactionLineItem,
-} from '../types';
+} from '../types.js';
 
 const normalizeText = (value: unknown): string =>
   typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';

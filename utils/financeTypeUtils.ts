@@ -1,4 +1,4 @@
-import { FinanceType, LoanTransactionKind } from '../types';
+import { FinanceType, LoanTransactionKind } from '../types.js';
 
 export const ACHIEVED_GOAL_FINANCE_TYPE: FinanceType = 'achieved_goal';
 export const SAVING_WITHDRAWAL_FINANCE_TYPE: FinanceType = 'saving_withdrawal';

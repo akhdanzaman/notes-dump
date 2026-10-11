@@ -1,4 +1,4 @@
-import { CanonicalValue, ParsedItemMetaV2 } from '../../types';
+import { CanonicalValue, ParsedItemMetaV2 } from '../../types.js';
 
 export const CANONICAL_OTHER_VALUE = 'others';
 

@@ -1,4 +1,4 @@
-import { BrainDumpItem, CanonicalField, ParsedItemMetaV2 } from '../../types';
+import { BrainDumpItem, CanonicalField, ParsedItemMetaV2 } from '../../types.js';
 
 export type CanonicalMetaField = Extract<CanonicalField, 'merchant' | 'paymentMethod' | 'commodity' | 'subcommodity'>;
 

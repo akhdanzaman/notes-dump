@@ -1,5 +1,5 @@
-import { BrainDumpItem, ItemType, LoanTransactionKind } from '../types';
-import { isLoanFinanceType } from './financeTypeUtils';
+import { BrainDumpItem, ItemType, LoanTransactionKind } from '../types.js';
+import { isLoanFinanceType } from './financeTypeUtils.js';
 
 export type LoanAccountDirection = 'receivable' | 'payable';
 export type LoanAccountStatus = 'open' | 'due_soon' | 'overdue' | 'paid';

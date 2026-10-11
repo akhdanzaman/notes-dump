@@ -489,10 +489,7 @@ const getItemExportSheetNames = (item: BrainDumpItem): string[] => {
     if (item.meta.shoppingCategory === 'saving' || item.meta.shoppingCategory === 'investment') {
       sheets.push(SAVING_GOALS_INVESTMENTS_SHEET_NAME);
     } else {
-      sheets.push('Shopping');
-      if (item.status === 'done') {
-        sheets.push('Transactions');
-      }
+      sheets.push(item.status === 'done' ? 'Transactions' : 'Shopping');
     }
   } else if (item.type === ItemType.EVENT) {
     sheets.push('Events');

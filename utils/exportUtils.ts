@@ -1,21 +1,21 @@
-import { encodeEntity, ENTITY_JSON_COLUMN, ENTITY_SCHEMA_COLUMN, ENTITY_SCHEMA_VERSION, normalizeIso } from './spreadsheetCodec';
-import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType, ChatMessage, CanonicalRule } from '../types';
-import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
-import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from './canonicalization/transactionInference';
-import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel';
-import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils';
-import { getSavingTransactionDelta } from './savingTransactionUtils';
-import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils';
-import { encodeShoppingLineItemsForSheet } from './shoppingLineItems';
-import { encodeTransactionLineItemsForSheet, getTransactionBudgetAllocations } from './transactionLineItems';
-import { getWalletStats } from './selectors/moneySelectors';
+import { encodeEntity, ENTITY_JSON_COLUMN, ENTITY_SCHEMA_COLUMN, ENTITY_SCHEMA_VERSION, normalizeIso } from './spreadsheetCodec.js';
+import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType, ChatMessage, CanonicalRule } from '../types.js';
+import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors.js';
+import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from './canonicalization/transactionInference.js';
+import { encodeSubtasksForSheet, getDeepWorkChildren } from './deepWorkTodoModel.js';
+import { ACHIEVED_GOAL_FINANCE_TYPE } from './financeTypeUtils.js';
+import { getSavingTransactionDelta } from './savingTransactionUtils.js';
+import { getShoppingDueDate, getShoppingTimelineDate, getShoppingTransactionDate } from './shoppingDateUtils.js';
+import { encodeShoppingLineItemsForSheet } from './shoppingLineItems.js';
+import { encodeTransactionLineItemsForSheet, getTransactionBudgetAllocations } from './transactionLineItems.js';
+import { getWalletStats } from './selectors/moneySelectors.js';
 import {
   buildDailyMoneyDriverSummary,
   buildDataQualityIssues,
   buildDataQualitySheetData,
   buildSpreadsheetHealthSummary,
-} from './spreadsheetDiagnostics';
-import { formatCurrencyAmount } from './formatters';
+} from './spreadsheetDiagnostics.js';
+import { formatCurrencyAmount } from './formatters.js';
 
 export interface SheetData {
   name: string;
@@ -553,7 +553,7 @@ export const generateExportData = (
     });
 
   // --- Sheet 3: Shopping ---
-  const shopping = items.filter(i => i.type === ItemType.SHOPPING && !isSavingOrInvestmentItem(i)).map(item => ({
+  const shopping = items.filter(i => i.type === ItemType.SHOPPING && i.status !== 'done' && !isSavingOrInvestmentItem(i)).map(item => ({
       Status: item.status,
       Item: item.content,
       Amount: item.meta.amount || 0,

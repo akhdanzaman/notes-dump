@@ -1,3 +1,4 @@
+import { removeDraft } from '../services/localOutbox';
 import type { SaveChanges } from '../utils/saveChanges';
 import { useCallback } from 'react';
 import { BrainDumpItem, CanonicalRule, EnrichmentTask, ParserResultV2, ParsingTask } from '../types';
@@ -182,12 +183,13 @@ export const useEnrichment = (deps: EnrichmentDeps) => {
     canonicalRulesRef.current = nextCanonicalRules;
     setCanonicalRules(nextCanonicalRules);
     const guardedResults = guardParserResultMultiplicity(updatedResults, review.text).results;
-    executeParserResults(guardedResults, review.text, id, nextCanonicalRules);
+    void Promise.resolve(executeParserResults(guardedResults, review.text, id, nextCanonicalRules)).catch(error => console.error("Review remains in local draft storage", error));
     setPendingReviews((prev: any[]) => prev.filter((r: any) => r.id !== id));
     clearResolvedReviewActivity(id);
   };
 
   const handleRejectReview = (id: string) => {
+    if (typeof indexedDB !== 'undefined') void removeDraft(id).catch(error => console.error('Rejected draft could not be removed', error));
     setPendingReviews((prev: any[]) => prev.filter((r: any) => r.id !== id));
     clearResolvedReviewActivity(id);
   };

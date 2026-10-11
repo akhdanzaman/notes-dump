@@ -1,13 +1,13 @@
-import { decodeEntity, decodeSheetJson, decodeSheetNumber, ENTITY_JSON_COLUMN, ENTITY_SCHEMA_COLUMN, ENTITY_SCHEMA_VERSION } from '../utils/spreadsheetCodec';
-import { parseConfigSheets } from '../utils/spreadsheetConfig';
+import { decodeEntity, decodeSheetJson, decodeSheetNumber, ENTITY_JSON_COLUMN, ENTITY_SCHEMA_COLUMN, ENTITY_SCHEMA_VERSION } from '../utils/spreadsheetCodec.js';
+import { parseConfigSheets } from '../utils/spreadsheetConfig.js';
 import { v4 as uuidv4 } from 'uuid';
-import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat, SkillSchedule } from '../types';
-import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils';
-import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel';
-import { SAVING_GOALS_INVESTMENTS_SHEET_NAME } from '../utils/exportUtils';
-import { parseShoppingLineItemsFromSheet, sumShoppingLineItems } from '../utils/shoppingLineItems';
-import { parseTransactionLineItemsFromSheet, sumTransactionLineItems } from '../utils/transactionLineItems';
-import { parseSpreadsheetBudget } from '../utils/spreadsheetBudget';
+import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat, SkillSchedule } from '../types.js';
+import { ACHIEVED_GOAL_FINANCE_TYPE, getAchievedGoalName, parseFinanceType } from '../utils/financeTypeUtils.js';
+import { applyDeepWorkChildProgress, applyDeepWorkCompletionSemantics, normalizeDeepWorkTodoMeta, parseSubtasksFromSheet } from '../utils/deepWorkTodoModel.js';
+import { SAVING_GOALS_INVESTMENTS_SHEET_NAME } from '../utils/exportUtils.js';
+import { parseShoppingLineItemsFromSheet, sumShoppingLineItems } from '../utils/shoppingLineItems.js';
+import { parseTransactionLineItemsFromSheet, sumTransactionLineItems } from '../utils/transactionLineItems.js';
+import { parseSpreadsheetBudget } from '../utils/spreadsheetBudget.js';
 
 const fmtDate = (dateStr?: string) => {
     if (!dateStr) return '';

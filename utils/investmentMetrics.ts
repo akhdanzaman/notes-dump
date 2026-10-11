@@ -1,4 +1,4 @@
-import { BrainDumpItem } from '../types';
+import { BrainDumpItem } from '../types.js';
 
 export interface InvestmentMetrics {
   investedCapital: number;

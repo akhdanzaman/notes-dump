@@ -1,4 +1,4 @@
-import { ItemType } from '../types';
+import { ItemType } from '../types.js';
 export interface SyncOperation {
   operationId: string; scope: string; deviceId: string;
   entityKind: 'item' | 'config'; entityId: string;
@@ -7,7 +7,7 @@ export interface SyncOperation {
 export interface SyncReceipt { operationId: string; state: 'committed' | 'conflict'; error?: string; }
 const normalize = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(normalize);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, normalize((value as any)[key])]));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).filter(key => (value as any)[key] !== undefined).sort().map(key => [key, normalize((value as any)[key])]));
   return value ?? null;
 };
 export const equivalent = (a: unknown, b: unknown) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));

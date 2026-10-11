@@ -1,5 +1,5 @@
-import { ShoppingLineItem } from '../types';
-import { decodeSheetNumber } from './spreadsheetCodec';
+import { ShoppingLineItem } from '../types.js';
+import { decodeSheetNumber } from './spreadsheetCodec.js';
 
 const cleanOptionalText = (value?: unknown) => {
   const trimmed = typeof value === 'string' ? value.trim() : '';

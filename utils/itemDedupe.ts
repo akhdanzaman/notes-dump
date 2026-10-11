@@ -1,4 +1,4 @@
-import { BrainDumpItem, ItemType } from '../types';
+import { BrainDumpItem, ItemType } from '../types.js';
 
 export interface SemanticDuplicateReviewCandidate {
   itemIds: string[];

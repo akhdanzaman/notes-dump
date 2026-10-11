@@ -45,6 +45,12 @@ const safeEqual = (a: string, b: string) => {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 };
 
+export const isSpreadsheetMaintenanceRequestAllowed = (headers: Record<string, unknown>) => {
+  const expected = process.env.SPREADSHEET_MIGRATION_SECRET || '';
+  const supplied = headers['x-arkaiv-migration'];
+  return expected.length >= 32 && typeof supplied === 'string' && safeEqual(expected, supplied);
+};
+
 const parseJsonMaybeBase64 = (value: string) => {
   const trimmed = value.trim();
   if (trimmed.startsWith('{')) return JSON.parse(trimmed);

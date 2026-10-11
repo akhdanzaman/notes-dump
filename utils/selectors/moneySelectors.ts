@@ -1,30 +1,30 @@
-import { createWalletLookup, type WalletLookup } from '../walletLookup';
+import { createWalletLookup, type WalletLookup } from '../walletLookup.js';
 import {
   BrainDumpItem,
   ItemType,
   Wallet,
   BudgetConfig,
   SortOrder,
-} from "../../types";
+} from "../../types.js";
 import {
   getCanonicalMetaValue,
   getCanonicalOrRawItemValue,
   getRawMetaValue,
   itemMatchesCanonicalSearch,
-} from "../canonicalization/accessors";
+} from "../canonicalization/accessors.js";
 import {
   ACHIEVED_GOAL_FINANCE_TYPE,
   SAVING_WITHDRAWAL_FINANCE_TYPE,
-} from "../financeTypeUtils";
-import { getSavingTransactionDelta } from "../savingTransactionUtils";
+} from "../financeTypeUtils.js";
+import { getSavingTransactionDelta } from "../savingTransactionUtils.js";
 import {
   getShoppingDueDate,
   getShoppingTransactionDate,
-} from "../shoppingDateUtils";
-import { BudgetAnalyticsViewMode, getWeekBounds } from "../budgetAnalytics";
-import { getInvestmentMetrics } from "../investmentMetrics";
-import { getTransactionBudgetAllocations } from "../transactionLineItems";
-import { getLoanAccounts, getLoanSummary } from "../loanAccounts";
+} from "../shoppingDateUtils.js";
+import { BudgetAnalyticsViewMode, getWeekBounds } from "../budgetAnalytics.js";
+import { getInvestmentMetrics } from "../investmentMetrics.js";
+import { getTransactionBudgetAllocations } from "../transactionLineItems.js";
+import { getLoanAccounts, getLoanSummary } from "../loanAccounts.js";
 
 const resolveWalletBalanceKey = (wallets: WalletLookup, value?: string) => wallets.resolve(value);
 

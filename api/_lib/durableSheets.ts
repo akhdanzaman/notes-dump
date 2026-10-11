@@ -1,9 +1,9 @@
-import { applyLosslessConfig, CONFIG_SHEET, configTables } from '../../utils/losslessConfig';
-import type { DbSchema, BrainDumpItem } from '../../types';
-import { generateExportData, type SheetData } from '../../utils/exportUtils';
-import { reconcileSpreadsheetData } from '../../services/spreadsheetReconciler';
-import { parseConfigSheets } from '../../utils/spreadsheetConfig';
-import { mergeMutation, SyncConflict, DeferredDependency, type SyncOperation, type SyncReceipt, equivalent } from '../../utils/syncProtocol';
+import { applyLosslessConfig, CONFIG_SHEET, configTables } from '../../utils/losslessConfig.js';
+import type { DbSchema, BrainDumpItem } from '../../types.js';
+import { generateExportData, type SheetData } from '../../utils/exportUtils.js';
+import { reconcileSpreadsheetData } from '../../services/spreadsheetReconciler.js';
+import { parseConfigSheets } from '../../utils/spreadsheetConfig.js';
+import { mergeMutation, SyncConflict, DeferredDependency, type SyncOperation, type SyncReceipt, equivalent } from '../../utils/syncProtocol.js';
 import { fetchWithServiceAccount } from './googleServiceAccount.js';
 
 export const RECEIPT_SHEET = '_Sync_Receipts';
@@ -89,7 +89,7 @@ export class DurableSheets {
     if (operation.parentOperationId) {
       const parent = receiptRows.find(row => row[0] === operation.parentOperationId);
       if (!parent) throw new DeferredDependency('Earlier mutation has not committed yet');
-      if (parent[1] !== 'committed') return this.recordConflict(operation, properties, 'Earlier mutation needs conflict review');
+      if (parent[1] !== 'committed') return this.recordConflict(operation, properties, 'Earlier mutation needs conflict review', receiptRows.length);
     }
     const names = affectedTables(operation);
     const context = ['Wallets Config', 'Skills Config', 'Budget Rules', 'Themes & Settings', CONFIG_SHEET];
@@ -103,35 +103,42 @@ export class DurableSheets {
     const current = operation.entityKind === 'item' ? currentDb.data.find(item => item.id === operation.entityId) ?? null : (currentDb as any)[operation.entityId] ?? null;
     let after: unknown;
     try { after = mergeMutation(operation.before, operation.after, current); }
-    catch (error) { if (error instanceof SyncConflict) return this.recordConflict(operation, properties, error.message); throw error; }
+    catch (error) { if (error instanceof SyncConflict) return this.recordConflict(operation, properties, error.message, receiptRows.length); throw error; }
     const next = structuredClone(currentDb);
     if (operation.entityKind === 'item') next.data = [...next.data.filter(item => item.id !== operation.entityId), ...(after ? [after as BrainDumpItem] : [])];
     else if (after === null) delete (next as any)[operation.entityId]; else (next as any)[operation.entityId] = after;
     const beforeExport = exportCore(currentDb); const afterExport = exportCore(next);
     const requests: any[] = []; let nextSheetId = Math.max(0, ...[...properties.values()].map(p => p.sheetId)) + 1;
-    const ensure = (name: string, header: unknown[]) => {
+    const ensure = (name: string, header: unknown[], writeHeader = false) => {
       if (!properties.has(name)) {
         properties.set(name, { sheetId: nextSheetId++, title: name, gridProperties: { rowCount: 1000, columnCount: Math.max(26, header.length) } });
         requests.push({ addSheet: { properties: { ...properties.get(name), ...(name.startsWith('_Sync_') ? { hidden: true } : {}) } } });
+        requests.push(update(properties.get(name).sheetId, 0, 0, header));
+      } else if (writeHeader) {
         requests.push(update(properties.get(name).sheetId, 0, 0, header));
       }
       const p = properties.get(name);
       if (p.gridProperties.columnCount < header.length) requests.push({ updateSheetProperties: { properties: { sheetId: p.sheetId, gridProperties: { columnCount: header.length } }, fields: 'gridProperties.columnCount' } });
       return p;
     };
+    const append = (p: any, rows: number, values: unknown[]) => {
+      const row = Math.max(1, rows);
+      if (row >= p.gridProperties.rowCount) requests.push({ updateSheetProperties: { properties: { sheetId: p.sheetId, gridProperties: { rowCount: row + 250 } }, fields: 'gridProperties.rowCount' } });
+      requests.push(update(p.sheetId, row, 0, values));
+    };
     for (const name of names) {
       const beforeSheet = beforeExport.find(sheet => sheet.name === name)!; const afterSheet = afterExport.find(sheet => sheet.name === name)!;
       const physical: any[][] = ranges.find((range: any) => range.range.startsWith(`${quote(name)}!`) || range.range.startsWith(`${name}!`))?.values || [];
       const header = afterSheet.data[0];
       if (physical.length && !equivalent(physical[0].slice(0, header.length), header)) throw new Error(`MIGRATION_REQUIRED: ${name}`);
-      const p = ensure(name, header); const idColumn = header.indexOf('ID');
+      const p = ensure(name, header, physical.length === 0); const idColumn = header.indexOf('ID');
       if (operation.entityKind === 'item') {
         const matches = physical.flatMap((row, index) => index && row[idColumn] === operation.entityId ? [index] : []);
         if (matches.length > 1) throw new Error(`Duplicate ID in ${name}; repair before replay`);
         const target = afterSheet.data.find((row, index) => index > 0 && row[idColumn] === operation.entityId);
         const old = beforeSheet.data.find((row, index) => index > 0 && row[idColumn] === operation.entityId);
         if (!target) { if (matches.length) requests.push(update(p.sheetId, matches[0], 0, header.map(() => ''))); }
-        else if (!matches.length) requests.push({ appendCells: { sheetId: p.sheetId, rows: [rowData(target)], fields: 'userEnteredValue' } });
+        else if (!matches.length) append(p, physical.length, target);
         else for (let col = 0; col < header.length; col++) if (!equivalent(old?.[col] ?? '', target[col] ?? '')) requests.push(update(p.sheetId, matches[0], col, [target[col]]));
       } else {
         const maxRows = Math.max(beforeSheet.data.length, afterSheet.data.length);
@@ -141,28 +148,32 @@ export class DurableSheets {
       }
     }
     if (operation.entityKind === 'config') {
-      const p = ensure(CONFIG_SHEET, ['Field', 'JSON']);
+      const p = ensure(CONFIG_SHEET, ['Field', 'JSON'], configRows.length === 0);
       const projectionRanges = afterExport.map(sheet => ({ range: `${quote(sheet.name)}!A:ZZ`, values: sheet.data }));
       const projectedConfig = parseConfigSheets(projectionRanges);
       const projectedDb = reconcileSpreadsheetData({ data: [], chatHistory: projectedConfig.chatHistory || [], canonicalRules: projectedConfig.canonicalRules || [] }, projectionRanges, { authoritativeEmpty: true });
       const row = [operation.entityId, JSON.stringify({ value: after, projected: (projectedDb as any)[operation.entityId] ?? null })];
       if (String(row[1]).length > 49_000) throw new Error('Config exceeds spreadsheet cell limit');
       const index = configRows.findIndex((entry: any[]) => entry[0] === operation.entityId);
-      if (index >= 1) requests.push(update(p.sheetId, index, 0, row)); else requests.push({ appendCells: { sheetId: p.sheetId, rows: [rowData(row)], fields: 'userEnteredValue' } });
+      if (index >= 1) requests.push(update(p.sheetId, index, 0, row)); else append(p, configRows.length, row);
     }
-    const p = ensure(RECEIPT_SHEET, ['Operation_ID', 'State', 'Entity_ID', 'Error', 'Committed_At']);
-    requests.push({ appendCells: { sheetId: p.sheetId, rows: [rowData([operation.operationId, 'committed', operation.entityId, '', new Date().toISOString()])], fields: 'userEnteredValue' } });
+    const p = ensure(RECEIPT_SHEET, ['Operation_ID', 'State', 'Entity_ID', 'Error', 'Committed_At'], receiptRows.length === 0);
+    append(p, receiptRows.length, [operation.operationId, 'committed', operation.entityId, '', new Date().toISOString()]);
     await this.commit(scope, requests);
     return { operationId: operation.operationId, state: 'committed' };
   }
-  private async recordConflict(operation: SyncOperation, properties: Map<string, any>, error: string): Promise<SyncReceipt> {
+  private async recordConflict(operation: SyncOperation, properties: Map<string, any>, error: string, receiptCount: number): Promise<SyncReceipt> {
     const requests: any[] = [];
     const sheetId = properties.get(RECEIPT_SHEET)?.sheetId ?? Math.max(0, ...[...properties.values()].map(p => p.sheetId)) + 1;
     if (!properties.has(RECEIPT_SHEET)) {
       requests.push({ addSheet: { properties: { sheetId, title: RECEIPT_SHEET, hidden: true } } });
+    }
+    if (!properties.has(RECEIPT_SHEET) || !receiptCount) {
       requests.push(update(sheetId, 0, 0, ['Operation_ID', 'State', 'Entity_ID', 'Error', 'Committed_At']));
     }
-    requests.push({ appendCells: { sheetId, rows: [rowData([operation.operationId, 'conflict', operation.entityId, error, new Date().toISOString()])], fields: 'userEnteredValue' } });
+    const row = Math.max(1, receiptCount); const capacity = properties.get(RECEIPT_SHEET)?.gridProperties.rowCount || 1000;
+    if (row >= capacity) requests.push({ updateSheetProperties: { properties: { sheetId, gridProperties: { rowCount: row + 250 } }, fields: 'gridProperties.rowCount' } });
+    requests.push(update(sheetId, row, 0, [operation.operationId, 'conflict', operation.entityId, error, new Date().toISOString()]));
     await this.commit(operation.scope, requests);
     return { operationId: operation.operationId, state: 'conflict', error };
   }

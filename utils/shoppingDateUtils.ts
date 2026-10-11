@@ -1,4 +1,4 @@
-import { BrainDumpItem } from '../types';
+import { BrainDumpItem } from '../types.js';
 
 const isValidDateString = (value?: string): value is string => {
   if (!value || value === 'null' || value === 'undefined') return false;

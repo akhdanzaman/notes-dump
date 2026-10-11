@@ -1,5 +1,5 @@
 import { durableCapabilities, reconcileDurableReceipts, submitDurableOperations } from './durableSync';
-import { persistLocalState, readLocalState, reconstructBaseline, changeOperationState, acknowledgeOperations, localScope } from './localOutbox';
+import { persistLocalState, readLocalState, reconstructBaseline, changeOperationState, acknowledgeOperations, localScope, type DraftCompletion } from './localOutbox';
 import { DbSchema, SyncProgressCallback, SyncResult } from "../types";
 import { fetchSpreadsheetDb, syncSpreadsheetData, getSpreadsheetConfig, getSpreadsheetHistory, SpreadsheetHistoryEntry, getCachedSpreadsheetDb, cacheSpreadsheetDbForMigration, cachePendingSpreadsheetWrite, getPendingSpreadsheetWrite, clearPendingSpreadsheetWrite } from "./spreadsheetService";
 import { mergeDbData } from "../utils/mergeUtils";
@@ -111,10 +111,10 @@ export const getDatabaseHistory = async (): Promise<SpreadsheetHistoryEntry[]> =
   return await getSpreadsheetHistory();
 };
 
-export async function persistForSave(db: DbSchema) {
+export async function persistForSave(db: DbSchema, completedDraft?: DraftCompletion) {
   const scope = localScope(getSpreadsheetConfig()?.spreadsheetId);
   const sanitized = sanitizeBrainDumpItemsForPersistence(db.data, { availableWallets: db.wallets || [], availableBudgetRules: db.budgetConfig?.rules || [] });
   const snapshot = { ...db, data: dedupeBrainDumpItems(sanitized.items).items };
-  if (typeof indexedDB !== 'undefined') await persistLocalState(scope, snapshot, getPendingSpreadsheetWrite()?.base || getCachedSpreadsheetDb() || undefined);
+  if (typeof indexedDB !== 'undefined') await persistLocalState(scope, snapshot, getPendingSpreadsheetWrite()?.base || getCachedSpreadsheetDb() || undefined, true, completedDraft);
   else cachePendingSpreadsheetWrite(snapshot);
 }

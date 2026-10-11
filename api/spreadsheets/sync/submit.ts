@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { QueueClient } from '@vercel/queue';
 import { createHash } from 'node:crypto';
 import { authorizeDurable, durableReady } from '../../_lib/durableAuth.js';
-import { validateOperation } from '../../../utils/syncProtocol';
+import { validateOperation } from '../../../utils/syncProtocol.js';
 const queue = new QueueClient({ region: 'iad1' });
 export const createSubmitHandler = (send: (operation: ReturnType<typeof validateOperation>, key: string) => Promise<unknown>) => async (req: VercelRequest, res: VercelResponse) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });

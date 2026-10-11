@@ -1,5 +1,5 @@
-import type { DbSchema } from '../types';
-import { mergeMutation } from './syncProtocol';
+import type { DbSchema } from '../types.js';
+import { mergeMutation } from './syncProtocol.js';
 export const CONFIG_SHEET = '_Sync_Config';
 export const configTables: Record<string, string[]> = {
   wallets: ['Wallets Config'], skills: ['Skills Config'], budgetConfig: ['Budget Rules', 'Themes & Settings'],

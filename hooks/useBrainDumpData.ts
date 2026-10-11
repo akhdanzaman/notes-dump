@@ -434,7 +434,10 @@ export const useBrainDumpData = () => {
         if (typeof indexedDB === 'undefined') return;
         let active = true;
         void readDrafts(localScope(getSpreadsheetConfig()?.spreadsheetId)).then(drafts => {
-            if (active && drafts.length) setParsingTasks(previous => [...previous, ...drafts.filter(draft => !previous.some(task => task.id === draft.id)).map(draft => ({ id: draft.id, text: draft.text, createdAt: draft.createdAt, status: 'failed' as const, error: 'Proses terhenti. Input tersimpan di perangkat; tinjau atau coba lagi.' }))]);
+            if (active && drafts.length) {
+                setParsingTasks(previous => [...previous, ...drafts.filter(draft => !previous.some(task => task.id === draft.id)).map(draft => ({ id: draft.id, text: draft.text, createdAt: draft.createdAt, status: draft.completedAt ? 'success' as const : 'failed' as const, results: draft.results, completedAt: draft.completedAt, error: draft.completedAt ? undefined : 'Proses terhenti. Input tersimpan di perangkat; tinjau atau coba lagi.' }))]);
+                setPendingReviews(previous => [...previous, ...drafts.filter(draft => draft.review && draft.results && !previous.some(review => review.id === draft.id)).map(draft => ({ id: draft.id, text: draft.text, results: draft.results!, originalResults: draft.originalResults || draft.results! }))]);
+            }
         }).catch(error => { if (active) setError(error instanceof Error ? error.message : 'Draft recovery failed'); });
         return () => { active = false; };
     }, []);
@@ -952,7 +955,7 @@ export const useBrainDumpData = () => {
             }
         });
 
-        setItems((prev) => {
+        const applyResults = (prev: BrainDumpItem[]) => {
             const prevWithoutOptimistic = prev.filter(i => i.id !== tempId);
             parsingUndoSnapshotsRef.current[tempId] = {
                 items: prevWithoutOptimistic,
@@ -1386,6 +1389,11 @@ export const useBrainDumpData = () => {
             );
 
             return updated;
+        };
+        setItems(applyResults(itemsRef.current));
+        return persistForSave({ data: itemsRef.current, budgetConfig: budgetConfigRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, appSettings: appSettingsRef.current, canonicalRules: canonicalRulesRef.current, customPrompt: customPromptRef.current, chatHistory: chatHistoryRef.current, monthlyThemeImages: monthlyThemeImagesRef.current }, { id: tempId, results: parsedResults, review: false }).catch(error => {
+            setError(error instanceof Error ? error.message : 'Parser persistence failed');
+            throw error;
         });
     };
 
@@ -1455,7 +1463,7 @@ budgetConfigRef.current?.rules || []
             if (enableDraftReview) {
                 setPendingReviews(prev => [{ id: tempId, text, results: parsedResults, originalResults }, ...prev]);
             } else {
-                executeParserResults(parsedResults, text, tempId);
+                await executeParserResults(parsedResults, text, tempId);
                 enqueueEnrichmentForParserTask(tempId, text);
             }
 
@@ -1467,8 +1475,8 @@ budgetConfigRef.current?.rules || []
                 duplicateGuardReason: guardedResults.reason,
                 completedAt: Date.now()
             } : t));
-            if (!enableDraftReview && typeof indexedDB !== 'undefined') {
-                await persistForSave({ data: itemsRef.current, budgetConfig: budgetConfigRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, appSettings: appSettingsRef.current, canonicalRules: canonicalRulesRef.current, customPrompt: customPromptRef.current, chatHistory: chatHistoryRef.current, monthlyThemeImages: monthlyThemeImagesRef.current });
+            if (enableDraftReview && typeof indexedDB !== 'undefined') {
+                await persistForSave({ data: itemsRef.current, budgetConfig: budgetConfigRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, appSettings: appSettingsRef.current, canonicalRules: canonicalRulesRef.current, customPrompt: customPromptRef.current, chatHistory: chatHistoryRef.current, monthlyThemeImages: monthlyThemeImagesRef.current }, { id: tempId, results: parsedResults, originalResults, review: true });
                 // Keep source input until the parsing task is explicitly cleared; a crash before React applies all actions must not lose it.
             }
         } catch (err: any) {

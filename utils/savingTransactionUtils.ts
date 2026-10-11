@@ -1,5 +1,5 @@
-import { BrainDumpItem, ItemType } from '../types';
-import { SAVING_WITHDRAWAL_FINANCE_TYPE } from './financeTypeUtils';
+import { BrainDumpItem, ItemType } from '../types.js';
+import { SAVING_WITHDRAWAL_FINANCE_TYPE } from './financeTypeUtils.js';
 
 export const getSavingTransactionDelta = (item: BrainDumpItem): number => {
   if (item.type !== ItemType.FINANCE || item.status !== 'done') return 0;
