@@ -13,12 +13,12 @@ import { generateExportData } from '../../utils/exportUtils';
 import { DbSchema, ItemType } from '../../types';
 
 test('spreadsheet fetch ranges include the expanded schema columns', () => {
-  assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:AA');
-  assert.equal(SPREADSHEET_FETCH_RANGES.Todos, 'A:AZ');
-  assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:AA');
-  assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:J');
-  assert.equal(SPREADSHEET_FETCH_RANGES['Notes & Journals'], 'A:G');
-  assert.equal(SPREADSHEET_FETCH_RANGES['Skill Logs'], 'A:P');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Transactions, 'A:AC');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Todos, 'A:BB');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Shopping, 'A:AC');
+  assert.equal(SPREADSHEET_FETCH_RANGES.Events, 'A:L');
+  assert.equal(SPREADSHEET_FETCH_RANGES['Notes & Journals'], 'A:I');
+  assert.equal(SPREADSHEET_FETCH_RANGES['Skill Logs'], 'A:R');
   assert.equal(SPREADSHEET_FETCH_RANGES['Canonical Rules'], 'A:U');
   assert.equal(Object.prototype.hasOwnProperty.call(SPREADSHEET_FETCH_RANGES, 'Data Quality'), false);
 });

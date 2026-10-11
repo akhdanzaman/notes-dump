@@ -1,3 +1,4 @@
+import { decodeEntity, decodeSheetJson, decodeSheetNumber, ENTITY_JSON_COLUMN, ENTITY_SCHEMA_COLUMN, ENTITY_SCHEMA_VERSION } from '../utils/spreadsheetCodec';
 import { parseConfigSheets } from '../utils/spreadsheetConfig';
 import { v4 as uuidv4 } from 'uuid';
 import { DbSchema, BrainDumpItem, ItemType, FinanceType, DeepWorkBlockerStatus, DeepWorkCompletionMode, DeepWorkStatus, InvestmentAssetType, ShoppingCategory, DeepWorkPattern, DeepWorkConfidence, DeepWorkOutputFormat, SkillSchedule } from '../types';
@@ -148,30 +149,10 @@ const getHeaderCellAny = (headers: unknown[], row: unknown[], names: string[]): 
 
 const getHeaderAwareCell = (headers: unknown[], row: unknown[], name: string, fallbackIndex: number): unknown => {
     const index = headers.indexOf(name);
-    return index >= 0 ? (index < row.length ? row[index] : '') : row[fallbackIndex];
+    return index >= 0 ? (index < row.length ? row[index] : '') : (headers.length === 0 ? row[fallbackIndex] : undefined);
 };
 
-const parseSheetAmount = (value: unknown): number => {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    const raw = String(value || '').trim();
-    if (!raw) return 0;
-
-    const cleaned = raw.replace(/[Rp\s]/gi, '');
-    const hasComma = cleaned.includes(',');
-    const hasDot = cleaned.includes('.');
-    let normalized = cleaned;
-
-    if (hasComma && hasDot) {
-        normalized = cleaned.replace(/\./g, '').replace(',', '.');
-    } else if (hasComma) {
-        normalized = cleaned.replace(',', '.');
-    } else if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
-        normalized = cleaned.replace(/\./g, '');
-    }
-
-    const parsed = parseFloat(normalized.replace(/[^\d.-]/g, ''));
-    return Number.isFinite(parsed) ? parsed : 0;
-};
+const parseSheetAmount = decodeSheetNumber;
 
 const parseOptionalSheetAmount = (value: unknown): number | undefined =>
     value !== undefined && String(value).trim() !== '' ? parseSheetAmount(value) : undefined;
@@ -181,8 +162,31 @@ const hasAuthoritativeRows = (sheet: any): boolean =>
 
 export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSchema => {
     if (!Array.isArray(valueRanges)) return db;
+    // Validate every structured cell before mutating data; a failed read leaves the caller intact.
+    db = structuredClone(db);
     const newItems = [...db.data];
-    let hasChanges = false;
+    const persistedById = new Map(newItems.map(item => [item.id, item]));
+    for (const range of valueRanges) {
+        const header = range.values?.[0] || [];
+        const entityColumn = header.indexOf(ENTITY_JSON_COLUMN);
+        for (let index = 1; index < (range.values?.length || 0); index++) {
+            const row = range.values[index];
+            const location = `${range.range?.split('!')[0]} row ${index + 1}`;
+            for (const [column, kind] of [['Line_Items', 'array'], ['Receipt_Capture', 'object']] as const) {
+                const offset = header.indexOf(column);
+                if (offset >= 0) decodeSheetJson(row[offset], `${location} ${column}`, kind);
+            }
+            if (entityColumn < 0 || !row[entityColumn]) continue;
+            if (Number(row[header.indexOf(ENTITY_SCHEMA_COLUMN)]) !== ENTITY_SCHEMA_VERSION) throw new Error(`${location}: Unsupported entity schema; migration required`);
+            const entity = decodeEntity(row[entityColumn], String(row[header.indexOf('ID')]), location);
+            if (entity && !persistedById.has(entity.id)) { newItems.push(entity); persistedById.set(entity.id, entity); }
+            else if (entity) {
+                const existing = persistedById.get(entity.id)!;
+                existing.meta = { ...existing.meta, ...entity.meta };
+            }
+        }
+    }
+    let hasChanges = newItems.length !== db.data.length;
 
     const getCatId = (name: string) => db.budgetConfig?.rules.find(r => r.name === name)?.id || name;
     const getWalId = (name: string) => db.wallets?.find(w => w.name === name)?.id || name;
@@ -216,7 +220,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     const txSheet = valueRanges.find(r => r.range && r.range.includes('Transactions'));
     if (txSheet && txSheet.values) {
         const headers = txSheet.values[0] || [];
-        const cell = (row: unknown[], name: string, fallbackIndex: number) => getHeaderAwareCell(headers, row, name, fallbackIndex);
+        const cell = (row: unknown[], name: string, fallbackIndex: number) => { const value = getHeaderAwareCell(headers, row, name, fallbackIndex); return value === undefined ? undefined : String(value ?? ''); };
         const rows = txSheet.values.slice(1);
         for (const row of rows) {
             const date = cell(row, 'Date', 0) as string;
@@ -305,15 +309,19 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (loanCounterparty !== undefined && match.meta.loanCounterparty !== (loanCounterparty || undefined)) { match.meta.loanCounterparty = loanCounterparty || undefined; updated = true; }
                 if (loanAccountId !== undefined && match.meta.loanAccountId !== (loanAccountId || undefined)) { match.meta.loanAccountId = loanAccountId || undefined; updated = true; }
                 if (loanDueDate !== undefined && match.meta.loanDueDate !== (loanDueDate || undefined)) { match.meta.loanDueDate = loanDueDate || undefined; updated = true; }
-                if (canonicalPaymentMethod || canonicalMerchant || canonicalCommodity || canonicalSubcommodity) {
-                    const nextCanonical = { ...(match.meta.canonical || {}) };
-                    if (canonicalPaymentMethod) nextCanonical.paymentMethod = { rawValue: rawPaymentMethod || wallet || undefined, value: canonicalPaymentMethod };
-                    if (canonicalMerchant) nextCanonical.merchant = { rawValue: merchant || undefined, value: canonicalMerchant };
-                    if (canonicalCommodity) nextCanonical.commodity = { rawValue: commodity || undefined, value: canonicalCommodity };
-                    if (canonicalSubcommodity) nextCanonical.subcommodity = { rawValue: subcommodity || undefined, value: canonicalSubcommodity };
-                    if (JSON.stringify(match.meta.canonical || {}) !== JSON.stringify(nextCanonical)) { match.meta.canonical = nextCanonical; updated = true; }
+                const nextCanonical = { ...(match.meta.canonical || {}) };
+                for (const [field, value, raw] of [
+                    ['paymentMethod', canonicalPaymentMethod, rawPaymentMethod || wallet],
+                    ['merchant', canonicalMerchant, merchant],
+                    ['commodity', canonicalCommodity, commodity],
+                    ['subcommodity', canonicalSubcommodity, subcommodity],
+                ] as const) {
+                    if (value === undefined) continue;
+                    if (!value) { if (!nextCanonical[field]?.needsReview) delete nextCanonical[field]; }
+                    else nextCanonical[field] = { ...(nextCanonical[field] || {}), rawValue: raw || undefined, value };
                 }
-                
+                if (JSON.stringify(match.meta.canonical || {}) !== JSON.stringify(nextCanonical)) { match.meta.canonical = Object.keys(nextCanonical).length ? nextCanonical : undefined; updated = true; }
+
                 const newType = financeType as FinanceType;
                 if (match.meta.financeType !== newType) { match.meta.financeType = newType; updated = true; }
 

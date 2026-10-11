@@ -66,13 +66,13 @@ type SystemSheetSnapshotMeta = {
 };
 
 export const SPREADSHEET_FETCH_RANGES = {
-  Transactions: 'A:AA',
-  Todos: 'A:AZ',
-  Shopping: 'A:AA',
-  [SAVING_GOALS_INVESTMENTS_SHEET_NAME]: 'A:S',
-  Events: 'A:J',
-  'Notes & Journals': 'A:G',
-  'Skill Logs': 'A:P',
+  Transactions: 'A:AC',
+  Todos: 'A:BB',
+  Shopping: 'A:AC',
+  [SAVING_GOALS_INVESTMENTS_SHEET_NAME]: 'A:U',
+  Events: 'A:L',
+  'Notes & Journals': 'A:I',
+  'Skill Logs': 'A:R',
   'Wallets Config': 'A:E',
   'Skills Config': 'A:N',
   'Budget Rules': 'A:D',
@@ -2039,6 +2039,11 @@ export const clearPendingSpreadsheetWrite = (id?: string) => {
   safeLocalStorageRemove(PENDING_SPREADSHEET_WRITE_KEY);
 };
 
+const isRepeatableSheetsRequest = (path: string, init: RequestInit) => {
+  if (!init.method || ['GET', 'HEAD'].includes(init.method)) return true;
+  return path === '/values:batchUpdate' || (init.method === 'PUT' && !path.includes(':append'));
+};
+const canRetrySheetsRequest = (status: number, path: string, init: RequestInit) => status === 429 || (isRepeatableSheetsRequest(path, init) && shouldRetrySpreadsheetRequest(status));
 const shouldRetrySpreadsheetRequest = (status: number) => status === 401 || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 
 let serviceAccountSessionPromise: Promise<string> | null = null;
@@ -2093,7 +2098,7 @@ const measuredSheetsFetch = async (url: string, init: RequestInit, path: string)
   const operation = !path || path.startsWith('?') ? 'metadata' : (init.method && init.method !== 'GET' && init.method !== 'HEAD' ? 'write' : 'read');
   const requestBytes = new TextEncoder().encode(String(init.body || '')).length;
   try {
-    const response = await fetch(url, init);
+    const response = await fetch(url, { ...init, signal: init.signal || AbortSignal.timeout(20000) });
     recordSpreadsheetRequest({ at: Date.now(), operation, durationMs: performance.now() - started, requestBytes, responseBytes: Number(response.headers.get('content-length')) || 0, status: response.status });
     return response;
   } catch (error) {
@@ -2105,12 +2110,13 @@ const measuredSheetsFetch = async (url: string, init: RequestInit, path: string)
 const serviceAccountSheetsFetch = async (
   spreadsheetId: string,
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  renewed = false
 ): Promise<Response> => {
   const headers = new Headers(init.headers || {});
   const contentType = headers.get('content-type') || headers.get('Content-Type');
   const csrfToken = await ensureServiceAccountSession();
-  return measuredSheetsFetch(`/api/spreadsheets/service-account/proxy?spreadsheetId=${encodeURIComponent(spreadsheetId)}&path=${encodeURIComponent(path)}`, {
+  const response = await measuredSheetsFetch(`/api/spreadsheets/service-account/proxy?spreadsheetId=${encodeURIComponent(spreadsheetId)}&path=${encodeURIComponent(path)}`, {
     method: init.method || 'GET',
     headers: {
       ...(contentType ? { 'Content-Type': contentType } : {}),
@@ -2118,12 +2124,18 @@ const serviceAccountSheetsFetch = async (
     },
     body: init.body,
   }, path);
+  if (response.status === 401 && !renewed) {
+    const failure = await response.clone().json().catch(() => ({}));
+    if (String(failure.code || '').startsWith('SESSION_')) {
+      serviceAccountSessionPromise = null;
+      return serviceAccountSheetsFetch(spreadsheetId, path, init, true);
+    }
+  }
+  return response;
 };
 
 const shouldRetryServiceAccountProxyResponse = async (response: Response) => {
-  if (!shouldRetrySpreadsheetRequest(response.status)) return false;
-  if (response.status >= 500) return true;
-  return isServiceAccountProxyInvocationFailure(response);
+  return shouldRetrySpreadsheetRequest(response.status);
 };
 
 const shouldUseOauthFallbackForServiceAccountResponse = async (response: Response) => {
@@ -2148,7 +2160,7 @@ const oauthSheetsFetch = async (
     }
   }, path);
 
-  if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
+  if (attempt >= MAX_FETCH_RETRIES || !canRetrySheetsRequest(response.status, path, init)) {
     return response;
   }
 
@@ -2182,7 +2194,7 @@ const sheetsFetchAttempt = async (
 ): Promise<Response> => {
   if (getSpreadsheetConfig()?.authMode === 'service_account') {
     const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
-    if (!response.ok && attempt < MAX_FETCH_RETRIES && await shouldRetryServiceAccountProxyResponse(response.clone())) {
+    if (!response.ok && attempt < MAX_FETCH_RETRIES && canRetrySheetsRequest(response.status, path, init) && await shouldRetryServiceAccountProxyResponse(response.clone())) {
       const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
       await wait(delayMs);
       return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
@@ -2190,13 +2202,13 @@ const sheetsFetchAttempt = async (
     // Only fall back to browser OAuth when the platform proxy itself failed.
     // Permission, allowlist, session, or sharing errors must remain visible instead of
     // silently writing as a different Google principal.
-    if (!response.ok && await shouldUseOauthFallbackForServiceAccountResponse(response.clone())) {
+    if (!response.ok && isRepeatableSheetsRequest(path, init) && await shouldUseOauthFallbackForServiceAccountResponse(response.clone())) {
       const fallback = await tryOauthSheetsFallback(spreadsheetId, path, init, tokenOverride);
       if (fallback) return fallback;
     }
     if (!response.ok) return response;
 
-    if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
+    if (attempt >= MAX_FETCH_RETRIES || !canRetrySheetsRequest(response.status, path, init)) {
       return response;
     }
     const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
@@ -2424,9 +2436,7 @@ const batchGetSpreadsheetRanges = async (
 ) => {
   if (ranges.length === 0) return [];
 
-  const optionQuery = options.valueRenderOption
-    ? `&valueRenderOption=${encodeURIComponent(options.valueRenderOption)}`
-    : '';
+  const optionQuery = `&valueRenderOption=${options.valueRenderOption || 'UNFORMATTED_VALUE'}&dateTimeRenderOption=FORMATTED_STRING`;
   const path = `/values:batchGet?ranges=${ranges.map(encodeURIComponent).join('&ranges=')}${optionQuery}`;
   const res = await sheetsFetch(config.spreadsheetId, path);
   if (!res.ok) {
@@ -2531,7 +2541,11 @@ const fetchDedicatedSpreadsheetDb = async (config: SpreadsheetConfig, existingTi
     rangesToFetch.push(`${escapeSheetName(ALL_ITEMS_SHEET)}!A:AZ`);
   }
 
-  const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
+  let valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch);
+  if (existingTitles.has('Budget Rules')) {
+    const budget = await batchGetSpreadsheetRanges(config, ["'Budget Rules'!A:D"], { valueRenderOption: 'FORMATTED_VALUE' });
+    valueRanges = valueRanges.map(range => getTitleFromRange(String(range.range)) === 'Budget Rules' ? budget[0] : range);
+  }
   return buildDedicatedDbFromValueRanges(valueRanges);
 };
 
@@ -2810,8 +2824,9 @@ const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb:
   const budgetValues = percentageColumn >= 0
     ? await batchGetSpreadsheetRanges(config, ["'Budget Rules'!A:D"], { valueRenderOption: 'FORMATTED_VALUE' })
     : [];
-  const reconciliationRanges = valueRanges.map(vr => vr === rawBudget && percentageColumn >= 0
-    ? { ...vr, values: vr.values.map((row: unknown[], index: number) => {
+  const domainRanges = await batchGetSpreadsheetRanges(config, rangesToFetch, { valueRenderOption: 'UNFORMATTED_VALUE' });
+  const reconciliationRanges = domainRanges.map(vr => getTitleFromRange(String(vr.range)) === 'Budget Rules' && percentageColumn >= 0
+    ? { ...vr, values: vr.values?.map((row: unknown[], index: number) => {
       if (index === 0) return row;
       const parsedRow = [...row];
       parsedRow[percentageColumn] = budgetValues[0]?.values?.[index]?.[percentageColumn] ?? '';
@@ -3056,7 +3071,14 @@ const writeIncrementalUserSheetPlan = async (
     const response = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ valueInputOption: 'RAW', data: plan.updates })
+      body: JSON.stringify({ valueInputOption: 'RAW', data: plan.updates.map(update => {
+        const title = getTitleFromRange(update.range);
+        return { ...update, range: update.range.replace(/([A-Z]+)(\d+)/g, (_match, column, rawRow) => {
+          const row = Number(rawRow);
+          const shift = new Set(plan.deletions.filter(deletion => deletion.sheetName === title && deletion.rowNumber < row).map(deletion => deletion.rowNumber)).size;
+          return `${column}${row - shift}`;
+        }) };
+      }) })
     });
     if (!response.ok) {
       throw new Error(`Failed to update changed rows: ${await response.text()}`);
@@ -3433,6 +3455,7 @@ export const getSpreadsheetHistory = async (): Promise<SpreadsheetHistoryEntry[]
 };
 
 export const __test__ = {
+  writeIncrementalUserSheetPlan,
   buildSystemSheetRows,
   extractSystemSheetSnapshot,
   shouldApplyManagedSheetFormatting,

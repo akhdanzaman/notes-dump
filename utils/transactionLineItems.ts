@@ -1,3 +1,4 @@
+import { decodeSheetNumber } from './spreadsheetCodec';
 import {
   BrainDumpItem,
   TransactionLineAllocationMode,
@@ -10,8 +11,7 @@ const normalizeText = (value: unknown): string =>
 const normalizeAmount = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value !== 'string') return undefined;
-  const parsed = Number(value.replace(/[^\d.-]/g, ''));
-  return Number.isFinite(parsed) ? parsed : undefined;
+  try { return decodeSheetNumber(value); } catch { return undefined; }
 };
 
 const normalizeCurrency = (value: unknown): string | undefined => {

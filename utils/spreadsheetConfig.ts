@@ -1,3 +1,4 @@
+import { decodeSheetNumber } from './spreadsheetCodec';
 import { Wallet, Skill, BudgetConfig, AppSettings, ChatMessage, CanonicalRule } from '../types';
 import { parseSpreadsheetBudget } from './spreadsheetBudget';
 import { v4 as uuidv4 } from 'uuid';
@@ -70,7 +71,7 @@ export const parseConfigSheets = (valueRanges: any[], options: { createSkillIds?
           id: String(id),
           name: String(cell(r, 'Name', 1) || ''),
           type: (String(cell(r, 'Type', 2) || 'cash')) as Wallet['type'],
-          initialBalance: Number(cell(r, 'Initial_Balance', 3, ['Initial Balance'])) || 0,
+          initialBalance: decodeSheetNumber(cell(r, 'Initial_Balance', 3, ['Initial Balance']), `Wallets Config row ${i + 1} Initial_Balance`),
           color: String(cell(r, 'Color', 4) || 'bg-gray-500'),
         });
       }

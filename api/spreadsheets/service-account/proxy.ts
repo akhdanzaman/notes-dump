@@ -28,8 +28,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const text = await response.text();
     const contentType = response.headers.get('content-type');
     if (contentType) res.setHeader('content-type', contentType);
+    const retryAfter = response.headers.get('retry-after');
+    if (retryAfter) res.setHeader('Retry-After', retryAfter);
+    res.setHeader('Content-Length', Buffer.byteLength(text));
     return res.status(response.status).send(text);
   } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+    const message = error instanceof Error ? error.message : 'Unknown Sheets failure';
+    const session = /session/i.test(message);
+    const forbidden = /allowlist|origin|referer/i.test(message);
+    return res.status(session ? 401 : forbidden ? 403 : 400).json({ error: message, code: session ? (/expired/i.test(message) ? 'SESSION_EXPIRED' : 'SESSION_INVALID') : 'SHEETS_REQUEST_REJECTED' });
   }
 }

@@ -1,3 +1,4 @@
+import { encodeEntity, ENTITY_JSON_COLUMN, ENTITY_SCHEMA_COLUMN, ENTITY_SCHEMA_VERSION, normalizeIso } from './spreadsheetCodec';
 import { BrainDumpItem, Skill, Wallet, BudgetConfig, AppSettings, ItemType, ChatMessage, CanonicalRule } from '../types';
 import { getCanonicalOrRawItemValue, getCanonicalMetaValue } from './canonicalization/accessors';
 import { getCommodityForItemAnalytics, getSubcommodityForItemAnalytics } from './canonicalization/transactionInference';
@@ -815,6 +816,20 @@ export const generateExportData = (
       ])
     ]
   });
+
+  const entityById = new Map(items.map(item => [item.id, item]));
+  for (const sheet of sheets) {
+    const header = sheet.data[0];
+    const idIndex = header?.indexOf('ID') ?? -1;
+    if (idIndex < 0 || ['Wallets Config', 'Skills Config', 'Budget Rules', 'Canonical Rules'].includes(sheet.name)) continue;
+    const originalWidth = header.length;
+    sheet.data = sheet.data.map((row, index) => {
+      if (index === 0) return [...row, ENTITY_JSON_COLUMN, ENTITY_SCHEMA_COLUMN];
+      const item = entityById.get(String(row[idIndex]));
+      const padded = Array.from({ length: originalWidth }, (_, column) => normalizeIso(row[column] ?? '') as string | number | boolean | null);
+      return [...padded, item ? encodeEntity(item) : '', ENTITY_SCHEMA_VERSION];
+    });
+  }
 
   return sheets;
 };
