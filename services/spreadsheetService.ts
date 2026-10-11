@@ -215,10 +215,23 @@ const TECHNICAL_SHEET_NAMES = new Set<string>([
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+let detachedStorageScope: string | undefined;
+const storageKey = (key: string) => {
+  if (key !== SPREADSHEET_CACHE_KEY && key !== PENDING_SPREADSHEET_WRITE_KEY) return key;
+  let configured: string | undefined;
+  try { configured = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null')?.spreadsheetId; } catch {}
+  return `${key}:${configured || detachedStorageScope || 'unconnected'}`;
+};
+
 const safeLocalStorageGet = (key: string): string | null => {
   try {
     if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(key);
+    const scoped = storageKey(key);
+    const value = localStorage.getItem(scoped);
+    if (value !== null || scoped === key) return value;
+    const legacy = localStorage.getItem(key);
+    if (legacy !== null) { localStorage.setItem(scoped, legacy); localStorage.removeItem(key); }
+    return legacy;
   } catch (e) {
     console.warn(`Error reading localStorage key: ${key}`, e);
     return null;
@@ -228,16 +241,18 @@ const safeLocalStorageGet = (key: string): string | null => {
 const safeLocalStorageSet = (key: string, value: string) => {
   try {
     if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(key, value);
+    localStorage.setItem(storageKey(key), value);
+    return true;
   } catch (e) {
     console.warn(`Failed to save localStorage key: ${key}`, e);
+    return false;
   }
 };
 
 const safeLocalStorageRemove = (key: string) => {
   try {
     if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(key);
+    localStorage.removeItem(storageKey(key));
   } catch (e) {
     console.warn(`Failed to remove localStorage key: ${key}`, e);
   }
@@ -286,6 +301,7 @@ let needsInitialSpreadsheetWrite = false;
 let operationQueue: Promise<any> = Promise.resolve();
 type SpreadsheetSyncRequest = {
   db: DbSchema;
+  baseline?: DbSchema;
   forceOverwrite?: boolean;
   onProgress?: SyncProgressCallback;
 };
@@ -1921,6 +1937,18 @@ export const saveSpreadsheetConfig = (config: SpreadsheetConfig) => {
   const next = JSON.stringify(normalized);
   if (existingStr === next) return;
 
+  const old = getSpreadsheetConfig();
+  if (old?.spreadsheetId && old.spreadsheetId !== normalized.spreadsheetId && pendingDebouncedSync) cancelPendingDebouncedSync({ success: false, method: 'error', error: 'Spreadsheet changed; pending changes remain in their original local store' });
+  if (!old && (!detachedStorageScope || detachedStorageScope === 'unconnected') && typeof localStorage !== 'undefined') {
+    for (const key of [SPREADSHEET_CACHE_KEY, PENDING_SPREADSHEET_WRITE_KEY]) {
+      const migration = localStorage.getItem(`${key}:unconnected`);
+      if (migration && !localStorage.getItem(`${key}:${normalized.spreadsheetId}`)) {
+        localStorage.setItem(`${key}:${normalized.spreadsheetId}`, migration);
+        localStorage.removeItem(`${key}:unconnected`);
+      }
+    }
+  }
+  detachedStorageScope = normalized.spreadsheetId;
   safeLocalStorageSet(SETTINGS_KEY, next);
   isHydrated = false;
   lastSnapshot = null;
@@ -1928,6 +1956,7 @@ export const saveSpreadsheetConfig = (config: SpreadsheetConfig) => {
 };
 
 export const clearSpreadsheetConfig = () => {
+  detachedStorageScope = getSpreadsheetConfig()?.spreadsheetId || detachedStorageScope;
   safeLocalStorageRemove(SETTINGS_KEY);
   isHydrated = false;
   lastSnapshot = null;
@@ -1957,9 +1986,10 @@ const validateSchema = (data: any): DbSchema => {
   };
 };
 
-const preserveLocalItemsStillPresentInApp = (localDb: DbSchema, mergedDb: DbSchema): DbSchema => {
+const preserveLocalItemsStillPresentInApp = (localDb: DbSchema, mergedDb: DbSchema, base?: DbSchema): DbSchema => {
   const mergedIds = new Set((mergedDb.data || []).map(item => item.id));
-  const locallyPresentMissingItems = (localDb.data || []).filter(item => item.id && !mergedIds.has(item.id));
+  const baseIds = new Set(base?.data.map(item => item.id) || []);
+  const locallyPresentMissingItems = (localDb.data || []).filter(item => item.id && !mergedIds.has(item.id) && !baseIds.has(item.id));
 
   if (locallyPresentMissingItems.length === 0) return mergedDb;
 
@@ -2009,7 +2039,7 @@ export const cachePendingSpreadsheetWrite = (db: DbSchema): string => {
     base,
   };
   writeSpreadsheetCache(JSON.stringify(pending.data));
-  safeLocalStorageSet(PENDING_SPREADSHEET_WRITE_KEY, JSON.stringify(pending));
+  if (!safeLocalStorageSet(PENDING_SPREADSHEET_WRITE_KEY, JSON.stringify(pending))) throw new Error('Local safety copy could not be stored; keep this tab open and retry');
   return pending.id;
 };
 
@@ -3116,7 +3146,7 @@ const writeIncrementalUserSheetPlan = async (
 };
 
 // Save only changed user sheets/ranges after the first full setup write.
-const performSync = async ({ db, forceOverwrite = false, onProgress }: SpreadsheetSyncRequest, conflictAttempt = 0): Promise<SyncResult> => {
+const performSync = async ({ db, baseline, forceOverwrite = false, onProgress }: SpreadsheetSyncRequest, conflictAttempt = 0): Promise<SyncResult> => {
   const updatedDb: DbSchema = { ...db, canonicalRules: db.canonicalRules || [] };
 
   writeSpreadsheetCache(JSON.stringify(updatedDb));
@@ -3131,7 +3161,7 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
   try {
     const localDbForPlan = validateSchema(updatedDb);
     let dbToWrite = localDbForPlan;
-    const baseSnapshot = getPendingSpreadsheetWrite()?.base
+    const baseSnapshot = baseline || getPendingSpreadsheetWrite()?.base
       || (lastSnapshot ? validateSchema(safeJsonParse(lastSnapshot, { data: [] })) : undefined);
     let currentSheetDbForPlan: DbSchema | undefined;
     let physicalSheetDataForPlan: SheetData[] = [];
@@ -3151,7 +3181,7 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
       const mergedDb = baseSnapshot
         ? mergeDbData(dbToWrite, sheetState.data, baseSnapshot)
         : mergeDbData(dbToWrite, sheetState.data);
-      dbToWrite = preserveLocalItemsStillPresentInApp(localDbForPlan, mergedDb);
+      dbToWrite = preserveLocalItemsStillPresentInApp(localDbForPlan, mergedDb, baseSnapshot);
     }
 
     const finalJsonString = JSON.stringify(dbToWrite);
@@ -3264,7 +3294,7 @@ const performSync = async ({ db, forceOverwrite = false, onProgress }: Spreadshe
       if (changed.length > 0) {
         if (conflictAttempt >= 2) throw new Error(`Spreadsheet keeps changing (${changed.join(', ')}). Save postponed; local changes are kept for retry.`);
         onProgress?.({ phase: 'merge_remote', label: 'Merging newer edits', detail: changed.join(', ') });
-        return performSync({ db: updatedDb, forceOverwrite, onProgress }, conflictAttempt + 1);
+        return performSync({ db: updatedDb, baseline, forceOverwrite, onProgress }, conflictAttempt + 1);
       }
     }
 

@@ -1,3 +1,4 @@
+import { persistDraft, readDrafts, removeDraft, localScope } from '../services/localOutbox';
 import { isRoutineItem, getRoutineCurrentDueDate, isRoutineScheduledToday, isRoutineLockedUntilNextDue, calculateFirstRoutineDueDate, getRoutineDurationMinutes, getRoutineEndForNextStart, resetRoutineItemForToday, resetDueRoutineItems } from '../utils/routineLifecycle';
 import type { ParsingUndoSnapshot } from './brainDumpContext';
 import type { SaveChanges } from '../utils/saveChanges';
@@ -46,8 +47,8 @@ import {
     ReceiptCaptureMeta,
     ItemUpdatePatch
 } from '../types';
-import { fetchDb, isUsingLocalStorage } from '../services/syncFacade';
-import { getCachedSpreadsheetDb } from '../services/spreadsheetService';
+import { fetchDb, isUsingLocalStorage, persistForSave } from '../services/syncFacade';
+import { getCachedSpreadsheetDb, getSpreadsheetConfig } from '../services/spreadsheetService';
 import { recoverMisclassifiedJournalNotes, upsertDailyJournalEntry } from '../utils/journalUtils';
 import { mergeDbData } from '../utils/mergeUtils';
 import { classifyText, DEFAULT_PROMPT } from '../services/geminiService';
@@ -100,7 +101,7 @@ export const mergeFetchedItemsPreservingUnsavedLocal = (
         return !lastSynced || JSON.stringify(item) !== JSON.stringify(lastSynced);
     };
 
-    const merged = fetchedItems.map(fetchedItem => {
+    const merged = fetchedItems.filter(item => currentById.has(item.id) || !lastSyncedById.has(item.id)).map(fetchedItem => {
         const current = currentById.get(fetchedItem.id);
         return current && differsFromLastSynced(current) ? current : fetchedItem;
     });
@@ -429,6 +430,14 @@ export const useBrainDumpData = () => {
     const [loading, setLoading] = useState(true);
     const [pendingCount, setPendingCount] = useState(0);
     const [parsingTasks, setParsingTasks] = useState<ParsingTask[]>([]);
+    useEffect(() => {
+        if (typeof indexedDB === 'undefined') return;
+        let active = true;
+        void readDrafts(localScope(getSpreadsheetConfig()?.spreadsheetId)).then(drafts => {
+            if (active && drafts.length) setParsingTasks(previous => [...previous, ...drafts.filter(draft => !previous.some(task => task.id === draft.id)).map(draft => ({ id: draft.id, text: draft.text, createdAt: draft.createdAt, status: 'failed' as const, error: 'Proses terhenti. Input tersimpan di perangkat; tinjau atau coba lagi.' }))]);
+        }).catch(error => { if (active) setError(error instanceof Error ? error.message : 'Draft recovery failed'); });
+        return () => { active = false; };
+    }, []);
     const [enrichmentTasks, setEnrichmentTasks] = useState<EnrichmentTask[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<SyncStatus>('synced');
@@ -634,7 +643,7 @@ export const useBrainDumpData = () => {
             if (data) {
                 const appliedData = applyData(data);
                 if (hasChanges && !isUsingLocalStorage()) {
-                    saveAndSync({ data: appliedData.data || [], budgetConfig: appliedData.budgetConfig, customPrompt: appliedData.customPrompt, skills: appliedData.skills, wallets: appliedData.wallets, monthlyThemes: appliedData.monthlyThemes, appSettings: appliedData.appSettings, canonicalRules: appliedData.canonicalRules, forceOverwrite: true, monthlyThemeImages: appliedData.monthlyThemeImages }
+                    saveAndSync({ data: appliedData.data || [], budgetConfig: appliedData.budgetConfig, customPrompt: appliedData.customPrompt, skills: appliedData.skills, wallets: appliedData.wallets, monthlyThemes: appliedData.monthlyThemes, appSettings: appliedData.appSettings, canonicalRules: appliedData.canonicalRules, forceOverwrite: false, monthlyThemeImages: appliedData.monthlyThemeImages }
                     );
                 }
             }
@@ -1445,6 +1454,10 @@ budgetConfigRef.current?.rules || []
                 duplicateGuardReason: guardedResults.reason,
                 completedAt: Date.now()
             } : t));
+            if (!enableDraftReview && typeof indexedDB !== 'undefined') {
+                await persistForSave({ data: itemsRef.current, budgetConfig: budgetConfigRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, appSettings: appSettingsRef.current, canonicalRules: canonicalRulesRef.current, customPrompt: customPromptRef.current, chatHistory: chatHistoryRef.current, monthlyThemeImages: monthlyThemeImagesRef.current });
+                // Keep source input until the parsing task is explicitly cleared; a crash before React applies all actions must not lose it.
+            }
         } catch (err: any) {
             console.error("Processing failed", err);
             setParsingTasks(prev => prev.map(t => t.id === tempId ? { ...t, status: 'failed', error: err.message || 'Unknown error', completedAt: Date.now() } : t));
@@ -1468,6 +1481,7 @@ budgetConfigRef.current?.rules || []
     const clearParsingTask = (taskId: string) => {
         setParsingTasks(prev => prev.filter(t => t.id !== taskId));
         delete parsingUndoSnapshotsRef.current[taskId];
+        if (typeof indexedDB !== 'undefined') void removeDraft(taskId).catch(error => setError(String(error)));
     };
 
     const getResultTargetItemId = (result: ParserResultV2): string | undefined => {
@@ -1574,8 +1588,13 @@ budgetConfigRef.current?.rules || []
         setError(null);
 
         const tempId = uuidv4();
-
-        processItemInBackground(text, tempId);
+        try {
+            if (typeof indexedDB !== 'undefined') await persistDraft(localScope(getSpreadsheetConfig()?.spreadsheetId), tempId, text);
+            await processItemInBackground(text, tempId);
+        } catch (error) {
+            setPendingCount(previous => Math.max(0, previous - 1));
+            setError(error instanceof Error ? error.message : 'Input could not be stored');
+        }
     };
 
     const handleToggleStatus = async (id: string) => {
@@ -2251,7 +2270,8 @@ budgetConfigRef.current?.rules || []
         const updated = [newItem, ...itemsRef.current];
         itemsRef.current = updated;
         setItems(updated);
-        await saveAndSync({ data: updated });
+        const result = await saveAndSync({ data: updated });
+        if (!result.success) throw new Error(result.error || 'Transaksi masih tersimpan lokal; sinkronisasi gagal');
         return newItem;
     };
 

@@ -162,7 +162,7 @@ test('onboarding saves selected settings and preserves existing records', async 
   const changes: Parameters<Parameters<typeof useAppOnboarding>[0]['saveAndSync']>[0][] = [];
   const h = await harness(() => useAppOnboarding({ items: [saved], wallets: [], skills: [], budgetConfig: { monthlyIncome: 0, rules: [] },
     customPrompt: 'existing', monthlyThemes: {}, appSettings: settings, setAppSettings: () => {}, setWallets: () => {}, setBudgetConfig: () => {},
-    saveAndSync: async change => { changes.push(change); }, activeTab: 'summary', planSubTab: 'tasks', librarySubTab: 'general', moneyView: 'transactions', isControlCenterOpen: false }));
+    saveAndSync: async change => { changes.push(change); return { success: true, method: 'cloud' as const, state: 'committed' as const }; }, activeTab: 'summary', planSubTab: 'tasks', librarySubTab: 'general', moneyView: 'transactions', isControlCenterOpen: false }));
   try {
     assert.equal(h.current.showOnboarding, true);
     const sample = { ...saved, id: 'sample' };
@@ -171,7 +171,7 @@ test('onboarding saves selected settings and preserves existing records', async 
     assert.equal(localStorage.getItem('braindump_onboarding_completed'), 'true');
     assert.deepEqual(changes[0]?.data?.map(item => item.id), ['saved', 'sample']);
     assert.equal(changes[0]?.appSettings?.hideMoney, true);
-    assert.equal(changes[0]?.forceOverwrite, true);
+    assert.equal(changes[0]?.forceOverwrite, false);
   } finally { await h.close(); }
 });
 

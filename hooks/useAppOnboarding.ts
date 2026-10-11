@@ -135,7 +135,7 @@ export function useAppOnboarding({ items, wallets, skills, budgetConfig, customP
 
     if (budget) setBudgetConfig(budget);
 
-    saveAndSync({ data: sampleItems.length > 0 ? [...items, ...sampleItems] : items, budgetConfig: budget || budgetConfig, customPrompt: customPrompt, skills: skills, wallets: newWallets.length > 0 ? newWallets : wallets, monthlyThemes: monthlyThemes, appSettings: settings, forceOverwrite: true } // force overwrite
+    saveAndSync({ data: sampleItems.length > 0 ? [...items, ...sampleItems] : items, budgetConfig: budget || budgetConfig, customPrompt: customPrompt, skills: skills, wallets: newWallets.length > 0 ? newWallets : wallets, monthlyThemes: monthlyThemes, appSettings: settings, forceOverwrite: false }
     );
   };
 

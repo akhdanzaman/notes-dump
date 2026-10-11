@@ -10,6 +10,17 @@ const pickField = <T>(localValue: T, remoteValue: T, baseValue: T): T => {
     return localValue;
 };
 
+const mergeRecord = <T extends object>(local: T | undefined, remote: T | undefined, base: T | undefined): T | undefined => {
+  if (!local && !remote) return undefined;
+  if (!base) return { ...remote, ...local } as T;
+  const result: Record<string, unknown> = {};
+  for (const field of new Set([...Object.keys(base), ...Object.keys(local || {}), ...Object.keys(remote || {})])) {
+    const value = pickField((local as any)?.[field], (remote as any)?.[field], (base as any)?.[field]);
+    if (value !== undefined) result[field] = value;
+  }
+  return result as T;
+};
+
 const mergeCanonicalMeta = (
     localCanonical: ItemCanonicalMeta | undefined,
     remoteCanonical: ItemCanonicalMeta | undefined,
@@ -237,12 +248,12 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
                 : local.budgetConfig?.monthlyIncome ?? remote.budgetConfig?.monthlyIncome ?? 0,
             rules: Array.from(ruleMap.values())
         },
-        appSettings: local.appSettings || remote.appSettings,
-        customPrompt: local.customPrompt || remote.customPrompt,
+        appSettings: mergeRecord(local.appSettings, remote.appSettings, base?.appSettings),
+        customPrompt: base ? pickField(local.customPrompt, remote.customPrompt, base.customPrompt) : local.customPrompt ?? remote.customPrompt,
         skills: Array.from(skillMap.values()),
         wallets: Array.from(walletMap.values()),
-        monthlyThemes: { ...remote.monthlyThemes, ...local.monthlyThemes },
-        monthlyThemeImages: { ...remote.monthlyThemeImages, ...local.monthlyThemeImages },
+        monthlyThemes: mergeRecord(local.monthlyThemes, remote.monthlyThemes, base?.monthlyThemes),
+        monthlyThemeImages: mergeRecord(local.monthlyThemeImages, remote.monthlyThemeImages, base?.monthlyThemeImages),
         chatHistory: chatHistory.slice(-50),
         canonicalRules
     };

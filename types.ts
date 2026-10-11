@@ -509,6 +509,7 @@ export interface SyncProgress {
 export type SyncProgressCallback = (progress: SyncProgress) => void;
 
 export type SyncResult = {
+  state?: 'local' | 'accepted' | 'committed' | 'conflict' | 'failed';
   success: boolean;
   method: 'cloud' | 'local' | 'skipped_not_hydrated' | 'skipped_no_changes' | 'error';
   mergedData?: DbSchema;

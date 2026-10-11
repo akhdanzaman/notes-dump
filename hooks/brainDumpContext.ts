@@ -28,7 +28,7 @@ export type ParsingUndoSnapshot = {
 export type BrainDumpContext = {
   itemsRef: MutableRefObject<BrainDumpItem[]>;
   setItems: (items: BrainDumpItem[]) => void;
-  saveAndSync: (changes?: SaveChanges) => Promise<void>;
+  saveAndSync: (changes?: SaveChanges) => Promise<unknown>;
   skillsRef: MutableRefObject<Skill[]>;
   setSkills: (skills: Skill[]) => void;
   walletsRef: MutableRefObject<Wallet[]>;
@@ -59,6 +59,6 @@ export type BrainDumpContext = {
   parsingUndoSnapshotsRef: MutableRefObject<Record<string, ParsingUndoSnapshot>>;
   enrichmentTasksRef: MutableRefObject<EnrichmentTask[]>;
   hasActiveParsing: () => boolean;
-  loadData: () => Promise<void>;
-  flushDeferredSyncAfterParsing: () => Promise<void>;
+  loadData: () => Promise<unknown>;
+  flushDeferredSyncAfterParsing: () => Promise<unknown>;
 };

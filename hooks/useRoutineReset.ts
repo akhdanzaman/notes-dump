@@ -5,7 +5,7 @@ import { BrainDumpItem } from '../types';
 type RoutineResetDeps = {
   itemsRef: { current: BrainDumpItem[] };
   setItems: (items: BrainDumpItem[]) => void;
-  saveAndSync: (changes?: SaveChanges) => Promise<void>;
+  saveAndSync: (changes?: SaveChanges) => Promise<unknown>;
   checkRoutineResets: (items: BrainDumpItem[]) => BrainDumpItem[];
 };
 

@@ -33,7 +33,7 @@ export const removeResolvedReviewActivity = (
 type EnrichmentDeps = {
   itemsRef: { current: BrainDumpItem[] };
   setItems: (items: BrainDumpItem[] | ((prev: BrainDumpItem[]) => BrainDumpItem[])) => void;
-  saveAndSync: (changes?: SaveChanges) => Promise<void>;
+  saveAndSync: (changes?: SaveChanges) => Promise<unknown>;
   canonicalRulesRef: { current: CanonicalRule[] };
   setCanonicalRules: (rules: CanonicalRule[]) => void;
   walletsRef: { current: any[] };

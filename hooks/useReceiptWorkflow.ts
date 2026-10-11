@@ -267,7 +267,7 @@ export function useReceiptWorkflow({ items, wallets, budgetConfig, appSettings, 
           transactionItemId: savedItem.id,
           completedAt: Date.now(),
         });
-        showAppNotice('Transaksi dari nota sudah disimpan. Proses lengkap tersedia di pusat tinjauan.', 'success');
+        showAppNotice('Transaksi dari nota ditambahkan. Status penyimpanan tersedia pada indikator sinkronisasi.', 'success');
         receiptTaskFilesRef.current.delete(taskId);
         later(() => clearReceiptTask(taskId), 12000);
       }
