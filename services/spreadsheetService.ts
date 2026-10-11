@@ -1,3 +1,4 @@
+import { splitSheetsBatch } from '../utils/spreadsheetBatch';
 import { recordSpreadsheetRequest, getSpreadsheetDiagnostics } from './spreadsheetTelemetry';
 export { getSpreadsheetDiagnostics };
 import { readHeaderAwareCell, parseConfigSheets } from '../utils/spreadsheetConfig';
@@ -415,18 +416,20 @@ const buildSyntheticSpreadsheetMeta = (titles = ASSUMED_EXISTING_SHEET_TITLES) =
   sheets: Array.from(titles).map(title => ({ properties: { title } })),
 });
 
+const metadataCache = new Map<string, { result: { meta: any; existingTitles: Set<string>; reliable: boolean }; expiresAt: number }>();
 const fetchSpreadsheetMetadata = async (
   config: SpreadsheetConfig,
-  allowAssumedExistingSheets = false
+  allowAssumedExistingSheets = false,
+  preferCache = false
 ): Promise<{ meta: any; existingTitles: Set<string>; reliable: boolean }> => {
-  const metaRes = await sheetsFetch(config.spreadsheetId, '');
+  const cached = metadataCache.get(config.spreadsheetId);
+  if (preferCache && cached && cached.expiresAt > Date.now()) return cached.result;
+  const metaRes = await sheetsFetch(config.spreadsheetId, '?fields=spreadsheetId,properties(locale,timeZone),sheets(properties,developerMetadata,charts(chartId))');
   if (metaRes.ok) {
     const meta = await metaRes.json();
-    return {
-      meta,
-      existingTitles: new Set<string>((meta.sheets || []).map((s: any) => s.properties.title)),
-      reliable: true,
-    };
+    const result = { meta, existingTitles: new Set<string>((meta.sheets || []).map((s: any) => s.properties.title)), reliable: true };
+    metadataCache.set(config.spreadsheetId, { result, expiresAt: Date.now() + 60000 });
+    return result;
   }
 
   const errorText = await metaRes.text();
@@ -875,7 +878,7 @@ const ensureSheetGridCapacity = async (
   }
 };
 
-const generateDbExportSheets = (db: DbSchema, now = new Date()) => generateExportData(
+const generateDbExportSheets = (db: DbSchema, now = new Date(), includeDerived = true) => generateExportData(
   db.data || [],
   db.skills || [],
   db.wallets || [],
@@ -884,12 +887,30 @@ const generateDbExportSheets = (db: DbSchema, now = new Date()) => generateExpor
   db.appSettings || { defaultCollapsed: false, hideMoney: false },
   now,
   {
+    includeDerived,
     customPrompt: db.customPrompt,
     chatHistory: db.chatHistory,
     canonicalRules: db.canonicalRules,
     monthlyThemeImages: db.monthlyThemeImages,
   },
 );
+
+const dirtySheetNames = (before: DbSchema, after: DbSchema): Set<string> => {
+  const dirty = new Set<string>();
+  const previous = new Map(before.data.map(item => [item.id, item]));
+  const current = new Map(after.data.map(item => [item.id, item]));
+  for (const id of new Set([...previous.keys(), ...current.keys()])) {
+    if (sameJson(previous.get(id), current.get(id))) continue;
+    for (const item of [previous.get(id), current.get(id)]) if (item) getItemExportSheetNames(item).forEach(name => dirty.add(name));
+  }
+  const fields: Record<string, string[]> = {
+    'Budget Rules': ['budgetConfig'], 'Skills Config': ['skills'], 'Wallets Config': ['wallets'],
+    'Themes & Settings': ['monthlyThemes', 'monthlyThemeImages', 'appSettings', 'customPrompt', 'budgetConfig'],
+    'Chat History': ['chatHistory'], 'Canonical Rules': ['canonicalRules'],
+  };
+  for (const [name, keys] of Object.entries(fields)) if (keys.some(key => !sameJson((before as any)[key], (after as any)[key]))) dirty.add(name);
+  return dirty;
+};
 
 const getManagedSheetReadRange = (sheet: SheetData) => {
   const columnCount = Math.max(getSheetColumnCount(sheet.data), 1);
@@ -1957,6 +1978,7 @@ export const saveSpreadsheetConfig = (config: SpreadsheetConfig) => {
 
 export const clearSpreadsheetConfig = () => {
   detachedStorageScope = getSpreadsheetConfig()?.spreadsheetId || detachedStorageScope;
+  metadataCache.clear();
   safeLocalStorageRemove(SETTINGS_KEY);
   isHydrated = false;
   lastSnapshot = null;
@@ -2544,7 +2566,7 @@ const buildDedicatedDbFromValueRanges = (valueRanges: any[]): DbSchema => {
     monthlyThemeImages: configSheets.monthlyThemeImages,
     appSettings: configSheets.appSettings,
   });
-  const reconciled = reconcileSpreadsheetData(baseDb, valueRanges || []);
+  const reconciled = reconcileSpreadsheetData(baseDb, valueRanges || [], { authoritativeEmpty: true });
 
   const dedicatedDb = validateSchema({
     ...reconciled,
@@ -2816,10 +2838,10 @@ const parseRawItemRow = (row: any[], index: number, headers: unknown[] = []): Br
   };
 };
 
-const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb: DbSchema) => {
-  const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config);
-  const expectedBaseSheets = generateDbExportSheets(baseDb);
-  const expectedExistingSheets = expectedBaseSheets.filter(sheet => existingTitles.has(sheet.name));
+const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb: DbSchema, onlySheets?: Set<string>) => {
+  const { meta, existingTitles, reliable } = await fetchSpreadsheetMetadata(config, false, true);
+  const expectedBaseSheets = generateDbExportSheets(onlySheets ? { ...baseDb, data: baseDb.data.filter(item => getItemExportSheetNames(item).some(name => onlySheets.has(name))) } : baseDb, new Date(), !onlySheets);
+  const expectedExistingSheets = expectedBaseSheets.filter(sheet => existingTitles.has(sheet.name) && (!onlySheets || onlySheets.has(sheet.name)));
   const rangesToFetch = expectedExistingSheets.map(getManagedSheetReadRange);
 
   if (rangesToFetch.length === 0) {
@@ -2846,7 +2868,11 @@ const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb:
   const batchData = await res.json();
   const valueRanges = assertCompleteValueRanges(rangesToFetch, batchData.valueRanges);
   const physicalSheetData = valueRangesToSheetData(valueRanges, expectedExistingSheets);
-  const physicalDriftSheetNames = detectPhysicalSheetDrift(expectedExistingSheets, valueRanges);
+  const physicalDriftSheetNames = new Set<string>();
+  for (const sheet of physicalSheetData) {
+    const index = buildSheetRowIndexes([sheet]).get(sheet.name)!;
+    if ([...index.rowNumbersById.values()].some(rows => rows.length > 1)) physicalDriftSheetNames.add(sheet.name);
+  }
   // Percentage-formatted Sheets cells return 0.5 for 50% in FORMULA mode.
   // Use displayed budget values for parsing, keeping raw rows for conflict checks.
   const rawBudget = valueRanges.find(vr => getTitleFromRange(String(vr.range)) === 'Budget Rules');
@@ -2863,7 +2889,7 @@ const fetchUserEditableSpreadsheetDb = async (config: SpreadsheetConfig, baseDb:
       return parsedRow;
     }) } : vr);
   const configMergedBase = applyConfigSheetsToBaseDb(baseDb, reconciliationRanges);
-  const reconciledDb = reconcileSpreadsheetData(configMergedBase, reconciliationRanges);
+  const reconciledDb = reconcileSpreadsheetData(configMergedBase, reconciliationRanges, { authoritativeEmpty: true });
   const reconciled = JSON.stringify(reconciledDb.data) !== JSON.stringify(baseDb.data)
     || JSON.stringify(reconciledDb.budgetConfig) !== JSON.stringify(baseDb.budgetConfig)
     || JSON.stringify(reconciledDb.skills) !== JSON.stringify(baseDb.skills)
@@ -2886,6 +2912,7 @@ const verifySpreadsheetWriteCommitted = async (
   config: SpreadsheetConfig,
   expectedSheets: SheetData[],
   onProgress?: SyncProgressCallback,
+  affectedIds?: Set<string>,
 ) => {
   if (expectedSheets.length === 0) return;
   const rangesToFetch = expectedSheets.map(getManagedSheetReadRange);
@@ -2899,8 +2926,12 @@ const verifySpreadsheetWriteCommitted = async (
       detail: attempt === 0 ? 'Checking that written item rows are readable from Sheets' : `Rechecking written rows (${attempt + 1}/${maxAttempts})`,
     });
 
-    const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch, { valueRenderOption: 'FORMULA' });
-    lastMismatches = compareSheetValueMultisets(expectedSheets, valueRanges);
+    const valueRanges = await batchGetSpreadsheetRanges(config, rangesToFetch, { valueRenderOption: affectedIds ? 'UNFORMATTED_VALUE' : 'FORMULA' });
+    const filterRows = (values: any[][]) => {
+      const idColumn = values[0]?.indexOf('ID') ?? -1;
+      return affectedIds && idColumn >= 0 ? values.filter((row, index) => index === 0 || affectedIds.has(String(row[idColumn]))) : values;
+    };
+    lastMismatches = compareSheetValueMultisets(expectedSheets.map(sheet => ({ ...sheet, data: filterRows(sheet.data) })), valueRanges.map(range => ({ ...range, values: filterRows(range.values || []) })));
 
     if (lastMismatches.length === 0) return;
     if (attempt < maxAttempts - 1) await wait(500 * (attempt + 1));
@@ -2948,8 +2979,8 @@ const getVerificationSheets = (sheets: SheetData[], plan: IncrementalUserSheetPl
   return sheets.filter(sheet => touched.has(sheet.name));
 };
 
-// First save in a session, every tenth save, and recovery after an error use
-// full verification. Routine successful saves verify only affected tabs.
+// Setup and explicit recovery use full verification. Routine saves compare only
+// affected IDs in touched tables; report refresh remains a separate operation.
 const verifiedSaves = new Map<string, number>();
 
 const buildSheetRewriteBatches = (
@@ -2960,22 +2991,19 @@ const buildSheetRewriteBatches = (
   const totalColumns = Math.max(getSheetColumnCount(sheet.data), sheet.previousColumnCount || 0, 1);
   const batches: { range: string; values: SheetData['data']; startRow: number; endRow: number }[] = [];
 
-  for (let start = 0; start < totalRows; start += chunkSize) {
-    const end = Math.min(start + chunkSize, totalRows);
-    const values = Array.from({ length: end - start }, (_, offset) => {
-      const sourceRow = sheet.data[start + offset] || [];
-      const padded: SheetData['data'][number] = Array.from({ length: totalColumns }, () => '');
-      sourceRow.forEach((cell, index) => {
-        padded[index] = cell ?? '';
-      });
-      return padded;
-    });
-    batches.push({
-      range: `${escapeSheetName(sheet.name)}!A${start + 1}:${columnLabel(totalColumns - 1)}${end}`,
-      values,
-      startRow: start + 1,
-      endRow: end,
-    });
+  let start = 0;
+  while (start < totalRows) {
+    const values: SheetData['data'] = []; let bytes = 256;
+    while (start + values.length < totalRows && values.length < chunkSize) {
+      const sourceRow = sheet.data[start + values.length] || [];
+      const padded = Array.from({ length: totalColumns }, (_, column) => sourceRow[column] ?? '');
+      const rowBytes = new TextEncoder().encode(JSON.stringify(padded)).length + 1;
+      if (values.length && bytes + rowBytes > 700000) break;
+      values.push(padded); bytes += rowBytes;
+    }
+    const end = start + values.length;
+    batches.push({ range: `${escapeSheetName(sheet.name)}!A${start + 1}:${columnLabel(totalColumns - 1)}${end}`, values, startRow: start + 1, endRow: end });
+    start = end;
   }
 
   return batches;
@@ -3011,16 +3039,12 @@ const rewriteSheetValuesInBulk = async (
   });
   // Empty padded cells clear the old tail in the same atomic Values request.
   // Never clear the live sheet in a separate request before replacing it.
-  const updateRes = await fetcher(config.spreadsheetId, '/values:batchUpdate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      valueInputOption: sheet.inputOption || 'RAW',
-      data: batches.map(batch => ({ range: batch.range, values: batch.values })),
-    })
-  });
-  if (!updateRes.ok) {
-    throw new Error(`Failed to rewrite sheet ${sheet.name}: ${await updateRes.text()}`);
+  for (const data of splitSheetsBatch(batches.map(batch => ({ range: batch.range, values: batch.values })))) {
+    const updateRes = await fetcher(config.spreadsheetId, '/values:batchUpdate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valueInputOption: sheet.inputOption || 'RAW', data }),
+    });
+    if (!updateRes.ok) throw new Error(`Failed to rewrite sheet ${sheet.name}: ${await updateRes.text()}`);
   }
 };
 
@@ -3098,20 +3122,17 @@ const writeIncrementalUserSheetPlan = async (
       label: 'Writing changed rows',
       detail: `${plan.updates.length} row update(s) in 1 request`,
     });
-    const response = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ valueInputOption: 'RAW', data: plan.updates.map(update => {
+    const adjusted = plan.updates.map(update => {
         const title = getTitleFromRange(update.range);
         return { ...update, range: update.range.replace(/([A-Z]+)(\d+)/g, (_match, column, rawRow) => {
           const row = Number(rawRow);
           const shift = new Set(plan.deletions.filter(deletion => deletion.sheetName === title && deletion.rowNumber < row).map(deletion => deletion.rowNumber)).size;
           return `${column}${row - shift}`;
         }) };
-      }) })
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to update changed rows: ${await response.text()}`);
+      });
+    for (const data of splitSheetsBatch(adjusted)) {
+      const response = await sheetsFetch(config.spreadsheetId, '/values:batchUpdate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valueInputOption: 'RAW', data }) });
+      if (!response.ok) throw new Error(`Failed to update changed rows: ${await response.text()}`);
     }
   }
 
@@ -3134,13 +3155,11 @@ const writeIncrementalUserSheetPlan = async (
       total: appendList.length,
     });
     const range = `${escapeSheetName(append.sheetName)}!A1`;
-    const response = await sheetsFetch(config.spreadsheetId, `/values/${range}:append?valueInputOption=${append.inputOption}&insertDataOption=INSERT_ROWS`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ values: append.values })
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to append changed rows to ${append.sheetName}: ${await response.text()}`);
+    for (const values of splitSheetsBatch(append.values)) {
+      const response = await sheetsFetch(config.spreadsheetId, `/values/${range}:append?valueInputOption=${append.inputOption}&insertDataOption=INSERT_ROWS`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values }),
+      });
+      if (!response.ok) throw new Error(`Failed to append changed rows to ${append.sheetName}: ${await response.text()}`);
     }
   }
 };
@@ -3163,6 +3182,7 @@ const performSync = async ({ db, baseline, forceOverwrite = false, onProgress }:
     let dbToWrite = localDbForPlan;
     const baseSnapshot = baseline || getPendingSpreadsheetWrite()?.base
       || (lastSnapshot ? validateSchema(safeJsonParse(lastSnapshot, { data: [] })) : undefined);
+    const dirty = baseSnapshot ? dirtySheetNames(baseSnapshot, localDbForPlan) : undefined;
     let currentSheetDbForPlan: DbSchema | undefined;
     let physicalSheetDataForPlan: SheetData[] = [];
     let physicalDriftSheetNames = new Set<string>();
@@ -3171,7 +3191,7 @@ const performSync = async ({ db, baseline, forceOverwrite = false, onProgress }:
     if (!forceOverwrite) {
       onProgress?.({ phase: 'merge_remote', label: 'Checking sheet edits', detail: 'Merging current spreadsheet rows before save' });
       const sheetBase = validateSchema(safeJsonParse(JSON.stringify(baseSnapshot || dbToWrite), { data: [] }));
-      const sheetState = await fetchUserEditableSpreadsheetDb(config, sheetBase);
+      const sheetState = await fetchUserEditableSpreadsheetDb(config, sheetBase, dirty);
       if (sheetState.reliableMeta) {
         remoteMetadata = { meta: sheetState.meta, existingTitles: sheetState.existingTitles, reliable: true };
       }
@@ -3188,14 +3208,15 @@ const performSync = async ({ db, baseline, forceOverwrite = false, onProgress }:
 
     // 1. Generate all sheet data
     onProgress?.({ phase: 'export', label: 'Building spreadsheet tabs', detail: `${dbToWrite.data.length} items → export sheets` });
-    const exportSheets = generateDbExportSheets(dbToWrite);
+    const exportSheets = generateDbExportSheets(dirty && !forceOverwrite ? { ...dbToWrite, data: dbToWrite.data.filter(item => getItemExportSheetNames(item).some(name => dirty.has(name))) } : dbToWrite, new Date(), !baseSnapshot || forceOverwrite)
+      .filter(sheet => !dirty || forceOverwrite || dirty.has(sheet.name));
 
     // 2. Get existing sheets
     onProgress?.({ phase: 'metadata', label: 'Checking spreadsheet structure', detail: 'Reading tab list and permissions' });
     const metadataResult = remoteMetadata || await fetchSpreadsheetMetadata(config);
     let meta = metadataResult.meta;
     const { existingTitles, reliable } = metadataResult;
-    const allSheetData = [...exportSheets, buildEventLogSheet()];
+    const allSheetData = !baseSnapshot || forceOverwrite ? [...exportSheets, buildEventLogSheet()] : exportSheets;
     // Initial write only when: no cached snapshot AND sheet is truly empty
     // (not just isHydrated false — the sheet might already have data from a previous session).
     const hasManagedSheetsInSheet = MANAGED_USER_SHEET_NAMES.some(name => existingTitles.has(name));
@@ -3239,6 +3260,7 @@ const performSync = async ({ db, baseline, forceOverwrite = false, onProgress }:
       (batchPayload.replies || []).forEach((reply: any) => {
         if (reply?.addSheet?.properties) createdMetaSheets.push({ properties: reply.addSheet.properties });
       });
+      metadataCache.delete(config.spreadsheetId);
       if (createdMetaSheets.length > 0) {
         meta = { ...meta, sheets: [...(meta?.sheets || []), ...createdMetaSheets] };
       }
@@ -3294,6 +3316,7 @@ const performSync = async ({ db, baseline, forceOverwrite = false, onProgress }:
       if (changed.length > 0) {
         if (conflictAttempt >= 2) throw new Error(`Spreadsheet keeps changing (${changed.join(', ')}). Save postponed; local changes are kept for retry.`);
         onProgress?.({ phase: 'merge_remote', label: 'Merging newer edits', detail: changed.join(', ') });
+        metadataCache.delete(config.spreadsheetId);
         return performSync({ db: updatedDb, baseline, forceOverwrite, onProgress }, conflictAttempt + 1);
       }
     }
@@ -3332,18 +3355,39 @@ const performSync = async ({ db, baseline, forceOverwrite = false, onProgress }:
     }
 
     // 5. Cache & cleanup
-    await applyGeneratedSheetPresentation(config, meta, createdSheetTitles, isInitialSpreadsheetWrite, allSheetData);
+    if (!baseSnapshot || createdSheetTitles.size > 0 || forceOverwrite) await applyGeneratedSheetPresentation(config, meta, createdSheetTitles, isInitialSpreadsheetWrite, allSheetData);
     const saveCount = verifiedSaves.get(config.spreadsheetId) || 0;
     const verificationSheets = writeCount > 0
       ? getVerificationSheets(exportSheets, incrementalPlan, saveCount % 10 === 0)
       : [];
-    await verifySpreadsheetWriteCommitted(config, verificationSheets, onProgress);
+    const affectedIds = baseSnapshot && !forceOverwrite ? new Set<string>() : undefined;
+    if (affectedIds) {
+      const headers = new Map(exportSheets.map(sheet => [sheet.name, sheet.data[0]]));
+      for (const update of incrementalPlan.updates) {
+        const offset = headers.get(getTitleFromRange(update.range))?.indexOf('ID') ?? -1;
+        if (offset >= 0) update.values.forEach(row => affectedIds.add(String(row[offset])));
+      }
+      for (const append of incrementalPlan.appends) {
+        const offset = headers.get(append.sheetName)?.indexOf('ID') ?? -1;
+        if (offset >= 0) append.values.forEach(row => affectedIds.add(String(row[offset])));
+      }
+      for (const deletion of incrementalPlan.deletions) {
+        const sheet = physicalSheetDataForPlan.find(sheet => sheet.name === deletion.sheetName);
+        const offset = sheet?.data[0]?.indexOf('ID') ?? -1;
+        if (offset >= 0) affectedIds.add(String(sheet!.data[deletion.rowNumber - 1]?.[offset]));
+      }
+      for (const sheet of incrementalPlan.rewrites) {
+        const offset = sheet.data[0]?.indexOf('ID') ?? -1;
+        if (offset >= 0) sheet.data.slice(1).forEach(row => affectedIds.add(String(row[offset])));
+      }
+    }
+    await verifySpreadsheetWriteCommitted(config, verificationSheets, onProgress, affectedIds);
     if (writeCount > 0) verifiedSaves.set(config.spreadsheetId, saveCount + 1);
     onProgress?.({ phase: 'complete', label: 'Finalizing save', detail: 'Updating local cache' });
     writeSpreadsheetCache(finalJsonString);
     lastSnapshot = finalJsonString;
     isHydrated = true;
-    if (writeCount > 0) await appendSpreadsheetEvent(config, buildEventLogRow('success', 'complete', 'save_success', `${dbToWrite.data.length} item(s) saved`, saveId));
+    if (writeCount > 0 && existingTitles.has(EVENT_LOG_SHEET_NAME)) void appendSpreadsheetEvent(config, buildEventLogRow('success', 'complete', 'save_success', `${dbToWrite.data.length} item(s) saved`, saveId));
 
     return {
       success: true,
@@ -3441,6 +3485,24 @@ export const syncSpreadsheetData = (request: SpreadsheetSyncRequest): Promise<Sy
   return scheduleDebouncedSpreadsheetSync(request);
 };
 
+export const refreshSpreadsheetReports = async (db: DbSchema) => {
+  const config = getSpreadsheetConfig();
+  if (!config) throw new Error('Spreadsheet is not connected');
+  const { meta, existingTitles } = await fetchSpreadsheetMetadata(config);
+  const reports = generateDbExportSheets(db).filter(sheet => isGeneratedDashboardSheet(sheet.name));
+  const missing = reports.filter(sheet => !existingTitles.has(sheet.name));
+  if (missing.length) {
+    const response = await sheetsFetch(config.spreadsheetId, ':batchUpdate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requests: missing.map(sheet => ({ addSheet: { properties: { title: sheet.name } } })) }) });
+    if (!response.ok) throw new Error('Could not create report sheets');
+    const created = await response.json();
+    meta.sheets.push(...(created.replies || []).map((reply: any) => ({ properties: reply.addSheet.properties })));
+    metadataCache.delete(config.spreadsheetId);
+  }
+  await ensureSheetGridCapacity(config, meta, reports);
+  await rewriteChangedSheets(config, reports);
+  await verifySpreadsheetWriteCommitted(config, reports);
+};
+
 export interface SpreadsheetHistoryEntry {
     timestamp: string;
     data: DbSchema;
@@ -3485,6 +3547,7 @@ export const getSpreadsheetHistory = async (): Promise<SpreadsheetHistoryEntry[]
 };
 
 export const __test__ = {
+  dirtySheetNames,
   writeIncrementalUserSheetPlan,
   buildSystemSheetRows,
   extractSystemSheetSnapshot,

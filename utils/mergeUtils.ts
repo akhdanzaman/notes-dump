@@ -113,6 +113,8 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
     const localItemIds = new Set(local.data.map(i => i.id));
     const remoteItemIds = new Set(remote.data.map(i => i.id));
 
+    const localById = new Map(local.data.map(item => [item.id, item]));
+    const baseById = new Map(base?.data.map(item => [item.id, item]) || []);
     const itemMap = new Map<string, BrainDumpItem>();
 
     // 1. Items from Remote
@@ -120,8 +122,8 @@ export const mergeDbData = (local: DbSchema, remote: DbSchema, base?: DbSchema):
         if (localItemIds.has(remoteItem.id)) {
             // In both: merge concurrent field-level changes so background enrichment can
             // round-trip without clobbering remote/manual edits made on the same row.
-            const localItem = local.data.find(i => i.id === remoteItem.id)!;
-            const baseItem = base?.data.find(i => i.id === remoteItem.id);
+            const localItem = localById.get(remoteItem.id)!;
+            const baseItem = baseById.get(remoteItem.id);
             itemMap.set(remoteItem.id, mergeConcurrentItem(localItem, remoteItem, baseItem));
         } else {
             // In remote but not in local

@@ -232,6 +232,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         handleExportExcel,
         handleExportJSON,
         handleExportWorkbook,
+        handleRefreshReports,
         handleAddRule,
         handleRemoveRule,
         handleUpdateRule,
@@ -1696,6 +1697,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     )}
                                                 </div>
                                             </section>
+
+                                            {spreadsheetConfig && <button type="button" onClick={handleRefreshReports} className="w-full py-2 text-sm text-brand-500">Perbarui laporan spreadsheet</button>}
 
                                             {/* Spreadsheet Config */}
                                             <section>

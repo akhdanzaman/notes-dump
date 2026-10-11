@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
-import { createSpreadsheetBackup, checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
+import { refreshSpreadsheetReports, createSpreadsheetBackup, checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
 import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
@@ -504,6 +504,13 @@ export const useControlCenter = ({
         }
     };
 
+    const handleRefreshReports = async () => {
+        try {
+            await refreshSpreadsheetReports({ data: allItems, skills: allSkills, wallets: allWallets, budgetConfig: { monthlyIncome, rules: budgetRules }, monthlyThemes, monthlyThemeImages, appSettings: localAppSettings, customPrompt: prompt });
+            notifyUser('Laporan spreadsheet diperbarui.', 'success');
+        } catch (error) { notifyUser(`Laporan gagal diperbarui: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error'); }
+    };
+
     const handleExportWorkbook = async () => {
         try {
             const backup = await createSpreadsheetBackup();
@@ -602,6 +609,7 @@ export const useControlCenter = ({
         handleExportExcel,
         handleExportJSON,
         handleExportWorkbook,
+        handleRefreshReports,
         handleAddRule,
         handleRemoveRule,
         handleUpdateRule,

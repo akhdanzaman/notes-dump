@@ -1,7 +1,9 @@
 import { useCallback, useRef, type MutableRefObject } from 'react';
 import type { BrainDumpItem, DbSchema, SyncProgress, SyncStatus, SyncResult } from '../types';
 import { syncData, persistForSave } from '../services/syncFacade';
-import { syncItemsToGoogleCalendar } from '../services/googleCalendarService';
+import { scheduleCalendarSync } from '../services/derivedSync';
+import { persistLocalState, localScope } from '../services/localOutbox';
+import { getSpreadsheetConfig } from '../services/spreadsheetService';
 import { applySaveResult, combineSaveChanges, type SaveChanges } from '../utils/saveChanges';
 
 interface DatabaseSaveBindings {
@@ -44,17 +46,13 @@ export function useDatabaseSave(bindings: DatabaseSaveBindings) {
         const result = await syncData({ ...outgoing, preparedLocal: true, forceOverwrite, onProgress: report });
         if (!result.success) throw new Error(result.error || 'Sync failed, preserving local state.');
         const acknowledged = result.mergedData || outgoing;
-        ctx.apply(applySaveResult(ctx.read(), acknowledged, before));
+        const applied = applySaveResult(ctx.read(), acknowledged, before);
+        ctx.apply(applied);
+        if (typeof indexedDB !== 'undefined') await persistLocalState(localScope(getSpreadsheetConfig()?.spreadsheetId), applied, undefined, false);
         ctx.lastSyncedItemsRef.current = acknowledged.data;
-        // Calendar receives the acknowledged data, never unsaved in-flight edits.
-        if (acknowledged.appSettings?.googleCalendarSyncEnabled) {
-          try {
-            report({ phase: 'calendar', label: 'Syncing calendar', detail: 'Checking changed calendar events' });
-            await syncItemsToGoogleCalendar(acknowledged.data, acknowledged.appSettings);
-          } catch (error) {
-            ctx.setError(`Data tersimpan, tapi sync Google Calendar gagal: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
+        if (acknowledged.appSettings?.googleCalendarSyncEnabled) scheduleCalendarSync(acknowledged, error => {
+          ctx.setError(`Data tersimpan, tapi sync Google Calendar gagal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        });
         report({ phase: 'complete', label: 'Save complete', detail: 'Sheets and local cache are up to date' });
         ctx.setSaveStatus('synced');
         return { ...result, state: 'committed' };

@@ -160,12 +160,18 @@ const parseOptionalSheetAmount = (value: unknown): number | undefined =>
 const hasAuthoritativeRows = (sheet: any): boolean =>
     Array.isArray(sheet?.values) && sheet.values.length > 1;
 
-export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSchema => {
+export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[], options: { authoritativeEmpty?: boolean } = {}): DbSchema => {
     if (!Array.isArray(valueRanges)) return db;
     // Validate every structured cell before mutating data; a failed read leaves the caller intact.
     db = structuredClone(db);
     const newItems = [...db.data];
     const persistedById = new Map(newItems.map(item => [item.id, item]));
+    const addItem = (item: BrainDumpItem) => { newItems.push(item); persistedById.set(item.id, item); };
+    const findItem = (id: unknown, predicate: (item: BrainDumpItem) => boolean) => {
+        if (id) { const candidate = persistedById.get(String(id)); return candidate && predicate(candidate) ? candidate : undefined; }
+        return newItems.find(predicate);
+    };
+    const isAuthoritative = (sheet: any) => Array.isArray(sheet?.values) && sheet.values.length >= (options.authoritativeEmpty ? 1 : 2);
     for (const range of valueRanges) {
         const header = range.values?.[0] || [];
         const entityColumn = header.indexOf(ENTITY_JSON_COLUMN);
@@ -179,7 +185,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             if (entityColumn < 0 || !row[entityColumn]) continue;
             if (Number(row[header.indexOf(ENTITY_SCHEMA_COLUMN)]) !== ENTITY_SCHEMA_VERSION) throw new Error(`${location}: Unsupported entity schema; migration required`);
             const entity = decodeEntity(row[entityColumn], String(row[header.indexOf('ID')]), location);
-            if (entity && !persistedById.has(entity.id)) { newItems.push(entity); persistedById.set(entity.id, entity); }
+            if (entity && !persistedById.has(entity.id)) { addItem(entity); }
             else if (entity) {
                 const existing = persistedById.get(entity.id)!;
                 existing.meta = { ...existing.meta, ...entity.meta };
@@ -195,7 +201,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     const seenItemIds = new Set<string>();
 
     const savingGoalsInvestmentsSheet = valueRanges.find(r => r.range && r.range.includes(SAVING_GOALS_INVESTMENTS_SHEET_NAME));
-    const hasSavingGoalsInvestmentsSheet = hasAuthoritativeRows(savingGoalsInvestmentsSheet);
+    const hasSavingGoalsInvestmentsSheet = isAuthoritative(savingGoalsInvestmentsSheet);
 
     const shoppingSheetForTransactionCrossCheck = valueRanges.find(r => r.range && r.range.includes('Shopping'));
     const shoppingSheetIds = new Set<string>();
@@ -261,7 +267,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const amount = parsedTransactionLineItems.length ? sumTransactionLineItems(parsedTransactionLineItems) : parseSheetAmount(amountStr);
             const financeType = parseFinanceType(type) || 'expense';
             
-            const match = newItems.find(i => 
+            const match = findItem(idStr, i => 
                 (idStr && i.id === idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment'))) ||
                 (!idStr && (i.type === ItemType.FINANCE || (i.type === ItemType.SHOPPING && i.status === 'done' && i.meta.shoppingCategory !== 'saving' && i.meta.shoppingCategory !== 'investment')) &&
                 i.content === description &&
@@ -367,7 +373,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const isoCompletedAt = !isNaN(parsedCompletedAt.getTime()) ? parsedCompletedAt.toISOString() : isoDate;
                 
                 const newId = idStr || uuidv4();
-                newItems.push({
+                addItem({
                     id: newId,
                     type: ItemType.FINANCE,
                     content: description || 'Manual Transaction',
@@ -521,7 +527,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const resolvedIsRoutine = todoLikeType === ItemType.SKILLS ? true : isRoutine;
             const resolvedRoutineInterval = todoLikeType === ItemType.SKILLS ? (routineInterval || 'weekly') : routineInterval;
             
-            const match = newItems.find(i => 
+            const match = findItem(idStr, i => 
                 (idStr && i.id === idStr) ||
                 (!idStr && (i.type === ItemType.TODO || i.type === ItemType.SKILLS) &&
                 i.content === content &&
@@ -694,7 +700,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const newId = idStr || uuidv4();
                 const parsedTags = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
                 const nextTags = todoLikeType === ItemType.SKILLS ? Array.from(new Set([...parsedTags, 'skills', 'routine'])) : parsedTags;
-                newItems.push({
+                addItem({
                     id: newId,
                     type: todoLikeType,
                     content: content || (todoLikeType === ItemType.SKILLS ? 'Manual Skill Routine' : 'Manual Todo'),
@@ -837,7 +843,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const parsedShoppingLineItems = parseShoppingLineItemsFromSheet(lineItemsStr);
             const resolvedShoppingAmount = parsedShoppingLineItems?.length ? sumShoppingLineItems(parsedShoppingLineItems) : amount;
             
-            const exactIdMatch = idStr ? newItems.find(i => i.id === idStr) : undefined;
+            const exactIdMatch = idStr ? persistedById.get(String(idStr)) : undefined;
             const semanticRoutineMatch = parsedCategory === 'routine'
                 ? newItems.find(i =>
                     i.type === ItemType.SHOPPING &&
@@ -951,7 +957,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 }
 
                 const newId = idStr || uuidv4();
-                newItems.push({
+                addItem({
                     id: newId,
                     type: ItemType.SHOPPING,
                     content: item || 'Manual Item',
@@ -1087,7 +1093,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (updated) hasChanges = true;
             } else {
                 const newId = idStr || uuidv4();
-                newItems.push({
+                addItem({
                     id: newId,
                     type: ItemType.SHOPPING,
                     content: name || 'Manual Goal',
@@ -1146,7 +1152,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             if (!event && !date && !idStr) continue;
             const hideFromCalendar = hasHideFromCalendar ? parseSheetBoolean(getHeaderCell(headers, row, 'Hide_From_Calendar')) : undefined;
             
-            const match = newItems.find(i => 
+            const match = findItem(idStr, i => 
                 (idStr && i.id === idStr) ||
                 (!idStr && i.type === ItemType.EVENT &&
                 i.content === event &&
@@ -1225,7 +1231,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
 
                 const newId = idStr || uuidv4();
                 const eventStatus = status ? (String(status).trim() as 'pending' | 'done') : 'pending';
-                newItems.push({
+                addItem({
                     id: newId,
                     type: ItemType.EVENT,
                     content: event || 'Manual Event',
@@ -1262,7 +1268,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const rowStatus = hasStatusColumn ? statusOrId : undefined;
             if (!content && !date && !idStr) continue;
             
-            const match = newItems.find(i => 
+            const match = findItem(idStr, i => 
                 (idStr && i.id === idStr) ||
                 (!idStr && (i.type === ItemType.NOTE || i.type === ItemType.JOURNAL) &&
                 i.content === content &&
@@ -1300,7 +1306,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
                 const itemType = parseNotesSheetItemType(type);
                 const newId = idStr || uuidv4();
-                newItems.push({
+                addItem({
                     id: newId,
                     type: itemType,
                     content: content || 'Manual Note',
@@ -1365,7 +1371,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
             const nextActualEnd = parseOptionalIso(actualEndStr);
             const nextActualTimeEdited = String(actualTimeEditedStr || '').toUpperCase() === 'TRUE';
 
-            const match = newItems.find(i => {
+            const match = findItem(idStr, i => {
                 if (idStr && i.id === idStr) return true;
                 if (i.type !== ItemType.SKILL_LOG) return false;
                 const sameSkill = i.meta.skillId ? i.meta.skillId === nextSkillId : i.meta.skillName?.toLowerCase() === String(skillName || '').toLowerCase();
@@ -1404,7 +1410,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
                 if (updated) hasChanges = true;
             } else {
                 const newId = idStr || uuidv4();
-                newItems.push({
+                addItem({
                     id: newId,
                     type: ItemType.SKILL_LOG,
                     content: content || 'Manual Skill Log',
@@ -1435,7 +1441,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     // 7. Settings Reconciliation
     const config = parseConfigSheets(valueRanges, { createSkillIds: true });
     const walletSheet = valueRanges.find(r => r.range && r.range.includes('Wallets Config'));
-    if (hasAuthoritativeRows(walletSheet)) {
+    if (isAuthoritative(walletSheet)) {
         db.wallets = config.wallets;
         hasChanges = true;
     }
@@ -1448,7 +1454,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const skillConfigSheet = valueRanges.find(r => r.range && r.range.includes('Skills Config'));
-    if (hasAuthoritativeRows(skillConfigSheet)) {
+    if (isAuthoritative(skillConfigSheet)) {
         const inferScheduleFromRoutine = (skillId: string, skillName: string): SkillSchedule | undefined => {
             const routine = newItems.find(item =>
                 item.type === ItemType.SKILLS
@@ -1483,7 +1489,7 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const settingsSheet = valueRanges.find(r => r.range && r.range.includes('Themes & Settings'));
-    if (hasAuthoritativeRows(settingsSheet)) {
+    if (isAuthoritative(settingsSheet)) {
         db.appSettings = { defaultCollapsed: false, hideMoney: false, ...db.appSettings, ...config.appSettings };
         db.monthlyThemes = config.monthlyThemes;
         db.monthlyThemeImages = config.monthlyThemeImages;
@@ -1493,16 +1499,16 @@ export const reconcileSpreadsheetData = (db: DbSchema, valueRanges: any[]): DbSc
     }
 
     const sheetsFetched = {
-        tx: hasAuthoritativeRows(txSheet),
-        todo: hasAuthoritativeRows(todoSheet),
-        shop: hasAuthoritativeRows(shopSheet),
-        event: hasAuthoritativeRows(eventSheet),
-        notes: hasAuthoritativeRows(notesSheet),
-        skillLogs: hasAuthoritativeRows(skillLogsSheet),
-        wallet: hasAuthoritativeRows(walletSheet),
-        budget: hasAuthoritativeRows(budgetSheet),
-        skillConfig: hasAuthoritativeRows(skillConfigSheet),
-        settings: hasAuthoritativeRows(settingsSheet),
+        tx: isAuthoritative(txSheet),
+        todo: isAuthoritative(todoSheet),
+        shop: isAuthoritative(shopSheet),
+        event: isAuthoritative(eventSheet),
+        notes: isAuthoritative(notesSheet),
+        skillLogs: isAuthoritative(skillLogsSheet),
+        wallet: isAuthoritative(walletSheet),
+        budget: isAuthoritative(budgetSheet),
+        skillConfig: isAuthoritative(skillConfigSheet),
+        settings: isAuthoritative(settingsSheet),
         goalInvestments: hasSavingGoalsInvestmentsSheet
     };
 

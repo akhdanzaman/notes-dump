@@ -419,10 +419,10 @@ export const generateExportData = (
   monthlyThemes: Record<string, string>,
   appSettings: AppSettings,
   now = new Date(),
-  extras: { customPrompt?: string; chatHistory?: ChatMessage[]; canonicalRules?: CanonicalRule[]; monthlyThemeImages?: Record<string, string> } = {}
+  extras: { customPrompt?: string; chatHistory?: ChatMessage[]; canonicalRules?: CanonicalRule[]; monthlyThemeImages?: Record<string, string>; includeDerived?: boolean } = {}
 ): SheetData[] => {
-  const dataQualityIssues = buildDataQualityIssues(items, wallets, budgetConfig);
-  const sheets: SheetData[] = [
+  const dataQualityIssues = extras.includeDerived === false ? [] : buildDataQualityIssues(items, wallets, budgetConfig);
+  const sheets: SheetData[] = extras.includeDerived === false ? [] : [
     buildDashboardSheet(items, skills, wallets, budgetConfig, monthlyThemes, now),
     {
       name: DATA_QUALITY_SHEET_NAME,

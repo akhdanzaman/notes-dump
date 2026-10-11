@@ -59,7 +59,7 @@ test('failed metadata or row reads stop saving before any spreadsheet write', as
       if (url.endsWith('/session')) return json({ csrfToken: 'synthetic' });
       const path = new URL(url, 'http://synthetic').searchParams.get('path') || '';
       if (init?.method && init.method !== 'GET') writes.push(path);
-      if (!path && !failMetadata) return json({ sheets: [{ properties: { title: 'Transactions', sheetId: 1 } }] });
+      if ((!path || path.startsWith('?fields=')) && !failMetadata) return json({ sheets: [{ properties: { title: 'Transactions', sheetId: 1 } }] });
       return json({ error: 'synthetic read failure' }, 403);
     });
     const result = await __test__.performSync({ db: structuredClone(base) });
@@ -107,12 +107,13 @@ for (const continuous of [false, true]) test(continuous
   rows.set('Event Log', [['Timestamp', 'Level', 'Phase', 'Action', 'Detail', 'Save_ID']]);
   let metadataReads = 0;
   let conflictChecks = 0;
+  let formulaReads = 0;
   const writes: string[] = [];
   t.mock.method(globalThis, 'fetch', async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith('/session')) return json({ csrfToken: 'synthetic' });
     const path = new URL(url, 'http://synthetic').searchParams.get('path') || '';
-    if (!path) {
+    if (!path || path.startsWith('?fields=')) {
       metadataReads++;
       return json({ sheets: [...rows.keys()].map((title, index) => ({
         properties: { title, sheetId: index, gridProperties: { rowCount: 10000, columnCount: 100 } },
@@ -124,7 +125,7 @@ for (const continuous of [false, true]) test(continuous
       const query = new URL(path, 'http://synthetic').searchParams;
       const ranges = query.getAll('ranges');
       const titles = ranges.map(range => range.split('!')[0].replace(/^'|'$/g, ''));
-      if (!titles.includes('Sheet1') && titles.length > 1 && writes.length === 0) {
+      if (query.get('valueRenderOption') === 'FORMULA' && titles.includes('Notes & Journals') && !titles.includes('Sheet1') && writes.length === 0 && ++formulaReads % 2 === 0) {
         conflictChecks++;
         if (continuous || conflictChecks === 1) {
           const noteRows = rows.get('Notes & Journals')!;
@@ -166,7 +167,7 @@ for (const continuous of [false, true]) test(continuous
   assert.equal(conflictChecks, 2);
   assert.equal(result.mergedData?.data.find(item => item.id === 'a')?.content, 'local edit');
   assert.equal(result.mergedData?.data.find(item => item.id === 'b')?.content, 'remote edit 1');
-  assert.equal(result.mergedData?.budgetConfig?.monthlyIncome, 200);
+  assert.equal(rows.get('Themes & Settings')!.find(row => row[1] === 'Monthly Income')![2], 200, 'unrelated remote configuration remains untouched');
   assert.ok(writes.length > 0);
   assert.ok(writes.every(path => !path.includes(':clear')));
 });
@@ -180,7 +181,7 @@ test('native percent formatting is parsed using displayed values without changin
     const url = String(input);
     if (url.endsWith('/session')) return json({ csrfToken: 'synthetic' });
     const path = new URL(url, 'http://synthetic').searchParams.get('path') || '';
-    if (!path) return json({ sheets: sheets.map((sheet, sheetId) => ({ properties: { title: sheet.name, sheetId } })) });
+    if (!path || path.startsWith('?fields=')) return json({ sheets: sheets.map((sheet, sheetId) => ({ properties: { title: sheet.name, sheetId } })) });
     const query = new URL(path, 'http://synthetic').searchParams;
     const formatted = query.get('valueRenderOption') === 'FORMATTED_VALUE';
     return json({ valueRanges: query.getAll('ranges').map(range => {
