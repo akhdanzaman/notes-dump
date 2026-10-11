@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppSettings, BudgetConfig, BudgetRule, BrainDumpItem, Skill, Wallet } from '../types';
-import { checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
+import { createSpreadsheetBackup, checkServiceAccountSpreadsheetAccess, getSpreadsheetConfig, saveSpreadsheetConfig, clearSpreadsheetConfig, SpreadsheetConfig, SERVICE_ACCOUNT_EMAIL } from '../services/spreadsheetService';
 import { saveGeminiKey } from '../services/geminiService';
 import { exportToExcel } from '../services/exportService';
 import { fetchGoogleProfile, loadConfigFromDrive, saveConfigToDrive, saveGoogleSession, clearGoogleSession, GoogleProfile, getValidGoogleAccessToken } from '../services/googleProfileService';
@@ -504,6 +504,21 @@ export const useControlCenter = ({
         }
     };
 
+    const handleExportWorkbook = async () => {
+        try {
+            const backup = await createSpreadsheetBackup();
+            const url = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: 'application/json' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `arkaiv-workbook-${new Date().toISOString().slice(0, 10)}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            notifyUser('Cadangan spreadsheet siap diunduh.', 'success');
+        } catch (error) {
+            notifyUser(`Cadangan gagal: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+        }
+    };
+
     const handleExportJSON = () => {
         const data = {
             items: allItems,
@@ -586,6 +601,7 @@ export const useControlCenter = ({
         isExportingExcel,
         handleExportExcel,
         handleExportJSON,
+        handleExportWorkbook,
         handleAddRule,
         handleRemoveRule,
         handleUpdateRule,

@@ -148,6 +148,8 @@ export const validateSheetsPath = (path: unknown): string => {
 
   if (
     raw === ''
+    || raw.startsWith('?includeGridData=')
+    || raw.startsWith('?fields=')
     || raw === ':batchUpdate'
     || /^\/values(?:\/|:|$)/.test(raw)
   ) {

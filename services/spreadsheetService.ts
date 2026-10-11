@@ -1,3 +1,5 @@
+import { recordSpreadsheetRequest, getSpreadsheetDiagnostics } from './spreadsheetTelemetry';
+export { getSpreadsheetDiagnostics };
 import { readHeaderAwareCell, parseConfigSheets } from '../utils/spreadsheetConfig';
 import { DbSchema, BrainDumpItem, BudgetConfig, Skill, Wallet, AppSettings, ChatMessage, CanonicalRule, ItemType, SyncProgressCallback, SyncResult } from "../types";
 import { CHANGELOG_ENTRIES } from "../utils/changelog";
@@ -2086,6 +2088,20 @@ export const checkServiceAccountSpreadsheetAccess = async (spreadsheetId: string
   };
 };
 
+const measuredSheetsFetch = async (url: string, init: RequestInit, path: string): Promise<Response> => {
+  const started = performance.now();
+  const operation = !path || path.startsWith('?') ? 'metadata' : (init.method && init.method !== 'GET' && init.method !== 'HEAD' ? 'write' : 'read');
+  const requestBytes = new TextEncoder().encode(String(init.body || '')).length;
+  try {
+    const response = await fetch(url, init);
+    recordSpreadsheetRequest({ at: Date.now(), operation, durationMs: performance.now() - started, requestBytes, responseBytes: Number(response.headers.get('content-length')) || 0, status: response.status });
+    return response;
+  } catch (error) {
+    recordSpreadsheetRequest({ at: Date.now(), operation, durationMs: performance.now() - started, requestBytes, responseBytes: 0, status: 0, errorCode: error instanceof Error ? error.name : 'NETWORK_ERROR' });
+    throw error;
+  }
+};
+
 const serviceAccountSheetsFetch = async (
   spreadsheetId: string,
   path: string,
@@ -2094,14 +2110,14 @@ const serviceAccountSheetsFetch = async (
   const headers = new Headers(init.headers || {});
   const contentType = headers.get('content-type') || headers.get('Content-Type');
   const csrfToken = await ensureServiceAccountSession();
-  return fetch(`/api/spreadsheets/service-account/proxy?spreadsheetId=${encodeURIComponent(spreadsheetId)}&path=${encodeURIComponent(path)}`, {
+  return measuredSheetsFetch(`/api/spreadsheets/service-account/proxy?spreadsheetId=${encodeURIComponent(spreadsheetId)}&path=${encodeURIComponent(path)}`, {
     method: init.method || 'GET',
     headers: {
       ...(contentType ? { 'Content-Type': contentType } : {}),
       'X-Arkaiv-Csrf': csrfToken,
     },
     body: init.body,
-  });
+  }, path);
 };
 
 const shouldRetryServiceAccountProxyResponse = async (response: Response) => {
@@ -2124,13 +2140,13 @@ const oauthSheetsFetch = async (
   const token = tokenOverride || await getValidGoogleAccessToken();
   if (!token) throw new Error('No valid Google access token available');
 
-  const response = await fetch(`${GOOGLE_SHEETS_API_BASE}/${spreadsheetId}${path}`, {
+  const response = await measuredSheetsFetch(`${GOOGLE_SHEETS_API_BASE}/${spreadsheetId}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
       ...(init.headers || {})
     }
-  });
+  }, path);
 
   if (attempt >= MAX_FETCH_RETRIES || !shouldRetrySpreadsheetRequest(response.status)) {
     return response;
@@ -2157,7 +2173,7 @@ const tryOauthSheetsFallback = async (
   }
 };
 
-const sheetsFetch = async (
+const sheetsFetchAttempt = async (
   spreadsheetId: string,
   path: string,
   init: RequestInit = {},
@@ -2191,6 +2207,17 @@ const sheetsFetch = async (
   return oauthSheetsFetch(spreadsheetId, path, init, attempt, tokenOverride);
 };
 
+
+const sheetsFetch = sheetsFetchAttempt;
+
+/** Exact workbook snapshot for rollback, including literal text versus formulas. */
+export const createSpreadsheetBackup = async () => {
+  const config = getSpreadsheetConfig();
+  if (!config) throw new Error('Spreadsheet is not connected');
+  const response = await sheetsFetch(config.spreadsheetId, '?includeGridData=true');
+  if (!response.ok) throw new Error(`Workbook backup failed (${response.status})`);
+  return { format: 'arkaiv-workbook-backup', version: 1, createdAt: new Date().toISOString(), spreadsheetId: config.spreadsheetId, workbook: await response.json(), diagnostics: getSpreadsheetDiagnostics() };
+};
 
 const SECURITY_PASSWORD_SETTING_KEY = 'Security Password';
 

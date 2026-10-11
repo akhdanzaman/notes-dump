@@ -231,6 +231,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         isExportingExcel,
         handleExportExcel,
         handleExportJSON,
+        handleExportWorkbook,
         handleAddRule,
         handleRemoveRule,
         handleUpdateRule,
@@ -1522,13 +1523,12 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 onClick={async () => {
                                                                     const confirmed = await requestUserConfirmation({
                                                                         title: 'Buat cadangan sekarang?',
-                                                                        message: 'Arkaiv akan menyimpan versi database saat ini ke riwayat Google Sheets.',
+                                                                        message: 'Arkaiv akan mengunduh cadangan spreadsheet saat ini, termasuk isi sel dan rumus.',
                                                                         confirmLabel: 'Buat cadangan',
                                                                         tone: 'primary',
                                                                     });
                                                                     if (!confirmed) return;
-                                                                    onSyncClick(true);
-                                                                    setTimeout(fetchHistory, 2000);
+                                                                    await handleExportWorkbook();
                                                                 }}
                                                                 className="text-xs text-emerald-500 hover:text-emerald-400 flex items-center gap-1"
                                                             >
