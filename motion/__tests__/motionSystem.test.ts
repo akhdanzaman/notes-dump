@@ -82,12 +82,12 @@ test('motion timing tokens stay within the product timing envelope', () => {
   assert.ok(motionTransition.enter.duration >= 0.18 && motionTransition.enter.duration <= 0.26);
   assert.ok(motionTransition.modal.duration >= 0.18 && motionTransition.modal.duration <= 0.26);
   assert.ok(
-    motionTransition.panelExit.duration >= 0.18 &&
-      motionTransition.panelExit.duration <= 0.26,
+    motionTransition.panelExit.duration >= 0.12 &&
+      motionTransition.panelExit.duration <= 0.16,
   );
-  assert.ok(motionTransition.page.duration >= 0.18 && motionTransition.page.duration <= 0.26);
+  assert.ok(motionTransition.page.duration >= 0.14 && motionTransition.page.duration <= 0.18);
   assert.ok(motionStagger.tight >= 0.025 && motionStagger.tight <= 0.055);
-  assert.ok(motionStagger.dashboard >= 0.025 && motionStagger.dashboard <= 0.055);
+  assert.equal(motionStagger.dashboard, 0);
 });
 
 test('error feedback never uses a repeated lateral shake', () => {

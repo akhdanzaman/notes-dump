@@ -1159,7 +1159,7 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div className="w-full">
-              <AnimatePresence initial={false} mode="wait" custom={navigationDirection}>
+              <AnimatePresence initial={false} mode="sync" custom={navigationDirection}>
                 <motion.div
                   key={activeTab}
                   custom={navigationDirection}

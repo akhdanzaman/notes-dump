@@ -17,14 +17,14 @@ export const motionEasing = {
 export const motionDistance = {
   micro: 4,
   component: 10,
-  panel: 20,
+  panel: 12,
   page: 8,
 } as const;
 
 export const motionStagger = {
   tight: 0.03,
   normal: 0.045,
-  dashboard: 0.05,
+  dashboard: 0,
 } as const;
 
 export const motionSpring = {
@@ -75,19 +75,19 @@ export const motionTransition = {
     ease: motionEasing.enter,
   },
   exit: {
-    duration: 0.17,
+    duration: 0.14,
     ease: motionEasing.exit,
   },
   panelExit: {
-    duration: 0.2,
+    duration: 0.14,
     ease: motionEasing.exit,
   },
   modal: {
-    duration: 0.24,
+    duration: 0.2,
     ease: motionEasing.emphasize,
   },
   page: {
-    duration: motionDuration.deliberate,
+    duration: 0.16,
     ease: motionEasing.emphasize,
   },
 } as const satisfies Record<string, Transition>;

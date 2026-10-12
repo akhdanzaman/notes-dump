@@ -946,21 +946,19 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
             {/* Sliding Container */}
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
+                initial={false}
+                animate={{ opacity: 1 }}
                 className="touch-pan-y overflow-hidden"
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={onTouchEnd}
-            >
+                                                            >
                 <motion.div
                     className={`flex ${isDragging ? 'will-change-transform' : ''}`}
                     style={{
-                        transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
+                        transform: 'none',
                         transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
                     }}
                 >
                 {/* VIEW: General Notes */}
+                {librarySubTab === 'general' && (
                 <motion.div
                     id="library-panel-general"
                     role="tabpanel"
@@ -972,8 +970,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 >
                     {renderContent(generalItems, 'general')}
                 </motion.div>
+                )}
 
                 {/* VIEW: Skills */}
+                {librarySubTab === 'skills' && (
                 <motion.div
                     id="library-panel-skills"
                     role="tabpanel"
@@ -985,8 +985,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 >
                     {renderSkills()}
                 </motion.div>
+                )}
 
                 {/* VIEW: Journal */}
+                {librarySubTab === 'journal' && (
                 <motion.div
                     id="library-panel-journal"
                     role="tabpanel"
@@ -998,6 +1000,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 >
                     {renderContent(journalItems, 'journal')}
                 </motion.div>
+                )}
                 </motion.div>
             </motion.div>
 

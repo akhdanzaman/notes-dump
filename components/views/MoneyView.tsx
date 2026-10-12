@@ -1349,27 +1349,25 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
       {/* Sliding Container */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={false}
         animate={{
           opacity: 1,
           y: 0,
           transition: motionTransition.standard,
         }}
         className="touch-pan-y"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
+                              >
         <motion.div
           className={`flex w-full ${isDragging ? "will-change-transform" : ""}`}
           style={{
-            transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
+            transform: 'none',
             transition: isDragging
               ? "none"
               : "transform 0.22s cubic-bezier(0.2, 0, 0, 1)",
           }}
         >
           {/* VIEW: Wallets */}
+          {moneyView === 'wallets' && (
           <motion.div
             id="money-panel-wallets"
             role="tabpanel"
@@ -1507,8 +1505,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               </button>
             </div>
           </motion.div>
+          )}
 
           {/* VIEW: Transactions */}
+          {moneyView === 'transactions' && (
           <motion.div
             key={"transactions-" + financeDate.toISOString()}
             id="money-panel-transactions"
@@ -1676,8 +1676,10 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               </aside>
             </div>
           </motion.div>
+          )}
 
           {/* VIEW: Budget Dashboard */}
+          {moneyView === 'budget' && (
           <motion.div
             key={"budget-" + financeDate.toISOString()}
             id="money-panel-budget"
@@ -2662,6 +2664,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               </div>
             )}
           </motion.div>
+          )}
         </motion.div>
       </motion.div>
 

@@ -1536,7 +1536,7 @@ const Card: React.FC<CardProps> = ({
                </div>
 
                {/* Actions */}
-               <div className={actionRowClass} data-edit-actions={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
+               <div className={`entity-editor-footer ${actionRowClass}`} data-edit-actions={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
                    {onDelete && (
                     <button
                       type="button"

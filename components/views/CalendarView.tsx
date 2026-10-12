@@ -273,7 +273,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                             <CalendarIcon className="h-5 w-5" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-semibold text-primary">{calendarCopy.title}</h1>
+                            
                             <p className="text-xs text-muted">{calendarCopy.subtitle}</p>
                         </div>
                     </div>

@@ -52,6 +52,7 @@ interface PresencePanelProps {
 }
 
 let openPanels = 0;
+const panelStack: HTMLElement[] = [];
 let originalOverflow = '';
 let originalInert = false;
 
@@ -95,19 +96,22 @@ const PresencePanel: React.FC<PresencePanelProps> = ({
   }, [isOpen]);
   useEffect(() => {
     if (!isOpen) return;
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousPanel = panelStack.at(-1); const previousPanelInert = previousPanel?.inert;
+    if (previousPanel) previousPanel.inert = true;
+    const currentPanel = panelRef.current; if (currentPanel) panelStack.push(currentPanel);
     if (openPanels++ === 0) { originalOverflow = document.body.style.overflow; originalInert = Boolean(document.getElementById('root')?.inert); }
     document.body.style.overflow = 'hidden';
     const root = document.getElementById('root');
     if (root) root.inert = true;
     const resize = () => panelRef.current?.style.setProperty('--editor-viewport-height', `${window.visualViewport?.height || window.innerHeight}px`);
     resize(); window.visualViewport?.addEventListener('resize', resize);
-    return () => { if (--openPanels === 0) { document.body.style.overflow = originalOverflow; if (root) root.inert = originalInert; } window.visualViewport?.removeEventListener('resize', resize); };
+    return () => { if (currentPanel) { const index = panelStack.indexOf(currentPanel); if (index >= 0) panelStack.splice(index, 1); } if (previousPanel) previousPanel.inert = Boolean(previousPanelInert); if (--openPanels === 0) { document.body.style.overflow = originalOverflow; if (root) root.inert = originalInert; } window.visualViewport?.removeEventListener('resize', resize); };
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
-      restoreFocusRef.current =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      restoreFocusRef.current ||= document.activeElement instanceof HTMLElement ? document.activeElement : null;
       wasOpenRef.current = true;
 
       const frame = window.requestAnimationFrame(() => {
@@ -141,7 +145,7 @@ const PresencePanel: React.FC<PresencePanelProps> = ({
   }, [isOpen]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (panelRef.current?.closest('[data-presence-panel-layer]') !== Array.from(document.querySelectorAll('[data-presence-panel-layer]')).at(-1)) return;
+    if (panelRef.current !== panelStack.at(-1)) return;
     if (event.key === 'Escape' && closeOnEscape) {
       event.preventDefault();
       event.stopPropagation();

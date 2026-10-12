@@ -1247,21 +1247,19 @@ const PlanView: React.FC<PlanViewProps> = ({
 
             {/* Sliding Container */}
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.1 } }}
+                initial={false}
+                animate={{ opacity: 1 }}
                 className="touch-pan-y"
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={onTouchEnd}
-            >
+                                                            >
                 <motion.div
                     className={`flex w-full ${isDragging ? 'will-change-transform' : ''}`}
                     style={{
-                        transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
+                        transform: 'none',
                         transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)'
                     }}
                 >
                 {/* VIEW: Tasks */}
+                {planSubTab === 'tasks' && (
                 <motion.div
                     id="plan-panel-tasks"
                     role="tabpanel"
@@ -1386,8 +1384,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                     </div>
                     <details className="mt-4 rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">{planCopy.completed} · {doneList.length}</summary><div className="mt-3 space-y-2">{visibleCompleted.visibleItems.map(item => renderTaskCard(item))}<LoadMoreButton remainingCount={visibleCompleted.remainingCount} onClick={visibleCompleted.loadMore} /></div></details>
                 </motion.div>
+                )}
 
                 {/* VIEW: Shopping */}
+                {planSubTab === 'shopping' && (
                 <motion.div
                     id="plan-panel-shopping"
                     role="tabpanel"
@@ -1475,8 +1475,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                         )}
                     </div>
                 </motion.div>
+                )}
 
                 {/* VIEW: Savings */}
+                {planSubTab === 'savings' && (
                 <motion.div
                     id="plan-panel-savings"
                     role="tabpanel"
@@ -1558,8 +1560,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                         
                     </div>
                 </motion.div>
+                )}
 
                 {/* VIEW: Loans */}
+                {planSubTab === 'loans' && (
                 <motion.div
                     id="plan-panel-loans"
                     role="tabpanel"
@@ -1651,6 +1655,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         )}
                     </div>
                 </motion.div>
+                )}
                 </motion.div>
             </motion.div>
 

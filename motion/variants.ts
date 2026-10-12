@@ -160,8 +160,8 @@ export const staggerContainerVariants: Variants = {
   hidden: {},
   visible: {
     transition: {
-      staggerChildren: motionStagger.tight,
-      delayChildren: 0.02,
+      staggerChildren: 0,
+      delayChildren: 0,
     },
   },
   exit: {
@@ -177,26 +177,13 @@ export const dashboardContainerVariants: Variants = {
   visible: {
     transition: {
       staggerChildren: motionStagger.dashboard,
-      delayChildren: 0.04,
+      delayChildren: 0,
     },
   },
 };
 
 export const primaryPageVariants: Variants = {
-  hidden: (direction: number = 0) => ({
-    opacity: 0,
-    x: direction === 0 ? 0 : direction * motionDistance.page,
-  }),
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: motionTransition.page,
-  },
-  exit: (direction: number = 0) => ({
-    opacity: 0,
-    x: direction === 0 ? 0 : direction * -motionDistance.panel,
-    transition: motionTransition.panelExit,
-  }),
+ hidden: { opacity: 0 }, visible: { opacity: 1, transition: motionTransition.page }, exit: { opacity: 0, transition: motionTransition.instant },
 };
 
 export const reducedPageVariants: Variants = {

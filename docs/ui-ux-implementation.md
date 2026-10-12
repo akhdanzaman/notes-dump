@@ -13,3 +13,5 @@ Phase 1: local-commit save contract, recoverable UI drafts, dirty-close guard, m
 Phase 2: single local subnav, readable metadata, wider responsive editors, fixed form scroll region/sticky entity actions, compact unfocused mobile capture, shared private amount primitive. TypeScript validation passes.
 
 Phase 3: Summary priorities; Plan overdue/completed access, goals without duplicate milestones, safe funding editors; Library individual journal entries and session local save; Money wallet/category source navigation; Calendar day strip/navigation, time ranges and shared editor. Shopping completion collects actual amount/wallet/date and commits item + expense together. Task completion has a 10-second undo.
+
+Phase 4: 160ms page fade, 200ms panel entry/140ms exit, no dashboard stagger, immediate local tab context and active-only panels. Main/content swipes removed; date swipe rejects vertical/input gestures. Nested dialogs retain inert background and topmost focus handling. TypeScript validation passes.
