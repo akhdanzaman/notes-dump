@@ -85,7 +85,7 @@ const PresencePanel: React.FC<PresencePanelProps> = ({
   const dirtyRef = useRef(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const requestClose = () => {
-    if (saving) return;
+    if (saving || panelRef.current?.querySelector('[data-editor-saving="true"]')) return;
     if (protectDraft && (hasDraft || dirtyRef.current || panelRef.current?.querySelector('[data-editor-dirty="true"]'))) setConfirmClose(true); else onClose();
   };
   const markDirty = () => { dirtyRef.current = true; onDraftChange?.(); };

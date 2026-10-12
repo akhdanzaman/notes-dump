@@ -342,3 +342,8 @@ button:disabled { cursor: not-allowed; }
  [data-global-composer=true]:not(:focus-within)[data-composer-expanded=false] textarea { min-height: 44px; max-height: 44px; }
  .entity-editor-footer { bottom: -16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 }
+
+@media (min-width: 1024px) {
+ [data-calendar-layout=month] { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); align-items: start; gap: 16px; }
+ [data-calendar-layout=month] > section { margin-top: 0; max-height: 75dvh; overflow-y: auto; }
+}

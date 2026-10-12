@@ -25,7 +25,7 @@ test('every desktop menu has a sticky header inside the bounded content scroller
 
 test('composer feedback stays in document flow and text has a separate action row', () => {
   const html = renderToStaticMarkup(<InputBar onSend={() => {}} error="Offline feedback" topContent={<div>Capture progress</div>} showReviewCenterButton language="id" />);
-  assert.match(html, /Offline feedback/);
+  assert.doesNotMatch(html, /Offline feedback/); // Global sync feedback appears once in the shell.
   assert.match(html, /Capture progress/);
   assert.match(html, /data-composer-controls="true"/);
   assert.match(html, /col-span-2 row-start-1/);

@@ -247,6 +247,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
     <div
       data-ui-editor="true"
       data-editor-dirty={draft.dirty.current}
+      data-editor-saving={saving}
       data-entity-id={item.id}
       onInputCapture={draft.markDirty}
       onChangeCapture={draft.markDirty}

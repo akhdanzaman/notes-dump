@@ -11,3 +11,5 @@ Keyboard virtual behavior requires a physical device; record this limitation if 
 Phase 1: local-commit save contract, recoverable UI drafts, dirty-close guard, masked shopping/journal, per-entity/per-field conflict review with stale-value check. Validation: 430 tests pass, both TypeScript projects pass. Schema v3 unchanged.
 
 Phase 2: single local subnav, readable metadata, wider responsive editors, fixed form scroll region/sticky entity actions, compact unfocused mobile capture, shared private amount primitive. TypeScript validation passes.
+
+Phase 3: Summary priorities; Plan overdue/completed access, goals without duplicate milestones, safe funding editors; Library individual journal entries and session local save; Money wallet/category source navigation; Calendar day strip/navigation, time ranges and shared editor. Shopping completion collects actual amount/wallet/date and commits item + expense together. Task completion has a 10-second undo.

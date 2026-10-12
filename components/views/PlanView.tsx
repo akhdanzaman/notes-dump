@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../../hooks/useEditorDraft';
 import React, { useState } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { CheckCircle2, ShoppingCart, PiggyBank, Pencil, Trash2, Plus, History, ChevronLeft, ChevronRight, Calendar, X, Sparkles, Timer, Flag, ShieldAlert, ListChecks, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Image as ImageIcon, HandCoins, ArrowDownLeft, ArrowUpRight, Clock3, CheckCircle } from 'lucide-react';
@@ -55,7 +56,7 @@ interface PlanViewProps {
     wallets: Wallet[];
     budgetRules: BudgetRule[];
     handleResetRoutine: (id: string) => void;
-    onAddFunds: (amount: number, walletId: string, date: string, goalId: string, goalName: string, toWalletId?: string, investmentUnits?: number, investmentUnitPrice?: number) => void;
+    onAddFunds: (amount: number, walletId: string, date: string, goalId: string, goalName: string, toWalletId?: string, investmentUnits?: number, investmentUnitPrice?: number) => void | Promise<unknown>;
     onCompleteGoal: (goal: BrainDumpItem) => void;
     handleOpenAddLoan: (loanAccountId?: string) => void;
     setActiveTab: (tab: Tab) => void;
@@ -103,9 +104,11 @@ const PlanView: React.FC<PlanViewProps> = ({
     };
 
     // Data Preparation
-    const { summary, pendingGroups } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
+    const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
     const { today, tomorrow, later, routines } = pendingGroups;
-    const rootToday = today.filter(item => !item.meta.parentTodoId);
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const overdueTasks = today.filter(item => !item.meta.parentTodoId && item.status === 'pending' && new Date(item.meta.date || item.created_at).getTime() < dayStart.getTime());
+    const rootToday = today.filter(item => !item.meta.parentTodoId && !overdueTasks.includes(item));
     const rootTomorrow = tomorrow.filter(item => !item.meta.parentTodoId);
     const rootLater = later.filter(item => !item.meta.parentTodoId);
     const rootRoutines = (routines || []).filter(item => !item.meta.parentTodoId);
@@ -116,6 +119,8 @@ const PlanView: React.FC<PlanViewProps> = ({
     const taskResetKey = `plan-tasks-${focusDate.getFullYear()}-${focusDate.getMonth()}-${searchQuery}-${selectedTag}`;
     const shoppingResetKey = `plan-shopping-${searchQuery}-${selectedTag}`;
 
+    const visibleOverdue = useLazyItems(overdueTasks, { resetKey: `${taskResetKey}-overdue` });
+    const visibleCompleted = useLazyItems(doneList, { resetKey: `${taskResetKey}-completed` });
     const visibleToday = useLazyItems(rootToday, { resetKey: `${taskResetKey}-today` });
     const visibleRoutines = useLazyItems(rootRoutines, { resetKey: `${taskResetKey}-routines` });
     const visibleTomorrow = useLazyItems(rootTomorrow, { resetKey: `${taskResetKey}-tomorrow` });
@@ -123,7 +128,7 @@ const PlanView: React.FC<PlanViewProps> = ({
     const visibleUrgent = useLazyItems(urgent, { resetKey: `${shoppingResetKey}-urgent` });
     const visibleRoutineShopping = useLazyItems(routine, { resetKey: `${shoppingResetKey}-routine` });
     const visibleNormalShopping = useLazyItems(normal, { resetKey: `${shoppingResetKey}-normal` });
-    const visibleSavings = useLazyItems(savings, { resetKey: `plan-savings-${searchQuery}-${selectedTag}` });
+    const visibleSavings = useLazyItems(savings.filter(item => item.status !== 'done'), { resetKey: `plan-savings-${searchQuery}-${selectedTag}` });
     const visibleInvestments = useLazyItems(investments, { resetKey: `plan-investments-${searchQuery}-${selectedTag}` });
     const loanAccounts = React.useMemo(() => getLoanAccounts(items), [items]);
     const loanSummary = React.useMemo(() => getLoanSummary(loanAccounts), [loanAccounts]);
@@ -289,12 +294,15 @@ const PlanView: React.FC<PlanViewProps> = ({
         setFundUnitPrice('');
     };
 
-    const handleSaveFunds = () => {
+    const handleSaveFunds = async () => {
+        if (editorSaving) return;
+        setEditorSaving(true); setEditorError('');
+        try {
         if (!addFundsModal || !fundWallet) return;
         const isInvestmentFunding = addFundsModal.targetType === 'investment';
         const amountToSave = isInvestmentFunding ? resolvedFundInput.investedCapital : (fundAmount ? Number(fundAmount) : undefined);
         if (!amountToSave) return;
-        onAddFunds(
+        await onAddFunds(
             amountToSave,
             fundWallet,
             new Date(fundDate).toISOString(),
@@ -304,7 +312,8 @@ const PlanView: React.FC<PlanViewProps> = ({
             isInvestmentFunding ? resolvedFundInput.units : undefined,
             isInvestmentFunding ? resolvedFundInput.unitPrice : undefined
         );
-        resetFundModalState();
+        fundingDraft.clear(); resetFundModalState();
+        } catch (error) { setEditorError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setEditorSaving(false); }
     };
 
     const [editingGoal, setEditingGoal] = useState<BrainDumpItem | null>(null);
@@ -320,6 +329,11 @@ const PlanView: React.FC<PlanViewProps> = ({
     const [editInvestmentCurrentPrice, setEditInvestmentCurrentPrice] = useState('');
     const [editInvestmentPlatform, setEditInvestmentPlatform] = useState('');
 
+    const [editorSaving, setEditorSaving] = useState(false);
+    const [editorError, setEditorError] = useState('');
+    const [revealEditorMoney, setRevealEditorMoney] = useState(false);
+    const goalDraft = useEditorDraft(`goal:${editingGoal?.id || 'closed'}`, { editingGoal, editContent, editAmount, editDate, editImageUrl, editDedicatedWalletId, editInvestmentAssetType, editInvestmentSymbol, editInvestmentUnits, editInvestmentAveragePrice, editInvestmentCurrentPrice, editInvestmentPlatform }, v => { if (Object.hasOwn(v, 'editingGoal')) setEditingGoal(v.editingGoal); if (Object.hasOwn(v, 'editContent')) setEditContent(v.editContent); if (Object.hasOwn(v, 'editAmount')) setEditAmount(v.editAmount); if (Object.hasOwn(v, 'editDate')) setEditDate(v.editDate); if (Object.hasOwn(v, 'editImageUrl')) setEditImageUrl(v.editImageUrl); if (Object.hasOwn(v, 'editDedicatedWalletId')) setEditDedicatedWalletId(v.editDedicatedWalletId); if (Object.hasOwn(v, 'editInvestmentAssetType')) setEditInvestmentAssetType(v.editInvestmentAssetType); if (Object.hasOwn(v, 'editInvestmentSymbol')) setEditInvestmentSymbol(v.editInvestmentSymbol); if (Object.hasOwn(v, 'editInvestmentUnits')) setEditInvestmentUnits(v.editInvestmentUnits); if (Object.hasOwn(v, 'editInvestmentAveragePrice')) setEditInvestmentAveragePrice(v.editInvestmentAveragePrice); if (Object.hasOwn(v, 'editInvestmentCurrentPrice')) setEditInvestmentCurrentPrice(v.editInvestmentCurrentPrice); if (Object.hasOwn(v, 'editInvestmentPlatform')) setEditInvestmentPlatform(v.editInvestmentPlatform); });
+    const fundingDraft = useEditorDraft(`funding:${addFundsModal?.goalId || 'closed'}`, { fundAmount, fundWallet, fundDate, fundUnits, fundUnitPrice }, v => { setFundAmount(v.fundAmount); setFundWallet(v.fundWallet); setFundDate(v.fundDate); setFundUnits(v.fundUnits); setFundUnitPrice(v.fundUnitPrice); });
     const formatIdr = (n: number) => appSettings.hideMoney
         ? '••••'
         : formatCurrencyAmount(n, 'IDR', locale);
@@ -483,7 +497,7 @@ const PlanView: React.FC<PlanViewProps> = ({
         );
     };
 
-    const closeGoalEditModal = () => setEditingGoal(null);
+    const closeGoalEditModal = () => { setEditingGoal(null); setRevealEditorMoney(false); setEditorError(''); };
 
     const openGoalEditModal = (item: BrainDumpItem) => {
         setEditingGoal(item);
@@ -500,8 +514,11 @@ const PlanView: React.FC<PlanViewProps> = ({
         setEditInvestmentPlatform(item.meta.investmentPlatform || '');
     };
 
-    const handleSaveEdit = (goal: BrainDumpItem) => {
-        handleUpdateItem(goal.id, {
+    const handleSaveEdit = async (goal: BrainDumpItem) => {
+        if (editorSaving) return;
+        setEditorSaving(true); setEditorError('');
+        try {
+        await handleUpdateItem(goal.id, {
             content: editContent,
             tags: goal.meta.tags || [],
             amount: Number(editAmount),
@@ -530,7 +547,8 @@ const PlanView: React.FC<PlanViewProps> = ({
             investmentPlatform: goal.meta.investmentPlatform,
             imageUrl: editImageUrl,
         });
-        closeGoalEditModal();
+        goalDraft.clear(); closeGoalEditModal();
+        } catch (error) { setEditorError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setEditorSaving(false); }
     };
 
     const thumbnailEmptyState = (tone: 'saving' | 'investment') => (
@@ -663,13 +681,16 @@ const PlanView: React.FC<PlanViewProps> = ({
 
     const parseOptionalNumber = (value: string) => value.trim() === '' ? undefined : Number(value);
 
-    const handleSaveInvestmentEdit = (investment: BrainDumpItem) => {
+    const handleSaveInvestmentEdit = async (investment: BrainDumpItem) => {
+        if (editorSaving) return;
+        setEditorSaving(true); setEditorError('');
+        try {
         const units = parseOptionalNumber(editInvestmentUnits);
         const averagePrice = parseOptionalNumber(editInvestmentAveragePrice);
         const currentPrice = parseOptionalNumber(editInvestmentCurrentPrice);
         const linkedInvestmentWallet = wallets.find(w => w.id === editDedicatedWalletId);
 
-        handleUpdateItem(investment.id, {
+        await handleUpdateItem(investment.id, {
             content: editContent,
             tags: investment.meta.tags || [],
             date: new Date(editDate).toISOString(),
@@ -699,7 +720,8 @@ const PlanView: React.FC<PlanViewProps> = ({
             investmentPlatform: linkedInvestmentWallet?.name || editInvestmentPlatform.trim() || undefined,
             imageUrl: editImageUrl,
         });
-        closeGoalEditModal();
+        goalDraft.clear(); closeGoalEditModal();
+        } catch (error) { setEditorError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setEditorSaving(false); }
     };
 
     const renderInvestmentCard = (investment: BrainDumpItem) => {
@@ -1250,6 +1272,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad} ${planSubTab !== 'tasks' ? 'pointer-events-none' : ''}`}
                 >
                     <div className="space-y-8">
+                        {overdueTasks.length > 0 && <section className={contentSurface.workflowPanel}><h3 className="mb-3 text-sm font-semibold text-red-600">{isEnglish ? 'Overdue' : 'Terlambat'}</h3>{renderTaskItems(visibleOverdue.visibleItems)}<LoadMoreButton remainingCount={visibleOverdue.remainingCount} onClick={visibleOverdue.loadMore} /></section>}
                         {summary.todo > 0 || rootRoutines.length > 0 ? (
                             <div className={contentSurface.taskWorkspaceGrid} data-plan-workspace="tasks">
                                 <div className="space-y-4 lg:space-y-4">
@@ -1361,6 +1384,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             )
                         )}
                     </div>
+                    <details className="mt-4 rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">{planCopy.completed} · {doneList.length}</summary><div className="mt-3 space-y-2">{visibleCompleted.visibleItems.map(item => renderTaskCard(item))}<LoadMoreButton remainingCount={visibleCompleted.remainingCount} onClick={visibleCompleted.loadMore} /></div></details>
                 </motion.div>
 
                 {/* VIEW: Shopping */}
@@ -1480,6 +1504,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 {savings.length > 0 ? (
                                     <div className="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0">
                                         {visibleSavings.visibleItems.map(goal => renderGoalCard(goal))}
+                                        {savings.some(item => item.status === 'done') && <details><summary className="cursor-pointer py-3 text-sm font-medium">{planCopy.completed}</summary><div className="space-y-3">{savings.filter(item => item.status === 'done').map(renderGoalCard)}</div></details>}
                                         <LoadMoreButton remainingCount={visibleSavings.remainingCount} onClick={visibleSavings.loadMore} />
                                     </div>
                                 ) : (
@@ -1530,7 +1555,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </section>
                         </div>
 
-                        {renderGoalMilestones()}
+                        
                     </div>
                 </motion.div>
 
@@ -1684,6 +1709,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             {/* Saving / Investment Edit Modal */}
             <PresencePanel
                 isOpen={Boolean(editingGoal)}
+                hasDraft={goalDraft.dirty.current} onDraftChange={goalDraft.markDirty} onDiscardDraft={goalDraft.clear} saving={editorSaving} saveError={editorError}
                 onClose={closeGoalEditModal}
                 overlayClassName={responsiveModal.sheetOverlay}
                 panelClassName={addItemModal.panel}
@@ -1696,16 +1722,16 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <div className={addItemModal.header}>
                                 <h3 className={addItemModal.title}>
                                     {editingGoal.meta.shoppingCategory === 'investment' ? <TrendingUp className="h-5 w-5 text-emerald-500" /> : <PiggyBank className="h-5 w-5 text-brand-500" />}
-                                    {editingGoal.meta.shoppingCategory === 'investment' ? 'Edit Investment' : 'Edit Saving Goal'}
+                                    {editingGoal.meta.shoppingCategory === 'investment' ? 'Edit investasi' : 'Edit target'}
                                 </h3>
-                                <button onClick={closeGoalEditModal} className={addItemModal.closeButton}>
+                                <button data-editor-close="true" onClick={closeGoalEditModal} className={addItemModal.closeButton}>
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
 
-                            <div className={addItemModal.body}>
+                            {appSettings.hideMoney && !revealEditorMoney ? <div className="p-5"><button type="button" className="editor-primary" onClick={() => setRevealEditorMoney(true)}>Tampilkan nominal sementara di editor ini</button></div> : <div className={addItemModal.body}>
                                 <div>
-                                    <label className={addItemModal.label}>{editingGoal.meta.shoppingCategory === 'investment' ? 'Asset / Product' : 'Goal Name'}</label>
+                                    <label className={addItemModal.label}>{editingGoal.meta.shoppingCategory === 'investment' ? 'Aset / produk' : 'Nama target'}</label>
                                     <input
                                         type="text"
                                         value={editContent}
@@ -1744,7 +1770,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className={addItemModal.label}>Invested Capital</label>
+                                                <label className={addItemModal.label}>Modal investasi</label>
                                                 <div className={addItemModal.readonlyField}>{formatIdr(getInvestmentMetrics(editingGoal).investedCapital)}</div>
                                                 <p className={addItemModal.helpText}>From Saving transactions.</p>
                                             </div>
@@ -1781,27 +1807,27 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className={addItemModal.label}>Target Amount</label>
+                                                <label className={addItemModal.label}>Nominal target</label>
                                                 <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className={addItemModal.input} />
                                             </div>
                                             <div>
-                                                <label className={addItemModal.label}>Target Date</label>
+                                                <label className={addItemModal.label}>Tanggal target</label>
                                                 <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className={addItemModal.input} />
                                             </div>
                                         </div>
                                         <div>
-                                            <label className={addItemModal.label}>Dedicated Wallet</label>
+                                            <label className={addItemModal.label}>Wallet khusus</label>
                                             <select value={editDedicatedWalletId} onChange={e => setEditDedicatedWalletId(e.target.value)} className={addItemModal.select}>
                                                 <option value="">None</option>
                                                 {wallets.map(w => (
                                                     <option key={w.id} value={w.id}>{w.name}</option>
                                                 ))}
                                             </select>
-                                            <p className={addItemModal.helpText}>If set, funds can only be added from this wallet.</p>
+                                            <p className={addItemModal.helpText}>Jika dipilih, kontribusi memakai wallet ini.</p>
                                         </div>
                                     </>
                                 )}
-                            </div>
+                            </div>}
 
                             <div className={addItemModal.footer}>
                                 <div className={responsiveModal.footer}>
@@ -1815,6 +1841,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         Delete
                                     </button>
                                     <button
+                                        disabled={editorSaving}
                                         onClick={() => editingGoal.meta.shoppingCategory === 'investment' ? handleSaveInvestmentEdit(editingGoal) : handleSaveEdit(editingGoal)}
                                         className={`rounded-lg px-5 py-3 text-sm font-bold text-white transition-colors ${editingGoal.meta.shoppingCategory === 'investment' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-brand-600 hover:bg-brand-500'}`}
                                     >
@@ -1826,9 +1853,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                 )}
             </PresencePanel>
 
-            {/* Add Funds Modal */}
+            {/* Tambah dana Modal */}
             <PresencePanel
                 isOpen={Boolean(addFundsModal?.isOpen)}
+                hasDraft={fundingDraft.dirty.current} onDraftChange={fundingDraft.markDirty} onDiscardDraft={fundingDraft.clear} saving={editorSaving} saveError={editorError}
                 onClose={resetFundModalState}
                 overlayClassName={responsiveModal.sheetOverlay}
                 panelClassName={`${responsiveModal.sheetPanel} max-w-md lg:max-w-lg border border-border`}
@@ -1841,21 +1869,21 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <div className="p-6 border-b border-border flex justify-between items-center shrink-0">
                                 <h3 className="text-xl font-bold text-primary flex items-center gap-2">
                                     {addFundsModal.targetType === 'investment' ? <TrendingUp className="w-5 h-5 text-emerald-500" /> : <PiggyBank className="w-5 h-5 text-brand-500" />}
-                                    {addFundsModal.targetType === 'investment' ? 'Add Investment Capital' : 'Add Funds'}
+                                    {addFundsModal.targetType === 'investment' ? 'Tambah modal investasi' : 'Tambah dana'}
                                 </h3>
-                                <button onClick={resetFundModalState} className="p-2 bg-muted/10 hover:bg-muted/20 rounded-full text-muted transition-colors">
+                                <button data-editor-close="true" onClick={resetFundModalState} className="p-2 bg-muted/10 hover:bg-muted/20 rounded-full text-muted transition-colors">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            <div className="p-6 space-y-4">
-                                <p className="text-sm font-medium text-muted">Adding funds to: <span className="text-primary font-bold">{addFundsModal.goalName}</span></p>
+                            <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-4">
+                                <p className="text-sm font-medium text-muted">Tambah dana untuk: <span className="text-primary font-bold">{addFundsModal.goalName}</span></p>
                                 {addFundsModal.targetType === 'investment' && (
-                                    <p className="text-xs text-muted -mt-2">This records a Saving transaction and transfers the balance into the linked investment wallet.</p>
+                                    <p className="text-xs text-muted -mt-2">Kontribusi ini mencatat transaksi tabungan dan memindahkan saldo ke wallet investasi.</p>
                                 )}
 
                                 <div>
-                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">{addFundsModal.targetType === 'investment' ? 'Invested Capital' : 'Amount'}</label>
+                                    <label className="block text-sm font-bold text-muted mb-2 uppercase tracking-wider">{addFundsModal.targetType === 'investment' ? 'Modal investasi' : 'Amount'}</label>
                                     <input
                                         type="number"
                                         autoFocus
@@ -1950,11 +1978,11 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <div className="p-6 border-t border-border shrink-0">
                                 <button
                                     onClick={handleSaveFunds}
-                                    disabled={!fundWallet || !(addFundsModal.targetType === 'investment' ? resolvedFundInput.investedCapital : fundAmount) || (addFundsModal.targetType === 'investment' && !addFundsModal.destinationWalletId)}
+                                    disabled={editorSaving || !fundWallet || !(addFundsModal.targetType === 'investment' ? resolvedFundInput.investedCapital : fundAmount) || (addFundsModal.targetType === 'investment' && !addFundsModal.destinationWalletId)}
                                     className={`w-full py-4 text-white rounded-lg font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${addFundsModal.targetType === 'investment' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-brand-600 hover:bg-brand-500'}`}
                                 >
                                     <Plus className="w-5 h-5" />
-                                    Add Funds
+                                    Tambah dana
                                 </button>
                             </div>
                     </>

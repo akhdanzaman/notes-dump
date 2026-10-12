@@ -25,7 +25,7 @@ test('NDZ-016 keeps existing sm modal centering behavior', () => {
   assert.match(responsiveModal.sheetOverlay, /sm:items-center/);
   assert.match(responsiveModal.sheetOverlay, /p-0/);
   assert.match(responsiveModal.sheetOverlay, /sm:p-4/);
-  assert.match(responsiveModal.formPanel, /max-w-md/);
+  assert.match(responsiveModal.formPanel, /max-w-xl/);
   assert.match(responsiveModal.formPanel, /lg:max-w-2xl/);
   assert.doesNotMatch(responsiveModal.sheetOverlay, /md:items-start|md:items-end/);
 });
@@ -129,9 +129,9 @@ test('Calendar uses the workspace width when desktop tabs fill the main shell', 
 });
 
 test('NDZ-022 maps responsive modal form variants by density', () => {
-  assert.match(responsiveModal.formPanel, /max-w-md/);
+  assert.match(responsiveModal.formPanel, /max-w-xl/);
   assert.match(responsiveModal.formPanel, /lg:max-w-2xl/);
-  assert.match(responsiveModal.denseFormPanel, /max-w-md/);
+  assert.match(responsiveModal.denseFormPanel, /max-w-xl/);
   assert.match(responsiveModal.denseFormPanel, /lg:max-w-3xl/);
   assert.match(responsiveModal.fieldGrid, /lg:grid-cols-2/);
   assert.doesNotMatch(responsiveModal.formPanel, /lg:max-w-3xl/);
@@ -149,7 +149,7 @@ test('workspace detail panels clear the global composer and become a desktop sid
   assert.match(contentSurface.workspaceDetailOverlay, /lg:justify-end/);
   assert.match(contentSurface.workspaceDetailPanel, /max-h-\[92dvh\]/);
   assert.match(contentSurface.workspaceDetailPanel, /lg:h-full/);
-  assert.match(contentSurface.workspaceDetailPanel, /lg:max-w-md/);
+  assert.match(contentSurface.workspaceDetailPanel, /lg:max-w-2xl/);
   assert.match(contentSurface.workspaceDetailBody, /overflow-y-auto/);
   assert.match(contentSurface.workspaceDetailBody, /safe-area-inset-bottom/);
 });

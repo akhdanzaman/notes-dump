@@ -1,7 +1,8 @@
+import { useEditorDraft } from '../../hooks/useEditorDraft';
 import React, { useState } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { BookText, Library, Plus, Pencil, Trash2, Target, CheckCircle2, ShoppingBag, CalendarDays, Wallet, ChevronLeft, ChevronRight, Clock, X } from 'lucide-react';
-import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, Tab, SkillSessionLogInput, ItemUpdateHandler } from '../../types';
+import { BrainDumpItem, Skill, LibrarySubTab, AppSettings, SortOrder, ItemType, Tab, SkillSessionLogInput, ItemUpdateHandler, Wallet as WalletData } from '../../types';
 import { getJournalDayGroups, getNoteItems, getSkillItems, getSkillLogActualRange, getSkillLogDurationMinutes, getSkillLogForSession, SkillScheduleSession, JournalDayGroup } from '../../utils/selectors';
 import Card from '../Card';
 import RecordRow from '../layout/RecordRow';
@@ -21,6 +22,7 @@ import { formatCurrencyAmount } from '../../utils/formatters';
 interface LibraryViewProps {
     items: BrainDumpItem[];
     skills: Skill[];
+    wallets?: WalletData[];
     librarySubTab: LibrarySubTab;
     setLibrarySubTab: (tab: LibrarySubTab) => void;
     appSettings: AppSettings;
@@ -28,7 +30,7 @@ interface LibraryViewProps {
     handleUpdateItem: ItemUpdateHandler;
     handleOpenEditSkill: (id: string, name: string, target?: number) => void;
     handleOpenAddSkill: () => void;
-    handleUpsertSkillSessionLog: (input: SkillSessionLogInput) => void;
+    handleUpsertSkillSessionLog: (input: SkillSessionLogInput) => void | Promise<unknown>;
     setDeleteId: (id: string) => void;
     setDeleteType: (type: 'skill' | 'wallet' | null) => void;
 
@@ -56,7 +58,7 @@ type SkillSessionEditorState = {
 };
 
 const LibraryView: React.FC<LibraryViewProps> = ({
-    items, skills, librarySubTab, setLibrarySubTab, appSettings,
+    items, skills, wallets = [], librarySubTab, setLibrarySubTab, appSettings,
     handleDelete, handleUpdateItem, handleOpenEditSkill, handleOpenAddSkill, handleUpsertSkillSessionLog, setDeleteId, setDeleteType,
     selectedTag, filterDate, filterDateTo, searchQuery, sortOrder, setActiveTab, onAddItem
 }) => {
@@ -184,6 +186,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const [editingSkillSession, setEditingSkillSession] = useState<SkillSessionEditorState | null>(null);
     const [actualStartInput, setActualStartInput] = useState('');
     const [actualEndInput, setActualEndInput] = useState('');
+    const [sessionSaving, setSessionSaving] = useState(false);
+    const [sessionError, setSessionError] = useState('');
+    const sessionDraft = useEditorDraft(`session:${editingSkillSession?.skill.id || 'closed'}:${editingSkillSession?.session.start.toISOString() || ''}`, { actualStartInput, actualEndInput }, v => { setActualStartInput(v.actualStartInput); setActualEndInput(v.actualEndInput); });
     const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<string | null>(null);
     const selectedLibraryItem = selectedLibraryItemId ? items.find(item => item.id === selectedLibraryItemId) || null : null;
 
@@ -231,13 +236,15 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         setActualEndInput('');
     };
 
-    const saveSkillSessionActualTime = () => {
-        if (!editingSkillSession) return;
+    const saveSkillSessionActualTime = async () => {
+        if (!editingSkillSession || sessionSaving) return;
+        setSessionSaving(true); setSessionError('');
+        try {
         const actualStart = parseDateTimeLocalInput(actualStartInput);
         const actualEnd = parseDateTimeLocalInput(actualEndInput);
         if (!actualStart || !actualEnd || actualEnd <= actualStart) return;
 
-        handleUpsertSkillSessionLog({
+        await handleUpsertSkillSessionLog({
             logId: editingSkillSession.log?.id,
             skillId: editingSkillSession.skill.id,
             skillName: editingSkillSession.skill.name,
@@ -247,7 +254,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             actualStart: actualStart.toISOString(),
             actualEnd: actualEnd.toISOString(),
         });
-        closeSkillSessionEditor();
+        sessionDraft.clear(); closeSkillSessionEditor();
+        } catch (error) { setSessionError(error instanceof Error ? error.message : 'Perubahan belum tersimpan.'); } finally { setSessionSaving(false); }
     };
 
     const formatCurrency = (amount?: number) => appSettings.hideMoney ? '••••' : formatCurrencyAmount(amount);
@@ -302,24 +310,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     {friendlyDate}
                 </h3>
                 <div className="space-y-3">
-                    {mergedJournalText && renderJournalSectionCard(
-                        'Daily Journal',
-                        <BookText className="w-5 h-5 text-fuchsia-700 dark:text-fuchsia-200" />,
-                        'bg-fuchsia-100 dark:bg-fuchsia-500/20',
-                        <div className="space-y-3">
-                            <p className="whitespace-pre-wrap text-sm leading-6 text-primary">{mergedJournalText}</p>
-                            {group.journalEntries.length > 0 && (
-                                <p className="text-xs text-muted">
-                                    Last updated {formatJournalTime(group.journalEntries[0].completed_at || group.journalEntries[0].meta.date || group.journalEntries[0].created_at)}
-                                </p>
-                            )}
-                        </div>,
-                        group.journalEntries.length,
-                        () => setSelectedLibraryItemId(group.journalEntries[0].id)
-                    )}
-
+                    {group.journalEntries.map(entry => renderJournalSectionCard(isEnglish ? 'Journal' : 'Jurnal', <BookText className="h-5 w-5" />, 'bg-fuchsia-100 dark:bg-fuchsia-500/20', <div><p className="whitespace-pre-wrap text-sm leading-6">{entry.content}</p><button type="button" className="mt-3 text-sm text-brand-600" onClick={() => setSelectedLibraryItemId(entry.id)}>{libraryCopy.editEntry} · {formatJournalTime(entry.completed_at || entry.meta.date || entry.created_at)}</button></div>, undefined, () => setSelectedLibraryItemId(entry.id)))}
+                    <details className="rounded-xl border border-border p-3"><summary className="cursor-pointer text-sm font-medium">{isEnglish ? 'Related activity' : 'Aktivitas terkait'} · {group.todos.length + group.shopping.length + group.events.length + group.transactions.length}</summary><div className="mt-3 space-y-3">
                     {group.todos.length > 0 && renderJournalSectionCard(
-                        'Completed Todos',
+                        isEnglish ? 'Completed Todos' : 'Tugas selesai',
                         <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-200" />,
                         'bg-emerald-100 dark:bg-emerald-500/20',
                         <div className="space-y-2">
@@ -354,7 +348,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     )}
 
                     {group.events.length > 0 && renderJournalSectionCard(
-                        'Events',
+                        isEnglish ? 'Events' : 'Acara',
                         <CalendarDays className="w-5 h-5 text-sky-700 dark:text-sky-200" />,
                         'bg-sky-100 dark:bg-sky-500/20',
                         <div className="space-y-2">
@@ -371,7 +365,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     )}
 
                     {group.transactions.length > 0 && renderJournalSectionCard(
-                        'Transactions',
+                        isEnglish ? 'Transactions' : 'Transaksi',
                         <Wallet className="w-5 h-5 text-violet-700 dark:text-violet-200" />,
                         'bg-violet-100 dark:bg-violet-500/20',
                         <div className="space-y-2">
@@ -380,7 +374,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="text-sm font-medium text-primary">{item.content}</div>
-                                            <div className="text-xs text-muted">{[formatFinanceTypeLabel(item.meta.financeType || 'expense'), 'Wallet terhubung'].filter(Boolean).join(' • ')}</div>
+                                            <div className="text-xs text-muted">{[formatFinanceTypeLabel(item.meta.financeType || 'expense'), wallets.find(wallet => wallet.id === item.meta.paymentMethod || wallet.name === item.meta.paymentMethod)?.name || (item.meta.paymentMethod ? 'Wallet tidak tersedia' : 'Tanpa wallet')].filter(Boolean).join(' • ')}</div>
                                         </div>
                                         <div className="text-sm font-semibold text-primary">{formatCurrency(item.meta.amount)}</div>
                                     </div>
@@ -389,6 +383,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         </div>,
                         group.transactions.length
                     )}
+                    </div></details>
                 </div>
             </section>
         );
@@ -493,6 +488,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         if (type === 'journal') {
             return (
                 <div className="space-y-8 lg:space-y-10">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"><p className="text-sm">{isEnglish ? 'Take a moment to reflect today.' : 'Luangkan waktu untuk refleksi hari ini.'}</p><button className="editor-primary" onClick={() => onAddItem(ItemType.JOURNAL)}>{libraryCopy.writeJournal}</button></div>
                     {visibleJournalGroups.visibleItems.map(renderJournalDay)}
                     <LoadMoreButton remainingCount={visibleJournalGroups.remainingCount} onClick={visibleJournalGroups.loadMore} />
                 </div>
@@ -1055,6 +1051,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
             <PresencePanel
                 isOpen={Boolean(editingSkillSession)}
+                hasDraft={sessionDraft.dirty.current} onDraftChange={sessionDraft.markDirty} onDiscardDraft={sessionDraft.clear} saving={sessionSaving} saveError={sessionError}
                 onClose={closeSkillSessionEditor}
                 overlayClassName={responsiveModal.sheetOverlay}
                 panelClassName={`${responsiveModal.formPanel} max-w-md p-5`}
@@ -1070,7 +1067,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={closeSkillSessionEditor}
+                                    data-editor-close="true" onClick={closeSkillSessionEditor}
                                     className="rounded-xl bg-background border border-border px-3 py-2 text-xs font-bold text-muted hover:text-primary transition-colors"
                                 >
                                     {libraryCopy.close}
@@ -1109,7 +1106,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             <div className="mt-6 flex justify-end gap-2">
                                 <button
                                     type="button"
-                                    onClick={closeSkillSessionEditor}
+                                    data-editor-close="true" onClick={closeSkillSessionEditor}
                                     className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-bold text-muted hover:text-primary transition-colors"
                                 >
                                     {libraryCopy.cancel}
@@ -1117,7 +1114,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 <button
                                     type="button"
                                     onClick={saveSkillSessionActualTime}
-                                    disabled={isSkillSessionSaveDisabled}
+                                    disabled={sessionSaving || isSkillSessionSaveDisabled}
                                     className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     {libraryCopy.saveActual}

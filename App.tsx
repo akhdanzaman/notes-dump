@@ -1,3 +1,4 @@
+import ShoppingCompletionModal from './components/ShoppingCompletionModal';
 import { useAppOnboarding } from './hooks/useAppOnboarding';
 import { useBrowserIntegration } from './hooks/useBrowserIntegration';
 import { useAppFeedback } from './hooks/useAppFeedback';
@@ -307,6 +308,15 @@ const App: React.FC = () => {
   const [themeNavDate, setThemeNavDate] = useState(new Date());
 
   // Focus View State
+  const [undoTask, setUndoTask] = useState<{ id: string; originalStatus: 'pending' | 'done'; content: string } | null>(null);
+  const [actionError, setActionError] = useState('');
+  useEffect(() => { if (!undoTask) return; const timer = setTimeout(() => setUndoTask(null), 10000); return () => clearTimeout(timer); }, [undoTask]);
+  const [shoppingCompletion, setShoppingCompletion] = useState<BrainDumpItem | null>(null);
+  const handleWorkspaceToggle = async (id: string) => {
+    const item = items.find(item => item.id === id);
+    if (item?.type === ItemType.SHOPPING && item.status === 'pending' && item.meta.shoppingCategory !== 'saving' && item.meta.shoppingCategory !== 'investment') { setShoppingCompletion(item); return; }
+    try { await handleToggleStatus(id); if (item?.type === ItemType.TODO && !item.meta.isRoutine) setUndoTask({ id, originalStatus: item.status, content: item.content }); } catch (error) { setActionError(error instanceof Error ? error.message : 'Perubahan belum tersimpan.'); }
+  };
   const [focusDate, setFocusDate] = useState(new Date());
 
   // Modal States
@@ -1077,6 +1087,8 @@ const App: React.FC = () => {
       data-library-subtab={librarySubTab}
       data-money-view={moneyView}
     >
+      {(undoTask || actionError) && <div role={actionError ? 'alert' : 'status'} className="fixed bottom-48 right-4 z-[80] max-w-xs rounded-xl border border-border bg-surface p-4 shadow-lg lg:bottom-8"><p className="text-sm">{actionError || `Status tersimpan: ${undoTask?.content}`}</p>{undoTask && <button className="mt-2 text-sm font-semibold text-brand-600" onClick={async () => { const current = items.find(item => item.id === undoTask.id); if (current && current.status !== undoTask.originalStatus) { try { await handleToggleStatus(current.id); } catch (e) { setActionError(e instanceof Error ? e.message : 'Tidak dapat mengurungkan.'); return; } } setUndoTask(null); }}>Urungkan</button>}<button className="ml-3 text-sm" onClick={() => { setUndoTask(null); setActionError(''); }}>Tutup</button></div>}
+      {shoppingCompletion && <ShoppingCompletionModal key={shoppingCompletion.id} item={shoppingCompletion} wallets={wallets} hideMoney={secureAppSettings.hideMoney} onClose={() => setShoppingCompletion(null)} onSave={purchase => handleToggleStatus(shoppingCompletion.id, purchase)} />}
       <DesktopNavRail
         activeTab={activeTab}
         setActiveTab={handleSetActiveTab}
@@ -1178,7 +1190,7 @@ const App: React.FC = () => {
                     );
                     setThemeEditMode(true);
                   }}
-                  handleToggleStatus={handleToggleStatus}
+                  handleToggleStatus={handleWorkspaceToggle}
                   setActiveTab={handleSetActiveTab}
                   setPlanSubTab={setPlanSubTab}
                   showBalance={effectiveShowBalance}
@@ -1229,7 +1241,7 @@ const App: React.FC = () => {
                   focusDate={focusDate}
                   setFocusDate={setFocusDate}
                   appSettings={secureAppSettings}
-                  handleToggleStatus={handleToggleStatus}
+                  handleToggleStatus={handleWorkspaceToggle}
                   handleDelete={requestDeleteItem}
                   handleKeepRawTodo={handleKeepRawTodo}
                   handleRetriggerDeepWorkTodo={handleRetriggerDeepWorkTodo}
@@ -1272,6 +1284,7 @@ const App: React.FC = () => {
                   {activeTab === "library" && (
                     <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><LibraryView
                   items={items}
+                  wallets={wallets}
                   skills={skills}
                   librarySubTab={librarySubTab}
                   setLibrarySubTab={setLibrarySubTab}
@@ -1305,6 +1318,8 @@ const App: React.FC = () => {
                   {activeTab === "money" && !securitySettings.lockTabTransaction && (
                     <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><MoneyViewComponent
                   items={items}
+                  onWalletTransactions={wallet => { setFilterWallet(wallet.name); setMoneyView("transactions"); }}
+                  onCategoryTransactions={categoryId => { setFilterCategory(categoryId); setMoneyView("transactions"); }}
                   wallets={wallets}
                   budgetConfig={budgetConfig}
                   moneyView={moneyView}
@@ -1317,7 +1332,7 @@ const App: React.FC = () => {
                   handleDelete={requestDeleteItem}
                   handleUpdateItem={handleUpdateItem}
                   handleUpdateReceiptCapture={handleUpdateReceiptCapture}
-                  handleToggleStatus={handleToggleStatus}
+                  handleToggleStatus={handleWorkspaceToggle}
                   handleOpenEditWallet={handleOpenEditWallet}
                   handleOpenAddWallet={handleOpenAddWallet}
                   setDeleteId={setDeleteId}
@@ -1344,8 +1359,11 @@ const App: React.FC = () => {
 
                   {activeTab === "calendar" && (
                     <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><CalendarView
+                  handleUpdateItem={handleUpdateItem}
+                  wallets={wallets}
+                  budgetRules={budgetConfig.rules}
                   items={items}
-                  handleToggleStatus={handleToggleStatus}
+                  handleToggleStatus={handleWorkspaceToggle}
                   handleDelete={requestDeleteItem}
                   appSettings={secureAppSettings}
                   setActiveTab={handleSetActiveTab}
@@ -1776,6 +1794,7 @@ const App: React.FC = () => {
       /></React.Suspense>)}
 
       {walletModal.isOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><WalletModal
+        hideMoney={secureAppSettings.hideMoney}
         isOpen={walletModal.isOpen}
         onClose={() => setWalletModal({ ...walletModal, isOpen: false })}
         onSave={handleSaveWallet}

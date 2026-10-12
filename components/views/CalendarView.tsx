@@ -1,3 +1,4 @@
+import Card from '../Card';
 import React, { useMemo, useState } from 'react';
 import { BrainDumpItem, ItemType, AppSettings, Tab } from '../../types';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Calendar as CalendarIcon, Plus, X } from 'lucide-react';
@@ -20,6 +21,9 @@ interface CalendarViewProps {
     handleDelete: (id: string, type: 'item' | 'wallet' | 'skill') => void;
     appSettings: AppSettings;
     setActiveTab: (tab: Tab) => void;
+    handleUpdateItem?: import("../../types").ItemUpdateHandler;
+    wallets?: import("../../types").Wallet[];
+    budgetRules?: import("../../types").BudgetConfig["rules"];
     handleOpenAddTask?: (date: string) => void;
 }
 
@@ -54,7 +58,7 @@ const getItemTypeLabel = (type: ItemType, isEnglish: boolean) => {
     }
 };
 
-const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, handleDelete, appSettings, setActiveTab, handleOpenAddTask }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, handleDelete, appSettings, setActiveTab, handleOpenAddTask, handleUpdateItem, wallets = [], budgetRules = [] }) => {
     const isEnglish = normalizeAppLanguage(appSettings.language) === 'en';
     const locale = getAppLocale(appSettings.language);
     const calendarCopy = isEnglish ? {
@@ -103,7 +107,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
         setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
     };
 
-    const calendarDateSwipeHandlers = useSwipeDate(prevMonth, nextMonth);
+    const selectDay = (value: string) => { const date = new Date(`${value}T12:00:00`); if (Number.isNaN(date.getTime())) return; setSelectedDateKey(value); setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1)); };
+    const moveDay = (direction: number) => { const date = new Date(`${selectedDateKey}T12:00:00`); date.setDate(date.getDate() + direction); selectDay(getDateKey(date)); };
+    const calendarDateSwipeHandlers = useSwipeDate(() => viewMode === 'agenda' ? moveDay(-1) : prevMonth(), () => viewMode === 'agenda' ? moveDay(1) : nextMonth());
+    const dayStrip = Array.from({ length: 7 }, (_, index) => { const date = new Date(`${selectedDateKey}T12:00:00`); date.setDate(date.getDate() + index - 3); return date; });
+    const agendaTime = (item: BrainDumpItem) => { const start = item.meta.start || item.meta.date; const end = item.meta.end; if (!start || !start.includes('T')) return isEnglish ? 'All day' : 'Sepanjang hari'; const from = new Date(start); if (Number.isNaN(from.getTime())) return ''; const time = from.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); const to = end ? new Date(end) : null; return to && !Number.isNaN(to.getTime()) ? `${time}–${to.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} · ${Math.round((to.getTime() - from.getTime()) / 60000)} ${isEnglish ? 'min' : 'menit'}` : time; };
+
 
     const today = new Date();
     const currentMonth = currentDate.getMonth();
@@ -301,7 +310,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                     onTouchEnd={calendarDateSwipeHandlers.onTouchEnd}
                 >
                     <div className="flex items-center justify-between gap-1">
-                        <button onClick={prevMonth} aria-label={calendarCopy.previousMonth} className={contentSurface.workspacePeriodButton}>
+                        <button onClick={() => viewMode === "agenda" ? moveDay(-1) : prevMonth()} aria-label={viewMode === "agenda" ? (isEnglish ? "Previous day" : "Hari sebelumnya") : calendarCopy.previousMonth} className={contentSurface.workspacePeriodButton}>
                             <ChevronLeft className="h-4 w-4" />
                         </button>
                         <AnimatePresence initial={false} mode="wait" custom={monthDirection}>
@@ -314,16 +323,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 className={contentSurface.workspacePeriodLabel}
                             >
                                 <span className={contentSurface.workspacePeriodKicker}>{calendarCopy.month}</span>
-                                <span className={contentSurface.workspacePeriodTitle}>{currentDate.toLocaleString(locale, { month: 'long', year: 'numeric' })}</span>
+                                <span className={contentSurface.workspacePeriodTitle}>{viewMode === "agenda" ? new Date(`${selectedDateKey}T12:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long" }) : currentDate.toLocaleString(locale, { month: "long", year: "numeric" })}</span>
                             </motion.div>
                         </AnimatePresence>
-                        <button onClick={nextMonth} aria-label={calendarCopy.nextMonth} className={contentSurface.workspacePeriodButton}>
+                        <button onClick={() => viewMode === "agenda" ? moveDay(1) : nextMonth()} aria-label={viewMode === "agenda" ? (isEnglish ? "Next day" : "Hari berikutnya") : calendarCopy.nextMonth} className={contentSurface.workspacePeriodButton}>
                             <ChevronRight className="h-4 w-4" />
                         </button>
                     </div>
                 </div>
 
-                <div className="metric-strip">
+                <div className="metric-strip hidden sm:grid">
                     <div className={contentSurface.workspaceMetric}>
                         <div className="text-xs font-medium text-muted">{calendarCopy.scheduled}</div>
                         <div className="mt-1 text-lg font-semibold text-primary">{scheduledCount}</div>
@@ -345,13 +354,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 </div>
             </motion.div>
 
-            <div className={`${contentSurface.contentPad} pb-2 pt-3`} data-ndz-calendar-width-policy="validated-standard-cap">
+            {viewMode === 'agenda' && <div className="mb-3 space-y-3"><label className="flex items-center gap-3 text-sm">{calendarCopy.chooseDate}<input type="date" value={selectedDateKey} onChange={event => selectDay(event.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2" /></label><div className="grid grid-cols-7 gap-1">{dayStrip.map(date => <button key={getDateKey(date)} aria-pressed={selectedDateKey === getDateKey(date)} onClick={() => selectDay(getDateKey(date))} className={`rounded-lg py-2 text-sm ${selectedDateKey === getDateKey(date) ? 'bg-brand-500/15 text-brand-700' : 'bg-surface text-muted'}`}><span className="block text-xs">{weekDays[date.getDay()]}</span>{date.getDate()}</button>)}</div></div>}
+            <div data-calendar-layout={viewMode} className={`${contentSurface.contentPad} pb-2 pt-3`} data-ndz-calendar-width-policy="validated-standard-cap">
                 {viewMode === 'month' && (
                 <div className={contentSurface.calendarFrame}>
                     <div className="grid grid-cols-7 border-b border-border bg-background/40">
                         {weekDays.map(day => (
                             <div key={day} className="py-2 text-center text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                                <span className="sm:hidden">{day.slice(0, 1)}</span>
+                                <span className="sm:hidden">{day}</span>
                                 <span className="hidden sm:inline">{day}</span>
                             </div>
                         ))}
@@ -504,6 +514,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                             <span className="block text-xs font-bold uppercase tracking-[0.16em] text-muted">
                                                 {getItemTypeLabel(item.type, isEnglish)}
                                             </span>
+                                            <span className="mt-1 block text-xs text-muted">{agendaTime(item)}</span>
                                             <span className={`mt-1 block truncate text-sm font-semibold ${item.status === 'done' ? 'text-muted line-through' : 'text-primary'}`}>
                                                 {item.content}
                                             </span>
@@ -530,6 +541,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
 
             <PresencePanel
                 isOpen={Boolean(selectedItem)}
+                protectDraft
                 onClose={() => setSelectedItem(null)}
                 overlayClassName={responsiveModal.sheetOverlay}
                 panelClassName={`${responsiveModal.formPanel} lg:max-w-xl`}
@@ -547,63 +559,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 </button>
                             </div>
 
-                            <div className="space-y-4 p-4">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="rounded-lg border border-border p-3">
-                                        <div className="text-xs font-medium text-muted">{calendarCopy.type}</div>
-                                        <div className="mt-1 text-sm font-semibold text-primary">{getItemTypeLabel(selectedItem.type, isEnglish)}</div>
-                                    </div>
-                                    <div className="rounded-lg border border-border p-3">
-                                        <div className="text-xs font-medium text-muted">{calendarCopy.status}</div>
-                                        <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-primary">
-                                            {selectedItem.status === 'done' ? (
-                                                <CheckCircle2 className="h-4 w-4" />
-                                            ) : (
-                                                <Circle className="h-4 w-4" />
-                                            )}
-                                            {selectedItem.status === 'done' ? calendarCopy.done : calendarCopy.pending}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {selectedItemDate && (
-                                    <div className="rounded-lg border border-border p-3">
-                                        <div className="text-xs font-medium text-muted">{calendarCopy.schedule}</div>
-                                        <div className="mt-1 text-sm text-primary">
-                                            {new Date(selectedItemDate).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
-                                        </div>
-                                        {selectedItem.meta.end && (
-                                            <div className="text-xs text-muted">
-                                                {calendarCopy.until} {new Date(selectedItem.meta.end).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {selectedItem.meta.tags && selectedItem.meta.tags.length > 0 && (
-                                    <div className="rounded-lg border border-border p-3">
-                                        <div className="text-xs font-medium text-muted">{calendarCopy.tags}</div>
-                                        <div className="mt-2 flex flex-wrap gap-2">
-                                            {selectedItem.meta.tags.map(tag => (
-                                                <span key={tag} className="rounded-full border border-border px-2 py-1 text-xs text-primary">
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="flex justify-end gap-2 border-t border-border pt-4">
-                                    <button
-                                        onClick={() => {
-                                            handleToggleStatus(selectedItem.id);
-                                            setSelectedItem({ ...selectedItem, status: selectedItem.status === 'done' ? 'pending' : 'done' });
-                                        }}
-                                        className="rounded-full border border-border px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-muted/10"
-                                    >
-                                        {selectedItem.status === 'done' ? calendarCopy.markPending : calendarCopy.markDone}
-                                    </button>
-                                </div>
+                            <div className={contentSurface.workspaceDetailBody}>
+                                {(selectedItem.meta.isRoutine || selectedItem.meta.shoppingCategory === 'routine') && selectedDateKey !== getDateKey(new Date()) && <p className="mb-3 text-sm text-muted">{isEnglish ? 'Historical or future occurrence. Completion can be changed for today only.' : 'Occurrence historis atau mendatang. Status rutin hanya dapat diubah untuk hari ini.'}</p>}
+                                <Card key={selectedItem.id} item={items.find(item => item.id === selectedItem.id) || selectedItem} surface="plain" enableCollapse={false} defaultCollapsed={false} hideMoney={appSettings.hideMoney} wallets={wallets} budgetRules={budgetRules} onUpdate={handleUpdateItem} onDelete={id => handleDelete(id, 'item')} onToggleStatus={(selectedItem.meta.isRoutine || selectedItem.meta.shoppingCategory === 'routine') && selectedDateKey !== getDateKey(new Date()) ? undefined : handleToggleStatus} onSaveComplete={() => setSelectedItem(null)} />
                             </div>
                     </>
                 )}

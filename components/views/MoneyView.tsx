@@ -93,6 +93,8 @@ interface MoneyViewProps {
   setIsSettingsOpen: (val: boolean) => void;
 
   // Filters
+  onWalletTransactions?: (wallet: Wallet) => void;
+  onCategoryTransactions?: (categoryId: string) => void;
   filterWallet: string;
   filterTransactionType: string;
   filterCategory: string;
@@ -137,6 +139,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
   setDeleteId,
   setDeleteType,
   setIsSettingsOpen,
+  onWalletTransactions, onCategoryTransactions,
   filterWallet,
   filterTransactionType,
   filterCategory,
@@ -1414,7 +1417,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         </span>
                       </div>
 
-                      <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1">
                         <button
                           type="button"
                           onClick={() => handleOpenEditWallet(wallet)}
@@ -1440,9 +1443,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     {/* Body */}
                     <div className="flex justify-between items-start gap-4 mt-1">
                       <div className="flex flex-col min-w-0 flex-1">
-                        <div className="text-base font-medium text-primary truncate">
-                          {wallet.name}
-                        </div>
+                        <button type="button" onClick={() => onWalletTransactions?.(wallet)} className="text-left text-base font-semibold text-primary truncate underline-offset-4 hover:underline" aria-label={`Lihat transaksi wallet ${wallet.name}`}>{wallet.name}</button>
                         {wallet.type === "cc" && (
                           <div className="mt-1">
                             <span className="text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -1483,7 +1484,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                           </div>
                         )}
                       </div>
-                      <div data-financial-amount="true" className="mt-0.5 shrink-0 text-base font-semibold text-primary">
+                      <div data-financial-amount="true" className="mt-0.5 shrink-0 text-right text-base font-semibold text-primary"><div className="mb-1 text-xs font-normal text-muted">{wallet.type === "cc" ? "Utang berjalan" : "Saldo tersedia"}</div>
                         {canShowAmounts ? fmt(wallet.currentBalance) : "••••••••"}
                       </div>
                     </div>
@@ -2046,7 +2047,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                               <div
                                 className={`h-2 w-2 rounded-full ${rule.color || "bg-slate-500"}`}
                               ></div>
-                              {rule.name}
+                              <button type="button" onClick={() => onCategoryTransactions?.(rule.id)} className="text-left hover:underline">{rule.name}</button>
                             </div>
                             <div
                               className="mb-2 flex items-center justify-between text-sm font-semibold text-primary"
@@ -2636,7 +2637,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         >
                                           <div className="flex items-center justify-between gap-2">
                                             <span className="font-bold text-primary capitalize">
-                                              {commodity.name}
+                                              {commodity.name.replace(/_/g, " ")}
                                             </span>
                                             <span className="font-semibold text-muted">
                                               {commodity.percentage.toFixed(0)}%

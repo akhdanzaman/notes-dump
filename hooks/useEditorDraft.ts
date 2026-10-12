@@ -1,32 +1,29 @@
 import { useEffect, useRef } from 'react';
 import { getSpreadsheetConfig } from '../services/spreadsheetService';
 
-/** UI drafts are separate from entities and never become spreadsheet mutations. */
+type DraftEntry = { key: string; initial: any; dirty: { current: boolean }; hydrating: boolean; latest: Record<string, unknown> };
+/** UI drafts stay scoped to the spreadsheet and entity; they never become mutations. */
 export function useEditorDraft(key: string, value: Record<string, unknown>, restore: (value: any) => void) {
   const storageKey = `arkaiv-editor:${getSpreadsheetConfig()?.spreadsheetId || 'local'}:${key}`;
-  const initial = useRef<any>(undefined);
-  const loaded = useRef(false);
-  if (!loaded.current) {
-    loaded.current = true;
-    try { initial.current = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { initial.current = null; }
+  const ref = useRef<DraftEntry | null>(null);
+  if (ref.current?.key !== storageKey) {
+    let initial: any = null;
+    try { initial = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch {}
+    ref.current = { key: storageKey, initial, dirty: { current: Boolean(initial) }, hydrating: Boolean(initial), latest: value };
   }
-  const dirty = useRef(Boolean(initial.current));
-  const restored = useRef(false);
-  const hydrating = useRef(Boolean(initial.current));
-  const latest = useRef(value); latest.current = value;
+  const entry = ref.current;
+  entry.latest = value;
+  useEffect(() => { if (entry.initial) restore(entry.initial); }, [storageKey]);
   useEffect(() => {
-    if (!restored.current) { restored.current = true; if (initial.current) restore(initial.current); }
-  }, [storageKey]);
-  useEffect(() => {
-    if (hydrating.current) { hydrating.current = false; return; }
-    if (dirty.current) { try { localStorage.setItem(storageKey, JSON.stringify(value)); } catch { /* Entity persistence still reports storage failure on Save. */ } }
+    if (entry.hydrating) { entry.hydrating = false; return; }
+    if (entry.dirty.current) { try { localStorage.setItem(entry.key, JSON.stringify(value)); } catch {} }
   }, [value, storageKey]);
   useEffect(() => () => {
-    if (dirty.current) { try { localStorage.setItem(storageKey, JSON.stringify(latest.current)); } catch {} }
+    if (entry.dirty.current) { try { localStorage.setItem(entry.key, JSON.stringify(entry.latest)); } catch {} }
   }, [storageKey]);
   return {
-    dirty,
-    markDirty: () => { dirty.current = true; },
-    clear: () => { dirty.current = false; initial.current = null; try { localStorage.removeItem(storageKey); } catch {} },
+    dirty: entry.dirty,
+    markDirty: () => { entry.dirty.current = true; },
+    clear: () => { entry.dirty.current = false; entry.initial = null; try { localStorage.removeItem(entry.key); } catch {} },
   };
 }

@@ -150,8 +150,8 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
           </div>
 
           <div className={addItemModal.body}>
-            <div className="grid grid-cols-1 lg:grid-cols-[180px_minmax(0,1fr)] gap-5">
-              <div className="space-y-3">
+            <div className="flex flex-col gap-5">
+              <details className="order-2"><summary className="cursor-pointer text-sm font-medium">Gambar dan tampilan (opsional)</summary><div className="mt-3 max-w-xs space-y-3">
                 <label className={addItemModal.label}>Gambar opsional</label>
                 <div className="aspect-square w-full rounded-xl overflow-hidden border border-border bg-background flex items-center justify-center">
                   {imageUrl.trim() ? (
@@ -170,9 +170,9 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                   placeholder="https://example.com/image.png"
                   className={addItemModal.smallInput}
                 />
-              </div>
+              </div></details>
 
-              <div className="space-y-4">
+              <div className="order-1 space-y-4">
                 <div>
                   <label className={addItemModal.label}>Nama skill</label>
                   <input
@@ -205,7 +205,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                     placeholder={schedule.enabled && derivedWeeklyTarget ? `${derivedWeeklyTarget} from schedule` : '300'}
                     className={addItemModal.input}
                   />
-                  <p className={addItemModal.helpText}>When schedule is active, Arkaiv also derives the weekly target from session duration × sessions this week.</p>
+                  <p className={addItemModal.helpText}>Saat jadwal aktif, target dihitung dari durasi latihan × jumlah sesi per minggu.</p>
                 </div>
               </div>
             </div>

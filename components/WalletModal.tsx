@@ -10,6 +10,7 @@ interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (name: string, type: Wallet['type'], initialBalance: number, color: string) => void | Promise<unknown>;
+  hideMoney?: boolean;
   initialData?: Wallet;
   mode: 'add' | 'edit';
 }
@@ -29,7 +30,8 @@ const COLOR_LABELS: Record<string, string> = {
   'bg-slate-500': 'Abu-abu',
 };
 
-const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, initialData, mode }) => {
+const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, initialData, mode, hideMoney = false }) => {
+  const [revealMoney, setRevealMoney] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState<Wallet['type']>('cash');
   const [initialBalance, setInitialBalance] = useState<string>('');
@@ -158,7 +160,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                 <label htmlFor="wallet-initial-balance" className="mb-1.5 block text-xs font-semibold text-primary">
                   {type === 'cc' ? 'Utang awal kartu kredit' : 'Saldo awal'}
                 </label>
-                <div className="relative">
+                {hideMoney && !revealMoney ? <button type="button" className="editor-primary" onClick={() => setRevealMoney(true)}>Tampilkan nominal sementara di editor ini</button> : <div className="relative">
                   <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted">Rp</span>
                 <input
                     id="wallet-initial-balance"
@@ -171,7 +173,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
                     value={initialBalance}
                     onChange={(e) => setInitialBalance(e.target.value)}
                 />
-                </div>
+                </div>}
                 <p id="wallet-balance-help" className="mt-2 text-xs leading-relaxed text-muted">
                     {type === 'cc'
                       ? 'Masukkan jumlah yang saat ini harus Anda bayar. Nilai ini diperlakukan sebagai utang.'

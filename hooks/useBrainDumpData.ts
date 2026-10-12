@@ -1618,10 +1618,11 @@ budgetConfigRef.current?.rules || []
         }
     };
 
-    const handleToggleStatus = async (id: string) => {
+    const handleToggleStatus = async (id: string, purchase?: { amount: number; paymentMethod: string; date: string }) => {
         const prevItems = itemsRef.current;
-        const targetItem = prevItems.find(i => i.id === id);
-        if (!targetItem) return;
+        const storedItem = prevItems.find(i => i.id === id);
+        if (!storedItem) return;
+        const targetItem = purchase ? { ...storedItem, meta: { ...storedItem.meta, ...purchase } } : storedItem;
         if (targetItem.type === ItemType.FINANCE) return;
 
         const isSavingGoal = targetItem.type === ItemType.SHOPPING && targetItem.meta.shoppingCategory === 'saving';
@@ -1635,16 +1636,16 @@ budgetConfigRef.current?.rules || []
         const routineDueDateForToggle = isRoutineItem ? getRoutineCurrentDueDate(targetItem, now) : null;
 
         const newStatus: 'pending' | 'done' = targetItem.status === 'pending' ? 'done' : 'pending';
-        const completedAt = newStatus === 'done' ? new Date().toISOString() : undefined;
+        const completedAt = newStatus === 'done' ? purchase?.date || new Date().toISOString() : undefined;
         const newProgress = newStatus === 'done' ? 100 : 0;
         const newProgressNotes = targetItem.meta.progressNotes;
 
         let historyItemIdToCreate: string | undefined;
         let historyItemIdToDelete: string | undefined;
 
-        if (newStatus === 'done' && isRoutineItem) {
+        if (newStatus === 'done' && (isRoutineItem || purchase)) {
             historyItemIdToCreate = uuidv4();
-        } else if (newStatus === 'pending' && isRoutineItem) {
+        } else if (newStatus === 'pending' && (isRoutineItem || targetItem.type === ItemType.SHOPPING)) {
             historyItemIdToDelete = targetItem.meta.lastGeneratedHistoryId;
         }
 
@@ -1655,6 +1656,7 @@ budgetConfigRef.current?.rules || []
                 completed_at: completedAt,
                 meta: {
                     ...item.meta,
+                    ...(purchase || {}),
                     progress: newProgress,
                     progressNotes: newProgressNotes,
                     date: routineDueDateForToggle ? routineDueDateForToggle.toISOString() : item.meta.date,
@@ -1673,7 +1675,7 @@ budgetConfigRef.current?.rules || []
             let newType: ItemType = targetItem.type;
             let newMeta: ItemMeta = { ...targetItem.meta, isRoutine: false };
 
-            if (isShoppingRoutine) {
+            if (isShoppingRoutine || purchase) {
                 newType = ItemType.FINANCE;
                 newMeta = {
                     ...newMeta,
@@ -1784,9 +1786,7 @@ budgetConfigRef.current?.rules || []
         }
 
         updatedItems = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(updatedItems));
-        itemsRef.current = updatedItems;
-        setItems(updatedItems);
-        saveAndSync({ data: updatedItems });
+        await saveLocally({ data: updatedItems });
     };
 
     const handleResetRoutine = async (id: string) => {
@@ -2317,7 +2317,7 @@ budgetConfigRef.current?.rules || []
         await saveLocally({ data: updated });
     };
 
-    const handleUpsertSkillSessionLog = (input: SkillSessionLogInput) => {
+    const handleUpsertSkillSessionLog = async (input: SkillSessionLogInput) => {
         const plannedStart = new Date(input.plannedStart);
         const plannedEnd = new Date(input.plannedEnd);
         const actualStart = new Date(input.actualStart);
@@ -2388,9 +2388,7 @@ budgetConfigRef.current?.rules || []
             meta: baseMeta,
         }, ...nextItems];
 
-        itemsRef.current = finalItems;
-        setItems(finalItems);
-        saveAndSync({ data: finalItems });
+        await saveLocally({ data: finalItems });
     };
 
     const {

@@ -1234,7 +1234,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         Tomorrow: "Besok",
         "Daily Rituals": "Rutinitas harian",
         Upcoming: "Akan datang",
-        "All Clear": "Semua beres",
+        "All Clear": "Tidak ada tugas tertunda",
       }[displayTitle] ||
       displayTitle ||
       "Tugas";
@@ -2753,18 +2753,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       initial={false}
     >
       <div className={dashboardShellClass}>
-        {renderFinanceCommandHero()}
+        <div className="flex items-center justify-between gap-3 py-2"><div><h1 className="text-2xl font-semibold text-primary">{isEnglish ? 'Today' : 'Hari ini'}</h1><p className="text-sm text-muted">{new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}</p></div><button onClick={handleOpenAddExpense} className="editor-primary">{homeCopy.record}</button></div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
           <div className="min-w-0 space-y-4">
-            {renderPrimaryFinanceInsight()}
-            <div className="grid gap-4">
-              {renderRecentTransactions()}
-              {renderTasksCard()}
-            </div>
+            {renderTasksCard()}
+            {renderRoutineCard()}
+            {renderUpcomingFinance()}
+            <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">{isEnglish ? 'Money overview' : 'Ringkasan uang'}</summary><div className="mt-3 space-y-3">{renderFinanceCommandHero()}{!appSettings.hideMoney && renderPrimaryFinanceInsight()}</div></details>
+            {renderRecentTransactions()}
           </div>
           <aside className="space-y-4 xl:sticky xl:top-24" aria-label="Konteks keuangan dan tujuan">
-            {renderUpcomingFinance()}
             {renderGoalsCard()}
           </aside>
         </div>
@@ -2782,7 +2781,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           <div className="grid gap-4 border-t border-border/65 p-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.7fr)]">
             {renderHeroCard(true)}
             <div className="space-y-4">
-              {renderRoutineCard()}
               {renderWeeklyWinCard()}
             </div>
           </div>

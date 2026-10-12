@@ -196,12 +196,12 @@ test('shopping detail panel can render the existing editor expanded', () => {
   }));
 
   assert.match(html, /data-card-behavior="inline"/);
-  assert.match(html, /Save/);
+  assert.match(html, /Simpan/);
   assert.match(html, /value="Belanja kebutuhan rumah"/);
 });
 
 test('privacy masks shopping preview and expanded editor without rendering money inputs', () => {
- const shopping = { ...transaction, type: ItemType.SHOPPING, meta: { amount: 345678, shoppingLineItems: [{ id: 'private-line', name: 'Private purchase', quantity: 1, price: 345678 }] } };
+ const shopping = { ...transaction, type: ItemType.SHOPPING, meta: { amount: 345678, shoppingLineItems: [{ id: 'private-line', name: 'Private purchase', quantity: '1', amount: 345678 }] } };
  const html = renderToStaticMarkup(React.createElement(ShoppingItem, { item: shopping, onToggleStatus: () => {}, onDelete: () => {}, onUpdate: () => {}, hideMoney: true, defaultExpanded: true }));
  assert.doesNotMatch(html, /345[.,]?678/);
  assert.match(html, /Tampilkan nominal sementara/);
