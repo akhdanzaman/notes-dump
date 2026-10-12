@@ -47,7 +47,7 @@ interface ControlCenterProps {
     retryParsing?: (taskId: string) => void;
 
     // Settings Props
-    onSave: (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => void;
+    onSave: (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => void | Promise<void>;
     currentBudgetConfig?: BudgetConfig;
     currentPrompt?: string;
 
@@ -247,6 +247,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         appSettings,
         setAppSettings,
         onSave,
+        onClose,
         onRefreshClick,
         onSyncClick,
         allItems,
@@ -409,7 +410,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                     {activeTab !== 'main' && (
                                         <button
                                             onClick={handleSave}
-                                            disabled={settingsSaveStatus === 'saved'}
+                                            disabled={settingsSaveStatus !== 'idle'}
                                             className={`p-2 rounded-full transition-[color,background-color,opacity] ${settingsSaveStatus === 'saved' ? 'bg-[var(--finance-positive)] text-white' : 'hover:bg-muted/10 text-primary'}`}
                                             aria-label={settingsSaveStatus === 'saved' ? controlCopy.saved : controlCopy.save}
                                         >

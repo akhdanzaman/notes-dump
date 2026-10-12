@@ -2712,6 +2712,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 })()
               }
               className="border-0 shadow-none ring-0"
+              onSaveComplete={() => setSelectedTransactionId(null)}
             />
           )}
         </div>

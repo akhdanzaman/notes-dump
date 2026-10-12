@@ -12,7 +12,8 @@ export interface UseControlCenterProps {
     isOpen: boolean;
     appSettings: AppSettings;
     setAppSettings: (settings: AppSettings) => void;
-    onSave: (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => void;
+    onSave: (newBudgetConfig?: BudgetConfig, newPrompt?: string, newAppSettings?: AppSettings) => void | Promise<void>;
+    onClose?: () => void;
     onRefreshClick?: () => void;
     onSyncClick: (forceOverwrite?: boolean) => void;
     allItems: BrainDumpItem[];
@@ -29,6 +30,7 @@ export const useControlCenter = ({
     appSettings,
     setAppSettings,
     onSave,
+    onClose,
     onRefreshClick,
     onSyncClick,
     allItems,
@@ -42,7 +44,7 @@ export const useControlCenter = ({
     // --- Settings State ---
     const [activeTab, setActiveTab] = useState<'main' | 'appearance' | 'behavior' | 'budget' | 'data' | 'connect' | 'notifications' | 'security' | 'advanced' | 'changelog'>('main');
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for back
-    const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saved'>('idle');
+    const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [isExportingExcel, setIsExportingExcel] = useState(false);
 
     useEffect(() => {
@@ -115,6 +117,7 @@ export const useControlCenter = ({
     // --- Initialization ---
     useEffect(() => {
         if (isOpen) {
+            setSettingsSaveStatus('idle');
             // Load Gemini Key
             const savedGeminiKey = localStorage.getItem('braindump_gemini_key') || '';
             setGeminiKey(savedGeminiKey);
@@ -396,6 +399,9 @@ export const useControlCenter = ({
     };
 
     const handleSave = async () => {
+        if (settingsSaveStatus === 'saving') return;
+        setSettingsSaveStatus('saving');
+        try {
         // Save Gemini
         saveGeminiKey(geminiKey);
 
@@ -412,10 +418,10 @@ export const useControlCenter = ({
         // Prepare Objects
         const newBudgetConfig: BudgetConfig = { monthlyIncome, rules: budgetRules };
 
-        setSettingsSaveStatus('saved');
-        
         // Propagate changes
-        onSave(newBudgetConfig, prompt, settingsToSave);
+        await onSave(newBudgetConfig, prompt, settingsToSave);
+        setSettingsSaveStatus('saved');
+        onClose?.();
         
         // Save optional Google profile settings only for OAuth configs. Service-account
         // spreadsheet sync is server-side and must not refresh browser Google tokens.
@@ -437,9 +443,10 @@ export const useControlCenter = ({
              });
         }
         
-        setTimeout(() => {
+        } catch (error) {
             setSettingsSaveStatus('idle');
-        }, 2000);
+            notifyUser(error instanceof Error ? error.message : 'Pengaturan belum tersimpan. Coba lagi.', 'error');
+        }
     };
 
     const handleToggleCalendarSync = async (enabled: boolean) => {
@@ -452,7 +459,7 @@ export const useControlCenter = ({
         setLocalAppSettings(nextSettings);
         setAppSettings(nextSettings);
         localStorage.setItem('braindump_gcal_id', calendarIdToSave);
-        onSave(undefined, undefined, nextSettings);
+        await onSave(undefined, undefined, nextSettings);
 
         if (enabled) {
             await handleSyncCalendarNow(nextSettings);
@@ -569,7 +576,9 @@ export const useControlCenter = ({
         const newSettings = { ...localAppSettings, theme: newTheme };
         setLocalAppSettings(newSettings);
         setAppSettings(newSettings); // Apply immediately for instant feedback
-        onSave(undefined, undefined, newSettings); // Persist
+        Promise.resolve(onSave(undefined, undefined, newSettings)).catch(error => {
+            notifyUser(error instanceof Error ? error.message : 'Pengaturan belum tersimpan. Coba lagi.', 'error');
+        });
     };
 
     return {

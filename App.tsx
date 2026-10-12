@@ -809,13 +809,16 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSettingsSaved = (
+  const handleSettingsSaved = async (
     newBudgetConfig?: BudgetConfig,
     newPrompt?: string,
     newAppSettings?: AppSettings,
   ) => {
-    // Don't close control center immediately on save, let user close it
-    // setIsControlCenterOpen(false);
+    await saveLocally({
+      ...(newBudgetConfig ? { budgetConfig: newBudgetConfig } : {}),
+      ...(newPrompt !== undefined ? { customPrompt: newPrompt } : {}),
+      ...(newAppSettings ? { appSettings: newAppSettings } : {}),
+    });
 
     let shouldSync = false;
     if (newBudgetConfig) {
@@ -831,10 +834,7 @@ const App: React.FC = () => {
       shouldSync = true;
     }
 
-    if (shouldSync) {
-      saveAndSync({ data: items, budgetConfig: newBudgetConfig, customPrompt: newPrompt, skills: skills, wallets: wallets, monthlyThemes: monthlyThemes, appSettings: newAppSettings }
-      );
-    } else {
+    if (!shouldSync) {
       loadData();
     }
   };

@@ -9,9 +9,35 @@ import { useLazyItems } from '../useLazyItems';
 import { BackHandler } from '../../utils/backHandler';
 import { useEditorDraft } from '../useEditorDraft';
 import { useDatabaseSave } from '../useDatabaseSave';
+import { useControlCenter } from '../useControlCenter';
 import PresencePanel from '../../motion/PresencePanel';
 import { closeLocalStore, readLocalState } from '../../services/localOutbox';
 import { ItemType, DbSchema } from '../../types';
+
+test('successful editor save closes only after the local save acknowledges', async () => {
+ const h = await environment(); let closed=0; let acknowledge!:()=>void;
+ const pending = new Promise<void>(resolve=>{acknowledge=resolve;});
+ const item={id:'save-close',type:ItemType.NOTE,content:'original',status:'pending' as const,created_at:'2026-10-12',meta:{}};
+ try {
+  await h.render(<Card item={item} enableCollapse={false} defaultCollapsed={false} onUpdate={()=>pending} onSaveComplete={()=>closed++} />);
+  await act(async()=>{(Array.from(document.querySelectorAll('button')).find(button=>button.textContent?.includes('Simpan perubahan')) as HTMLButtonElement).click();});
+  assert.equal(closed,0);
+  await act(async()=>acknowledge()); assert.equal(closed,1);
+ } finally { await h.close(); }
+});
+
+test('settings save awaits persistence before closing and remains open on failure', async () => {
+ const h=await environment(); let controls!:ReturnType<typeof useControlCenter>; let closed=0; let acknowledge!:()=>void; let fail=false;
+ const pending=new Promise<void>(resolve=>{acknowledge=resolve;});
+ const props={isOpen:true, appSettings:{} as any, setAppSettings:()=>{}, onSave:()=>fail ? Promise.reject(new Error('Storage full')) : pending, onClose:()=>closed++, onSyncClick:()=>{}, allItems:[], allSkills:[], allWallets:[], monthlyThemes:{},monthlyThemeImages:{}};
+ function Host() { controls=useControlCenter(props); return null; }
+ try {
+  await h.render(<Host />); let saving!:Promise<void>; await act(async()=>{saving=controls.handleSave();});
+  assert.equal(closed,0); assert.equal(controls.settingsSaveStatus,'saving');
+  await act(async()=>{acknowledge(); await saving;}); assert.equal(closed,1);
+  fail=true; await act(async()=>{await controls.handleSave();}); assert.equal(closed,1); assert.equal(controls.settingsSaveStatus,'idle');
+ } finally { await h.close(); }
+});
 
 async function environment() {
  const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
