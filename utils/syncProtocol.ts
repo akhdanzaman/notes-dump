@@ -15,7 +15,7 @@ export class SyncConflict extends Error {}
 export class DeferredDependency extends Error {}
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 /** Three-way merge. A concurrent change to the same leaf must be reviewed. */
-export function mergeMutation(before: unknown, after: unknown, current: unknown, path = 'entity', resolve?: (after: unknown, current: unknown) => unknown): unknown {
+export function mergeMutation(before: unknown, after: unknown, current: unknown, path = 'entity', resolve?: (after: unknown, current: unknown, path: string) => unknown): unknown {
   if (equivalent(before, after)) return current;
   if (equivalent(current, before) || equivalent(current, after)) return after;
   if (object(before) && object(after) && object(current)) {
@@ -37,7 +37,7 @@ export function mergeMutation(before: unknown, after: unknown, current: unknown,
     }
     return result;
   }
-  if (resolve) return resolve(after, current);
+  if (resolve) return resolve(after, current, path);
   throw new SyncConflict(`Conflicting change at ${path}`);
 }
 const configFields = new Set(['wallets', 'skills', 'budgetConfig', 'appSettings', 'customPrompt', 'monthlyThemes', 'monthlyThemeImages', 'chatHistory', 'canonicalRules']);

@@ -323,3 +323,11 @@ select {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Editor feedback remains visible and readable at every viewport size. */
+.editor-primary, .editor-discard button { border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 14px; background: var(--surface); color: var(--primary); }
+.editor-primary { background: var(--brand-600, #059669); color: white; }
+.editor-error { padding: 12px 16px; color: #dc2626; font-size: 14px; flex-shrink: 0; }
+.editor-save-status { padding: 8px 16px; font-size: 13px; flex-shrink: 0; }
+.editor-discard { position: absolute; z-index: 5; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 24px; background: var(--surface); border-radius: inherit; font-size: 16px; }
+[data-presence-panel-layer] [role=dialog] { position: relative; max-height: min(92dvh, calc(var(--editor-viewport-height, 100dvh) - 24px)); }

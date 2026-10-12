@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 import RoutineScheduleEditor from './RoutineScheduleEditor';
 import { useRoutineDraft } from '../hooks/useRoutineDraft';
 import React, { useState, useEffect, useRef } from 'react';
@@ -108,6 +109,8 @@ const Card: React.FC<CardProps> = ({
     savingGoals = [],
     commodityOptions = []
 }) => {
+  const [revealMoney, setRevealMoney] = useState(false);
+  const moneyHidden = hideMoney && !revealMoney;
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [showFullText, setShowFullText] = useState(false);
   const { type, content = '', meta = {}, isOptimistic, status, created_at, completed_at } = item;
@@ -185,6 +188,7 @@ const Card: React.FC<CardProps> = ({
 
   // Initialize Edit State on Expand or Item Change
   useEffect(() => {
+    if (draft.dirty.current) return;
     setEditContent(content);
     setEditTitle(meta.title || '');
     const nextTransactionAmount = type === ItemType.FINANCE && sanitizeTransactionLineItems(meta.transactionLineItems).length
@@ -258,7 +262,14 @@ const Card: React.FC<CardProps> = ({
 
   }, [item, isCollapsed]); // Reset when collapsing/expanding or item changes
 
-  const handleSave = () => {
+  const draft = useEditorDraft(`entity:${item.id}`, { editContent, editTitle, editAmount, editTags, editDate, editStart, editEnd, editHideFromCalendar, editFinanceType, editPaymentMethod, editToWallet, editBudgetCategory, editTransactionLineItems, editMerchant, editCommodity, editSubcommodity, editDuration, editSkillId, editSavingGoalId, editLoanCounterparty, editLoanAccountId, editLoanDueDate, editProgress, editProgressNotes, editPriority, routineDraft }, v => { if (Object.hasOwn(v, 'editContent')) setEditContent(v.editContent); if (Object.hasOwn(v, 'editTitle')) setEditTitle(v.editTitle); if (Object.hasOwn(v, 'editAmount')) setEditAmount(v.editAmount); if (Object.hasOwn(v, 'editTags')) setEditTags(v.editTags); if (Object.hasOwn(v, 'editDate')) setEditDate(v.editDate); if (Object.hasOwn(v, 'editStart')) setEditStart(v.editStart); if (Object.hasOwn(v, 'editEnd')) setEditEnd(v.editEnd); if (Object.hasOwn(v, 'editHideFromCalendar')) setEditHideFromCalendar(v.editHideFromCalendar); if (Object.hasOwn(v, 'editFinanceType')) setEditFinanceType(v.editFinanceType); if (Object.hasOwn(v, 'editPaymentMethod')) setEditPaymentMethod(v.editPaymentMethod); if (Object.hasOwn(v, 'editToWallet')) setEditToWallet(v.editToWallet); if (Object.hasOwn(v, 'editBudgetCategory')) setEditBudgetCategory(v.editBudgetCategory); if (Object.hasOwn(v, 'editTransactionLineItems')) setEditTransactionLineItems(v.editTransactionLineItems); if (Object.hasOwn(v, 'editMerchant')) setEditMerchant(v.editMerchant); if (Object.hasOwn(v, 'editCommodity')) setEditCommodity(v.editCommodity); if (Object.hasOwn(v, 'editSubcommodity')) setEditSubcommodity(v.editSubcommodity); if (Object.hasOwn(v, 'editDuration')) setEditDuration(v.editDuration); if (Object.hasOwn(v, 'editSkillId')) setEditSkillId(v.editSkillId); if (Object.hasOwn(v, 'editSavingGoalId')) setEditSavingGoalId(v.editSavingGoalId); if (Object.hasOwn(v, 'editLoanCounterparty')) setEditLoanCounterparty(v.editLoanCounterparty); if (Object.hasOwn(v, 'editLoanAccountId')) setEditLoanAccountId(v.editLoanAccountId); if (Object.hasOwn(v, 'editLoanDueDate')) setEditLoanDueDate(v.editLoanDueDate); if (Object.hasOwn(v, 'editProgress')) setEditProgress(v.editProgress); if (Object.hasOwn(v, 'editProgressNotes')) setEditProgressNotes(v.editProgressNotes); if (Object.hasOwn(v, 'editPriority')) setEditPriority(v.editPriority); if (Object.hasOwn(v, 'routineDraft')) setRoutineDraft(v.routineDraft); });
+  useEffect(() => { const discard = (event: Event) => { if ((event.target as HTMLElement).getAttribute('data-entity-id') === item.id) draft.clear(); }; document.addEventListener('arkaiv-discard-editor', discard); return () => document.removeEventListener('arkaiv-discard-editor', discard); }, [item.id]);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
       if (!onUpdate) return;
 
       const tagArray = editTags.split(',').map(t => t.trim()).filter(t => t);
@@ -300,7 +311,7 @@ const Card: React.FC<CardProps> = ({
       const finalLoanAccountId = editingLoan ? editLoanAccountId : '';
 
 
-      onUpdate(item.id, {
+      await onUpdate(item.id, {
           content: editContent,
           tags: tagArray,
           amount: numAmount,
@@ -332,10 +343,13 @@ const Card: React.FC<CardProps> = ({
           loanDueDate: finalLoanDueDate,
       });
 
+      draft.clear();
       if (enableCollapse) {
           setIsCollapsed(true);
       }
       onSaveComplete?.(item.id);
+  
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
   const shouldStrike = status === 'done' && !noStrikethrough && type !== ItemType.JOURNAL;
@@ -356,12 +370,12 @@ const Card: React.FC<CardProps> = ({
 
   const formatMoney = (amount?: number) => {
       if (amount === undefined || amount === null) return null;
-      if (hideMoney) return 'Rp •••••••';
+      if (moneyHidden) return 'Rp •••••••';
       return formatCurrencyAmount(amount);
   };
 
   const formatCurrency = (amount: number, currency = 'IDR') => {
-      if (hideMoney) return `${currency} •••••`;
+      if (moneyHidden) return `${currency} •••••`;
       return formatCurrencyAmount(amount, currency);
   };
 
@@ -613,6 +627,15 @@ const Card: React.FC<CardProps> = ({
 
   return (
     <div
+      data-ui-editor="true"
+      data-editor-dirty={draft.dirty.current}
+      data-entity-id={item.id}
+      onInputCapture={draft.markDirty}
+      onChangeCapture={draft.markDirty}
+      onClickCapture={event =>
+      
+ { const button = (event.target as HTMLElement).closest('button'); if (button && button.getAttribute('aria-pressed') !== null) draft.markDirty(); }}
+
         data-edit-comfort={editComfort === 'taskWorkspace' ? 'task-workspace' : undefined}
         data-card-expanded={!isCollapsed ? 'true' : 'false'}
         data-card-behavior={onOpen ? 'detail-panel' : enableCollapse ? 'inline' : 'static'}
@@ -627,6 +650,7 @@ const Card: React.FC<CardProps> = ({
           onOpen(item);
         }}
     >
+      {saveError && <p role="alert" className="editor-error">{saveError}</p>}
       <div className="flex flex-col gap-1">
 
         {/* COLLAPSED HEADER */}
@@ -828,7 +852,7 @@ const Card: React.FC<CardProps> = ({
                         <div className={`text-base font-semibold tabular-nums tracking-tight ${type === 'FINANCE' && (meta.financeType === 'income' || isIncomingLoanFinanceType(meta.financeType)) ? 'text-emerald-600 dark:text-emerald-400' : (type === 'FINANCE' && meta.financeType === 'transfer' ? 'text-blue-500' : (type === 'FINANCE' && meta.financeType === ACHIEVED_GOAL_FINANCE_TYPE ? 'text-amber-600 dark:text-amber-400' : (type === 'FINANCE' && isOutgoingLoanFinanceType(meta.financeType) ? 'text-orange-600 dark:text-orange-400' : 'text-primary')))}`}>
                             {displayAmount || `${meta.durationMinutes}m`}
                         </div>
-                        {!hideMoney && type === ItemType.FINANCE && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) && (meta.originalAmount ?? meta.receiptCapture?.originalTotal) !== undefined && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) !== 'IDR' && (
+                        {!moneyHidden && type === ItemType.FINANCE && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) && (meta.originalAmount ?? meta.receiptCapture?.originalTotal) !== undefined && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) !== 'IDR' && (
                             <div className="text-[9px] font-medium text-muted">
                                 {formatCurrency((meta.originalAmount ?? meta.receiptCapture?.originalTotal) || 0, (meta.originalCurrency || meta.receiptCapture?.originalCurrency) || 'IDR')}
                                 {(meta.exchangeRateToIdr || meta.receiptCapture?.exchangeRateToIdr) ? ` · kurs ${(meta.exchangeRateToIdr || meta.receiptCapture?.exchangeRateToIdr || 0).toLocaleString('id-ID')}` : ''}
@@ -839,7 +863,7 @@ const Card: React.FC<CardProps> = ({
             </div>
         ) : null}
 
-        {hasTransactionLineItems && !hideMoney && (
+        {hasTransactionLineItems && !moneyHidden && (
             <div className="mt-2" onClick={(event) => event.stopPropagation()}>
                 {transactionCategorySummary.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
@@ -871,7 +895,7 @@ const Card: React.FC<CardProps> = ({
             </div>
         )}
 
-        {!hideMoney && type === ItemType.FINANCE && meta.receiptCapture?.imageName && (isCollapsed || !enableCollapse || readonly) && (
+        {!moneyHidden && type === ItemType.FINANCE && meta.receiptCapture?.imageName && (isCollapsed || !enableCollapse || readonly) && (
             <div className="mt-2" onClick={(event) => event.stopPropagation()}>
                 <ReceiptAttachmentPanel
                     capture={meta.receiptCapture}
@@ -912,7 +936,8 @@ const Card: React.FC<CardProps> = ({
               className={collapsibleEditPanel ? 'grid overflow-hidden' : undefined}
           >
           <div className={`${collapsibleEditPanel ? 'min-h-0 overflow-hidden' : ''} ${isNote ? 'pt-1' : 'pt-3 mt-2 border-t border-border/30'}`} onClick={(e) => e.stopPropagation()}>
-               {hideMoney && type === ItemType.FINANCE ? (
+               {moneyHidden && type === ItemType.FINANCE ? (
+                   <div><button type="button" className="editor-secondary mb-3" onClick={() => setRevealMoney(true)}>Tampilkan sementara di editor ini</button>
                    <div
                        className="flex items-start gap-3 rounded-lg bg-brand-500/10 p-4 text-brand-800 ring-1 ring-inset ring-brand-500/20 dark:text-brand-200"
                        role="status"
@@ -927,6 +952,7 @@ const Card: React.FC<CardProps> = ({
                            </p>
                        </div>
                    </div>
+               </div>
                ) : (
                <>
                {isNote && (
@@ -1523,7 +1549,8 @@ const Card: React.FC<CardProps> = ({
                    {!readonly && onUpdate && (
                        <button
                            type="button"
-                           onClick={(e) => { e.stopPropagation(); handleSave(); }}
+                           disabled={saving}
+                           onClick={(e) => { e.stopPropagation(); void handleSave(); }}
                            className={`flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/70 ${actionButtonComfort}`}
                        >
                            <Save className="w-3.5 h-3.5" /> Simpan perubahan

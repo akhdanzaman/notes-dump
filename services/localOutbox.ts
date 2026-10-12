@@ -132,7 +132,7 @@ export async function removeDraft(draftId: string) { const db = await open(); co
 export function closeLocalStore() { void connection?.then(db => db.close()); connection = undefined; device = ''; }
 
 /** Review replaces conflict IDs with new operations, atomically with the rebased local state. */
-export async function resolveLocalConflicts(scope: string, remote: DbSchema, preferLocal: boolean) {
+export async function resolveLocalConflicts(scope: string, remote: DbSchema, preferLocal: boolean, entityId?: string, choices: Record<string, 'local' | 'remote'> = {}) {
   const db = await open(); const tx = db.transaction(['states', 'entities', 'outbox'], 'readwrite'); const done = completion(tx);
   const states = tx.objectStore('states'); const entities = tx.objectStore('entities'); const outbox = tx.objectStore('outbox');
   try {
@@ -142,18 +142,25 @@ export async function resolveLocalConflicts(scope: string, remote: DbSchema, pre
     ]);
     if (!operations.length || operations.some(operation => operation.state !== 'conflict')) throw new Error('Wait for outstanding operations to settle before reviewing conflicts');
     const local = assemble(state, records)!; const base = reconstructBaseline(local, operations.sort((a, b) => a.createdAt - b.createdAt));
+    const selected = operations.filter(operation => !entityId || operation.entityId === entityId);
+    const remaining = operations.filter(operation => !selected.includes(operation));
     const next = structuredClone(remote); const items = new Map(next.data.map(item => [item.id, item]));
-    const unique = new Map(operations.map(operation => [`${operation.entityKind}:${operation.entityId}`, operation]));
+    for (const operation of remaining.sort((a, b) => a.createdAt - b.createdAt)) {
+      if (operation.entityKind === 'item') { if (operation.after) items.set(operation.entityId, operation.after as BrainDumpItem); else items.delete(operation.entityId); }
+      else (next as any)[operation.entityId] = operation.after;
+    }
+    const unique = new Map(selected.map(operation => [`${operation.entityKind}:${operation.entityId}`, operation]));
     let createdAt = Date.now();
     for (const operation of unique.values()) {
       const value = (db: DbSchema) => operation.entityKind === 'item' ? db.data.find(item => item.id === operation.entityId) ?? null : (db as any)[operation.entityId] ?? null;
-      const before = value(remote); const after = mergeMutation(value(base), value(local), before, 'entity', (localValue, remoteValue) => preferLocal ? localValue : remoteValue);
+      const before = value(remote); const after = mergeMutation(value(base), value(local), before, 'entity', (localValue, remoteValue, field) =>
+        (choices[field] ? choices[field] === 'local' : preferLocal) ? localValue : remoteValue);
       if (operation.entityKind === 'item') { if (after) items.set(operation.entityId, after as BrainDumpItem); else items.delete(operation.entityId); }
       else (next as any)[operation.entityId] = after;
       if (!equal(before, after)) outbox.put({ operationId: id(), scope, deviceId: deviceId(), entityKind: operation.entityKind,
         entityId: operation.entityId, before, after: after ?? null, state: 'pending', createdAt: ++createdAt, attempts: 0 });
     }
-    for (const operation of operations) outbox.delete(operation.operationId);
+    for (const operation of selected) outbox.delete(operation.operationId);
     next.data = [...items.values()]; const { data, ...config } = next;
     for (const record of records) entities.delete(record.key);
     for (const item of data) entities.put({ key: `${scope}|${item.id}`, scope, item });

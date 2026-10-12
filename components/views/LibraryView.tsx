@@ -250,7 +250,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         closeSkillSessionEditor();
     };
 
-    const formatCurrency = (amount?: number) => formatCurrencyAmount(amount);
+    const formatCurrency = (amount?: number) => appSettings.hideMoney ? '••••' : formatCurrencyAmount(amount);
 
     const formatJournalTime = (value?: string) => {
         if (!value) return '';
@@ -380,7 +380,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="text-sm font-medium text-primary">{item.content}</div>
-                                            <div className="text-xs text-muted">{[formatFinanceTypeLabel(item.meta.financeType || 'expense'), item.meta.paymentMethod].filter(Boolean).join(' • ')}</div>
+                                            <div className="text-xs text-muted">{[formatFinanceTypeLabel(item.meta.financeType || 'expense'), 'Wallet terhubung'].filter(Boolean).join(' • ')}</div>
                                         </div>
                                         <div className="text-sm font-semibold text-primary">{formatCurrency(item.meta.amount)}</div>
                                     </div>
@@ -1010,6 +1010,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                 onClose={() => setSelectedLibraryItemId(null)}
                 overlayClassName={contentSurface.workspaceDetailOverlay}
                 panelClassName={contentSurface.workspaceDetailPanel}
+                protectDraft
                 presentation="sheet"
                 ariaLabel={libraryCopy.itemDetail}
             >
@@ -1020,7 +1021,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             {selectedLibraryItem?.meta.title || selectedLibraryItem?.content || libraryCopy.itemDetail}
                         </h2>
                     </div>
-                    <button
+                    <button data-editor-close="true"
                         type="button"
                         onClick={() => setSelectedLibraryItemId(null)}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-soft hover:text-primary"

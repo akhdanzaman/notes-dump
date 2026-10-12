@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 import React, { useEffect, useState } from 'react';
 import { X, Check, Calendar } from 'lucide-react';
 import { Priority } from '../types';
@@ -8,7 +9,7 @@ import { getLocalDateKey } from '../utils/selectors/dateUtils';
 interface AddTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (content: string, date: string, priority: Priority, start?: string, end?: string, hideFromCalendar?: boolean) => void;
+    onSave: (content: string, date: string, priority: Priority, start?: string, end?: string, hideFromCalendar?: boolean) => void | Promise<unknown>;
     initialDate?: string;
 }
 
@@ -21,28 +22,44 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
     const [hideFromCalendar, setHideFromCalendar] = useState(false);
 
     useEffect(() => {
-        if (isOpen) setDate(getLocalDateKey(initialDate || new Date()));
+        if (isOpen && !draft.dirty.current) setDate(getLocalDateKey(initialDate || new Date()));
     }, [isOpen, initialDate]);
 
-    const handleSave = () => {
+    const draft = useEditorDraft('AddTaskModal', { content, date, start, end, priority, hideFromCalendar }, v => { if (Object.hasOwn(v, 'content')) setContent(v.content); if (Object.hasOwn(v, 'date')) setDate(v.date); if (Object.hasOwn(v, 'start')) setStart(v.start); if (Object.hasOwn(v, 'end')) setEnd(v.end); if (Object.hasOwn(v, 'priority')) setPriority(v.priority); if (Object.hasOwn(v, 'hideFromCalendar')) setHideFromCalendar(v.hideFromCalendar); });
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
         if (!content.trim() || !date) return;
 
         let startIso, endIso;
         if (start) startIso = new Date(start).toISOString();
         if (end) endIso = new Date(end).toISOString();
 
-        onSave(content, new Date(`${date}T00:00:00`).toISOString(), priority, startIso, endIso, hideFromCalendar);
+        await onSave(content, new Date(`${date}T00:00:00`).toISOString(), priority, startIso, endIso, hideFromCalendar);
+      draft.clear();
         setContent('');
         setStart('');
         setEnd('');
         setPriority('normal');
         setHideFromCalendar(false);
         onClose();
-    };
+    
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
+  };
 
     return (
         <PresencePanel
             isOpen={isOpen}
+      protectDraft
+      hasDraft={draft.dirty.current}
+      onDiscardDraft={draft.clear}
+      saving={saving}
+      saveError={saveError}
+      draftKey={'AddTaskModal'}
+      onDraftChange={draft.markDirty}
             onClose={onClose}
             overlayClassName={responsiveModal.sheetOverlay}
             panelClassName={addItemModal.panel}
@@ -60,7 +77,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                             <Calendar className={addItemModal.icon} />
                             Add New Task
                         </h3>
-                        <button onClick={onClose} className={addItemModal.closeButton}>
+                        <button data-editor-close="true" onClick={onClose} className={addItemModal.closeButton}>
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -145,7 +162,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, in
                     <div className={addItemModal.footer}>
                         <button
                             onClick={handleSave}
-                            disabled={!content.trim()}
+                            disabled={saving || !content.trim()}
                             className={addItemModal.primaryButton}
                         >
                             <Check className="w-5 h-5" />

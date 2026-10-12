@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 
 import React, { useState, useEffect } from 'react';
 import { X, Wallet as WalletIcon, Save } from 'lucide-react';
@@ -8,7 +9,7 @@ import { responsiveModal } from './layout/contentSurface';
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, type: Wallet['type'], initialBalance: number, color: string) => void;
+  onSave: (name: string, type: Wallet['type'], initialBalance: number, color: string) => void | Promise<unknown>;
   initialData?: Wallet;
   mode: 'add' | 'edit';
 }
@@ -35,6 +36,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
   const [color, setColor] = useState('bg-blue-500');
 
   useEffect(() => {
+    if (draft.dirty.current) return;
     if (isOpen) {
         if (mode === 'edit' && initialData) {
             setName(initialData.name);
@@ -50,15 +52,31 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
     }
   }, [isOpen, initialData, mode]);
 
-  const handleSave = () => {
+  const draft = useEditorDraft(`wallet:${initialData?.id || 'new'}`, { name, type, initialBalance, color }, v => { if (Object.hasOwn(v, 'name')) setName(v.name); if (Object.hasOwn(v, 'type')) setType(v.type); if (Object.hasOwn(v, 'initialBalance')) setInitialBalance(v.initialBalance); if (Object.hasOwn(v, 'color')) setColor(v.color); });
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
       const balance = parseFloat(initialBalance) || 0;
-      onSave(name, type, balance, color);
+      await onSave(name, type, balance, color);
+      draft.clear();
       onClose();
+  
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
   return (
     <PresencePanel
       isOpen={isOpen}
+      protectDraft
+      hasDraft={draft.dirty.current}
+      onDiscardDraft={draft.clear}
+      saving={saving}
+      saveError={saveError}
+      draftKey={`wallet:${initialData?.id || 'new'}`}
+      onDraftChange={draft.markDirty}
       onClose={onClose}
       overlayClassName={responsiveModal.sheetOverlay}
       panelClassName={`${responsiveModal.formPanel} max-h-[90dvh] lg:max-w-xl`}
@@ -76,7 +94,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
               <p className="text-xs text-muted">Saldo awal tidak mengubah transaksi yang sudah tercatat.</p>
             </div>
           </div>
-          <button
+          <button data-editor-close="true"
             type="button"
             onClick={onClose}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-black/[0.04] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 dark:hover:bg-white/[0.06]"
@@ -166,11 +184,11 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSave, init
 
         <div className="shrink-0 border-t border-border/60 bg-surface/98 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:p-6">
           <div className={responsiveModal.footer}>
-            <button type="button" onClick={onClose} className="min-h-11 rounded-xl px-4 text-sm font-medium text-muted transition-colors hover:bg-muted/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60">Batal</button>
+            <button data-editor-close="true" type="button" onClick={onClose} className="min-h-11 rounded-xl px-4 text-sm font-medium text-muted transition-colors hover:bg-muted/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60">Batal</button>
             <button 
                 type="button"
                 onClick={handleSave}
-                disabled={!name.trim()}
+                disabled={saving || !name.trim()}
                 className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm shadow-emerald-500/15 transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50"
             >
                 <Save className="w-4 h-4" /> {mode === 'add' ? 'Tambah wallet' : 'Simpan perubahan'}

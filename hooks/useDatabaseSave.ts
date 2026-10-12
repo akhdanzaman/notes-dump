@@ -89,5 +89,15 @@ export function useDatabaseSave(bindings: DatabaseSaveBindings) {
     }
     return performSaveAndSync(changes);
   }, [performSaveAndSync]);
-  return { saveAndSync, performSaveAndSync };
+  const saveLocally = useCallback(async (changes: SaveChanges = {}) => {
+    const ctx = latest.current;
+    const snapshot = { ...ctx.read(), ...changes };
+    // Finish local persistence before publishing the new state or closing an editor.
+    await persistForSave(snapshot);
+    ctx.apply(snapshot);
+    ctx.setSaveStatus('saving');
+    ctx.setSaveProgress({ phase: 'pending_local', label: 'Tersimpan di perangkat', detail: 'Menunggu sinkronisasi', updatedAt: Date.now() });
+    void saveAndSync(changes);
+  }, [saveAndSync]);
+  return { saveAndSync, performSaveAndSync, saveLocally };
 }

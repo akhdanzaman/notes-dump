@@ -1089,7 +1089,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     transition={{ layout: motionSpring.layout }}
                     className="rounded-xl"
                 >
-                    <ShoppingItem
+                    <ShoppingItem hideMoney={appSettings.hideMoney}
                         item={item}
                         onToggleStatus={handleToggleStatus}
                         onUpdate={handleUpdateItem}
@@ -1635,6 +1635,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 presentation="sheet"
                 overlayClassName={contentSurface.workspaceDetailOverlay}
                 panelClassName={contentSurface.workspaceDetailPanel}
+                protectDraft
                 ariaLabel={planCopy.itemDetail}
             >
                 <div className={contentSurface.workspaceDetailHeader}>
@@ -1646,7 +1647,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             {selectedPlanItem?.content || planCopy.itemDetail}
                         </h2>
                     </div>
-                    <button
+                    <button data-editor-close="true"
                         type="button"
                         onClick={() => setSelectedPlanItemId(null)}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-soft hover:text-primary"
@@ -1657,7 +1658,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                 </div>
                 <div className={contentSurface.workspaceDetailBody}>
                     {selectedPlanItem?.type === ItemType.SHOPPING ? (
-                        <ShoppingItem
+                        <ShoppingItem hideMoney={appSettings.hideMoney}
                             key={selectedPlanItem.id}
                             item={selectedPlanItem}
                             onToggleStatus={handleToggleStatus}

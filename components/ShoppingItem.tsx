@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 import RoutineScheduleEditor from './RoutineScheduleEditor';
 import { useRoutineDraft } from '../hooks/useRoutineDraft';
 import React, { useState, useEffect } from 'react';
@@ -22,10 +23,13 @@ interface ShoppingItemProps {
   onResetRoutine?: (id: string) => void;
   onOpen?: (item: BrainDumpItem) => void;
   defaultExpanded?: boolean;
+  hideMoney?: boolean;
   onSaveComplete?: (id: string) => void;
 }
 
-const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], wallets = [], onResetRoutine, onOpen, defaultExpanded = false, onSaveComplete }) => {
+const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDelete, onUpdate, readonly = false, handleUpdateItem, budgetRules = [], wallets = [], onResetRoutine, onOpen, defaultExpanded = false, hideMoney = false, onSaveComplete }) => {
+  const [revealMoney, setRevealMoney] = useState(false);
+  const moneyHidden = hideMoney && !revealMoney;
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [showAllLineItems, setShowAllLineItems] = useState(false);
   const { content, meta, status, completed_at } = item;
@@ -44,6 +48,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   // Sync state
   useEffect(() => {
+      if (draft.dirty.current) return;
       setEditContent(content);
       setEditQuantity(meta.quantity || '');
       setEditShoppingLineItems(sanitizeShoppingLineItems(meta.shoppingLineItems));
@@ -72,7 +77,14 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
   const updateFn = onUpdate || handleUpdateItem;
 
-  const handleSave = () => {
+  const draft = useEditorDraft(`entity:${item.id}`, { editContent, editQuantity, editShoppingLineItems, editAmount, editCategory, editDate, editBudgetCategory, editPaymentMethod, editHideFromCalendar, routineDraft }, v => { if (Object.hasOwn(v, 'editContent')) setEditContent(v.editContent); if (Object.hasOwn(v, 'editQuantity')) setEditQuantity(v.editQuantity); if (Object.hasOwn(v, 'editShoppingLineItems')) setEditShoppingLineItems(v.editShoppingLineItems); if (Object.hasOwn(v, 'editAmount')) setEditAmount(v.editAmount); if (Object.hasOwn(v, 'editCategory')) setEditCategory(v.editCategory); if (Object.hasOwn(v, 'editDate')) setEditDate(v.editDate); if (Object.hasOwn(v, 'editBudgetCategory')) setEditBudgetCategory(v.editBudgetCategory); if (Object.hasOwn(v, 'editPaymentMethod')) setEditPaymentMethod(v.editPaymentMethod); if (Object.hasOwn(v, 'editHideFromCalendar')) setEditHideFromCalendar(v.editHideFromCalendar); if (Object.hasOwn(v, 'routineDraft')) setRoutineDraft(v.routineDraft); });
+  useEffect(() => { const discard = (event: Event) => { if ((event.target as HTMLElement).getAttribute('data-entity-id') === item.id) draft.clear(); }; document.addEventListener('arkaiv-discard-editor', discard); return () => document.removeEventListener('arkaiv-discard-editor', discard); }, [item.id]);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
       if (!updateFn) return;
       const sanitizedEditLineItems = sanitizeShoppingLineItems(editShoppingLineItems);
       const hasEditLineItems = sanitizedEditLineItems.length > 0;
@@ -81,7 +93,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       let finalDate: string | undefined = undefined;
       if (editDate) finalDate = new Date(editDate).toISOString();
 
-      updateFn(item.id, {
+      await updateFn(item.id, {
           content: editContent,
           tags: meta.tags || [],
           amount: numAmount,
@@ -105,7 +117,11 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           hideFromCalendar: editHideFromCalendar,
           shoppingLineItems: hasEditLineItems ? sanitizedEditLineItems : undefined,
       });
+      draft.clear();
+      setIsExpanded(false);
       onSaveComplete?.(item.id);
+  
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
   const isDone = status === 'done';
@@ -227,7 +243,16 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   };
 
   return (
-    <div 
+    <div
+      data-ui-editor="true"
+      data-editor-dirty={draft.dirty.current}
+      data-entity-id={item.id}
+      onInputCapture={draft.markDirty}
+      onChangeCapture={draft.markDirty}
+      onClickCapture={event =>
+      
+ { const button = (event.target as HTMLElement).closest('button'); if (button && button.getAttribute('aria-pressed') !== null) draft.markDirty(); }}
+ 
       data-card-behavior={onOpen ? 'detail-panel' : 'inline'}
       role={onOpen ? 'group' : undefined}
       tabIndex={onOpen ? 0 : undefined}
@@ -244,6 +269,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           onOpen(item);
       }}
     >
+      {saveError && <p role="alert" className="editor-error">{saveError}</p>}
       <div className="flex flex-col gap-1">
         
         {/* Top Row */}
@@ -325,7 +351,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                     </div>
                 )}
                 {hasLineItems && (
-                    <LineItemsPreview
+                    <LineItemsPreview hideMoney={hideMoney}
                         items={lineItems}
                         expanded={showAllLineItems}
                         onToggleExpanded={() => setShowAllLineItems((current) => !current)}
@@ -336,7 +362,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
             {(meta.amount || hasLineItems) && (
                 <div className="text-base font-bold text-primary shrink-0 mt-0.5">
-                    {formatCurrencyAmount(hasLineItems ? lineItemsTotal : meta.amount)}
+                    {(hideMoney ? '••••' : formatCurrencyAmount(hasLineItems ? lineItemsTotal : meta.amount))}
                 </div>
             )}
         </div>
@@ -362,7 +388,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       />
                   </div>
 
-                  <LineItemsEditor
+                  {moneyHidden ? <button type="button" onClick={() => setRevealMoney(true)} className="editor-primary">Tampilkan nominal sementara di editor ini</button> : <LineItemsEditor
                       variant="shopping"
                       value={editShoppingLineItems}
                       onChange={setEditShoppingLineItems}
@@ -370,6 +396,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       helpText="Opsional. Total estimasi dihitung otomatis dari seluruh item."
                   />
 
+                  }
                   {/* Settings Grid */}
                   <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -410,7 +437,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                                ))}
                            </select>
                       </div>
-                      <div>
+                      {!moneyHidden && <div>
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Est. Cost</label>
                            <input 
                               type="number"
@@ -420,8 +447,8 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                               readOnly={hasEditLineItems}
                               placeholder="0"
                            />
-                           {hasEditLineItems && <p className="mt-1 text-[10px] text-muted">Auto-summed from line items.</p>}
-                      </div>
+                           {hasEditLineItems && <p className="mt-1 text-[10px] text-muted">Total otomatis dari rincian.</p>}
+                      </div>}
                       <div className="col-span-2">
                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{shouldShoppingDateEditCompletion(item) ? 'Completed date' : 'Due date'}</label>
                            <input
@@ -462,7 +489,8 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       </button>
                       
                       <button 
-                        onClick={(e) => { e.stopPropagation(); handleSave(); setIsExpanded(false); }}
+                        disabled={saving}
+                        onClick={(e) => { e.stopPropagation(); void handleSave(); }}
                         className="bg-acc-shopping text-white px-3 py-1.5 rounded-xl text-xs font-medium hover:opacity-90 flex items-center gap-1"
                       >
                           <Save className="w-3 h-3" /> Save

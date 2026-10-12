@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Check, Target, Image as ImageIcon, CalendarClock, Clock } from 'lucide-react';
 import { Skill, SkillSchedule } from '../types';
@@ -15,7 +16,7 @@ export type SkillModalPayload = {
 interface SkillModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (payload: SkillModalPayload) => void;
+  onSave: (payload: SkillModalPayload) => void | Promise<unknown>;
   initialSkill?: Skill;
   mode: 'add' | 'edit';
 }
@@ -70,6 +71,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
   const [schedule, setSchedule] = useState<SkillSchedule>(defaultSchedule);
 
   useEffect(() => {
+    if (draft.dirty.current) return;
     if (!isOpen) return;
 
     setName(initialSkill?.name || '');
@@ -84,7 +86,13 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
     return getDurationMinutes(schedule) * getWeeklySessionCount(schedule);
   }, [schedule]);
 
-  const handleSave = () => {
+  const draft = useEditorDraft(`skill:${initialSkill?.id || 'new'}`, { name, description, imageUrl, weeklyTargetMinutes, schedule }, v => { if (Object.hasOwn(v, 'name')) setName(v.name); if (Object.hasOwn(v, 'description')) setDescription(v.description); if (Object.hasOwn(v, 'imageUrl')) setImageUrl(v.imageUrl); if (Object.hasOwn(v, 'weeklyTargetMinutes')) setWeeklyTargetMinutes(v.weeklyTargetMinutes); if (Object.hasOwn(v, 'schedule')) setSchedule(v.schedule); });
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
     if (!name.trim()) return;
 
     const parsedWeeklyTarget = Number(weeklyTargetMinutes);
@@ -95,20 +103,30 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
       monthsOfYear: schedule.interval === 'yearly' ? (schedule.monthsOfYear?.length ? schedule.monthsOfYear : [new Date().getMonth()]) : undefined,
     } : undefined;
 
-    onSave({
+    await onSave({
       name: name.trim(),
       description: description.trim() || undefined,
       imageUrl: imageUrl.trim() || undefined,
       weeklyTargetMinutes: Number.isFinite(parsedWeeklyTarget) && parsedWeeklyTarget > 0 ? parsedWeeklyTarget : undefined,
       schedule: nextSchedule,
     });
+      draft.clear();
 
     onClose();
+  
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
   return (
     <PresencePanel
       isOpen={isOpen}
+      protectDraft
+      hasDraft={draft.dirty.current}
+      onDiscardDraft={draft.clear}
+      saving={saving}
+      saveError={saveError}
+      draftKey={`skill:${initialSkill?.id || 'new'}`}
+      onDraftChange={draft.markDirty}
       onClose={onClose}
       overlayClassName={responsiveModal.sheetOverlay}
       panelClassName={`${addItemModal.panel} max-w-3xl`}
@@ -126,7 +144,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
               <Target className={addItemModal.icon} />
               {mode === 'add' ? 'Track New Skill' : 'Edit Skill'}
             </h3>
-            <button onClick={onClose} className={addItemModal.closeButton}>
+            <button data-editor-close="true" onClick={onClose} className={addItemModal.closeButton}>
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -313,7 +331,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
           </div>
 
           <div className={addItemModal.footer}>
-            <button onClick={handleSave} disabled={!name.trim()} className={addItemModal.primaryButton}>
+            <button onClick={handleSave} disabled={saving || !name.trim()} className={addItemModal.primaryButton}>
               <Check className="w-5 h-5" /> Save Skill
             </button>
           </div>

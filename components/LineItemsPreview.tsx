@@ -3,6 +3,7 @@ import { ShoppingLineItem, TransactionLineItem } from '../types';
 import { formatCurrencyAmount } from '../utils/formatters';
 
 interface Props {
+  hideMoney?: boolean;
   items: (ShoppingLineItem | TransactionLineItem)[];
   currency?: string;
   budgetRules?: { id: string; name: string }[];
@@ -14,7 +15,7 @@ interface Props {
 }
 
 const LineItemsPreview: React.FC<Props> = ({
-  items,
+  items, hideMoney = false,
   currency = 'IDR',
   budgetRules = [],
   defaultBudgetCategory,
@@ -39,7 +40,7 @@ const LineItemsPreview: React.FC<Props> = ({
               <div className="truncate">{line.name || 'Item tanpa nama'}{line.quantity ? ` · ${line.quantity}` : ''}</div>
               {allocationLabel && <div className="truncate text-[9px] opacity-75">{allocationLabel}</div>}
             </div>
-            <span className="shrink-0 font-bold text-primary">{formatCurrencyAmount(Number(line.amount || 0), currency)}</span>
+            <span className="shrink-0 font-bold text-primary">{hideMoney ? '••••' : formatCurrencyAmount(Number(line.amount || 0), currency)}</span>
           </div>
         );
       })}

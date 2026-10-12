@@ -89,3 +89,19 @@ test('parser completion and parsed entities persist atomically, so restart does 
   assert.equal(local.operations.some(operation => operation.entityId === 'forceOverwrite'), false);
   assert.equal(Object.hasOwn(local.data!, 'forceOverwrite'), false);
 });
+
+test('field review resolves one entity and preserves another unresolved local conflict', async () => {
+ const scope = 'field-choice-review'; const second = { ...item, id: 'two' };
+ const original = { ...base, data: [item, second] };
+ const edited = { ...original, data: [{ ...item, content: 'local one', meta: { amount: 20 } }, { ...second, content: 'local two' }] };
+ await persistLocalState(scope, edited, original);
+ const pending = (await readLocalState(scope)).operations;
+ await changeOperationState(scope, pending.map(op => op.operationId), 'conflict');
+ const remote = { ...original, data: [{ ...item, content: 'remote one', meta: { amount: 30 } }, { ...second, content: 'remote two' }] };
+ await resolveLocalConflicts(scope, remote, false, 'one', { 'entity.content': 'local', 'entity.meta.amount': 'remote' });
+ const result = await readLocalState(scope);
+ assert.equal(result.data?.data.find(value => value.id === 'one')?.content, 'local one');
+ assert.equal(result.data?.data.find(value => value.id === 'one')?.meta.amount, 30);
+ assert.equal(result.data?.data.find(value => value.id === 'two')?.content, 'local two');
+ assert.equal(result.operations.find(op => op.entityId === 'two')?.state, 'conflict');
+});

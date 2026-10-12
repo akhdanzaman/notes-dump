@@ -2670,6 +2670,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
         presentation="sheet"
         overlayClassName={contentSurface.workspaceDetailOverlay}
         panelClassName={contentSurface.workspaceDetailPanel}
+                protectDraft
         ariaLabel="Detail transaksi"
       >
         <div className={contentSurface.workspaceDetailHeader}>
@@ -2683,7 +2684,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 "Transaksi"}
             </h2>
           </div>
-          <button
+          <button data-editor-close="true"
             type="button"
             onClick={() => setSelectedTransaction(null)}
             className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-soft hover:text-primary"

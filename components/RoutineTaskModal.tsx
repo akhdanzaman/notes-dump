@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Calendar, Clock, Check } from 'lucide-react';
@@ -18,7 +19,7 @@ interface RoutineTaskModalProps {
         date?: string,
         recurrenceDays?: number,
         priority?: Priority
-    ) => void;
+    ) => void | Promise<unknown>;
 }
 
 const DAYS_OF_WEEK = [
@@ -61,7 +62,13 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
         setDate(localISOTime);
     };
 
-    const handleSave = () => {
+    const draft = useEditorDraft('RoutineTaskModal', { content, interval, daysOfWeek, daysOfMonth, monthsOfYear, date, priority }, v => { if (Object.hasOwn(v, 'content')) setContent(v.content); if (Object.hasOwn(v, 'interval')) setInterval(v.interval); if (Object.hasOwn(v, 'daysOfWeek')) setDaysOfWeek(v.daysOfWeek); if (Object.hasOwn(v, 'daysOfMonth')) setDaysOfMonth(v.daysOfMonth); if (Object.hasOwn(v, 'monthsOfYear')) setMonthsOfYear(v.monthsOfYear); if (Object.hasOwn(v, 'date')) setDate(v.date); if (Object.hasOwn(v, 'priority')) setPriority(v.priority); });
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
         setFormError('');
         if (!content.trim()) {
             setFormError('Nama routine harus diisi.');
@@ -82,7 +89,8 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
             return;
         }
 
-        onSave(content, interval, daysOfWeek, daysOfMonth, monthsOfYear, date, undefined, priority);
+        await onSave(content, interval, daysOfWeek, daysOfMonth, monthsOfYear, date, undefined, priority);
+      draft.clear();
 
         // Reset
         setContent('');
@@ -94,7 +102,9 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
         setPriority('normal');
         setFormError('');
         onClose();
-    };
+    
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
+  };
 
     const toggleDayOfWeek = (val: number) => {
         let newDays;
@@ -132,6 +142,13 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
     return (
         <PresencePanel
             isOpen={isOpen}
+      protectDraft
+      hasDraft={draft.dirty.current}
+      onDiscardDraft={draft.clear}
+      saving={saving}
+      saveError={saveError}
+      draftKey={'RoutineTaskModal'}
+      onDraftChange={draft.markDirty}
             onClose={onClose}
             overlayClassName={responsiveModal.sheetOverlay}
             panelClassName={addItemModal.panel}
@@ -144,7 +161,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                             <Clock className={addItemModal.icon} />
                             New Routine
                         </h3>
-                        <button onClick={onClose} className={addItemModal.closeButton}>
+                        <button data-editor-close="true" onClick={onClose} className={addItemModal.closeButton}>
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -277,7 +294,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                     <div className={addItemModal.footer}>
                         <button
                             onClick={handleSave}
-                            disabled={!content.trim()}
+                            disabled={saving || !content.trim()}
                             className={addItemModal.primaryButton}
                         >
                             <Check className="w-5 h-5" />

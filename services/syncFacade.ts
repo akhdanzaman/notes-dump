@@ -85,8 +85,8 @@ export const syncData = async ({ data: items, budgetConfig, customPrompt, skills
       if (forceOverwrite) return { success: false, method: 'error', error: 'Force overwrite is disabled during durable sync. Use entity changes and conflict review.' };
       await reconcileDurableReceipts(scope, local?.operations || []);
       const active = (await readLocalState(scope)).operations;
-      if (active.some(operation => operation.state === 'conflict')) return { success: false, method: 'error', state: 'conflict', error: 'Concurrent edits need review; local changes are retained.' };
       await submitDurableOperations(scope, active.filter(operation => operation.state !== 'conflict'));
+      if (active.some(operation => operation.state === 'conflict')) return { success: false, method: 'error', state: 'conflict', error: 'Perubahan bersamaan perlu ditinjau; salinan lokal tetap aman.' };
       return { success: true, method: 'cloud', state: active.length ? 'accepted' : 'committed' };
     }
   }

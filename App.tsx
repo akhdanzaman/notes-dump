@@ -251,6 +251,7 @@ const App: React.FC = () => {
     fetchProgress,
     fetchStatus,
     saveAndSync,
+    saveLocally,
     handleSend,
     handleToggleStatus,
     handleDelete,
@@ -946,7 +947,7 @@ const App: React.FC = () => {
       initialData: wallet,
     });
 
-  const handleSaveSkill = (payload: SkillModalPayload) => {
+  const handleSaveSkill = async (payload: SkillModalPayload) => {
     const name = payload.name.trim();
     if (!name) return;
 
@@ -978,13 +979,11 @@ const App: React.FC = () => {
     }
 
     const updatedItems = syncSkillRoutineItems(items, updatedSkills);
-    setSkills(updatedSkills);
-    setItems(updatedItems);
-    saveAndSync({ data: updatedItems, skills: updatedSkills, wallets: wallets, monthlyThemes: monthlyThemes });
+    await saveLocally({ data: updatedItems, skills: updatedSkills, wallets: wallets, monthlyThemes: monthlyThemes });
     setSkillModal({ ...skillModal, isOpen: false });
   };
 
-  const handleSaveWallet = (
+  const handleSaveWallet = async (
     name: string,
     type: Wallet["type"],
     initialBalance: number,
@@ -1000,16 +999,14 @@ const App: React.FC = () => {
         color,
       };
       const updated = [...wallets, newWallet];
-      setWallets(updated);
-      saveAndSync({ data: items, skills: skills, wallets: updated, monthlyThemes: monthlyThemes });
+      await saveLocally({ data: items, skills: skills, wallets: updated, monthlyThemes: monthlyThemes });
     } else if (walletModal.mode === "edit" && walletModal.walletId) {
       const updated = wallets.map((w) =>
         w.id === walletModal.walletId
           ? { ...w, name, type, initialBalance, color }
           : w,
       );
-      setWallets(updated);
-      saveAndSync({ data: items, skills: skills, wallets: updated, monthlyThemes: monthlyThemes });
+      await saveLocally({ data: items, skills: skills, wallets: updated, monthlyThemes: monthlyThemes });
     }
     setWalletModal({ ...walletModal, isOpen: false });
   };
@@ -1811,7 +1808,7 @@ const App: React.FC = () => {
       {addExpenseModalOpen && (<React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><AddExpenseModal
         isOpen={addExpenseModalOpen}
         onClose={closeAddTransactionModal}
-        onSave={(
+        onSave={async (
           amount,
           description,
           category,
@@ -1831,7 +1828,7 @@ const App: React.FC = () => {
           loanDueDate,
         ) => {
           if (type === "saving" && savingGoalId && savingGoalName) {
-            handleAddSavingTransaction(
+            await handleAddSavingTransaction(
               amount,
               walletId,
               date,
@@ -1844,7 +1841,7 @@ const App: React.FC = () => {
           } else {
             if (walletId) {
               if (type === "transfer") {
-                handleAddTransaction(
+                await handleAddTransaction(
                   description,
                   amount,
                   type,
@@ -1863,7 +1860,7 @@ const App: React.FC = () => {
                   loanDueDate,
                 );
               } else {
-                handleAddTransaction(
+                await handleAddTransaction(
                   description,
                   amount,
                   type,

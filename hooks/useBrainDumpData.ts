@@ -489,7 +489,7 @@ export const useBrainDumpData = () => {
         return updatedItems;
     };
 
-    const { saveAndSync, performSaveAndSync } = useDatabaseSave({
+    const { saveAndSync, performSaveAndSync, saveLocally } = useDatabaseSave({
         read: () => ({ data: itemsRef.current, budgetConfig: budgetConfigRef.current, customPrompt: customPromptRef.current, skills: skillsRef.current, wallets: walletsRef.current, monthlyThemes: monthlyThemesRef.current, monthlyThemeImages: monthlyThemeImagesRef.current, appSettings: appSettingsRef.current, canonicalRules: canonicalRulesRef.current, chatHistory: chatHistoryRef.current }),
         apply: (merged) => {
                 if (merged.data !== undefined) { itemsRef.current = merged.data; setItems(merged.data); }
@@ -1867,9 +1867,7 @@ budgetConfigRef.current?.rules || []
         };
 
         const updated = [newItem, ...itemsRef.current];
-        itemsRef.current = updated;
-        setItems(updated);
-        saveAndSync({ data: updated });
+        await saveLocally({ data: updated });
     };
 
     const handleUpdateItem = async (id: string, patch: ItemUpdatePatch) => {
@@ -2051,9 +2049,7 @@ budgetConfigRef.current?.rules || []
         });
 
         const reconciledDeepWorkItems = applyDeepWorkCompletionSemantics(applyDeepWorkChildProgress(updatedItems));
-        itemsRef.current = reconciledDeepWorkItems;
-        setItems(reconciledDeepWorkItems);
-        saveAndSync({ data: reconciledDeepWorkItems });
+        await saveLocally({ data: reconciledDeepWorkItems });
     };
 
     const handleUpdateReceiptCapture = async (id: string, receiptCapture: ReceiptCaptureMeta | null) => {
@@ -2066,9 +2062,7 @@ budgetConfigRef.current?.rules || []
                 },
             }
             : item);
-        itemsRef.current = updatedItems;
-        setItems(updatedItems);
-        saveAndSync({ data: updatedItems });
+        await saveLocally({ data: updatedItems });
     };
 
 
@@ -2097,9 +2091,7 @@ budgetConfigRef.current?.rules || []
         );
 
         const updated = [...newItems, ...itemsRef.current];
-        itemsRef.current = updated;
-        setItems(updated);
-        saveAndSync({ data: updated });
+        await saveLocally({ data: updated });
     };
 
     const handleAddShoppingItem = async (
@@ -2142,9 +2134,9 @@ budgetConfigRef.current?.rules || []
                     color: 'bg-emerald-500'
                 };
                 updatedWallets = [newInvestmentWallet, ...walletsRef.current];
-                walletsRef.current = updatedWallets;
+
                 investmentWalletId = newInvestmentWallet.id;
-                setWallets(updatedWallets);
+
             }
         }
 
@@ -2185,12 +2177,10 @@ budgetConfigRef.current?.rules || []
         };
 
         const updated = [newItem, ...itemsRef.current];
-        itemsRef.current = updated;
-        setItems(updated);
-        saveAndSync({ data: updated, wallets: updatedWallets });
+        await saveLocally({ data: updated, wallets: updatedWallets });
     };
 
-    const handleAddSavingTransaction = (
+    const handleAddSavingTransaction = async (
         amount: number,
         walletId: string,
         date: string,
@@ -2232,9 +2222,7 @@ budgetConfigRef.current?.rules || []
             return applyInvestmentFundingToInvestment(item, resolvedFunding);
         });
         const updated = [newFinanceItem, ...updatedItems];
-        itemsRef.current = updated;
-        setItems(updated);
-        saveAndSync({ data: updated });
+        await saveLocally({ data: updated });
     };
 
     const handleAddTransaction = async (
@@ -2289,10 +2277,7 @@ budgetConfigRef.current?.rules || []
         };
 
         const updated = [newItem, ...itemsRef.current];
-        itemsRef.current = updated;
-        setItems(updated);
-        const result = await saveAndSync({ data: updated });
-        if (!result.success) throw new Error(result.error || 'Transaksi masih tersimpan lokal; sinkronisasi gagal');
+        await saveLocally({ data: updated });
         return newItem;
     };
 
@@ -2329,9 +2314,7 @@ budgetConfigRef.current?.rules || []
         const updated = type === ItemType.JOURNAL
             ? upsertDailyJournalEntry(itemsRef.current, newItem)
             : [newItem, ...itemsRef.current];
-        itemsRef.current = updated;
-        setItems(updated);
-        saveAndSync({ data: updated });
+        await saveLocally({ data: updated });
     };
 
     const handleUpsertSkillSessionLog = (input: SkillSessionLogInput) => {
@@ -2459,6 +2442,7 @@ budgetConfigRef.current?.rules || []
         fetchStatus,
         loadData,
         saveAndSync,
+        saveLocally,
         runCanonicalBackfill,
         toggleCanonicalRuleDisabled,
         handleSend,

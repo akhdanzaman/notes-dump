@@ -391,7 +391,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     ].join(' ')}
                                 >
                                     <div className="flex items-center justify-between min-w-0">
-                                        <button
+                                        <button data-editor-close="true"
                                             type="button"
                                             onClick={() => setSelectedDateKey(getDateKey(dayObj.date))}
                                             aria-pressed={isSelected}
@@ -542,7 +542,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     <div className="text-xs font-semibold text-muted">{calendarCopy.itemDetail}</div>
                                     <div className="mt-1 text-base font-semibold text-primary">{selectedItem.content}</div>
                                 </div>
-                                <button onClick={() => setSelectedItem(null)} className="rounded-full border border-border p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary">
+                                <button data-editor-close="true" onClick={() => setSelectedItem(null)} className="rounded-full border border-border p-2 text-muted transition-colors hover:bg-muted/10 hover:text-primary">
                                     <X className="h-4 w-4" />
                                 </button>
                             </div>

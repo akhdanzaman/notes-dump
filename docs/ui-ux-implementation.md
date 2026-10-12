@@ -7,3 +7,5 @@ Sequential acceptance: 0 baseline -> 1 safe privacy/drafts/local saves/conflicts
 States: empty/populated, dirty draft, local failure, offline/pending, accepted, committed, conflict. Main tabs and all sub-tabs are covered by the UI review saved outside this repository. Test surfaces: separate spreadsheet copy; synthetic local fixtures for offline/data volume. Production cells must not be used for UI tests.
 
 Keyboard virtual behavior requires a physical device; record this limitation if not available. Browser width checks are not a substitute.
+
+Phase 1: local-commit save contract, recoverable UI drafts, dirty-close guard, masked shopping/journal, per-entity/per-field conflict review with stale-value check. Validation: 430 tests pass, both TypeScript projects pass. Schema v3 unchanged.

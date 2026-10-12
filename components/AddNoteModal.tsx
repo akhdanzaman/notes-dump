@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 import React, { useState } from 'react';
 import { X, Check, StickyNote } from 'lucide-react';
 import PresencePanel from '../motion/PresencePanel';
@@ -6,7 +7,7 @@ import { addItemModal, responsiveModal } from './layout/contentSurface';
 interface AddNoteModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (title: string, content: string, tags: string[]) => void;
+    onSave: (title: string, content: string, tags: string[]) => void | Promise<unknown>;
     mode?: 'note' | 'journal';
 }
 
@@ -17,19 +18,35 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
 
     const isJournal = mode === 'journal';
 
-    const handleSave = () => {
+    const draft = useEditorDraft(`note:${mode}`, { title, content, tags }, v => { if (Object.hasOwn(v, 'title')) setTitle(v.title); if (Object.hasOwn(v, 'content')) setContent(v.content); if (Object.hasOwn(v, 'tags')) setTags(v.tags); });
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
         if (!title.trim() && !content.trim()) return;
         const tagList = tags.split(',').map(t => t.trim()).filter(t => t);
-        onSave(title.trim(), content, tagList);
+        await onSave(title.trim(), content, tagList);
+      draft.clear();
         setTitle('');
         setContent('');
         setTags('');
         onClose();
-    };
+    
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
+  };
 
     return (
         <PresencePanel
             isOpen={isOpen}
+      protectDraft
+      hasDraft={draft.dirty.current}
+      onDiscardDraft={draft.clear}
+      saving={saving}
+      saveError={saveError}
+      draftKey={`note:${mode}`}
+      onDraftChange={draft.markDirty}
             onClose={onClose}
             overlayClassName={responsiveModal.sheetOverlay}
             panelClassName={addItemModal.panel}
@@ -47,7 +64,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
                             <StickyNote className={addItemModal.icon} />
                             {isJournal ? 'Add Journal Entry' : 'Add Note'}
                         </h3>
-                        <button onClick={onClose} className={addItemModal.closeButton}>
+                        <button data-editor-close="true" onClick={onClose} className={addItemModal.closeButton}>
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -90,7 +107,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
                     <div className={addItemModal.footer}>
                         <button 
                             onClick={handleSave}
-                            disabled={!title.trim() && !content.trim()}
+                            disabled={saving || !title.trim() && !content.trim()}
                             className={addItemModal.primaryButton}
                         >
                             <Check className="w-5 h-5" />

@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   X,
@@ -46,7 +47,7 @@ interface AddExpenseModalProps {
     loanCounterparty?: string,
     loanAccountId?: string,
     loanDueDate?: string,
-  ) => void;
+  ) => void | Promise<unknown>;
   wallets: WalletType[];
   budgetConfig: BudgetConfig;
   savingGoals: BrainDumpItem[];
@@ -247,7 +248,13 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     }
   };
 
-  const handleSave = () => {
+  const draft = useEditorDraft('AddExpenseModal', { amount, description, merchant, category, walletId, toWalletId, savingGoalId, date, transactionType, investmentUnits, investmentUnitPrice, transactionLineItems, loanKind, loanCounterparty, loanAccountId, loanDueDate }, v => { if (Object.hasOwn(v, 'amount')) setAmount(v.amount); if (Object.hasOwn(v, 'description')) setDescription(v.description); if (Object.hasOwn(v, 'merchant')) setMerchant(v.merchant); if (Object.hasOwn(v, 'category')) setCategory(v.category); if (Object.hasOwn(v, 'walletId')) setWalletId(v.walletId); if (Object.hasOwn(v, 'toWalletId')) setToWalletId(v.toWalletId); if (Object.hasOwn(v, 'savingGoalId')) setSavingGoalId(v.savingGoalId); if (Object.hasOwn(v, 'date')) setDate(v.date); if (Object.hasOwn(v, 'transactionType')) setTransactionType(v.transactionType); if (Object.hasOwn(v, 'investmentUnits')) setInvestmentUnits(v.investmentUnits); if (Object.hasOwn(v, 'investmentUnitPrice')) setInvestmentUnitPrice(v.investmentUnitPrice); if (Object.hasOwn(v, 'transactionLineItems')) setTransactionLineItems(v.transactionLineItems); if (Object.hasOwn(v, 'loanKind')) setLoanKind(v.loanKind); if (Object.hasOwn(v, 'loanCounterparty')) setLoanCounterparty(v.loanCounterparty); if (Object.hasOwn(v, 'loanAccountId')) setLoanAccountId(v.loanAccountId); if (Object.hasOwn(v, 'loanDueDate')) setLoanDueDate(v.loanDueDate); });
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
     const goal = selectedSavingGoal;
     const goalName = goal?.content || '';
     const finalWalletId = transactionType === 'saving' && !isInvestmentTarget
@@ -276,7 +283,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     if (isLoanMode && isLoanRepayment && !loanAccountId) return;
     if (isLoanMode && isLoanRepayment && selectedLoanAccount && finalAmount > selectedLoanAccount.remainingAmount) return;
 
-    onSave(
+    await onSave(
       finalAmount,
       finalDescription,
       category,
@@ -295,8 +302,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       isLoanMode ? (loanAccountId || undefined) : undefined,
       isLoanMode && !isLoanRepayment && loanDueDate ? new Date(`${loanDueDate}T12:00:00`).toISOString() : undefined,
     );
+      draft.clear();
     resetForm();
     onClose();
+  
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
   const effectiveAmount = transactionType === 'expense' && sanitizedLineItems.length
@@ -320,6 +330,13 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   return (
     <PresencePanel
       isOpen={isOpen}
+      protectDraft
+      hasDraft={draft.dirty.current}
+      onDiscardDraft={draft.clear}
+      saving={saving}
+      saveError={saveError}
+      draftKey={'AddExpenseModal'}
+      onDraftChange={draft.markDirty}
       onClose={onClose}
       overlayClassName={responsiveModal.sheetOverlay}
       panelClassName={addItemModal.panel}
@@ -634,7 +651,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           </div>
 
           <div className={addItemModal.footer}>
-            <button type="button" onClick={handleSave} disabled={!canSave} className={addItemModal.primaryButton}>
+            <button type="button" onClick={handleSave} disabled={saving || !canSave} className={addItemModal.primaryButton}>
               <Check className="w-5 h-5" />
               Simpan {modeLabel}
             </button>

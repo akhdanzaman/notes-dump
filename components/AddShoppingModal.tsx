@@ -1,3 +1,4 @@
+import { useEditorDraft } from '../hooks/useEditorDraft';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X, Check, ShoppingCart, Clock, TrendingUp, Image as ImageIcon, Plus } from 'lucide-react';
@@ -33,7 +34,7 @@ interface AddShoppingModalProps {
         investmentPlatform?: string,
         imageUrl?: string,
         shoppingLineItems?: ShoppingLineItem[]
-    ) => void;
+    ) => void | Promise<unknown>;
     initialCategory?: ShoppingCategory;
     budgetRules: BudgetRule[];
     wallets: Wallet[];
@@ -132,7 +133,13 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         }
     }, [isOpen, initialCategory]);
 
-    const handleSave = () => {
+    const draft = useEditorDraft('AddShoppingModal', { content, category, quantity, shoppingLineItems, imageUrl, amount, budgetCategory, date, dedicatedWalletId, paymentMethod, hideFromCalendar, investmentAssetType, investmentSymbol, investmentUnits, investmentAveragePrice, investmentCurrentPrice, investmentPlatform, interval, daysOfWeek, daysOfMonth, monthsOfYear }, v => { if (Object.hasOwn(v, 'content')) setContent(v.content); if (Object.hasOwn(v, 'category')) setCategory(v.category); if (Object.hasOwn(v, 'quantity')) setQuantity(v.quantity); if (Object.hasOwn(v, 'shoppingLineItems')) setShoppingLineItems(v.shoppingLineItems); if (Object.hasOwn(v, 'imageUrl')) setImageUrl(v.imageUrl); if (Object.hasOwn(v, 'amount')) setAmount(v.amount); if (Object.hasOwn(v, 'budgetCategory')) setBudgetCategory(v.budgetCategory); if (Object.hasOwn(v, 'date')) setDate(v.date); if (Object.hasOwn(v, 'dedicatedWalletId')) setDedicatedWalletId(v.dedicatedWalletId); if (Object.hasOwn(v, 'paymentMethod')) setPaymentMethod(v.paymentMethod); if (Object.hasOwn(v, 'hideFromCalendar')) setHideFromCalendar(v.hideFromCalendar); if (Object.hasOwn(v, 'investmentAssetType')) setInvestmentAssetType(v.investmentAssetType); if (Object.hasOwn(v, 'investmentSymbol')) setInvestmentSymbol(v.investmentSymbol); if (Object.hasOwn(v, 'investmentUnits')) setInvestmentUnits(v.investmentUnits); if (Object.hasOwn(v, 'investmentAveragePrice')) setInvestmentAveragePrice(v.investmentAveragePrice); if (Object.hasOwn(v, 'investmentCurrentPrice')) setInvestmentCurrentPrice(v.investmentCurrentPrice); if (Object.hasOwn(v, 'investmentPlatform')) setInvestmentPlatform(v.investmentPlatform); if (Object.hasOwn(v, 'interval')) setInterval(v.interval); if (Object.hasOwn(v, 'daysOfWeek')) setDaysOfWeek(v.daysOfWeek); if (Object.hasOwn(v, 'daysOfMonth')) setDaysOfMonth(v.daysOfMonth); if (Object.hasOwn(v, 'monthsOfYear')) setMonthsOfYear(v.monthsOfYear); });
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
         setFormError('');
         if (!content.trim()) {
             setFormError('Nama atau deskripsi item harus diisi.');
@@ -173,7 +180,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                 ? Number(amount)
                 : (category === 'investment' && parsedUnits && parsedAveragePrice ? parsedUnits * parsedAveragePrice : undefined);
 
-        onSave(
+        await onSave(
             content,
             category,
             quantity.trim() || undefined,
@@ -196,6 +203,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
             (category === 'saving' || category === 'investment') ? imageUrl.trim() || undefined : undefined,
             isPurchaseCategory && hasLineItems ? sanitizedLineItems : undefined
         );
+      draft.clear();
 
         setContent('');
         setQuantity('');
@@ -218,7 +226,9 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         setMonthsOfYear([]);
         setHideFromCalendar(false);
         onClose();
-    };
+    
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
+  };
 
     const toggleDayOfWeek = (val: number) => {
         let nextDays: number[];
@@ -256,6 +266,13 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
     return (
         <PresencePanel
             isOpen={isOpen}
+      protectDraft
+      hasDraft={draft.dirty.current}
+      onDiscardDraft={draft.clear}
+      saving={saving}
+      saveError={saveError}
+      draftKey={'AddShoppingModal'}
+      onDraftChange={draft.markDirty}
             onClose={onClose}
             overlayClassName={responsiveModal.sheetOverlay}
             panelClassName={addItemModal.panel}
@@ -268,7 +285,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                             <ShoppingCart className={addItemModal.icon} />
                             {category === 'saving' ? 'Add Saving Goal' : (category === 'investment' ? 'Add Investment' : 'Add Shopping Item')}
                         </h3>
-                        <button onClick={onClose} className={addItemModal.closeButton}>
+                        <button data-editor-close="true" onClick={onClose} className={addItemModal.closeButton}>
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -658,7 +675,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                     <div className={addItemModal.footer}>
                         <button
                             onClick={handleSave}
-                            disabled={!content.trim()}
+                            disabled={saving || !content.trim()}
                             className={addItemModal.primaryButton}
                         >
                             <Check className="w-5 h-5" />
