@@ -1,4 +1,4 @@
-import { replayDurableOutbox } from '../services/durableSync';
+import { replayDurableOutbox,checkDurableVersion } from '../services/durableSync';
 import { flushPendingSpreadsheetSync } from '../services/spreadsheetService';
 
 const BACKGROUND_SYNC_TAG = 'arkaiv-background-flush';
@@ -7,6 +7,7 @@ const PERIODIC_SYNC_INTERVAL_MS = 15 * 60 * 1000;
 
 let registered = false;
 let flushing = false;
+let pendingWake:ReturnType<typeof setTimeout>|undefined;
 
 const hasDocument = () => typeof document !== 'undefined';
 const hasNavigator = () => typeof navigator !== 'undefined';
@@ -55,6 +56,7 @@ export const flushBackgroundRuntime = async () => {
   flushing = true;
   try {
     await replayDurableOutbox();
+    if(document.visibilityState==='visible') await checkDurableVersion().catch(()=>{});
     return await flushPendingSpreadsheetSync();
   } finally {
     flushing = false;
@@ -81,6 +83,7 @@ export const registerBackgroundRuntime = () => {
   navigator.serviceWorker?.addEventListener?.('message', event => {
     const type = event.data?.type;
     if (type === 'ARKAIV_BACKGROUND_SYNC' || type === 'ARKAIV_PERIODIC_SYNC') {
+      if(event.data.operations?.length) window.dispatchEvent(new CustomEvent('arkaiv-sync-committed',{detail:{operations:event.data.operations}}));
       void flushBackgroundRuntime().catch(error => {
         console.warn('Service worker background flush failed', error);
       });
@@ -89,7 +92,11 @@ export const registerBackgroundRuntime = () => {
 
   window.addEventListener('online', flushAndAskWorkerToWakeLater);
   window.addEventListener('focus', flushAndAskWorkerToWakeLater);
-  window.addEventListener('arkaiv-outbox-pending', () => { void registerOneShotBackgroundSync(); });
+  window.addEventListener('arkaiv-outbox-pending', () => {
+    void registerOneShotBackgroundSync();
+    clearTimeout(pendingWake);
+    pendingWake=setTimeout(()=>{if(document.visibilityState==='visible') void flushBackgroundRuntime().catch(()=>{});},5500);
+  });
   setInterval(() => { if (document.visibilityState === 'visible') void flushBackgroundRuntime().catch(() => {}); }, 15000);
   void flushBackgroundRuntime().catch(() => {});
   void registerOneShotBackgroundSync();

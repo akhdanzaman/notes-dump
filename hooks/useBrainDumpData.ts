@@ -3,6 +3,7 @@ import { isRoutineItem, getRoutineCurrentDueDate, isRoutineScheduledToday, isRou
 import type { ParsingUndoSnapshot } from './brainDumpContext';
 import type { SaveChanges } from '../utils/saveChanges';
 import { useDatabaseSave } from './useDatabaseSave';
+import { operationTables } from '../utils/syncTables';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -517,15 +518,16 @@ export const useBrainDumpData = () => {
     }, []);
 
     const isSyncingRef = useRef(false);
+    const pendingReloadRef=useRef<{full:boolean;tables:Set<string>}|null>(null);
 
-    const loadData = useCallback(async () => {
+    const loadData = useCallback(async (changedTables?:string[]) => {
         if (hasActiveParsing()) {
             pendingFetchAfterParsingRef.current = true;
             setFetchStatus('syncing');
             return;
         }
 
-        if (isSyncingRef.current && itemsRef.current.length > 0) return;
+        if (isSyncingRef.current) {const pending=pendingReloadRef.current ||= {full:false,tables:new Set()};if(!changedTables?.length) pending.full=true;else changedTables.forEach(table=>pending.tables.add(table));return;}
 
         isSyncingRef.current = true;
         try {
@@ -642,7 +644,7 @@ export const useBrainDumpData = () => {
 
             const { data, hasChanges } = await fetchDb(false, (progress) => {
               setFetchProgress({ ...progress, updatedAt: Date.now() });
-            });
+            },changedTables);
             if (data) {
                 const appliedData = applyData(data);
                 if (hasChanges && !isUsingLocalStorage()) {
@@ -661,6 +663,8 @@ export const useBrainDumpData = () => {
         } finally {
             setLoading(false);
             isSyncingRef.current = false;
+            const queued=pendingReloadRef.current;pendingReloadRef.current=null;
+            if(queued) queueMicrotask(()=>{void loadData(queued.full ? undefined : [...queued.tables]);});
             // Clear fetch progress on completion (success or failure).
             // Error path already set progress above; success path cleared above.
             // Don't clear on mount-only re-fetches to avoid UI flash.
@@ -673,7 +677,7 @@ export const useBrainDumpData = () => {
     }, [loadData]);
 
     useEffect(() => {
-        const committed = () => { void loadData().then(async () => {
+        const committed = (event:Event) => {const detail=(event as CustomEvent).detail;const operations=detail?.operations?.filter((operation:any)=>operation.scope===getSpreadsheetConfig()?.spreadsheetId);if(detail?.operations?.length && !operations.length) return;const tables=detail?.tables || (operations?.length ? [...new Set(operations.flatMap(operationTables))] : undefined); void loadData(tables).then(async () => {
             if (typeof indexedDB !== 'undefined') {
                 const local = await readLocalState(localScope(getSpreadsheetConfig()?.spreadsheetId));
                 setSaveStatus(local.operations.some(operation => operation.state === 'conflict') ? 'error' : local.operations.length ? 'saving' : 'synced');

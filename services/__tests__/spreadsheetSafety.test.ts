@@ -1,6 +1,6 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { __test__, saveSpreadsheetConfig, clearSpreadsheetConfig, cacheSpreadsheetDbForMigration, cachePendingSpreadsheetWrite } from '../spreadsheetService';
+import { __test__, saveSpreadsheetConfig, clearSpreadsheetConfig, cacheSpreadsheetDbForMigration, cachePendingSpreadsheetWrite,fetchSpreadsheetDb } from '../spreadsheetService';
 import { generateExportData } from '../../utils/exportUtils';
 import { parseSpreadsheetBudget } from '../../utils/spreadsheetBudget';
 import { ItemType, type DbSchema } from '../../types';
@@ -30,6 +30,24 @@ const setup = (t: TestContext) => {
     else Reflect.deleteProperty(globalThis, 'localStorage');
   });
 };
+
+test('selective refresh removes a deleted note, updates a changed note and preserves unrelated tasks without reading their table',async t=>{
+ setup(t);
+ const todo={id:'unrelated-task',type:ItemType.TODO,content:'keep task',status:'pending' as const,created_at:'2026-10-12',meta:{}};
+ cacheSpreadsheetDbForMigration({...base,data:[...base.data,todo]});
+ const remote=exportDb({...base,data:[{...base.data[0],content:'remote note'}]});const requested:string[]=[];
+ t.mock.method(globalThis,'fetch',async(input:string|URL|Request)=>{
+  const url=String(input);if(url.endsWith('/session')) return json({csrfToken:'synthetic'});
+  const path=new URL(url,'http://synthetic').searchParams.get('path') || '';
+  if(path.startsWith('?')) return json({sheets:remote.map(sheet=>({properties:{title:sheet.name}}))});
+  const ranges=new URLSearchParams(path.split('?')[1]).getAll('ranges');requested.push(...ranges);
+  return json({valueRanges:ranges.map(range=>({range,values:remote.find(sheet=>range.startsWith(`'${sheet.name}'!`))?.data || []}))});
+ });
+ const result=await fetchSpreadsheetDb(false,undefined,['Notes & Journals']);
+ assert.equal(result.data.data.find(item=>item.id==='a')?.content,'remote note');assert.equal(result.data.data.some(item=>item.id==='b'),false);
+ assert.equal(result.data.data.find(item=>item.id===todo.id)?.content,todo.content);
+ assert.ok(requested.every(range=>range.startsWith("'Notes & Journals'!") || range.startsWith("'_Sync_Config'!")));
+});
 
 test('budget rejects missing IDs, duplicate IDs and invalid percentages instead of losing rows', () => {
   const header = ['ID', 'Name', 'Percentage', 'Color'];

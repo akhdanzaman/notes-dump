@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { QuotaDeferred,syncCache,scopeKey,hashKey } from '../../_lib/syncCoordination.js';
 import { assertServiceAccountRequestAllowed, assertServiceAccountSessionAllowed, assertServiceAccountSpreadsheetAllowed, fetchWithServiceAccount, validateSheetsPath, validateSpreadsheetId, isSpreadsheetMaintenanceRequestAllowed } from '../../_lib/googleServiceAccount.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -22,6 +23,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? req.body
         : JSON.stringify(req.body || {});
 
+    const metadataRead=['GET','HEAD'].includes(req.method || 'GET') && path.startsWith('?fields=');
+    const version=metadataRead ? await syncCache.get<{revision:number}>(`${scopeKey(spreadsheetId)}:version`) : undefined;
+    const cacheKey=`${scopeKey(spreadsheetId)}:metadata:${hashKey(path)}:${version?.revision || 0}`;
+    const cached=metadataRead ? await syncCache.get<string>(cacheKey) : undefined;
+    if(cached) {res.setHeader('Content-Type','application/json');return res.status(200).send(cached);}
     const response = await fetchWithServiceAccount(spreadsheetId, path, {
       method: req.method,
       headers: body ? { 'Content-Type': 'application/json' } : {},
@@ -29,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const text = await response.text();
+    if(metadataRead && response.ok) await syncCache.set(cacheKey,text,300);
     const contentType = response.headers.get('content-type');
     if (contentType) res.setHeader('content-type', contentType);
     const retryAfter = response.headers.get('retry-after');
@@ -36,6 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Content-Length', Buffer.byteLength(text));
     return res.status(response.status).send(text);
   } catch (error: any) {
+    if (error instanceof QuotaDeferred) { res.setHeader('Retry-After',error.retryAfterSeconds); return res.status(429).json({error:error.message,code:'SHEETS_QUOTA_WAIT'}); }
     const message = error instanceof Error ? error.message : 'Unknown Sheets failure';
     const session = /session/i.test(message);
     const forbidden = /allowlist|origin|referer/i.test(message);

@@ -12,7 +12,7 @@ export const mergePendingSpreadsheetWrite = (remoteData: DbSchema, pendingData: 
   return { merged, hasPendingChanges };
 };
 
-export const fetchDb = async (skipLocalStorage = false, onProgress?: SyncProgressCallback): Promise<{ data: DbSchema; sha: string; hasChanges: boolean }> => {
+export const fetchDb = async (skipLocalStorage = false, onProgress?: SyncProgressCallback, changedTables?:string[]): Promise<{ data: DbSchema; sha: string; hasChanges: boolean }> => {
   if (!getSpreadsheetConfig()) {
     return {
       data: getCachedSpreadsheetDb() || { data: [] },
@@ -23,11 +23,11 @@ export const fetchDb = async (skipLocalStorage = false, onProgress?: SyncProgres
 
   const scope = localScope(getSpreadsheetConfig()?.spreadsheetId);
   const durable = getSpreadsheetConfig()?.authMode !== 'oauth' && typeof indexedDB !== 'undefined' && (await durableCapabilities(scope)).enabled;
-  if (durable) { const pending = await readLocalState(scope); await reconcileDurableReceipts(scope, pending.operations); }
+  if (durable) { const pending = await readLocalState(scope); await reconcileDurableReceipts(scope, pending.operations).catch(()=>{}); }
   const local = !skipLocalStorage && typeof indexedDB !== 'undefined' ? await readLocalState(scope) : undefined;
   const pendingWrite = !skipLocalStorage && local?.data && local.operations.length ? { id: 'indexeddb', data: local.data, base: reconstructBaseline(local.data, local.operations) } : (skipLocalStorage ? null : getPendingSpreadsheetWrite());
   onProgress?.({ phase: 'metadata', label: 'Reading spreadsheet data', detail: 'Fetching all sheets', updatedAt: Date.now() });
-  const { data, sha, reconciled } = await fetchSpreadsheetDb(skipLocalStorage, onProgress);
+  const { data, sha, reconciled } = await fetchSpreadsheetDb(skipLocalStorage, onProgress,changedTables);
 
   if (pendingWrite) {
     // A cache fallback is not a server acknowledgement. Keep the pending write
@@ -83,7 +83,7 @@ export const syncData = async ({ data: items, budgetConfig, customPrompt, skills
     if (capabilities.enabled) {
       if (!capabilities.ready) return { success: false, method: 'error', state: 'failed', error: 'Durable sync awaits schema migration and queue activation; changes remain local.' };
       if (forceOverwrite) return { success: false, method: 'error', error: 'Force overwrite is disabled during durable sync. Use entity changes and conflict review.' };
-      await reconcileDurableReceipts(scope, local?.operations || []);
+      await reconcileDurableReceipts(scope, local?.operations || []).catch(()=>{});
       const active = (await readLocalState(scope)).operations;
       await submitDurableOperations(scope, active.filter(operation => operation.state !== 'conflict'));
       if (active.some(operation => operation.state === 'conflict')) return { success: false, method: 'error', state: 'conflict', error: 'Perubahan bersamaan perlu ditinjau; salinan lokal tetap aman.' };

@@ -14,6 +14,7 @@ import serviceAccountProxy from './api/spreadsheets/service-account/proxy';
 import syncCapabilities from './api/spreadsheets/sync/capabilities';
 import syncSubmit from './api/spreadsheets/sync/submit';
 import syncStatus from './api/spreadsheets/sync/status';
+import syncVersion from './api/spreadsheets/sync/version';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ const apiRoutes: Array<[path: string, handler: ApiHandler]> = [
   ['/api/spreadsheets/sync/capabilities', syncCapabilities],
   ['/api/spreadsheets/sync/submit', syncSubmit],
   ['/api/spreadsheets/sync/status', syncStatus],
+  ['/api/spreadsheets/sync/version', syncVersion],
   ['/api/spreadsheets/sync/reports', syncReports],
   ['/api/auth/google/url', googleAuthUrl],
   ['/api/auth/google/exchange', googleAuthExchange],

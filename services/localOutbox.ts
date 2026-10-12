@@ -1,11 +1,13 @@
 import type { DbSchema, BrainDumpItem, ParserResultV2 } from '../types';
 import { configTables } from '../utils/losslessConfig';
 import { mergeMutation } from '../utils/syncProtocol';
+import { shouldSubmitOperation, nextStatusSchedule } from '../utils/outboxPolicy';
 export type MutationState = 'pending' | 'sending' | 'accepted' | 'conflict';
 export interface LocalMutation {
   operationId: string; scope: string; deviceId: string; entityKind: 'item' | 'config'; entityId: string;
   before: unknown; after: unknown; state: MutationState; createdAt: number; attempts: number;
   batchId?: string; error?: string; parentOperationId?: string;
+  lastSubmittedAt?:number; nextStatusAt?:number; pollDelayMs?:number;
 }
 interface StateRecord { scope: string; order: string[]; config: Omit<DbSchema, 'data'>; }
 interface EntityRecord { key: string; scope: string; item: BrainDumpItem; }
@@ -106,12 +108,17 @@ export async function claimOperations(scope: string, operationIds: string[]): Pr
   const store = transaction.objectStore('outbox'); const claimed: LocalMutation[] = [];
   for (const operationId of operationIds) {
     const operation = await request(store.get(operationId)) as LocalMutation | undefined;
-    if (operation?.scope === scope && operation.state !== 'conflict') {
-      const next = { ...operation, state: 'sending' as const, attempts: operation.attempts + 1 };
+    if (operation?.scope === scope && shouldSubmitOperation(operation)) {
+      const next = { ...operation, state: 'sending' as const, attempts: operation.attempts + 1, lastSubmittedAt:Date.now(), nextStatusAt:Date.now()+5000, pollDelayMs:2500 };
       store.put(next); claimed.push(next);
     }
   }
   await done; return claimed;
+}
+export async function scheduleOperationStatus(scope:string,operationIds:string[],retryAfterMs=0) {
+  const db=await open();const tx=db.transaction('outbox','readwrite');const done=completion(tx);const store=tx.objectStore('outbox');
+  for(const id of operationIds) {const operation=await request(store.get(id)) as LocalMutation|undefined;if(operation?.scope===scope && ['sending','accepted'].includes(operation.state)) store.put({...operation,...nextStatusSchedule(operation,Date.now(),retryAfterMs)});}
+  await done;
 }
 export async function acknowledgeOperations(scope: string, operationIds: string[]) {
   const db = await open(); const transaction = db.transaction('outbox', 'readwrite'); const done = completion(transaction); const store = transaction.objectStore('outbox');

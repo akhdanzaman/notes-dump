@@ -9,13 +9,13 @@ const broadcastToWindowClients = function(message) {
 
 self.addEventListener('sync', function(event) {
   if (event.tag === 'arkaiv-background-flush') {
-    event.waitUntil(flushDurableOutbox().then(() => broadcastToWindowClients({ type: 'ARKAIV_BACKGROUND_SYNC' })));
+    event.waitUntil(flushDurableOutbox().then(result => broadcastToWindowClients({ type: 'ARKAIV_BACKGROUND_SYNC', operations:result?.operations || [] })));
   }
 });
 
 self.addEventListener('periodicsync', function(event) {
   if (event.tag === 'arkaiv-background-runtime') {
-    event.waitUntil(flushDurableOutbox().then(() => broadcastToWindowClients({ type: 'ARKAIV_PERIODIC_SYNC' })));
+    event.waitUntil(flushDurableOutbox().then(result => broadcastToWindowClients({ type: 'ARKAIV_PERIODIC_SYNC', operations:result?.operations || [] })));
   }
 });
 

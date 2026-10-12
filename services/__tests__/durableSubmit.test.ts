@@ -22,8 +22,12 @@ test('202 is emitted only after durable send completes; queue failure reports pa
   await Promise.resolve(); assert.equal(responses.length, 0);
   release(); await sending; assert.equal(responses[0].code, 202);
   responses.length = 0; let sent = 0;
+  await createSubmitHandler(async batch => {sent++;assert.equal(batch.operations.length,2);})(
+    { ...request, body: { spreadsheetId: scope, operations: [operation('operation-batch-001'), operation('operation-batch-002')] } } as VercelRequest, res);
+  assert.equal(sent,1);assert.equal(responses[0].code,202);assert.equal(responses[0].data.accepted.length,2);
+  responses.length=0;sent=0;
   await createSubmitHandler(async () => { if (++sent === 2) throw new Error('Queue down'); })(
-    { ...request, body: { spreadsheetId: scope, operations: [operation('operation-submit-001'), operation('operation-submit-002')] } } as VercelRequest, res);
+    { ...request, body: { spreadsheetId: scope, operations: [{...operation('operation-submit-001'),after:'x'.repeat(110000)}, {...operation('operation-submit-002'),after:'y'.repeat(110000)}] } } as VercelRequest, res);
   assert.equal(responses[0].code, 503); assert.deepEqual(responses[0].data.accepted, ['operation-submit-001']);
 });
 test('unready workbook and invalid operation never reach the queue', async () => {

@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version:'v0.3.138',date:'October 12, 2026',
+    items:[
+      'Sinkronisasi menggabungkan beberapa perubahan agar pemakaian API Sheets lebih hemat.',
+      'Konflik yang sudah diketahui tidak diperiksa terus-menerus; status save memakai cache bila tersedia.',
+      'Refresh sesudah save mengambil tabel yang berubah. Saat kuota sedang penuh, perubahan tetap aman dan diproses ulang setelah jeda.',
+    ],
+  },
+  {
     version: 'v0.3.137', date: 'October 12, 2026',
     items: [
       'Draft editor pulih setelah reload, terlindungi dari refresh dan penutupan, serta tetap terbuka jika penyimpanan lokal gagal.',

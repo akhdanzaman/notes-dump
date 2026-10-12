@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { reserveSheetsRequest, sheetsCooldown, QuotaDeferred } from './syncCoordination.js';
 
 export const DEFAULT_SERVICE_ACCOUNT_EMAIL = 'openclaw-adan@gen-lang-client-0558606321.iam.gserviceaccount.com';
 
@@ -310,14 +311,24 @@ export const fetchWithServiceAccount = async (
   const spreadsheetId = validateSpreadsheetId(spreadsheetIdInput);
   const path = validateSheetsPath(pathInput);
   const token = await getServiceAccountAccessToken();
-
-  return fetch(`${GOOGLE_SHEETS_API_BASE}/${spreadsheetId}${path}`, {
+  const principal = getConfiguredServiceAccountEmail();
+  const kind = !init.method || ['GET','HEAD'].includes(init.method) ? 'read' : 'write';
+  await reserveSheetsRequest(principal, kind, init.signal || undefined);
+  const started = Date.now();
+  const response = await fetch(`${GOOGLE_SHEETS_API_BASE}/${spreadsheetId}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
       ...(init.headers || {}),
     },
   });
+  console.info(JSON.stringify({ event:'sheets-request', scope:sha256(spreadsheetId).slice(0,12), kind, status:response.status, durationMs:Date.now()-started }));
+  if (response.status === 429) {
+    const retryAfter=Math.max(60,Number(response.headers.get('retry-after'))||60)+Math.floor(Math.random()*5);
+    await sheetsCooldown(principal,retryAfter);
+    throw new QuotaDeferred(retryAfter);
+  }
+  return response;
 };
 
 export const checkServiceAccountSpreadsheetAccess = async (spreadsheetIdInput: unknown): Promise<ServiceAccountStatus> => {

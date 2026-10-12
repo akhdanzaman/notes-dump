@@ -271,12 +271,12 @@ const safeJsonParse = <T>(value: string | null, fallback: T): T => {
   }
 };
 
-const getRetryDelayMs = (attempt: number, retryAfterHeader: string | null) => {
+const getRetryDelayMs = (attempt: number, retryAfterHeader: string | null, status?:number) => {
   const retryAfterSeconds = Number(retryAfterHeader);
   if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
-    return retryAfterSeconds * 1000;
+    return Math.max(status===429 ? 60000 : 0,retryAfterSeconds * 1000);
   }
-  return 500 * Math.pow(2, attempt) + Math.floor(Math.random() * 250);
+  return status===429 ? 60000+Math.floor(Math.random()*5000) : 500 * Math.pow(2, attempt) + Math.floor(Math.random() * 250);
 };
 
 export interface SpreadsheetConfig {
@@ -2226,7 +2226,7 @@ const oauthSheetsFetch = async (
     return response;
   }
 
-  const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
+  const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'), response.status);
   await wait(delayMs);
   return oauthSheetsFetch(spreadsheetId, path, init, attempt + 1, response.status === 401 ? undefined : token);
 };
@@ -2257,7 +2257,7 @@ const sheetsFetchAttempt = async (
   if (getSpreadsheetConfig()?.authMode === 'service_account') {
     const response = await serviceAccountSheetsFetch(spreadsheetId, path, init);
     if (!response.ok && attempt < MAX_FETCH_RETRIES && canRetrySheetsRequest(response.status, path, init) && await shouldRetryServiceAccountProxyResponse(response.clone())) {
-      const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
+      const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'), response.status);
       await wait(delayMs);
       return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
     }
@@ -2273,7 +2273,7 @@ const sheetsFetchAttempt = async (
     if (attempt >= MAX_FETCH_RETRIES || !canRetrySheetsRequest(response.status, path, init)) {
       return response;
     }
-    const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'));
+    const delayMs = getRetryDelayMs(attempt, response.headers.get('retry-after'), response.status);
     await wait(delayMs);
     return sheetsFetch(spreadsheetId, path, init, attempt + 1, tokenOverride);
   }
@@ -2451,12 +2451,12 @@ const readSpreadsheetCacheFallback = () => {
   return { data, sha: 'spreadsheet-cache-sha', reconciled: false };
 };
 
-const performFetchSpreadsheetDb = async (skipLocalStorage = false, onProgress?: SyncProgressCallback): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
+const performFetchSpreadsheetDb = async (skipLocalStorage = false, onProgress?: SyncProgressCallback, changedTables?:string[]): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
   const config = getSpreadsheetConfig();
   if (!config) throw new Error("No spreadsheet config");
 
   try {
-    return await fetchSpreadsheetDbWithToken(config, skipLocalStorage, onProgress);
+    return await fetchSpreadsheetDbWithToken(config, skipLocalStorage, onProgress,changedTables);
   } catch (error: any) {
     console.warn("Spreadsheet fetch failed:", error);
     if (!skipLocalStorage) {
@@ -2467,8 +2467,8 @@ const performFetchSpreadsheetDb = async (skipLocalStorage = false, onProgress?: 
   }
 };
 
-export const fetchSpreadsheetDb = (skipLocalStorage = false, onProgress?: SyncProgressCallback): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
-  const task = () => performFetchSpreadsheetDb(skipLocalStorage, onProgress);
+export const fetchSpreadsheetDb = (skipLocalStorage = false, onProgress?: SyncProgressCallback, changedTables?:string[]): Promise<{ data: DbSchema; sha: string; reconciled: boolean }> => {
+  const task = () => performFetchSpreadsheetDb(skipLocalStorage, onProgress,changedTables);
   const queuedTask = operationQueue.then(() => task(), () => task());
   operationQueue = queuedTask;
   return queuedTask;
@@ -2695,9 +2695,19 @@ const fetchLegacyUserSheetDb = async (config: SpreadsheetConfig, existingTitles:
   return { data: reconciledDb, reconciled };
 };
 
-const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalStorage: boolean, onProgress?: SyncProgressCallback) => {
+const fetchSpreadsheetDbWithToken = async (config: SpreadsheetConfig, skipLocalStorage: boolean, onProgress?: SyncProgressCallback, changedTables?:string[]) => {
   onProgress?.({ phase: 'metadata', label: 'Reading spreadsheet metadata', detail: 'Checking tab list', updatedAt: Date.now() });
-  const { existingTitles } = await fetchSpreadsheetMetadata(config, true);
+  const { existingTitles } = await fetchSpreadsheetMetadata(config, true,!skipLocalStorage);
+  const base=changedTables?.length ? getCachedSpreadsheetDb() : null;
+  if(base) {
+    const selected=new Set([...changedTables!, '_Sync_Config']);
+    const ranges=Object.entries(SPREADSHEET_FETCH_RANGES).filter(([name])=>selected.has(name) && existingTitles.has(name)).map(([name,range])=>`${escapeSheetName(name)}!${range}`);
+    let values=await batchGetSpreadsheetRanges(config,ranges);
+    if(selected.has('Budget Rules') && existingTitles.has('Budget Rules')) {const budget=await batchGetSpreadsheetRanges(config,["'Budget Rules'!A:D"],{valueRenderOption:'FORMATTED_VALUE'});values=values.map(range=>getTitleFromRange(String(range.range))==='Budget Rules' ? budget[0] : range);}
+    const data=validateSchema(applyLosslessConfig(reconcileSpreadsheetData(base,values,{authoritativeEmpty:true}),values));
+    const snapshot=JSON.stringify(data);if(!skipLocalStorage) {writeSpreadsheetCache(snapshot);lastSnapshot=snapshot;isHydrated=true;}
+    return {data,sha:`spreadsheet-selective-${Date.now()}`,reconciled:false};
+  }
 
   let source: SpreadsheetReadSource = 'empty';
   let dbData: DbSchema = { data: [] };
