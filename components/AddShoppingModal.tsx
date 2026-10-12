@@ -333,7 +333,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className={addItemModal.label}>Category</label>
+                                <label className={addItemModal.label}>Kategori</label>
                                 <select
                                     value={category}
                                     onChange={e => {
@@ -354,7 +354,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 </select>
                             </div>
                             <div>
-                                <label className={addItemModal.label}>{category === 'investment' ? 'Buy date' : 'Due date'}</label>
+                                <label className={addItemModal.label}>{category === 'investment' ? 'Buy date' : 'Tenggat'}</label>
                                 <input
                                     type="date"
                                     value={date}
@@ -380,7 +380,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                             {category !== 'investment' && (
                             <div className={category === 'saving' ? 'col-span-2' : ''}>
                                 <label className={addItemModal.label}>
-                                    {category === 'saving' ? 'Target Amount' : 'Est. Cost'}
+                                    {category === 'saving' ? 'Target Amount' : 'Perkiraan biaya'}
                                 </label>
                                 <input
                                     type="number"
@@ -405,7 +405,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     onChange={e => setDedicatedWalletId(e.target.value)}
                                     className={addItemModal.select}
                                 >
-                                    <option value="">Select Wallet</option>
+                                    <option value="">Pilih wallet</option>
                                     {wallets.map(w => (
                                         <option key={w.id} value={w.id}>{w.name}</option>
                                     ))}
@@ -553,7 +553,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                         {category !== 'saving' && category !== 'investment' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={addItemModal.label}>Budget Category</label>
+                                    <label className={addItemModal.label}>Kategori budget</label>
                                     <select
                                         value={budgetCategory}
                                         onChange={e => setBudgetCategory(e.target.value)}
@@ -566,13 +566,13 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     </select>
                                 </div>
                                 <div>
-                                    <label className={addItemModal.label}>Payment Method</label>
+                                    <label className={addItemModal.label}>Wallet</label>
                                     <select
                                         value={paymentMethod}
                                         onChange={e => setPaymentMethod(e.target.value)}
                                         className={addItemModal.select}
                                     >
-                                        <option value="">Select Wallet</option>
+                                        <option value="">Pilih wallet</option>
                                         {wallets.map(w => (
                                             <option key={w.id} value={w.name}>{w.name}</option>
                                         ))}
@@ -596,7 +596,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                                 setInterval(int);
                                                 updateDateFromRoutineSchedule(int, daysOfWeek, daysOfMonth, monthsOfYear);
                                             }}
-                                            className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
+                                            className={`py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
                                         >
                                             {int}
                                         </button>
@@ -629,7 +629,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                                 <button
                                                     key={day}
                                                     onClick={() => toggleDayOfMonth(day)}
-                                                    className={`w-full aspect-square rounded-md flex items-center justify-center text-[10px] font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-brand-600 border-brand-500 text-white shadow-sm')}`}
+                                                    className={`w-full aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-brand-600 border-brand-500 text-white shadow-sm')}`}
                                                 >
                                                     {day}
                                                 </button>
@@ -647,7 +647,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                                 <button
                                                     key={month.value}
                                                     onClick={() => toggleMonthOfYear(month.value)}
-                                                    className={`py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${addItemModal.choiceButton(monthsOfYear.includes(month.value))}`}
+                                                    className={`py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border ${addItemModal.choiceButton(monthsOfYear.includes(month.value))}`}
                                                 >
                                                     {month.label}
                                                 </button>

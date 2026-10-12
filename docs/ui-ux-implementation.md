@@ -9,3 +9,5 @@ States: empty/populated, dirty draft, local failure, offline/pending, accepted, 
 Keyboard virtual behavior requires a physical device; record this limitation if not available. Browser width checks are not a substitute.
 
 Phase 1: local-commit save contract, recoverable UI drafts, dirty-close guard, masked shopping/journal, per-entity/per-field conflict review with stale-value check. Validation: 430 tests pass, both TypeScript projects pass. Schema v3 unchanged.
+
+Phase 2: single local subnav, readable metadata, wider responsive editors, fixed form scroll region/sticky entity actions, compact unfocused mobile capture, shared private amount primitive. TypeScript validation passes.

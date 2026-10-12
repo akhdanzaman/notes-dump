@@ -65,7 +65,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
                   <span className="relative z-10 flex h-5 w-5 shrink-0 items-center justify-center transition-transform duration-150 group-active:scale-90 md:h-7 md:w-7">
                     <Icon className="h-[19px] w-[19px]" strokeWidth={isActive ? 2.35 : 2} />
                   </span>
-                  <span className="relative z-10 max-w-full truncate text-[10px] font-semibold leading-none sm:text-[11px] md:text-xs">
+                  <span className="relative z-10 max-w-full truncate text-xs font-semibold leading-none sm:text-xs md:text-xs">
                     {tab.label}
                   </span>
                 </button>

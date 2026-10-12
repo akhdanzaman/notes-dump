@@ -148,7 +148,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
             <Search className="h-4 w-4" />
             <span className="hidden text-xs font-semibold sm:inline">Cari</span>
             {isFilterActive && (
-                <span className="flex min-w-[18px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold leading-[18px] text-white">
+                <span className="flex min-w-[18px] items-center justify-center rounded-full bg-white/20 px-1 text-xs font-bold leading-[18px] text-white">
                     {activeFilterCount}
                 </span>
             )}
@@ -185,13 +185,13 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
               >
                 <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">
                             Pencarian & filter
                         </p>
                         <h3 className="mt-1 text-base font-bold tracking-tight text-primary">
                             Temukan data lebih cepat
                         </h3>
-                        {isFilterActive && <p className="mt-1 text-[11px] text-brand-500">{activeFilterCount} filter aktif</p>}
+                        {isFilterActive && <p className="mt-1 text-xs text-brand-500">{activeFilterCount} filter aktif</p>}
                     </div>
 
                     <button
@@ -205,7 +205,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
 
                 <div className="flex flex-col gap-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-muted uppercase tracking-wider px-1">
+                        <label className="text-xs font-bold text-muted uppercase tracking-wider px-1">
                             Search
                         </label>
                         <div className="relative group">
@@ -223,7 +223,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
 
                     <div className="space-y-4">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[10px] font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+                            <label className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1">
                                 <Filter className="w-3 h-3" />
                                 Filters
                             </label>
@@ -241,7 +241,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         setFilterMaxAmount('');
                                         setSearchQuery('');
                                     }}
-                                    className="text-[10px] text-red-500 hover:bg-red-500/10 px-2 py-1 rounded-md transition-colors font-bold"
+                                    className="text-xs text-red-500 hover:bg-red-500/10 px-2 py-1 rounded-md transition-colors font-bold"
                                 >
                                     Reset All
                                 </button>
@@ -250,7 +250,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-[10px] font-bold text-muted mb-1.5 flex items-center gap-1 uppercase tracking-wide px-1">
+                                <label className="block text-xs font-bold text-muted mb-1.5 flex items-center gap-1 uppercase tracking-wide px-1">
                                     <Tag className="w-3 h-3" />
                                     Tag
                                 </label>
@@ -269,7 +269,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-bold text-muted mb-1.5 flex items-center gap-1 uppercase tracking-wide px-1">
+                                <label className="block text-xs font-bold text-muted mb-1.5 flex items-center gap-1 uppercase tracking-wide px-1">
                                     <CalendarDays className="w-3 h-3" />
                                     Date Range
                                 </label>
@@ -278,14 +278,14 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         type="date"
                                         value={filterDate}
                                         onChange={(e) => setFilterDate(e.target.value)}
-                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-[10px] text-primary outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 [color-scheme:dark]"
+                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-xs text-primary outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 [color-scheme:dark]"
                                     />
-                                    <span className="text-muted text-[10px]">to</span>
+                                    <span className="text-muted text-xs">to</span>
                                     <input
                                         type="date"
                                         value={filterDateTo}
                                         onChange={(e) => setFilterDateTo(e.target.value)}
-                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-[10px] text-primary outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 [color-scheme:dark]"
+                                        className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background/65 p-2 text-xs text-primary outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10 [color-scheme:dark]"
                                         min={filterDate}
                                     />
                                 </div>
@@ -296,7 +296,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                             <div className="pt-4 border-t border-border/30 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {filterTransactionType !== 'saving' && (
                                     <div>
-                                        <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
+                                        <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
                                             Wallet
                                         </label>
                                         <select
@@ -316,7 +316,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                 )}
 
                                 <div>
-                                    <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
+                                    <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
                                         Category
                                     </label>
                                     <select
@@ -325,7 +325,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                         className="w-full rounded-xl border border-border/80 bg-background/65 p-2.5 text-xs text-primary outline-none focus:border-emerald-500/60 focus:ring-4 focus:ring-emerald-500/10 transition-colors"
                                     >
                                         <option value="">All Categories</option>
-                                        <option value="uncategorized">Uncategorized</option>
+                                        <option value="uncategorized">Belum berkategori</option>
                                         {budgetConfig.rules?.map((rule) => (
                                             <option key={rule.id} value={rule.id}>
                                                 {rule.name}
@@ -335,7 +335,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
+                                    <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
                                         Type
                                     </label>
                                     <select
@@ -360,7 +360,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
 
                                 {filterTransactionType === 'saving' && (
                                     <div>
-                                        <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
+                                        <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
                                             Saving Goal
                                         </label>
                                         <select
@@ -379,7 +379,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                                 )}
 
                                 <div>
-                                    <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
+                                    <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide px-1">
                                         Amount Range
                                     </label>
                                     <div className="flex gap-2">
@@ -404,7 +404,7 @@ const FloatingSearch: React.FC<FloatingSearchProps> = ({
                     </div>
 
                     <div className="space-y-3 pt-4 border-t border-border/30">
-                        <label className="text-[10px] font-bold text-muted uppercase tracking-wider flex items-center gap-1 px-1">
+                        <label className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1 px-1">
                             <ArrowUpDown className="w-3 h-3" />
                             Sort By
                         </label>

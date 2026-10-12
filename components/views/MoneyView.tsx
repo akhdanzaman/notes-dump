@@ -958,7 +958,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300">
             Status budget · {periodTitle} {periodKicker}
           </div>
           <h2
@@ -1007,7 +1007,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
           },
         ].map((metric) => (
           <div key={metric.label} className="rounded-lg bg-surface-soft p-3.5 sm:p-4">
-            <div className="text-[11px] font-semibold text-muted">{metric.label}</div>
+            <div className="text-xs font-semibold text-muted">{metric.label}</div>
             <div
               data-financial-amount="true"
               data-finance-status={metric.tone}
@@ -1021,7 +1021,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 ariaLabel={metric.label}
               />
             </div>
-            <div className="mt-1 text-[10px] text-muted">{metric.helper}</div>
+            <div className="mt-1 text-xs text-muted">{metric.helper}</div>
           </div>
         ))}
       </div>
@@ -1059,7 +1059,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             className="h-full bg-amber-500 text-amber-700 dark:bg-amber-400 dark:text-amber-100"
           />
         </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[11px] text-muted">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
           <span>
             <strong className="font-semibold text-primary">
               {periodElapsedPercent.toFixed(0)}%
@@ -1245,7 +1245,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
             <div className="metric-strip [--metric-count:3] [--metric-mobile-count:3]">
               <div className="min-w-0">
-                <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-muted lg:mb-2">
+                <div className="mb-1 flex items-center gap-1 text-xs font-semibold text-muted lg:mb-2">
                   <TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" />{" "}
                   {moneyCopy.income}
                 </div>
@@ -1260,7 +1260,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                 </div>
               </div>
               <div className="min-w-0">
-                <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-muted lg:mb-2">
+                <div className="mb-1 flex items-center gap-1 text-xs font-semibold text-muted lg:mb-2">
                   <TrendingDown className="w-4 h-4 shrink-0" data-finance-status="negative" />{" "}
                   {moneyCopy.expense}
                 </div>
@@ -1285,7 +1285,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     animate="visible"
                   />
                 )}
-                <div className="mb-1 flex items-center justify-center gap-1 text-[10px] font-semibold text-muted lg:mb-2 lg:justify-start lg:text-xs">
+                <div className="mb-1 flex items-center justify-center gap-1 text-xs font-semibold text-muted lg:mb-2 lg:justify-start lg:text-xs">
                   <AlertCircle className="hidden w-4 h-4 shrink-0 text-amber-700 dark:text-amber-300 lg:block" />{" "}
                   {moneyCopy.used}
                 </div>
@@ -1380,7 +1380,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
               {walletGroups.map((group) => (
                 <span
                   key={group.id}
-                  className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-surface px-3 text-[11px] font-semibold text-muted ring-1 ring-inset ring-border/70"
+                  className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-surface px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border/70"
                 >
                   {group.label} · {group.wallets.length}
                 </span>
@@ -1445,7 +1445,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         </div>
                         {wallet.type === "cc" && (
                           <div className="mt-1">
-                            <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
                               Akun utang
                             </span>
                           </div>
@@ -1465,7 +1465,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                           if (walletSavings > 0) {
                             return (
                               <div className="mt-1">
-                                <span className="text-[10px] font-bold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                <span className="text-xs font-bold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
                                   Tabungan:{" "}
                                   {canShowAmounts ? fmt(walletSavings) : "••••"}
                                 </span>
@@ -1476,7 +1476,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         })()}
                         {wallet.lentAmount > 0 && (
                           <div className="mt-1">
-                            <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                            <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
                               Dipinjamkan:{" "}
                               {canShowAmounts ? fmt(wallet.lentAmount) : "••••"}
                             </span>
@@ -1726,7 +1726,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
 
                   <div className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
                     <div className="rounded-xl bg-black/[0.03] p-4 dark:bg-white/[0.04]">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
+                      <div className="text-xs font-bold uppercase tracking-[0.2em] text-muted">
                         {budgetViewMode === "yearly"
                           ? "Tren tahunan"
                           : budgetViewMode === "weekly"
@@ -1820,7 +1820,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                               {budgetViewMode === "yearly" &&
                                 hoveredTrendPoint.previousTotal !==
                                   undefined && (
-                                  <div className="mt-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                                  <div className="mt-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
                                     Pengeluaran sebelumnya{" "}
                                     {canShowAmounts
                                       ? fmt(hoveredTrendPoint.previousTotal)
@@ -1960,7 +1960,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 />
                               </div>
                               <div
-                                className={`h-3 text-[9px] font-bold uppercase leading-none ${showLabel || isHovered ? "text-muted" : "text-transparent"}`}
+                                className={`h-3 text-xs font-bold uppercase leading-none ${showLabel || isHovered ? "text-muted" : "text-transparent"}`}
                               >
                                 {point.label}
                               </div>
@@ -2060,19 +2060,19 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                   </span>
                                 </div>
                                 {planned > 0 && (
-                                  <div className="mt-0.5 text-[11px] font-semibold leading-tight text-amber-700 dark:text-amber-300">
+                                  <div className="mt-0.5 text-xs font-semibold leading-tight text-amber-700 dark:text-amber-300">
                                     {percentageOfCategoryUsedPlanned.toFixed(1)}{" "}
                                     %
                                   </div>
                                 )}
                                 {overAmount > 0 && (
-                                  <div className="mt-1 text-[11px] font-semibold text-red-700 dark:text-red-300">
+                                  <div className="mt-1 text-xs font-semibold text-red-700 dark:text-red-300">
                                     Melebihi {canShowAmounts ? fmt(overAmount) : "••••"} · {percentageOfCategoryUsedPlanned.toFixed(0)}%
                                   </div>
                                 )}
                               </div>
                               {planned > 0 && (
-                                <div className="text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                                <div className="text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
                                   Terencana: {canShowAmounts ? fmt(planned) : "••••"}
                                 </div>
                               )}
@@ -2128,7 +2128,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 </span>
                               </div>
                               {projectedUncategorized > 0 && (
-                                <div className="mt-0.5 text-[11px] font-semibold leading-tight text-amber-700 dark:text-amber-300">
+                                <div className="mt-0.5 text-xs font-semibold leading-tight text-amber-700 dark:text-amber-300">
                                   {effectiveIncome > 0
                                     ? (
                                         ((uncategorized +
@@ -2142,7 +2142,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                               )}
                             </div>
                             {projectedUncategorized > 0 && (
-                              <div className="text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                              <div className="text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
                                 Terencana:{" "}
                                 {canShowAmounts
                                   ? fmt(projectedUncategorized)
@@ -2201,7 +2201,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => setMoneyView("transactions")}
-                                  className="mt-2 min-h-11 rounded-lg px-3 text-[10px] font-semibold text-brand-700 hover:bg-brand-500/10 dark:text-brand-300"
+                                  className="mt-2 min-h-11 rounded-lg px-3 text-xs font-semibold text-brand-700 hover:bg-brand-500/10 dark:text-brand-300"
                                 >
                                   Tinjau transaksi
                                 </button>
@@ -2263,7 +2263,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                               <div className="truncate font-bold capitalize text-primary">
                                                 {item.name}
                                               </div>
-                                              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                                              <div className="mt-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
                                                 {item.count} transaksi
                                               </div>
                                             </div>
@@ -2332,7 +2332,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                             : "••••"}
                                                         </span>
                                                       </div>
-                                                      <div className="mt-0.5 flex items-center justify-between gap-2 text-[10px] text-muted">
+                                                      <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-muted">
                                                         <span className="truncate capitalize">
                                                           {
                                                             transaction.subcommodity
@@ -2356,7 +2356,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                                   ))}
                                               </div>
                                               {item.transactions.length > 5 && (
-                                                <div className="mt-1 text-[10px] font-semibold text-muted">
+                                                <div className="mt-1 text-xs font-semibold text-muted">
                                                   +
                                                   {item.transactions.length - 5}{" "}
                                                   transaksi lainnya
@@ -2397,7 +2397,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                         <div className="mt-2 text-2xl font-bold">
                                           {item.percentage.toFixed(0)}%
                                         </div>
-                                        <div className="mt-1 text-[11px] font-semibold text-white/80">
+                                        <div className="mt-1 text-xs font-semibold text-white/80">
                                           {canShowAmounts
                                             ? fmt(item.total)
                                             : "••••"}{" "}
@@ -2487,7 +2487,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             <div className="truncate font-bold capitalize text-primary">
                                               {hoveredCommodity.name}
                                             </div>
-                                            <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                                            <div className="mt-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
                                               {category.categoryName}
                                             </div>
                                           </div>
@@ -2505,7 +2505,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             </div>
                                           </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2 border-t border-border pt-2 text-[11px]">
+                                        <div className="grid grid-cols-2 gap-2 border-t border-border pt-2 text-xs">
                                           <div>
                                             <div className="font-bold uppercase tracking-[0.12em] text-muted">
                                               Jumlah
@@ -2643,7 +2643,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                                             </span>
                                           </div>
                                           {topSubs && (
-                                            <div className="mt-1 text-[11px] leading-snug text-muted">
+                                            <div className="mt-1 text-xs leading-snug text-muted">
                                               Subkategori utama: {topSubs}
                                             </div>
                                           )}

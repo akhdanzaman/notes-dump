@@ -235,7 +235,7 @@ const InputBar: React.FC<InputBarProps> = ({
     fetchStatus === 'syncing' ||
     showReviewCenterButton ||
     (pendingCount !== undefined && pendingCount > 0);
-  const visibleError = imageError || error;
+  const visibleError = imageError;
   const buttonState = isSubmitting
     ? 'submitting'
     : submitState === 'received'
@@ -247,7 +247,7 @@ const InputBar: React.FC<InputBarProps> = ({
           : 'idle';
 
   return (
-    <div data-global-composer="true" className="z-[60] w-full px-3 pb-3 pt-2 pointer-events-none sm:px-5 lg:px-3 lg:pb-3">
+    <div data-global-composer="true" data-composer-expanded={Boolean(input.trim() || image)} className="z-[60] w-full px-3 pb-3 pt-2 pointer-events-none sm:px-5 lg:px-3 lg:pb-3">
       <div className="mx-auto w-full max-w-3xl pointer-events-none lg:max-w-4xl">
         <div
           className="relative flex min-w-0 flex-col gap-2"
@@ -349,7 +349,7 @@ const InputBar: React.FC<InputBarProps> = ({
                     <ClipboardCheck className="w-5 h-5" />
                     <CountBadge
                       count={reviewCenterCount || 0}
-                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[10px] font-bold flex items-center justify-center border border-surface"
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-xs font-bold flex items-center justify-center border border-surface"
                     />
                   </button>
                 </div>
@@ -383,8 +383,8 @@ const InputBar: React.FC<InputBarProps> = ({
                     />
                     {saveStatus === 'saving' && saveProgress && (
                       <span className="hidden sm:flex flex-col leading-none text-left max-w-[190px]">
-                        <span className="text-[11px] font-semibold text-amber-300 truncate">{saveProgress.label}</span>
-                        {saveProgress.detail && <span className="text-[10px] text-muted truncate">{saveProgress.detail}</span>}
+                        <span className="text-xs font-semibold text-amber-300 truncate">{saveProgress.label}</span>
+                        {saveProgress.detail && <span className="text-xs text-muted truncate">{saveProgress.detail}</span>}
                       </span>
                     )}
                   </div>
@@ -419,7 +419,7 @@ const InputBar: React.FC<InputBarProps> = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-500">
+                      <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-brand-500">
                         {imageMode === 'receipt' ? copy.receipt : copy.imageQuestion}
                       </span>
                     </div>
@@ -554,7 +554,7 @@ const InputBar: React.FC<InputBarProps> = ({
                       <AlertCircle className="w-5 h-5" />
                     ) : (
                       <>
-                        {image && <span className="hidden text-[10px] font-bold sm:inline">{imageMode === 'receipt' ? 'Proses' : 'Tanya'}</span>}
+                        {image && <span className="hidden text-xs font-bold sm:inline">{imageMode === 'receipt' ? 'Proses' : 'Tanya'}</span>}
                         <SendHorizonal className="w-5 h-5" />
                       </>
                     )}

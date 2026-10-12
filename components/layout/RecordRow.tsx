@@ -23,7 +23,7 @@ export default function RecordRow({ item, onOpen, onToggle, language, childCount
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{title}</span>
         {preview !== title && <span className="mt-1 block truncate text-xs text-muted">{preview}</span>}
-        {!!item.meta.tags?.length && <span className="mt-1 block truncate text-[11px] text-muted">{item.meta.tags.map(tag => `#${tag}`).join(' · ')}</span>}
+        {!!item.meta.tags?.length && <span className="mt-1 block truncate text-xs text-muted">{item.meta.tags.map(tag => `#${tag}`).join(' · ')}</span>}
       </span>
       <span className="hidden items-center gap-2 text-xs text-muted sm:flex">
         {item.meta.isRoutine && <Repeat2 className="h-3.5 w-3.5" aria-label={en ? 'Routine' : 'Rutinitas'} />}
@@ -31,7 +31,7 @@ export default function RecordRow({ item, onOpen, onToggle, language, childCount
         {childCount > 0 && <span>{childCount} {en ? 'subtasks' : 'subtugas'}</span>}
         {typeof item.meta.progress === 'number' && <span>{item.meta.progress}%</span>}
       </span>
-      {onToggle && <span className={`rounded-md px-2 py-1 text-[10px] font-medium ${item.status === 'done' ? 'bg-accent/10 text-accent' : 'bg-surface-soft text-muted'}`}>{item.status === 'done' ? (en ? 'Done' : 'Selesai') : (en ? 'Open' : 'Aktif')}</span>}
+      {onToggle && <span className={`rounded-md px-2 py-1 text-xs font-medium ${item.status === 'done' ? 'bg-accent/10 text-accent' : 'bg-surface-soft text-muted'}`}>{item.status === 'done' ? (en ? 'Done' : 'Selesai') : (en ? 'Open' : 'Aktif')}</span>}
       <time className="hidden w-16 shrink-0 text-right text-xs tabular-nums text-muted md:block" dateTime={Number.isNaN(date.getTime()) ? undefined : date.toISOString()}>{dateLabel}</time>
       <ArrowUpRight className="h-4 w-4 shrink-0 text-muted" />
     </button>

@@ -210,15 +210,15 @@ const ReviewCard: React.FC<{
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-3.5 h-3.5 text-brand-500" />
-                <span className="text-[10px] font-semibold text-brand-500 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-brand-500 uppercase tracking-wider">
                   Parser Batch Draft
                 </span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-500">
+                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-500">
                   {results.length} results
                 </span>
               </div>
               <p className="text-sm text-primary font-medium truncate" title={review.text}>{review.text}</p>
-              <p className="text-[11px] text-muted">Review each batch item below; approval saves the whole ordered batch.</p>
+              <p className="text-xs text-muted">Review each batch item below; approval saves the whole ordered batch.</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
@@ -245,35 +245,35 @@ const ReviewCard: React.FC<{
               return (
                 <div key={`${review.id}-${index}`} className="rounded-lg bg-background/60 border border-border p-2.5 space-y-2">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-bold uppercase tracking-wide">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-bold uppercase tracking-wide">
                       Item {result.batchItem ? result.batchItem.index + 1 : index + 1}
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border capitalize">
+                    <span className="text-xs px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border capitalize">
                       {result.entityType}
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border">
+                    <span className="text-xs px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border">
                       {summary.destination}
                     </span>
                   </div>
                   {result.batchItem && (
                     <div className="rounded-md bg-brand-500/5 border border-brand-500/15 px-2 py-1.5">
-                      <div className="text-[9px] uppercase tracking-wide text-brand-600 font-bold">Source</div>
-                      <div className="text-[11px] text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
+                      <div className="text-xs uppercase tracking-wide text-brand-600 font-bold">Source</div>
+                      <div className="text-xs text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
                     </div>
                   )}
-                  <div className="text-[11px] text-primary font-medium">{summary.title}</div>
+                  <div className="text-xs text-primary font-medium">{summary.title}</div>
                   {attributes.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {attributes.slice(0, 8).map(([key, value]) => (
                         <div key={`${key}-${value}`} className="min-w-0 rounded-md bg-surface/80 border border-border px-2 py-1">
-                          <div className="text-[9px] uppercase tracking-wide text-muted font-bold truncate">{key}</div>
-                          <div className="text-[11px] text-primary font-medium truncate" title={value}>{value}</div>
+                          <div className="text-xs uppercase tracking-wide text-muted font-bold truncate">{key}</div>
+                          <div className="text-xs text-primary font-medium truncate" title={value}>{value}</div>
                         </div>
                       ))}
                     </div>
                   )}
                   {result.needsReview && result.reviewReason && (
-                    <p className="text-[10px] text-amber-500 leading-tight">{result.reviewReason}</p>
+                    <p className="text-xs text-amber-500 leading-tight">{result.reviewReason}</p>
                   )}
                 </div>
               );
@@ -296,10 +296,10 @@ const ReviewCard: React.FC<{
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-3.5 h-3.5 text-brand-500" />
-              <span className="text-[10px] font-semibold text-brand-500 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-brand-500 uppercase tracking-wider">
                 Parser Draft
               </span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${confidenceColor}`}>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${confidenceColor}`}>
                 {primaryResult.confidence}
               </span>
             </div>
@@ -343,21 +343,21 @@ const ReviewCard: React.FC<{
                 <p className="text-sm text-primary font-medium truncate">
                   {content}
                 </p>
-                <p className="text-[11px] text-muted truncate" title={resultSummary.title}>
+                <p className="text-xs text-muted truncate" title={resultSummary.title}>
                   {resultSummary.title}
                 </p>
                 
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border capitalize">
+                  <span className="text-xs px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border capitalize">
                     {primaryResult.entityType}
                   </span>
                   {amount && (
-                    <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border">
+                    <span className="text-xs px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border">
                       Rp {Number(amount).toLocaleString()}
                     </span>
                   )}
                   {financeType && (
-                    <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border capitalize">
+                    <span className="text-xs px-1.5 py-0.5 bg-surface-elevated rounded text-muted border border-border capitalize">
                       {financeType}
                     </span>
                   )}
@@ -402,7 +402,7 @@ const ReviewCard: React.FC<{
         {primaryResult.needsReview && primaryResult.reviewReason && !isEditing && (
           <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-[10px] text-amber-500 leading-tight">
+            <p className="text-xs text-amber-500 leading-tight">
               {primaryResult.reviewReason}
             </p>
           </div>
@@ -411,8 +411,8 @@ const ReviewCard: React.FC<{
         {!isEditing && (
           <div className="mt-3 p-2.5 bg-background/60 border border-border rounded-lg space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Parsed Output</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-medium">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider">Parsed Output</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-medium">
                 {parsedDestination}
               </span>
             </div>
@@ -420,8 +420,8 @@ const ReviewCard: React.FC<{
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {parsedAttributes.slice(0, 12).map(([key, value]) => (
                   <div key={`${key}-${value}`} className="min-w-0 rounded-md bg-surface/80 border border-border px-2 py-1">
-                    <div className="text-[9px] uppercase tracking-wide text-muted font-bold truncate">{key}</div>
-                    <div className="text-[11px] text-primary font-medium truncate" title={value}>
+                    <div className="text-xs uppercase tracking-wide text-muted font-bold truncate">{key}</div>
+                    <div className="text-xs text-primary font-medium truncate" title={value}>
                       {value}
                     </div>
                   </div>
@@ -433,7 +433,7 @@ const ReviewCard: React.FC<{
 
         {!isEditing && canonicalReview.length > 0 && (
           <div className="mt-3 p-2.5 bg-brand-500/5 border border-brand-500/20 rounded-lg space-y-2">
-            <div className="text-[10px] font-semibold text-brand-500 uppercase tracking-wider">
+            <div className="text-xs font-semibold text-brand-500 uppercase tracking-wider">
               Canonical Suggestions
             </div>
             {canonicalReview.map((suggestion) => {
@@ -446,26 +446,26 @@ const ReviewCard: React.FC<{
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted uppercase tracking-wide">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted uppercase tracking-wide">
                         {suggestion.field}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20">
                         {Math.round(suggestion.confidence * 100)}%
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted">
                         {suggestion.source.replace('_', ' ')}
                       </span>
                     </div>
-                    <div className="text-[11px] text-primary font-medium">
+                    <div className="text-xs text-primary font-medium">
                       <span className="text-muted">Raw:</span> {suggestion.rawValue || '—'}
                       <span className="text-muted mx-1">→</span>
                       <span className="text-brand-500">{suggestion.suggestedValue || '—'}</span>
                     </div>
-                    <div className="text-[10px] text-muted leading-tight">
+                    <div className="text-xs text-muted leading-tight">
                       {suggestion.reason}
                     </div>
                     {(isApplied || isKeptRaw) && (
-                      <div className={`text-[10px] font-semibold ${isApplied ? 'text-emerald-500' : 'text-muted'}`}>
+                      <div className={`text-xs font-semibold ${isApplied ? 'text-emerald-500' : 'text-muted'}`}>
                         {isApplied ? 'Using this canonical value on approval.' : 'Keeping raw value; approval will teach this as a rejection signal.'}
                       </div>
                     )}
@@ -473,13 +473,13 @@ const ReviewCard: React.FC<{
                   <div className="shrink-0 flex flex-col gap-1">
                     <button
                       onClick={() => handleApplyCanonicalSuggestion(suggestion)}
-                      className={`px-2 py-1 rounded-md text-[10px] font-semibold transition-colors ${isApplied ? 'bg-emerald-500 text-white' : 'bg-brand-500 text-white hover:bg-brand-600'}`}
+                      className={`px-2 py-1 rounded-md text-xs font-semibold transition-colors ${isApplied ? 'bg-emerald-500 text-white' : 'bg-brand-500 text-white hover:bg-brand-600'}`}
                     >
                       {isApplied ? 'Using' : 'Use'}
                     </button>
                     <button
                       onClick={() => handleKeepRawSuggestion(suggestion)}
-                      className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors ${isKeptRaw ? 'bg-surface-elevated text-primary border-border' : 'bg-background text-muted border-border hover:text-primary'}`}
+                      className={`px-2 py-1 rounded-md text-xs font-semibold border transition-colors ${isKeptRaw ? 'bg-surface-elevated text-primary border-border' : 'bg-background text-muted border-border hover:text-primary'}`}
                     >
                       Keep Raw
                     </button>

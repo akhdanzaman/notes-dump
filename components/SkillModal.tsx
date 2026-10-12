@@ -132,7 +132,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
       panelClassName={`${addItemModal.panel} max-w-3xl`}
       presentation="form"
       closeOnBackdrop={false}
-      ariaLabel={mode === 'add' ? 'Track New Skill' : 'Edit Skill'}
+      ariaLabel={mode === 'add' ? 'Tambah skill' : 'Edit skill'}
       overlayProps={{ 'data-tablet-modal-overlay': 'skill' }}
       panelProps={{
         'data-tablet-modal-panel': 'skill',
@@ -142,7 +142,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
           <div className={addItemModal.header}>
             <h3 className={addItemModal.title}>
               <Target className={addItemModal.icon} />
-              {mode === 'add' ? 'Track New Skill' : 'Edit Skill'}
+              {mode === 'add' ? 'Tambah skill' : 'Edit skill'}
             </h3>
             <button data-editor-close="true" onClick={onClose} className={addItemModal.closeButton}>
               <X className="w-5 h-5" />
@@ -152,14 +152,14 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
           <div className={addItemModal.body}>
             <div className="grid grid-cols-1 lg:grid-cols-[180px_minmax(0,1fr)] gap-5">
               <div className="space-y-3">
-                <label className={addItemModal.label}>Skill Image</label>
+                <label className={addItemModal.label}>Gambar opsional</label>
                 <div className="aspect-square w-full rounded-xl overflow-hidden border border-border bg-background flex items-center justify-center">
                   {imageUrl.trim() ? (
                     <img src={imageUrl.trim()} alt={name || 'Skill image'} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-muted text-center px-4">
                       <ImageIcon className="w-8 h-8" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Image Preview</span>
+                      <span className="text-xs font-bold uppercase tracking-wider">Pratinjau gambar</span>
                     </div>
                   )}
                 </div>
@@ -174,7 +174,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
 
               <div className="space-y-4">
                 <div>
-                  <label className={addItemModal.label}>Skill Name</label>
+                  <label className={addItemModal.label}>Nama skill</label>
                   <input
                     type="text"
                     autoFocus
@@ -186,7 +186,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                 </div>
 
                 <div>
-                  <label className={addItemModal.label}>Description</label>
+                  <label className={addItemModal.label}>Deskripsi</label>
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}
@@ -196,7 +196,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                 </div>
 
                 <div>
-                  <label className={addItemModal.label}>Manual Weekly Target (minutes)</label>
+                  <label className={addItemModal.label}>Target mingguan (menit)</label>
                   <input
                     type="number"
                     min="0"
@@ -295,7 +295,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                             key={day}
                             type="button"
                             onClick={() => setSchedule(prev => ({ ...prev, daysOfMonth: toggleNumber(prev.daysOfMonth, day) }))}
-                            className={`aspect-square rounded-lg text-[10px] font-bold border transition-colors ${schedule.daysOfMonth?.includes(day) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
+                            className={`aspect-square rounded-lg text-xs font-bold border transition-colors ${schedule.daysOfMonth?.includes(day) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                           >
                             {day}
                           </button>
@@ -313,7 +313,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                             key={label}
                             type="button"
                             onClick={() => setSchedule(prev => ({ ...prev, monthsOfYear: toggleNumber(prev.monthsOfYear, idx) }))}
-                            className={`py-2 rounded-xl text-[10px] font-bold border uppercase transition-colors ${schedule.monthsOfYear?.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
+                            className={`py-2 rounded-xl text-xs font-bold border uppercase transition-colors ${schedule.monthsOfYear?.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                           >
                             {label}
                           </button>

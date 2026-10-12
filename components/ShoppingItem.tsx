@@ -1,3 +1,4 @@
+import PrivateAmount from './PrivateAmount';
 import { useEditorDraft } from '../hooks/useEditorDraft';
 import RoutineScheduleEditor from './RoutineScheduleEditor';
 import { useRoutineDraft } from '../hooks/useRoutineDraft';
@@ -298,7 +299,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                 {isRoutine && (
                     <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 border border-brand-500/20 ml-2">
                         <Repeat className="w-2.5 h-2.5 text-brand-500" />
-                        <span className="text-[9px] font-bold text-brand-500 uppercase tracking-tight">
+                        <span className="text-xs font-bold text-brand-500 uppercase tracking-tight">
                             {getRoutineScheduleLabel(
                                 meta.routineInterval,
                                 meta.routineDaysOfWeek,
@@ -316,7 +317,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                             onResetRoutine(item.id);
                         }}
                         title={isRoutineUnavailable ? 'Activate this routine for today without changing the next scheduled due date' : (routineNextDueDate ? `Reset for today and keep history. Next scheduled due: ${routineNextDueDate.toLocaleDateString()}` : 'Reset routine and keep history')}
-                        className="ml-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1 bg-brand-500/10 hover:bg-brand-500/20 text-brand-500"
+                        className="ml-1 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1 bg-brand-500/10 hover:bg-brand-500/20 text-brand-500"
                     >
                         <RotateCcw className="w-2.5 h-2.5" /> Reset
                     </button>
@@ -337,7 +338,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                 
                 {/* Extra Metadata Row */}
                 {(meta.quantity || hasLineItems) && (
-                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted">
                         {meta.quantity && (
                             <span className="px-1.5 py-0.5 rounded bg-muted/10 font-mono">
                                 Qty: {meta.quantity}
@@ -362,7 +363,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
             {(meta.amount || hasLineItems) && (
                 <div className="text-base font-bold text-primary shrink-0 mt-0.5">
-                    {(hideMoney ? '••••' : formatCurrencyAmount(hasLineItems ? lineItemsTotal : meta.amount))}
+                    <PrivateAmount hidden={hideMoney}>{formatCurrencyAmount(hasLineItems ? lineItemsTotal : meta.amount)}</PrivateAmount>
                 </div>
             )}
         </div>
@@ -400,7 +401,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                   {/* Settings Grid */}
                   <div className="grid grid-cols-2 gap-3">
                       <div>
-                          <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Category</label>
+                          <label className="text-xs uppercase text-muted font-bold mb-1 block">Kategori</label>
                           <select
                                className="w-full bg-background border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
                                value={editCategory}
@@ -412,33 +413,33 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                           </select>
                       </div>
                       <div>
-                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Budget Category</label>
+                           <label className="text-xs uppercase text-muted font-bold mb-1 block">Kategori budget</label>
                            <select
                                 className="w-full bg-background border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
                                 value={editBudgetCategory}
                                 onChange={(e) => setEditBudgetCategory(e.target.value)}
                            >
-                               <option value="">Uncategorized</option>
+                               <option value="">Belum berkategori</option>
                                {budgetRules.map(rule => (
                                    <option key={rule.id} value={rule.id}>{rule.name}</option>
                                ))}
                            </select>
                       </div>
                       <div>
-                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Payment Method</label>
+                           <label className="text-xs uppercase text-muted font-bold mb-1 block">Wallet</label>
                            <select
                                 className="w-full bg-background border border-border rounded-xl p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping"
                                 value={editPaymentMethod}
                                 onChange={(e) => setEditPaymentMethod(e.target.value)}
                            >
-                               <option value="">Select Wallet</option>
+                               <option value="">Pilih wallet</option>
                                {wallets.map(w => (
                                    <option key={w.id} value={w.name}>{w.name}</option>
                                ))}
                            </select>
                       </div>
                       {!moneyHidden && <div>
-                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Est. Cost</label>
+                           <label className="text-xs uppercase text-muted font-bold mb-1 block">Perkiraan biaya</label>
                            <input 
                               type="number"
                               className={`w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping ${hasEditLineItems ? 'opacity-80 cursor-not-allowed' : ''}`}
@@ -447,10 +448,10 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                               readOnly={hasEditLineItems}
                               placeholder="0"
                            />
-                           {hasEditLineItems && <p className="mt-1 text-[10px] text-muted">Total otomatis dari rincian.</p>}
+                           {hasEditLineItems && <p className="mt-1 text-xs text-muted">Total otomatis dari rincian.</p>}
                       </div>}
                       <div className="col-span-2">
-                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">{shouldShoppingDateEditCompletion(item) ? 'Completed date' : 'Due date'}</label>
+                           <label className="text-xs uppercase text-muted font-bold mb-1 block">{shouldShoppingDateEditCompletion(item) ? 'Completed date' : 'Due date'}</label>
                            <input
                                 type="datetime-local"
                                 className="w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping [color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
@@ -480,12 +481,12 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                        }} />
                   )}
 
-                  <div className="flex justify-between items-center pt-2">
+                  <div className="entity-editor-footer flex justify-between items-center pt-2">
                       <button 
                         onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
                         className="text-red-400 hover:text-red-500 text-xs flex items-center gap-1"
                       >
-                          <Trash2 className="w-3 h-3" /> Delete
+                          <Trash2 className="w-3 h-3" /> Hapus
                       </button>
                       
                       <button 
@@ -493,7 +494,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                         onClick={(e) => { e.stopPropagation(); void handleSave(); }}
                         className="bg-acc-shopping text-white px-3 py-1.5 rounded-xl text-xs font-medium hover:opacity-90 flex items-center gap-1"
                       >
-                          <Save className="w-3 h-3" /> Save
+                          <Save className="w-3 h-3" /> Simpan
                       </button>
                   </div>
               </div>

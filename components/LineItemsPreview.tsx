@@ -35,10 +35,10 @@ const LineItemsPreview: React.FC<Props> = ({
         const categoryName = budgetRules.find((rule) => rule.id === categoryId)?.name || categoryId;
         const allocationLabel = txLine.allocationMode === 'proportional' ? 'Dibagi proporsional' : categoryName;
         return (
-          <div key={line.id} className="flex items-center justify-between gap-2 rounded-xl bg-background/60 px-2.5 py-1.5 text-[11px] text-muted">
+          <div key={line.id} className="flex items-center justify-between gap-2 rounded-xl bg-background/60 px-2.5 py-1.5 text-xs text-muted">
             <div className="min-w-0">
               <div className="truncate">{line.name || 'Item tanpa nama'}{line.quantity ? ` · ${line.quantity}` : ''}</div>
-              {allocationLabel && <div className="truncate text-[9px] opacity-75">{allocationLabel}</div>}
+              {allocationLabel && <div className="truncate text-xs opacity-75">{allocationLabel}</div>}
             </div>
             <span className="shrink-0 font-bold text-primary">{hideMoney ? '••••' : formatCurrencyAmount(Number(line.amount || 0), currency)}</span>
           </div>
@@ -51,7 +51,7 @@ const LineItemsPreview: React.FC<Props> = ({
             event.stopPropagation();
             onToggleExpanded();
           }}
-          className={`text-[10px] font-bold ${accentClassName} hover:underline`}
+          className={`text-xs font-bold ${accentClassName} hover:underline`}
         >
           {expanded ? 'Sembunyikan rincian' : `Lihat semua ${items.length} item`}
         </button>

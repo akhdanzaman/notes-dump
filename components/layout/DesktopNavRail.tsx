@@ -124,11 +124,11 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
         </div>
         <div className="min-w-0">
           <h1 className="truncate text-[17px] font-bold tracking-[-0.025em] text-primary">Arkaiv</h1>
-            <p className="truncate text-[10px] font-medium text-muted">Personal workspace</p>
+            <p className="truncate text-xs font-medium text-muted">{language === 'en' ? 'Personal workspace' : 'Ruang pribadi'}</p>
         </div>
       </div>
 
-      <p className="mb-1 mt-5 px-3 text-[11px] font-semibold text-muted">{copy.workspace}</p>
+      <p className="mb-1 mt-5 px-3 text-xs font-semibold text-muted">{copy.workspace}</p>
 
       <LayoutGroup id="desktop-primary-navigation">
         <nav className="space-y-1" aria-label={`${copy.navigation} desktop`}>
@@ -180,13 +180,6 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
         </nav>
       </LayoutGroup>
 
-      {(activeTab === 'plan' || activeTab === 'library') && <div className="mt-4 border-t border-border pt-4">
-        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted">{language === 'en' ? 'Sections' : 'Bagian'}</p>
-        {(activeTab === 'plan'
-          ? ([['tasks', 'Tasks', 'Tugas'], ['shopping', 'Shopping', 'Belanja'], ['savings', 'Goals & investments', 'Target & investasi'], ['loans', 'Loans', 'Pinjaman']] as const)
-          : ([['general', 'Notes', 'Catatan'], ['skills', 'Skills', 'Skill'], ['journal', 'Journal', 'Jurnal']] as const)
-        ).map(([id, en, ind]) => <button key={id} type="button" onClick={() => activeTab === 'plan' ? setPlanSubTab(id as PlanSubTab) : setLibrarySubTab(id as LibrarySubTab)} aria-current={(activeTab === 'plan' ? planSubTab : librarySubTab) === id ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs ${(activeTab === 'plan' ? planSubTab : librarySubTab) === id ? 'bg-accent/10 font-semibold text-accent' : 'text-muted hover:bg-surface-soft'}`}><span className="h-1 w-1 rounded-full bg-current" />{language === 'en' ? en : ind}</button>)}
-      </div>}
 
       <div className="mt-auto space-y-2 pt-5">
         {error && (
@@ -198,7 +191,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
               <AlertTriangle className="h-4 w-4" />
               {copy.attention}
             </div>
-            <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed opacity-85">{error}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-relaxed opacity-85">{error}</p>
           </div>
         )}
 
@@ -227,7 +220,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-semibold text-primary">{statusConfig.label}</span>
-              <span className="mt-0.5 block truncate text-[10px] text-muted">{statusConfig.helper}</span>
+              <span className="mt-0.5 block truncate text-xs text-muted">{statusConfig.helper}</span>
             </span>
           </div>
 
@@ -244,7 +237,7 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
               <CountBadge
                 count={totalQueue}
                 ariaLabel={`${totalQueue} item perlu diperiksa`}
-                className="absolute right-2 top-1/2 min-w-[17px] -translate-y-1/2 rounded-full bg-accent px-1 text-center text-[9px] font-bold leading-[17px] text-white"
+                className="absolute right-2 top-1/2 min-w-[17px] -translate-y-1/2 rounded-full bg-accent px-1 text-center text-xs font-bold leading-[17px] text-white"
               />
             </button>
             <button

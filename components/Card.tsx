@@ -656,7 +656,7 @@ const Card: React.FC<CardProps> = ({
         {/* COLLAPSED HEADER */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-              <button
+              {(type === ItemType.TODO || type === ItemType.EVENT || type === ItemType.SHOPPING) && <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -684,14 +684,14 @@ const Card: React.FC<CardProps> = ({
                     )}
                   </motion.span>
                 </AnimatePresence>
-              </button>
+              </button>}
               <div className="flex items-center gap-1.5">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${shouldStrike ? 'text-muted' : style.textColor}`}>
+                  <span className={`text-xs font-bold uppercase tracking-wider ${shouldStrike ? 'text-muted' : style.textColor}`}>
                       {categoryName || displayTypeLabel}
                   </span>
                   {(meta.deepWorkParent || meta.parentTodoId) && (
                       <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-500">
-                          <span className="text-[9px] font-bold uppercase tracking-tight">
+                          <span className="text-xs font-bold uppercase tracking-tight">
                               {meta.deepWorkParent ? `deep work ${meta.progress !== undefined ? `${meta.progress}%` : ''}` : `step ${meta.deepWorkStepIndex || ''}`}
                           </span>
                       </div>
@@ -699,7 +699,7 @@ const Card: React.FC<CardProps> = ({
                   {meta.isRoutine && (
                       <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 border border-brand-500/20">
                           <Repeat className="w-2.5 h-2.5 text-brand-500" />
-                          <span className="text-[9px] font-bold text-brand-500 uppercase tracking-tight">
+                          <span className="text-xs font-bold text-brand-500 uppercase tracking-tight">
                               {getRoutineScheduleLabel(
                                   meta.routineInterval,
                                   meta.routineDaysOfWeek,
@@ -717,7 +717,7 @@ const Card: React.FC<CardProps> = ({
                             : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
                       }`}>
                           <AlertCircle className="w-2.5 h-2.5" />
-                          <span className="text-[9px] font-bold uppercase tracking-tight">
+                          <span className="text-xs font-bold uppercase tracking-tight">
                               {meta.priority}
                           </span>
                       </div>
@@ -729,7 +729,7 @@ const Card: React.FC<CardProps> = ({
                               onResetRoutine(item.id);
                           }}
                           title={isRoutineUnavailable ? 'Activate this routine for today without changing the next scheduled due date' : 'Reset for today and keep history'}
-                          className="ml-1 px-2 py-0.5 bg-brand-500/10 hover:bg-brand-500/20 text-brand-500 rounded text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
+                          className="ml-1 px-2 py-0.5 bg-brand-500/10 hover:bg-brand-500/20 text-brand-500 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
                       >
                           <RotateCcw className="w-2.5 h-2.5" /> Reset
                       </button>
@@ -741,24 +741,24 @@ const Card: React.FC<CardProps> = ({
             {validTags.map(tag => {
                 if (tag === 'parsing_failed' && meta.parsingError) {
                     return (
-                        <span key={tag} className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 flex items-center gap-1 text-[10px]" title={meta.parsingError}>
+                        <span key={tag} className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 flex items-center gap-1 text-xs" title={meta.parsingError}>
                             <AlertCircle className="w-3 h-3" />
                             Gagal diproses
                         </span>
                     );
                 }
                 return (
-                    <span key={tag} className="px-1.5 py-0.5 rounded bg-muted/10 text-[10px] text-muted">#{tag}</span>
+                    <span key={tag} className="px-1.5 py-0.5 rounded bg-muted/10 text-xs text-muted">#{tag}</span>
                 );
             })}
             {(meta.start || meta.end) && (
-                <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <div className="text-xs font-bold text-muted uppercase tracking-wider">
                     {meta.start ? new Date(meta.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
                     {meta.start && meta.end ? ' - ' : ''}
                     {meta.end ? new Date(meta.end).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
                 </div>
             )}
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
+            <div className="text-xs font-bold text-muted uppercase tracking-wider">
                 {displayDate ? displayDate.split('•')[0].trim() : ''}
             </div>
           </div>
@@ -787,7 +787,7 @@ const Card: React.FC<CardProps> = ({
 
                     {/* Extra Metadata Row */}
                     {(hasMoneyMetadata || skillName || hasTransactionLineItems) && (
-                        <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted">
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted">
                             {hasMoneyMetadata && (
                                 <>
                                     {(meta.paymentMethod || meta.toWallet || meta.savingGoalId) && (
@@ -853,7 +853,7 @@ const Card: React.FC<CardProps> = ({
                             {displayAmount || `${meta.durationMinutes}m`}
                         </div>
                         {!moneyHidden && type === ItemType.FINANCE && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) && (meta.originalAmount ?? meta.receiptCapture?.originalTotal) !== undefined && (meta.originalCurrency || meta.receiptCapture?.originalCurrency) !== 'IDR' && (
-                            <div className="text-[9px] font-medium text-muted">
+                            <div className="text-xs font-medium text-muted">
                                 {formatCurrency((meta.originalAmount ?? meta.receiptCapture?.originalTotal) || 0, (meta.originalCurrency || meta.receiptCapture?.originalCurrency) || 'IDR')}
                                 {(meta.exchangeRateToIdr || meta.receiptCapture?.exchangeRateToIdr) ? ` · kurs ${(meta.exchangeRateToIdr || meta.receiptCapture?.exchangeRateToIdr || 0).toLocaleString('id-ID')}` : ''}
                             </div>
@@ -872,7 +872,7 @@ const Card: React.FC<CardProps> = ({
                                 ? (budgetRules.find((rule) => rule.id === entry.budgetCategory)?.name || entry.budgetCategory)
                                 : 'Belum berkategori';
                             return (
-                                <span key={entry.budgetCategory || 'uncategorized'} className={`rounded-full px-2 py-1 text-[9px] font-bold ${entry.budgetCategory ? 'bg-brand-500/10 text-brand-500' : 'bg-amber-500/10 text-amber-600'}`}>
+                                <span key={entry.budgetCategory || 'uncategorized'} className={`rounded-full px-2 py-1 text-xs font-bold ${entry.budgetCategory ? 'bg-brand-500/10 text-brand-500' : 'bg-amber-500/10 text-amber-600'}`}>
                                     {name} · {formatMoney(entry.amount)}
                                 </span>
                             );
@@ -880,7 +880,7 @@ const Card: React.FC<CardProps> = ({
                     </div>
                 )}
                 {uncategorizedTransactionLineCount > 0 && (
-                    <div className="mb-1.5 text-[10px] font-bold text-amber-600">
+                    <div className="mb-1.5 text-xs font-bold text-amber-600">
                         {uncategorizedTransactionLineCount} item perlu kategori
                     </div>
                 )}
@@ -957,7 +957,7 @@ const Card: React.FC<CardProps> = ({
                <>
                {isNote && (
                    <div className="mb-3">
-                       <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Title</label>
+                       <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1">Title</label>
                        <input
                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-primary placeholder-muted/40 focus:outline-none"
                            value={editTitle}
@@ -1091,7 +1091,7 @@ const Card: React.FC<CardProps> = ({
                    {/* Date */}
                    {showDateField && !meta.isRoutine && (
                         <div className={(!showAmountField && !showSkillExtras) ? "col-span-2" : ""}>
-                            <label htmlFor={`card-date-${item.id}`} className={type === ItemType.FINANCE ? financeLabelClass : 'mb-1 block text-[10px] font-bold uppercase text-muted'}>
+                            <label htmlFor={`card-date-${item.id}`} className={type === ItemType.FINANCE ? financeLabelClass : 'mb-1 block text-xs font-bold uppercase text-muted'}>
                                 {type === ItemType.SHOPPING ? (shouldShoppingDateEditCompletion(item) ? 'Tanggal selesai' : 'Jatuh tempo') : type === ItemType.FINANCE ? 'Tanggal transaksi' : 'Tanggal'}
                             </label>
                             <div className="relative">
@@ -1111,7 +1111,7 @@ const Card: React.FC<CardProps> = ({
                    {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT) && !meta.isRoutine && (
                        <>
                            <div>
-                               <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Start Time</label>
+                               <label className="text-xs uppercase text-muted font-bold mb-1 block">Start Time</label>
                                <div className="relative">
                                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                    <input
@@ -1123,7 +1123,7 @@ const Card: React.FC<CardProps> = ({
                                </div>
                            </div>
                            <div>
-                               <label className="text-[10px] uppercase text-muted font-bold mb-1 block">End Time</label>
+                               <label className="text-xs uppercase text-muted font-bold mb-1 block">End Time</label>
                                <div className="relative">
                                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                    <input
@@ -1140,13 +1140,13 @@ const Card: React.FC<CardProps> = ({
                    {/* Priority */}
                    {(type === ItemType.TODO || type === ItemType.SKILLS || type === ItemType.EVENT) && (
                        <div className="col-span-2">
-                           <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Priority</label>
+                           <label className="text-xs uppercase text-muted font-bold mb-1 block">Priority</label>
                            <div className="grid grid-cols-3 gap-2">
                                {(['low', 'normal', 'high'] as Priority[]).map(p => (
                                    <button
                                        key={p}
                                        onClick={() => setEditPriority(p)}
-                                       className={`py-2 ${isTaskWorkspaceEdit ? taskEditSurface.priorityButton : ''} rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+                                       className={`py-2 ${isTaskWorkspaceEdit ? taskEditSurface.priorityButton : ''} rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                                            editPriority === p
                                                ? 'bg-brand-600 text-white shadow-sm'
                                                : 'bg-background border border-border text-muted hover:border-brand-500/50'
@@ -1187,7 +1187,7 @@ const Card: React.FC<CardProps> = ({
                    {showSkillExtras && (
                        <>
                            <div>
-                                <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Duration (Min)</label>
+                                <label className="text-xs uppercase text-muted font-bold mb-1 block">Duration (Min)</label>
                                 <div className="relative">
                                     <Hourglass className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                                     <input
@@ -1199,13 +1199,13 @@ const Card: React.FC<CardProps> = ({
                                 </div>
                            </div>
                            <div>
-                                <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Skill</label>
+                                <label className="text-xs uppercase text-muted font-bold mb-1 block">Skill</label>
                                 <select
                                     className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs text-primary focus:outline-none focus:border-brand-500/60 focus:ring-4 focus:ring-brand-500/10"
                                     value={editSkillId}
                                     onChange={(e) => setEditSkillId(e.target.value)}
                                 >
-                                    <option value="">Uncategorized</option>
+                                    <option value="">Belum berkategori</option>
                                     {skills.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                            </div>
@@ -1346,7 +1346,7 @@ const Card: React.FC<CardProps> = ({
                                        <option value="">Tanpa kategori</option>
                                        {budgetRules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                                    </select>
-                                   {hasEditTransactionLineItems && <div className="mt-1 text-[9px] text-muted">Hanya dipakai untuk item yang memilih kategori default.</div>}
+                                   {hasEditTransactionLineItems && <div className="mt-1 text-xs text-muted">Hanya dipakai untuk item yang memilih kategori default.</div>}
                                </div>
                            ) : null}
                            {showCommodityFields && (
@@ -1426,7 +1426,7 @@ const Card: React.FC<CardProps> = ({
                            className="w-full h-2 bg-background rounded-xl appearance-none cursor-pointer accent-acc-todo mb-3"
                        />
                        <div>
-                            <label className="text-[10px] uppercase text-muted font-bold mb-1 block">Latest Update</label>
+                            <label className="text-xs uppercase text-muted font-bold mb-1 block">Latest Update</label>
                             <input
                                 type="text"
                                 value={editProgressNotes}
@@ -1445,14 +1445,14 @@ const Card: React.FC<CardProps> = ({
                                <div className="text-xs uppercase font-bold text-purple-500 flex items-center gap-1">
                                    <BookOpen className="w-3.5 h-3.5" /> Deep Work suggestion
                                </div>
-                               <p className="text-[11px] text-muted mt-1">
+                               <p className="text-xs text-muted mt-1">
                                    {meta.deepWorkConfidence === 'low'
                                        ? 'Low confidence — review/edit this before creating steps.'
                                        : 'Detected a vague/stuck task and drafted a safer work breakdown.'}
                                </p>
                            </div>
                            {meta.deepWorkConfidence && (
-                               <span className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase ${meta.deepWorkConfidence === 'low' ? 'bg-amber-500/10 text-amber-500' : 'bg-purple-500/10 text-purple-500'}`}>
+                               <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${meta.deepWorkConfidence === 'low' ? 'bg-amber-500/10 text-amber-500' : 'bg-purple-500/10 text-purple-500'}`}>
                                    {meta.deepWorkConfidence}
                                </span>
                            )}
@@ -1460,39 +1460,39 @@ const Card: React.FC<CardProps> = ({
                        <div className="space-y-2 text-xs">
                            {meta.deepWorkNextAction && (
                                <div>
-                                   <span className="block text-[10px] uppercase font-bold text-muted">First next action</span>
+                                   <span className="block text-xs uppercase font-bold text-muted">First next action</span>
                                    <span className="text-primary">{meta.deepWorkNextAction}</span>
                                </div>
                            )}
                            {meta.deepWorkFinalOutput && (
                                <div>
-                                   <span className="block text-[10px] uppercase font-bold text-muted">Final output</span>
+                                   <span className="block text-xs uppercase font-bold text-muted">Final output</span>
                                    <span className="text-primary">{meta.deepWorkFinalOutput}</span>
                                </div>
                            )}
                            <div className="grid grid-cols-2 gap-2">
                                {meta.deepWorkSessionEstimateMinutes && (
                                    <div>
-                                       <span className="block text-[10px] uppercase font-bold text-muted">Session</span>
+                                       <span className="block text-xs uppercase font-bold text-muted">Session</span>
                                        <span className="text-primary">{meta.deepWorkSessionEstimateMinutes} min</span>
                                    </div>
                                )}
                                {meta.deepWorkBlockerStatus && (
                                    <div>
-                                       <span className="block text-[10px] uppercase font-bold text-muted">Blocker</span>
+                                       <span className="block text-xs uppercase font-bold text-muted">Blocker</span>
                                        <span className="text-primary capitalize">{meta.deepWorkBlockerStatus.replace('_', ' ')}</span>
                                    </div>
                                )}
                            </div>
                            {meta.deepWorkBlockerCheck && (
                                <div>
-                                   <span className="block text-[10px] uppercase font-bold text-muted">Check before starting</span>
+                                   <span className="block text-xs uppercase font-bold text-muted">Check before starting</span>
                                    <span className="text-primary">{meta.deepWorkBlockerCheck}</span>
                                </div>
                            )}
                            {meta.subtasks && meta.subtasks.length > 0 && (
                                <div>
-                                   <span className="block text-[10px] uppercase font-bold text-muted mb-1">Suggested subtasks</span>
+                                   <span className="block text-xs uppercase font-bold text-muted mb-1">Suggested subtasks</span>
                                    <ol className="list-decimal list-inside space-y-1 text-primary">
                                        {meta.subtasks.map((subtask, index) => <li key={`${subtask}-${index}`}>{subtask}</li>)}
                                    </ol>

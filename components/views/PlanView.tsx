@@ -407,7 +407,7 @@ const PlanView: React.FC<PlanViewProps> = ({
             <article key={account.id} className={`${contentSurface.workspaceCompactCard} p-4`}>
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <div className={`mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider ${isReceivable ? 'text-emerald-500' : 'text-orange-500'}`}>
+                        <div className={`mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${isReceivable ? 'text-emerald-500' : 'text-orange-500'}`}>
                             {isReceivable ? <ArrowDownLeft className="h-3.5 w-3.5" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
                             {isReceivable ? 'Piutang' : 'Utang'}
                         </div>
@@ -416,22 +416,22 @@ const PlanView: React.FC<PlanViewProps> = ({
                             {isReceivable ? 'Dana yang perlu dikembalikan kepada Anda.' : 'Dana yang perlu Anda kembalikan.'}
                         </p>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${statusClass}`}>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold uppercase tracking-wider ${statusClass}`}>
                         {statusLabel}
                     </span>
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 rounded-lg bg-black/5 p-3 dark:bg-white/5">
                     <div>
-                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Awal</div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted">Awal</div>
                         <div className="mt-1 truncate text-xs font-bold text-primary">{formatIdr(account.originalAmount)}</div>
                     </div>
                     <div>
-                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Terbayar</div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted">Terbayar</div>
                         <div className="mt-1 truncate text-xs font-bold text-emerald-500">{formatIdr(account.repaidAmount)}</div>
                     </div>
                     <div>
-                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Sisa</div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted">Sisa</div>
                         <div className={`mt-1 truncate text-xs font-bold ${account.remainingAmount > 0 ? 'text-primary' : 'text-emerald-500'}`}>{formatIdr(account.remainingAmount)}</div>
                     </div>
                 </div>
@@ -444,7 +444,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     />
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
                     <span className="flex items-center gap-1">
                         <Clock3 className="h-3.5 w-3.5" />
                         Jatuh tempo: <strong className={account.status === 'overdue' ? 'text-red-500' : 'text-primary'}>{formatLoanDate(account.dueDate)}</strong>
@@ -454,13 +454,13 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                 {account.transactions.length > 0 && (
                     <details className="mt-3 rounded-lg border border-border/50 bg-background/50 px-3 py-2">
-                        <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider text-muted">Riwayat terbaru</summary>
+                        <summary className="cursor-pointer text-xs font-bold uppercase tracking-wider text-muted">Riwayat terbaru</summary>
                         <div className="mt-2 space-y-2">
                             {account.transactions.slice(0, 3).map(transaction => (
                                 <div key={transaction.id} className="flex items-center justify-between gap-3 text-xs">
                                     <div className="min-w-0">
                                         <div className="truncate font-medium text-primary">{transaction.content}</div>
-                                        <div className="text-[10px] text-muted">{formatLoanDate(transaction.meta.date || transaction.completed_at || transaction.created_at)}</div>
+                                        <div className="text-xs text-muted">{formatLoanDate(transaction.meta.date || transaction.completed_at || transaction.created_at)}</div>
                                     </div>
                                     <div className="shrink-0 font-bold text-primary">{formatIdr(transaction.meta.amount || 0)}</div>
                                 </div>
@@ -746,8 +746,8 @@ const PlanView: React.FC<PlanViewProps> = ({
                     {renderThumbnail(investment, 'investment', 'h-36 sm:h-auto sm:w-40 sm:shrink-0 lg:w-36 xl:w-40', actions)}
                     <div className="min-w-0 flex-1 p-4 pl-4 sm:pl-0">
                         <div className="mb-1 flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-500">{investmentTypeLabels[assetType]}</span>
-                            {investment.meta.investmentSymbol && <span className="rounded-full bg-muted/10 px-2 py-1 text-[10px] font-bold text-muted">{investment.meta.investmentSymbol}</span>}
+                            <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-bold uppercase tracking-wider text-emerald-500">{investmentTypeLabels[assetType]}</span>
+                            {investment.meta.investmentSymbol && <span className="rounded-full bg-muted/10 px-2 py-1 text-xs font-bold text-muted">{investment.meta.investmentSymbol}</span>}
                         </div>
                         <h4 className="truncate text-lg font-bold text-primary">{investment.content}</h4>
                         <div className="mt-1 flex items-baseline gap-2">
@@ -757,17 +757,17 @@ const PlanView: React.FC<PlanViewProps> = ({
 
                         <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
                             <div className="rounded-lg border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
-                                <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Invested</div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-muted">Invested</div>
                                 <div className="mt-1 font-bold text-primary">{formatIdr(invested)}</div>
                             </div>
                             <div className="rounded-lg border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
-                                <div className="text-[9px] font-bold uppercase tracking-wider text-muted">Units</div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-muted">Units</div>
                                 <div className="mt-1 font-bold text-primary">{investment.meta.investmentUnits || '-'}</div>
                             </div>
                             <div className="rounded-lg border border-emerald-500/5 bg-black/5 p-3 dark:bg-white/10">
-                                <div className="text-[9px] font-bold uppercase tracking-wider text-muted">P/L</div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-muted">P/L</div>
                                 <div className={`mt-1 font-bold ${gain >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{gain >= 0 ? '+' : ''}{formatIdr(gain)} · {roi.toFixed(1)}%</div>
-                                <div className="mt-0.5 text-[9px] text-muted">vs cost basis</div>
+                                <div className="mt-0.5 text-xs text-muted">vs cost basis</div>
                             </div>
                         </div>
 
@@ -820,7 +820,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     <div className="min-w-0 flex-1 border-b border-border/70 pb-5 last:border-b-0 last:pb-0">
                                         <div className="flex items-center gap-2">
                                             <h4 className="truncate text-sm font-bold text-primary">{goal.content}</h4>
-                                            <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${completed ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                            <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${completed ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
                                                 {completed ? planCopy.completed : `${progress.toFixed(0)}%`}
                                             </span>
                                         </div>
@@ -897,7 +897,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             className="grid overflow-hidden"
                         >
                             <div className="min-h-0 overflow-hidden rounded-lg border border-border bg-background/70 p-3 space-y-3 lg:p-4">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Edit subtasks</div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-muted">Edit subtasks</div>
                                 {renderSubtaskDraftEditor({ ...item, meta: { ...item.meta, subtasks: draft } }, children, 'Create subtasks')}
                             </div>
                         </motion.div>
@@ -991,10 +991,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                 {hasDeepWorkDetails && (
                                     <div className="flex items-center gap-2 text-purple-500">
                                         <Sparkles className="w-4 h-4" />
-                                        <div className="text-[10px] font-bold uppercase tracking-wider">Deep Work Transformer</div>
+                                        <div className="text-xs font-bold uppercase tracking-wider">Deep Work Transformer</div>
                                     </div>
                                 )}
-                                <div className="flex items-center gap-2 text-[11px] font-bold text-muted">
+                                <div className="flex items-center gap-2 text-xs font-bold text-muted">
                                     <span>{doneCount}/{totalSteps} steps</span>
                                     <span>•</span>
                                     <span>{progressPercent}%</span>
@@ -1021,7 +1021,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             )}
 
                             <div className="space-y-2">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                                <div className="text-xs font-bold uppercase tracking-wider text-muted">
                                     {isEditSubtasksExpanded ? 'Edit subtasks' : 'Optional subtasks'}
                                 </div>
                                 {isEditSubtasksExpanded ? (
@@ -1213,7 +1213,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             <div className="metric-strip mt-4 [--metric-count:3]" aria-label={activePlanHeader.title}>
                                 {activePlanHeader.metrics.map(metric => (
                                     <div key={metric.label} className={contentSurface.workspaceMetric}>
-                                        <div className="min-h-8 text-[11px] font-medium leading-tight text-muted sm:min-h-0">{metric.label}</div>
+                                        <div className="min-h-8 text-xs font-medium leading-tight text-muted sm:min-h-0">{metric.label}</div>
                                         <div className={`mt-1 truncate text-lg font-semibold tabular-nums sm:text-xl ${metric.tone}`}>{metric.value}</div>
                                     </div>
                                 ))}
@@ -1547,21 +1547,21 @@ const PlanView: React.FC<PlanViewProps> = ({
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
+                                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-500">
                                     <ArrowDownLeft className="h-4 w-4" /> Akan diterima
                                 </div>
                                 <div className="mt-2 text-xl font-bold text-primary">{formatIdr(loanSummary.receivable)}</div>
                                 <p className="mt-1 text-xs text-muted">Total uang yang masih perlu dikembalikan kepada Anda.</p>
                             </div>
                             <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
-                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-orange-500">
+                                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-500">
                                     <ArrowUpRight className="h-4 w-4" /> Harus dibayar
                                 </div>
                                 <div className="mt-2 text-xl font-bold text-primary">{formatIdr(loanSummary.payable)}</div>
                                 <p className="mt-1 text-xs text-muted">Total kewajiban yang masih harus Anda lunasi.</p>
                             </div>
                             <div className={`${contentSurface.workspaceCompactCard} p-4`}>
-                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted">
+                                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted">
                                     <Clock3 className="h-4 w-4" /> Pengingat
                                 </div>
                                 <div className="mt-2 text-xl font-bold text-primary">{loanSummary.openCount} aktif</div>
@@ -1871,10 +1871,10 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         <div className="flex items-start justify-between gap-3">
                                             <div>
                                                 <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Auto-fill units or capital</div>
-                                                <p className="text-[10px] text-muted mt-1">Fill invested capital or units. With a buy price, the other field auto-fills and units are added to the investment.</p>
+                                                <p className="text-xs text-muted mt-1">Fill invested capital or units. With a buy price, the other field auto-fills and units are added to the investment.</p>
                                             </div>
                                             {selectedFundingInvestment?.meta.investmentUnits ? (
-                                                <span className="shrink-0 rounded-full bg-background px-2 py-1 text-[10px] font-bold text-muted border border-border">
+                                                <span className="shrink-0 rounded-full bg-background px-2 py-1 text-xs font-bold text-muted border border-border">
                                                     Current units: {selectedFundingInvestment.meta.investmentUnits}
                                                 </span>
                                             ) : null}
@@ -1914,7 +1914,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         className="w-full bg-background border border-border rounded-lg p-4 text-primary focus:outline-none focus:border-brand-500 font-medium appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={!!addFundsModal.defaultWallet}
                                     >
-                                        <option value="">Select Wallet</option>
+                                        <option value="">Pilih wallet</option>
                                         {wallets.filter(w => addFundsModal.targetType !== 'investment' || (w.type !== 'investment' && w.id !== addFundsModal.destinationWalletId)).map(w => (
                                             <option key={w.id} value={w.id}>{w.name} ({formatCurrencyAmount(w.initialBalance)})</option>
                                         ))}

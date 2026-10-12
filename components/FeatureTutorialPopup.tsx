@@ -45,13 +45,13 @@ const FeatureTutorialPopup: React.FC<FeatureTutorialPopupProps> = ({ tutorial, o
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <div className="rounded-lg border border-border bg-background/60 p-3">
-                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted mb-1">
                     <MousePointerClick className="w-3 h-3" /> Input manual
                   </div>
                   <p className="text-sm font-medium text-primary leading-relaxed">{tutorial.manualExample}</p>
                 </div>
                 <div className="rounded-lg border border-brand-500/25 bg-brand-500/10 p-3">
-                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-brand-500 mb-1">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-500 mb-1">
                     <Keyboard className="w-3 h-3" /> Contoh input cepat
                   </div>
                   <p className="text-sm font-semibold text-primary leading-relaxed">{tutorial.inputBarExample}</p>

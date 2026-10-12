@@ -350,7 +350,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                 <div className={contentSurface.calendarFrame}>
                     <div className="grid grid-cols-7 border-b border-border bg-background/40">
                         {weekDays.map(day => (
-                            <div key={day} className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+                            <div key={day} className="py-2 text-center text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                                 <span className="sm:hidden">{day.slice(0, 1)}</span>
                                 <span className="hidden sm:inline">{day}</span>
                             </div>
@@ -397,7 +397,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                             aria-pressed={isSelected}
                                             aria-label={`${calendarCopy.selectDate} ${dayObj.date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`}
                                             className={[
-                                                'relative flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[11px] font-bold leading-none transition-colors',
+                                                'relative flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-bold leading-none transition-colors',
                                                 isSelected ? 'text-white' : isToday ? 'bg-primary text-background' : dayObj.isCurrentMonth ? 'text-primary hover:bg-brand-500/10' : 'text-muted/50 hover:bg-brand-500/10',
                                             ].join(' ')}
                                         >
@@ -410,7 +410,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                             <span className="relative z-10">{dayObj.date.getDate()}</span>
                                         </button>
                                         {hiddenCount > 0 && (
-                                            <div className="text-[9px] font-semibold text-muted">
+                                            <div className="text-xs font-semibold text-muted">
                                                 +{hiddenCount}
                                             </div>
                                         )}
@@ -425,7 +425,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                                     setSelectedItem(item);
                                                 }}
                                                 className={[
-                                                    'block w-full min-w-0 rounded-md px-1.5 py-1 lg:px-2 text-left text-[9px] lg:text-[10px] leading-[1.15] transition-colors',
+                                                    'block w-full min-w-0 rounded-md px-1.5 py-1 lg:px-2 text-left text-xs lg:text-xs leading-[1.15] transition-colors',
                                                     item.status === 'done'
                                                         ? 'bg-muted/10 text-muted line-through opacity-70'
                                                         : item.type === ItemType.EVENT
@@ -501,7 +501,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                         className={`flex w-full items-center justify-between gap-3 rounded-lg p-3 text-left ${contentSurface.workspaceListRow}`}
                                     >
                                         <span className="min-w-0">
-                                            <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+                                            <span className="block text-xs font-bold uppercase tracking-[0.16em] text-muted">
                                                 {getItemTypeLabel(item.type, isEnglish)}
                                             </span>
                                             <span className={`mt-1 block truncate text-sm font-semibold ${item.status === 'done' ? 'text-muted line-through' : 'text-primary'}`}>

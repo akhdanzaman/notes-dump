@@ -49,17 +49,17 @@ export default function DesktopCommandBar({ activeTab, language, query, onSearch
   ];
   return <header data-command-bar="true" className="sticky top-0 z-30 -mx-6 hidden h-[76px] items-center justify-between gap-4 border-b border-border bg-background/95 px-6 backdrop-blur-md lg:flex">
     <div className="min-w-0">
-      <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">{en ? 'Personal workspace' : 'Workspace pribadi'}</div>
+      <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted">{en ? 'Personal workspace' : 'Workspace pribadi'}</div>
       <h1 className="truncate text-lg font-semibold tracking-tight">{section.label}</h1>
     </div>
     <div className="flex min-w-0 items-center gap-2">
       {searchable && <label className="flex w-44 items-center gap-2 rounded-lg border border-border bg-surface px-3 xl:w-64">
         <Search className="h-4 w-4 shrink-0 text-muted" />
         <input ref={searchRef} aria-label={en ? 'Search this workspace' : 'Cari di workspace ini'} value={query} onChange={event => onSearch(event.target.value)} placeholder={en ? 'Search…' : 'Cari…'} className="w-full min-w-0 bg-transparent py-2 text-sm outline-none" />
-        {query ? <button type="button" onClick={() => onSearch('')} aria-label={en ? 'Clear search' : 'Hapus pencarian'}><X className="h-3.5 w-3.5" /></button> : <kbd className="shrink-0 text-[10px] text-muted">⌘/Ctrl K</kbd>}
+        {query ? <button type="button" onClick={() => onSearch('')} aria-label={en ? 'Clear search' : 'Hapus pencarian'}><X className="h-3.5 w-3.5" /></button> : <kbd className="shrink-0 text-xs text-muted">⌘/Ctrl K</kbd>}
       </label>}
       {(activeTab === 'money' || activeTab === 'library') && <button type="button" onClick={onFilters} className="rounded-lg border border-border bg-surface p-2 text-muted" aria-label={en ? 'Filters and sorting' : 'Filter dan urutan'} title={en ? 'Filters and sorting' : 'Filter dan urutan'}><SlidersHorizontal className="h-4 w-4" /></button>}
-      <button type="button" onClick={onReview} className="relative rounded-lg p-2 text-muted hover:bg-surface-soft" aria-label={`${en ? 'Review queue' : 'Antrean review'} (${reviewCount})`} title={en ? 'Review queue' : 'Antrean review'}><ClipboardCheck className="h-4 w-4" />{reviewCount > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-accent px-1.5 text-[10px] text-surface">{reviewCount}</span>}</button>
+      <button type="button" onClick={onReview} className="relative rounded-lg p-2 text-muted hover:bg-surface-soft" aria-label={`${en ? 'Review queue' : 'Antrean review'} (${reviewCount})`} title={en ? 'Review queue' : 'Antrean review'}><ClipboardCheck className="h-4 w-4" />{reviewCount > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-accent px-1.5 text-xs text-surface">{reviewCount}</span>}</button>
       <button type="button" onClick={onCapture} className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium"><Sparkles className="h-4 w-4 text-accent" /><span className="hidden xl:inline">{en ? 'Capture / Ask' : 'Catat / Tanya'}</span></button>
       <div ref={menuRef} className="relative">
         <button ref={newButton} type="button" aria-expanded={menuOpen} aria-controls="workspace-create-menu" onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-surface"><Plus className="h-4 w-4" />{en ? 'New' : 'Baru'}</button>

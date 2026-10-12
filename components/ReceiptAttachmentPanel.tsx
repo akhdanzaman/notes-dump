@@ -85,8 +85,8 @@ const ReceiptAttachmentPanel: React.FC<Props> = ({ capture, onChange, compact = 
               {previewUrl ? <Eye className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[11px] font-semibold text-primary">{capture.imageName}</span>
-              <span className="block text-[9px] text-muted">{previewUrl ? 'Lihat gambar nota' : 'Gambar tidak tersedia di perangkat ini'}</span>
+              <span className="block truncate text-xs font-semibold text-primary">{capture.imageName}</span>
+              <span className="block text-xs text-muted">{previewUrl ? 'Lihat gambar nota' : 'Gambar tidak tersedia di perangkat ini'}</span>
             </span>
           </button>
 

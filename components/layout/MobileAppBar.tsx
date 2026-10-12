@@ -40,7 +40,7 @@ const MobileAppBar: React.FC<MobileAppBarProps> = ({
           className="h-9 w-9 shrink-0 rounded-xl bg-zinc-950 ring-1 ring-black/10 dark:ring-white/10"
         />
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-medium text-muted">Arkaiv</p>
+          <p className="truncate text-xs font-medium text-muted">Arkaiv</p>
           <h1 className="truncate text-sm font-semibold tracking-[-0.015em] text-primary">
             {activeItem?.label || copy.workspace}
           </h1>
@@ -58,7 +58,7 @@ const MobileAppBar: React.FC<MobileAppBarProps> = ({
           <CountBadge
             count={reviewCount}
             ariaLabel={`${reviewCount} ${copy.review.toLowerCase()}`}
-            className="absolute right-0.5 top-0.5 min-w-[17px] rounded-full bg-accent px-1 text-center text-[9px] font-bold leading-[17px] text-white"
+            className="absolute right-0.5 top-0.5 min-w-[17px] rounded-full bg-accent px-1 text-center text-xs font-bold leading-[17px] text-white"
           />
         </button>
         <button

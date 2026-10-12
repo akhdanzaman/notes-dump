@@ -99,10 +99,10 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
     <section className={`rounded-lg border border-border bg-background/50 p-3 space-y-3 ${props.className || ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase text-muted font-bold tracking-wider">
+          <div className="text-xs uppercase text-muted font-bold tracking-wider">
             {props.title || 'Rincian item'}
           </div>
-          <div className="text-[10px] text-muted">
+          <div className="text-xs text-muted">
             {props.helpText || 'Total transaksi dihitung otomatis dari seluruh item.'}
           </div>
         </div>
@@ -111,7 +111,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
           <button
             type="button"
             onClick={addItem}
-            className="mt-1 inline-flex items-center gap-1 rounded-xl bg-brand-500/10 px-2.5 py-1.5 text-[10px] font-bold text-brand-500 hover:bg-brand-500/20"
+            className="mt-1 inline-flex items-center gap-1 rounded-xl bg-brand-500/10 px-2.5 py-1.5 text-xs font-bold text-brand-500 hover:bg-brand-500/20"
           >
             <Plus className="h-3 w-3" /> Tambah item
           </button>
@@ -138,7 +138,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
             return (
               <div key={line.id} className="rounded-lg border border-border bg-surface/70 p-2.5 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-5 shrink-0 text-[10px] font-bold text-muted">{index + 1}.</span>
+                  <span className="w-5 shrink-0 text-xs font-bold text-muted">{index + 1}.</span>
                   <input
                     className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
                     value={line.name}
@@ -160,7 +160,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
 
                 <div className={`grid gap-2 ${props.variant === 'transaction' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'}`}>
                   <div>
-                    <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-muted">Jumlah</label>
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted">Jumlah</label>
                     <input
                       className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
                       value={line.quantity || ''}
@@ -171,7 +171,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-muted">Total item</label>
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted">Total item</label>
                     <input
                       type="number"
                       className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
@@ -184,7 +184,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                       placeholder="0"
                     />
                     {derivedUnitPrice !== undefined && (
-                      <div className="mt-1 truncate text-[9px] text-muted">
+                      <div className="mt-1 truncate text-xs text-muted">
                         ≈ {formatCurrencyAmount(derivedUnitPrice, currency)} / unit
                       </div>
                     )}
@@ -193,7 +193,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                   {transaction && (
                     <>
                       <div>
-                        <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-muted">Jenis</label>
+                        <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted">Jenis</label>
                         <select
                           className="w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-primary focus:border-brand-500 focus:outline-none"
                           value={transaction.kind || 'item'}
@@ -213,7 +213,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                         </select>
                       </div>
                       <div>
-                        <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-muted">
+                        <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted">
                           {isAdjustment ? 'Alokasi budget' : 'Kategori budget'}
                         </label>
                         <select

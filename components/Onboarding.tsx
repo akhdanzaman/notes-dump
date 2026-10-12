@@ -481,7 +481,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
           <img src="/icon.svg" alt="Arkaiv" className="h-10 w-10 rounded-xl bg-zinc-950 ring-1 ring-white/10" />
           <div>
             <div className="text-sm font-extrabold tracking-tight text-primary">Arkaiv</div>
-            <div className="text-[11px] font-medium text-muted">Penyiapan awal</div>
+            <div className="text-xs font-medium text-muted">Penyiapan awal</div>
           </div>
         </div>
         <button
@@ -507,7 +507,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-1 items-center justify-center py-6 lg:py-8">
       <div className="absolute left-0 top-1/2 hidden w-64 -translate-y-1/2 rounded-xl border border-border/80 bg-surface/75 p-3 shadow-sm backdrop-blur-xl lg:block">
-        <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Tahapan penyiapan</div>
+        <div className="px-2 pb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">Tahapan penyiapan</div>
         <div className="space-y-2">
           {STEPS.map((step, i) => (
             <div
@@ -528,8 +528,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onTestParsing }) =>
 
       <div className="flex min-h-[460px] w-full max-w-2xl flex-col justify-center rounded-xl border border-border/80 bg-surface/72 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:max-w-3xl lg:p-10">
         <div className="mb-6 flex items-center justify-between lg:hidden">
-          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">{STEPS[currentStep].title}</span>
-          <span className="rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-bold text-brand-500">{currentStep + 1}/{STEPS.length}</span>
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{STEPS[currentStep].title}</span>
+          <span className="rounded-full bg-brand-500/10 px-2.5 py-1 text-xs font-bold text-brand-500">{currentStep + 1}/{STEPS.length}</span>
         </div>
         <AnimatePresence mode="wait">
           <div key={currentStep} className="w-full">

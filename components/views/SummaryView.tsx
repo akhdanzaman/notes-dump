@@ -961,7 +961,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 className="grid overflow-hidden"
               >
                 <div className="min-h-0 overflow-hidden rounded-lg border border-border bg-background/70 p-3 space-y-3 lg:p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted">
                     Edit subtasks
                   </div>
                   {renderSubtaskDraftEditor(
@@ -1111,12 +1111,12 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 {hasDeepWorkDetails && (
                   <div className="flex items-center gap-2 text-purple-500">
                     <Sparkles className="w-4 h-4" />
-                    <div className="text-[10px] font-bold uppercase tracking-wider">
+                    <div className="text-xs font-bold uppercase tracking-wider">
                       Deep Work Transformer
                     </div>
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-[11px] font-bold text-muted">
+                <div className="flex items-center gap-2 text-xs font-bold text-muted">
                   <span>
                     {doneCount}/{totalSteps} steps
                   </span>
@@ -1164,7 +1164,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               )}
 
               <div className="space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted">
                   {isEditSubtasksExpanded ? "Edit subtasks" : "Optional subtasks"}
                 </div>
                 {isEditSubtasksExpanded ? (
@@ -1620,7 +1620,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
   const dashboardSectionTitle =
     "text-sm font-semibold tracking-tight text-primary";
   const dashboardKicker =
-    "text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300";
+    "text-xs font-bold uppercase tracking-[0.16em] text-brand-600 dark:text-brand-300";
   const dashboardMuted = "text-slate-500 dark:text-zinc-400";
   const dashboardScrollbarClass = [
     "[scrollbar-width:thin]",
@@ -1957,7 +1957,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
       </div>
       <div className="metric-strip" data-finance-surface="hero">
         {metrics.map(metric => <div key={metric.label}>
-          <p className="text-[11px] font-medium text-muted">{metric.label}</p>
+          <p className="text-xs font-medium text-muted">{metric.label}</p>
           <div className="mt-2 truncate text-xl font-semibold tracking-tight" data-financial-amount="true">
             <AnimatedNumber value={metric.value} formatter={fmt} hidden={hideSensitiveMoney} hiddenLabel="••••••" ariaLabel={metric.label} />
           </div>
@@ -1967,24 +1967,24 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         <div className="rounded-xl border border-border bg-surface p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">{homeCopy.cashFlowPulse}</h3>
-            <span className="text-[10px] text-muted">{expenseChangePercent === null ? homeCopy.noComparison : `${expenseChangePercent >= 0 ? "Naik" : "Turun"} ${Math.abs(expenseChangePercent).toFixed(0)}% vs periode lalu`}</span>
+            <span className="text-xs text-muted">{expenseChangePercent === null ? homeCopy.noComparison : `${expenseChangePercent >= 0 ? "Naik" : "Turun"} ${Math.abs(expenseChangePercent).toFixed(0)}% vs periode lalu`}</span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {cashMetrics.map(metric => <div key={metric.label}><p className="text-[11px] text-muted">{metric.label}</p><div className="mt-1 truncate text-sm font-semibold" data-financial-amount="true" data-finance-status={metric.tone}>
+            {cashMetrics.map(metric => <div key={metric.label}><p className="text-xs text-muted">{metric.label}</p><div className="mt-1 truncate text-sm font-semibold" data-financial-amount="true" data-finance-status={metric.tone}>
               <AnimatedNumber value={metric.value} formatter={fmt} hidden={hideSensitiveMoney} hiddenLabel="••••" ariaLabel={metric.label} />
             </div></div>)}
           </div>
           <div className="mt-4 border-t border-border pt-3">
-            <div className="mb-2 flex justify-between gap-3 text-[11px] text-muted"><span>{homeCopy.actual} / {homeCopy.planned}</span><span data-finance-status={budgetHealth.tone}>{budgetHealth.label}</span></div>
+            <div className="mb-2 flex justify-between gap-3 text-xs text-muted"><span>{homeCopy.actual} / {homeCopy.planned}</span><span data-finance-status={budgetHealth.tone}>{budgetHealth.label}</span></div>
             <div className="flex h-2 overflow-hidden rounded-full bg-surface-soft" role="img" aria-label={`Budget terpakai ${actualPercent.toFixed(0)} persen, rencana ${plannedPercent.toFixed(0)} persen`}>
               <motion.div initial={false} animate={{width: `${actualPercent}%`}} className="h-full bg-brand-500" />
               <motion.div initial={false} animate={{width: `${Math.min(plannedPercent, Math.max(0, 100 - actualPercent))}%`}} data-planned-fill="true" className="h-full bg-amber-200 text-amber-600" />
             </div>
-            <p className="mt-2 text-[10px] leading-relaxed text-muted">{budgetHealth.detail}. Perkiraan memakai budget aktual dan transaksi terencana.</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted">{budgetHealth.detail}. Perkiraan memakai budget aktual dan transaksi terencana.</p>
           </div>
         </div>
         <div className="flex flex-col justify-between gap-4 rounded-xl bg-[#3c3d3a] p-4 text-white">
-          <div><p className="text-[10px] uppercase tracking-wider text-white/60">{activePeriodLabel}</p><p className="mt-2 text-sm font-medium">{homeCopy.source}</p></div>
+          <div><p className="text-xs uppercase tracking-wider text-white/60">{activePeriodLabel}</p><p className="mt-2 text-sm font-medium">{homeCopy.source}</p></div>
           <button type="button" onClick={handleOpenAddExpense} className="flex items-center justify-center gap-2 rounded-lg bg-brand-400 px-3 py-2 text-xs font-semibold text-[#234123]"><Plus className="h-4 w-4" />{homeCopy.record}</button>
         </div>
       </div>
@@ -2004,7 +2004,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
                   Arkaiv Copilot · insight utama
                 </div>
                 <h2 id="home-copilot-title" className="mt-1 text-lg font-semibold tracking-tight">
@@ -2024,7 +2024,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
               {visiblePrimaryFinanceInsight.reason}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <span className="text-[10px] font-medium text-muted">
+              <span className="text-xs font-medium text-muted">
                 Sumber: dompet, transaksi, dan budget · {activePeriodLabel}
               </span>
               <button
@@ -2082,7 +2082,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   <span className="block truncate text-sm font-semibold">
                     {account.counterparty}
                   </span>
-                  <span className="mt-0.5 block text-[11px] text-muted">
+                  <span className="mt-0.5 block text-xs text-muted">
                     {account.direction === "payable"
                       ? "Uang yang kamu pinjam"
                       : "Uang yang kamu pinjamkan"}
@@ -2109,7 +2109,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{item.content}</span>
-                  <span className="mt-0.5 block text-[11px] text-muted">Pengeluaran terencana</span>
+                  <span className="mt-0.5 block text-xs text-muted">Pengeluaran terencana</span>
                 </span>
                 <span data-financial-amount="true" className="shrink-0 text-xs font-semibold">
                   {!hideSensitiveMoney ? fmt(item.meta.amount || 0) : "••••"}
@@ -2215,7 +2215,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                   <span className="block truncate text-sm font-semibold">
                     {item.meta.merchant || item.content}
                   </span>
-                  <span className="mt-0.5 block truncate text-[11px] text-muted">
+                  <span className="mt-0.5 block truncate text-xs text-muted">
                     {typeLabel} · {category}
                   </span>
                 </span>
@@ -2229,7 +2229,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                       ? `${isIncome ? "+" : isTransfer ? "" : "−"}${fmt(item.meta.amount || 0)}`
                       : "••••"}
                   </span>
-                  <span className="mt-0.5 block text-[10px] text-muted">
+                  <span className="mt-0.5 block text-xs text-muted">
                     {Number.isNaN(transactionDate.getTime())
                       ? ""
                       : transactionDate.toLocaleDateString("id-ID", {
@@ -2330,10 +2330,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({
           className="rounded-full bg-blue-50 px-3 py-2 text-center text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15"
           aria-label={`Edit tema ${themeMonthYearLabel}`}
         >
-          <span className="block text-[10px] font-black uppercase tracking-[0.16em]">
+          <span className="block text-xs font-black uppercase tracking-[0.16em]">
             Tema
           </span>
-          <span className="mt-0.5 block text-[10px] font-bold normal-case tracking-normal">
+          <span className="mt-0.5 block text-xs font-bold normal-case tracking-normal">
             {themeMonthYearLabel}
           </span>
         </button>
@@ -2519,7 +2519,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     </div>
                   )}
                   <div
-                    className={`mt-1 truncate text-[11px] font-semibold ${dashboardMuted}`}
+                    className={`mt-1 truncate text-xs font-semibold ${dashboardMuted}`}
                   >
                     {goal.caption}
                   </div>

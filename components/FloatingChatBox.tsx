@@ -89,7 +89,7 @@ const FloatingChatBox: React.FC<FloatingChatBoxProps> = ({ isOpen, onClose, item
                             </span>
                             <div className="min-w-0">
                                 <div className="truncate text-sm font-bold text-primary">Asisten Arkaiv</div>
-                                <div className="truncate text-[10px] font-medium text-muted">Jawaban berdasarkan data workspace Anda</div>
+                                <div className="truncate text-xs font-medium text-muted">Jawaban berdasarkan data workspace Anda</div>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">

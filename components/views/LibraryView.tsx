@@ -627,7 +627,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         ) : (
                                             <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-muted bg-brand-500/5">
                                                 <Target className="w-9 h-9 text-brand-500" />
-                                                <span className="text-[10px] font-semibold text-muted">{libraryCopy.noImage}</span>
+                                                <span className="text-xs font-semibold text-muted">{libraryCopy.noImage}</span>
                                             </div>
                                         )}
                                     </div>
@@ -646,9 +646,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         </div>
 
                                         <div className="flex flex-wrap gap-2 mt-3">
-                                            <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-bold text-muted">{libraryCopy.skills}</span>
+                                            <span className="px-3 py-1 rounded-full bg-background border border-border text-xs font-bold text-muted">{libraryCopy.skills}</span>
                                             {skill.schedule?.enabled && (
-                                                <span className="px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-[10px] font-bold text-brand-500 capitalize">
+                                                <span className="px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-xs font-bold text-brand-500 capitalize">
                                                     {skill.schedule.interval}
                                                 </span>
                                             )}
@@ -673,8 +673,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                                 />
                                             </div>
                                             <div className="flex justify-between items-center mt-2 gap-3">
-                                                <span className="text-[10px] font-semibold text-muted">{progress.toFixed(0)}% {libraryCopy.weeklyProgress}</span>
-                                                <span className="text-[10px] font-medium text-muted flex items-center gap-1 whitespace-nowrap">
+                                                <span className="text-xs font-semibold text-muted">{progress.toFixed(0)}% {libraryCopy.weeklyProgress}</span>
+                                                <span className="text-xs font-medium text-muted flex items-center gap-1 whitespace-nowrap">
                                                     <Target className="w-3 h-3" />
                                                     {libraryCopy.target}: {target || 0}m/{libraryCopy.perWeek}
                                                 </span>
@@ -734,7 +734,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                             const isToday = day.toDateString() === new Date().toDateString();
                             return (
                                 <div key={day.toISOString()} className={`${dayVisibilityClass(index)} rounded-lg p-2 text-center border min-w-0 ${isToday ? 'border-brand-500 bg-brand-500/10' : 'border-border bg-background'}`}>
-                                    <div className="text-[10px] text-muted font-bold truncate">{day.toLocaleDateString(locale, { weekday: 'short' })}</div>
+                                    <div className="text-xs text-muted font-bold truncate">{day.toLocaleDateString(locale, { weekday: 'short' })}</div>
                                     <div className="text-sm font-bold text-primary">{day.getDate()}</div>
                                     {hasSchedule && <div className="mx-auto mt-1 w-1.5 h-1.5 rounded-full bg-brand-500" />}
                                 </div>
@@ -776,7 +776,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                         <div className="min-w-0">
                                             <div className="flex items-center justify-between gap-2 min-w-0">
                                                 <h4 className="text-sm font-bold text-primary truncate">{skill.name}</h4>
-                                                <span className={`shrink-0 px-2 py-0.5 rounded-full border text-[10px] font-bold ${statusMeta.className}`}>
+                                                <span className={`shrink-0 px-2 py-0.5 rounded-full border text-xs font-bold ${statusMeta.className}`}>
                                                     {statusMeta.label}
                                                 </span>
                                             </div>
@@ -890,7 +890,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                 <div className="mt-5 grid grid-cols-2 gap-2" aria-label={activeLibraryHeader.title}>
                                     {activeLibraryHeader.metrics.map(metric => (
                                         <div key={metric.label} className={contentSurface.workspaceMetric}>
-                                            <div className="text-[11px] font-medium text-muted">{metric.label}</div>
+                                            <div className="text-xs font-medium text-muted">{metric.label}</div>
                                             <div className="mt-0.5 text-lg font-semibold tabular-nums text-primary">{metric.value}</div>
                                         </div>
                                     ))}

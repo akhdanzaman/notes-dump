@@ -196,7 +196,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                             setInterval(int);
                                             updateDateFromSchedule(int, daysOfWeek, daysOfMonth, monthsOfYear);
                                         }}
-                                        className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
+                                        className={`py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${interval === int ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-muted hover:text-primary hover:bg-muted/10'}`}
                                     >
                                         {int}
                                     </button>
@@ -229,7 +229,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                             <button
                                                 key={day}
                                                 onClick={() => toggleDayOfMonth(day)}
-                                                className={`w-full aspect-square rounded-md flex items-center justify-center text-[10px] font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-brand-600 border-brand-500 text-white shadow-sm')}`}
+                                                className={`w-full aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-brand-600 border-brand-500 text-white shadow-sm')}`}
                                             >
                                                 {day}
                                             </button>
@@ -247,7 +247,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                             <button
                                                 key={month.value}
                                                 onClick={() => toggleMonthOfYear(month.value)}
-                                                className={`py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${addItemModal.choiceButton(monthsOfYear.includes(month.value))}`}
+                                                className={`py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border ${addItemModal.choiceButton(monthsOfYear.includes(month.value))}`}
                                             >
                                                 {month.label}
                                             </button>
@@ -277,7 +277,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                                         <button
                                             key={p}
                                             onClick={() => setPriority(p)}
-                                            className={`py-3 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all ${
+                                            className={`py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
                                                 priority === p
                                                     ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
                                                     : 'bg-background border border-border text-muted hover:border-brand-500/50'

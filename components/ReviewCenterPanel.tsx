@@ -98,45 +98,45 @@ const ParsingResultDetails: React.FC<{ result: ParserResultV2; index?: number }>
   return (
     <div className="space-y-2 rounded-lg bg-background/65 p-3 ring-1 ring-inset ring-border/60">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-bold uppercase tracking-wide">
+        <span className="text-xs px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 border border-brand-500/20 font-bold uppercase tracking-wide">
           {result.batchItem ? `Item ${result.batchItem.index + 1}` : `${index + 1}.`} {parserActionDestination(result)}
         </span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted capitalize">
+        <span className="text-xs px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted capitalize">
           {result.action.replace(/_/g, ' ')}
         </span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted capitalize">
+        <span className="text-xs px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted capitalize">
           {result.entityType}
         </span>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${confidenceColor}`}>
+        <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${confidenceColor}`}>
           {CONFIDENCE_LABELS[result.confidence]}
         </span>
       </div>
 
       {result.batchItem && (
         <div className="rounded-md bg-brand-500/5 border border-brand-500/15 px-2 py-1.5">
-          <div className="text-[10px] font-semibold text-brand-600">Sumber input</div>
-          <div className="text-[11px] text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
+          <div className="text-xs font-semibold text-brand-600">Sumber input</div>
+          <div className="text-xs text-primary font-medium leading-snug">{result.batchItem.sourceText}</div>
         </div>
       )}
 
       <div className="rounded-md bg-emerald-500/5 border border-emerald-500/15 px-2 py-1.5">
-        <div className="text-[10px] font-semibold text-emerald-600">Ringkasan hasil</div>
-        <div className="text-[11px] text-primary font-medium leading-snug">{summary.title}</div>
+        <div className="text-xs font-semibold text-emerald-600">Ringkasan hasil</div>
+        <div className="text-xs text-primary font-medium leading-snug">{summary.title}</div>
       </div>
 
       {attrs.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {attrs.slice(0, 14).map(([key, value]) => (
             <div key={`${key}-${value}`} className="min-w-0 rounded-md bg-surface/70 border border-border px-2 py-1">
-              <div className="text-[9px] uppercase tracking-wide text-muted font-bold truncate">{key}</div>
-              <div className="text-[11px] text-primary font-medium truncate" title={value}>{value}</div>
+              <div className="text-xs uppercase tracking-wide text-muted font-bold truncate">{key}</div>
+              <div className="text-xs text-primary font-medium truncate" title={value}>{value}</div>
             </div>
           ))}
         </div>
       )}
 
       {result.reviewReason && (
-        <p className="text-[10px] text-amber-500 leading-tight">{result.reviewReason}</p>
+        <p className="text-xs text-amber-500 leading-tight">{result.reviewReason}</p>
       )}
     </div>
   );
@@ -206,7 +206,7 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                       {hideMoney ? `Nota ${index + 1}` : task.imageName}
                     </div>
                     {task.context && (
-                      <div className="mt-0.5 truncate text-[11px] text-muted" title={hideMoney ? undefined : task.context}>
+                      <div className="mt-0.5 truncate text-xs text-muted" title={hideMoney ? undefined : task.context}>
                         {hideMoney ? 'Detail disembunyikan oleh mode privasi' : task.context}
                       </div>
                     )}
@@ -374,13 +374,13 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
               </div>
 
               {task.status === 'success' && batchSummary && (
-                <div className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-2 text-[11px] text-brand-600">
+                <div className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-2 text-xs text-brand-600">
                   {batchSummary}
                 </div>
               )}
 
               {task.status === 'success' && duplicateSummary && !hideMoney && (
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] text-amber-600">
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-600">
                   {duplicateSummary}
                 </div>
               )}
@@ -437,13 +437,13 @@ const ReviewCenterPanel: React.FC<ReviewCenterPanelProps> = ({
                 )}
               </div>
               {task.appliedFields && task.appliedFields.length > 0 && (
-                <p className="text-[11px] text-muted">Diterapkan: {task.appliedFields.join(', ')}</p>
+                <p className="text-xs text-muted">Diterapkan: {task.appliedFields.join(', ')}</p>
               )}
               {!!task.reviewCount && (
-                <p className="text-[11px] text-amber-600">{task.reviewCount} saran yang perlu dicek dipindahkan ke pusat tinjauan.</p>
+                <p className="text-xs text-amber-600">{task.reviewCount} saran yang perlu dicek dipindahkan ke pusat tinjauan.</p>
               )}
               {task.error && (
-                <p className="text-[11px] text-red-500" role="alert">
+                <p className="text-xs text-red-500" role="alert">
                   {hideMoney ? 'Detail kegagalan disembunyikan oleh mode privasi.' : task.error}
                 </p>
               )}

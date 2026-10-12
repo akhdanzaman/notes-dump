@@ -312,7 +312,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
         return (
             <details className="group relative">
-                <summary className="cursor-pointer list-none rounded-md px-1.5 py-1 text-[10px] font-semibold text-muted hover:bg-surface focus-visible:outline-none">
+                <summary className="cursor-pointer list-none rounded-md px-1.5 py-1 text-xs font-semibold text-muted hover:bg-surface focus-visible:outline-none">
                     Detail
                 </summary>
                 <div className="absolute right-0 top-full z-20 mt-1 w-64 rounded-xl border border-border bg-surface-raised p-3 text-left text-xs font-normal leading-relaxed text-muted shadow-lg">
@@ -912,7 +912,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider ml-1">Instruksi sistem</h3>
                                                     <button
                                                         onClick={() => setPrompt(DEFAULT_PROMPT)}
-                                                        className="text-[10px] text-acc-todo hover:underline disabled:opacity-50"
+                                                        className="text-xs text-acc-todo hover:underline disabled:opacity-50"
                                                         disabled={prompt === DEFAULT_PROMPT}
                                                     >
                                                         Pulihkan bawaan
@@ -1050,7 +1050,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                             <section className={contentSurface.desktopSettingsWide}>
                                                 <div className="mb-3 flex items-center justify-between">
                                                     <h3 className="ml-1 text-xs font-bold uppercase tracking-wider text-muted">Instruksi parser</h3>
-                                                    <button type="button" onClick={() => setPrompt(DEFAULT_PROMPT)} disabled={prompt === DEFAULT_PROMPT} className="text-[10px] font-bold text-brand-500 disabled:opacity-40">Pulihkan bawaan</button>
+                                                    <button type="button" onClick={() => setPrompt(DEFAULT_PROMPT)} disabled={prompt === DEFAULT_PROMPT} className="text-xs font-bold text-brand-500 disabled:opacity-40">Pulihkan bawaan</button>
                                                 </div>
                                                 <textarea
                                                     className="h-72 w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-xs text-primary focus:border-brand-500 focus:outline-none"
@@ -1068,13 +1068,13 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <div className="text-sm font-bold text-primary">Aktivitas terbaru</div>
                                                             <div className="text-xs text-muted">Ringkasan performa parsing, bukan pengaturan harian.</div>
                                                         </div>
-                                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${parserHealthToneClass}`}>{parserHealthToneLabel}</span>
+                                                        <span className={`rounded-full border px-2 py-1 text-xs font-bold uppercase ${parserHealthToneClass}`}>{parserHealthToneLabel}</span>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.fastPathRate}%</div><div className="text-[10px] text-muted">jalur cepat</div></div>
-                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.aiCallCount}</div><div className="text-[10px] text-muted">panggilan AI</div></div>
-                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.averageLatencyMs === null ? '—' : `${parserHealth.averageLatencyMs}ms`}</div><div className="text-[10px] text-muted">latensi rata-rata</div></div>
-                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.reviewRate}%</div><div className="text-[10px] text-muted">perlu ditinjau</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.fastPathRate}%</div><div className="text-xs text-muted">jalur cepat</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.aiCallCount}</div><div className="text-xs text-muted">panggilan AI</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.averageLatencyMs === null ? '—' : `${parserHealth.averageLatencyMs}ms`}</div><div className="text-xs text-muted">latensi rata-rata</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{parserHealth.reviewRate}%</div><div className="text-xs text-muted">perlu ditinjau</div></div>
                                                     </div>
                                                 </div>
                                             </section>
@@ -1083,8 +1083,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                 <h3 className="mb-3 ml-1 text-xs font-bold uppercase tracking-wider text-muted">Kualitas data</h3>
                                                 <div className="space-y-3 rounded-lg border border-border bg-background p-4">
                                                     <div className="grid grid-cols-2 gap-2 text-center">
-                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{canonicalizedItemCount}</div><div className="text-[10px] text-muted">catatan dinormalisasi</div></div>
-                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{canonicalRuleStats.activeLearned}</div><div className="text-[10px] text-muted">aturan aktif</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{canonicalizedItemCount}</div><div className="text-xs text-muted">catatan dinormalisasi</div></div>
+                                                        <div className="rounded-xl bg-surface p-3"><div className="text-lg font-black text-primary">{canonicalRuleStats.activeLearned}</div><div className="text-xs text-muted">aturan aktif</div></div>
                                                     </div>
                                                     {onRunCanonicalBackfill && (
                                                         <button
@@ -1384,7 +1384,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <div className="min-w-0 flex-1">
                                                                 <div className="flex flex-wrap items-center gap-2">
                                                                     <div className="font-medium text-primary text-sm">Kesehatan parser</div>
-                                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide ${parserHealthToneClass}`}>
+                                                                    <span className={`text-xs px-2 py-0.5 rounded-full border uppercase tracking-wide ${parserHealthToneClass}`}>
                                                                         {parserHealthToneLabel}
                                                                     </span>
                                                                 </div>
@@ -1395,24 +1395,24 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </div>
                                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                                             <div className="bg-surface border border-border rounded-xl p-3">
-                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Jalur cepat</div>
+                                                                <div className="text-xs text-muted uppercase tracking-wide">Jalur cepat</div>
                                                                 <div className="text-lg font-bold text-emerald-500">{parserHealth.fastPathRate}%</div>
-                                                                <div className="text-[10px] text-muted">{parserHealth.localSavedUnits} penyimpanan lokal</div>
+                                                                <div className="text-xs text-muted">{parserHealth.localSavedUnits} penyimpanan lokal</div>
                                                             </div>
                                                             <div className="bg-surface border border-border rounded-xl p-3">
-                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Cadangan AI</div>
+                                                                <div className="text-xs text-muted uppercase tracking-wide">Cadangan AI</div>
                                                                 <div className="text-lg font-bold text-primary">{parserHealth.aiCallCount}</div>
-                                                                <div className="text-[10px] text-muted">{parserHealth.aiFallbackUnits} catatan dialihkan</div>
+                                                                <div className="text-xs text-muted">{parserHealth.aiFallbackUnits} catatan dialihkan</div>
                                                             </div>
                                                             <div className="bg-surface border border-border rounded-xl p-3">
-                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Latensi rata-rata</div>
+                                                                <div className="text-xs text-muted uppercase tracking-wide">Latensi rata-rata</div>
                                                                 <div className="text-lg font-bold text-primary">{parserHealth.averageLatencyMs === null ? '—' : `${parserHealth.averageLatencyMs}ms`}</div>
-                                                                <div className="text-[10px] text-muted">tugas parser selesai</div>
+                                                                <div className="text-xs text-muted">tugas parser selesai</div>
                                                             </div>
                                                             <div className="bg-surface border border-border rounded-xl p-3">
-                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Tingkat tinjauan</div>
+                                                                <div className="text-xs text-muted uppercase tracking-wide">Tingkat tinjauan</div>
                                                                 <div className="text-lg font-bold text-amber-500">{parserHealth.reviewRate}%</div>
-                                                                <div className="text-[10px] text-muted">{parserHealth.reviewUnits} unit tinjauan</div>
+                                                                <div className="text-xs text-muted">{parserHealth.reviewUnits} unit tinjauan</div>
                                                             </div>
                                                         </div>
                                                         {parserHealth.warnings.length > 0 ? (
@@ -1445,52 +1445,52 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </div>
                                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                                             <div className="bg-surface border border-border rounded-xl p-3">
-                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Dinormalisasi</div>
+                                                                <div className="text-xs text-muted uppercase tracking-wide">Dinormalisasi</div>
                                                                 <div className="text-lg font-bold text-primary">{canonicalizedItemCount}</div>
-                                                                <div className="text-[10px] text-muted">catatan</div>
+                                                                <div className="text-xs text-muted">catatan</div>
                                                             </div>
                                                             <div className="bg-surface border border-border rounded-xl p-3">
-                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Dipelajari</div>
+                                                                <div className="text-xs text-muted uppercase tracking-wide">Dipelajari</div>
                                                                 <div className="text-lg font-bold text-primary">{canonicalRuleStats.activeLearned}</div>
-                                                                <div className="text-[10px] text-muted">aturan aktif</div>
+                                                                <div className="text-xs text-muted">aturan aktif</div>
                                                             </div>
                                                             <div className="bg-surface border border-border rounded-xl p-3">
-                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Tinjauan</div>
+                                                                <div className="text-xs text-muted uppercase tracking-wide">Tinjauan</div>
                                                                 <div className="text-lg font-bold text-amber-500">{pendingCanonicalSuggestionCount}</div>
-                                                                <div className="text-[10px] text-muted">saran</div>
+                                                                <div className="text-xs text-muted">saran</div>
                                                             </div>
                                                             <div className="bg-surface border border-border rounded-xl p-3">
-                                                                <div className="text-[10px] text-muted uppercase tracking-wide">Batas pengaman</div>
+                                                                <div className="text-xs text-muted uppercase tracking-wide">Batas pengaman</div>
                                                                 <div className="text-lg font-bold text-primary">{canonicalRuleStats.rejected}</div>
-                                                                <div className="text-[10px] text-muted">aturan ditolak</div>
+                                                                <div className="text-xs text-muted">aturan ditolak</div>
                                                             </div>
                                                         </div>
                                                         {(canonicalRuleStats.disabled > 0 || canonicalRuleStats.learned > canonicalRuleStats.activeLearned) && (
-                                                            <div className="text-[10px] text-muted bg-surface border border-border rounded-xl p-2">
+                                                            <div className="text-xs text-muted bg-surface border border-border rounded-xl p-2">
                                                                 {canonicalRuleStats.disabled} aturan dinonaktifkan; {canonicalRuleStats.learned - canonicalRuleStats.activeLearned} aturan belum diterapkan otomatis.
                                                             </div>
                                                         )}
                                                         {learnedCanonicalRules.length > 0 && (
                                                             <div className="space-y-2">
-                                                                <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Aturan terbaru yang dipelajari</div>
+                                                                <div className="text-xs font-bold text-muted uppercase tracking-wider">Aturan terbaru yang dipelajari</div>
                                                                 {learnedCanonicalRules.map(rule => (
                                                                     <div key={rule.id} className="bg-surface border border-border rounded-xl p-3 flex items-start justify-between gap-3">
                                                                         <div className="min-w-0">
                                                                             <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-background border border-border text-muted uppercase">{rule.field}</span>
-                                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${rule.disabled ? 'bg-red-500/10 text-red-500 border-red-500/20' : rule.autoApplyDisabled ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                                                                                <span className="text-xs px-1.5 py-0.5 rounded bg-background border border-border text-muted uppercase">{rule.field}</span>
+                                                                                <span className={`text-xs px-1.5 py-0.5 rounded border ${rule.disabled ? 'bg-red-500/10 text-red-500 border-red-500/20' : rule.autoApplyDisabled ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
                                                                                     {rule.disabled ? 'nonaktif' : rule.autoApplyDisabled ? 'tinjau saja' : 'terapkan otomatis'}
                                                                                 </span>
                                                                             </div>
                                                                             <div className="text-xs font-semibold text-primary truncate">{rule.aliases.slice(0, 2).join(', ') || '—'} → {rule.canonicalValue}</div>
-                                                                            <div className="text-[10px] text-muted mt-1">
+                                                                            <div className="text-xs text-muted mt-1">
                                                                                 {rule.approvalCount} persetujuan, {rule.rejectionCount} penolakan{rule.disabledReason ? ` • ${rule.disabledReason}` : ''}
                                                                             </div>
                                                                         </div>
                                                                         {onToggleCanonicalRuleDisabled && (
                                                                             <button
                                                                                 onClick={() => onToggleCanonicalRuleDisabled(rule.id)}
-                                                                                className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-colors ${rule.disabled ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20'}`}
+                                                                                className={`shrink-0 px-2 py-1 rounded-lg text-xs font-semibold border transition-colors ${rule.disabled ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20'}`}
                                                                             >
                                                                                 {rule.disabled ? 'Aktifkan' : 'Nonaktifkan'}
                                                                             </button>
@@ -1606,7 +1606,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             <div className="text-xs text-red-500/70 mt-1">
                                                                 Semua catatan, dompet, dan pengaturan akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
                                                             </div>
-                                                            <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-red-500/70">
+                                                            <div className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-red-500/70">
                                                                 Tindakan sensitif dengan konfirmasi
                                                             </div>
                                                         </div>
@@ -1668,7 +1668,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                     <p className="text-xs text-muted mt-1 leading-relaxed">
                                                                         Sinkronisasi spreadsheet memakai akun layanan di server. Login Google tetap terpisah untuk sinkronisasi Kalender dan cadangan profil.
                                                                     </p>
-                                                                    <div className="mt-2 text-[11px] font-mono text-muted break-all">
+                                                                    <div className="mt-2 text-xs font-mono text-muted break-all">
                                                                         {spreadsheetConfig.serviceAccountEmail || SERVICE_ACCOUNT_EMAIL}
                                                                     </div>
                                                                 </div>
@@ -1819,7 +1819,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                             onChange={(e) => setGCalId(e.target.value)}
                                                             placeholder="ID Kalender (mis. primary atau email)"
                                                         />
-                                                        <div className="text-[11px] text-muted leading-relaxed">
+                                                        <div className="text-xs text-muted leading-relaxed">
                                                             Menggunakan akses OAuth akun Google yang terhubung, bukan kunci API terpisah. Gunakan <span className="font-mono text-primary">primary</span> untuk kalender bawaan.
                                                         </div>
                                                         {calendarSyncError && (
@@ -1862,7 +1862,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                                 <div className="font-bold text-primary flex items-center gap-2">
                                                                     {entry.version}
                                                                     {entry.version === LATEST_CHANGELOG_VERSION && (
-                                                                        <span className="text-[10px] uppercase tracking-wider bg-brand-500/10 text-brand-500 px-2 py-0.5 rounded-full">Baru</span>
+                                                                        <span className="text-xs uppercase tracking-wider bg-brand-500/10 text-brand-500 px-2 py-0.5 rounded-full">Baru</span>
                                                                     )}
                                                                 </div>
                                                                 <div className="text-xs text-muted">{entry.date}</div>
