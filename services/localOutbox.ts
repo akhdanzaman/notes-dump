@@ -27,7 +27,7 @@ function open() {
     opening.onsuccess = () => { opening.result.onversionchange = () => { opening.result.close(); connection = undefined; }; resolve(opening.result); };
     opening.onerror = () => { connection = undefined; reject(opening.error); };
     opening.onblocked = () => reject(new Error('Close older app tabs to upgrade local storage'));
-  });
+  }).catch(error => { connection = undefined; throw error; });
   return connection;
 }
 export function localScope(spreadsheetId?: string) { return spreadsheetId || 'unconnected'; }
@@ -129,7 +129,7 @@ export function reconstructBaseline(data: DbSchema, operations: LocalMutation[])
 export async function persistDraft(scope: string, draftId: string, text: string) { const db = await open(); const transaction = db.transaction('drafts', 'readwrite'); const done = completion(transaction); transaction.objectStore('drafts').put({ id: draftId, scope, text, createdAt: Date.now() }); await done; }
 export async function readDrafts(scope: string): Promise<DraftRecord[]> { const db = await open(); return request(db.transaction('drafts').objectStore('drafts').index('scope').getAll(scope)); }
 export async function removeDraft(draftId: string) { const db = await open(); const transaction = db.transaction('drafts', 'readwrite'); const done = completion(transaction); transaction.objectStore('drafts').delete(draftId); await done; }
-export function closeLocalStore() { void connection?.then(db => db.close()); connection = undefined; device = ''; }
+export function closeLocalStore() { void connection?.then(db => db.close(), () => {}); connection = undefined; device = ''; }
 
 /** Review replaces conflict IDs with new operations, atomically with the rebased local state. */
 export async function resolveLocalConflicts(scope: string, remote: DbSchema, preferLocal: boolean, entityId?: string, choices: Record<string, 'local' | 'remote'> = {}) {

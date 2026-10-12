@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AnimatePresence,
@@ -89,6 +89,9 @@ const PresencePanel: React.FC<PresencePanelProps> = ({
     if (saving || panelRef.current?.querySelector('[data-editor-saving="true"]')) return;
     if (protectDraft && (hasDraft || dirtyRef.current || panelRef.current?.querySelector('[data-editor-dirty="true"]'))) setConfirmClose(true); else onClose();
   };
+  const closeRef = useRef(requestClose); closeRef.current = requestClose;
+  useEffect(() => { if (!isOpen) return; const back = (event: Event) => { if (panelRef.current === panelStack.at(-1)) { event.preventDefault(); closeRef.current(); } }; window.addEventListener("arkaiv-panel-back", back); return () => window.removeEventListener("arkaiv-panel-back", back); }, [isOpen]);
+  useLayoutEffect(() => { if (panelRef.current) panelRef.current.style.visibility = isOpen ? 'visible' : 'hidden'; }, [isOpen]);
   const markDirty = () => { dirtyRef.current = true; onDraftChange?.(); };
 
   useEffect(() => {
@@ -222,7 +225,7 @@ const PresencePanel: React.FC<PresencePanelProps> = ({
               if (!target) return;
               if (target.hasAttribute('data-editor-close') || /^(Tutup|Close)\b/.test(target.getAttribute('aria-label') || '') || /^(Batal|Cancel)$/.test(target.textContent?.trim() || '')) {
                 event.preventDefault(); event.stopPropagation(); requestClose();
-              } else if (target.hasAttribute('aria-pressed') && !target.closest('[role=alertdialog]')) markDirty();
+              } else if ((target.hasAttribute('aria-pressed') || target.hasAttribute('data-draft-change')) && !target.closest('[role=alertdialog]')) markDirty();
             }}
             onMouseDown={(event) => {
               event.stopPropagation();

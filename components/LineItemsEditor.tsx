@@ -110,7 +110,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
           <div className="text-xs font-bold text-primary">{formatCurrencyAmount(total, currency)}</div>
           <button
             type="button"
-            onClick={addItem}
+            data-draft-change="true" onClick={addItem}
             className="mt-1 inline-flex items-center gap-1 rounded-xl bg-brand-500/10 px-2.5 py-1.5 text-xs font-bold text-brand-500 hover:bg-brand-500/20"
           >
             <Plus className="h-3 w-3" /> Tambah item
@@ -121,7 +121,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
       {props.value.length === 0 ? (
         <button
           type="button"
-          onClick={addItem}
+          data-draft-change="true" onClick={addItem}
           className="w-full rounded-xl border border-dashed border-border py-4 text-xs font-medium text-muted hover:border-brand-500/40 hover:text-brand-500"
         >
           Tambahkan rincian item
@@ -149,7 +149,7 @@ const LineItemsEditor: React.FC<LineItemsEditorProps> = (props) => {
                   />
                   <button
                     type="button"
-                    onClick={() => removeItem(line.id)}
+                    data-draft-change="true" onClick={() => removeItem(line.id)}
                     className="rounded-full p-2 text-muted hover:bg-red-500/10 hover:text-red-500"
                     aria-label="Hapus item"
                     title="Hapus item"

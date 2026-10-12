@@ -113,7 +113,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
       draft.clear();
 
     onClose();
-  
+
     } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
@@ -174,8 +174,8 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
 
               <div className="order-1 space-y-4">
                 <div>
-                  <label className={addItemModal.label}>Nama skill</label>
-                  <input
+                  <label htmlFor="SkillModal-name" className={addItemModal.label}>Nama skill</label>
+<input id="SkillModal-name"
                     type="text"
                     autoFocus
                     value={name}
@@ -186,8 +186,8 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                 </div>
 
                 <div>
-                  <label className={addItemModal.label}>Deskripsi</label>
-                  <textarea
+                  <label htmlFor="SkillModal-description" className={addItemModal.label}>Deskripsi</label>
+<textarea id="SkillModal-description"
                     value={description}
                     onChange={e => setDescription(e.target.value)}
                     placeholder="Short description for this skill, course, or habit."
@@ -196,8 +196,8 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                 </div>
 
                 <div>
-                  <label className={addItemModal.label}>Target mingguan (menit)</label>
-                  <input
+                  <label htmlFor="SkillModal-weeklyTargetMinutes" className={addItemModal.label}>Target mingguan (menit)</label>
+<input id="SkillModal-weeklyTargetMinutes"
                     type="number"
                     min="0"
                     value={weeklyTargetMinutes}
@@ -223,7 +223,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSchedule(prev => ({ ...prev, enabled: !prev.enabled }))}
+                  data-draft-change="true" onClick={() => setSchedule(prev => ({ ...prev, enabled: !prev.enabled }))}
                   className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${schedule.enabled ? 'bg-brand-600 text-white' : 'bg-background text-muted border border-border'}`}
                 >
                   {schedule.enabled ? 'Enabled' : 'Disabled'}
@@ -236,7 +236,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                     {intervals.map(interval => (
                       <button
                         key={interval}
-                        onClick={() => setSchedule(prev => ({ ...prev, interval }))}
+                        data-draft-change="true" onClick={() => setSchedule(prev => ({ ...prev, interval }))}
                         className={addItemModal.tabButton(schedule.interval === interval)}
                       >
                         {interval}
@@ -246,7 +246,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className={addItemModal.label}>Start Time</label>
+                      <label className={addItemModal.label}>Waktu mulai</label>
                       <div className="relative">
                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                         <input
@@ -258,7 +258,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                       </div>
                     </div>
                     <div>
-                      <label className={addItemModal.label}>End Time</label>
+                      <label className={addItemModal.label}>Waktu selesai</label>
                       <input
                         type="time"
                         value={schedule.endTime}
@@ -276,7 +276,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                           <button
                             key={`${label}-${idx}`}
                             type="button"
-                            onClick={() => setSchedule(prev => ({ ...prev, daysOfWeek: toggleNumber(prev.daysOfWeek, idx) }))}
+                            data-draft-change="true" onClick={() => setSchedule(prev => ({ ...prev, daysOfWeek: toggleNumber(prev.daysOfWeek, idx) }))}
                             className={`h-9 rounded-xl text-xs font-bold border transition-colors ${schedule.daysOfWeek?.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                           >
                             {label}
@@ -294,7 +294,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                           <button
                             key={day}
                             type="button"
-                            onClick={() => setSchedule(prev => ({ ...prev, daysOfMonth: toggleNumber(prev.daysOfMonth, day) }))}
+                            data-draft-change="true" onClick={() => setSchedule(prev => ({ ...prev, daysOfMonth: toggleNumber(prev.daysOfMonth, day) }))}
                             className={`aspect-square rounded-lg text-xs font-bold border transition-colors ${schedule.daysOfMonth?.includes(day) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                           >
                             {day}
@@ -312,7 +312,7 @@ const SkillModal: React.FC<SkillModalProps> = ({ isOpen, onClose, onSave, initia
                           <button
                             key={label}
                             type="button"
-                            onClick={() => setSchedule(prev => ({ ...prev, monthsOfYear: toggleNumber(prev.monthsOfYear, idx) }))}
+                            data-draft-change="true" onClick={() => setSchedule(prev => ({ ...prev, monthsOfYear: toggleNumber(prev.monthsOfYear, idx) }))}
                             className={`py-2 rounded-xl text-xs font-bold border uppercase transition-colors ${schedule.monthsOfYear?.includes(idx) ? 'bg-brand-600 border-brand-500 text-white' : 'bg-background border-border text-muted hover:border-brand-500'}`}
                           >
                             {label}

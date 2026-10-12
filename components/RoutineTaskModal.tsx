@@ -102,7 +102,7 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
         setPriority('normal');
         setFormError('');
         onClose();
-    
+
     } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
@@ -173,13 +173,13 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                             </div>
                         )}
                         <div>
-                            <label className={addItemModal.label}>Task Description</label>
-                            <input
+                            <label htmlFor="RoutineTaskModal-content" className={addItemModal.label}>Deskripsi tugas</label>
+<input id="RoutineTaskModal-content"
                                 type="text"
                                 autoFocus
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
-                                placeholder="What needs to be done?"
+                                placeholder="Apa yang perlu dikerjakan?"
                                 className={addItemModal.input}
                             />
                         </div>
@@ -271,19 +271,19 @@ const RoutineTaskModal: React.FC<RoutineTaskModalProps> = ({ isOpen, onClose, on
                             </div>
 
                             <div className="mt-6">
-                                <label className={addItemModal.label}>Priority</label>
+                                <label className={addItemModal.label}>Prioritas</label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {(['low', 'normal', 'high'] as Priority[]).map(p => (
                                         <button
-                                            key={p}
-                                            onClick={() => setPriority(p)}
+                                            key={{ low: "Rendah", normal: "Normal", high: "Tinggi" }[p]}
+                                            aria-pressed={priority === p} onClick={() => setPriority(p)}
                                             className={`py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
                                                 priority === p
                                                     ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
                                                     : 'bg-background border border-border text-muted hover:border-brand-500/50'
                                             }`}
                                         >
-                                            {p}
+                                            {{ low: "Rendah", normal: "Normal", high: "Tinggi" }[p]}
                                         </button>
                                     ))}
                                 </div>

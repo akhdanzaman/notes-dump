@@ -1106,18 +1106,6 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
           </div>
         </div>
       )}
-      {syncError && (
-        <div
-          role="alert"
-          className="mb-3 flex items-start gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-900 ring-1 ring-inset ring-red-200 dark:bg-red-400/[0.08] dark:text-red-200 dark:ring-red-300/15"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <div className="font-semibold">{moneyCopy.syncCheck}</div>
-            <div className="mt-0.5 line-clamp-2 text-xs opacity-80">{syncError}</div>
-          </div>
-        </div>
-      )}
       {/* Top Container */}
       <motion.div
         data-swipe-tabs="money"
@@ -1415,7 +1403,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         </span>
                       </div>
 
-                      <div className="flex gap-1">
+                      <details className="relative"><summary className="cursor-pointer rounded-lg px-3 py-2 text-lg text-muted" aria-label={`Kelola wallet ${wallet.name}`}>⋯</summary><div className="absolute right-0 top-full z-10 flex rounded-lg border border-border bg-surface p-1 shadow-lg">
                         <button
                           type="button"
                           onClick={() => handleOpenEditWallet(wallet)}
@@ -1435,7 +1423,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      </div>
+                      </div></details>
                     </div>
 
                     {/* Body */}
@@ -1708,6 +1696,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
             ) : (
               <div className="space-y-6 text-primary">
                 {renderBudgetDecisionSummary()}
+                <details className="rounded-xl border border-border bg-surface"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Analisis arus kas (lanjutan)</summary>
                 <div className="bg-surface border border-border rounded-xl p-6 text-primary">
                   <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                     <div>
@@ -1986,6 +1975,7 @@ const MoneyViewComponent: React.FC<MoneyViewProps> = ({
                     </div>
                   </div>
                 </div>
+                </details>
 
                 <div
                   className={`grid gap-6 ${budgetCategoryAnalytics.length > 0 ? "lg:grid-cols-2 lg:items-start" : ""}`}

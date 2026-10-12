@@ -133,7 +133,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         }
     }, [isOpen, initialCategory]);
 
-    const draft = useEditorDraft('AddShoppingModal', { content, category, quantity, shoppingLineItems, imageUrl, amount, budgetCategory, date, dedicatedWalletId, paymentMethod, hideFromCalendar, investmentAssetType, investmentSymbol, investmentUnits, investmentAveragePrice, investmentCurrentPrice, investmentPlatform, interval, daysOfWeek, daysOfMonth, monthsOfYear }, v => { if (Object.hasOwn(v, 'content')) setContent(v.content); if (Object.hasOwn(v, 'category')) setCategory(v.category); if (Object.hasOwn(v, 'quantity')) setQuantity(v.quantity); if (Object.hasOwn(v, 'shoppingLineItems')) setShoppingLineItems(v.shoppingLineItems); if (Object.hasOwn(v, 'imageUrl')) setImageUrl(v.imageUrl); if (Object.hasOwn(v, 'amount')) setAmount(v.amount); if (Object.hasOwn(v, 'budgetCategory')) setBudgetCategory(v.budgetCategory); if (Object.hasOwn(v, 'date')) setDate(v.date); if (Object.hasOwn(v, 'dedicatedWalletId')) setDedicatedWalletId(v.dedicatedWalletId); if (Object.hasOwn(v, 'paymentMethod')) setPaymentMethod(v.paymentMethod); if (Object.hasOwn(v, 'hideFromCalendar')) setHideFromCalendar(v.hideFromCalendar); if (Object.hasOwn(v, 'investmentAssetType')) setInvestmentAssetType(v.investmentAssetType); if (Object.hasOwn(v, 'investmentSymbol')) setInvestmentSymbol(v.investmentSymbol); if (Object.hasOwn(v, 'investmentUnits')) setInvestmentUnits(v.investmentUnits); if (Object.hasOwn(v, 'investmentAveragePrice')) setInvestmentAveragePrice(v.investmentAveragePrice); if (Object.hasOwn(v, 'investmentCurrentPrice')) setInvestmentCurrentPrice(v.investmentCurrentPrice); if (Object.hasOwn(v, 'investmentPlatform')) setInvestmentPlatform(v.investmentPlatform); if (Object.hasOwn(v, 'interval')) setInterval(v.interval); if (Object.hasOwn(v, 'daysOfWeek')) setDaysOfWeek(v.daysOfWeek); if (Object.hasOwn(v, 'daysOfMonth')) setDaysOfMonth(v.daysOfMonth); if (Object.hasOwn(v, 'monthsOfYear')) setMonthsOfYear(v.monthsOfYear); });
+    const draft = useEditorDraft(`AddShoppingModal:${initialCategory}`, { content, category, quantity, shoppingLineItems, imageUrl, amount, budgetCategory, date, dedicatedWalletId, paymentMethod, hideFromCalendar, investmentAssetType, investmentSymbol, investmentUnits, investmentAveragePrice, investmentCurrentPrice, investmentPlatform, interval, daysOfWeek, daysOfMonth, monthsOfYear }, v => { if (Object.hasOwn(v, 'content')) setContent(v.content); if (Object.hasOwn(v, 'category')) setCategory(v.category); if (Object.hasOwn(v, 'quantity')) setQuantity(v.quantity); if (Object.hasOwn(v, 'shoppingLineItems')) setShoppingLineItems(v.shoppingLineItems); if (Object.hasOwn(v, 'imageUrl')) setImageUrl(v.imageUrl); if (Object.hasOwn(v, 'amount')) setAmount(v.amount); if (Object.hasOwn(v, 'budgetCategory')) setBudgetCategory(v.budgetCategory); if (Object.hasOwn(v, 'date')) setDate(v.date); if (Object.hasOwn(v, 'dedicatedWalletId')) setDedicatedWalletId(v.dedicatedWalletId); if (Object.hasOwn(v, 'paymentMethod')) setPaymentMethod(v.paymentMethod); if (Object.hasOwn(v, 'hideFromCalendar')) setHideFromCalendar(v.hideFromCalendar); if (Object.hasOwn(v, 'investmentAssetType')) setInvestmentAssetType(v.investmentAssetType); if (Object.hasOwn(v, 'investmentSymbol')) setInvestmentSymbol(v.investmentSymbol); if (Object.hasOwn(v, 'investmentUnits')) setInvestmentUnits(v.investmentUnits); if (Object.hasOwn(v, 'investmentAveragePrice')) setInvestmentAveragePrice(v.investmentAveragePrice); if (Object.hasOwn(v, 'investmentCurrentPrice')) setInvestmentCurrentPrice(v.investmentCurrentPrice); if (Object.hasOwn(v, 'investmentPlatform')) setInvestmentPlatform(v.investmentPlatform); if (Object.hasOwn(v, 'interval')) setInterval(v.interval); if (Object.hasOwn(v, 'daysOfWeek')) setDaysOfWeek(v.daysOfWeek); if (Object.hasOwn(v, 'daysOfMonth')) setDaysOfMonth(v.daysOfMonth); if (Object.hasOwn(v, 'monthsOfYear')) setMonthsOfYear(v.monthsOfYear); });
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState('');
   const handleSave = async () => {
@@ -226,7 +226,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
         setMonthsOfYear([]);
         setHideFromCalendar(false);
         onClose();
-    
+
     } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
@@ -297,10 +297,10 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                             </div>
                         )}
                         <div>
-                            <label className={addItemModal.label}>
+                            <label htmlFor="AddShoppingModal-content" className={addItemModal.label}>
                                 {category === 'saving' ? 'Goal Name' : (category === 'investment' ? 'Asset / Product Name' : 'Item Description')}
                             </label>
-                            <input
+<input id="AddShoppingModal-content"
                                 type="text"
                                 autoFocus
                                 value={content}
@@ -333,8 +333,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className={addItemModal.label}>Kategori</label>
-                                <select
+                                <label htmlFor="AddShoppingModal-category" className={addItemModal.label}>Kategori</label>
+<select id="AddShoppingModal-category"
                                     value={category}
                                     onChange={e => {
                                         const nextCategory = e.target.value as ShoppingCategory;
@@ -347,15 +347,15 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     disabled={initialCategory === 'saving' || initialCategory === 'investment'}
                                 >
                                     <option value="urgent">Urgent</option>
-                                    <option value="routine">Routine</option>
+                                    <option value="routine">Rutin</option>
                                     <option value="not_urgent">Normal</option>
                                     <option value="saving">Saving Goal</option>
                                     <option value="investment">Investment</option>
                                 </select>
                             </div>
                             <div>
-                                <label className={addItemModal.label}>{category === 'investment' ? 'Buy date' : 'Tenggat'}</label>
-                                <input
+                                <label htmlFor="AddShoppingModal-date" className={addItemModal.label}>{category === 'investment' ? 'Buy date' : 'Tenggat'}</label>
+<input id="AddShoppingModal-date"
                                     type="date"
                                     value={date}
                                     onChange={e => setDate(e.target.value)}
@@ -367,8 +367,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                         <div className="grid grid-cols-2 gap-4">
                             {category !== 'saving' && category !== 'investment' && (
                                 <div>
-                                    <label className={addItemModal.label}>Quantity</label>
-                                    <input
+                                    <label htmlFor="AddShoppingModal-quantity" className={addItemModal.label}>Jumlah</label>
+<input id="AddShoppingModal-quantity"
                                         type="text"
                                         value={quantity}
                                         onChange={e => setQuantity(e.target.value)}
@@ -399,8 +399,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
 
                         {category === 'saving' && (
                             <div>
-                                <label className={addItemModal.label}>Dedicated Wallet</label>
-                                <select
+                                <label htmlFor="AddShoppingModal-dedicatedWalletId" className={addItemModal.label}>Dedicated Wallet</label>
+<select id="AddShoppingModal-dedicatedWalletId"
                                     value={dedicatedWalletId}
                                     onChange={e => setDedicatedWalletId(e.target.value)}
                                     className={addItemModal.select}
@@ -422,8 +422,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className={addItemModal.label}>Asset Type</label>
-                                        <select
+                                        <label htmlFor="AddShoppingModal-investmentAssetType" className={addItemModal.label}>Asset Type</label>
+<select id="AddShoppingModal-investmentAssetType"
                                             value={investmentAssetType}
                                             onChange={e => setInvestmentAssetType(e.target.value as InvestmentAssetType)}
                                             className={`${addItemModal.select} focus:border-emerald-500`}
@@ -434,8 +434,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                         </select>
                                     </div>
                                     <div>
-                                        <label className={addItemModal.label}>Ticker / Code</label>
-                                        <input
+                                        <label htmlFor="AddShoppingModal-investmentSymbol" className={addItemModal.label}>Ticker / Code</label>
+<input id="AddShoppingModal-investmentSymbol"
                                             type="text"
                                             value={investmentSymbol}
                                             onChange={e => setInvestmentSymbol(e.target.value.toUpperCase())}
@@ -447,8 +447,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
 
                                 <div className="grid grid-cols-3 gap-3">
                                     <div>
-                                        <label className={addItemModal.label}>Units</label>
-                                        <input
+                                        <label htmlFor="AddShoppingModal-investmentUnits" className={addItemModal.label}>Units</label>
+<input id="AddShoppingModal-investmentUnits"
                                             type="number"
                                             step="any"
                                             value={investmentUnits}
@@ -458,8 +458,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                         />
                                     </div>
                                     <div>
-                                        <label className={addItemModal.label}>Avg Buy</label>
-                                        <input
+                                        <label htmlFor="AddShoppingModal-investmentAveragePrice" className={addItemModal.label}>Avg Buy</label>
+<input id="AddShoppingModal-investmentAveragePrice"
                                             type="number"
                                             value={investmentAveragePrice}
                                             onChange={e => setInvestmentAveragePrice(e.target.value)}
@@ -468,8 +468,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                         />
                                     </div>
                                     <div>
-                                        <label className={addItemModal.label}>Now</label>
-                                        <input
+                                        <label htmlFor="AddShoppingModal-investmentCurrentPrice" className={addItemModal.label}>Now</label>
+<input id="AddShoppingModal-investmentCurrentPrice"
                                             type="number"
                                             value={investmentCurrentPrice}
                                             onChange={e => setInvestmentCurrentPrice(e.target.value)}
@@ -480,8 +480,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 </div>
 
                                 <div>
-                                    <label className={addItemModal.label}>Investment Wallet / Platform</label>
-                                    <input
+                                    <label htmlFor="AddShoppingModal-investmentPlatform" className={addItemModal.label}>Investment Wallet / Platform</label>
+<input id="AddShoppingModal-investmentPlatform"
                                         type="text"
                                         value={investmentPlatform}
                                         onChange={e => setInvestmentPlatform(e.target.value)}
@@ -531,7 +531,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => removeShoppingLineItem(line.id)}
+                                                data-draft-change="true" onClick={() => removeShoppingLineItem(line.id)}
                                                 className="p-2 rounded-full text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
                                                 aria-label="Remove line item"
                                             >
@@ -541,7 +541,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     ))}
                                     <button
                                         type="button"
-                                        onClick={addShoppingLineItem}
+                                        data-draft-change="true" onClick={addShoppingLineItem}
                                         className="px-3 py-2 rounded-xl bg-acc-shopping/10 text-acc-shopping text-xs font-bold hover:bg-acc-shopping/20 transition-colors flex items-center gap-1"
                                     >
                                         <Plus className="w-3 h-3" /> Add line item
@@ -553,8 +553,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                         {category !== 'saving' && category !== 'investment' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={addItemModal.label}>Kategori budget</label>
-                                    <select
+                                    <label htmlFor="AddShoppingModal-budgetCategory" className={addItemModal.label}>Kategori budget</label>
+<select id="AddShoppingModal-budgetCategory"
                                         value={budgetCategory}
                                         onChange={e => setBudgetCategory(e.target.value)}
                                         className={addItemModal.select}
@@ -566,8 +566,8 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                     </select>
                                 </div>
                                 <div>
-                                    <label className={addItemModal.label}>Wallet</label>
-                                    <select
+                                    <label htmlFor="AddShoppingModal-paymentMethod" className={addItemModal.label}>Wallet</label>
+<select id="AddShoppingModal-paymentMethod"
                                         value={paymentMethod}
                                         onChange={e => setPaymentMethod(e.target.value)}
                                         className={addItemModal.select}
@@ -610,7 +610,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                             {DAYS_OF_WEEK.map(day => (
                                                 <button
                                                     key={day.value}
-                                                    onClick={() => toggleDayOfWeek(day.value)}
+                                                    data-draft-change="true" onClick={() => toggleDayOfWeek(day.value)}
                                                     className={`flex-1 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all border ${addItemModal.choiceButton(daysOfWeek.includes(day.value))}`}
                                                 >
                                                     {day.label[0]}
@@ -628,7 +628,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                             {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                                                 <button
                                                     key={day}
-                                                    onClick={() => toggleDayOfMonth(day)}
+                                                    data-draft-change="true" onClick={() => toggleDayOfMonth(day)}
                                                     className={`w-full aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all border ${addItemModal.choiceButton(daysOfMonth.includes(day), 'bg-brand-600 border-brand-500 text-white shadow-sm')}`}
                                                 >
                                                     {day}
@@ -646,7 +646,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                             {MONTHS_OF_YEAR.map(month => (
                                                 <button
                                                     key={month.value}
-                                                    onClick={() => toggleMonthOfYear(month.value)}
+                                                    data-draft-change="true" onClick={() => toggleMonthOfYear(month.value)}
                                                     className={`py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border ${addItemModal.choiceButton(monthsOfYear.includes(month.value))}`}
                                                 >
                                                     {month.label}
@@ -667,7 +667,7 @@ const AddShoppingModal: React.FC<AddShoppingModalProps> = ({ isOpen, onClose, on
                                 className={addItemModal.checkbox}
                             />
                             <label htmlFor="hideFromCalendarShopping" className="text-sm font-medium text-primary">
-                                Hide from Calendar
+                                Sembunyikan dari Kalender
                             </label>
                         </div>
                     </div>

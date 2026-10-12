@@ -4,7 +4,7 @@ import { fetchSpreadsheetDb, getSpreadsheetConfig } from '../services/spreadshee
 import { replayDurableOutbox } from '../services/durableSync';
 import { mergeMutation } from '../utils/syncProtocol';
 import type { DbSchema } from '../types';
-const labels: Record<string, string> = { content: 'Deskripsi', amount: 'Nominal', paymentMethod: 'Wallet', budgetCategory: 'Kategori', date: 'Tanggal', status: 'Status', tags: 'Tag', merchant: 'Merchant', title: 'Judul' };
+const labels: Record<string, string> = { content: 'Deskripsi', amount: 'Nominal', paymentMethod: 'Wallet', budgetCategory: 'Kategori', date: 'Tanggal', status: 'Status', tags: 'Tag', merchant: 'Merchant', title: 'Judul', name: 'Nama', initialBalance: 'Saldo awal', weeklyTargetMinutes: 'Target mingguan', enabled: 'Aktif' };
 const describe = (value: any): string => value == null ? 'Kosong / dihapus' : typeof value === 'object' ? Array.isArray(value) ? `${value.length} item` : value.content || value.name || 'Detail item' : String(value);
 export default function SyncOutboxPanel() {
   const [operations, setOperations] = useState<LocalMutation[]>([]); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
@@ -47,7 +47,7 @@ export default function SyncOutboxPanel() {
         <h3 className="font-medium">{title}</h3>
         {!remote && <p>Memuat nilai Sheets…</p>}
         {fields.map(field => <fieldset key={field.path} className="space-y-2">
-          <legend>{labels[field.path.split('.').at(-1)!] || 'Detail'}</legend>
+          <legend>{(() => { const id = field.path.match(/\[([^\]]+)\]/)?.[1]; const owner = id ? [...(local?.wallets || []), ...(local?.skills || []), ...(local?.budgetConfig?.rules || [])].find(entry => entry.id === id)?.name : ''; return `${owner ? owner + ' · ' : ''}${labels[field.path.split('.').at(-1)!] || 'Detail'}`; })()}</legend>
           {(['local', 'remote'] as const).map(source => <label key={source} className="flex items-start gap-3 rounded-lg bg-surface-soft p-3">
             <input type="radio" name={`${operation.operationId}:${field.path}`} checked={choices[operation.entityId]?.[field.path] === source} onChange={() => setChoices(previous => ({ ...previous, [operation.entityId]: { ...previous[operation.entityId], [field.path]: source } }))} />
             <span><span className="block text-xs text-muted">{source === 'local' ? 'Di perangkat ini' : 'Di Sheets'}</span>{local?.appSettings?.hideMoney && /amount|price|balance/i.test(field.path) ? 'Nominal disembunyikan' : describe(field[source])}</span>

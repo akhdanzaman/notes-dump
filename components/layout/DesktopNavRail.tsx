@@ -227,13 +227,13 @@ const DesktopNavRail: React.FC<DesktopNavRailProps> = ({
           <div className="mt-2 grid grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] gap-1">
             <button
               type="button"
-              onClick={onOpenReviewCenter}
+              onClick={error && /ditinjau|conflict|bersamaan/i.test(error) ? onSettingsClick : onOpenReviewCenter}
               className="relative flex min-w-0 items-center gap-1 rounded-lg bg-surface-soft px-2 text-xs font-medium text-muted hover:bg-accent/10 hover:text-accent"
               title={copy.review}
               aria-label={`${copy.openReview}${totalQueue ? `, ${totalQueue}` : ''}`}
             >
               <ClipboardCheck className="h-4 w-4 shrink-0" />
-              <span className="truncate">{language === 'en' ? 'Review' : 'Tinjau'}</span>
+              <span className="truncate">{error && /ditinjau|conflict|bersamaan/i.test(error) ? 'Tinjau perubahan' : language === 'en' ? 'Review' : 'Tinjau'}</span>
               <CountBadge
                 count={totalQueue}
                 ariaLabel={`${totalQueue} item perlu diperiksa`}

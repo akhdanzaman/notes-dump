@@ -33,7 +33,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
         setContent('');
         setTags('');
         onClose();
-    
+
     } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
@@ -71,8 +71,8 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
 
                     <div className={addItemModal.body}>
                         <div>
-                            <label className={addItemModal.label}>Title</label>
-                            <input
+                            <label htmlFor="AddNoteModal-title" className={addItemModal.label}>Title</label>
+<input id="AddNoteModal-title"
                                 autoFocus
                                 type="text"
                                 value={title}
@@ -83,8 +83,8 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
                         </div>
 
                         <div>
-                            <label className={addItemModal.label}>Content</label>
-                            <textarea 
+                            <label htmlFor="AddNoteModal-content" className={addItemModal.label}>Content</label>
+<textarea id="AddNoteModal-content"
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
                                 placeholder={isJournal ? 'What happened today, and how did it feel?' : "What's on your mind?"}
@@ -93,8 +93,8 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
                         </div>
 
                         <div>
-                            <label className={addItemModal.label}>Tags (comma separated)</label>
-                            <input 
+                            <label htmlFor="AddNoteModal-tags" className={addItemModal.label}>Tags (comma separated)</label>
+<input id="AddNoteModal-tags"
                                 type="text"
                                 value={tags}
                                 onChange={e => setTags(e.target.value)}
@@ -105,7 +105,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ isOpen, onClose, onSave, mo
                     </div>
 
                     <div className={addItemModal.footer}>
-                        <button 
+                        <button
                             onClick={handleSave}
                             disabled={saving || !title.trim() && !content.trim()}
                             className={addItemModal.primaryButton}

@@ -347,3 +347,20 @@ button:disabled { cursor: not-allowed; }
  [data-calendar-layout=month] { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); align-items: start; gap: 16px; }
  [data-calendar-layout=month] > section { margin-top: 0; max-height: 75dvh; overflow-y: auto; }
 }
+
+@media (max-width: 639px) {
+ [data-swipe-tabs=calendar] .metric-strip { display: none; }
+ [data-global-composer=true]:not(:focus-within)[data-composer-expanded=false] [data-composer-controls] [role=group] { display: none; }
+ [data-global-composer=true]:not(:focus-within)[data-composer-expanded=false] [data-composer-controls] textarea { grid-column: 1; grid-row: 1; }
+ [data-global-composer=true]:not(:focus-within)[data-composer-expanded=false] [data-composer-controls] > button { grid-column: 2; grid-row: 1; }
+}
+
+@media (min-width: 1024px) {
+ [data-swipe-tabs=calendar] { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; padding: 16px; }
+ [data-swipe-tabs=calendar] > div { margin-bottom: 0; }
+ [data-swipe-tabs=calendar] > div:first-child { grid-column: 1; grid-row: 1; }
+ [data-swipe-tabs=calendar] > [role=tablist] { grid-column: 2; grid-row: 1; padding: 0; border-bottom: 0; }
+ [data-swipe-tabs=calendar] > [data-swipe-date] { grid-column: 1; grid-row: 2; }
+ [data-swipe-tabs=calendar] > .metric-strip { grid-column: 2; grid-row: 2; }
+ [data-swipe-tabs=calendar] .metric-strip > * { padding: 8px 12px; }
+}

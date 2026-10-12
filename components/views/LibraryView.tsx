@@ -189,6 +189,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     const [sessionSaving, setSessionSaving] = useState(false);
     const [sessionError, setSessionError] = useState('');
     const sessionDraft = useEditorDraft(`session:${editingSkillSession?.skill.id || 'closed'}:${editingSkillSession?.session.start.toISOString() || ''}`, { actualStartInput, actualEndInput }, v => { setActualStartInput(v.actualStartInput); setActualEndInput(v.actualEndInput); });
+    const [noteLayout, setNoteLayout] = useState<'list' | 'cards'>('list');
     const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<string | null>(null);
     const selectedLibraryItem = selectedLibraryItemId ? items.find(item => item.id === selectedLibraryItemId) || null : null;
 
@@ -310,7 +311,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     {friendlyDate}
                 </h3>
                 <div className="space-y-3">
-                    {group.journalEntries.map(entry => renderJournalSectionCard(isEnglish ? 'Journal' : 'Jurnal', <BookText className="h-5 w-5" />, 'bg-fuchsia-100 dark:bg-fuchsia-500/20', <div><p className="whitespace-pre-wrap text-sm leading-6">{entry.content}</p><button type="button" className="mt-3 text-sm text-brand-600" onClick={() => setSelectedLibraryItemId(entry.id)}>{libraryCopy.editEntry} · {formatJournalTime(entry.completed_at || entry.meta.date || entry.created_at)}</button></div>, undefined, () => setSelectedLibraryItemId(entry.id)))}
+                    {group.journalEntries.map(entry => <React.Fragment key={entry.id}>{renderJournalSectionCard(isEnglish ? 'Journal' : 'Jurnal', <BookText className="h-5 w-5" />, 'bg-fuchsia-100 dark:bg-fuchsia-500/20', <div><p className="whitespace-pre-wrap text-sm leading-6">{entry.content}</p><button type="button" className="mt-3 text-sm text-brand-600" onClick={() => setSelectedLibraryItemId(entry.id)}>{libraryCopy.editEntry} · {formatJournalTime(entry.completed_at || entry.meta.date || entry.created_at)}</button></div>, undefined, () => setSelectedLibraryItemId(entry.id))}</React.Fragment>)}
                     <details className="rounded-xl border border-border p-3"><summary className="cursor-pointer text-sm font-medium">{isEnglish ? 'Related activity' : 'Aktivitas terkait'} · {group.todos.length + group.shopping.length + group.events.length + group.transactions.length}</summary><div className="mt-3 space-y-3">
                     {group.todos.length > 0 && renderJournalSectionCard(
                         isEnglish ? 'Completed Todos' : 'Tugas selesai',
@@ -498,12 +499,13 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         // Browsing stays compact; the existing full editor opens in the detail panel.
         return (
             <div className="space-y-4">
+                <div className="flex gap-2" aria-label="Tampilan catatan"><button aria-pressed={noteLayout === 'list'} className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => setNoteLayout('list')}>Daftar</button><button aria-pressed={noteLayout === 'cards'} className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => setNoteLayout('cards')}>Cards</button></div>
                 <div
                     data-record-list="library-notes"
-                    className={contentSurface.masonryGrid}
+                    className={noteLayout === "cards" ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3" : contentSurface.masonryGrid}
                 >
                     {visibleGeneralItems.visibleItems.map(item => (
-                        <RecordRow key={item.id} item={item} language={appSettings.language} onOpen={() => setSelectedLibraryItemId(item.id)} />
+                        noteLayout === "cards" ? <Card key={item.id} item={item} readonly hideMoney={appSettings.hideMoney} onOpen={() => setSelectedLibraryItemId(item.id)} enableCollapse={false} defaultCollapsed /> : <RecordRow key={item.id} item={item} language={appSettings.language} onOpen={() => setSelectedLibraryItemId(item.id)} />
                     ))}
                 </div>
                 <LoadMoreButton remainingCount={visibleGeneralItems.remainingCount} onClick={visibleGeneralItems.loadMore} />
@@ -871,13 +873,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                         </div>
                     </LayoutGroup>
 
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={librarySubTab}
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -10 }}
-                            transition={{ duration: 0.2 }}
+                        <div
                             className={contentSurface.workspaceHeaderGrid}
                         >
                             <div className="min-w-0 flex-1">
@@ -939,8 +935,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                                     <span>{librarySubTab === 'general' ? libraryCopy.addNote : librarySubTab === 'skills' ? libraryCopy.addSkill : libraryCopy.writeJournal}</span>
                                 </button>
                             </div>
-                        </motion.div>
-                    </AnimatePresence>
+                        </div>
                 </motion.div>
             </motion.div>
 

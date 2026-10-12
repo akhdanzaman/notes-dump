@@ -266,6 +266,9 @@ const Card: React.FC<CardProps> = ({
   useEffect(() => { const discard = (event: Event) => { if ((event.target as HTMLElement).getAttribute('data-entity-id') === item.id) draft.clear(); }; document.addEventListener('arkaiv-discard-editor', discard); return () => document.removeEventListener('arkaiv-discard-editor', discard); }, [item.id]);
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState('');
+  const sourceRevision = React.useRef(JSON.stringify(item));
+  const [remoteChanged, setRemoteChanged] = React.useState(false);
+  React.useEffect(() => { const next = JSON.stringify(item); if (next !== sourceRevision.current) { if (draft.dirty.current) setRemoteChanged(true); else { sourceRevision.current = next; setRemoteChanged(false); } } }, [item]);
   const handleSave = async () => {
     if (saving) return;
     setSaving(true); setSaveError('');
@@ -348,7 +351,7 @@ const Card: React.FC<CardProps> = ({
           setIsCollapsed(true);
       }
       onSaveComplete?.(item.id);
-  
+
     } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
@@ -634,8 +637,8 @@ const Card: React.FC<CardProps> = ({
       onInputCapture={draft.markDirty}
       onChangeCapture={draft.markDirty}
       onClickCapture={event =>
-      
- { const button = (event.target as HTMLElement).closest('button'); if (button && button.getAttribute('aria-pressed') !== null) draft.markDirty(); }}
+
+ { const button = (event.target as HTMLElement).closest('button'); if (button && !readonly && showInlineEditPanel && (button.hasAttribute('data-draft-change') || (button.hasAttribute('aria-pressed') && button.closest('[data-edit-field-grid]')))) draft.markDirty(); }}
 
         data-edit-comfort={editComfort === 'taskWorkspace' ? 'task-workspace' : undefined}
         data-card-expanded={!isCollapsed ? 'true' : 'false'}
@@ -651,6 +654,7 @@ const Card: React.FC<CardProps> = ({
           onOpen(item);
         }}
     >
+      {remoteChanged && <p role="status" className="mb-3 rounded-lg bg-amber-500/10 p-3 text-sm">Data item berubah dari sinkronisasi. Draft yang sedang kamu edit tetap dipertahankan.</p>}
       {saveError && <p role="alert" className="editor-error">{saveError}</p>}
       <div className="flex flex-col gap-1">
 
@@ -986,12 +990,12 @@ const Card: React.FC<CardProps> = ({
                />
 
                {/* Dynamic Fields Grid */}
-               <div className={editGridClass} data-edit-field-grid={isTaskWorkspaceEdit ? 'task-workspace' : undefined}>
+               <div className={editGridClass} data-edit-field-grid={isTaskWorkspaceEdit ? 'task-workspace' : 'fields'}>
                    {/* Finance Type Switcher */}
                    {type === ItemType.FINANCE && (
                        <>
                            <div className="col-span-2 rounded-lg bg-background/70 p-1 ring-1 ring-inset ring-border/60">
-                               <div className="flex gap-1 overflow-x-auto no-scrollbar" role="group" aria-label="Jenis transaksi">
+                               <div className="grid grid-cols-2 gap-1 sm:grid-cols-3" role="group" aria-label="Jenis transaksi">
                                    {editableFinanceTabs.map((tab) => (
                                        <button
                                            key={tab.value}
@@ -1146,7 +1150,7 @@ const Card: React.FC<CardProps> = ({
                                {(['low', 'normal', 'high'] as Priority[]).map(p => (
                                    <button
                                        key={p}
-                                       onClick={() => setEditPriority(p)}
+                                       data-draft-change="true" onClick={() => setEditPriority(p)}
                                        className={`py-2 ${isTaskWorkspaceEdit ? taskEditSurface.priorityButton : ''} rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                                            editPriority === p
                                                ? 'bg-brand-600 text-white shadow-sm'

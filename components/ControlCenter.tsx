@@ -1,3 +1,4 @@
+import { durableCapabilities } from '../services/durableSync';
 import SyncOutboxPanel from './SyncOutboxPanel';
 
 import React, { useState, useEffect } from 'react';
@@ -13,7 +14,7 @@ import { SyncProgress, SyncStatus, AppSettings, BudgetConfig, BudgetRule, BrainD
 import { DEFAULT_PROMPT } from '../services/geminiService';
 import { useControlCenter } from '../hooks/useControlCenter';
 import { getDatabaseHistory } from '../services/syncFacade';
-import { SERVICE_ACCOUNT_EMAIL, SpreadsheetHistoryEntry } from '../services/spreadsheetService';
+import { getSpreadsheetConfig, SERVICE_ACCOUNT_EMAIL, SpreadsheetHistoryEntry } from '../services/spreadsheetService';
 import { CHANGELOG_ENTRIES, LATEST_CHANGELOG_VERSION } from '../utils/changelog';
 import { contentSurface, controlCenterSurface } from './layout/contentSurface';
 import PresencePanel from '../motion/PresencePanel';
@@ -109,6 +110,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     securitySettings, onSecuritySettingsChange, authorizeSecurityPassword
 }) => {
 
+    const [durableEnabled, setDurableEnabled] = useState(false);
+    useEffect(() => { const config = getSpreadsheetConfig(); if (isOpen && config) void durableCapabilities(config.spreadsheetId).then(value => { setDurableEnabled(value.enabled); if (value.enabled) setSyncMode('merge'); }).catch(() => {}); }, [isOpen]);
     const [syncMode, setSyncMode] = useState<'merge' | 'overwrite'>('merge');
     const [isParsingTasksExpanded, setIsParsingTasksExpanded] = useState(false);
     const [history, setHistory] = useState<SpreadsheetHistoryEntry[]>([]);
@@ -559,7 +562,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                                         </button>
                                                         <div className="w-px h-4 bg-border"></div>
                                                         <button
-                                                            onClick={() => setSyncMode('overwrite')}
+                                                            disabled={durableEnabled} title={durableEnabled ? 'Gunakan tinjauan konflik per item untuk sinkronisasi antrean.' : undefined} onClick={() => setSyncMode('overwrite')}
                                                             className={`px-3 py-1.5 text-xs font-medium transition-colors ${syncMode === 'overwrite' ? 'bg-[var(--finance-negative-soft)] text-[var(--finance-negative)]' : 'text-muted hover:text-[var(--finance-negative)]'}`}
                                                         >
                                                             {controlCopy.overwrite}

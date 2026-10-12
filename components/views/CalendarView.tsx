@@ -111,7 +111,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
     const moveDay = (direction: number) => { const date = new Date(`${selectedDateKey}T12:00:00`); date.setDate(date.getDate() + direction); selectDay(getDateKey(date)); };
     const calendarDateSwipeHandlers = useSwipeDate(() => viewMode === 'agenda' ? moveDay(-1) : prevMonth(), () => viewMode === 'agenda' ? moveDay(1) : nextMonth());
     const dayStrip = Array.from({ length: 7 }, (_, index) => { const date = new Date(`${selectedDateKey}T12:00:00`); date.setDate(date.getDate() + index - 3); return date; });
-    const agendaTime = (item: BrainDumpItem) => { const start = item.meta.start || item.meta.date; const end = item.meta.end; if (!start || !start.includes('T')) return isEnglish ? 'All day' : 'Sepanjang hari'; const from = new Date(start); if (Number.isNaN(from.getTime())) return ''; const time = from.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); const to = end ? new Date(end) : null; return to && !Number.isNaN(to.getTime()) ? `${time}–${to.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} · ${Math.round((to.getTime() - from.getTime()) / 60000)} ${isEnglish ? 'min' : 'menit'}` : time; };
+    const agendaTime = (item: BrainDumpItem) => { const start = item.meta.start || item.meta.date; const end = item.meta.end; if ((!item.meta.start && !item.meta.end && item.type === ItemType.TODO) || !start || !start.includes('T')) return isEnglish ? 'All day' : 'Sepanjang hari'; const from = new Date(start); if (Number.isNaN(from.getTime())) return ''; const time = from.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); const to = end ? new Date(end) : null; return to && !Number.isNaN(to.getTime()) ? `${time}–${to.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} · ${Math.round((to.getTime() - from.getTime()) / 60000)} ${isEnglish ? 'min' : 'menit'}` : time; };
 
 
     const today = new Date();
@@ -273,7 +273,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                             <CalendarIcon className="h-5 w-5" />
                         </div>
                         <div>
-                            
+
                             <p className="text-xs text-muted">{calendarCopy.subtitle}</p>
                         </div>
                     </div>
@@ -322,7 +322,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 exit={{ opacity: 0, x: monthDirection * -8 }}
                                 className={contentSurface.workspacePeriodLabel}
                             >
-                                <span className={contentSurface.workspacePeriodKicker}>{calendarCopy.month}</span>
+                                <span className={contentSurface.workspacePeriodKicker}>{viewMode === "agenda" ? calendarCopy.agenda : calendarCopy.month}</span>
                                 <span className={contentSurface.workspacePeriodTitle}>{viewMode === "agenda" ? new Date(`${selectedDateKey}T12:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long" }) : currentDate.toLocaleString(locale, { month: "long", year: "numeric" })}</span>
                             </motion.div>
                         </AnimatePresence>
@@ -376,7 +376,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 initial={{ opacity: 0, x: monthDirection * 12 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: monthDirection * -12 }}
-                                className="grid grid-cols-7 auto-rows-[minmax(104px,auto)] sm:auto-rows-[minmax(120px,auto)] lg:auto-rows-[minmax(132px,auto)]"
+                                className="grid grid-cols-7 auto-rows-[minmax(48px,auto)] sm:auto-rows-[minmax(88px,auto)] lg:auto-rows-[minmax(88px,auto)]"
                             >
                             {calendarDays.map((dayObj, idx) => {
                             const isToday = dayObj.date.getDate() === today.getDate() &&
@@ -384,7 +384,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                 dayObj.date.getFullYear() === today.getFullYear();
                             const isSelected = getDateKey(dayObj.date) === selectedDateKey;
 
-                            const visibleItems = dayObj.items.slice(0, 4);
+                            const visibleItems = dayObj.items.slice(0, 2);
                             const hiddenCount = Math.max(0, dayObj.items.length - visibleItems.length);
 
                             return (
@@ -401,7 +401,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     ].join(' ')}
                                 >
                                     <div className="flex items-center justify-between min-w-0">
-                                        <button data-editor-close="true"
+                                        <button
                                             type="button"
                                             onClick={() => setSelectedDateKey(getDateKey(dayObj.date))}
                                             aria-pressed={isSelected}
@@ -420,13 +420,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                             <span className="relative z-10">{dayObj.date.getDate()}</span>
                                         </button>
                                         {hiddenCount > 0 && (
-                                            <div className="text-xs font-semibold text-muted">
-                                                +{hiddenCount}
-                                            </div>
+                                            <button type="button" onClick={() => { selectDay(getDateKey(dayObj.date)); setViewMode("agenda"); }} className="text-xs font-semibold text-brand-600" aria-label={`${hiddenCount} agenda lainnya`}>+{hiddenCount}</button>
                                         )}
                                     </div>
 
-                                    <div className="flex-1 space-y-1 overflow-hidden">
+                                    {dayObj.items.length > 0 && <button type="button" className="text-xs text-brand-600 sm:hidden" onClick={() => { selectDay(getDateKey(dayObj.date)); setViewMode("agenda"); }} aria-label={`${dayObj.items.length} agenda pada tanggal ini`}>{dayObj.items.length}</button>}
+                                    <div className="hidden flex-1 space-y-1 overflow-hidden sm:block">
                                         {visibleItems.map(item => (
                                             <button
                                                 key={item.id}
@@ -482,6 +481,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                             {handleOpenAddTask && (
                                 <button
                                     type="button"
+                                    aria-label={calendarCopy.add}
                                     onClick={() => handleOpenAddTask(selectedDateKey)}
                                     className="flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-500"
                                 >
@@ -492,15 +492,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                         </div>
                     </div>
 
-                    <AnimatePresence initial={false} mode="wait">
-                        <motion.div
-                            key={selectedDateKey}
-                            variants={staggerContainerVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                            className="space-y-2"
-                        >
+                    <div className="space-y-2">
                             {selectedAgendaItems.length > 0 ? (
                                 selectedAgendaItems.map(item => (
                                     <motion.button
@@ -534,8 +526,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ items, handleToggleStatus, 
                                     {calendarCopy.noItems}
                                 </motion.div>
                             )}
-                        </motion.div>
-                    </AnimatePresence>
+                    </div>
                 </section>
             </div>
 

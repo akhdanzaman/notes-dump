@@ -1318,8 +1318,8 @@ const App: React.FC = () => {
                   {activeTab === "money" && !securitySettings.lockTabTransaction && (
                     <React.Suspense fallback={<span role="status" className="sr-only">Memuat…</span>}><MoneyViewComponent
                   items={items}
-                  onWalletTransactions={wallet => { setFilterWallet(wallet.name); setMoneyView("transactions"); }}
-                  onCategoryTransactions={categoryId => { setFilterCategory(categoryId); setMoneyView("transactions"); }}
+                  onWalletTransactions={wallet => { clearAllFinanceFilters(); setFilterWallet(wallet.name); setMoneyView("transactions"); }}
+                  onCategoryTransactions={categoryId => { clearAllFinanceFilters(); setFilterCategory(categoryId); setMoneyView("transactions"); }}
                   wallets={wallets}
                   budgetConfig={budgetConfig}
                   moneyView={moneyView}

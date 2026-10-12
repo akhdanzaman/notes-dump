@@ -34,7 +34,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [showAllLineItems, setShowAllLineItems] = useState(false);
   const { content, meta, status, completed_at } = item;
-  
+
   // Edit State
   const [editContent, setEditContent] = useState(content);
   const [editQuantity, setEditQuantity] = useState(meta.quantity || '');
@@ -59,7 +59,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       setEditBudgetCategory(meta.budgetCategory || '');
       setEditPaymentMethod(meta.paymentMethod || '');
       setEditHideFromCalendar(!!meta.hideFromCalendar);
-      
+
       // Date Init
       const editableDate = shouldShoppingDateEditCompletion(item) ? getShoppingTransactionDate(item) : getShoppingDueDate(item);
       if (editableDate) {
@@ -82,6 +82,9 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   useEffect(() => { const discard = (event: Event) => { if ((event.target as HTMLElement).getAttribute('data-entity-id') === item.id) draft.clear(); }; document.addEventListener('arkaiv-discard-editor', discard); return () => document.removeEventListener('arkaiv-discard-editor', discard); }, [item.id]);
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState('');
+  const sourceRevision = React.useRef(JSON.stringify(item));
+  const [remoteChanged, setRemoteChanged] = React.useState(false);
+  React.useEffect(() => { const next = JSON.stringify(item); if (next !== sourceRevision.current) { if (draft.dirty.current) setRemoteChanged(true); else { sourceRevision.current = next; setRemoteChanged(false); } } }, [item]);
   const handleSave = async () => {
     if (saving) return;
     setSaving(true); setSaveError('');
@@ -90,7 +93,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       const sanitizedEditLineItems = sanitizeShoppingLineItems(editShoppingLineItems);
       const hasEditLineItems = sanitizedEditLineItems.length > 0;
       const numAmount = hasEditLineItems ? sumShoppingLineItems(sanitizedEditLineItems) : (editAmount ? parseFloat(editAmount) : undefined);
-      
+
       let finalDate: string | undefined = undefined;
       if (editDate) finalDate = new Date(editDate).toISOString();
 
@@ -121,7 +124,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       draft.clear();
       setIsExpanded(false);
       onSaveComplete?.(item.id);
-  
+
     } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
@@ -161,7 +164,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
   const editLineItemsTotal = sumShoppingLineItems(editShoppingLineItems);
   const hasEditLineItems = sanitizeShoppingLineItems(editShoppingLineItems).length > 0;
 
-  
+
   // Date Logic for Display
   let dateDisplay = null;
   let isOverdue = false;
@@ -198,7 +201,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
          const recurrenceDays = Math.max(Number(meta.recurrenceDays || 7), 1);
          routineNextDueDate = getRoutineDateOnOrAfterToday(new Date(doneDate.getTime() + (recurrenceDays * 24 * 60 * 60 * 1000)));
      }
-     
+
      isWaitingForNextCycle = true;
      isRoutineLockedUntilNextDue = !isSameLocalDay(routineNextDueDate, routineNow);
      nextDueText = `Next: ${routineNextDueDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
@@ -212,7 +215,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const itemDateStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      
+
       if (itemDateStart < todayStart && !isDone) isOverdue = true;
       if (itemDateStart.getTime() === todayStart.getTime()) isToday = true;
 
@@ -252,16 +255,16 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
       onInputCapture={draft.markDirty}
       onChangeCapture={draft.markDirty}
       onClickCapture={event =>
-      
- { const button = (event.target as HTMLElement).closest('button'); if (button && button.getAttribute('aria-pressed') !== null) draft.markDirty(); }}
- 
+
+ { const button = (event.target as HTMLElement).closest('button'); if (button && !readonly && isExpanded && button.closest('[data-shopping-edit-body]') && (button.hasAttribute('aria-pressed') || button.hasAttribute('data-draft-change'))) draft.markDirty(); }}
+
       data-card-behavior={onOpen ? 'detail-panel' : 'inline'}
       role={onOpen ? 'group' : undefined}
       tabIndex={onOpen ? 0 : undefined}
       aria-label={onOpen ? `Buka detail ${content}` : undefined}
       className={`group flex flex-col rounded-xl p-4 shadow-sm ring-1 ring-inset ring-border/65 transition-[background-color,opacity,box-shadow] duration-150 overflow-hidden cursor-pointer
         ${(isDone || isRoutineUnavailable)
-            ? 'bg-surface/50 opacity-75' 
+            ? 'bg-surface/50 opacity-75'
             : `bg-surface hover:bg-surface/80`
       }`}
       onClick={toggleExpand}
@@ -271,13 +274,14 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
           onOpen(item);
       }}
     >
+      {remoteChanged && <p role="status" className="mb-3 rounded-lg bg-amber-500/10 p-3 text-sm">Data item berubah dari sinkronisasi. Draft yang sedang kamu edit tetap dipertahankan.</p>}
       {saveError && <p role="alert" className="editor-error">{saveError}</p>}
       <div className="flex flex-col gap-1">
-        
+
         {/* Top Row */}
         <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-                <button 
+                <button
                     onClick={(e) => {
                         e.stopPropagation();
                         if (!readonly && !isRoutineUnavailable) onToggleStatus(item.id);
@@ -324,19 +328,19 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                     </button>
                 )}
             </div>
-            
+
             <div className="text-sm font-medium text-muted">
                 {dateDisplay ? dateDisplay.split('•')[0].trim() : ''}
             </div>
         </div>
-        
+
         {/* Bottom Row */}
         <div className="flex justify-between items-start gap-4 mt-1">
             <div className="flex flex-col min-w-0 flex-1">
                 <div className={`text-base font-medium text-primary line-clamp-2 transition-[color,opacity,text-decoration-color] duration-180 ${isDone ? 'line-through text-muted decoration-current' : 'decoration-transparent'}`}>
                     {content}
                 </div>
-                
+
                 {/* Extra Metadata Row */}
                 {(meta.quantity || hasLineItems) && (
                     <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted">
@@ -372,17 +376,17 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
 
       {/* EXPANDED EDIT BODY */}
       {isExpanded && !readonly && (
-          <div className="pt-4 mt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+          <div data-shopping-edit-body="true" className="pt-4 mt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
               <div className="space-y-3">
                   {/* Content & Quantity */}
                   <div className="flex gap-2">
-                      <input 
+                      <input
                           className="flex-1 bg-background border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping"
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}
                           placeholder="Item name"
                       />
-                      <input 
+                      <input
                           className="w-20 bg-background border border-border rounded-xl p-2 text-sm text-primary focus:outline-none focus:border-acc-shopping"
                           value={editQuantity}
                           onChange={(e) => setEditQuantity(e.target.value)}
@@ -441,7 +445,7 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                       </div>
                       {!moneyHidden && <div>
                            <label className="text-xs uppercase text-muted font-bold mb-1 block">Perkiraan biaya</label>
-                           <input 
+                           <input
                               type="number"
                               className={`w-full bg-background border border-border rounded-lg p-2 text-xs text-primary focus:outline-none focus:border-acc-shopping ${hasEditLineItems ? 'opacity-80 cursor-not-allowed' : ''}`}
                               value={hasEditLineItems ? editLineItemsTotal || '' : editAmount}
@@ -478,19 +482,19 @@ const ShoppingItem: React.FC<ShoppingItemProps> = ({ item, onToggleStatus, onDel
                   {editCategory === 'routine' && (
                        <RoutineScheduleEditor value={routineDraft} onChange={(next, field) => {
                          setRoutineDraft(next);
-                         
+
                        }} />
                   )}
 
                   <div className="entity-editor-footer flex justify-between items-center pt-2">
-                      <button 
+                      <button
                         onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
                         className="text-red-400 hover:text-red-500 text-xs flex items-center gap-1"
                       >
                           <Trash2 className="w-3 h-3" /> Hapus
                       </button>
-                      
-                      <button 
+
+                      <button
                         disabled={saving}
                         onClick={(e) => { e.stopPropagation(); void handleSave(); }}
                         className="bg-acc-shopping text-white px-3 py-1.5 rounded-xl text-xs font-medium hover:opacity-90 flex items-center gap-1"

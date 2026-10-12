@@ -10,6 +10,8 @@ export const BackHandler = {
     };
   },
   handle: () => {
+    // Active dialogs own browser/device Back too, including the dirty-draft guard.
+    if (typeof window !== 'undefined' && !window.dispatchEvent(new Event('arkaiv-panel-back', { cancelable: true }))) return true;
     for (let i = handlers.length - 1; i >= 0; i--) {
       if (handlers[i]()) return true;
     }

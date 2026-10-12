@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.137', date: 'October 12, 2026',
+    items: [
+      'Draft editor pulih setelah reload, terlindungi dari refresh dan penutupan, serta tetap terbuka jika penyimpanan lokal gagal.',
+      'Navigasi dan cards dirapikan untuk semua tab; editor lebih lebar, nominal privat konsisten, dan composer mobile lebih ringkas.',
+      'Belanja meminta nominal aktual sebelum mencatat pengeluaran; konflik sinkronisasi ditinjau per item dan kolom.',
+      'Kalender memiliki navigasi harian, strip tanggal, waktu agenda, dan editor yang sama dengan Rencana. Animasi dipersingkat dan mengikuti reduced motion.',
+    ],
+  },
+  {
     version: 'v0.3.136',
     date: 'July 25, 2026',
     items: [

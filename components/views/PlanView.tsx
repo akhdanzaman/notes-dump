@@ -103,14 +103,17 @@ const PlanView: React.FC<PlanViewProps> = ({
         itemDetail: 'Detail rencana', closeDetail: 'Tutup detail', taskDetail: 'Editor tugas', shoppingDetail: 'Editor belanja',
     };
 
+    const [taskHorizon, setTaskHorizon] = useState<'today' | 'week' | 'month'>('week');
+    const weekEnd = new Date(); weekEnd.setHours(23,59,59,999); weekEnd.setDate(weekEnd.getDate() + (7 - (weekEnd.getDay() || 7)));
+    const inHorizon = (item: BrainDumpItem) => taskHorizon === 'month' || new Date(item.meta.date || item.created_at).getTime() <= (taskHorizon === 'today' ? new Date().setHours(23,59,59,999) : weekEnd.getTime());
     // Data Preparation
     const { summary, pendingGroups, doneList } = getFocusMonthData(items, focusDate, searchQuery, selectedTag);
     const { today, tomorrow, later, routines } = pendingGroups;
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
     const overdueTasks = today.filter(item => !item.meta.parentTodoId && item.status === 'pending' && new Date(item.meta.date || item.created_at).getTime() < dayStart.getTime());
     const rootToday = today.filter(item => !item.meta.parentTodoId && !overdueTasks.includes(item));
-    const rootTomorrow = tomorrow.filter(item => !item.meta.parentTodoId);
-    const rootLater = later.filter(item => !item.meta.parentTodoId);
+    const rootTomorrow = tomorrow.filter(item => !item.meta.parentTodoId && inHorizon(item));
+    const rootLater = later.filter(item => !item.meta.parentTodoId && inHorizon(item));
     const rootRoutines = (routines || []).filter(item => !item.meta.parentTodoId);
 
     const { urgent, routine, normal, savings, investments } = getShoppingItems(items, searchQuery, selectedTag);
@@ -1180,13 +1183,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                         </div>
                     </LayoutGroup>
 
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={planSubTab}
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -10 }}
-                            transition={{ duration: 0.2 }}
+                        <div
                         >
                             <div className={contentSurface.workspaceHeaderGrid}>
                                 <div className="min-w-0">
@@ -1202,7 +1199,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                         onTouchEnd={dateSwipeHandlers.onTouchEnd}
                                     >
                                         <div className="flex items-center justify-between gap-1">
-                                            <button onClick={() => changeMonth(-1)} aria-label={isEnglish ? 'Previous month' : 'Bulan sebelumnya'} className={contentSurface.workspacePeriodButton}>
+                                            <button onClick={() => { setTaskHorizon("month"); changeMonth(-1); }} aria-label={isEnglish ? 'Previous month' : 'Bulan sebelumnya'} className={contentSurface.workspacePeriodButton}>
                                                 <ChevronLeft className="h-4 w-4" />
                                             </button>
                                             <AnimatePresence mode="wait" custom={focusDirection} initial={false}>
@@ -1219,7 +1216,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                                     <span className={contentSurface.workspacePeriodTitle}>{focusDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}</span>
                                                 </motion.div>
                                             </AnimatePresence>
-                                            <button onClick={() => changeMonth(1)} aria-label={isEnglish ? 'Next month' : 'Bulan berikutnya'} className={contentSurface.workspacePeriodButton}>
+                                            <button onClick={() => { setTaskHorizon("month"); changeMonth(1); }} aria-label={isEnglish ? 'Next month' : 'Bulan berikutnya'} className={contentSurface.workspacePeriodButton}>
                                                 <ChevronRight className="h-4 w-4" />
                                             </button>
                                         </div>
@@ -1240,8 +1237,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                                     </div>
                                 ))}
                             </div>
-                        </motion.div>
-                    </AnimatePresence>
+                        </div>
                 </motion.div>
             </motion.div>
 
@@ -1269,6 +1265,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     initial={false}
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad} ${planSubTab !== 'tasks' ? 'pointer-events-none' : ''}`}
                 >
+                    <div className="mb-4 flex flex-wrap gap-2" aria-label="Rentang tugas">{(['today','week','month'] as const).map(horizon => <button type="button" key={horizon} aria-pressed={taskHorizon === horizon} onClick={() => setTaskHorizon(horizon)} className={`rounded-lg border px-3 py-2 text-sm ${taskHorizon === horizon ? 'border-brand-500 bg-brand-500/10 text-brand-700' : 'border-border text-muted'}`}>{horizon === 'today' ? (isEnglish ? 'Today' : 'Hari ini') : horizon === 'week' ? (isEnglish ? 'This week' : 'Minggu ini') : (isEnglish ? 'Full month' : 'Seluruh bulan')}</button>)}</div>
                     <div className="space-y-8">
                         {overdueTasks.length > 0 && <section className={contentSurface.workflowPanel}><h3 className="mb-3 text-sm font-semibold text-red-600">{isEnglish ? 'Overdue' : 'Terlambat'}</h3>{renderTaskItems(visibleOverdue.visibleItems)}<LoadMoreButton remainingCount={visibleOverdue.remainingCount} onClick={visibleOverdue.loadMore} /></section>}
                         {summary.todo > 0 || rootRoutines.length > 0 ? (
@@ -1398,7 +1395,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad} ${planSubTab !== 'shopping' ? 'pointer-events-none' : ''}`}
                 >
                     <div className={contentSurface.workflowGrid}>
-                        <section className={contentSurface.workflowPanel}>
+                        {urgent.length > 0 && (<section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
                                     <span className="bg-red-500/10 p-1 rounded-md"><ShoppingCart className="w-3 h-3" /></span> {planCopy.urgent}
@@ -1418,9 +1415,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                             ) : (
                                 <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                             )}
-                        </section>
+                        </section>)}
 
-                        <section className={contentSurface.workflowPanel}>
+                        {routine.length > 0 && (<section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-bold text-brand-500 uppercase tracking-wider flex items-center gap-2">
                                     <span className="bg-brand-500/10 p-1 rounded-md"><History className="w-3 h-3" /></span> {planCopy.routine}
@@ -1440,9 +1437,9 @@ const PlanView: React.FC<PlanViewProps> = ({
                             ) : (
                                 <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                             )}
-                        </section>
+                        </section>)}
 
-                        <section className={contentSurface.workflowPanel}>
+                        {normal.length > 0 && (<section className={contentSurface.workflowPanel}>
                             <div className="flex items-center justify-between mb-3 pl-1">
                                 <h3 className="text-sm font-semibold text-muted">{planCopy.normal}</h3>
                                 <button
@@ -1460,7 +1457,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             ) : (
                                 <div className="text-sm text-muted italic pl-1 opacity-50">{planCopy.noItems}</div>
                             )}
-                        </section>
+                        </section>)}
 
                         {isShoppingEmpty && (
                             <div className={`${contentSurface.emptyStateCard} flex flex-col items-center justify-center gap-4`}>
@@ -1557,7 +1554,7 @@ const PlanView: React.FC<PlanViewProps> = ({
                             </section>
                         </div>
 
-                        
+
                     </div>
                 </motion.div>
                 )}
@@ -1574,36 +1571,6 @@ const PlanView: React.FC<PlanViewProps> = ({
                     className={`w-full flex-shrink-0 ${contentSurface.contentPad} ${planSubTab !== 'loans' ? 'pointer-events-none' : ''}`}
                 >
                     <div className="space-y-6">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-500">
-                                    <ArrowDownLeft className="h-4 w-4" /> Akan diterima
-                                </div>
-                                <div className="mt-2 text-xl font-bold text-primary">{formatIdr(loanSummary.receivable)}</div>
-                                <p className="mt-1 text-xs text-muted">Total uang yang masih perlu dikembalikan kepada Anda.</p>
-                            </div>
-                            <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
-                                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-500">
-                                    <ArrowUpRight className="h-4 w-4" /> Harus dibayar
-                                </div>
-                                <div className="mt-2 text-xl font-bold text-primary">{formatIdr(loanSummary.payable)}</div>
-                                <p className="mt-1 text-xs text-muted">Total kewajiban yang masih harus Anda lunasi.</p>
-                            </div>
-                            <div className={`${contentSurface.workspaceCompactCard} p-4`}>
-                                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted">
-                                    <Clock3 className="h-4 w-4" /> Pengingat
-                                </div>
-                                <div className="mt-2 text-xl font-bold text-primary">{loanSummary.openCount} aktif</div>
-                                <p className="mt-1 text-xs text-muted">
-                                    {loanSummary.overdueCount > 0
-                                        ? `${loanSummary.overdueCount} sudah melewati jatuh tempo.`
-                                        : loanSummary.dueSoonCount > 0
-                                            ? `${loanSummary.dueSoonCount} segera jatuh tempo.`
-                                            : 'Tidak ada tanggungan mendesak.'}
-                                </p>
-                            </div>
-                        </div>
-
                         <section className={contentSurface.workspaceCard}>
                             <div className="mb-4 flex items-center justify-between gap-3">
                                 <div>

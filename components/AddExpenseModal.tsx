@@ -124,7 +124,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const repaymentBalanceLabel = loanKind === 'loan_repayment_in' ? 'Sisa piutang' : 'Sisa utang';
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || draft.dirty.current) return;
     setTransactionType(initialMode);
     if (initialMode !== 'loan' || !initialLoanAccountId) return;
     const account = loanAccounts.find((candidate) => candidate.id === initialLoanAccountId);
@@ -248,7 +248,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     }
   };
 
-  const draft = useEditorDraft('AddExpenseModal', { amount, description, merchant, category, walletId, toWalletId, savingGoalId, date, transactionType, investmentUnits, investmentUnitPrice, transactionLineItems, loanKind, loanCounterparty, loanAccountId, loanDueDate }, v => { if (Object.hasOwn(v, 'amount')) setAmount(v.amount); if (Object.hasOwn(v, 'description')) setDescription(v.description); if (Object.hasOwn(v, 'merchant')) setMerchant(v.merchant); if (Object.hasOwn(v, 'category')) setCategory(v.category); if (Object.hasOwn(v, 'walletId')) setWalletId(v.walletId); if (Object.hasOwn(v, 'toWalletId')) setToWalletId(v.toWalletId); if (Object.hasOwn(v, 'savingGoalId')) setSavingGoalId(v.savingGoalId); if (Object.hasOwn(v, 'date')) setDate(v.date); if (Object.hasOwn(v, 'transactionType')) setTransactionType(v.transactionType); if (Object.hasOwn(v, 'investmentUnits')) setInvestmentUnits(v.investmentUnits); if (Object.hasOwn(v, 'investmentUnitPrice')) setInvestmentUnitPrice(v.investmentUnitPrice); if (Object.hasOwn(v, 'transactionLineItems')) setTransactionLineItems(v.transactionLineItems); if (Object.hasOwn(v, 'loanKind')) setLoanKind(v.loanKind); if (Object.hasOwn(v, 'loanCounterparty')) setLoanCounterparty(v.loanCounterparty); if (Object.hasOwn(v, 'loanAccountId')) setLoanAccountId(v.loanAccountId); if (Object.hasOwn(v, 'loanDueDate')) setLoanDueDate(v.loanDueDate); });
+  const draft = useEditorDraft(`AddExpenseModal:${initialMode}:${initialLoanAccountId || 'new'}`, { amount, description, merchant, category, walletId, toWalletId, savingGoalId, date, transactionType, investmentUnits, investmentUnitPrice, transactionLineItems, loanKind, loanCounterparty, loanAccountId, loanDueDate }, v => { if (Object.hasOwn(v, 'amount')) setAmount(v.amount); if (Object.hasOwn(v, 'description')) setDescription(v.description); if (Object.hasOwn(v, 'merchant')) setMerchant(v.merchant); if (Object.hasOwn(v, 'category')) setCategory(v.category); if (Object.hasOwn(v, 'walletId')) setWalletId(v.walletId); if (Object.hasOwn(v, 'toWalletId')) setToWalletId(v.toWalletId); if (Object.hasOwn(v, 'savingGoalId')) setSavingGoalId(v.savingGoalId); if (Object.hasOwn(v, 'date')) setDate(v.date); if (Object.hasOwn(v, 'transactionType')) setTransactionType(v.transactionType); if (Object.hasOwn(v, 'investmentUnits')) setInvestmentUnits(v.investmentUnits); if (Object.hasOwn(v, 'investmentUnitPrice')) setInvestmentUnitPrice(v.investmentUnitPrice); if (Object.hasOwn(v, 'transactionLineItems')) setTransactionLineItems(v.transactionLineItems); if (Object.hasOwn(v, 'loanKind')) setLoanKind(v.loanKind); if (Object.hasOwn(v, 'loanCounterparty')) setLoanCounterparty(v.loanCounterparty); if (Object.hasOwn(v, 'loanAccountId')) setLoanAccountId(v.loanAccountId); if (Object.hasOwn(v, 'loanDueDate')) setLoanDueDate(v.loanDueDate); });
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState('');
   const handleSave = async () => {
@@ -305,7 +305,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       draft.clear();
     resetForm();
     onClose();
-  
+
     } catch (error) { setSaveError(error instanceof Error ? error.message : 'Perubahan belum tersimpan di perangkat.'); } finally { setSaving(false); }
   };
 
