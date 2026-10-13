@@ -16,6 +16,12 @@ Baseline: b0dd7d3. Sheets remains the authoritative store; durable receipts stil
 
 ## Shared Redis activation
 
+Activated 13 October 2026: Vercel Marketplace resource `notes-dump-sync`, Upstash Free plan, primary region `iad1`, eviction disabled. The same resource is connected to Preview and Production with Sensitive environment variables. Vercel provides the supported `KV_REST_API_URL` / `KV_REST_API_TOKEN` aliases; no SDK dependency or client-side credentials are required.
+
+Real Redis acceptance is reproducible using `scripts/redis-acceptance.ts`: PING, TTL cache round-trip, atomic publication/idempotency, NX protection, table union, owner-checked locks, concurrent reservation spacing, independent read/write budgets, and shared cooldown. It uses unique disposable keys and a synthetic principal so the test never cools down the real Google identity. Supply REST variables in ignored `.env.redis-live.local` and pass a report JSON path.
+
+`scripts/redis-deployment-check.ts` verifies deployed shared capabilities and compares the version endpoint with the same Redis database. With the synthetic copy manifest it also checks 20 committed receipts through separate deployed status requests. It does not mutate Sheets. The live copy acceptance still verifies queue commit/readback/duplicate/cleanup. Redis status cache hits require no Google requests; cache misses retain canonical Sheets recovery.
+
 Connect one Upstash Redis REST resource to both Preview and Production. The two environments must use **the same database** because they share the Google principal's quota. Use:
 
 ```
