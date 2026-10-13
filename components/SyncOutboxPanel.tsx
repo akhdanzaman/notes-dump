@@ -30,6 +30,9 @@ export default function SyncOutboxPanel() {
         throw new Error('Item berubah saat ditinjau. Periksa nilai terbaru dan pilih kembali.');
       }
       await resolveLocalConflicts(scope, fresh.data, false, entityId, choices[entityId]);
+      const updated = await readLocalState(scope);
+      setOperations(updated.operations); setLocal(updated.data); setRemote(fresh.data);
+      setChoices(previous => { const next = { ...previous }; delete next[entityId]; return next; });
       window.dispatchEvent(new Event('arkaiv-sync-committed'));
       await replayDurableOutbox();
     } catch (error) { setError(error instanceof Error ? error.message : 'Review failed'); } finally { setBusy(false); }
@@ -43,6 +46,7 @@ export default function SyncOutboxPanel() {
       const fields: { path: string; local: unknown; remote: unknown }[] = [];
       if (remote && base) mergeMutation(value(base), value(local), value(remote), 'entity', (localValue, remoteValue, path) => { fields.push({ path, local: localValue, remote: remoteValue }); return remoteValue; });
       const title = describe(value(local) || value(remote));
+      const awaitingSameItem = operations.some(op => op.entityKind === operation.entityKind && op.entityId === operation.entityId && (op.state === 'sending' || op.state === 'accepted'));
       return <section key={operation.operationId} className="rounded-lg border border-border p-4 space-y-3">
         <h3 className="font-medium">{title}</h3>
         {!remote && <p>Memuat nilai Sheets…</p>}
@@ -53,7 +57,8 @@ export default function SyncOutboxPanel() {
             <span><span className="block text-xs text-muted">{source === 'local' ? 'Di perangkat ini' : 'Di Sheets'}</span>{local?.appSettings?.hideMoney && /amount|price|balance/i.test(field.path) ? 'Nominal disembunyikan' : describe(field[source])}</span>
           </label>)}
         </fieldset>)}
-        <button className="editor-primary" disabled={busy || !remote || operations.some(op => op.state !== 'conflict') || fields.some(field => !choices[operation.entityId]?.[field.path])} onClick={() => { void resolve(operation.entityId); }}>Terapkan pilihan untuk item ini</button>
+        {awaitingSameItem && <p role="status">Perubahan item ini masih dikirim. Pilihan dapat diterapkan setelah statusnya selesai.</p>}
+        <button className="editor-primary disabled:opacity-50 disabled:cursor-not-allowed" disabled={busy || !remote || awaitingSameItem || fields.some(field => !choices[operation.entityId]?.[field.path])} onClick={() => { void resolve(operation.entityId); }}>{busy ? 'Menerapkan pilihan…' : 'Terapkan pilihan untuk item ini'}</button>
       </section>;
     })}
     {error && <p className="text-red-500">{error}</p>}

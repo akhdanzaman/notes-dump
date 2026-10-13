@@ -147,9 +147,10 @@ export async function resolveLocalConflicts(scope: string, remote: DbSchema, pre
       request(states.get(scope)) as Promise<StateRecord | undefined>, request(entities.index('scope').getAll(scope)) as Promise<EntityRecord[]>,
       request(outbox.index('scope').getAll(scope)) as Promise<LocalMutation[]>,
     ]);
-    if (!operations.length || operations.some(operation => operation.state !== 'conflict')) throw new Error('Wait for outstanding operations to settle before reviewing conflicts');
-    const local = assemble(state, records)!; const base = reconstructBaseline(local, operations.sort((a, b) => a.createdAt - b.createdAt));
     const selected = operations.filter(operation => !entityId || operation.entityId === entityId);
+    if (!selected.some(operation => operation.state === 'conflict')) throw new Error('Konflik item ini sudah berubah. Muat ulang status sebelum memilih kembali.');
+    if (selected.some(operation => operation.state === 'sending' || operation.state === 'accepted')) throw new Error('Perubahan item ini masih dikirim. Tunggu statusnya sebelum menerapkan pilihan.');
+    const local = assemble(state, records)!; const base = reconstructBaseline(local, operations.sort((a, b) => a.createdAt - b.createdAt));
     const remaining = operations.filter(operation => !selected.includes(operation));
     const next = structuredClone(remote); const items = new Map(next.data.map(item => [item.id, item]));
     for (const operation of remaining.sort((a, b) => a.createdAt - b.createdAt)) {

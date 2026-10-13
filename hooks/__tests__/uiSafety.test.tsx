@@ -13,6 +13,55 @@ import { useControlCenter } from '../useControlCenter';
 import PresencePanel from '../../motion/PresencePanel';
 import { closeLocalStore, readLocalState } from '../../services/localOutbox';
 import { ItemType, DbSchema } from '../../types';
+import SyncOutboxPanel from '../../components/SyncOutboxPanel';
+import { persistLocalState, changeOperationState } from '../../services/localOutbox';
+import { saveSpreadsheetConfig, clearSpreadsheetConfig } from '../../services/spreadsheetService';
+import { generateExportData } from '../../utils/exportUtils';
+
+test('conflict choices apply sequentially while an unrelated item is accepted', async t => {
+ const h = await environment(); const scope = 'ui-conflict-choices';
+ const makeItem = (id: string, content: string) => ({ id, content, type: ItemType.NOTE, status: 'pending' as const, created_at: '2026-10-13', meta: {} });
+ const original = { data: ['one', 'two', 'three'].map(id => makeItem(id, `old ${id}`)) };
+ const local = { data: original.data.map(item => ({ ...item, content: `local ${item.id}` })) };
+ const remote = { data: original.data.map(item => ({ ...item, content: `remote ${item.id}` })) };
+ const sheets = generateExportData(remote.data, [], [], { monthlyIncome: 0, rules: [] }, {}, { defaultCollapsed: false, hideMoney: false });
+ const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
+ const mock = t.mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+   const url = String(input);
+   if (url.endsWith('/session')) return json({ csrfToken: 'synthetic' });
+   if (url.endsWith('/capabilities')) return json({ enabled: false, ready: false });
+   const path = new URL(url, 'http://synthetic').searchParams.get('path') || '';
+   if (path.startsWith('?')) return json({ sheets: sheets.map(sheet => ({ properties: { title: sheet.name } })) });
+   const ranges = new URLSearchParams(path.split('?')[1]).getAll('ranges');
+   return json({ valueRanges: ranges.map(range => ({ range, values: sheets.find(sheet => range.startsWith(`'${sheet.name}'!`))?.data || [] })) });
+ });
+ const settle = async (ready: () => boolean) => {
+   for (let attempt = 0; attempt < 100 && !ready(); attempt++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)); });
+   assert.ok(ready(), document.body.textContent || 'UI did not settle');
+ };
+ try {
+   clearSpreadsheetConfig(); saveSpreadsheetConfig({ spreadsheetId: scope, spreadsheetUrl: 'https://example.invalid', authMode: 'service_account' });
+   await persistLocalState(scope, local, original);
+   const operations = (await readLocalState(scope)).operations;
+   await changeOperationState(scope, operations.filter(op => op.entityId !== 'three').map(op => op.operationId), 'conflict');
+   await changeOperationState(scope, operations.filter(op => op.entityId === 'three').map(op => op.operationId), 'accepted');
+   await h.render(<SyncOutboxPanel />);
+   await settle(() => document.querySelectorAll('section input[type=radio]').length === 4);
+   for (const remaining of [2, 1]) {
+     const section = document.querySelector('section')!;
+     const button = section.querySelector('button')!;
+     assert.equal(button.disabled, true, 'field choice is required');
+     await act(async () => section.querySelector<HTMLInputElement>('input[type=radio]')!.click());
+     assert.equal(button.disabled, false, 'unrelated accepted/pending operations must not lock Apply');
+     await act(async () => button.click());
+     await settle(() => document.querySelectorAll('section').length === remaining - 1);
+   }
+   const resolved = await readLocalState(scope);
+   assert.equal(resolved.operations.some(op => op.state === 'conflict'), false);
+   assert.equal(resolved.operations.find(op => op.entityId === 'three')?.state, 'accepted');
+   assert.deepEqual(resolved.data?.data.map(item => item.content), ['local one', 'local two', 'local three']);
+ } finally { mock.mock.restore(); clearSpreadsheetConfig(); await h.close(); }
+});
 
 test('successful editor save closes only after the local save acknowledges', async () => {
  const h = await environment(); let closed=0; let acknowledge!:()=>void;

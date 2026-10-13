@@ -6,6 +6,10 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.3.139', date: 'October 13, 2026',
+    items: ['Pilihan konflik dapat diterapkan per item walau perubahan item lain masih antre. Daftar konflik langsung diperbarui setelah pilihan tersimpan.'],
+  },
+  {
     version:'v0.3.138',date:'October 12, 2026',
     items:[
       'Sinkronisasi menggabungkan beberapa perubahan agar pemakaian API Sheets lebih hemat.',

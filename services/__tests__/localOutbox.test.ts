@@ -104,4 +104,54 @@ test('field review resolves one entity and preserves another unresolved local co
  assert.equal(result.data?.data.find(value => value.id === 'one')?.meta.amount, 30);
  assert.equal(result.data?.data.find(value => value.id === 'two')?.content, 'local two');
  assert.equal(result.operations.find(op => op.entityId === 'two')?.state, 'conflict');
+ // Resolving the first item creates a pending mutation; it must not lock the second review.
+ await resolveLocalConflicts(scope, remote, false, 'two', { 'entity.content': 'local' });
+ const resolved = await readLocalState(scope);
+ assert.equal(resolved.operations.filter(op => op.state === 'conflict').length, 0);
+ assert.equal(resolved.operations.filter(op => op.state === 'pending').length, 2);
+ assert.equal(resolved.data?.data.find(value => value.id === 'one')?.content, 'local one');
+ assert.equal(resolved.data?.data.find(value => value.id === 'two')?.content, 'local two');
+});
+
+test('review preserves unrelated accepted operations and rebases only the selected conflict', async () => {
+ const scope = 'review-unrelated-accepted';
+ const second = { ...item, id: 'two' }; const original = { data: [item, second] };
+ await persistLocalState(scope, { data: [{ ...item, content: 'local one' }, { ...second, content: 'local two' }] }, original);
+ const queued = (await readLocalState(scope)).operations;
+ const selected = queued.find(op => op.entityId === 'one')!;
+ const unrelated = queued.find(op => op.entityId === 'two')!;
+ await changeOperationState(scope, [selected.operationId], 'conflict');
+ await changeOperationState(scope, [unrelated.operationId], 'accepted');
+ const before = (await readLocalState(scope)).operations.find(op => op.entityId === 'two');
+ await resolveLocalConflicts(scope, { data: [{ ...item, content: 'remote one', meta: { tags: ['remote'] } }, second] }, false, 'one', { 'entity.content': 'local' });
+ const after = await readLocalState(scope);
+ assert.deepEqual(after.operations.find(op => op.entityId === 'two'), before);
+ assert.equal(after.data?.data.find(value => value.id === 'two')?.content, 'local two');
+ assert.deepEqual(after.data?.data.find(value => value.id === 'one')?.meta.tags, ['remote']);
+ assert.equal(after.operations.find(op => op.entityId === 'one')?.state, 'pending');
+});
+
+test('review folds unsent edits on the same conflicted item but refuses unknown in-flight acceptance', async () => {
+ const scope = 'review-pending-descendant'; const original = { data: [item] };
+ await persistLocalState(scope, { data: [{ ...item, content: 'first edit' }] }, original);
+ const conflict = (await readLocalState(scope)).operations[0];
+ await changeOperationState(scope, [conflict.operationId], 'conflict');
+ await persistLocalState(scope, { data: [{ ...item, content: 'latest edit' }] });
+ const local = await readLocalState(scope);
+ const descendant = local.operations.find(op => op.state === 'pending')!;
+ await changeOperationState(scope, [descendant.operationId], 'sending');
+ const frozen = await readLocalState(scope);
+ const remote = { data: [{ ...item, content: 'remote' }] };
+ await assert.rejects(resolveLocalConflicts(scope, remote, false, 'one', { 'entity.content': 'local' }), /masih dikirim/);
+ assert.deepEqual(await readLocalState(scope), frozen);
+ // Simulate a confirmed terminal conflict; no uncertain request may be discarded.
+ await changeOperationState(scope, [descendant.operationId], 'conflict');
+ await persistLocalState(scope, { data: [{ ...item, content: 'newest unsent edit' }] });
+ await resolveLocalConflicts(scope, remote, false, 'one', { 'entity.content': 'local' });
+ const resolved = await readLocalState(scope);
+ assert.equal(resolved.operations.length, 1);
+ assert.equal(resolved.operations[0].state, 'pending');
+ assert.equal((resolved.operations[0].before as any).content, 'remote');
+ assert.equal((resolved.operations[0].after as any).content, 'newest unsent edit');
+ assert.equal(resolved.operations[0].parentOperationId, undefined);
 });
